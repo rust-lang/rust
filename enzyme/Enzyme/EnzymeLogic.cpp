@@ -3681,6 +3681,22 @@ Function *EnzymeLogic::CreateForwardDiff(
 
   assert(!todiff->empty());
 
+  if (hasMetadata(todiff, "enzyme_derivative")) {
+    auto md = todiff->getMetadata("enzyme_derivative");
+    if (!isa<MDTuple>(md)) {
+      llvm::errs() << *todiff << "\n";
+      llvm::errs() << *md << "\n";
+      report_fatal_error(
+          "unknown derivative for function -- metadata incorrect");
+    }
+    auto md2 = cast<MDTuple>(md);
+    assert(md2->getNumOperands() == 1);
+    auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
+    auto foundcalled = cast<Function>(gvemd->getValue());
+
+    return foundcalled;
+  }
+
   auto TRo = TA.analyzeFunction(oldTypeInfo);
   bool retActive = TRo.getReturnAnalysis().Inner0().isPossibleFloat() &&
                    !todiff->getReturnType()->isVoidTy();

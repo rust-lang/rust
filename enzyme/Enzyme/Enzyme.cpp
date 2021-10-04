@@ -79,6 +79,220 @@ llvm::cl::opt<bool>
 
 namespace {
 
+template <const char *handlername, int numargs>
+static void
+handleCustomDerivative(llvm::Module &M, llvm::GlobalVariable &g,
+                       std::vector<GlobalVariable *> &globalsToErase) {
+  if (g.hasInitializer()) {
+    if (auto CA = dyn_cast<ConstantAggregate>(g.getInitializer())) {
+      if (CA->getNumOperands() != numargs) {
+        llvm::errs() << M << "\n";
+        llvm::errs() << "Use of " << handlername
+                     << " must be a "
+                        "constant of size "
+                     << numargs << " " << g << "\n";
+        llvm_unreachable(handlername);
+      } else {
+        Function *Fs[numargs];
+        for (size_t i = 0; i < numargs; i++) {
+          Value *V = CA->getOperand(i);
+          while (auto CE = dyn_cast<ConstantExpr>(V)) {
+            V = CE->getOperand(0);
+          }
+          if (auto CA = dyn_cast<ConstantAggregate>(V))
+            V = CA->getOperand(0);
+          while (auto CE = dyn_cast<ConstantExpr>(V)) {
+            V = CE->getOperand(0);
+          }
+          if (auto F = dyn_cast<Function>(V)) {
+            Fs[i] = F;
+          } else {
+            llvm::errs() << M << "\n";
+            llvm::errs() << "Param of " << handlername
+                         << " must be a "
+                            "function"
+                         << g << "\n"
+                         << *V << "\n";
+            llvm_unreachable(handlername);
+          }
+        }
+
+        if (numargs == 3) {
+          Fs[0]->setMetadata(
+              "enzyme_augment",
+              llvm::MDTuple::get(Fs[0]->getContext(),
+                                 {llvm::ValueAsMetadata::get(Fs[1])}));
+          Fs[0]->setMetadata(
+              "enzyme_gradient",
+              llvm::MDTuple::get(Fs[0]->getContext(),
+                                 {llvm::ValueAsMetadata::get(Fs[2])}));
+        } else if (numargs == 2) {
+          Fs[0]->setMetadata(
+              "enzyme_derivative",
+              llvm::MDTuple::get(Fs[0]->getContext(),
+                                 {llvm::ValueAsMetadata::get(Fs[1])}));
+        }
+      }
+    } else {
+      llvm::errs() << M << "\n";
+      llvm::errs() << "Use of " << handlername
+                   << " must be a "
+                      "constant aggregate "
+                   << g << "\n";
+      llvm_unreachable(handlername);
+    }
+  } else {
+    llvm::errs() << M << "\n";
+    llvm::errs() << "Use of " << handlername
+                 << " must be a "
+                    "constant array of size "
+                 << numargs << " " << g << "\n";
+    llvm_unreachable(handlername);
+  }
+  globalsToErase.push_back(&g);
+}
+
+static void
+handleInactiveFunction(llvm::Module &M, llvm::GlobalVariable &g,
+                       std::vector<GlobalVariable *> &globalsToErase) {
+  if (g.hasInitializer()) {
+    Value *V = g.getInitializer();
+    while (auto CE = dyn_cast<ConstantExpr>(V)) {
+      V = CE->getOperand(0);
+    }
+    if (auto CA = dyn_cast<ConstantAggregate>(V))
+      V = CA->getOperand(0);
+    while (auto CE = dyn_cast<ConstantExpr>(V)) {
+      V = CE->getOperand(0);
+    }
+    if (auto F = dyn_cast<Function>(V)) {
+      F->addAttribute(AttributeList::FunctionIndex,
+                      Attribute::get(g.getContext(), "enzyme_inactive"));
+    } else {
+      llvm::errs() << M << "\n";
+      llvm::errs() << "Param of __enzyme_inactivefn must be a "
+                      "function"
+                   << g << "\n"
+                   << *V << "\n";
+      llvm_unreachable("__enzyme_inactivefn");
+    }
+  } else {
+    llvm::errs() << M << "\n";
+    llvm::errs() << "Use of __enzyme_inactivefn must be a "
+                    "constant function "
+                 << g << "\n";
+    llvm_unreachable("__enzyme_register_gradient");
+  }
+  globalsToErase.push_back(&g);
+}
+
+static void handleKnownFunctions(llvm::Function &F) {
+  if (F.getName() == "MPI_Irecv") {
+    F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+    F.addFnAttr(Attribute::NoUnwind);
+    F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
+    F.addFnAttr(Attribute::WillReturn);
+    F.addFnAttr(Attribute::NoFree);
+    F.addFnAttr(Attribute::NoSync);
+#endif
+    F.addParamAttr(0, Attribute::WriteOnly);
+    if (F.getFunctionType()->getParamType(2)->isPointerTy()) {
+      F.addParamAttr(2, Attribute::NoCapture);
+      F.addParamAttr(2, Attribute::WriteOnly);
+    }
+    F.addParamAttr(6, Attribute::WriteOnly);
+  }
+  if (F.getName() == "MPI_Isend") {
+    F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+    F.addFnAttr(Attribute::NoUnwind);
+    F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
+    F.addFnAttr(Attribute::WillReturn);
+    F.addFnAttr(Attribute::NoFree);
+    F.addFnAttr(Attribute::NoSync);
+#endif
+    F.addParamAttr(0, Attribute::WriteOnly);
+    if (F.getFunctionType()->getParamType(2)->isPointerTy()) {
+      F.addParamAttr(2, Attribute::NoCapture);
+      F.addParamAttr(2, Attribute::ReadOnly);
+    }
+    F.addParamAttr(6, Attribute::WriteOnly);
+  }
+  if (F.getName() == "MPI_Comm_rank") {
+    F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+    F.addFnAttr(Attribute::NoUnwind);
+    F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
+    F.addFnAttr(Attribute::WillReturn);
+    F.addFnAttr(Attribute::NoFree);
+    F.addFnAttr(Attribute::NoSync);
+#endif
+    if (F.getFunctionType()->getParamType(0)->isPointerTy()) {
+      F.addParamAttr(0, Attribute::NoCapture);
+      F.addParamAttr(0, Attribute::ReadOnly);
+    }
+    F.addParamAttr(1, Attribute::WriteOnly);
+    F.addParamAttr(1, Attribute::NoCapture);
+  }
+  if (F.getName() == "MPI_Wait") {
+    F.addFnAttr(Attribute::NoUnwind);
+    F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
+    F.addFnAttr(Attribute::WillReturn);
+    F.addFnAttr(Attribute::NoFree);
+    F.addFnAttr(Attribute::NoSync);
+#endif
+    F.addParamAttr(0, Attribute::ReadOnly);
+    F.addParamAttr(0, Attribute::NoCapture);
+    F.addParamAttr(1, Attribute::WriteOnly);
+    F.addParamAttr(1, Attribute::NoCapture);
+  }
+  if (F.getName() == "MPI_Waitall") {
+    F.addFnAttr(Attribute::NoUnwind);
+    F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
+    F.addFnAttr(Attribute::WillReturn);
+    F.addFnAttr(Attribute::NoFree);
+    F.addFnAttr(Attribute::NoSync);
+#endif
+    F.addParamAttr(1, Attribute::ReadOnly);
+    F.addParamAttr(1, Attribute::NoCapture);
+    F.addParamAttr(2, Attribute::WriteOnly);
+    F.addParamAttr(2, Attribute::NoCapture);
+  }
+  if (F.getName() == "omp_get_max_threads" ||
+      F.getName() == "omp_get_thread_num") {
+    F.addFnAttr(Attribute::ReadOnly);
+    F.addFnAttr(Attribute::InaccessibleMemOnly);
+  }
+  if (F.getName() == "frexp" || F.getName() == "frexpf" ||
+      F.getName() == "frexpl") {
+    F.addFnAttr(Attribute::ArgMemOnly);
+    F.addParamAttr(1, Attribute::WriteOnly);
+  }
+  if (F.getName() == "__fd_sincos_1" || F.getName() == "__fd_cos_1" ||
+      F.getName() == "__mth_i_ipowi") {
+    F.addFnAttr(Attribute::ReadNone);
+  }
+}
+
+static void handleAnnotations(llvm::Function &F) {
+  if (F.getName().contains("__enzyme_float") ||
+      F.getName().contains("__enzyme_double") ||
+      F.getName().contains("__enzyme_integer") ||
+      F.getName().contains("__enzyme_pointer") ||
+      F.getName().contains("__enzyme_virtualreverse")) {
+    F.addFnAttr(Attribute::ReadNone);
+    for (auto &arg : F.args()) {
+      if (arg.getType()->isPointerTy()) {
+        arg.addAttr(Attribute::ReadNone);
+        arg.addAttr(Attribute::NoCapture);
+      }
+    }
+  }
+}
+
 class Enzyme : public ModulePass {
 public:
   EnzymeLogic Logic;
@@ -1416,205 +1630,31 @@ public:
   }
 
   bool runOnModule(Module &M) override {
+    constexpr static const char gradient_handler_name[] =
+        "__enzyme_register_gradient";
+    constexpr static const char derivative_handler_name[] =
+        "__enzyme_register_derivative";
+
     Logic.clear();
 
     bool changed = false;
     std::vector<GlobalVariable *> globalsToErase;
     for (GlobalVariable &g : M.globals()) {
-      if (g.getName().contains("__enzyme_register_gradient")) {
-        if (g.hasInitializer()) {
-          if (auto CA = dyn_cast<ConstantAggregate>(g.getInitializer())) {
-            if (CA->getNumOperands() != 3) {
-              llvm::errs() << M << "\n";
-              llvm::errs() << "Use of __enzyme_register_gradient must be a "
-                              "constant of size 3 "
-                           << g << "\n";
-              llvm_unreachable("__enzyme_register_gradient");
-            } else {
-              Function *Fs[3];
-              for (size_t i = 0; i < 3; i++) {
-                Value *V = CA->getOperand(i);
-                while (auto CE = dyn_cast<ConstantExpr>(V)) {
-                  V = CE->getOperand(0);
-                }
-                if (auto CA = dyn_cast<ConstantAggregate>(V))
-                  V = CA->getOperand(0);
-                while (auto CE = dyn_cast<ConstantExpr>(V)) {
-                  V = CE->getOperand(0);
-                }
-                if (auto F = dyn_cast<Function>(V)) {
-                  Fs[i] = F;
-                } else {
-                  llvm::errs() << M << "\n";
-                  llvm::errs()
-                      << "Param of __enzyme_register_gradient must be a "
-                         "function"
-                      << g << "\n"
-                      << *V << "\n";
-                  llvm_unreachable("__enzyme_register_gradient");
-                }
-              }
-              Fs[0]->setMetadata(
-                  "enzyme_augment",
-                  llvm::MDTuple::get(Fs[0]->getContext(),
-                                     {llvm::ValueAsMetadata::get(Fs[1])}));
-              Fs[0]->setMetadata(
-                  "enzyme_gradient",
-                  llvm::MDTuple::get(Fs[0]->getContext(),
-                                     {llvm::ValueAsMetadata::get(Fs[2])}));
-            }
-          } else {
-            llvm::errs() << M << "\n";
-            llvm::errs() << "Use of __enzyme_register_gradient must be a "
-                            "constant aggregate "
-                         << g << "\n";
-            llvm_unreachable("__enzyme_register_gradient");
-          }
-        } else {
-          llvm::errs() << M << "\n";
-          llvm::errs() << "Use of __enzyme_register_gradient must be a "
-                          "constant array of size 3 "
-                       << g << "\n";
-          llvm_unreachable("__enzyme_register_gradient");
-        }
-        globalsToErase.push_back(&g);
+      if (g.getName().contains(gradient_handler_name)) {
+        handleCustomDerivative<gradient_handler_name, 3>(M, g, globalsToErase);
+      } else if (g.getName().contains(derivative_handler_name)) {
+        handleCustomDerivative<derivative_handler_name, 2>(M, g,
+                                                           globalsToErase);
       } else if (g.getName().contains("__enzyme_inactivefn")) {
-        if (g.hasInitializer()) {
-          Value *V = g.getInitializer();
-          while (auto CE = dyn_cast<ConstantExpr>(V)) {
-            V = CE->getOperand(0);
-          }
-          if (auto CA = dyn_cast<ConstantAggregate>(V))
-            V = CA->getOperand(0);
-          while (auto CE = dyn_cast<ConstantExpr>(V)) {
-            V = CE->getOperand(0);
-          }
-          if (auto F = dyn_cast<Function>(V)) {
-            F->addAttribute(AttributeList::FunctionIndex,
-                            Attribute::get(g.getContext(), "enzyme_inactive"));
-          } else {
-            llvm::errs() << M << "\n";
-            llvm::errs() << "Param of __enzyme_inactivefn must be a "
-                            "function"
-                         << g << "\n"
-                         << *V << "\n";
-            llvm_unreachable("__enzyme_inactivefn");
-          }
-        } else {
-          llvm::errs() << M << "\n";
-          llvm::errs() << "Use of __enzyme_inactivefn must be a "
-                          "constant function "
-                       << g << "\n";
-          llvm_unreachable("__enzyme_register_gradient");
-        }
-        globalsToErase.push_back(&g);
+        handleInactiveFunction(M, g, globalsToErase);
       }
     }
     for (auto g : globalsToErase) {
       g->eraseFromParent();
     }
     for (Function &F : M) {
-      if (F.getName().contains("__enzyme_float") ||
-          F.getName().contains("__enzyme_double") ||
-          F.getName().contains("__enzyme_integer") ||
-          F.getName().contains("__enzyme_pointer") ||
-          F.getName().contains("__enzyme_virtualreverse")) {
-        F.addFnAttr(Attribute::ReadNone);
-        for (auto &arg : F.args()) {
-          if (arg.getType()->isPointerTy()) {
-            arg.addAttr(Attribute::ReadNone);
-            arg.addAttr(Attribute::NoCapture);
-          }
-        }
-      }
-      if (F.getName() == "MPI_Irecv") {
-        F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
-        F.addFnAttr(Attribute::NoUnwind);
-        F.addFnAttr(Attribute::NoRecurse);
-#if LLVM_VERSION_MAJOR >= 9
-        F.addFnAttr(Attribute::WillReturn);
-        F.addFnAttr(Attribute::NoFree);
-        F.addFnAttr(Attribute::NoSync);
-#endif
-        F.addParamAttr(0, Attribute::WriteOnly);
-        if (F.getFunctionType()->getParamType(2)->isPointerTy()) {
-          F.addParamAttr(2, Attribute::NoCapture);
-          F.addParamAttr(2, Attribute::WriteOnly);
-        }
-        F.addParamAttr(6, Attribute::WriteOnly);
-      }
-      if (F.getName() == "MPI_Isend") {
-        F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
-        F.addFnAttr(Attribute::NoUnwind);
-        F.addFnAttr(Attribute::NoRecurse);
-#if LLVM_VERSION_MAJOR >= 9
-        F.addFnAttr(Attribute::WillReturn);
-        F.addFnAttr(Attribute::NoFree);
-        F.addFnAttr(Attribute::NoSync);
-#endif
-        F.addParamAttr(0, Attribute::WriteOnly);
-        if (F.getFunctionType()->getParamType(2)->isPointerTy()) {
-          F.addParamAttr(2, Attribute::NoCapture);
-          F.addParamAttr(2, Attribute::ReadOnly);
-        }
-        F.addParamAttr(6, Attribute::WriteOnly);
-      }
-      if (F.getName() == "MPI_Comm_rank") {
-        F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
-        F.addFnAttr(Attribute::NoUnwind);
-        F.addFnAttr(Attribute::NoRecurse);
-#if LLVM_VERSION_MAJOR >= 9
-        F.addFnAttr(Attribute::WillReturn);
-        F.addFnAttr(Attribute::NoFree);
-        F.addFnAttr(Attribute::NoSync);
-#endif
-        if (F.getFunctionType()->getParamType(0)->isPointerTy()) {
-          F.addParamAttr(0, Attribute::NoCapture);
-          F.addParamAttr(0, Attribute::ReadOnly);
-        }
-        F.addParamAttr(1, Attribute::WriteOnly);
-        F.addParamAttr(1, Attribute::NoCapture);
-      }
-      if (F.getName() == "MPI_Wait") {
-        F.addFnAttr(Attribute::NoUnwind);
-        F.addFnAttr(Attribute::NoRecurse);
-#if LLVM_VERSION_MAJOR >= 9
-        F.addFnAttr(Attribute::WillReturn);
-        F.addFnAttr(Attribute::NoFree);
-        F.addFnAttr(Attribute::NoSync);
-#endif
-        F.addParamAttr(0, Attribute::ReadOnly);
-        F.addParamAttr(0, Attribute::NoCapture);
-        F.addParamAttr(1, Attribute::WriteOnly);
-        F.addParamAttr(1, Attribute::NoCapture);
-      }
-      if (F.getName() == "MPI_Waitall") {
-        F.addFnAttr(Attribute::NoUnwind);
-        F.addFnAttr(Attribute::NoRecurse);
-#if LLVM_VERSION_MAJOR >= 9
-        F.addFnAttr(Attribute::WillReturn);
-        F.addFnAttr(Attribute::NoFree);
-        F.addFnAttr(Attribute::NoSync);
-#endif
-        F.addParamAttr(1, Attribute::ReadOnly);
-        F.addParamAttr(1, Attribute::NoCapture);
-        F.addParamAttr(2, Attribute::WriteOnly);
-        F.addParamAttr(2, Attribute::NoCapture);
-      }
-      if (F.getName() == "omp_get_max_threads" ||
-          F.getName() == "omp_get_thread_num") {
-        F.addFnAttr(Attribute::ReadOnly);
-        F.addFnAttr(Attribute::InaccessibleMemOnly);
-      }
-      if (F.getName() == "frexp" || F.getName() == "frexpf" ||
-          F.getName() == "frexpl") {
-        F.addFnAttr(Attribute::ArgMemOnly);
-        F.addParamAttr(1, Attribute::WriteOnly);
-      }
-      if (F.getName() == "__fd_sincos_1" || F.getName() == "__fd_cos_1" ||
-          F.getName() == "__mth_i_ipowi") {
-        F.addFnAttr(Attribute::ReadNone);
-      }
+      handleAnnotations(F);
+      handleKnownFunctions(F);
       if (F.empty())
         continue;
       std::vector<Instruction *> toErase;

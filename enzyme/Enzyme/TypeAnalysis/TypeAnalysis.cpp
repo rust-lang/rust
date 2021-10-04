@@ -4016,7 +4016,8 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
     }
 
-    if (!ci->empty() && !hasMetadata(ci, "enzyme_gradient")) {
+    if (!ci->empty() && !hasMetadata(ci, "enzyme_gradient") &&
+        !hasMetadata(ci, "enzyme_derivative")) {
       visitIPOCall(call, *ci);
     }
   }
