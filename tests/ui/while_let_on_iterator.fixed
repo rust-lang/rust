@@ -1,7 +1,13 @@
 // run-rustfix
 
 #![warn(clippy::while_let_on_iterator)]
-#![allow(clippy::never_loop, unreachable_code, unused_mut, dead_code)]
+#![allow(
+    clippy::never_loop,
+    unreachable_code,
+    unused_mut,
+    dead_code,
+    clippy::equatable_if_let
+)]
 
 fn base() {
     let mut iter = 1..20;

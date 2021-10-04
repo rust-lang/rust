@@ -116,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                     if let Some(mut snippet) = snippet_opt(cx, callee.span) {
                         if_chain! {
                             if let ty::Closure(_, substs) = callee_ty.peel_refs().kind();
-                            if let ClosureKind::FnMut = substs.as_closure().kind();
+                            if substs.as_closure().kind() == ClosureKind::FnMut;
                             if get_enclosing_loop_or_closure(cx.tcx, expr).is_some()
                                 || UsedAfterExprVisitor::is_found(cx, callee);
 

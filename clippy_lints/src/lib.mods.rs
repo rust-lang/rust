@@ -49,6 +49,7 @@ mod entry;
 mod enum_clike;
 mod enum_variants;
 mod eq_op;
+mod equatable_if_let;
 mod erasing_op;
 mod escape;
 mod eta_reduction;

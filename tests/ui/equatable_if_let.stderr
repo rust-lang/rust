@@ -1,0 +1,64 @@
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:49:8
+   |
+LL |     if let 2 = a {}
+   |        ^^^^^^^^^ help: try: `a == 2`
+   |
+   = note: `-D clippy::equatable-if-let` implied by `-D warnings`
+
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:50:8
+   |
+LL |     if let Ordering::Greater = a.cmp(&b) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `a.cmp(&b) == Ordering::Greater`
+
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:51:8
+   |
+LL |     if let Some(2) = c {}
+   |        ^^^^^^^^^^^^^^^ help: try: `c == Some(2)`
+
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:52:8
+   |
+LL |     if let Struct { a: 2, b: false } = d {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `d == (Struct { a: 2, b: false })`
+
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:53:8
+   |
+LL |     if let Enum::TupleVariant(32, 64) = e {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `e == Enum::TupleVariant(32, 64)`
+
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:54:8
+   |
+LL |     if let Enum::RecordVariant { a: 64, b: 32 } = e {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `e == (Enum::RecordVariant { a: 64, b: 32 })`
+
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:55:8
+   |
+LL |     if let Enum::UnitVariant = e {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `e == Enum::UnitVariant`
+
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:56:8
+   |
+LL |     if let (Enum::UnitVariant, &Struct { a: 2, b: false }) = (e, &d) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(e, &d) == (Enum::UnitVariant, &Struct { a: 2, b: false })`
+
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:66:8
+   |
+LL |     if let NotStructuralEq::A = g {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `g == NotStructuralEq::A`
+
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:68:8
+   |
+LL |     if let Some(NotStructuralEq::A) = Some(g) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(g) == Some(NotStructuralEq::A)`
+
+error: aborting due to 10 previous errors
+

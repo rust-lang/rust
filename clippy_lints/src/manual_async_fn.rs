@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
     ) {
         if_chain! {
             if let Some(header) = kind.header();
-            if let IsAsync::NotAsync = header.asyncness;
+            if header.asyncness == IsAsync::NotAsync;
             // Check that this function returns `impl Future`
             if let FnRetTy::Return(ret_ty) = decl.output;
             if let Some((trait_ref, output_lifetimes)) = future_trait_ref(cx, ret_ty);
@@ -178,7 +178,7 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
         if args.len() == 1;
         if let Expr{kind: ExprKind::Closure(_, _, body_id, ..), ..} = args[0];
         let closure_body = cx.tcx.hir().body(body_id);
-        if let Some(GeneratorKind::Async(AsyncGeneratorKind::Block)) = closure_body.generator_kind;
+        if closure_body.generator_kind == Some(GeneratorKind::Async(AsyncGeneratorKind::Block));
         then {
             return Some(closure_body);
         }

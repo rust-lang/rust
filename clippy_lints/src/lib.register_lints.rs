@@ -116,6 +116,7 @@ store.register_lints(&[
     enum_variants::MODULE_NAME_REPETITIONS,
     eq_op::EQ_OP,
     eq_op::OP_REF,
+    equatable_if_let::EQUATABLE_IF_LET,
     erasing_op::ERASING_OP,
     escape::BOXED_LOCAL,
     eta_reduction::REDUNDANT_CLOSURE,

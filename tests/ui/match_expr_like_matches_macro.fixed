@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![warn(clippy::match_like_matches_macro)]
-#![allow(unreachable_patterns, dead_code)]
+#![allow(unreachable_patterns, dead_code, clippy::equatable_if_let)]
 
 fn main() {
     let x = Some(5);
