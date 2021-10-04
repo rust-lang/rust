@@ -1750,7 +1750,7 @@ impl EncodeContext<'a, 'tcx> {
     fn encode_diagnostic_items(&mut self) -> Lazy<[(Symbol, DefIndex)]> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let diagnostic_items = tcx.diagnostic_items(LOCAL_CRATE);
+        let diagnostic_items = &tcx.diagnostic_items(LOCAL_CRATE).name_to_id;
         self.lazy(diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.index)))
     }
 

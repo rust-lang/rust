@@ -1076,7 +1076,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if adt_def.did.is_local() {
                     let diagnostic_items = self.tcx.diagnostic_items(trait_ref.def_id.krate);
                     return derivables.iter().find_map(|trait_derivable| {
-                        let item_def_id = diagnostic_items.get(trait_derivable)?;
+                        let item_def_id = diagnostic_items.name_to_id.get(trait_derivable)?;
                         if item_def_id == &trait_pred.trait_ref.def_id
                             && !(adt_def.is_enum() && *trait_derivable == sym::Default)
                         {
