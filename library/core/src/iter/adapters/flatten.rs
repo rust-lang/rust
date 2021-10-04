@@ -391,6 +391,41 @@ where
 
         init
     }
+
+    #[inline]
+    #[rustc_inherit_overflow_checks]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let mut rem = n;
+        loop {
+            if let Some(ref mut front) = self.frontiter {
+                match front.advance_by(rem) {
+                    ret @ Ok(_) => return ret,
+                    Err(advanced) => rem -= advanced,
+                }
+            }
+            self.frontiter = match self.iter.next() {
+                Some(iterable) => Some(iterable.into_iter()),
+                _ => break,
+            }
+        }
+
+        self.frontiter = None;
+
+        if let Some(ref mut back) = self.backiter {
+            match back.advance_by(rem) {
+                ret @ Ok(_) => return ret,
+                Err(advanced) => rem -= advanced,
+            }
+        }
+
+        if rem > 0 {
+            return Err(n - rem);
+        }
+
+        self.backiter = None;
+
+        Ok(())
+    }
 }
 
 impl<I, U> DoubleEndedIterator for FlattenCompat<I, U>
@@ -485,6 +520,41 @@ where
         }
 
         init
+    }
+
+    #[inline]
+    #[rustc_inherit_overflow_checks]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let mut rem = n;
+        loop {
+            if let Some(ref mut back) = self.backiter {
+                match back.advance_back_by(rem) {
+                    ret @ Ok(_) => return ret,
+                    Err(advanced) => rem -= advanced,
+                }
+            }
+            match self.iter.next_back() {
+                Some(iterable) => self.backiter = Some(iterable.into_iter()),
+                _ => break,
+            }
+        }
+
+        self.backiter = None;
+
+        if let Some(ref mut front) = self.frontiter {
+            match front.advance_back_by(rem) {
+                ret @ Ok(_) => return ret,
+                Err(advanced) => rem -= advanced,
+            }
+        }
+
+        if rem > 0 {
+            return Err(n - rem);
+        }
+
+        self.frontiter = None;
+
+        Ok(())
     }
 }
 

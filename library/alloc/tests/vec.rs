@@ -971,6 +971,24 @@ fn test_into_iter_leak() {
 }
 
 #[test]
+fn test_into_iter_advance_by() {
+    let mut i = vec![1, 2, 3, 4, 5].into_iter();
+    i.advance_by(0).unwrap();
+    i.advance_back_by(0).unwrap();
+    assert_eq!(i.as_slice(), [1, 2, 3, 4, 5]);
+
+    i.advance_by(1).unwrap();
+    i.advance_back_by(1).unwrap();
+    assert_eq!(i.as_slice(), [2, 3, 4]);
+
+    assert_eq!(i.advance_back_by(usize::MAX), Err(3));
+
+    assert_eq!(i.advance_by(usize::MAX), Err(0));
+
+    assert_eq!(i.len(), 0);
+}
+
+#[test]
 fn test_from_iter_specialization() {
     let src: Vec<usize> = vec![0usize; 1];
     let srcptr = src.as_ptr();

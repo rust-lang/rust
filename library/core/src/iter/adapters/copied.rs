@@ -76,6 +76,11 @@ where
         self.it.count()
     }
 
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        self.it.advance_by(n)
+    }
+
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
@@ -111,6 +116,11 @@ where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
         self.it.rfold(init, copy_fold(f))
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        self.it.advance_back_by(n)
     }
 }
 

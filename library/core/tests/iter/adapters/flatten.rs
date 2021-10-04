@@ -59,6 +59,23 @@ fn test_flatten_try_folds() {
 }
 
 #[test]
+fn test_flatten_advance_by() {
+    let mut it = once(0..10).chain(once(10..30)).chain(once(30..40)).flatten();
+    it.advance_by(5).unwrap();
+    assert_eq!(it.next(), Some(5));
+    it.advance_by(9).unwrap();
+    assert_eq!(it.next(), Some(15));
+    it.advance_back_by(4).unwrap();
+    assert_eq!(it.next_back(), Some(35));
+    it.advance_back_by(9).unwrap();
+    assert_eq!(it.next_back(), Some(25));
+
+    assert_eq!(it.advance_by(usize::MAX), Err(9));
+    assert_eq!(it.advance_back_by(usize::MAX), Err(0));
+    assert_eq!(it.size_hint(), (0, Some(0)));
+}
+
+#[test]
 fn test_flatten_non_fused_outer() {
     let mut iter = NonFused::new(once(0..2)).flatten();
 
