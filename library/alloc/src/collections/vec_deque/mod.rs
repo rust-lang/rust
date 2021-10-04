@@ -3004,6 +3004,16 @@ impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
     /// assert_eq!(deq1, deq2);
     /// ```
     fn from(arr: [T; N]) -> Self {
-        core::array::IntoIter::new(arr).collect()
+        let mut deq = VecDeque::with_capacity(N);
+        let arr = ManuallyDrop::new(arr);
+        if mem::size_of::<T>() != 0 {
+            // SAFETY: VecDeque::with_capacity ensures that there is enough capacity.
+            unsafe {
+                ptr::copy_nonoverlapping(arr.as_ptr(), deq.ptr(), N);
+            }
+        }
+        deq.tail = 0;
+        deq.head = N;
+        deq
     }
 }
