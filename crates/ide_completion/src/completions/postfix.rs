@@ -3,7 +3,7 @@
 mod format_like;
 
 use ide_db::{
-    helpers::{import_assets::LocatedImport, insert_use::ImportScope, FamousDefs, SnippetCap},
+    helpers::{insert_use::ImportScope, FamousDefs, SnippetCap},
     ty_filter::TryEnum,
 };
 use syntax::{
@@ -18,7 +18,7 @@ use crate::{
     context::CompletionContext,
     item::{Builder, CompletionKind},
     patterns::ImmediateLocation,
-    CompletionItem, CompletionItemKind, CompletionRelevance, Completions, ImportEdit,
+    CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
 
 pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
@@ -232,33 +232,9 @@ fn add_custom_postfix_completions(
         ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
     ctx.config.postfix_snippets.iter().for_each(|snippet| {
         // FIXME: Support multiple imports
-        let import = match snippet.requires.get(0) {
-            Some(import) => {
-                let res = (|| {
-                    let path = ast::Path::parse(import).ok()?;
-                    match ctx.scope.speculative_resolve(&path)? {
-                        hir::PathResolution::Macro(_) => None,
-                        hir::PathResolution::Def(def) => {
-                            let item = def.into();
-                            let path = ctx.scope.module()?.find_use_path_prefixed(
-                                ctx.db,
-                                item,
-                                ctx.config.insert_use.prefix_kind,
-                            )?;
-                            Some((path.len() > 1).then(|| ImportEdit {
-                                import: LocatedImport::new(path.clone(), item, item, None),
-                                scope: import_scope.clone(),
-                            }))
-                        }
-                        _ => None,
-                    }
-                })();
-                match res {
-                    Some(it) => it,
-                    None => return,
-                }
-            }
-            None => None,
+        let import = match snippet.imports(ctx, &import_scope) {
+            Ok(mut imports) => imports.pop(),
+            Err(_) => return,
         };
         let mut builder = postfix_snippet(
             &snippet.label,
@@ -501,9 +477,10 @@ fn main() {
             CompletionConfig {
                 postfix_snippets: vec![PostfixSnippet::new(
                     "break".into(),
-                    &["ControlFlow::Break($target)".into()],
+                    &["ControlFlow::Break($receiver)".into()],
                     &[],
                     &["core::ops::ControlFlow".into()],
+                    None,
                 )
                 .unwrap()],
                 ..TEST_CONFIG

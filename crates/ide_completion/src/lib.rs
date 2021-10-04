@@ -9,6 +9,7 @@ mod render;
 
 #[cfg(test)]
 mod tests;
+mod snippet;
 
 use completions::flyimport::position_for_import;
 use ide_db::{
@@ -24,8 +25,9 @@ use text_edit::TextEdit;
 use crate::{completions::Completions, context::CompletionContext, item::CompletionKind};
 
 pub use crate::{
-    config::{CompletionConfig, PostfixSnippet},
+    config::CompletionConfig,
     item::{CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit},
+    snippet::{PostfixSnippet, PostfixSnippetScope, Snippet, SnippetScope},
 };
 
 //FIXME: split the following feature into fine-grained features.
