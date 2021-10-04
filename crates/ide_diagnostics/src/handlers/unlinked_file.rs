@@ -45,16 +45,14 @@ fn fixes(ctx: &DiagnosticsContext, file_id: FileId) -> Option<Vec<Assist>> {
     // - `$dir.rs` in the parent folder, where `$dir` is the directory containing `self.file_id`
     let parent = our_path.parent()?;
     let paths = {
-        let temp;
         let parent = if module_name == "mod" {
             // for mod.rs we need to actually look up one higher
             // and take the parent as our to be module name
             let (name, _) = parent.name_and_extension()?;
             module_name = name;
-            temp = parent.parent()?;
-            &temp
+            parent.parent()?
         } else {
-            &parent
+            parent
         };
         let mut paths =
             vec![parent.join("mod.rs")?, parent.join("lib.rs")?, parent.join("main.rs")?];
