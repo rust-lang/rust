@@ -1,3 +1,6 @@
+//! User (postfix)-snippet definitions.
+//!
+//! Actual logic is implemented in [`crate::completions::postfix`] and [`crate::completions::snippet`].
 use ide_db::helpers::{import_assets::LocatedImport, insert_use::ImportScope};
 use itertools::Itertools;
 use syntax::ast;

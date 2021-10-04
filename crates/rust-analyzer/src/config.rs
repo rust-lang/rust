@@ -282,9 +282,9 @@ config_data! {
         rustfmt_enableRangeFormatting: bool = "false",
 
         /// Workspace symbol search scope.
-        workspace_symbol_search_scope: WorskpaceSymbolSearchScopeDef = "\"workspace\"",
+        workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = "\"workspace\"",
         /// Workspace symbol search kind.
-        workspace_symbol_search_kind: WorskpaceSymbolSearchKindDef = "\"only_types\"",
+        workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = "\"only_types\"",
     }
 }
 
@@ -893,14 +893,14 @@ impl Config {
     pub fn workspace_symbol(&self) -> WorkspaceSymbolConfig {
         WorkspaceSymbolConfig {
             search_scope: match self.data.workspace_symbol_search_scope {
-                WorskpaceSymbolSearchScopeDef::Workspace => WorkspaceSymbolSearchScope::Workspace,
-                WorskpaceSymbolSearchScopeDef::WorkspaceAndDependencies => {
+                WorkspaceSymbolSearchScopeDef::Workspace => WorkspaceSymbolSearchScope::Workspace,
+                WorkspaceSymbolSearchScopeDef::WorkspaceAndDependencies => {
                     WorkspaceSymbolSearchScope::WorkspaceAndDependencies
                 }
             },
             search_kind: match self.data.workspace_symbol_search_kind {
-                WorskpaceSymbolSearchKindDef::OnlyTypes => WorkspaceSymbolSearchKind::OnlyTypes,
-                WorskpaceSymbolSearchKindDef::AllSymbols => WorkspaceSymbolSearchKind::AllSymbols,
+                WorkspaceSymbolSearchKindDef::OnlyTypes => WorkspaceSymbolSearchKind::OnlyTypes,
+                WorkspaceSymbolSearchKindDef::AllSymbols => WorkspaceSymbolSearchKind::AllSymbols,
             },
         }
     }
@@ -1065,14 +1065,14 @@ enum ImportPrefixDef {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-enum WorskpaceSymbolSearchScopeDef {
+enum WorkspaceSymbolSearchScopeDef {
     Workspace,
     WorkspaceAndDependencies,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-enum WorskpaceSymbolSearchKindDef {
+enum WorkspaceSymbolSearchKindDef {
     OnlyTypes,
     AllSymbols,
 }
@@ -1203,6 +1203,12 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "items": { "type": "string" },
             "uniqueItems": true,
         },
+        "FxHashMap<String, PostfixSnippetDef>" => set! {
+            "type": "object",
+        },
+        "FxHashMap<String, SnippetDef>" => set! {
+            "type": "object",
+        },
         "FxHashMap<String, String>" => set! {
             "type": "object",
         },
@@ -1259,7 +1265,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "array",
             "items": { "type": ["string", "object"] },
         },
-        "WorskpaceSymbolSearchScopeDef" => set! {
+        "WorkspaceSymbolSearchScopeDef" => set! {
             "type": "string",
             "enum": ["workspace", "workspace_and_dependencies"],
             "enumDescriptions": [
@@ -1267,7 +1273,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Search in current workspace and dependencies"
             ],
         },
-        "WorskpaceSymbolSearchKindDef" => set! {
+        "WorkspaceSymbolSearchKindDef" => set! {
             "type": "string",
             "enum": ["only_types", "all_symbols"],
             "enumDescriptions": [
