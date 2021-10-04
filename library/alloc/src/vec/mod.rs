@@ -2137,6 +2137,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// in order to be able to clone the passed value.
     /// If you need more flexibility (or want to rely on [`Default`] instead of
     /// [`Clone`]), use [`Vec::resize_with`].
+    /// If you only need to resize to a smaller size, use [`Vec::truncate`].
     ///
     /// # Examples
     ///
@@ -2188,7 +2189,12 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
 
     /// Copies elements from `src` range to the end of the vector.
     ///
-    /// ## Examples
+    /// # Panics
+    ///
+    /// Panics if the starting point is greater than the end point or if
+    /// the end point is greater than the length of the vector.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let mut vec = vec![0, 1, 2, 3, 4];

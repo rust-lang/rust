@@ -1,10 +1,10 @@
-// This module contains some shared code for encoding and decoding various
-// things from the `ty` module, and in particular implements support for
-// "shorthands" which allow to have pointers back into the already encoded
-// stream instead of re-encoding the same thing twice.
-//
-// The functionality in here is shared between persisting to crate metadata and
-// persisting to incr. comp. caches.
+//! This module contains some shared code for encoding and decoding various
+//! things from the `ty` module, and in particular implements support for
+//! "shorthands" which allow to have pointers back into the already encoded
+//! stream instead of re-encoding the same thing twice.
+//!
+//! The functionality in here is shared between persisting to crate metadata and
+//! persisting to incr. comp. caches.
 
 use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};

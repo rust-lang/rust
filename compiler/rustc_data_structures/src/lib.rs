@@ -7,7 +7,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(allow_internal_unstable)]
 #![feature(array_windows)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]

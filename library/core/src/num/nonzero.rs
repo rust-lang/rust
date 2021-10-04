@@ -379,7 +379,7 @@ macro_rules! nonzero_unsigned_operations {
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
                 #[inline]
-                pub unsafe fn unchecked_add(self, other: $Int) -> $Ty {
+                pub const unsafe fn unchecked_add(self, other: $Int) -> $Ty {
                     // SAFETY: The caller ensures there is no overflow.
                     unsafe { $Ty::new_unchecked(self.get().unchecked_add(other)) }
                 }
@@ -750,7 +750,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
                 #[inline]
-                pub unsafe fn unchecked_mul(self, other: $Ty) -> $Ty {
+                pub const unsafe fn unchecked_mul(self, other: $Ty) -> $Ty {
                     // SAFETY: The caller ensures there is no overflow.
                     unsafe { $Ty::new_unchecked(self.get().unchecked_mul(other.get())) }
                 }
