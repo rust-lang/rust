@@ -158,7 +158,7 @@ fn test7_move_closures_non_copy_types_might_need_migration() {
 fn test8_drop_order_and_blocks() {
     {
         let tuple =
-          (String::from("foo"), String::from("bar"));
+          (Foo(0), Foo(1));
         {
             let c = || {
                 //~^ ERROR: drop order
@@ -176,7 +176,7 @@ fn test8_drop_order_and_blocks() {
 
 fn test9_drop_order_and_nested_closures() {
     let tuple =
-        (String::from("foo"), String::from("bar"));
+        (Foo(0), Foo(1));
     let b = || {
         let c = || {
             //~^ ERROR: drop order
@@ -193,6 +193,19 @@ fn test9_drop_order_and_nested_closures() {
     b();
 }
 
+// Test that we migrate if drop order of Vec<T> would be affected if T is a significant drop type
+fn test10_vec_of_significant_drop_type() {
+
+        let tup = (Foo(0), vec![Foo(3)]);
+
+        let _c = || tup.0;
+            //~^ ERROR: drop order
+            //~| NOTE: for more information, see
+            //~| HELP: add a dummy let to cause `tup` to be fully captured
+            //~| NOTE: in Rust 2018, this closure captures all of `tup`, but in Rust 2021, it will only capture `tup.0`
+}
+//~^ NOTE: in Rust 2018, `tup` is dropped here, but in Rust 2021, only `tup.0` will be dropped here as part of the closure
+
 fn main() {
     test1_all_need_migration();
     test2_only_precise_paths_need_migration();
@@ -203,4 +216,5 @@ fn main() {
     test7_move_closures_non_copy_types_might_need_migration();
     test8_drop_order_and_blocks();
     test9_drop_order_and_nested_closures();
+    test10_vec_of_significant_drop_type();
 }

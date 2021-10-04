@@ -2,6 +2,7 @@
 
 use crate::io;
 use crate::mem::ManuallyDrop;
+use crate::os::windows::io::FromRawHandle;
 use crate::sys::c;
 use crate::sys::handle::Handle;
 
@@ -25,7 +26,8 @@ pub fn get_handle(handle_id: c::DWORD) -> io::Result<c::HANDLE> {
 
 fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
     let handle = get_handle(handle_id)?;
-    let handle = Handle::new(handle);
+    // SAFETY: The handle returned from `get_handle` must be valid and non-null.
+    let handle = unsafe { Handle::from_raw_handle(handle) };
     ManuallyDrop::new(handle).write(data)
 }
 
@@ -38,7 +40,8 @@ impl Stdin {
 impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let handle = get_handle(c::STD_INPUT_HANDLE)?;
-        let handle = Handle::new(handle);
+        // SAFETY: The handle returned from `get_handle` must be valid and non-null.
+        let handle = unsafe { Handle::from_raw_handle(handle) };
         ManuallyDrop::new(handle).read(buf)
     }
 }

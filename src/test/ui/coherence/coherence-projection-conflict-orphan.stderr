@@ -8,6 +8,7 @@ LL | impl<A:Iterator> Foo<A::Item> for A { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `i32`
    |
    = note: upstream crates may add a new impl of trait `std::iter::Iterator` for type `i32` in future versions
+   = note: upstream crates may add a new impl of trait `std::iter::Iterator` for type `i32` in future versions
 
 error: aborting due to previous error
 

@@ -34,6 +34,11 @@ RUN apt-get update && \
       xz-utils \
       zlib1g-dev
 
+# Install new Let's Encrypt root CA certificate and remove the expired one.
+COPY host-x86_64/shared/ISRG_Root_X1.crt /usr/local/share/ca-certificates/ISRG_Root_X1.crt
+RUN sed -i '/mozilla\/DST_Root_CA_X3\.crt/d' /etc/ca-certificates.conf
+RUN /usr/sbin/update-ca-certificates
+
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib32:/rustroot/lib
 ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig

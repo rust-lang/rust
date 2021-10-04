@@ -602,7 +602,78 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        debug!("For closure={:?}, min_captures={:#?}", closure_def_id, root_var_min_capture_list);
+        debug!(
+            "For closure={:?}, min_captures before sorting={:?}",
+            closure_def_id, root_var_min_capture_list
+        );
+
+        // Now that we have the minimized list of captures, sort the captures by field id.
+        // This causes the closure to capture the upvars in the same order as the fields are
+        // declared which is also the drop order. Thus, in situations where we capture all the
+        // fields of some type, the obserable drop order will remain the same as it previously
+        // was even though we're dropping each capture individually.
+        // See https://github.com/rust-lang/project-rfc-2229/issues/42 and
+        // `src/test/ui/closures/2229_closure_analysis/preserve_field_drop_order.rs`.
+        for (_, captures) in &mut root_var_min_capture_list {
+            captures.sort_by(|capture1, capture2| {
+                for (p1, p2) in capture1.place.projections.iter().zip(&capture2.place.projections) {
+                    // We do not need to look at the `Projection.ty` fields here because at each
+                    // step of the iteration, the projections will either be the same and therefore
+                    // the types must be as well or the current projection will be different and
+                    // we will return the result of comparing the field indexes.
+                    match (p1.kind, p2.kind) {
+                        // Paths are the same, continue to next loop.
+                        (ProjectionKind::Deref, ProjectionKind::Deref) => {}
+                        (ProjectionKind::Field(i1, _), ProjectionKind::Field(i2, _))
+                            if i1 == i2 => {}
+
+                        // Fields are different, compare them.
+                        (ProjectionKind::Field(i1, _), ProjectionKind::Field(i2, _)) => {
+                            return i1.cmp(&i2);
+                        }
+
+                        // We should have either a pair of `Deref`s or a pair of `Field`s.
+                        // Anything else is a bug.
+                        (
+                            l @ (ProjectionKind::Deref | ProjectionKind::Field(..)),
+                            r @ (ProjectionKind::Deref | ProjectionKind::Field(..)),
+                        ) => bug!(
+                            "ProjectionKinds Deref and Field were mismatched: ({:?}, {:?})",
+                            l,
+                            r
+                        ),
+                        (
+                            l
+                            @
+                            (ProjectionKind::Index
+                            | ProjectionKind::Subslice
+                            | ProjectionKind::Deref
+                            | ProjectionKind::Field(..)),
+                            r
+                            @
+                            (ProjectionKind::Index
+                            | ProjectionKind::Subslice
+                            | ProjectionKind::Deref
+                            | ProjectionKind::Field(..)),
+                        ) => bug!(
+                            "ProjectionKinds Index or Subslice were unexpected: ({:?}, {:?})",
+                            l,
+                            r
+                        ),
+                    }
+                }
+
+                unreachable!(
+                    "we captured two identical projections: capture1 = {:?}, capture2 = {:?}",
+                    capture1, capture2
+                );
+            });
+        }
+
+        debug!(
+            "For closure={:?}, min_captures after sorting={:#?}",
+            closure_def_id, root_var_min_capture_list
+        );
         typeck_results.closure_min_captures.insert(closure_def_id, root_var_min_capture_list);
     }
 

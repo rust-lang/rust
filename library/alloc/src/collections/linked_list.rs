@@ -43,6 +43,7 @@ mod tests;
 /// more memory efficient, and make better use of CPU cache.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "LinkedList")]
+#[rustc_insignificant_dtor]
 pub struct LinkedList<T> {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
