@@ -1,5 +1,5 @@
 error: argument to `panic!()` in a const context must have type `&str`
-  --> $DIR/issue-66693-panic-in-array-len.rs:8:20
+  --> $DIR/issue-66693-panic-in-array-len.rs:6:20
    |
 LL |     let _ = [0i32; panic!(2f32)];
    |                    ^^^^^^^^^^^^
@@ -7,10 +7,10 @@ LL |     let _ = [0i32; panic!(2f32)];
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-66693-panic-in-array-len.rs:12:21
+  --> $DIR/issue-66693-panic-in-array-len.rs:10:21
    |
 LL |     let _ = [false; panic!()];
-   |                     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/issue-66693-panic-in-array-len.rs:12:21
+   |                     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/issue-66693-panic-in-array-len.rs:10:21
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 

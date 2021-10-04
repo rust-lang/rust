@@ -2,8 +2,6 @@
 
 // run-pass
 
-#![feature(const_panic)]
-
 const X: u32 = 4;
 const Y: u32 = 5;
 

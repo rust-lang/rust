@@ -2,7 +2,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_panic)]
+#![cfg_attr(bootstrap, feature(const_panic))]
 #![feature(exact_size_is_empty)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]

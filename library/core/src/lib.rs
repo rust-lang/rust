@@ -123,7 +123,7 @@
 #![feature(const_fn_trait_bound)]
 #![feature(const_impl_trait)]
 #![feature(const_mut_refs)]
-#![feature(const_panic)]
+#![cfg_attr(bootstrap, feature(const_panic))]
 #![feature(const_precise_live_drops)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_refs_to_cell)]
