@@ -1635,7 +1635,7 @@ impl Ipv6Addr {
     /// `::a.b.c.d` and `::ffff:a.b.c.d` become `a.b.c.d`
     /// All addresses *not* starting with either all zeroes or `::ffff` will return `None`.
     ///
-    /// [IPv4 address]: Ipv4Addr
+    /// [`IPv4` address]: Ipv4Addr
     /// [IPv4-compatible]: Ipv6Addr#ipv4-compatible-ipv6-addresses
     /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
     /// [IETF RFC 4291 section 2.5.5.1]: https://tools.ietf.org/html/rfc4291#section-2.5.5.1
