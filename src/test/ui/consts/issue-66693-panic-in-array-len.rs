@@ -2,8 +2,6 @@
 // in a separate stage before `const`s and `statics` and so the error below is hit and
 // the compiler exits before generating errors for the others.
 
-#![feature(const_panic)]
-
 fn main() {
     let _ = [0i32; panic!(2f32)];
     //~^ ERROR: argument to `panic!()` in a const context must have type `&str`

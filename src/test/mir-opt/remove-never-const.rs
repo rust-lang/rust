@@ -5,7 +5,6 @@
 // Force generation of optimized mir for functions that do not reach codegen.
 // compile-flags: --emit mir,link
 
-#![feature(const_panic)]
 #![feature(never_type)]
 #![warn(const_err)]
 

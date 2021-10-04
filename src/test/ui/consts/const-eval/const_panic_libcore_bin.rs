@@ -1,6 +1,5 @@
 #![crate_type = "bin"]
 #![feature(lang_items)]
-#![feature(const_panic)]
 #![no_main]
 #![no_std]
 
