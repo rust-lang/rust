@@ -368,14 +368,14 @@ impl<T, const N: usize> [T; N] {
     }
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
-    #[unstable(feature = "array_methods", issue = "76118")]
-    pub fn as_slice(&self) -> &[T] {
+    #[stable(feature = "array_as_slice", since = "1.57.0")]
+    pub const fn as_slice(&self) -> &[T] {
         self
     }
 
     /// Returns a mutable slice containing the entire array. Equivalent to
     /// `&mut s[..]`.
-    #[unstable(feature = "array_methods", issue = "76118")]
+    #[stable(feature = "array_as_slice", since = "1.57.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self
     }
