@@ -11,6 +11,37 @@ use crate::{AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 /// exist. See [this `mir-dataflow` test][flow-test] for an example. You almost never want to use
 /// this analysis without also looking at the results of [`MaybeBorrowedLocals`].
 ///
+/// ## Field-(in)sensitivity
+///
+/// As the name suggests, this analysis is field insensitive. If a projection of a variable `x` is
+/// assigned to (e.g. `x.0 = 42`), it does not "define" `x` as far as liveness is concerned. In fact,
+/// such an assignment is currently marked as a "use" of `x` in an attempt to be maximally
+/// conservative.
+///
+/// ## Enums and `SetDiscriminant`
+///
+/// Assigning a literal value to an `enum` (e.g. `Option<i32>`), does not result in a simple
+/// assignment of the form `_1 = /*...*/` in the MIR. For example, the following assignment to `x`:
+///
+/// ```
+/// x = Some(4);
+/// ```
+///
+/// compiles to this MIR
+///
+/// ```
+/// ((_1 as Some).0: i32) = const 4_i32;
+/// discriminant(_1) = 1;
+/// ```
+///
+/// However, `MaybeLiveLocals` **does** mark `x` (`_1`) as "killed" after a statement like this.
+/// That's because it treats the `SetDiscriminant` operation as a definition of `x`, even though
+/// the writes that actually initialized the locals happened earlier.
+///
+/// This makes `MaybeLiveLocals` unsuitable for certain classes of optimization normally associated
+/// with a live variables analysis, notably dead-store elimination. It's a dirty hack, but it works
+/// okay for the generator state transform (currently the main consumuer of this analysis).
+///
 /// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
