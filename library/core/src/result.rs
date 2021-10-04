@@ -329,8 +329,8 @@
 //!   [`Ok`], or returns the provided default value if the [`Result`] is
 //!   [`Err`]
 //! * [`map_or_else`] applies the provided function to the contained value
-//!   of [`Ok`], or applies the provided fallback function to the contained
-//!   value of [`Err`]
+//!   of [`Ok`], or applies the provided default fallback function to the
+//!   contained value of [`Err`]
 //!
 //! [`map_or`]: Result::map_or
 //! [`map_or_else`]: Result::map_or_else
@@ -795,8 +795,8 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Maps a `Result<T, E>` to `U` by applying a fallback function to a
-    /// contained [`Err`] value, or a default function to a
+    /// Maps a `Result<T, E>` to `U` by applying a provided default fallback
+    /// function to a contained [`Err`] value, or a provided function to a
     /// contained [`Ok`] value.
     ///
     /// This function can be used to unpack a successful result
