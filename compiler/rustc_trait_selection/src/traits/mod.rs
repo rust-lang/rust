@@ -623,7 +623,7 @@ fn dump_vtable_entries<'tcx>(
     trait_ref: ty::PolyTraitRef<'tcx>,
     entries: &[VtblEntry<'tcx>],
 ) {
-    let msg = format!("Vtable entries for `{}`: {:#?}", trait_ref, entries);
+    let msg = format!("vtable entries for `{}`: {:#?}", trait_ref, entries);
     tcx.sess.struct_span_err(sp, &msg).emit();
 }
 

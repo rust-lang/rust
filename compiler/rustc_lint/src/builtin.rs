@@ -918,7 +918,7 @@ impl EarlyLintPass for AnonymousParameters {
 
                             lint.build(
                                 "anonymous parameters are deprecated and will be \
-                                     removed in the next edition.",
+                                     removed in the next edition",
                             )
                             .span_suggestion(
                                 arg.pat.span,
@@ -1629,9 +1629,9 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
             let predicates = cx.tcx.predicates_of(item.def_id);
             for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate.kind().skip_binder() {
-                    Trait(..) => "Trait",
+                    Trait(..) => "trait",
                     TypeOutlives(..) |
-                    RegionOutlives(..) => "Lifetime",
+                    RegionOutlives(..) => "lifetime",
 
                     // Ignore projections, as they can only be global
                     // if the trait bound is global

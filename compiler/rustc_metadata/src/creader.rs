@@ -878,7 +878,7 @@ impl<'a> CrateLoader<'a> {
                 "no global memory allocator found but one is \
                            required; link to std or \
                            add `#[global_allocator]` to a static item \
-                           that implements the GlobalAlloc trait.",
+                           that implements the GlobalAlloc trait",
             );
         }
         self.cstore.allocator_kind = Some(AllocatorKind::Default);

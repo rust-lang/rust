@@ -382,7 +382,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
                         .note(
                             "errors in this attribute were erroneously \
                                 allowed and will become a hard error in a \
-                                future release.",
+                                future release",
                         )
                         .emit();
                         ShouldPanic::Yes(None)

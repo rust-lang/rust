@@ -1,4 +1,4 @@
-error: pointers cannot be reliably compared during const eval.
+error: pointers cannot be reliably compared during const eval
   --> $DIR/issue-25826.rs:3:30
    |
 LL |     const A: bool = unsafe { id::<u8> as *const () < id::<u16> as *const () };

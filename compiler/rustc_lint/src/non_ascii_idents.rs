@@ -331,9 +331,9 @@ impl EarlyLintPass for NonAsciiIdents {
                 for ((sp, ch_list), script_set) in lint_reports {
                     cx.struct_span_lint(MIXED_SCRIPT_CONFUSABLES, sp, |lint| {
                         let message = format!(
-                            "The usage of Script Group `{}` in this crate consists solely of mixed script confusables",
+                            "the usage of Script Group `{}` in this crate consists solely of mixed script confusables",
                             script_set);
-                        let mut note = "The usage includes ".to_string();
+                        let mut note = "the usage includes ".to_string();
                         for (idx, ch) in ch_list.into_iter().enumerate() {
                             if idx != 0 {
                                 note += ", ";
@@ -341,8 +341,7 @@ impl EarlyLintPass for NonAsciiIdents {
                             let char_info = format!("'{}' (U+{:04X})", ch, ch as u32);
                             note += &char_info;
                         }
-                        note += ".";
-                        lint.build(&message).note(&note).note("Please recheck to make sure their usages are indeed what you want.").emit()
+                        lint.build(&message).note(&note).note("please recheck to make sure their usages are indeed what you want").emit()
                     });
                 }
             }

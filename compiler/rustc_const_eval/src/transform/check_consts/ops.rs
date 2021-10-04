@@ -407,7 +407,7 @@ impl NonConstOp for RawPtrComparison {
         let mut err = ccx
             .tcx
             .sess
-            .struct_span_err(span, "pointers cannot be reliably compared during const eval.");
+            .struct_span_err(span, "pointers cannot be reliably compared during const eval");
         err.note(
             "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> \
             for more information",
@@ -443,7 +443,7 @@ impl NonConstOp for RawPtrToIntCast {
         let mut err = ccx
             .tcx
             .sess
-            .struct_span_err(span, "pointers cannot be cast to integers during const eval.");
+            .struct_span_err(span, "pointers cannot be cast to integers during const eval");
         err.note("at compile-time, pointers do not have an integer value");
         err.note(
             "avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior",

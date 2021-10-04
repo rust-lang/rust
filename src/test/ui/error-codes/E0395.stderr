@@ -1,4 +1,4 @@
-error: pointers cannot be reliably compared during const eval.
+error: pointers cannot be reliably compared during const eval
   --> $DIR/E0395.rs:4:29
    |
 LL | static BAZ: bool = unsafe { (&FOO as *const i32) == (&BAR as *const i32) };
