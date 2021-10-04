@@ -38,8 +38,8 @@ use rustc_target::abi::{Primitive, Size};
 use libc::c_uint;
 use smallvec::SmallVec;
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::iter;
+use std::rc::Rc;
 use tracing::debug;
 
 mod create_scope_map;
