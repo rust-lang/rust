@@ -563,11 +563,12 @@ fn cargo_to_crate_graph(
                     pkg_to_lib_crate.insert(pkg, crate_id);
                 }
                 if let Some(proc_macro) = libproc_macro {
-                    add_dep(
+                    add_dep_with_prelude(
                         &mut crate_graph,
                         crate_id,
                         CrateName::new("proc_macro").unwrap(),
                         proc_macro,
+                        cargo[tgt].is_proc_macro,
                     );
                 }
 
