@@ -12,7 +12,7 @@ LL | type _T00 = dyn _0 + _0;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -31,7 +31,7 @@ LL | type _T01 = dyn _1 + _0;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -53,7 +53,7 @@ LL | type _T02 = dyn _1 + _1;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -69,7 +69,7 @@ LL | type _T03 = dyn Obj + _1;
    |                 |
    |                 first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -85,7 +85,7 @@ LL | type _T04 = dyn _1 + Obj;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -110,7 +110,7 @@ LL | type _T10 = dyn _2 + _3;
    |                 trait alias used in trait object type (additional use)
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -129,7 +129,7 @@ LL | type _T11 = dyn _3 + _2;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -146,7 +146,7 @@ LL | type _T12 = dyn Obj + _2;
    |                 |
    |                 first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -171,7 +171,7 @@ LL | type _T13 = dyn _2 + Obj;
    |                 trait alias used in trait object type (additional use)
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -190,7 +190,7 @@ LL | type _T14 = dyn _1 + _3;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -209,7 +209,7 @@ LL | type _T15 = dyn _3 + _1;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -230,7 +230,7 @@ LL | type _T16 = dyn _1 + _4;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -251,7 +251,7 @@ LL | type _T17 = dyn _4 + _1;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -268,7 +268,7 @@ LL | type _T20 = dyn _5 + _5;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -282,7 +282,7 @@ LL | type _T21 = dyn Obj + _5;
    |                 |
    |                 first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -296,7 +296,7 @@ LL | type _T22 = dyn _5 + Obj;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -310,7 +310,7 @@ LL | type _T23 = dyn _5 + Send + Sync + Obj;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -333,7 +333,7 @@ LL | type _T30 = dyn _6;
    |                 trait alias used in trait object type (additional use)
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -356,7 +356,7 @@ LL | type _T31 = dyn _6 + Send;
    |                 trait alias used in trait object type (additional use)
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -379,7 +379,7 @@ LL | type _T32 = dyn Send + _6;
    |                        trait alias used in trait object type (additional use)
    |                        trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -398,7 +398,7 @@ LL | type _T40 = dyn _8 + Obj;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -417,7 +417,7 @@ LL | type _T41 = dyn Obj + _8;
    |                 |
    |                 first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -441,7 +441,7 @@ LL | type _T42 = dyn _8 + _4;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -465,7 +465,7 @@ LL | type _T43 = dyn _4 + _8;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -489,7 +489,7 @@ LL | type _T44 = dyn _4 + Send + Sync + _8;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + Obj {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -504,7 +504,7 @@ LL | type _T50 = dyn _9 + _10;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: for<'a> ObjL<'a> + for<'b> ObjL<'b> {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: for<'a> ObjL<'a> + for<'b> ObjL<'b> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -519,7 +519,7 @@ LL | type _T60 = dyn _11 + _12;
    |                 |
    |                 trait alias used in trait object type (first use)
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: ObjT<for<'a> fn(&'a u8)> + ObjT<for<'b> fn(&'b u8)> {}`
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjT<for<'a> fn(&'a u8)> + ObjT<for<'b> fn(&'b u8)> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error: aborting due to 27 previous errors

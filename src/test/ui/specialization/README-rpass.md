@@ -8,7 +8,7 @@ Tests that specialization is working correctly:
     - Specialization via concrete types vs unknown types
       - In top level of the trait reference
       - Embedded within another type (`Vec<T>` vs `Vec<i32>`)
-  - [Specialization based on super trait relationships](specialization-super-traits.rs)
+  - [Specialization based on super trait relationships](specialization-supertraits.rs)
   - [On assoc fns](specialization-assoc-fns.rs)
   - [Ensure that impl order doesn't matter](specialization-out-of-order.rs)
 
