@@ -36,11 +36,10 @@ mod pretty;
 mod tests;
 
 use std::{
-    any::type_name,
     fmt::{self, Debug},
     hash::{Hash, Hasher},
     marker::PhantomData,
-    ops::{Index, Range},
+    ops::Index,
     sync::Arc,
 };
 
@@ -53,7 +52,7 @@ use hir_expand::{
     name::{name, AsName, Name},
     ExpandTo, HirFileId, InFile,
 };
-use la_arena::{Arena, Idx, RawIdx};
+use la_arena::{Arena, Idx, IdxRange, RawIdx};
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
@@ -606,7 +605,7 @@ pub struct Function {
     pub visibility: RawVisibilityId,
     pub explicit_generic_params: Interned<GenericParams>,
     pub abi: Option<Interned<str>>,
-    pub params: IdRange<Param>,
+    pub params: IdxRange<Param>,
     pub ret_type: Interned<TypeRef>,
     pub async_ret_type: Option<Interned<TypeRef>>,
     pub ast_id: FileAstId<ast::Fn>,
@@ -659,7 +658,7 @@ pub struct Enum {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub generic_params: Interned<GenericParams>,
-    pub variants: IdRange<Variant>,
+    pub variants: IdxRange<Variant>,
     pub ast_id: FileAstId<ast::Enum>,
 }
 
@@ -947,59 +946,10 @@ pub struct Variant {
     pub fields: Fields,
 }
 
-/// A range of densely allocated ItemTree IDs.
-pub struct IdRange<T> {
-    range: Range<u32>,
-    _p: PhantomData<T>,
-}
-
-impl<T> IdRange<T> {
-    fn new(range: Range<Idx<T>>) -> Self {
-        Self { range: range.start.into_raw().into()..range.end.into_raw().into(), _p: PhantomData }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.range.is_empty()
-    }
-}
-
-impl<T> Iterator for IdRange<T> {
-    type Item = Idx<T>;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.range.next().map(|raw| Idx::from_raw(raw.into()))
-    }
-}
-
-impl<T> DoubleEndedIterator for IdRange<T> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.range.next_back().map(|raw| Idx::from_raw(raw.into()))
-    }
-}
-
-impl<T> fmt::Debug for IdRange<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple(&format!("IdRange::<{}>", type_name::<T>())).field(&self.range).finish()
-    }
-}
-
-impl<T> Clone for IdRange<T> {
-    fn clone(&self) -> Self {
-        Self { range: self.range.clone(), _p: PhantomData }
-    }
-}
-
-impl<T> PartialEq for IdRange<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.range == other.range
-    }
-}
-
-impl<T> Eq for IdRange<T> {}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Fields {
-    Record(IdRange<Field>),
-    Tuple(IdRange<Field>),
+    Record(IdxRange<Field>),
+    Tuple(IdxRange<Field>),
     Unit,
 }
 
