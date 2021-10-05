@@ -20,6 +20,7 @@
     - [Adding new tests](./tests/adding.md)
     - [Using `compiletest` commands to control test execution](./compiletest.md)
 - [Debugging the Compiler](./compiler-debugging.md)
+    - [Using the tracing/logging instrumentation](./tracing.md)
 - [Profiling the compiler](./profiling.md)
     - [with the linux perf tool](./profiling/with_perf.md)
     - [with Windows Performance Analyzer](./profiling/wpa_profiling.md)

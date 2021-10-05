@@ -298,10 +298,10 @@ yourself when calling `rustfmt` directly.
 
 One last thing: you can use `RUSTC_LOG=XXX` to get debug logging. [Read more
 here][logging]. Notice the `C` in `RUSTC_LOG`. Other than that, it uses normal
-[`env_logger`][envlog] syntax.
+[`env_logger`][envlog]  or `tracing` syntax.
 
 [envlog]: https://crates.io/crates/env_logger
-[logging]: ./compiler-debugging.html#getting-logging-output
+[logging]: ./tracing.md
 
 ### Building and Testing `std`/`core`/`alloc`/`test`/`proc_macro`/etc.
 
