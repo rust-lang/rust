@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_vec_init_kind;
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{path_to_local_id, peel_hir_expr_while, ty::is_uninit_value_valid_for_ty, SpanlessEq};
+use clippy_utils::higher::get_vec_init_kind;
+use clippy_utils::ty::{is_type_diagnostic_item, is_uninit_value_valid_for_ty};
+use clippy_utils::{is_lint_allowed, path_to_local_id, peel_hir_expr_while, SpanlessEq};
 use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, PathSegment, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
@@ -16,9 +17,13 @@ declare_clippy_lint! {
     /// `with_capacity()` or `reserve()`.
     ///
     /// ### Why is this bad?
-    /// It creates a `Vec` with uninitialized data, which leads to an
+    /// It creates a `Vec` with uninitialized data, which leads to
     /// undefined behavior with most safe operations.
+    ///
     /// Notably, uninitialized `Vec<u8>` must not be used with generic `Read`.
+    ///
+    /// ### Known Problems
+    /// This lint only checks directly adjacent statements.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -52,16 +57,20 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UninitVec => [UNINIT_VEC]);
 
+// FIXME: update to a visitor-based implementation.
+// Threads: https://github.com/rust-lang/rust-clippy/pull/7682#discussion_r710998368
 impl<'tcx> LateLintPass<'tcx> for UninitVec {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
-        for w in block.stmts.windows(2) {
-            if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = w[1].kind {
-                handle_uninit_vec_pair(cx, &w[0], expr);
+        if !in_external_macro(cx.tcx.sess, block.span) {
+            for w in block.stmts.windows(2) {
+                if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = w[1].kind {
+                    handle_uninit_vec_pair(cx, &w[0], expr);
+                }
             }
-        }
 
-        if let (Some(stmt), Some(expr)) = (block.stmts.last(), block.expr) {
-            handle_uninit_vec_pair(cx, stmt, expr);
+            if let (Some(stmt), Some(expr)) = (block.stmts.last(), block.expr) {
+                handle_uninit_vec_pair(cx, stmt, expr);
+            }
         }
     }
 }
@@ -79,6 +88,8 @@ fn handle_uninit_vec_pair(
         if let ty::Adt(_, substs) = vec_ty.kind();
         // Check T of Vec<T>
         if !is_uninit_value_valid_for_ty(cx, substs.type_at(0));
+        // `#[allow(...)]` attribute can be set on enclosing unsafe block of `set_len()`
+        if !is_lint_allowed(cx, UNINIT_VEC, maybe_set_len.hir_id);
         then {
             // FIXME: #7698, false positive of the internal lints
             #[allow(clippy::collapsible_span_lint_calls)]

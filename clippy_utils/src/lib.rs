@@ -93,7 +93,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
-use crate::ty::{can_partially_move_ty, is_copy, is_recursively_primitive_type, is_type_diagnostic_item};
+use crate::ty::{can_partially_move_ty, is_copy, is_recursively_primitive_type};
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
@@ -1787,53 +1787,6 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
         ExprKind::Path(ref path) => is_qpath_def_path(cx, path, expr.hir_id, &paths::CONVERT_IDENTITY),
         _ => false,
     }
-}
-
-#[derive(Clone, Copy)]
-pub enum VecInitKind {
-    /// `Vec::new()`
-    New,
-    /// `Vec::default()` or `Default::default()`
-    Default,
-    /// `Vec::with_capacity(123)`
-    WithLiteralCapacity(u64),
-    /// `Vec::with_capacity(slice.len())`
-    WithExprCapacity(HirId),
-}
-
-/// Checks if given expression is an initialization of `Vec` and returns its kind.
-pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<VecInitKind> {
-    if let ExprKind::Call(func, args) = expr.kind {
-        match func.kind {
-            ExprKind::Path(QPath::TypeRelative(ty, name))
-                if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::Vec) =>
-            {
-                if name.ident.name == sym::new {
-                    return Some(VecInitKind::New);
-                } else if name.ident.name.as_str() == "with_capacity" {
-                    return args.get(0).and_then(|arg| {
-                        if_chain! {
-                            if let ExprKind::Lit(lit) = &arg.kind;
-                            if let LitKind::Int(num, _) = lit.node;
-                            then {
-                                Some(VecInitKind::WithLiteralCapacity(num.try_into().ok()?))
-                            } else {
-                                Some(VecInitKind::WithExprCapacity(arg.hir_id))
-                            }
-                        }
-                    });
-                }
-            }
-            ExprKind::Path(QPath::Resolved(_, path))
-                if match_def_path(cx, path.res.opt_def_id()?, &paths::DEFAULT_TRAIT_METHOD)
-                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Vec) =>
-            {
-                return Some(VecInitKind::Default);
-            }
-            _ => (),
-        }
-    }
-    None
 }
 
 /// Gets the node where an expression is either used, or it's type is unified with another branch.

@@ -48,6 +48,13 @@ fn main() {
         my_vec.vec.set_len(200);
     }
 
+    // Test `#[allow(...)]` attributes on inner unsafe block (shouldn't trigger)
+    let mut vec: Vec<u8> = Vec::with_capacity(1000);
+    #[allow(clippy::uninit_vec)]
+    unsafe {
+        vec.set_len(200);
+    }
+
     // MaybeUninit-wrapped types should not be detected
     unsafe {
         let mut vec: Vec<MaybeUninit<u8>> = Vec::with_capacity(1000);
@@ -64,7 +71,7 @@ fn main() {
     let mut vec1: Vec<u8> = Vec::with_capacity(1000);
     let mut vec2: Vec<u8> = Vec::with_capacity(1000);
     unsafe {
-        vec1.reserve(200);
-        vec2.reserve(200);
+        vec1.set_len(200);
+        vec2.set_len(200);
     }
 }

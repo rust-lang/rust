@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
 use clippy_utils::source::snippet;
-use clippy_utils::{get_vec_init_kind, path_to_local, path_to_local_id, VecInitKind};
+use clippy_utils::{path_to_local, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Local, PatKind, Stmt, StmtKind};
