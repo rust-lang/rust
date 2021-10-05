@@ -980,10 +980,6 @@ public:
         tape = Builder.CreateLoad(
             Builder.CreatePointerCast(AL, PointerType::getUnqual(tapeType)));
       }
-      llvm::errs() << *CI->getParent() << "\n";
-      llvm::errs() << *CI->getParent() << "\n";
-      llvm::errs() << *tape << "\n";
-      llvm::errs() << *tapeType << "\n";
       assert(tape->getType() == tapeType);
       args.push_back(tape);
     }
@@ -1056,7 +1052,8 @@ public:
       }
     }
 
-    if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy()) {
+    if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy() &&
+        !CI->getType()->isEmptyTy() && !CI->getType()->isVoidTy()) {
       if (diffret->getType() == CI->getType()) {
         CI->replaceAllUsesWith(diffret);
       } else if (mode == DerivativeMode::ReverseModePrimal) {
