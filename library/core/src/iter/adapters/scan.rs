@@ -90,15 +90,14 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<St, F, B, S: Iterator, I: Iterator> SourceIter for Scan<I, St, F>
+unsafe impl<St, F, I> SourceIter for Scan<I, St, F>
 where
-    I: SourceIter<Source = S>,
-    F: FnMut(&mut St, I::Item) -> Option<B>,
+    I: SourceIter,
 {
-    type Source = S;
+    type Source = I::Source;
 
     #[inline]
-    unsafe fn as_inner(&mut self) -> &mut S {
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
         // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }

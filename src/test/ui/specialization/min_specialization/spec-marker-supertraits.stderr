@@ -1,0 +1,13 @@
+error: cannot specialize on trait `HasMethod`
+  --> $DIR/spec-marker-supertraits.rs:22:1
+   |
+LL | / impl<T: Marker> Spec for T {
+LL | |
+LL | |     fn spec_me(&self) {
+LL | |         self.method();
+LL | |     }
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
