@@ -10,12 +10,12 @@ error[E0478]: lifetime bound not satisfied
 LL |     z: Box<dyn Is<'a>+'b+'c>,
    |        ^^^^^^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'b` as defined on the struct at 11:15
+note: lifetime parameter instantiated with the lifetime `'b` as defined here
   --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:15
    |
 LL | struct Foo<'a,'b,'c> {
    |               ^^
-note: but lifetime parameter must outlive the lifetime `'a` as defined on the struct at 11:12
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
   --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:12
    |
 LL | struct Foo<'a,'b,'c> {

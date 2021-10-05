@@ -6,12 +6,12 @@ LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
    |
    = note: expected struct `Direct<'b>`
               found struct `Direct<'a>`
-note: the lifetime `'a` as defined on the function body at 15:16...
+note: the lifetime `'a` as defined here...
   --> $DIR/regions-infer-not-param.rs:15:16
    |
 LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
    |                ^^
-note: ...does not necessarily outlive the lifetime `'b` as defined on the function body at 15:19
+note: ...does not necessarily outlive the lifetime `'b` as defined here
   --> $DIR/regions-infer-not-param.rs:15:19
    |
 LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
@@ -25,12 +25,12 @@ LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |
    = note: expected struct `Indirect2<'b>`
               found struct `Indirect2<'a>`
-note: the lifetime `'a` as defined on the function body at 19:19...
+note: the lifetime `'a` as defined here...
   --> $DIR/regions-infer-not-param.rs:19:19
    |
 LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                   ^^
-note: ...does not necessarily outlive the lifetime `'b` as defined on the function body at 19:22
+note: ...does not necessarily outlive the lifetime `'b` as defined here
   --> $DIR/regions-infer-not-param.rs:19:22
    |
 LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
@@ -44,12 +44,12 @@ LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |
    = note: expected struct `Indirect2<'b>`
               found struct `Indirect2<'a>`
-note: the lifetime `'b` as defined on the function body at 19:22...
+note: the lifetime `'b` as defined here...
   --> $DIR/regions-infer-not-param.rs:19:22
    |
 LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                      ^^
-note: ...does not necessarily outlive the lifetime `'a` as defined on the function body at 19:19
+note: ...does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/regions-infer-not-param.rs:19:19
    |
 LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }

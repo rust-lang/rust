@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'s` d
 LL |         Foo { bar }
    |         ^^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime defined on the method body at 8:17...
+note: first, the lifetime cannot outlive the anonymous lifetime defined here...
   --> $DIR/issue-55394.rs:8:17
    |
 LL |     fn new(bar: &mut Bar) -> Self {
@@ -14,7 +14,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |         Foo { bar }
    |               ^^^
-note: but, the lifetime must be valid for the lifetime `'_` as defined on the impl at 7:10...
+note: but, the lifetime must be valid for the lifetime `'_` as defined here...
   --> $DIR/issue-55394.rs:7:10
    |
 LL | impl Foo<'_> {

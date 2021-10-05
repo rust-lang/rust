@@ -6,7 +6,7 @@ LL |     test(gen);
    |
    = note: expected type `for<'a> Generator<&'a mut bool>`
               found type `Generator<&mut bool>`
-note: the required lifetime does not necessarily outlive the anonymous lifetime #1 defined on the body at 11:15
+note: the required lifetime does not necessarily outlive the anonymous lifetime #1 defined here
   --> $DIR/resume-arg-late-bound.rs:11:15
    |
 LL |       let gen = |arg: &mut bool| {
@@ -29,7 +29,7 @@ LL |     test(gen);
    |
    = note: expected type `for<'a> Generator<&'a mut bool>`
               found type `Generator<&mut bool>`
-note: the anonymous lifetime #1 defined on the body at 11:15 doesn't meet the lifetime requirements
+note: the anonymous lifetime #1 defined here doesn't meet the lifetime requirements
   --> $DIR/resume-arg-late-bound.rs:11:15
    |
 LL |       let gen = |arg: &mut bool| {

@@ -52,7 +52,7 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |     Box::new(v)
    |              ^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 22:6...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/region-object-lifetime-in-coercion.rs:22:6
    |
 LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
@@ -64,7 +64,7 @@ LL |     Box::new(v)
    |              ^
    = note: expected `&[u8]`
               found `&'a [u8]`
-note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 22:9...
+note: but, the lifetime must be valid for the lifetime `'b` as defined here...
   --> $DIR/region-object-lifetime-in-coercion.rs:22:9
    |
 LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {

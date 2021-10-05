@@ -6,7 +6,7 @@ LL | impl Eq for &dyn DynEq {}
    |
    = note: expected trait `PartialEq`
               found trait `PartialEq`
-note: the lifetime `'_` as defined on the impl at 9:13...
+note: the lifetime `'_` as defined here...
   --> $DIR/E0308-2.rs:9:13
    |
 LL | impl Eq for &dyn DynEq {}

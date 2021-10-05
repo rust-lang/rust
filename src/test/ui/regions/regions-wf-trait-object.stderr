@@ -4,12 +4,12 @@ error[E0478]: lifetime bound not satisfied
 LL |     x: Box<dyn TheTrait<'a>+'b>
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'b` as defined on the struct at 6:15
+note: lifetime parameter instantiated with the lifetime `'b` as defined here
   --> $DIR/regions-wf-trait-object.rs:6:15
    |
 LL | struct Foo<'a,'b> {
    |               ^^
-note: but lifetime parameter must outlive the lifetime `'a` as defined on the struct at 6:12
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
   --> $DIR/regions-wf-trait-object.rs:6:12
    |
 LL | struct Foo<'a,'b> {

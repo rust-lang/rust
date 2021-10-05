@@ -4,7 +4,7 @@ error[E0478]: lifetime bound not satisfied
 LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {}
    |                    ^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the impl at 3:6
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/static-lifetime.rs:3:6
    |
 LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {}

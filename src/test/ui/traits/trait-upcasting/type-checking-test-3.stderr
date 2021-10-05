@@ -6,7 +6,7 @@ LL |     let _ = x as &dyn Bar<'a>; // Error
    |
    = note: expected trait object `dyn Bar<'a>`
               found trait object `dyn Bar<'static>`
-note: the lifetime `'a` as defined on the function body at 12:16...
+note: the lifetime `'a` as defined here...
   --> $DIR/type-checking-test-3.rs:12:16
    |
 LL | fn test_wrong1<'a>(x: &dyn Foo<'static>, y: &'a u32) {
@@ -21,7 +21,7 @@ LL |     let _ = x as &dyn Bar<'static>; // Error
    |
    = note: expected trait object `dyn Bar<'static>`
               found trait object `dyn Bar<'a>`
-note: the lifetime `'a` as defined on the function body at 17:16...
+note: the lifetime `'a` as defined here...
   --> $DIR/type-checking-test-3.rs:17:16
    |
 LL | fn test_wrong2<'a>(x: &dyn Foo<'a>) {

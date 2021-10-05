@@ -6,7 +6,7 @@ LL |     ss.t = t;
    |
    = note: expected reference `&'a MyBox<(dyn Test + 'static)>`
               found reference `&'a MyBox<(dyn Test + 'a)>`
-note: the lifetime `'a` as defined on the function body at 20:6...
+note: the lifetime `'a` as defined here...
   --> $DIR/object-lifetime-default-from-rptr-struct-error.rs:20:6
    |
 LL | fn c<'a>(t: &'a MyBox<dyn Test+'a>, mut ss: SomeStruct<'a>) {
