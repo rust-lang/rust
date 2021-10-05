@@ -144,7 +144,6 @@ fn integrated_completion_benchmark() {
                 group: true,
                 skip_glob_imports: true,
             },
-            postfix_snippets: Vec::new(),
             snippets: Vec::new(),
         };
         let position =
@@ -182,7 +181,6 @@ fn integrated_completion_benchmark() {
                 group: true,
                 skip_glob_imports: true,
             },
-            postfix_snippets: Vec::new(),
             snippets: Vec::new(),
         };
         let position =

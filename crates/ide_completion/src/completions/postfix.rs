@@ -56,7 +56,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 
     let postfix_snippet = build_postfix_snippet_builder(ctx, cap, &dot_receiver);
 
-    if !ctx.config.postfix_snippets.is_empty() {
+    if !ctx.config.snippets.is_empty() {
         add_custom_postfix_completions(acc, ctx, &postfix_snippet, &receiver_text);
     }
 
@@ -230,21 +230,23 @@ fn add_custom_postfix_completions(
 ) -> Option<()> {
     let import_scope =
         ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
-    ctx.config.postfix_snippets.iter().for_each(|snippet| {
-        let imports = match snippet.imports(ctx, &import_scope) {
-            Some(imports) => imports,
-            None => return,
-        };
-        let mut builder = postfix_snippet(
-            &snippet.label,
-            snippet.description.as_deref().unwrap_or_default(),
-            &format!("{}", snippet.snippet(&receiver_text)),
-        );
-        for import in imports.into_iter() {
-            builder.add_import(import);
-        }
-        builder.add_to(acc);
-    });
+    ctx.config.postfix_snippets().filter(|(_, snip)| snip.is_expr()).for_each(
+        |(trigger, snippet)| {
+            let imports = match snippet.imports(ctx, &import_scope) {
+                Some(imports) => imports,
+                None => return,
+            };
+            let mut builder = postfix_snippet(
+                trigger,
+                snippet.description.as_deref().unwrap_or_default(),
+                &snippet.postfix_snippet(&receiver_text),
+            );
+            for import in imports.into_iter() {
+                builder.add_import(import);
+            }
+            builder.add_to(acc);
+        },
+    );
     None
 }
 
@@ -254,7 +256,7 @@ mod tests {
 
     use crate::{
         tests::{check_edit, check_edit_with_config, filtered_completion_list, TEST_CONFIG},
-        CompletionConfig, CompletionKind, PostfixSnippet,
+        CompletionConfig, CompletionKind, Snippet,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -476,12 +478,13 @@ fn main() {
     fn custom_postfix_completion() {
         check_edit_with_config(
             CompletionConfig {
-                postfix_snippets: vec![PostfixSnippet::new(
-                    "break".into(),
-                    &["ControlFlow::Break($receiver)".into()],
+                snippets: vec![Snippet::new(
                     &[],
+                    &["break".into()],
+                    &["ControlFlow::Break($receiver)".into()],
+                    "",
                     &["core::ops::ControlFlow".into()],
-                    crate::PostfixSnippetScope::Expr,
+                    crate::SnippetScope::Expr,
                 )
                 .unwrap()],
                 ..TEST_CONFIG

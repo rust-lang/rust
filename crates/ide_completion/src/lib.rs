@@ -29,7 +29,7 @@ use crate::{completions::Completions, context::CompletionContext, item::Completi
 pub use crate::{
     config::CompletionConfig,
     item::{CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit},
-    snippet::{PostfixSnippet, PostfixSnippetScope, Snippet, SnippetScope},
+    snippet::{Snippet, SnippetScope},
 };
 
 //FIXME: split the following feature into fine-grained features.

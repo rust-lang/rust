@@ -12,8 +12,7 @@ use std::{ffi::OsString, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CompletionConfig, DiagnosticsConfig, HighlightRelatedConfig, HoverConfig,
-    HoverDocFormat, InlayHintsConfig, JoinLinesConfig, PostfixSnippet, PostfixSnippetScope,
-    Snippet, SnippetScope,
+    HoverDocFormat, InlayHintsConfig, JoinLinesConfig, Snippet, SnippetScope,
 };
 use ide_db::helpers::{
     insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -117,8 +116,6 @@ config_data! {
         completion_snippets: FxHashMap<String, SnippetDef> = "{}",
         /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
         completion_postfix_enable: bool          = "true",
-        /// Custom postfix completion snippets.
-        completion_postfix_snippets: FxHashMap<String, PostfixSnippetDef> = "{}",
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = "true",
@@ -301,7 +298,6 @@ pub struct Config {
     detached_files: Vec<AbsPathBuf>,
     pub discovered_projects: Option<Vec<ProjectManifest>>,
     pub root_path: AbsPathBuf,
-    postfix_snippets: Vec<PostfixSnippet>,
     snippets: Vec<Snippet>,
 }
 
@@ -438,7 +434,6 @@ impl Config {
             detached_files: Vec::new(),
             discovered_projects: None,
             root_path,
-            postfix_snippets: Default::default(),
             snippets: Default::default(),
         }
     }
@@ -452,40 +447,28 @@ impl Config {
             .map(AbsPathBuf::assert)
             .collect();
         self.data = ConfigData::from_json(json);
-        self.postfix_snippets = self
-            .data
-            .completion_postfix_snippets
-            .iter()
-            .flat_map(|(label, desc)| {
-                PostfixSnippet::new(
-                    label.clone(),
-                    &desc.snippet,
-                    &desc.description,
-                    &desc.requires,
-                    match desc.scope {
-                        PostfixSnippetScopeDef::Expr => PostfixSnippetScope::Expr,
-                        PostfixSnippetScopeDef::Type => PostfixSnippetScope::Type,
-                    },
-                )
-            })
-            .collect();
-        self.snippets = self
-            .data
-            .completion_snippets
-            .iter()
-            .flat_map(|(label, desc)| {
-                Snippet::new(
-                    label.clone(),
-                    &desc.snippet,
-                    &desc.description,
-                    &desc.requires,
-                    match desc.scope {
-                        SnippetScopeDef::Expr => SnippetScope::Expr,
-                        SnippetScopeDef::Item => SnippetScope::Item,
-                    },
-                )
-            })
-            .collect();
+        self.snippets.clear();
+        for (name, def) in self.data.completion_snippets.iter() {
+            if def.prefix.is_empty() && def.postfix.is_empty() {
+                continue;
+            }
+            let scope = match def.scope {
+                SnippetScopeDef::Expr => SnippetScope::Expr,
+                SnippetScopeDef::Type => SnippetScope::Type,
+                SnippetScopeDef::Item => SnippetScope::Item,
+            };
+            match Snippet::new(
+                &def.prefix,
+                &def.postfix,
+                &def.body,
+                def.description.as_ref().unwrap_or(name),
+                &def.requires,
+                scope,
+            ) {
+                Some(snippet) => self.snippets.push(snippet),
+                None => tracing::info!("Invalid snippet {}", name),
+            }
+        }
     }
 
     pub fn json_schema() -> serde_json::Value {
@@ -821,7 +804,6 @@ impl Config {
                     .snippet_support?,
                 false
             )),
-            postfix_snippets: self.postfix_snippets.clone(),
             snippets: self.snippets.clone(),
         }
     }
@@ -955,22 +937,10 @@ impl Config {
 
 #[derive(Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
-enum PostfixSnippetScopeDef {
-    Expr,
-    Type,
-}
-
-impl Default for PostfixSnippetScopeDef {
-    fn default() -> Self {
-        PostfixSnippetScopeDef::Expr
-    }
-}
-
-#[derive(Deserialize, Debug, Clone, Copy)]
-#[serde(rename_all = "snake_case")]
 enum SnippetScopeDef {
     Expr,
     Item,
+    Type,
 }
 
 impl Default for SnippetScopeDef {
@@ -979,27 +949,18 @@ impl Default for SnippetScopeDef {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-struct PostfixSnippetDef {
-    #[serde(deserialize_with = "single_or_array")]
-    description: Vec<String>,
-    #[serde(deserialize_with = "single_or_array")]
-    snippet: Vec<String>,
-    #[serde(deserialize_with = "single_or_array")]
-    requires: Vec<String>,
-    #[serde(default)]
-    scope: PostfixSnippetScopeDef,
-}
-
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 struct SnippetDef {
     #[serde(deserialize_with = "single_or_array")]
-    description: Vec<String>,
+    prefix: Vec<String>,
     #[serde(deserialize_with = "single_or_array")]
-    snippet: Vec<String>,
+    postfix: Vec<String>,
+    description: Option<String>,
+    #[serde(deserialize_with = "single_or_array")]
+    body: Vec<String>,
     #[serde(deserialize_with = "single_or_array")]
     requires: Vec<String>,
-    #[serde(default)]
     scope: SnippetScopeDef,
 }
 
@@ -1202,9 +1163,6 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "array",
             "items": { "type": "string" },
             "uniqueItems": true,
-        },
-        "FxHashMap<String, PostfixSnippetDef>" => set! {
-            "type": "object",
         },
         "FxHashMap<String, SnippetDef>" => set! {
             "type": "object",

@@ -98,8 +98,8 @@ pub use ide_assists::{
     Assist, AssistConfig, AssistId, AssistKind, AssistResolveStrategy, SingleResolve,
 };
 pub use ide_completion::{
-    CompletionConfig, CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit,
-    PostfixSnippet, PostfixSnippetScope, Snippet, SnippetScope,
+    CompletionConfig, CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit, Snippet,
+    SnippetScope,
 };
 pub use ide_db::{
     base_db::{

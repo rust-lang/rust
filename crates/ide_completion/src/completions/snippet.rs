@@ -103,18 +103,20 @@ fn add_custom_completions(
 ) -> Option<()> {
     let import_scope =
         ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
-    ctx.config.snippets.iter().filter(|snip| snip.scope == scope).for_each(|snip| {
-        let imports = match snip.imports(ctx, &import_scope) {
-            Some(imports) => imports,
-            None => return,
-        };
-        let mut builder = snippet(ctx, cap, &snip.label, &snip.snippet);
-        for import in imports.into_iter() {
-            builder.add_import(import);
-        }
-        builder.detail(snip.description.as_deref().unwrap_or_default());
-        builder.add_to(acc);
-    });
+    ctx.config.prefix_snippets().filter(|(_, snip)| snip.scope == scope).for_each(
+        |(trigger, snip)| {
+            let imports = match snip.imports(ctx, &import_scope) {
+                Some(imports) => imports,
+                None => return,
+            };
+            let mut builder = snippet(ctx, cap, &trigger, &snip.snippet());
+            for import in imports.into_iter() {
+                builder.add_import(import);
+            }
+            builder.detail(snip.description.as_deref().unwrap_or_default());
+            builder.add_to(acc);
+        },
+    );
     None
 }
 
@@ -130,9 +132,10 @@ mod tests {
         check_edit_with_config(
             CompletionConfig {
                 snippets: vec![Snippet::new(
-                    "break".into(),
-                    &["ControlFlow::Break(())".into()],
+                    &["break".into()],
                     &[],
+                    &["ControlFlow::Break(())".into()],
+                    "",
                     &["core::ops::ControlFlow".into()],
                     crate::SnippetScope::Expr,
                 )

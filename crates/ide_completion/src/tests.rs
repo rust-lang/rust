@@ -74,7 +74,6 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
         group: true,
         skip_glob_imports: true,
     },
-    postfix_snippets: Vec::new(),
     snippets: Vec::new(),
 };
 
