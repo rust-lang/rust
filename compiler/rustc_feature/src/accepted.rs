@@ -299,6 +299,8 @@ declare_features! (
     (accepted, const_panic, "1.57.0", Some(51999), None),
     /// Lessens the requirements for structs to implement `Unsize`.
     (accepted, relaxed_struct_unsize, "1.58.0", Some(81793), None),
+    /// Allows dereferencing raw pointers during const eval.
+    (accepted, const_raw_ptr_deref, "1.58.0", Some(51911), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

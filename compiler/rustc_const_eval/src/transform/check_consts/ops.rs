@@ -400,18 +400,18 @@ impl NonConstOp for RawPtrComparison {
 }
 
 #[derive(Debug)]
-pub struct RawPtrDeref;
-impl NonConstOp for RawPtrDeref {
+pub struct RawMutPtrDeref;
+impl NonConstOp for RawMutPtrDeref {
     fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
-        Status::Unstable(sym::const_raw_ptr_deref)
+        Status::Unstable(sym::const_mut_refs)
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
-            sym::const_raw_ptr_deref,
+            sym::const_mut_refs,
             span,
-            &format!("dereferencing raw pointers in {}s is unstable", ccx.const_kind(),),
+            &format!("dereferencing raw mutable pointers in {}s is unstable", ccx.const_kind(),),
         )
     }
 }

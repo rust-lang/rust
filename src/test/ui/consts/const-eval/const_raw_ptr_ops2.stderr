@@ -1,11 +1,11 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_raw_ptr_ops2.rs:9:26
+  --> $DIR/const_raw_ptr_ops2.rs:7:26
    |
 LL | const Z2: i32 = unsafe { *(42 as *const i32) };
    |                          ^^^^^^^^^^^^^^^^^^^ 0x2a is not a valid pointer
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_raw_ptr_ops2.rs:11:26
+  --> $DIR/const_raw_ptr_ops2.rs:9:26
    |
 LL | const Z3: i32 = unsafe { *(44 as *const i32) };
    |                          ^^^^^^^^^^^^^^^^^^^ 0x2c is not a valid pointer

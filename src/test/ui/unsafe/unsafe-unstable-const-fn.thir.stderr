@@ -1,5 +1,5 @@
 error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
-  --> $DIR/unsafe-unstable-const-fn.rs:11:5
+  --> $DIR/unsafe-unstable-const-fn.rs:10:5
    |
 LL |     *a == b
    |     ^^ dereference of raw pointer

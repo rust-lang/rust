@@ -1,5 +1,5 @@
 // run-pass
-#![feature(arbitrary_enum_discriminant, const_raw_ptr_deref, test)]
+#![feature(arbitrary_enum_discriminant, test)]
 
 extern crate test;
 

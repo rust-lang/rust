@@ -1,6 +1,5 @@
 #![feature(const_mut_refs)]
 #![feature(raw_ref_op)]
-#![feature(const_raw_ptr_deref)]
 
 // This file checks that our dynamic checks catch things that the static checks miss.
 // We do not have static checks for these, because we do not look into function bodies.

@@ -1,5 +1,4 @@
 // check-pass
-#![feature(const_raw_ptr_deref)]
 
 use std::ptr;
 

@@ -1,19 +1,17 @@
-// gate-test-const_raw_ptr_deref
-
-const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
+const REG_ADDR: *mut u8 = 0x5f3759df as *mut u8;
 
 const VALUE: u8 = unsafe { *REG_ADDR };
-//~^ ERROR dereferencing raw pointers in constants is unstable
+//~^ ERROR dereferencing raw mutable pointers in constants is unstable
 
 const unsafe fn unreachable() -> ! {
     use std::convert::Infallible;
 
-    const INFALLIBLE: *const Infallible = [].as_ptr();
+    const INFALLIBLE: *mut Infallible = &[] as *const [Infallible] as *const _ as _;
     match *INFALLIBLE {}
-    //~^ ERROR dereferencing raw pointers in constant functions is unstable
+    //~^ ERROR dereferencing raw mutable pointers in constant functions is unstable
 
     const BAD: () = unsafe { match *INFALLIBLE {} };
-    //~^ ERROR dereferencing raw pointers in constants is unstable
+    //~^ ERROR dereferencing raw mutable pointers in constants is unstable
 }
 
 fn main() {

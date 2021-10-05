@@ -1,7 +1,7 @@
 // New test for #53818: modifying static memory at compile-time is not allowed.
 // The test should never compile successfully
 
-#![feature(const_raw_ptr_deref)]
+#![feature(const_mut_refs)]
 
 use std::cell::UnsafeCell;
 
@@ -14,7 +14,7 @@ static FOO: Foo = Foo(UnsafeCell::new(42));
 
 static BAR: () = unsafe {
     *FOO.0.get() = 5;
-    //~^ mutation through a reference
+    //~^ ERROR could not evaluate static initializer
 };
 
 fn main() {

@@ -156,7 +156,7 @@
 #![feature(const_impl_trait)]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
-#![feature(const_raw_ptr_deref)]
+#![cfg_attr(bootstrap, feature(const_raw_ptr_deref))]
 #![feature(const_refs_to_cell)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]

@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/dangling.rs:8:16
+  --> $DIR/dangling.rs:6:16
    |
 LL |     let _val = &*slice;
    |                ^^^^^^^ invalid metadata in wide pointer: slice is bigger than largest supported object
