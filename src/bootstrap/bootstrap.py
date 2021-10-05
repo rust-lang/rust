@@ -594,19 +594,23 @@ class RustBuild(object):
         if ostype != "Linux":
             return
 
-        # Use `/etc/os-release` instead of `/etc/NIXOS`.
-        # The latter one does not exist on NixOS when using tmpfs as root.
-        try:
-            with open("/etc/os-release", "r") as f:
-                if not any(line.strip() == "ID=nixos" for line in f):
-                    return
-        except FileNotFoundError:
-            return
-        if os.path.exists("/lib"):
-            return
+        # If the user has asked binaries to be patched for Nix, then
+        # don't check for NixOS or `/lib`, just continue to the patching.
+        if self.get_toml('patch-binaries-for-nix', 'build') != 'true':
+            # Use `/etc/os-release` instead of `/etc/NIXOS`.
+            # The latter one does not exist on NixOS when using tmpfs as root.
+            try:
+                with open("/etc/os-release", "r") as f:
+                    if not any(line.strip() == "ID=nixos" for line in f):
+                        return
+            except FileNotFoundError:
+                return
+            if os.path.exists("/lib"):
+                return
 
-        # At this point we're pretty sure the user is running NixOS
-        nix_os_msg = "info: you seem to be running NixOS. Attempting to patch"
+        # At this point we're pretty sure the user is running NixOS or
+        # using Nix
+        nix_os_msg = "info: you seem to be using Nix. Attempting to patch"
         print(nix_os_msg, fname)
 
         # Only build `.nix-deps` once.
