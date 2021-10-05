@@ -70,7 +70,16 @@ crate fn render<P: AsRef<Path>>(
     let text = if !options.markdown_no_toc {
         MarkdownWithToc(text, &mut ids, error_codes, edition, &playground).into_string()
     } else {
-        Markdown(text, &[], &mut ids, error_codes, edition, &playground, 0).into_string()
+        Markdown {
+            content: text,
+            links: &[],
+            ids: &mut ids,
+            error_codes,
+            edition,
+            playground: &playground,
+            heading_level: 0,
+        }
+        .into_string()
     };
 
     let err = write!(

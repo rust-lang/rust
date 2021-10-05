@@ -119,15 +119,15 @@ impl Formatter for HTMLFormatter {
                 write!(
                     output,
                     "{}",
-                    Markdown(
-                        desc,
-                        &[],
-                        &mut id_map,
-                        ErrorCodes::Yes,
-                        DEFAULT_EDITION,
-                        &Some(playground),
-                        0
-                    )
+                    Markdown {
+                        content: desc,
+                        links: &[],
+                        ids: &mut id_map,
+                        error_codes: ErrorCodes::Yes,
+                        edition: DEFAULT_EDITION,
+                        playground: &Some(playground),
+                        heading_level: 0
+                    }
                     .into_string()
                 )?
             }

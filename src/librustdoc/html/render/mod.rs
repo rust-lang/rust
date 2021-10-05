@@ -498,21 +498,21 @@ fn render_markdown(
     cx: &Context<'_>,
     md_text: &str,
     links: Vec<RenderedLink>,
-    level: u32,
+    heading_level: u32,
 ) {
     let mut ids = cx.id_map.borrow_mut();
     write!(
         w,
         "<div class=\"docblock\">{}</div>",
-        Markdown(
-            md_text,
-            &links,
-            &mut ids,
-            cx.shared.codes,
-            cx.shared.edition(),
-            &cx.shared.playground,
-            level
-        )
+        Markdown {
+            content: md_text,
+            links: &links,
+            ids: &mut ids,
+            error_codes: cx.shared.codes,
+            edition: cx.shared.edition(),
+            playground: &cx.shared.playground,
+            heading_level,
+        }
         .into_string()
     )
 }
@@ -1596,15 +1596,15 @@ fn render_impl(
             write!(
                 w,
                 "<div class=\"docblock\">{}</div>",
-                Markdown(
-                    &*dox,
-                    &i.impl_item.links(cx),
-                    &mut ids,
-                    cx.shared.codes,
-                    cx.shared.edition(),
-                    &cx.shared.playground,
-                    0
-                )
+                Markdown {
+                    content: &*dox,
+                    links: &i.impl_item.links(cx),
+                    ids: &mut ids,
+                    error_codes: cx.shared.codes,
+                    edition: cx.shared.edition(),
+                    playground: &cx.shared.playground,
+                    heading_level: 0
+                }
                 .into_string()
             );
         }

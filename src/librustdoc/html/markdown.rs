@@ -12,7 +12,15 @@
 //!
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();
-//! let md = Markdown(s, &[], &mut id_map, ErrorCodes::Yes, Edition::Edition2015, &None, 0);
+//! let md = Markdown {
+//!     content: s,
+//!     links: &[],
+//!     ids: &mut id_map,
+//!     error_codes: ErrorCodes::Yes,
+//!     edition: Edition::Edition2015,
+//!     playground: &None,
+//!     heading_level: 0
+//! };
 //! let html = md.into_string();
 //! // ... something using html
 //! ```
@@ -69,19 +77,21 @@ pub(crate) fn summary_opts() -> Options {
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to
 /// the rendered version of the contained markdown string.
-pub struct Markdown<'a>(
-    pub &'a str,
+pub struct Markdown<'a> {
+    pub content: &'a str,
     /// A list of link replacements.
-    pub &'a [RenderedLink],
+    pub links: &'a [RenderedLink],
     /// The current list of used header IDs.
-    pub &'a mut IdMap,
+    pub ids: &'a mut IdMap,
     /// Whether to allow the use of explicit error codes in doctest lang strings.
-    pub ErrorCodes,
+    pub error_codes: ErrorCodes,
     /// Default edition to use when parsing doctests (to add a `fn main`).
-    pub Edition,
-    pub &'a Option<Playground>,
-    pub u32,
-);
+    pub edition: Edition,
+    pub playground: &'a Option<Playground>,
+    /// Offset at which we render headings.
+    /// E.g. if `heading_level: 1`, then `# something` renders an `<h2>` instead of `<h1>`
+    pub heading_level: u32,
+}
 /// A tuple struct like `Markdown` that renders the markdown with a table of contents.
 crate struct MarkdownWithToc<'a>(
     crate &'a str,
@@ -1010,7 +1020,15 @@ impl LangString {
 
 impl Markdown<'_> {
     pub fn into_string(self) -> String {
-        let Markdown(md, links, mut ids, codes, edition, playground, level) = self;
+        let Markdown {
+            content: md,
+            links,
+            mut ids,
+            error_codes: codes,
+            edition,
+            playground,
+            heading_level,
+        } = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1031,7 +1049,7 @@ impl Markdown<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids, level);
+        let p = HeadingLinks::new(p, None, &mut ids, heading_level);
         let p = Footnotes::new(p);
         let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
         let p = TableWrapper::new(p);

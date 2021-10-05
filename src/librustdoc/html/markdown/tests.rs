@@ -147,8 +147,16 @@ fn test_lang_string_tokenizer() {
 fn test_header() {
     fn t(input: &str, expect: &str) {
         let mut map = IdMap::new();
-        let output = Markdown(input, &[], &mut map, ErrorCodes::Yes, DEFAULT_EDITION, &None, 0)
-            .into_string();
+        let output = Markdown {
+            content: input,
+            links: &[],
+            ids: &mut map,
+            error_codes: ErrorCodes::Yes,
+            edition: DEFAULT_EDITION,
+            playground: &None,
+            heading_level: 0,
+        }
+        .into_string();
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -181,8 +189,16 @@ fn test_header() {
 fn test_header_ids_multiple_blocks() {
     let mut map = IdMap::new();
     fn t(map: &mut IdMap, input: &str, expect: &str) {
-        let output =
-            Markdown(input, &[], map, ErrorCodes::Yes, DEFAULT_EDITION, &None, 0).into_string();
+        let output = Markdown {
+            content: input,
+            links: &[],
+            ids: map,
+            error_codes: ErrorCodes::Yes,
+            edition: DEFAULT_EDITION,
+            playground: &None,
+            heading_level: 0,
+        }
+        .into_string();
         assert_eq!(output, expect, "original: {}", input);
     }
 
