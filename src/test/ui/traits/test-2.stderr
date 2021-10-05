@@ -92,6 +92,11 @@ LL | impl bar for i32 { fn dup(&self) -> i32 { *self } fn blah<X>(&self) {} }
    | ^^^^^^^^^^^^^^^^
 LL | impl bar for u32 { fn dup(&self) -> u32 { *self } fn blah<X>(&self) {} }
    | ^^^^^^^^^^^^^^^^
+note: required by `bar::dup`
+  --> $DIR/test-2.rs:4:13
+   |
+LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
+   |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/test-2.rs:11:8
@@ -106,6 +111,11 @@ LL | impl bar for i32 { fn dup(&self) -> i32 { *self } fn blah<X>(&self) {} }
    | ^^^^^^^^^^^^^^^^
 LL | impl bar for u32 { fn dup(&self) -> u32 { *self } fn blah<X>(&self) {} }
    | ^^^^^^^^^^^^^^^^
+note: required by `bar::blah`
+  --> $DIR/test-2.rs:4:36
+   |
+LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
+   |                                    ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

@@ -7,11 +7,11 @@ LL |     let s = S {
    = help: the following implementations were found:
              <Option<T> as Foo>
              <i32 as Foo>
-note: required by `S`
-  --> $DIR/type_wf.rs:6:1
+note: required by a bound in `S`
+  --> $DIR/type_wf.rs:6:13
    |
 LL | struct S<T: Foo> {
-   | ^^^^^^^^^^^^^^^^
+   |             ^^^ required by this bound in `S`
 
 error: aborting due to previous error
 

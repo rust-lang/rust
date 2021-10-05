@@ -9,7 +9,9 @@ use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
-pub use rustc_infer::traits::util::*;
+pub use rustc_infer::traits::{self, util::*};
+
+use std::iter;
 
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator
@@ -229,11 +231,16 @@ pub fn predicates_for_generics<'tcx>(
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
     debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
 
-    generic_bounds.predicates.into_iter().map(move |predicate| Obligation {
-        cause: cause.clone(),
-        recursion_depth,
-        param_env,
-        predicate,
+    iter::zip(generic_bounds.predicates, generic_bounds.spans).map(move |(predicate, span)| {
+        let cause = match cause.code {
+            traits::ItemObligation(def_id) if !span.is_dummy() => traits::ObligationCause::new(
+                cause.span,
+                cause.body_id,
+                traits::BindingObligation(def_id, span),
+            ),
+            _ => cause.clone(),
+        };
+        Obligation { cause, recursion_depth, param_env, predicate }
     })
 }
 

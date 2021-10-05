@@ -8,6 +8,11 @@ LL |     let _: &[i8] = data.into();
              <[T; LANES] as From<Simd<T, LANES>>>
              <[bool; LANES] as From<Mask<T, LANES>>>
    = note: required because of the requirements on the impl of `Into<&[i8]>` for `&[u8]`
+note: required by `into`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn into(self) -> T;
+   |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

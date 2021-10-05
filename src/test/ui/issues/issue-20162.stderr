@@ -3,6 +3,12 @@ error[E0277]: the trait bound `X: Ord` is not satisfied
    |
 LL |     b.sort();
    |       ^^^^ the trait `Ord` is not implemented for `X`
+   |
+note: required by a bound in `slice::<impl [T]>::sort`
+  --> $SRC_DIR/alloc/src/slice.rs:LL:COL
+   |
+LL |         T: Ord,
+   |            ^^^ required by this bound in `slice::<impl [T]>::sort`
 
 error: aborting due to previous error
 

@@ -139,13 +139,6 @@ error[E0277]: the trait bound `<<Self as _Tr3>::A as Iterator>::Item: Copy` is n
 LL |     type A: Iterator<Item: Copy>;
    |                            ^^^^ the trait `Copy` is not implemented for `<<Self as _Tr3>::A as Iterator>::Item`
    |
-note: required by a bound in `Copy`
-  --> $SRC_DIR/core/src/marker.rs:LL:COL
-   |
-LL | / pub trait Copy: Clone {
-LL | |     // Empty.
-LL | | }
-   | |_^ required by this bound in `Copy`
 help: consider further restricting the associated type
    |
 LL | trait _Tr3 where <<Self as _Tr3>::A as Iterator>::Item: Copy {

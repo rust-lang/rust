@@ -12,11 +12,6 @@ LL | impl<T: AB> C for T {}
 LL | #[rustc_strict_coherence]
 LL | impl C for u32 {}
    | ^^^^^^^^^^^^^^
-note: required by a bound in `C`
-  --> $DIR/coherence-overlap-trait-alias.rs:11:1
-   |
-LL | trait C {}
-   | ^^^^^^^ required by this bound in `C`
 
 error: aborting due to previous error
 
