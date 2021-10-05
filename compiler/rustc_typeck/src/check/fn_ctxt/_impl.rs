@@ -830,6 +830,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.type_of(def_id)
         };
         let substs = self.infcx.fresh_substs_for_item(span, def_id);
+        self.write_substs(hir_id, substs);
         let ty = item_ty.subst(self.tcx, substs);
 
         self.write_resolution(hir_id, Ok((def_kind, def_id)));
