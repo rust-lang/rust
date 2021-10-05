@@ -19,7 +19,6 @@ enum_number!(Change {
     Neg = -1,
     Arith = 1 + 1, //~ ERROR arbitrary expressions aren't allowed in patterns
                    //~| ERROR arbitrary expressions aren't allowed in patterns
-                   //~| ERROR only `char` and numeric types are allowed in range patterns
 });
 
 fn main() {}

@@ -129,15 +129,14 @@ where
 impl<B, I: FusedIterator, F> FusedIterator for FilterMap<I, F> where F: FnMut(I::Item) -> Option<B> {}
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<S: Iterator, B, I: Iterator, F> SourceIter for FilterMap<I, F>
+unsafe impl<I, F> SourceIter for FilterMap<I, F>
 where
-    F: FnMut(I::Item) -> Option<B>,
-    I: SourceIter<Source = S>,
+    I: SourceIter,
 {
-    type Source = S;
+    type Source = I::Source;
 
     #[inline]
-    unsafe fn as_inner(&mut self) -> &mut S {
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
         // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }

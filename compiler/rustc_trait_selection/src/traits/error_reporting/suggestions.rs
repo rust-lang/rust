@@ -10,7 +10,9 @@ use crate::traits::normalize_projection_type;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
+use rustc_errors::{
+    error_code, pluralize, struct_span_err, Applicability, DiagnosticBuilder, Style,
+};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -2273,7 +2275,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     parent_trait_ref = child_trait_ref;
                 }
                 if count > 0 {
-                    err.note(&format!("{} redundant requirements hidden", count));
+                    err.note(&format!(
+                        "{} redundant requirement{} hidden",
+                        count,
+                        pluralize!(count)
+                    ));
                     err.note(&format!(
                         "required because of the requirements on the impl of `{}` for `{}`",
                         parent_trait_ref.print_only_trait_path(),

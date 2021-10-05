@@ -1,5 +1,4 @@
 // check-pass
-#![feature(try_reserve)]
 
 fn main() {
     let mut schema_all: (Vec<String>, Vec<String>) = (vec![], vec![]);

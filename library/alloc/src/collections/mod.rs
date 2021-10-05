@@ -57,7 +57,7 @@ use core::fmt::Display;
 
 /// The error type for `try_reserve` methods.
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
+#[stable(feature = "try_reserve", since = "1.57.0")]
 pub struct TryReserveError {
     kind: TryReserveErrorKind,
 }
@@ -126,7 +126,7 @@ impl From<LayoutError> for TryReserveErrorKind {
     }
 }
 
-#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
+#[stable(feature = "try_reserve", since = "1.57.0")]
 impl Display for TryReserveError {
     fn fmt(
         &self,

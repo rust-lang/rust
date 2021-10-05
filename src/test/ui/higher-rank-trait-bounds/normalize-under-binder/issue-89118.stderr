@@ -1,0 +1,63 @@
+error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
+  --> $DIR/issue-89118.rs:19:8
+   |
+LL |     C: StackContext,
+   |        ^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
+   |
+note: required because of the requirements on the impl of `for<'a> BufferUdpStateContext<&'a ()>` for `Ctx<()>`
+  --> $DIR/issue-89118.rs:5:23
+   |
+LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+note: required by a bound in `StackContext`
+  --> $DIR/issue-89118.rs:9:14
+   |
+LL | trait StackContext
+   |       ------------ required by a bound in this
+LL | where
+LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StackContext`
+
+error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
+  --> $DIR/issue-89118.rs:22:20
+   |
+LL |     type Handler = Ctx<C::Dispatcher>;
+   |                    ^^^^^^^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
+   |
+note: required because of the requirements on the impl of `for<'a> BufferUdpStateContext<&'a ()>` for `Ctx<()>`
+  --> $DIR/issue-89118.rs:5:23
+   |
+LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+note: required by a bound in `StackContext`
+  --> $DIR/issue-89118.rs:9:14
+   |
+LL | trait StackContext
+   |       ------------ required by a bound in this
+LL | where
+LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StackContext`
+
+error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
+  --> $DIR/issue-89118.rs:29:9
+   |
+LL | impl<C> EthernetWorker<C> {}
+   |         ^^^^^^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
+   |
+note: required because of the requirements on the impl of `for<'a> BufferUdpStateContext<&'a ()>` for `Ctx<()>`
+  --> $DIR/issue-89118.rs:5:23
+   |
+LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+note: required by a bound in `EthernetWorker`
+  --> $DIR/issue-89118.rs:28:14
+   |
+LL | struct EthernetWorker<C>(C)
+   |        -------------- required by a bound in this
+LL | where
+LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EthernetWorker`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

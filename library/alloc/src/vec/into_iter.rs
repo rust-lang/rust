@@ -266,14 +266,21 @@ unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
+#[rustc_unsafe_specialization_marker]
+pub trait NonDrop {}
+
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr
 // and thus we can't implement drop-handling
-//
+#[unstable(issue = "none", feature = "std_internals")]
+impl<T: Copy> NonDrop for T {}
+
+#[doc(hidden)]
+#[unstable(issue = "none", feature = "std_internals")]
 // TrustedRandomAccess (without NoCoerce) must not be implemented because
-// subtypes/supertypes of `T` might not be `Copy`
+// subtypes/supertypes of `T` might not be `NonDrop`
 unsafe impl<T, A: Allocator> TrustedRandomAccessNoCoerce for IntoIter<T, A>
 where
-    T: Copy,
+    T: NonDrop,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
