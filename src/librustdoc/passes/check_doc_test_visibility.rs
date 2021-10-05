@@ -1,6 +1,6 @@
 //! This pass is overloaded and runs two different lints.
 //!
-//! - MISSING_DOC_CODE_EXAMPLES: this lint is **UNSTABLE** and looks for public items missing doctests
+//! - MISSING_DOC_CODE_EXAMPLES: this lint is **UNSTABLE** and looks for public items missing doctests.
 //! - PRIVATE_DOC_TESTS: this lint is **STABLE** and looks for private items with doctests.
 
 use super::Pass;
@@ -15,23 +15,23 @@ use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
 use rustc_span::symbol::sym;
 
-crate const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass {
-    name: "check-private-items-doc-tests",
-    run: check_private_items_doc_tests,
-    description: "check private items doc tests",
+crate const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
+    name: "check_doc_test_visibility",
+    run: check_doc_test_visibility,
+    description: "run various visibility-related lints on doctests",
 };
 
-struct PrivateItemDocTestLinter<'a, 'tcx> {
+struct DocTestVisibilityLinter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
-crate fn check_private_items_doc_tests(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    let mut coll = PrivateItemDocTestLinter { cx };
+crate fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+    let mut coll = DocTestVisibilityLinter { cx };
 
     coll.fold_crate(krate)
 }
 
-impl<'a, 'tcx> DocFolder for PrivateItemDocTestLinter<'a, 'tcx> {
+impl<'a, 'tcx> DocFolder for DocTestVisibilityLinter<'a, 'tcx> {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
 
