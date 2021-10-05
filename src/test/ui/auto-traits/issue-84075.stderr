@@ -1,8 +1,8 @@
 error[E0568]: auto traits cannot have super traits or lifetime bounds
-  --> $DIR/typeck-auto-trait-no-supertraits.rs:28:17
+  --> $DIR/issue-84075.rs:5:18
    |
-LL | auto trait Magic: Copy {}
-   |            -----^^^^^^ help: remove the super traits or lifetime bounds
+LL | auto trait Magic where Self: Copy {}
+   |            ----- ^^^^^^^^^^^^^^^^ help: remove the super traits or lifetime bounds
    |            |
    |            auto trait cannot have super traits or lifetime bounds
 

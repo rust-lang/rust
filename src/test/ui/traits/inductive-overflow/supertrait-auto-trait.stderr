@@ -1,10 +1,10 @@
-error[E0568]: auto traits cannot have super traits
-  --> $DIR/supertrait-auto-trait.rs:8:19
+error[E0568]: auto traits cannot have super traits or lifetime bounds
+  --> $DIR/supertrait-auto-trait.rs:8:17
    |
 LL | auto trait Magic: Copy {}
-   |            -----  ^^^^ help: remove the super traits
+   |            -----^^^^^^ help: remove the super traits or lifetime bounds
    |            |
-   |            auto trait cannot have super traits
+   |            auto trait cannot have super traits or lifetime bounds
 
 error[E0277]: the trait bound `NoClone: Copy` is not satisfied
   --> $DIR/supertrait-auto-trait.rs:16:23
