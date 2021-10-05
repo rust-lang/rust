@@ -10,7 +10,8 @@ compiler is doing a particular thing.
 [`debug!`]: https://docs.rs/tracing/0.1/tracing/macro.debug.html
 
 To see the logs, you need to set the `RUSTC_LOG` environment variable to your
-log filter.
+log filter. The full syntax of the log filters can be found in the [rustdoc
+of `tracing-subscriber`](https://docs.rs/tracing-subscriber/0.2.24/tracing_subscriber/filter/struct.EnvFilter.html#directives).
 
 ## Function level filters
 
@@ -166,17 +167,23 @@ config.toml.
 ## Logging etiquette and conventions
 
 Because calls to `debug!` are removed by default, in most cases, don't worry
-about adding "unnecessary" calls to `debug!` and leaving them in code you
-commit - they won't slow down the performance of what we ship, and if they
-helped you pinning down a bug, they will probably help someone else with a
-different one.
+about the performance of adding "unnecessary" calls to `debug!` and leaving them in code you
+commit - they won't slow down the performance of what we ship.
+
+That said, there can also be excessive tracing calls, especially
+when they are redundant with other calls nearby or in functions called from
+here. There is no perfect balance to hit here, and is left to the reviewer's
+discretion to decide whether to let you leave `debug!` statements in or whether to ask
+you to remove them before merging.
 
 It may be preferrable to use `trace!` over `debug!` for very noisy logs.
 
-A loosely followed convention is to use `#[instrument(level = "debug")]` in
-favour of `debug!("foo(...)")` at the start of a function `foo`.
+A loosely followed convention is to use `#[instrument(level = "debug")]`
+([also see the attribute's documentation](https://docs.rs/tracing-attributes/0.1.17/tracing_attributes/attr.instrument.html))
+in favour of `debug!("foo(...)")` at the start of a function `foo`.
 Within functions, prefer `debug!(?variable.field)` over `debug!("xyz = {:?}", variable.field)`
 and `debug!(bar = ?var.method(arg))` over `debug!("bar = {:?}", var.method(arg))`.
+The documentation for this syntax can be found [here](https://docs.rs/tracing/0.1.28/tracing/#recording-fields).
 
 One thing to be **careful** of is **expensive** operations in logs.
 
@@ -186,9 +193,12 @@ If in the module `rustc::foo` you have a statement
 debug!(x = ?random_operation(tcx));
 ```
 
-Then if someone runs a debug `rustc` with `RUSTC_LOG=rustc::bar`, then
-`random_operation()` will run.
+Then if someone runs a debug `rustc` with `RUSTC_LOG=rustc::foo`, then
+`random_operation()` will run. `RUSTC_LOG` filters that do not enable this
+debug statement will not execute `random_operation`.
 
 This means that you should not put anything too expensive or likely to crash
-there - that would annoy anyone who wants to use logging for their own module.
+there - that would annoy anyone who wants to use logging for that module.
 No-one will know it until someone tries to use logging to find *another* bug.
+
+[`tracing`]: https://docs.rs/tracing
