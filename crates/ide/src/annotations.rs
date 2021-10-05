@@ -5,7 +5,7 @@ use ide_db::{
     helpers::visit_file_defs,
     RootDatabase,
 };
-use syntax::{ast::HasName, AstNode, TextRange, TextSize};
+use syntax::{ast::HasName, AstNode, TextRange};
 
 use crate::{
     fn_references::find_all_methods,
@@ -66,10 +66,10 @@ pub(crate) fn annotations(
         Either::Left(def) => {
             let (range, ranges_enum_variants) = match def {
                 hir::ModuleDef::Const(konst) => {
-                    (konst.source(db).and_then(|node| name_range(&node, file_id)), vec![None])
+                    (konst.source(db).and_then(|node| name_range(&node, file_id)), vec![])
                 }
                 hir::ModuleDef::Trait(trait_) => {
-                    (trait_.source(db).and_then(|node| name_range(&node, file_id)), vec![None])
+                    (trait_.source(db).and_then(|node| name_range(&node, file_id)), vec![])
                 }
                 hir::ModuleDef::Adt(adt) => match adt {
                     hir::Adt::Enum(enum_) => (
@@ -83,12 +83,12 @@ pub(crate) fn annotations(
                                 })
                                 .collect()
                         } else {
-                            vec![None]
+                            vec![]
                         },
                     ),
-                    _ => (adt.source(db).and_then(|node| name_range(&node, file_id)), vec![None]),
+                    _ => (adt.source(db).and_then(|node| name_range(&node, file_id)), vec![]),
                 },
-                _ => (None, vec![None]),
+                _ => (None, vec![]),
             };
 
             let (range, offset) = match range {
@@ -116,19 +116,13 @@ pub(crate) fn annotations(
             }
 
             if config.annotate_enum_variant_references {
-                let mut enum_variants_metadata: Vec<(TextRange, TextSize)> = Vec::with_capacity(ranges_enum_variants.len());
-                for range_enum_variant in ranges_enum_variants.into_iter() {
-                    let (range, offset) = match range_enum_variant {
-                        Some(range) => (range, range.start()),
-                        None => return,
-                    };
-                    enum_variants_metadata.push((range, offset))
-                }
-                for enum_variant_metadata in enum_variants_metadata.into_iter() {
+                for range_enum_variant in
+                    ranges_enum_variants.into_iter().filter_map(std::convert::identity)
+                {
                     annotations.push(Annotation {
-                        range: enum_variant_metadata.0,
+                        range: range_enum_variant,
                         kind: AnnotationKind::HasReferences {
-                            position: FilePosition { file_id, offset: enum_variant_metadata.1 },
+                            position: FilePosition { file_id, offset: range_enum_variant.start() },
                             data: None,
                         },
                     });
