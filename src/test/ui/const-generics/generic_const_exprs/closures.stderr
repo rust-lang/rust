@@ -4,9 +4,10 @@ error: overly complex generic constant
 LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
    |                                   ^^^^-------^^
    |                                       |
-   |                                       unsupported operation in generic constant, this may be supported in the future
+   |                                       dereferencing is not supported in generic constants
    |
    = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
 
 error: aborting due to previous error
 

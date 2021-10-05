@@ -8,9 +8,10 @@ LL | |         let x: Option<Box<Self>> = None;
 LL | |
 LL | |         0
 LL | |     }],
-   | |_____^ unsupported operation in generic constant, this may be supported in the future
+   | |_____^ blocks are not supported in generic constant
    |
    = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
 
 error: aborting due to previous error
 

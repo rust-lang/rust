@@ -4,7 +4,7 @@ error: overly complex generic constant
 LL |     inner: [(); { [|_: &T| {}; 0].len() }],
    |                 ^^---------------------^^
    |                   |
-   |                   unsupported operation in generic constant
+   |                   pointer casts are not allowed in generic constants
    |
    = help: consider moving this anonymous constant into a `const` function
 

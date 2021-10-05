@@ -1533,9 +1533,8 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
-            // Using `&` helps LLVM see that it is the same check made in division.
-            if unlikely!((self == Self::MIN) & (rhs == -1)) {
-                (0, true)
+            if unlikely!(rhs == -1) {
+                (0, self == Self::MIN)
             } else {
                 (self % rhs, false)
             }
@@ -1565,9 +1564,8 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
-            // Using `&` helps LLVM see that it is the same check made in division.
-            if unlikely!((self == Self::MIN) & (rhs == -1)) {
-                (0, true)
+            if unlikely!(rhs == -1) {
+                (0, self == Self::MIN)
             } else {
                 (self.rem_euclid(rhs), false)
             }

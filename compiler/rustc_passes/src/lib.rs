@@ -9,8 +9,9 @@
 #![feature(in_band_lifetimes)]
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
-#![feature(nll)]
+#![feature(map_try_insert)]
 #![feature(min_specialization)]
+#![feature(nll)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 
