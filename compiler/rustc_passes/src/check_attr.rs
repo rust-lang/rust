@@ -9,7 +9,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, NestedMetaItem};
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_feature::{AttributeType, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
@@ -66,6 +66,7 @@ impl CheckAttrVisitor<'tcx> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
+        let mut doc_aliases = FxHashMap::default();
         let mut is_valid = true;
         let mut specified_inline = None;
         let mut seen = FxHashSet::default();
@@ -79,7 +80,13 @@ impl CheckAttrVisitor<'tcx> {
                 sym::track_caller => {
                     self.check_track_caller(hir_id, &attr.span, attrs, span, target)
                 }
-                sym::doc => self.check_doc_attrs(attr, hir_id, target, &mut specified_inline),
+                sym::doc => self.check_doc_attrs(
+                    attr,
+                    hir_id,
+                    target,
+                    &mut specified_inline,
+                    &mut doc_aliases,
+                ),
                 sym::no_link => self.check_no_link(hir_id, &attr, span, target),
                 sym::export_name => self.check_export_name(hir_id, &attr, span, target),
                 sym::rustc_layout_scalar_valid_range_start
@@ -512,6 +519,7 @@ impl CheckAttrVisitor<'tcx> {
         hir_id: HirId,
         target: Target,
         is_list: bool,
+        aliases: &mut FxHashMap<String, Span>,
     ) -> bool {
         let tcx = self.tcx;
         let err_fn = move |span: Span, msg: &str| {
@@ -582,17 +590,38 @@ impl CheckAttrVisitor<'tcx> {
         if &*item_name.as_str() == doc_alias {
             return err_fn(meta.span(), "is the same as the item's name");
         }
+        let span = meta.span();
+        if let Err(entry) = aliases.try_insert(doc_alias.to_owned(), span) {
+            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, span, |lint| {
+                lint.build("doc alias is duplicated")
+                    .span_label(*entry.entry.get(), "first defined here")
+                    .emit();
+            });
+        }
         true
     }
 
-    fn check_doc_alias(&self, meta: &NestedMetaItem, hir_id: HirId, target: Target) -> bool {
+    fn check_doc_alias(
+        &self,
+        meta: &NestedMetaItem,
+        hir_id: HirId,
+        target: Target,
+        aliases: &mut FxHashMap<String, Span>,
+    ) -> bool {
         if let Some(values) = meta.meta_item_list() {
             let mut errors = 0;
             for v in values {
                 match v.literal() {
                     Some(l) => match l.kind {
                         LitKind::Str(s, _) => {
-                            if !self.check_doc_alias_value(v, &s.as_str(), hir_id, target, true) {
+                            if !self.check_doc_alias_value(
+                                v,
+                                &s.as_str(),
+                                hir_id,
+                                target,
+                                true,
+                                aliases,
+                            ) {
                                 errors += 1;
                             }
                         }
@@ -621,7 +650,7 @@ impl CheckAttrVisitor<'tcx> {
             }
             errors == 0
         } else if let Some(doc_alias) = meta.value_str().map(|s| s.to_string()) {
-            self.check_doc_alias_value(meta, &doc_alias, hir_id, target, false)
+            self.check_doc_alias_value(meta, &doc_alias, hir_id, target, false, aliases)
         } else {
             self.tcx
                 .sess
@@ -858,6 +887,7 @@ impl CheckAttrVisitor<'tcx> {
         hir_id: HirId,
         target: Target,
         specified_inline: &mut Option<(bool, Span)>,
+        aliases: &mut FxHashMap<String, Span>,
     ) -> bool {
         let mut is_valid = true;
 
@@ -867,7 +897,7 @@ impl CheckAttrVisitor<'tcx> {
                     match i_meta.name_or_empty() {
                         sym::alias
                             if !self.check_attr_not_crate_level(&meta, hir_id, "alias")
-                                || !self.check_doc_alias(&meta, hir_id, target) =>
+                                || !self.check_doc_alias(&meta, hir_id, target, aliases) =>
                         {
                             is_valid = false
                         }
