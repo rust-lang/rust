@@ -46,8 +46,6 @@ LL | fn foo2<'a, 'b, 'c>(x: &'a usize, y: &'b usize) -> (&'c usize, &'static usi
    |             -- lifetime `'b` defined here
 LL |     (x, y)
    |     ^^^^^^ returning this value requires that `'b` must outlive `'static`
-   |
-   = help: consider replacing `'b` with `'static`
 
 help: the following changes may resolve your lifetime errors
    |
@@ -88,8 +86,6 @@ LL | fn foo3<'a, 'b, 'c, 'd, 'e>(
 ...
 LL |     (x, y, z)
    |     ^^^^^^^^^ returning this value requires that `'c` must outlive `'static`
-   |
-   = help: consider replacing `'c` with `'static`
 
 help: the following changes may resolve your lifetime errors
    |

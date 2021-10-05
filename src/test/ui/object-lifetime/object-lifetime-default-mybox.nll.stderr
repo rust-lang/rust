@@ -18,8 +18,6 @@ LL | fn load2<'a>(ss: &MyBox<dyn SomeTrait + 'a>) -> MyBox<dyn SomeTrait + 'a> {
    |              -- `ss` is a reference that is only valid in the function body
 LL |     load0(ss)
    |     ^^^^^^^^^ `ss` escapes the function body here
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to 2 previous errors
 

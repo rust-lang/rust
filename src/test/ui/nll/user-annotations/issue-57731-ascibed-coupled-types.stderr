@@ -6,8 +6,6 @@ LL | fn coupled_wilds_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
 LL |     let ((y, _z),) = ((s, _x),): (PairCoupledTypes<_>,);
 LL |     y
    |     ^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: lifetime may not live long enough
   --> $DIR/issue-57731-ascibed-coupled-types.rs:22:5
@@ -17,8 +15,6 @@ LL | fn coupled_regions_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
 LL |     let ((y, _z),) = ((s, _x),): (PairCoupledRegions<_>,);
 LL |     y
    |     ^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: lifetime may not live long enough
   --> $DIR/issue-57731-ascibed-coupled-types.rs:32:5
@@ -28,8 +24,6 @@ LL | fn cast_coupled_wilds_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32
 LL |     let ((y, _z),) = ((s, _x),) as (PairCoupledTypes<_>,);
 LL |     y
    |     ^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: lifetime may not live long enough
   --> $DIR/issue-57731-ascibed-coupled-types.rs:37:5
@@ -39,8 +33,6 @@ LL | fn cast_coupled_regions_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u
 LL |     let ((y, _z),) = ((s, _x),) as (PairCoupledRegions<_>,);
 LL |     y
    |     ^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to 4 previous errors
 

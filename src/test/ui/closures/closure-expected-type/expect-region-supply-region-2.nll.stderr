@@ -17,8 +17,6 @@ LL | fn expect_bound_supply_named<'x>() {
 ...
 LL |     closure_expecting_bound(|x: &'x u32| {
    |                              ^ requires that `'x` must outlive `'static`
-   |
-   = help: consider replacing `'x` with `'static`
 
 error: aborting due to 2 previous errors
 

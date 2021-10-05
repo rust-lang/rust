@@ -6,8 +6,6 @@ LL | fn use_<'b>(c: Invariant<'b>) {
 ...
 LL |     let _: Invariant<'static> = c;
    |            ^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'static`
-   |
-   = help: consider replacing `'b` with `'static`
 
 error: aborting due to previous error
 
