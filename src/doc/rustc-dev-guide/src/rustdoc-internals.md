@@ -71,28 +71,24 @@ Here is the list of passes as of <!-- date: 2021-02 --> February 2021:
 - `calculate-doc-coverage` calculates information used for the `--show-coverage`
   flag.
 
+- `check-bare-urls` detects links that are not linkified, e.g., in Markdown such as
+  `Go to https://example.com/.` It suggests wrapping the link with angle brackets:
+  `Go to <https://example.com/>.` to linkify it. This is the code behind the
+  <!-- date: 2021-10 --> `rustdoc::bare_urls` lint.
+
 - `check-code-block-syntax` validates syntax inside Rust code blocks
   (<code>```rust</code>)
 
+- `check-doc-test-visibility` runs doctest visibility–related lints.
+
 - `check-invalid-html-tags` detects invalid HTML (like an unclosed `<span>`)
   in doc comments.
-
-- `check-non-autolinks` detects links that could or should be written using
-  angle brackets (the code behind the nightly-only <!-- date: 2021-02 --> `non_autolinks`
-  lint).
-
-- `collapse-docs` concatenates all document attributes into one document
-  attribute. This is necessary because each line of a doc comment is given as a
-  separate doc attribute, and this will combine them into a single string with
-  line breaks between each attribute.
 
 - `collect-intra-doc-links` resolves [intra-doc links](https://doc.rust-lang.org/rustdoc/linking-to-items-by-name.html).
 
 - `collect-trait-impls` collects trait impls for each item in the crate. For
   example, if we define a struct that implements a trait, this pass will note
   that the struct implements that trait.
-
-- `doc-test-lints` runs various lints on the doctests.
 
 - `propagate-doc-cfg` propagates `#[doc(cfg(...))]` to child items.
 

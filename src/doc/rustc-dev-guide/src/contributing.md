@@ -424,12 +424,12 @@ Just a few things to keep in mind:
     Try to format the date as `<MONTH> <YEAR>` to ease search.
 
   - Additionally, include a machine-readable comment of the form `<!-- date:
-    2021-01 -->` (if the current month is January 2021). We have an automated
+    2021-10 -->` (if the current month is October 2021). We have an automated
     tool that uses these (in `ci/date-check`).
 
     So, for the month of January 2021, the comment would look like: `As of <!--
-    date: 2021-01 --> January 2021`. Make sure to put the comment *between* `as of`
-    and `January 2021`; see [PR #1066][rdg#1066] for the rationale.
+    date: 2021-10 --> October 2021`. Make sure to put the comment *between* `as of`
+    and `October 2021`; see [PR #1066][rdg#1066] for the rationale.
 
   - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide
     further explanation for the change process or a way to verify that the information is not
