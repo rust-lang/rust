@@ -1,4 +1,8 @@
-The compiler has a lot of [`debug!`] calls, which print out logging information
+# Using tracing to debug the compiler
+
+<!-- toc -->
+
+The compiler has a lot of [`debug!`] (or `trace!`) calls, which print out logging information
 at many points. These are very useful to at least narrow down the location of
 a bug if not to find it entirely, or just to orient yourself as to why the
 compiler is doing a particular thing.
@@ -6,7 +10,62 @@ compiler is doing a particular thing.
 [`debug!`]: https://docs.rs/tracing/0.1/tracing/macro.debug.html
 
 To see the logs, you need to set the `RUSTC_LOG` environment variable to your
-log filter. Your log filter can be just `debug` to get all `debug!` output and
+log filter.
+
+## Function level filters
+
+Lots of functions in rustc are annotated with
+
+```
+#[instrument(level = "debug", skip(self))]
+fn foo(&self, bar: Type) {}
+```
+
+which allows you to use
+
+```
+RUSTC_LOG=[foo]
+```
+
+to do the following all at once
+
+* log all function calls to `foo`
+* log the arguments (except for those in the `skip` list)
+* log everything (from anywhere else in the compiler) until the function returns
+
+### I don't want everything
+
+Depending on the scope of the function, you may not want to log everything in its body.
+As an example: the `do_mir_borrowck` function will dump hundreds of lines even for trivial
+code being borrowchecked.
+
+Since you can combine all filters, you can add a crate/module path, e.g.
+
+```
+RUSTC_LOG=rustc_borrowck[do_mir_borrowck]
+```
+
+### I don't want all calls
+
+If you are compiling libcore, you likely don't want *all* borrowck dumps, but only one
+for a specific function. You can filter function calls by their arguments by regexing them.
+
+```
+RUSTC_LOG=[do_mir_borrowck{id=\.\*from_utf8_unchecked\.\*}]
+```
+
+will only give you the logs of borrowchecking `from_utf8_unchecked`. Note that you will
+still get a short message per ignored `do_mir_borrowck`, but none of the things inside those
+calls. This helps you in looking through the calls that are happening and helps you adjust
+your regex if you mistyped it.
+
+## Broad module level filters
+
+You can also use filters similar to the `log` crate's filters, which will enable
+everything within a specific module. This is often too verbose and too unstructured,
+so it is recommended to use function level filters.
+
+Your log filter can be just `debug` to get all `debug!` output and
 higher (e.g., it will also include `info!`), or `path::to::module` to get *all*
 output (which will include `trace!`) from a particular module, or
 `path::to::module=debug` to get `debug!` output and higher from a particular
@@ -69,7 +128,7 @@ $ RUSTDOC_LOG=info rustdoc +stage1 my-file.rs
 $ RUSTDOC_LOG=rustdoc=debug rustdoc +stage1 my-file.rs
 ```
 
-### Log colors
+## Log colors
 
 By default, rustc (and other tools, like rustdoc and Miri) will be smart about
 when to use ANSI colors in the log output. If they are outputting to a terminal,
@@ -94,7 +153,7 @@ Note that `MIRI_LOG_COLOR` will only color logs that come from Miri, not logs
 from rustc functions that Miri calls. Use `RUSTC_LOG_COLOR` to color logs from
 rustc.
 
-### How to keep or remove `debug!` and `trace!` calls from the resulting binary
+## How to keep or remove `debug!` and `trace!` calls from the resulting binary
 
 While calls to `error!`, `warn!` and `info!` are included in every build of the compiler,
 calls to `debug!` and `trace!` are only included in the program if
@@ -104,7 +163,7 @@ if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see
 `INFO` logs, make sure that `debug-logging=true` is turned on in your
 config.toml.
 
-### Logging etiquette and conventions
+## Logging etiquette and conventions
 
 Because calls to `debug!` are removed by default, in most cases, don't worry
 about adding "unnecessary" calls to `debug!` and leaving them in code you
@@ -112,17 +171,19 @@ commit - they won't slow down the performance of what we ship, and if they
 helped you pinning down a bug, they will probably help someone else with a
 different one.
 
-A loosely followed convention is to use `debug!("foo(...)")` at the _start_ of
-a function `foo` and `debug!("foo: ...")` _within_ the function. Another
-loosely followed convention is to use the `{:?}` format specifier for debug
-logs.
+It may be preferrable to use `trace!` over `debug!` for very noisy logs.
+
+A loosely followed convention is to use `#[instrument(level = "debug")]` in
+favour of `debug!("foo(...)")` at the start of a function `foo`.
+Within functions, prefer `debug!(?variable.field)` over `debug!("xyz = {:?}", variable.field)`
+and `debug!(bar = ?var.method(arg))` over `debug!("bar = {:?}", var.method(arg))`.
 
 One thing to be **careful** of is **expensive** operations in logs.
 
 If in the module `rustc::foo` you have a statement
 
 ```Rust
-debug!("{:?}", random_operation(tcx));
+debug!(x = ?random_operation(tcx));
 ```
 
 Then if someone runs a debug `rustc` with `RUSTC_LOG=rustc::bar`, then
