@@ -380,20 +380,24 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "solaris", target_os = "illumos"))]
 pub fn current_exe() -> io::Result<PathBuf> {
-    extern "C" {
-        fn getexecname() -> *const c_char;
-    }
-    unsafe {
-        let path = getexecname();
-        if path.is_null() {
-            Err(io::Error::last_os_error())
-        } else {
-            let filename = CStr::from_ptr(path).to_bytes();
-            let path = PathBuf::from(<OsStr as OsStrExt>::from_bytes(filename));
+    if let Ok(path) = crate::fs::read_link("/proc/self/path/a.out") {
+        Ok(path)
+    } else {
+        extern "C" {
+            fn getexecname() -> *const c_char;
+        }
+        unsafe {
+            let path = getexecname();
+            if path.is_null() {
+                Err(io::Error::last_os_error())
+            } else {
+                let filename = CStr::from_ptr(path).to_bytes();
+                let path = PathBuf::from(<OsStr as OsStrExt>::from_bytes(filename));
 
-            // Prepend a current working directory to the path if
-            // it doesn't contain an absolute pathname.
-            if filename[0] == b'/' { Ok(path) } else { getcwd().map(|cwd| cwd.join(path)) }
+                // Prepend a current working directory to the path if
+                // it doesn't contain an absolute pathname.
+                if filename[0] == b'/' { Ok(path) } else { getcwd().map(|cwd| cwd.join(path)) }
+            }
         }
     }
 }
