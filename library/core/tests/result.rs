@@ -402,3 +402,79 @@ fn result_try_trait_v2_branch() {
     assert_eq!(Ok::<NonZeroU32, ()>(one).branch(), Continue(one));
     assert_eq!(Err::<NonZeroU32, ()>(()).branch(), Break(Err(())));
 }
+
+/////////////////////////////////////////////////////////////////////////////
+// Return Tracing Tests
+/////////////////////////////////////////////////////////////////////////////
+
+mod return_tracing {
+    use core::panic;
+    use core::result::Traced;
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct TracedError(pub String);
+
+    impl<S: Into<String>> From<S> for TracedError {
+        fn from(s: S) -> Self {
+            Self(s.into())
+        }
+    }
+
+    impl Traced for TracedError {
+        // Append a bang for every `?` invocation.
+        fn trace(&mut self, _location: &'static panic::Location<'static>) {
+            self.0.push('!');
+        }
+    }
+
+    #[test]
+    fn try_operator_calls_trace() {
+        fn foo() -> Result<(), TracedError> {
+            Err(TracedError::from("Error"))
+        }
+
+        fn bar() -> Result<(), TracedError> {
+            Ok(foo()?)
+        }
+
+        fn baz() -> Result<(), TracedError> {
+            Ok(bar()?)
+        }
+
+        let result = baz();
+        assert_eq!(result, Err(TracedError::from("Error!!")));
+    }
+
+    #[test]
+    fn try_operator_converts_into_traced_type_and_calls_trace() {
+        fn foo() -> Result<(), TracedError> {
+            // `str` is not `Traced`, but it is `Into<TracedError>`.
+            Err("Error")?
+        }
+
+        let result = foo();
+        assert_eq!(result, Err(TracedError::from("Error!")));
+    }
+
+    #[test]
+    fn try_operator_provides_correct_location() {
+        #[derive(Default)]
+        struct TheLocation(pub Option<&'static panic::Location<'static>>);
+
+        impl Traced for TheLocation {
+            fn trace(&mut self, location: &'static panic::Location<'static>) {
+                self.0 = Some(location);
+            }
+        }
+
+        let two_lines_before = panic::Location::caller();
+        fn foo() -> Result<(), TheLocation> {
+            Err(TheLocation::default())?
+        }
+
+        let result = foo();
+        let location = result.unwrap_err().0.unwrap();
+        assert_eq!(location.file(), two_lines_before.file());
+        assert_eq!(location.line(), two_lines_before.line() + 2);
+    }
+}

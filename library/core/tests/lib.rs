@@ -64,6 +64,7 @@
 #![feature(const_option)]
 #![feature(integer_atomics)]
 #![feature(int_roundings)]
+#![feature(return_tracing)]
 #![feature(slice_group_by)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]

@@ -491,7 +491,7 @@
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
-use crate::{convert, fmt, hint};
+use crate::{convert, fmt, hint, panic};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -1914,9 +1914,43 @@ impl<T, E> ops::Try for Result<T, E> {
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
     #[inline]
-    fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
+    default fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
         match residual {
             Err(e) => Err(From::from(e)),
         }
     }
+}
+
+#[unstable(feature = "return_tracing", issue = "none")]
+impl<T, E, F> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F>
+where
+    F: From<E> + Traced,
+{
+    #[inline]
+    #[track_caller]
+    fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
+        match residual {
+            Err(e) => {
+                let mut traced = F::from(e);
+                traced.trace(panic::Location::caller());
+                Err(traced)
+            }
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Traced trait
+/////////////////////////////////////////////////////////////////////////////
+
+/// A trait that enables return tracing for [`Err`] variants of [`Result`].
+///
+/// FIXME(bgr360) add more documentation
+#[rustc_specialization_trait]
+#[unstable(feature = "return_tracing", issue = "none")]
+pub trait Traced {
+    /// Called during `?` with the code location of the `?` invocation.
+    ///
+    /// FIXME(bgr360) add more documentation
+    fn trace(&mut self, location: &'static panic::Location<'static>);
 }

@@ -1052,6 +1052,7 @@ symbols! {
         repr_transparent,
         residual,
         result,
+        return_tracing,
         rhs,
         rintf32,
         rintf64,
