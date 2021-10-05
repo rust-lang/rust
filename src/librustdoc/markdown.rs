@@ -10,7 +10,9 @@ use crate::config::{Options, RenderOptions};
 use crate::doctest::{Collector, TestOptions};
 use crate::html::escape::Escape;
 use crate::html::markdown;
-use crate::html::markdown::{find_testable_code, ErrorCodes, IdMap, Markdown, MarkdownWithToc};
+use crate::html::markdown::{
+    find_testable_code, ErrorCodes, HeadingOffset, IdMap, Markdown, MarkdownWithToc,
+};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
 fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
@@ -77,7 +79,7 @@ crate fn render<P: AsRef<Path>>(
             error_codes,
             edition,
             playground: &playground,
-            heading_level: 0,
+            heading_offset: HeadingOffset::H1,
         }
         .into_string()
     };

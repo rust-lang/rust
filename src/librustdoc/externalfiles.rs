@@ -1,4 +1,4 @@
-use crate::html::markdown::{ErrorCodes, IdMap, Markdown, Playground};
+use crate::html::markdown::{ErrorCodes, HeadingOffset, IdMap, Markdown, Playground};
 use crate::rustc_span::edition::Edition;
 use std::fs;
 use std::path::Path;
@@ -46,7 +46,7 @@ impl ExternalHtml {
                 error_codes: codes,
                 edition,
                 playground,
-                heading_level: 1
+                heading_offset: HeadingOffset::H2,
             }
             .into_string()
         );
@@ -62,7 +62,7 @@ impl ExternalHtml {
                 error_codes: codes,
                 edition,
                 playground,
-                heading_level: 1
+                heading_offset: HeadingOffset::H2,
             }
             .into_string()
         );

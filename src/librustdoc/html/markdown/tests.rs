@@ -1,5 +1,5 @@
 use super::{find_testable_code, plain_text_summary, short_markdown_summary};
-use super::{ErrorCodes, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
+use super::{ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 
 #[test]
@@ -154,7 +154,7 @@ fn test_header() {
             error_codes: ErrorCodes::Yes,
             edition: DEFAULT_EDITION,
             playground: &None,
-            heading_level: 1,
+            heading_offset: HeadingOffset::H2,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
@@ -196,7 +196,7 @@ fn test_header_ids_multiple_blocks() {
             error_codes: ErrorCodes::Yes,
             edition: DEFAULT_EDITION,
             playground: &None,
-            heading_level: 1,
+            heading_offset: HeadingOffset::H2,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);

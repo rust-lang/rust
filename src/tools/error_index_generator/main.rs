@@ -14,7 +14,7 @@ use std::path::PathBuf;
 
 use rustc_span::edition::DEFAULT_EDITION;
 
-use rustdoc::html::markdown::{ErrorCodes, IdMap, Markdown, Playground};
+use rustdoc::html::markdown::{ErrorCodes, HeadingOffset, IdMap, Markdown, Playground};
 
 pub struct ErrorMetadata {
     pub description: Option<String>,
@@ -126,7 +126,7 @@ impl Formatter for HTMLFormatter {
                         error_codes: ErrorCodes::Yes,
                         edition: DEFAULT_EDITION,
                         playground: &Some(playground),
-                        heading_level: 1
+                        heading_offset: HeadingOffset::H2,
                     }
                     .into_string()
                 )?

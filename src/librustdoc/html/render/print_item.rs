@@ -30,7 +30,7 @@ use crate::html::format::{
 };
 use crate::html::highlight;
 use crate::html::layout::Page;
-use crate::html::markdown::MarkdownSummaryLine;
+use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 
 const ITEM_TABLE_OPEN: &'static str = "<div class=\"item-table\">";
 const ITEM_TABLE_CLOSE: &'static str = "</div>";
@@ -173,7 +173,7 @@ fn toggle_close(w: &mut Buffer) {
 }
 
 fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) {
-    document(w, cx, item, None, 1);
+    document(w, cx, item, None, HeadingOffset::H2);
 
     let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped()).collect::<Vec<usize>>();
 
@@ -485,7 +485,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
             notable_traits = notable_traits_decl(&f.decl, cx),
         );
     });
-    document(w, cx, it, None, 1)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
 fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) {
@@ -608,7 +608,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     });
 
     // Trait documentation
-    document(w, cx, it, None, 1);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
         write!(
@@ -626,7 +626,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         let mut content = Buffer::empty_from(w);
-        document(&mut content, cx, m, Some(t), 4);
+        document(&mut content, cx, m, Some(t), HeadingOffset::H5);
         let toggled = !content.is_empty();
         if toggled {
             write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
@@ -840,7 +840,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clea
         );
     });
 
-    document(w, cx, it, None, 1);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
@@ -862,7 +862,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean:
         );
     });
 
-    document(w, cx, it, None, 1);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
@@ -893,7 +893,7 @@ fn item_typedef(
         );
     });
 
-    document(w, cx, it, None, 1);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     let def_id = it.def_id.expect_def_id();
     // Render any items associated directly to this alias, as otherwise they
@@ -911,7 +911,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
         });
     });
 
-    document(w, cx, it, None, 1);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     let mut fields = s
         .fields
@@ -944,7 +944,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             if let Some(stability_class) = field.stability_class(cx.tcx()) {
                 write!(w, "<span class=\"stab {stab}\"></span>", stab = stability_class);
             }
-            document(w, cx, field, Some(it), 1);
+            document(w, cx, field, Some(it), HeadingOffset::H2);
         }
     }
     let def_id = it.def_id.expect_def_id();
@@ -1026,7 +1026,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
         });
     });
 
-    document(w, cx, it, None, 1);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     if !e.variants.is_empty() {
         write!(
@@ -1055,7 +1055,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             w.write_str("</code>");
             render_stability_since(w, variant, it, cx.tcx());
             w.write_str("</div>");
-            document(w, cx, variant, Some(it), 1);
+            document(w, cx, variant, Some(it), HeadingOffset::H2);
             document_non_exhaustive(w, variant);
 
             use crate::clean::Variant;
@@ -1095,7 +1095,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                                 f = field.name.as_ref().unwrap(),
                                 t = ty.print(cx)
                             );
-                            document(w, cx, field, Some(variant), 1);
+                            document(w, cx, field, Some(variant), HeadingOffset::H2);
                         }
                         _ => unreachable!(),
                     }
@@ -1122,7 +1122,7 @@ fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Mac
             None,
         );
     });
-    document(w, cx, it, None, 1)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
 fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
@@ -1152,11 +1152,11 @@ fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean
             });
         }
     }
-    document(w, cx, it, None, 1)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
 fn item_primitive(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
-    document(w, cx, it, None, 1);
+    document(w, cx, it, None, HeadingOffset::H2);
     render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
@@ -1195,7 +1195,7 @@ fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::
         }
     });
 
-    document(w, cx, it, None, 1)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
 fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Struct) {
@@ -1206,7 +1206,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
         });
     });
 
-    document(w, cx, it, None, 1);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     let mut fields = s
         .fields
@@ -1242,7 +1242,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
                     name = field_name,
                     ty = ty.print(cx)
                 );
-                document(w, cx, field, Some(it), 1);
+                document(w, cx, field, Some(it), HeadingOffset::H2);
             }
         }
     }
@@ -1263,7 +1263,7 @@ fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             typ = s.type_.print(cx)
         );
     });
-    document(w, cx, it, None, 1)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
 fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
@@ -1278,13 +1278,13 @@ fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
         );
     });
 
-    document(w, cx, it, None, 1);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
 fn item_keyword(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
-    document(w, cx, it, None, 1)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
 /// Compare two strings treating multi-digit numbers as single units (i.e. natural sort order).
