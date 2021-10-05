@@ -1231,19 +1231,58 @@ impl PathBuf {
         let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
         // in the special case of `C:` on Windows, do *not* add a separator
+        let comps = self.components();
+
+        if comps.prefix_len() > 0
+            && comps.prefix_len() == comps.path.len()
+            && comps.prefix.unwrap().is_drive()
         {
-            let comps = self.components();
-            if comps.prefix_len() > 0
-                && comps.prefix_len() == comps.path.len()
-                && comps.prefix.unwrap().is_drive()
-            {
-                need_sep = false
-            }
+            need_sep = false
         }
 
         // absolute `path` replaces `self`
         if path.is_absolute() || path.prefix().is_some() {
             self.as_mut_vec().truncate(0);
+
+        // verbatim paths need . and .. removed
+        } else if comps.prefix_verbatim() {
+            let mut buf: Vec<_> = comps.collect();
+            for c in path.components() {
+                match c {
+                    Component::RootDir => {
+                        buf.truncate(1);
+                        buf.push(c);
+                    }
+                    Component::CurDir => (),
+                    Component::ParentDir => {
+                        if let Some(Component::Normal(_)) = buf.last() {
+                            buf.pop();
+                        }
+                    }
+                    _ => buf.push(c),
+                }
+            }
+
+            let mut res = OsString::new();
+            let mut need_sep = false;
+
+            for c in buf {
+                if need_sep && c != Component::RootDir {
+                    res.push(MAIN_SEP_STR);
+                }
+                res.push(c.as_os_str());
+
+                need_sep = match c {
+                    Component::RootDir => false,
+                    Component::Prefix(prefix) => {
+                        !prefix.parsed.is_drive() && prefix.parsed.len() > 0
+                    }
+                    _ => true,
+                }
+            }
+
+            self.inner = res;
+            return;
 
         // `path` has a root but no prefix, e.g., `\windows` (Windows only)
         } else if path.has_root() {

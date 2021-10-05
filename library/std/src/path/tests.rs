@@ -1262,6 +1262,15 @@ pub fn test_push() {
         tp!("\\\\.\\foo", "..\\bar", "\\\\.\\foo\\..\\bar");
 
         tp!("\\\\?\\C:", "foo", "\\\\?\\C:\\foo"); // this is a weird one
+
+        tp!(r"\\?\C:\bar", "../foo", r"\\?\C:\foo");
+        tp!(r"\\?\C:\bar", "../../foo", r"\\?\C:\foo");
+        tp!(r"\\?\C:\", "../foo", r"\\?\C:\foo");
+        tp!(r"\\?\C:", r"D:\foo/./", r"D:\foo/./");
+        tp!(r"\\?\C:", r"\\?\D:\foo\.\", r"\\?\D:\foo\.\");
+        tp!(r"\\?\A:\x\y", "/foo", r"\\?\A:\foo");
+        tp!(r"\\?\A:", r"..\foo\.", r"\\?\A:\foo");
+        tp!(r"\\?\A:\x\y", r".\foo\.", r"\\?\A:\x\y\foo");
     }
 }
 
