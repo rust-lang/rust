@@ -8,6 +8,7 @@ use crate::fmt;
 use crate::fs;
 use crate::marker::PhantomData;
 use crate::mem::forget;
+#[cfg(not(target_os = "wasi"))]
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
@@ -71,6 +72,7 @@ impl BorrowedFd<'_> {
 impl OwnedFd {
     /// Creates a new `OwnedFd` instance that shares the same underlying file handle
     /// as the existing `OwnedFd` instance.
+    #[cfg(not(target_os = "wasi"))]
     pub fn try_clone(&self) -> crate::io::Result<Self> {
         // We want to atomically duplicate this file descriptor and set the
         // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
@@ -87,6 +89,14 @@ impl OwnedFd {
 
         let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 0) })?;
         Ok(unsafe { Self::from_raw_fd(fd) })
+    }
+
+    #[cfg(target_os = "wasi")]
+    pub fn try_clone(&self) -> crate::io::Result<Self> {
+        Err(crate::io::Error::new_const(
+            crate::io::ErrorKind::Unsupported,
+            &"operation not supported on WASI yet",
+        ))
     }
 }
 
