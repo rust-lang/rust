@@ -116,7 +116,7 @@ pub(super) fn note_and_explain_region(
     emit_msg_span(err, prefix, description, span, suffix);
 }
 
-pub(super) fn note_and_explain_free_region(
+fn explain_free_region(
     tcx: TyCtxt<'tcx>,
     err: &mut DiagnosticBuilder<'_>,
     prefix: &str,
@@ -125,7 +125,7 @@ pub(super) fn note_and_explain_free_region(
 ) {
     let (description, span) = msg_span_from_free_region(tcx, region, None);
 
-    emit_msg_span(err, prefix, description, span, suffix);
+    label_msg_span(err, prefix, description, span, suffix);
 }
 
 fn msg_span_from_free_region(
@@ -210,6 +210,22 @@ fn emit_msg_span(
     }
 }
 
+fn label_msg_span(
+    err: &mut DiagnosticBuilder<'_>,
+    prefix: &str,
+    description: String,
+    span: Option<Span>,
+    suffix: &str,
+) {
+    let message = format!("{}{}{}", prefix, description, suffix);
+
+    if let Some(span) = span {
+        err.span_label(span, &message);
+    } else {
+        err.note(&message);
+    }
+}
+
 pub fn unexpected_hidden_region_diagnostic(
     tcx: TyCtxt<'tcx>,
     span: Span,
@@ -244,7 +260,7 @@ pub fn unexpected_hidden_region_diagnostic(
             //
             // (*) if not, the `tainted_by_errors` field would be set to
             // `Some(ErrorReported)` in any case, so we wouldn't be here at all.
-            note_and_explain_free_region(
+            explain_free_region(
                 tcx,
                 &mut err,
                 &format!("hidden type `{}` captures ", hidden_ty),
