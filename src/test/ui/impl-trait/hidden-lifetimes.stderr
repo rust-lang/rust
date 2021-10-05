@@ -2,25 +2,17 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
   --> $DIR/hidden-lifetimes.rs:28:54
    |
 LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
-   |                                                      ^^^^^^^^^^^^^^
-   |
-note: hidden type `&'a mut &'b T` captures the lifetime `'b` as defined here
-  --> $DIR/hidden-lifetimes.rs:28:17
-   |
-LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
-   |                 ^^
+   |                 --                                   ^^^^^^^^^^^^^^
+   |                 |
+   |                 hidden type `&'a mut &'b T` captures the lifetime `'b` as defined here
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/hidden-lifetimes.rs:45:70
    |
 LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
-   |                                                                      ^^^^^^^^^^^^^^
-   |
-note: hidden type `Rc<RefCell<&'b T>>` captures the lifetime `'b` as defined here
-  --> $DIR/hidden-lifetimes.rs:45:24
-   |
-LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
-   |                        ^^
+   |                        --                                            ^^^^^^^^^^^^^^
+   |                        |
+   |                        hidden type `Rc<RefCell<&'b T>>` captures the lifetime `'b` as defined here
 
 error: aborting due to 2 previous errors
 
