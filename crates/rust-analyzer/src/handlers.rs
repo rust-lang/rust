@@ -1135,6 +1135,7 @@ pub(crate) fn handle_code_lens(
             annotate_impls: lens_config.implementations,
             annotate_references: lens_config.refs,
             annotate_method_references: lens_config.method_refs,
+            annotate_enum_variant_references: lens_config.enum_variant_refs,
         },
         file_id,
     )?;
