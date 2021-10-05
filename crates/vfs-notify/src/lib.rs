@@ -38,7 +38,7 @@ impl loader::Handle for NotifyHandle {
         NotifyHandle { sender, _thread: thread }
     }
     fn set_config(&mut self, config: loader::Config) {
-        self.sender.send(Message::Config(config)).unwrap()
+        self.sender.send(Message::Config(config)).unwrap();
     }
     fn invalidate(&mut self, path: AbsPathBuf) {
         self.sender.send(Message::Invalidate(path)).unwrap();
@@ -84,7 +84,7 @@ impl NotifyActor {
                         if !config.watch.is_empty() {
                             let (watcher_sender, watcher_receiver) = unbounded();
                             let watcher = log_notify_error(RecommendedWatcher::new(move |event| {
-                                watcher_sender.send(event).unwrap()
+                                watcher_sender.send(event).unwrap();
                             }));
                             self.watcher = watcher.map(|it| (it, watcher_receiver));
                         }
@@ -99,7 +99,7 @@ impl NotifyActor {
                         for (i, entry) in config.load.into_iter().enumerate() {
                             let watch = config.watch.contains(&i);
                             if watch {
-                                self.watched_entries.push(entry.clone())
+                                self.watched_entries.push(entry.clone());
                             }
                             let files = self.load_entry(entry, watch);
                             self.send(loader::Message::Loaded { files });
@@ -149,7 +149,7 @@ impl NotifyActor {
                                 Some((path, contents))
                             })
                             .collect();
-                        self.send(loader::Message::Loaded { files })
+                        self.send(loader::Message::Loaded { files });
                     }
                 }
             }
@@ -165,7 +165,7 @@ impl NotifyActor {
                 .into_iter()
                 .map(|file| {
                     if watch {
-                        self.watch(file.clone())
+                        self.watch(file.clone());
                     }
                     let contents = read(file.as_path());
                     (file, contents)
@@ -174,7 +174,7 @@ impl NotifyActor {
             loader::Entry::Directories(dirs) => {
                 let mut res = Vec::new();
 
-                for root in dirs.include.iter() {
+                for root in &dirs.include {
                     let walkdir =
                         WalkDir::new(root).follow_links(true).into_iter().filter_entry(|entry| {
                             if !entry.file_type().is_dir() {
@@ -218,7 +218,7 @@ impl NotifyActor {
         }
     }
     fn send(&mut self, msg: loader::Message) {
-        (self.sender)(msg)
+        (self.sender)(msg);
     }
 }
 

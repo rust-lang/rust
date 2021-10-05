@@ -33,9 +33,9 @@ pub fn list_files(dir: &Path) -> Vec<PathBuf> {
                 path.file_name().unwrap_or_default().to_str().unwrap_or_default().starts_with('.');
             if !is_hidden {
                 if file_type.is_dir() {
-                    work.push(path)
+                    work.push(path);
                 } else if file_type.is_file() {
-                    res.push(path)
+                    res.push(path);
                 }
             }
         }
@@ -66,7 +66,7 @@ impl CommentBlock {
                         panic!(
                             "Use plain (non-doc) comments with tags like {}:\n    {}",
                             tag, first
-                        )
+                        );
                     }
 
                     block.id = id.trim().to_string();
@@ -106,7 +106,7 @@ impl CommentBlock {
             }
         }
         if !block.contents.is_empty() {
-            res.push(block)
+            res.push(block);
         }
         res
     }
@@ -139,7 +139,7 @@ fn ensure_rustfmt() {
         panic!(
             "Failed to run rustfmt from toolchain 'stable'. \
                  Please run `rustup component add rustfmt --toolchain stable` to install it.",
-        )
+        );
     }
 }
 
@@ -185,7 +185,7 @@ pub fn ensure_file_contents(file: &Path, contents: &str) {
         let _ = fs::create_dir_all(parent);
     }
     fs::write(file, contents).unwrap();
-    panic!("some file was not up to date and has been updated, simply re-run the tests")
+    panic!("some file was not up to date and has been updated, simply re-run the tests");
 }
 
 fn normalize_newlines(s: &str) -> String {

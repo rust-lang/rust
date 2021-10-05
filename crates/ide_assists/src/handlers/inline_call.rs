@@ -141,10 +141,9 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext) -> Opt
             for (file_id, refs) in usages.into_iter() {
                 inline_refs_for_file(file_id, refs);
             }
-            if let Some(refs) = current_file_usage {
-                inline_refs_for_file(def_file, refs);
-            } else {
-                builder.edit_file(def_file);
+            match current_file_usage {
+                Some(refs) => inline_refs_for_file(def_file, refs),
+                None => builder.edit_file(def_file),
             }
             if remove_def {
                 builder.delete(ast_func.syntax().text_range());

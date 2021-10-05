@@ -93,7 +93,7 @@ struct ProfilerImpl {
 impl ProfileSpan {
     pub fn detail(mut self, detail: impl FnOnce() -> String) -> ProfileSpan {
         if let Some(profiler) = &mut self.0 {
-            profiler.detail = Some(detail())
+            profiler.detail = Some(detail());
         }
         self
     }
@@ -114,7 +114,7 @@ impl HeartbeatSpan {
     #[inline]
     pub fn new(enabled: bool) -> Self {
         if enabled {
-            with_profile_stack(|it| it.heartbeats(true))
+            with_profile_stack(|it| it.heartbeats(true));
         }
         Self { enabled }
     }
@@ -123,7 +123,7 @@ impl HeartbeatSpan {
 impl Drop for HeartbeatSpan {
     fn drop(&mut self) {
         if self.enabled {
-            with_profile_stack(|it| it.heartbeats(false))
+            with_profile_stack(|it| it.heartbeats(false));
         }
     }
 }
@@ -238,7 +238,7 @@ impl ProfileStack {
             self.heartbeat(frame.heartbeats);
             let avg_span = duration / (frame.heartbeats + 1);
             if avg_span > self.filter.heartbeat_longer_than {
-                eprintln!("Too few heartbeats {} ({}/{:?})?", label, frame.heartbeats, duration)
+                eprintln!("Too few heartbeats {} ({}/{:?})?", label, frame.heartbeats, duration);
             }
         }
 
@@ -292,7 +292,7 @@ fn print(
         accounted_for += tree[child].duration;
 
         if tree[child].duration.as_millis() > longer_than.as_millis() {
-            print(tree, child, level + 1, longer_than, out)
+            print(tree, child, level + 1, longer_than, out);
         } else {
             let (total_duration, cnt) =
                 short_children.entry(tree[child].label).or_insert((Duration::default(), 0));
@@ -301,7 +301,7 @@ fn print(
         }
     }
 
-    for (child_msg, (duration, count)) in short_children.iter() {
+    for (child_msg, (duration, count)) in &short_children {
         writeln!(out, "    {}{} - {} ({} calls)", current_indent, ms(*duration), child_msg, count)
             .expect("printing profiling info");
     }

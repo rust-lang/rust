@@ -67,11 +67,11 @@ pub(crate) mod entry_points {
     }
 
     pub(crate) fn stmt(p: &mut Parser) {
-        expressions::stmt(p, expressions::StmtWithSemi::No, true)
+        expressions::stmt(p, expressions::StmtWithSemi::No, true);
     }
 
     pub(crate) fn stmt_optional_semi(p: &mut Parser) {
-        expressions::stmt(p, expressions::StmtWithSemi::Optional, false)
+        expressions::stmt(p, expressions::StmtWithSemi::Optional, false);
     }
 
     pub(crate) fn visibility(p: &mut Parser) {
@@ -84,7 +84,7 @@ pub(crate) mod entry_points {
     }
 
     pub(crate) fn item(p: &mut Parser) {
-        items::item_or_macro(p, true)
+        items::item_or_macro(p, true);
     }
 
     pub(crate) fn macro_items(p: &mut Parser) {
@@ -109,7 +109,7 @@ pub(crate) mod entry_points {
     }
 
     pub(crate) fn attr(p: &mut Parser) {
-        attributes::outer_attrs(p)
+        attributes::outer_attrs(p);
     }
 }
 
@@ -128,8 +128,7 @@ pub(crate) fn reparser(
         EXTERN_ITEM_LIST => items::extern_item_list,
         TOKEN_TREE if first_child? == T!['{'] => items::token_tree,
         ASSOC_ITEM_LIST => match parent? {
-            IMPL => items::assoc_item_list,
-            TRAIT => items::assoc_item_list,
+            IMPL | TRAIT => items::assoc_item_list,
             _ => return None,
         },
         ITEM_LIST => items::item_list,
@@ -246,7 +245,7 @@ fn name_r(p: &mut Parser, recovery: TokenSet) {
 }
 
 fn name(p: &mut Parser) {
-    name_r(p, TokenSet::EMPTY)
+    name_r(p, TokenSet::EMPTY);
 }
 
 fn name_ref(p: &mut Parser) {

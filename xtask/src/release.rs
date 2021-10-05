@@ -33,15 +33,13 @@ impl flags::Release {
         let commit = cmd!("git rev-parse HEAD").read()?;
         let changelog_n = read_dir(changelog_dir.as_path())?.len();
 
-        for &adoc in [
+        for adoc in [
             "manual.adoc",
             "generated_assists.adoc",
             "generated_config.adoc",
             "generated_diagnostic.adoc",
             "generated_features.adoc",
-        ]
-        .iter()
-        {
+        ] {
             let src = project_root().join("./docs/user/").join(adoc);
             let dst = website_root.join(adoc);
 

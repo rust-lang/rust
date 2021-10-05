@@ -214,10 +214,9 @@ impl TypeRef {
     }
 
     pub(crate) fn from_ast_opt(ctx: &LowerCtx, node: Option<ast::Type>) -> Self {
-        if let Some(node) = node {
-            TypeRef::from_ast(ctx, node)
-        } else {
-            TypeRef::Error
+        match node {
+            Some(node) => TypeRef::from_ast(ctx, node),
+            None => TypeRef::Error,
         }
     }
 

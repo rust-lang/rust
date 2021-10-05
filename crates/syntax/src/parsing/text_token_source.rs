@@ -44,8 +44,7 @@ impl<'t> TokenSource for TextTokenSource<'t> {
     fn is_keyword(&self, kw: &str) -> bool {
         self.token_offset_pairs
             .get(self.curr.1)
-            .map(|(token, offset)| &self.text[TextRange::at(*offset, token.len)] == kw)
-            .unwrap_or(false)
+            .map_or(false, |(token, offset)| &self.text[TextRange::at(*offset, token.len)] == kw)
     }
 }
 
@@ -55,8 +54,7 @@ fn mk_token(pos: usize, token_offset_pairs: &[(Token, TextSize)]) -> parser::Tok
             token.kind,
             token_offset_pairs
                 .get(pos + 1)
-                .map(|(_, next_offset)| offset + token.len == *next_offset)
-                .unwrap_or(false),
+                .map_or(false, |(_, next_offset)| offset + token.len == *next_offset),
         ),
         None => (EOF, false),
     };

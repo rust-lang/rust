@@ -19,6 +19,6 @@ pub(crate) fn validate_block_expr(block: ast::BlockExpr, errors: &mut Vec<Syntax
                 "A block in this position cannot accept inner attributes",
                 attr.syntax().text_range(),
             )
-        }))
+        }));
     }
 }

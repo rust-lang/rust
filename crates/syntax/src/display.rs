@@ -28,7 +28,7 @@ pub fn function_declaration(node: &ast::Fn) -> String {
         format_to!(buf, "{} ", abi);
     }
     if let Some(name) = node.name() {
-        format_to!(buf, "fn {}", name)
+        format_to!(buf, "fn {}", name);
     }
     if let Some(type_params) = node.generic_param_list() {
         format_to!(buf, "{}", type_params);

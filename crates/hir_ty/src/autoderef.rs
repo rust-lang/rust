@@ -109,10 +109,9 @@ pub(crate) fn deref(
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
     let _p = profile::span("deref");
-    if let Some(derefed) = builtin_deref(&ty.goal.value) {
-        Some(Canonical { value: derefed, binders: ty.goal.binders.clone() })
-    } else {
-        deref_by_trait(db, krate, ty)
+    match builtin_deref(&ty.goal.value) {
+        Some(derefed) => Some(Canonical { value: derefed, binders: ty.goal.binders.clone() }),
+        None => deref_by_trait(db, krate, ty),
     }
 }
 

@@ -90,13 +90,13 @@ impl TextEdit {
         }
 
         let mut total_len = TextSize::of(&*text);
-        for indel in self.indels.iter() {
+        for indel in &self.indels {
             total_len += TextSize::of(&indel.insert);
             total_len -= indel.delete.end() - indel.delete.start();
         }
         let mut buf = String::with_capacity(total_len.into());
         let mut prev = 0;
-        for indel in self.indels.iter() {
+        for indel in &self.indels {
             let start: usize = indel.delete.start().into();
             let end: usize = indel.delete.end().into();
             if start > prev {
@@ -110,7 +110,7 @@ impl TextEdit {
 
         // FIXME: figure out a way to mutate the text in-place or reuse the
         // memory in some other way
-        *text = buf
+        *text = buf;
     }
 
     pub fn union(&mut self, other: TextEdit) -> Result<(), TextEdit> {
@@ -126,7 +126,7 @@ impl TextEdit {
 
     pub fn apply_to_offset(&self, offset: TextSize) -> Option<TextSize> {
         let mut res = offset;
-        for indel in self.indels.iter() {
+        for indel in &self.indels {
             if indel.delete.start() >= offset {
                 break;
             }
@@ -163,13 +163,13 @@ impl TextEditBuilder {
         self.indels.is_empty()
     }
     pub fn replace(&mut self, range: TextRange, replace_with: String) {
-        self.indel(Indel::replace(range, replace_with))
+        self.indel(Indel::replace(range, replace_with));
     }
     pub fn delete(&mut self, range: TextRange) {
-        self.indel(Indel::delete(range))
+        self.indel(Indel::delete(range));
     }
     pub fn insert(&mut self, offset: TextSize, text: String) {
-        self.indel(Indel::insert(offset, text))
+        self.indel(Indel::insert(offset, text));
     }
     pub fn finish(self) -> TextEdit {
         let mut indels = self.indels;

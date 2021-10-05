@@ -156,7 +156,7 @@ fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameRe
         _ => bail!("Cannot rename local to self outside of function"),
     };
 
-    if let Some(_) = fn_def.self_param(sema.db) {
+    if fn_def.self_param(sema.db).is_some() {
         bail!("Method already has a self parameter");
     }
 

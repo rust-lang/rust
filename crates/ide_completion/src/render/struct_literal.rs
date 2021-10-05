@@ -38,10 +38,9 @@ fn build_completion(
         .set_documentation(ctx.docs(def))
         .set_deprecated(ctx.is_deprecated(def))
         .detail(&literal);
-    if let Some(snippet_cap) = ctx.snippet_cap() {
-        item.insert_snippet(snippet_cap, literal);
-    } else {
-        item.insert_text(literal);
+    match ctx.snippet_cap() {
+        Some(snippet_cap) => item.insert_snippet(snippet_cap, literal),
+        None => item.insert_text(literal),
     };
     item.build()
 }

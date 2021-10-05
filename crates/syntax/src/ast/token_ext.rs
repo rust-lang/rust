@@ -283,10 +283,9 @@ pub trait HasFormatSpecifier: AstToken {
     where
         F: FnMut(TextRange, FormatSpecifier),
     {
-        let char_ranges = if let Some(char_ranges) = self.char_ranges() {
-            char_ranges
-        } else {
-            return;
+        let char_ranges = match self.char_ranges() {
+            Some(char_ranges) => char_ranges,
+            None => return,
         };
         let mut chars = char_ranges.iter().peekable();
 
@@ -528,10 +527,11 @@ pub trait HasFormatSpecifier: AstToken {
                         }
                     }
 
-                    if let Some((_, Ok('}'))) = chars.peek() {
-                        skip_char_and_emit(&mut chars, FormatSpecifier::Close, &mut callback);
-                    } else {
-                        continue;
+                    match chars.peek() {
+                        Some((_, Ok('}'))) => {
+                            skip_char_and_emit(&mut chars, FormatSpecifier::Close, &mut callback);
+                        }
+                        Some((_, _)) | None => continue,
                     }
                 }
                 _ => {
@@ -609,7 +609,7 @@ impl HasFormatSpecifier for ast::String {
                 TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap())
                     + offset,
                 unescaped_char,
-            ))
+            ));
         });
 
         Some(res)
@@ -631,7 +631,7 @@ impl ast::IntNumber {
 
         let mut text = token.text();
         if let Some(suffix) = self.suffix() {
-            text = &text[..text.len() - suffix.len()]
+            text = &text[..text.len() - suffix.len()];
         }
 
         let radix = self.radix();
@@ -688,7 +688,7 @@ impl Radix {
     pub const ALL: &'static [Radix] =
         &[Radix::Binary, Radix::Octal, Radix::Decimal, Radix::Hexadecimal];
 
-    const fn prefix_len(&self) -> usize {
+    const fn prefix_len(self) -> usize {
         match self {
             Self::Decimal => 0,
             _ => 2,

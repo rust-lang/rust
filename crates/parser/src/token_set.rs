@@ -14,7 +14,7 @@ impl TokenSet {
         let mut i = 0;
         while i < kinds.len() {
             res |= mask(kinds[i]);
-            i += 1
+            i += 1;
         }
         TokenSet(res)
     }

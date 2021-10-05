@@ -4,7 +4,7 @@ use std::{env, path::PathBuf, process::Command};
 
 fn main() {
     set_rerun();
-    println!("cargo:rustc-env=REV={}", rev())
+    println!("cargo:rustc-env=REV={}", rev());
 }
 
 fn set_rerun() {

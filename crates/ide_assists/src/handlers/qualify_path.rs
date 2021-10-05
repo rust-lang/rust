@@ -181,10 +181,9 @@ fn find_trait_method(
 fn item_as_trait(db: &RootDatabase, item: hir::ItemInNs) -> Option<hir::Trait> {
     let item_module_def = item.as_module_def()?;
 
-    if let hir::ModuleDef::Trait(trait_) = item_module_def {
-        Some(trait_)
-    } else {
-        item_module_def.as_assoc_item(db)?.containing_trait(db)
+    match item_module_def {
+        hir::ModuleDef::Trait(trait_) => Some(trait_),
+        _ => item_module_def.as_assoc_item(db)?.containing_trait(db),
     }
 }
 

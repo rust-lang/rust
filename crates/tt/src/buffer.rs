@@ -194,8 +194,7 @@ impl<'a> Cursor<'a> {
                 TokenTree::Subtree(subtree) => Some(TokenTreeRef::Subtree(subtree, Some(tt))),
             },
             Some(Entry::Subtree(tt, subtree, _)) => Some(TokenTreeRef::Subtree(subtree, *tt)),
-            Some(Entry::End(_)) => None,
-            None => None,
+            Some(Entry::End(_)) | None => None,
         }
     }
 
@@ -206,10 +205,9 @@ impl<'a> Cursor<'a> {
     /// Bump the cursor
     pub fn bump(self) -> Cursor<'a> {
         if let Some(Entry::End(exit)) = self.buffer.entry(&self.ptr) {
-            if let Some(exit) = exit {
-                Cursor::create(self.buffer, *exit)
-            } else {
-                self
+            match exit {
+                Some(exit) => Cursor::create(self.buffer, *exit),
+                None => self,
             }
         } else {
             Cursor::create(self.buffer, EntryPtr(self.ptr.0, self.ptr.1 + 1))

@@ -6,21 +6,21 @@ use super::*;
 // fn c(x: i32, ) {}
 // fn d(x: i32, y: ()) {}
 pub(super) fn param_list_fn_def(p: &mut Parser) {
-    list_(p, Flavor::FnDef)
+    list_(p, Flavor::FnDef);
 }
 
 // test param_list_opt_patterns
 // fn foo<F: FnMut(&mut Foo<'a>)>(){}
 pub(super) fn param_list_fn_trait(p: &mut Parser) {
-    list_(p, Flavor::FnTrait)
+    list_(p, Flavor::FnTrait);
 }
 
 pub(super) fn param_list_fn_ptr(p: &mut Parser) {
-    list_(p, Flavor::FnPointer)
+    list_(p, Flavor::FnPointer);
 }
 
 pub(super) fn param_list_closure(p: &mut Parser) {
-    list_(p, Flavor::Closure)
+    list_(p, Flavor::Closure);
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -104,13 +104,13 @@ fn param(p: &mut Parser, m: Marker, flavor: Flavor) -> Variadic {
         Flavor::FnDef => {
             patterns::pattern(p);
             if variadic_param(p) {
-                res = Variadic(true)
+                res = Variadic(true);
             } else if p.at(T![:]) {
-                types::ascription(p)
+                types::ascription(p);
             } else {
                 // test_err missing_fn_param_type
                 // fn f(x y: i32, z, t: i32) {}
-                p.error("missing type for function parameter")
+                p.error("missing type for function parameter");
             }
         }
         // test value_parameters_no_patterns
@@ -128,11 +128,11 @@ fn param(p: &mut Parser, m: Marker, flavor: Flavor) -> Variadic {
             if (p.at(IDENT) || p.at(UNDERSCORE)) && p.nth(1) == T![:] && !p.nth_at(1, T![::]) {
                 patterns::pattern_single(p);
                 if variadic_param(p) {
-                    res = Variadic(true)
+                    res = Variadic(true);
                 } else if p.at(T![:]) {
-                    types::ascription(p)
+                    types::ascription(p);
                 } else {
-                    p.error("missing type for function parameter")
+                    p.error("missing type for function parameter");
                 }
             } else {
                 types::type_(p);

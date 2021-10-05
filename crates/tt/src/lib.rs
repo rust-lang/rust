@@ -161,7 +161,7 @@ impl fmt::Display for Subtree {
         };
         f.write_str(l)?;
         let mut needs_space = false;
-        for tt in self.token_trees.iter() {
+        for tt in &self.token_trees {
             if needs_space {
                 f.write_str(" ")?;
             }
@@ -169,7 +169,7 @@ impl fmt::Display for Subtree {
             match tt {
                 TokenTree::Leaf(Leaf::Punct(p)) => {
                     needs_space = p.spacing == Spacing::Alone;
-                    fmt::Display::fmt(p, f)?
+                    fmt::Display::fmt(p, f)?;
                 }
                 tt => fmt::Display::fmt(tt, f)?,
             }
@@ -215,7 +215,7 @@ impl Subtree {
             .iter()
             .map(|c| match c {
                 TokenTree::Subtree(c) => c.count(),
-                _ => 0,
+                TokenTree::Leaf(_) => 0,
             })
             .sum::<usize>();
 

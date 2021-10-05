@@ -42,9 +42,9 @@ pub fn streaming_output(
                 };
                 for line in String::from_utf8_lossy(new_lines).lines() {
                     if is_out {
-                        on_stdout_line(line)
+                        on_stdout_line(line);
                     } else {
-                        on_stderr_line(line)
+                        on_stderr_line(line);
                     }
                 }
             }

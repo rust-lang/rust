@@ -44,7 +44,7 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext) -> O
     let cond = while_expr.condition()?;
 
     // Don't handle while let
-    if let Some(_) = cond.pat() {
+    if cond.pat().is_some() {
         return None;
     };
 

@@ -144,10 +144,9 @@ fn is_valid_name(name: &str) -> bool {
 fn is_useless_method(method: &ast::MethodCallExpr) -> bool {
     let ident = method.name_ref().and_then(|it| it.ident_token());
 
-    if let Some(ident) = ident {
-        USELESS_METHODS.contains(&ident.text())
-    } else {
-        false
+    match ident {
+        Some(ident) => USELESS_METHODS.contains(&ident.text()),
+        None => false,
     }
 }
 

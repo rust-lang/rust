@@ -139,7 +139,7 @@ pub(super) fn expr_block_contents(p: &mut Parser) {
             continue;
         }
 
-        stmt(p, StmtWithSemi::Yes, false)
+        stmt(p, StmtWithSemi::Yes, false);
     }
 }
 
@@ -311,7 +311,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
         _ => {
             // test full_range_expr
             // fn foo() { xs[..]; }
-            for &op in [T![..=], T![..]].iter() {
+            for op in [T![..=], T![..]] {
                 if p.at(op) {
                     m = p.start();
                     p.bump(op);
@@ -468,12 +468,12 @@ fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     let m = lhs.precede(p);
     p.bump(T![.]);
     if p.at(IDENT) || p.at(INT_NUMBER) {
-        name_ref_or_index(p)
+        name_ref_or_index(p);
     } else if p.at(FLOAT_NUMBER) {
         // FIXME: How to recover and instead parse INT + T![.]?
         p.bump_any();
     } else {
-        p.error("expected field name or number")
+        p.error("expected field name or number");
     }
     m.complete(p, FIELD_EXPR)
 }

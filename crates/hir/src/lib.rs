@@ -1119,7 +1119,7 @@ impl DefWithBody {
                                 if let ast::Expr::RecordExpr(record_expr) =
                                     &source_ptr.value.to_node(&root)
                                 {
-                                    if let Some(_) = record_expr.record_expr_field_list() {
+                                    if record_expr.record_expr_field_list().is_some() {
                                         acc.push(
                                             MissingFields {
                                                 file: source_ptr.file_id,
@@ -1143,7 +1143,7 @@ impl DefWithBody {
                                 if let Some(expr) = source_ptr.value.as_ref().left() {
                                     let root = source_ptr.file_syntax(db.upcast());
                                     if let ast::Pat::RecordPat(record_pat) = expr.to_node(&root) {
-                                        if let Some(_) = record_pat.record_pat_field_list() {
+                                        if record_pat.record_pat_field_list().is_some() {
                                             acc.push(
                                                 MissingFields {
                                                     file: source_ptr.file_id,
@@ -2119,10 +2119,9 @@ impl Impl {
         };
 
         let fp = TyFingerprint::for_inherent_impl(&ty);
-        let fp = if let Some(fp) = fp {
-            fp
-        } else {
-            return Vec::new();
+        let fp = match fp {
+            Some(fp) => fp,
+            None => return Vec::new(),
         };
 
         let mut all = Vec::new();

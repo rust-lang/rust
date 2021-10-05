@@ -257,7 +257,7 @@ pub fn block_expr(
         format_to!(buf, "    {}\n", stmt);
     }
     if let Some(tail_expr) = tail_expr {
-        format_to!(buf, "    {}\n", tail_expr)
+        format_to!(buf, "    {}\n", tail_expr);
     }
     buf += "}";
     ast_from_text(&format!("fn f() {}", buf))
@@ -644,9 +644,14 @@ pub fn fn_(
     ret_type: Option<ast::RetType>,
     is_async: bool,
 ) -> ast::Fn {
-    let type_params =
-        if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
-    let ret_type = if let Some(ret_type) = ret_type { format!("{} ", ret_type) } else { "".into() };
+    let type_params = match type_params {
+        Some(type_params) => format!("<{}>", type_params),
+        None => "".into(),
+    };
+    let ret_type = match ret_type {
+        Some(ret_type) => format!("{} ", ret_type),
+        None => "".into(),
+    };
     let visibility = match visibility {
         None => String::new(),
         Some(it) => format!("{} ", it),

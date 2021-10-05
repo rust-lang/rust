@@ -318,7 +318,7 @@ pub fn source_edit_from_references(
 }
 
 fn source_edit_from_name(edit: &mut TextEditBuilder, name: &ast::Name, new_name: &str) -> bool {
-    if let Some(_) = ast::RecordPatField::for_field_name(name) {
+    if ast::RecordPatField::for_field_name(name).is_some() {
         if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
             cov_mark::hit!(rename_record_pat_field_name_split);
             // Foo { ref mut field } -> Foo { new_name: ref mut field }

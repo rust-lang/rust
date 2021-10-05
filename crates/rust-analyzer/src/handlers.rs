@@ -427,10 +427,9 @@ pub(crate) fn handle_workspace_symbol(
         // If no explicit marker was set, check request params. If that's also empty
         // use global config.
         if !all_symbols {
-            let search_kind = if let Some(ref search_kind) = params.search_kind {
-                search_kind
-            } else {
-                &config.search_kind
+            let search_kind = match params.search_kind {
+                Some(ref search_kind) => search_kind,
+                None => &config.search_kind,
             };
             all_symbols = match search_kind {
                 lsp_ext::WorkspaceSymbolSearchKind::OnlyTypes => false,
@@ -439,10 +438,9 @@ pub(crate) fn handle_workspace_symbol(
         }
 
         if !libs {
-            let search_scope = if let Some(ref search_scope) = params.search_scope {
-                search_scope
-            } else {
-                &config.search_scope
+            let search_scope = match params.search_scope {
+                Some(ref search_scope) => search_scope,
+                None => &config.search_scope,
             };
             libs = match search_scope {
                 lsp_ext::WorkspaceSymbolSearchScope::Workspace => false,

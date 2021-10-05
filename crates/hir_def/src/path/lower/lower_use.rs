@@ -18,10 +18,9 @@ pub(crate) fn convert_path(
     path: ast::Path,
     hygiene: &Hygiene,
 ) -> Option<ModPath> {
-    let prefix = if let Some(qual) = path.qualifier() {
-        Some(convert_path(db, prefix, qual, hygiene)?)
-    } else {
-        prefix
+    let prefix = match path.qualifier() {
+        Some(qual) => Some(convert_path(db, prefix, qual, hygiene)?),
+        None => prefix,
     };
 
     let segment = path.segment()?;

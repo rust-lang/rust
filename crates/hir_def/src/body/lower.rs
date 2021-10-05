@@ -474,10 +474,9 @@ impl ExprCollector<'_> {
             }
             ast::Expr::PrefixExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                if let Some(op) = e.op_kind() {
-                    self.alloc_expr(Expr::UnaryOp { expr, op }, syntax_ptr)
-                } else {
-                    self.alloc_expr(Expr::Missing, syntax_ptr)
+                match e.op_kind() {
+                    Some(op) => self.alloc_expr(Expr::UnaryOp { expr, op }, syntax_ptr),
+                    None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
             ast::Expr::ClosureExpr(e) => {
@@ -624,10 +623,9 @@ impl ExprCollector<'_> {
     }
 
     fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
-        if let Some(expr) = expr {
-            self.collect_expr(expr)
-        } else {
-            self.missing_expr()
+        match expr {
+            Some(expr) => self.collect_expr(expr),
+            None => self.missing_expr(),
         }
     }
 
@@ -724,10 +722,9 @@ impl ExprCollector<'_> {
     }
 
     fn collect_block_opt(&mut self, expr: Option<ast::BlockExpr>) -> ExprId {
-        if let Some(block) = expr {
-            self.collect_block(block)
-        } else {
-            self.missing_expr()
+        match expr {
+            Some(block) => self.collect_block(block),
+            None => self.missing_expr(),
         }
     }
 
@@ -890,10 +887,9 @@ impl ExprCollector<'_> {
     }
 
     fn collect_pat_opt(&mut self, pat: Option<ast::Pat>) -> PatId {
-        if let Some(pat) = pat {
-            self.collect_pat(pat)
-        } else {
-            self.missing_pat()
+        match pat {
+            Some(pat) => self.collect_pat(pat),
+            None => self.missing_pat(),
         }
     }
 

@@ -167,10 +167,9 @@ impl<'a> HirFormatter<'a> {
     }
 
     pub fn should_truncate(&self) -> bool {
-        if let Some(max_size) = self.max_size {
-            self.curr_size >= max_size
-        } else {
-            false
+        match self.max_size {
+            Some(max_size) => self.curr_size >= max_size,
+            None => false,
         }
     }
 

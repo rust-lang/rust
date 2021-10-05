@@ -57,7 +57,7 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
 pub(super) fn ascription(p: &mut Parser) {
     assert!(p.at(T![:]));
     p.bump(T![:]);
-    type_(p)
+    type_(p);
 }
 
 fn paren_or_tuple_type(p: &mut Parser) {
@@ -204,7 +204,7 @@ fn fn_ptr_type(p: &mut Parser) {
     if p.at(T!['(']) {
         params::param_list_fn_ptr(p);
     } else {
-        p.error("expected parameters")
+        p.error("expected parameters");
     }
     // test fn_pointer_type_with_ret
     // type F = fn() -> ();
@@ -274,7 +274,7 @@ fn dyn_trait_type(p: &mut Parser) {
 // type C = self::Foo;
 // type D = super::Foo;
 pub(super) fn path_type(p: &mut Parser) {
-    path_type_(p, true)
+    path_type_(p, true);
 }
 
 // test macro_call_type

@@ -400,13 +400,10 @@ impl DefMap {
         };
         let from_scope_or_builtin = match shadow {
             BuiltinShadowMode::Module => from_scope.or(from_builtin),
-            BuiltinShadowMode::Other => {
-                if let Some(ModuleDefId::ModuleId(_)) = from_scope.take_types() {
-                    from_builtin.or(from_scope)
-                } else {
-                    from_scope.or(from_builtin)
-                }
-            }
+            BuiltinShadowMode::Other => match from_scope.take_types() {
+                Some(ModuleDefId::ModuleId(_)) => from_builtin.or(from_scope),
+                Some(_) | None => from_scope.or(from_builtin),
+            },
         };
         let from_extern_prelude = self
             .extern_prelude

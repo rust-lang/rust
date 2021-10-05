@@ -324,10 +324,9 @@ impl<'a> InferenceTable<'a> {
 
     /// Unify two types and register new trait goals that arise from that.
     pub(crate) fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
-        let result = if let Ok(r) = self.try_unify(ty1, ty2) {
-            r
-        } else {
-            return false;
+        let result = match self.try_unify(ty1, ty2) {
+            Ok(r) => r,
+            Err(_) => return false,
         };
         self.register_infer_ok(result);
         true

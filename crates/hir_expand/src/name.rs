@@ -48,10 +48,9 @@ impl Name {
 
     /// Resolve a name from the text of token.
     fn resolve(raw_text: &str) -> Name {
-        if let Some(text) = raw_text.strip_prefix("r#") {
-            Name::new_text(SmolStr::new(text))
-        } else {
-            Name::new_text(raw_text.into())
+        match raw_text.strip_prefix("r#") {
+            Some(text) => Name::new_text(SmolStr::new(text)),
+            None => Name::new_text(raw_text.into()),
         }
     }
 

@@ -88,7 +88,7 @@ impl<'a> TreeSink for TextTreeSink<'a> {
     }
 
     fn error(&mut self, error: ParseError) {
-        self.inner.error(error, self.text_pos)
+        self.inner.error(error, self.text_pos);
     }
 }
 
@@ -108,7 +108,7 @@ impl<'a> TextTreeSink<'a> {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingFinish => {
                 self.eat_trivias();
-                self.inner.finish_node()
+                self.inner.finish_node();
             }
             State::PendingStart | State::Normal => unreachable!(),
         }

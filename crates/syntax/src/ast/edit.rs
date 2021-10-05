@@ -126,7 +126,7 @@ impl IndentLevel {
             if let Some(ws) = ast::Whitespace::cast(token) {
                 if ws.text().contains('\n') {
                     let new_ws = make::tokens::whitespace(&format!("{}{}", ws.syntax(), self));
-                    ted::replace(ws.syntax(), &new_ws)
+                    ted::replace(ws.syntax(), &new_ws);
                 }
             }
         }
@@ -143,7 +143,7 @@ impl IndentLevel {
                     let new_ws = make::tokens::whitespace(
                         &ws.syntax().text().replace(&format!("\n{}", self), "\n"),
                     );
-                    ted::replace(ws.syntax(), &new_ws)
+                    ted::replace(ws.syntax(), &new_ws);
                 }
             }
         }

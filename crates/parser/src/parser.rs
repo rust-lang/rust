@@ -177,7 +177,7 @@ impl<'t> Parser<'t> {
         if kind == EOF {
             return;
         }
-        self.do_bump(kind, 1)
+        self.do_bump(kind, 1);
     }
 
     /// Advances the parser by one token, remapping its kind.
@@ -200,7 +200,7 @@ impl<'t> Parser<'t> {
     /// does.
     pub(crate) fn error<T: Into<String>>(&mut self, message: T) {
         let msg = ParseError(Box::new(message.into()));
-        self.push_event(Event::Error { msg })
+        self.push_event(Event::Error { msg });
     }
 
     /// Consume the next token if it is `kind` or emit an error
@@ -258,7 +258,7 @@ impl<'t> Parser<'t> {
     }
 
     fn push_event(&mut self, event: Event) {
-        self.events.push(event)
+        self.events.push(event);
     }
 }
 

@@ -509,10 +509,9 @@ impl<'a> CompletionContext<'a> {
                             .and_then(|pat| self.sema.type_of_pat(&pat))
                             .or_else(|| it.initializer().and_then(|it| self.sema.type_of_expr(&it)))
                             .map(TypeInfo::original);
-                        let name = if let Some(ast::Pat::IdentPat(ident)) = it.pat() {
-                            ident.name().map(NameOrNameRef::Name)
-                        } else {
-                            None
+                        let name = match it.pat() {
+                            Some(ast::Pat::IdentPat(ident)) => ident.name().map(NameOrNameRef::Name),
+                            Some(_) | None => None,
                         };
 
                         (ty, name)

@@ -276,9 +276,9 @@ impl ast::Path {
 
 impl ast::Use {
     pub fn is_simple_glob(&self) -> bool {
-        self.use_tree()
-            .map(|use_tree| use_tree.use_tree_list().is_none() && use_tree.star_token().is_some())
-            .unwrap_or(false)
+        self.use_tree().map_or(false, |use_tree| {
+            use_tree.use_tree_list().is_none() && use_tree.star_token().is_some()
+        })
     }
 }
 
@@ -549,10 +549,9 @@ impl ast::FieldExpr {
     }
 
     pub fn field_access(&self) -> Option<FieldKind> {
-        if let Some(nr) = self.name_ref() {
-            Some(FieldKind::Name(nr))
-        } else {
-            self.index_token().map(FieldKind::Index)
+        match self.name_ref() {
+            Some(nr) => Some(FieldKind::Name(nr)),
+            None => self.index_token().map(FieldKind::Index),
         }
     }
 }

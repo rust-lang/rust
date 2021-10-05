@@ -137,7 +137,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
                         if let Err(err) = char {
                             push_err(1, (range.start, err));
                         }
-                    })
+                    });
                 }
             }
         }
@@ -148,7 +148,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
                         if let Err(err) = char {
                             push_err(2, (range.start, err));
                         }
-                    })
+                    });
                 }
             }
         }

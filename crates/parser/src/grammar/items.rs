@@ -20,7 +20,7 @@ use super::*;
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attrs(p);
     while !p.at(EOF) && !(p.at(T!['}']) && stop_on_r_curly) {
-        item_or_macro(p, stop_on_r_curly)
+        item_or_macro(p, stop_on_r_curly);
     }
 }
 
@@ -165,7 +165,7 @@ pub(super) fn opt_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
                     p.bump_remap(T![default]);
                     p.bump(T![async]);
                     if is_unsafe {
-                        p.bump(T![unsafe])
+                        p.bump(T![unsafe]);
                     }
                     has_mods = true;
                 }
@@ -404,7 +404,7 @@ fn fn_(p: &mut Parser, m: Marker) {
         // trait T { fn foo(); }
         p.bump(T![;]);
     } else {
-        expressions::block_expr(p)
+        expressions::block_expr(p);
     }
     m.complete(p, FN);
 }

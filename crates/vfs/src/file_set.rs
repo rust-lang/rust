@@ -112,7 +112,7 @@ impl FileSetConfig {
         let mut res = vec![FileSet::default(); self.len()];
         for (file_id, path) in vfs.iter() {
             let root = self.classify(path, &mut scratch_space);
-            res[root].insert(file_id, path.clone())
+            res[root].insert(file_id, path.clone());
         }
         res
     }
@@ -157,7 +157,7 @@ impl FileSetConfigBuilder {
 
     /// Add a new set of paths prefixes.
     pub fn add_file_set(&mut self, roots: Vec<VfsPath>) {
-        self.roots.push(roots)
+        self.roots.push(roots);
     }
 
     /// Build the `FileSetConfig`.

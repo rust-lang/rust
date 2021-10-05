@@ -4,12 +4,12 @@ use super::*;
 // const C: u32 = 92;
 pub(super) fn konst(p: &mut Parser, m: Marker) {
     p.bump(T![const]);
-    const_or_static(p, m, true)
+    const_or_static(p, m, true);
 }
 
 pub(super) fn static_(p: &mut Parser, m: Marker) {
     p.bump(T![static]);
-    const_or_static(p, m, false)
+    const_or_static(p, m, false);
 }
 
 fn const_or_static(p: &mut Parser, m: Marker, is_const: bool) {
@@ -27,7 +27,7 @@ fn const_or_static(p: &mut Parser, m: Marker, is_const: bool) {
     if p.at(T![:]) {
         types::ascription(p);
     } else {
-        p.error("missing type for `const` or `static`")
+        p.error("missing type for `const` or `static`");
     }
     if p.eat(T![=]) {
         expressions::expr(p);

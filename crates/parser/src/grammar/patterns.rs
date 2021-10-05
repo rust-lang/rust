@@ -19,7 +19,7 @@ pub(crate) fn pattern(p: &mut Parser) {
 
 /// Parses a pattern list separated by pipes `|`.
 pub(super) fn pattern_top(p: &mut Parser) {
-    pattern_top_r(p, PAT_RECOVERY_SET)
+    pattern_top_r(p, PAT_RECOVERY_SET);
 }
 
 pub(crate) fn pattern_single(p: &mut Parser) {
@@ -78,7 +78,7 @@ fn pattern_single_r(p: &mut Parser, recovery_set: TokenSet) {
 
         // FIXME: support half_open_range_patterns (`..=2`),
         // exclusive_range_pattern (`..5`) with missing lhs
-        for &range_op in [T![...], T![..=], T![..]].iter() {
+        for range_op in [T![...], T![..=], T![..]] {
             if p.at(range_op) {
                 let m = lhs.precede(p);
                 p.bump(range_op);
