@@ -180,8 +180,9 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     #[must_use]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_panic))]
     pub const fn new(secs: u64, nanos: u32) -> Duration {
         let secs = match secs.checked_add((nanos / NANOS_PER_SEC) as u64) {
             Some(secs) => secs,
@@ -480,7 +481,8 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_panic))]
     pub const fn checked_add(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_add(rhs.secs) {
             let mut nanos = self.nanos + rhs.nanos;
@@ -515,7 +517,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn saturating_add(self, rhs: Duration) -> Duration {
         match self.checked_add(rhs) {
             Some(res) => res,
@@ -540,7 +542,8 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_panic))]
     pub const fn checked_sub(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_sub(rhs.secs) {
             let nanos = if self.nanos >= rhs.nanos {
@@ -573,7 +576,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn saturating_sub(self, rhs: Duration) -> Duration {
         match self.checked_sub(rhs) {
             Some(res) => res,
@@ -598,7 +601,8 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_panic))]
     pub const fn checked_mul(self, rhs: u32) -> Option<Duration> {
         // Multiply nanoseconds as u64, because it cannot overflow that way.
         let total_nanos = self.nanos as u64 * rhs as u64;
@@ -629,7 +633,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn saturating_mul(self, rhs: u32) -> Duration {
         match self.checked_mul(rhs) {
             Some(res) => res,
@@ -655,7 +659,8 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_panic))]
     pub const fn checked_div(self, rhs: u32) -> Option<Duration> {
         if rhs != 0 {
             let secs = self.secs / (rhs as u64);
@@ -683,7 +688,7 @@ impl Duration {
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn as_secs_f64(&self) -> f64 {
         (self.secs as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64)
     }
@@ -702,7 +707,7 @@ impl Duration {
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn as_secs_f32(&self) -> f32 {
         (self.secs as f32) + (self.nanos as f32) / (NANOS_PER_SEC as f32)
     }
@@ -723,7 +728,7 @@ impl Duration {
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn from_secs_f64(secs: f64) -> Duration {
         match Duration::try_from_secs_f64(secs) {
             Ok(v) => v,
@@ -784,7 +789,7 @@ impl Duration {
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn from_secs_f32(secs: f32) -> Duration {
         match Duration::try_from_secs_f32(secs) {
             Ok(v) => v,
@@ -846,7 +851,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn mul_f64(self, rhs: f64) -> Duration {
         Duration::from_secs_f64(rhs * self.as_secs_f64())
     }
@@ -870,7 +875,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn mul_f32(self, rhs: f32) -> Duration {
         Duration::from_secs_f32(rhs * self.as_secs_f32())
     }
@@ -893,7 +898,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn div_f64(self, rhs: f64) -> Duration {
         Duration::from_secs_f64(self.as_secs_f64() / rhs)
     }
@@ -918,7 +923,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn div_f32(self, rhs: f32) -> Duration {
         Duration::from_secs_f32(self.as_secs_f32() / rhs)
     }
@@ -938,7 +943,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn div_duration_f64(self, rhs: Duration) -> f64 {
         self.as_secs_f64() / rhs.as_secs_f64()
     }
@@ -958,7 +963,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn div_duration_f32(self, rhs: Duration) -> f32 {
         self.as_secs_f32() / rhs.as_secs_f32()
     }
