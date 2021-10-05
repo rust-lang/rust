@@ -295,6 +295,7 @@ impl TokenKind {
         match *self {
             Comma => Some(vec![Dot, Lt, Semi]),
             Semi => Some(vec![Colon, Comma]),
+            FatArrow => Some(vec![Eq, RArrow]),
             _ => None,
         }
     }
