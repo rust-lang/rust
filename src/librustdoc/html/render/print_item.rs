@@ -497,6 +497,13 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
 
     // Output the trait definition
     wrap_into_docblock(w, |w| {
+        if let Some(def_id) = it.def_id.as_def_id() {
+            write!(
+                w,
+                "<div class=\"obj-info\">This trait is <b>{}object safe</b>.</div>",
+                if cx.tcx().is_object_safe(def_id) { "" } else { "not " }
+            );
+        }
         wrap_item(w, "trait", |w| {
             render_attributes_in_pre(w, it, "");
             write!(
