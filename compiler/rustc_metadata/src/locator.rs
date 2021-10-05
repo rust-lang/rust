@@ -740,7 +740,9 @@ fn get_metadata_section(
             // Header is okay -> inflate the actual metadata
             let compressed_bytes = &buf[header_len..];
             debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
-            let mut inflated = Vec::new();
+            // Assume the decompressed data will be at least the size of the compressed data, so we
+            // don't have to grow the buffer as much.
+            let mut inflated = Vec::with_capacity(compressed_bytes.len());
             match FrameDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
                 Ok(_) => rustc_erase_owner!(OwningRef::new(inflated).map_owner_box()),
                 Err(_) => {
