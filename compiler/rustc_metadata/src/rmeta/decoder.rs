@@ -467,10 +467,6 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
 
         debug_assert!(tag == TAG_VALID_SPAN_LOCAL || tag == TAG_VALID_SPAN_FOREIGN);
 
-        let lo = BytePos::decode(decoder)?;
-        let len = BytePos::decode(decoder)?;
-        let hi = lo + len;
-
         let sess = if let Some(sess) = decoder.sess {
             sess
         } else {
@@ -536,6 +532,10 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
             let foreign_data = decoder.cdata().cstore.get_crate_data(cnum);
             foreign_data.imported_source_files(sess)
         };
+
+        let lo = BytePos::decode(decoder)?;
+        let len = BytePos::decode(decoder)?;
+        let hi = lo + len;
 
         let source_file = {
             // Optimize for the case that most spans within a translated item

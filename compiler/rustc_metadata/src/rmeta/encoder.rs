@@ -303,12 +303,6 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         };
 
         tag.encode(s)?;
-        lo.encode(s)?;
-
-        // Encode length which is usually less than span.hi and profits more
-        // from the variable-length integer encoding that we use.
-        let len = hi - lo;
-        len.encode(s)?;
 
         if tag == TAG_VALID_SPAN_FOREIGN {
             // This needs to be two lines to avoid holding the `s.source_file_cache`
@@ -316,6 +310,13 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
             let cnum = s.source_file_cache.0.cnum;
             cnum.encode(s)?;
         }
+
+        lo.encode(s)?;
+
+        // Encode length which is usually less than span.hi and profits more
+        // from the variable-length integer encoding that we use.
+        let len = hi - lo;
+        len.encode(s)?;
 
         Ok(())
     }
