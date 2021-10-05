@@ -1,0 +1,5 @@
+goto: file://|DOC_PATH|/test_docs/huge_amount_of_consts/index.html
+
+// Make sure that the last two entries are more than 12 pixels apart and not stacked on each other.
+
+compare-elements-position-near-false: ("//*[@class='item-table']//div[last()-1]", "//*[@class='item-table']//div[last()-3]", {"y": 12})
