@@ -449,16 +449,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let calc_side = |opt_expr: Option<&'tcx hir::Expr<'tcx>>| match opt_expr {
-            None => (None, None),
+            None => None,
             Some(expr) => {
                 let ty = self.check_expr(expr);
-                // Check that the end-point is of numeric or char type.
-                let fail = !(ty.is_numeric() || ty.is_char() || ty.references_error());
-                (Some(ty), Some((fail, ty, expr.span)))
+                // Check that the end-point is possibly of numeric or char type.
+                // The early check here is not for correctness, but rather better
+                // diagnostics (e.g. when `&str` is being matched, `expected` will
+                // be peeled to `str` while ty here is still `&str`, if we don't
+                // err ealy here, a rather confusing unification error will be
+                // emitted instead).
+                let fail =
+                    !(ty.is_numeric() || ty.is_char() || ty.is_ty_var() || ty.references_error());
+                Some((fail, ty, expr.span))
             }
         };
-        let (lhs_ty, lhs) = calc_side(lhs);
-        let (rhs_ty, rhs) = calc_side(rhs);
+        let mut lhs = calc_side(lhs);
+        let mut rhs = calc_side(rhs);
 
         if let (Some((true, ..)), _) | (_, Some((true, ..))) = (lhs, rhs) {
             // There exists a side that didn't meet our criteria that the end-point
@@ -467,25 +473,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.tcx.ty_error();
         }
 
-        // Now that we know the types can be unified we find the unified type
-        // and use it to type the entire expression.
-        let common_type = self.resolve_vars_if_possible(lhs_ty.or(rhs_ty).unwrap_or(expected));
-
+        // Unify each side with `expected`.
         // Subtyping doesn't matter here, as the value is some kind of scalar.
-        let demand_eqtype = |x, y| {
-            if let Some((_, x_ty, x_span)) = x {
+        let demand_eqtype = |x: &mut _, y| {
+            if let Some((ref mut fail, x_ty, x_span)) = *x {
                 if let Some(mut err) = self.demand_eqtype_pat_diag(x_span, expected, x_ty, ti) {
                     if let Some((_, y_ty, y_span)) = y {
                         self.endpoint_has_type(&mut err, y_span, y_ty);
                     }
                     err.emit();
+                    *fail = true;
                 };
             }
         };
-        demand_eqtype(lhs, rhs);
-        demand_eqtype(rhs, lhs);
+        demand_eqtype(&mut lhs, rhs);
+        demand_eqtype(&mut rhs, lhs);
 
-        common_type
+        if let (Some((true, ..)), _) | (_, Some((true, ..))) = (lhs, rhs) {
+            return self.tcx.ty_error();
+        }
+
+        // Find the unified type and check if it's of numeric or char type again.
+        // This check is needed if both sides are inference variables.
+        // We require types to be resolved here so that we emit inference failure
+        // rather than "_ is not a char or numeric".
+        let ty = self.structurally_resolved_type(span, expected);
+        if !(ty.is_numeric() || ty.is_char() || ty.references_error()) {
+            if let Some((ref mut fail, _, _)) = lhs {
+                *fail = true;
+            }
+            if let Some((ref mut fail, _, _)) = rhs {
+                *fail = true;
+            }
+            self.emit_err_pat_range(span, lhs, rhs);
+            return self.tcx.ty_error();
+        }
+        ty
     }
 
     fn endpoint_has_type(&self, err: &mut DiagnosticBuilder<'_>, span: Span, ty: Ty<'_>) {
@@ -512,10 +535,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0029,
             "only `char` and numeric types are allowed in range patterns"
         );
-        let msg = |ty| format!("this is of type `{}` but it should be `char` or numeric", ty);
+        let msg = |ty| {
+            let ty = self.resolve_vars_if_possible(ty);
+            format!("this is of type `{}` but it should be `char` or numeric", ty)
+        };
         let mut one_side_err = |first_span, first_ty, second: Option<(bool, Ty<'tcx>, Span)>| {
             err.span_label(first_span, &msg(first_ty));
             if let Some((_, ty, sp)) = second {
+                let ty = self.resolve_vars_if_possible(ty);
                 self.endpoint_has_type(&mut err, sp, ty);
             }
         };
