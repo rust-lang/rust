@@ -316,11 +316,12 @@ impl Drop for Guard<'_> {
     }
 }
 
-// A few methods below (read_to_string, read_line) will append data into a
-// `String` buffer, but we need to be pretty careful when doing this. The
-// implementation will just call `.as_mut_vec()` and then delegate to a
-// byte-oriented reading method, but we must ensure that when returning we never
-// leave `buf` in a state such that it contains invalid UTF-8 in its bounds.
+// Several `read_to_string` and `read_line` methods in the standard library will
+// append data into a `String` buffer, but we need to be pretty careful when
+// doing this. The implementation will just call `.as_mut_vec()` and then
+// delegate to a byte-oriented reading method, but we must ensure that when
+// returning we never leave `buf` in a state such that it contains invalid UTF-8
+// in its bounds.
 //
 // To this end, we use an RAII guard (to protect against panics) which updates
 // the length of the string when it is dropped. This guard initially truncates
@@ -334,21 +335,19 @@ impl Drop for Guard<'_> {
 // 2. We're passing a raw buffer to the function `f`, and it is expected that
 //    the function only *appends* bytes to the buffer. We'll get undefined
 //    behavior if existing bytes are overwritten to have non-UTF-8 data.
-fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
+pub(crate) unsafe fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 where
     F: FnOnce(&mut Vec<u8>) -> Result<usize>,
 {
-    unsafe {
-        let mut g = Guard { len: buf.len(), buf: buf.as_mut_vec() };
-        let ret = f(g.buf);
-        if str::from_utf8(&g.buf[g.len..]).is_err() {
-            ret.and_then(|_| {
-                Err(Error::new_const(ErrorKind::InvalidData, &"stream did not contain valid UTF-8"))
-            })
-        } else {
-            g.len = g.buf.len();
-            ret
-        }
+    let mut g = Guard { len: buf.len(), buf: buf.as_mut_vec() };
+    let ret = f(g.buf);
+    if str::from_utf8(&g.buf[g.len..]).is_err() {
+        ret.and_then(|_| {
+            Err(Error::new_const(ErrorKind::InvalidData, &"stream did not contain valid UTF-8"))
+        })
+    } else {
+        g.len = g.buf.len();
+        ret
     }
 }
 
@@ -361,7 +360,7 @@ where
 //
 // Because we're extending the buffer with uninitialized data for trusted
 // readers, we need to make sure to truncate that if any of this panics.
-fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
+pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
     let start_len = buf.len();
     let start_cap = buf.capacity();
     let mut g = Guard { len: buf.len(), buf };
@@ -424,6 +423,22 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
             }
         }
     }
+}
+
+pub(crate) fn default_read_to_string<R: Read + ?Sized>(
+    r: &mut R,
+    buf: &mut String,
+) -> Result<usize> {
+    // Note that we do *not* call `r.read_to_end()` here. We are passing
+    // `&mut Vec<u8>` (the raw contents of `buf`) into the `read_to_end`
+    // method to fill it up. An arbitrary implementation could overwrite the
+    // entire contents of the vector, not just append to it (which is what
+    // we are expecting).
+    //
+    // To prevent extraneously checking the UTF-8-ness of the entire buffer
+    // we pass it to our hardcoded `default_read_to_end` implementation which
+    // we know is guaranteed to only read data into the end of the buffer.
+    unsafe { append_to_string(buf, |b| default_read_to_end(r, b)) }
 }
 
 pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
@@ -716,7 +731,7 @@ pub trait Read {
     /// [`std::fs::read`]: crate::fs::read
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
-        read_to_end(self, buf)
+        default_read_to_end(self, buf)
     }
 
     /// Read all bytes until EOF in this source, appending them to `buf`.
@@ -759,16 +774,7 @@ pub trait Read {
     /// [`std::fs::read_to_string`]: crate::fs::read_to_string
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
-        // Note that we do *not* call `.read_to_end()` here. We are passing
-        // `&mut Vec<u8>` (the raw contents of `buf`) into the `read_to_end`
-        // method to fill it up. An arbitrary implementation could overwrite the
-        // entire contents of the vector, not just append to it (which is what
-        // we are expecting).
-        //
-        // To prevent extraneously checking the UTF-8-ness of the entire buffer
-        // we pass it to our hardcoded `read_to_end` implementation which we
-        // know is guaranteed to only read data into the end of the buffer.
-        append_to_string(buf, |b| read_to_end(self, b))
+        default_read_to_string(self, buf)
     }
 
     /// Read the exact number of bytes required to fill `buf`.
@@ -1004,6 +1010,11 @@ pub trait Read {
 /// and type safety tradeoffs will be worth it. However, there are cases where you
 /// need more control over performance, and in those cases you should definitely use
 /// [`Read::read_to_string`] directly.
+///
+/// Note that in some special cases, such as when reading files, this function will
+/// pre-allocate memory based on the size of the input it is reading. In those
+/// cases, the performance should be as good as if you had used
+/// [`Read::read_to_string`] with a manually pre-allocated buffer.
 ///
 /// # Errors
 ///
@@ -2201,7 +2212,7 @@ pub trait BufRead: Read {
         // Note that we are not calling the `.read_until` method here, but
         // rather our hardcoded implementation. For more details as to why, see
         // the comments in `read_to_end`.
-        append_to_string(buf, |b| read_until(self, b'\n', b))
+        unsafe { append_to_string(buf, |b| read_until(self, b'\n', b)) }
     }
 
     /// Returns an iterator over the contents of this reader split on the byte

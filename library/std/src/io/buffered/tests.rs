@@ -244,6 +244,28 @@ fn test_buffered_reader_seek_underflow_discard_buffer_between_seeks() {
 }
 
 #[test]
+fn test_buffered_reader_read_to_end_consumes_buffer() {
+    let data: &[u8] = &[0, 1, 2, 3, 4, 5, 6, 7];
+    let mut reader = BufReader::with_capacity(3, data);
+    let mut buf = Vec::new();
+    assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2][..]));
+    assert_eq!(reader.read_to_end(&mut buf).ok(), Some(8));
+    assert_eq!(&buf, &[0, 1, 2, 3, 4, 5, 6, 7]);
+    assert!(reader.buffer().is_empty());
+}
+
+#[test]
+fn test_buffered_reader_read_to_string_consumes_buffer() {
+    let data: &[u8] = "deadbeef".as_bytes();
+    let mut reader = BufReader::with_capacity(3, data);
+    let mut buf = String::new();
+    assert_eq!(reader.fill_buf().ok(), Some("dea".as_bytes()));
+    assert_eq!(reader.read_to_string(&mut buf).ok(), Some(8));
+    assert_eq!(&buf, "deadbeef");
+    assert!(reader.buffer().is_empty());
+}
+
+#[test]
 fn test_buffered_writer() {
     let inner = Vec::new();
     let mut writer = BufWriter::with_capacity(2, inner);
