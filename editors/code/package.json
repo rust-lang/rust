@@ -585,6 +585,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.completion.snippets": {
+                    "markdownDescription": "Custom completion snippets.",
+                    "default": {},
+                    "type": "object"
+                },
                 "rust-analyzer.completion.postfix.enable": {
                     "markdownDescription": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc.",
                     "default": true,

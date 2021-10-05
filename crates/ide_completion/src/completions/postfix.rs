@@ -2,8 +2,9 @@
 
 mod format_like;
 
+use hir::Documentation;
 use ide_db::{
-    helpers::{FamousDefs, SnippetCap},
+    helpers::{insert_use::ImportScope, FamousDefs, SnippetCap},
     ty_filter::TryEnum,
 };
 use syntax::{
@@ -55,6 +56,10 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     };
 
     let postfix_snippet = build_postfix_snippet_builder(ctx, cap, &dot_receiver);
+
+    if !ctx.config.snippets.is_empty() {
+        add_custom_postfix_completions(acc, ctx, &postfix_snippet, &receiver_text);
+    }
 
     let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty.strip_references());
     if let Some(try_enum) = &try_enum {
@@ -218,13 +223,40 @@ fn build_postfix_snippet_builder<'a>(
     }
 }
 
+fn add_custom_postfix_completions(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    postfix_snippet: impl Fn(&str, &str, &str) -> Builder,
+    receiver_text: &str,
+) -> Option<()> {
+    let import_scope =
+        ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
+    ctx.config.postfix_snippets().filter(|(_, snip)| snip.is_expr()).for_each(
+        |(trigger, snippet)| {
+            let imports = match snippet.imports(ctx, &import_scope) {
+                Some(imports) => imports,
+                None => return,
+            };
+            let body = snippet.postfix_snippet(&receiver_text);
+            let mut builder =
+                postfix_snippet(trigger, snippet.description.as_deref().unwrap_or_default(), &body);
+            builder.documentation(Documentation::new(format!("```rust\n{}\n```", body)));
+            for import in imports.into_iter() {
+                builder.add_import(import);
+            }
+            builder.add_to(acc);
+        },
+    );
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
 
     use crate::{
-        tests::{check_edit, filtered_completion_list},
-        CompletionKind,
+        tests::{check_edit, check_edit_with_config, filtered_completion_list, TEST_CONFIG},
+        CompletionConfig, CompletionKind, Snippet,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -440,6 +472,34 @@ fn main() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn custom_postfix_completion() {
+        check_edit_with_config(
+            CompletionConfig {
+                snippets: vec![Snippet::new(
+                    &[],
+                    &["break".into()],
+                    &["ControlFlow::Break(${receiver})".into()],
+                    "",
+                    &["core::ops::ControlFlow".into()],
+                    crate::SnippetScope::Expr,
+                )
+                .unwrap()],
+                ..TEST_CONFIG
+            },
+            "break",
+            r#"
+//- minicore: try
+fn main() { 42.$0 }
+"#,
+            r#"
+use core::ops::ControlFlow;
+
+fn main() { ControlFlow::Break(42) }
+"#,
+        );
     }
 
     #[test]

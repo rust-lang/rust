@@ -520,6 +520,11 @@ pub enum WorkspaceSymbolSearchKind {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CompletionResolveData {
     pub position: lsp_types::TextDocumentPositionParams,
+    pub imports: Vec<CompletionImport>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CompletionImport {
     pub full_import_path: String,
     pub imported_name: String,
 }

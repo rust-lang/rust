@@ -785,8 +785,10 @@ pub(crate) fn handle_completion_resolve(
         .resolve_completion_edits(
             &snap.config.completion(),
             FilePosition { file_id, offset },
-            &resolve_data.full_import_path,
-            resolve_data.imported_name,
+            resolve_data
+                .imports
+                .into_iter()
+                .map(|import| (import.full_import_path, import.imported_name)),
         )?
         .into_iter()
         .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))

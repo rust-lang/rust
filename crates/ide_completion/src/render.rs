@@ -212,7 +212,10 @@ fn render_resolution_(
                 ctx.source_range(),
                 local_name.to_string(),
             );
-            item.kind(CompletionItemKind::UnresolvedReference).add_import(import_to_add);
+            item.kind(CompletionItemKind::UnresolvedReference);
+            if let Some(import_to_add) = import_to_add {
+                item.add_import(import_to_add);
+            }
             return Some(item.build());
         }
     };
@@ -258,9 +261,12 @@ fn render_resolution_(
         }
     }
     item.kind(kind)
-        .add_import(import_to_add)
         .set_documentation(scope_def_docs(ctx.db(), resolution))
         .set_deprecated(scope_def_is_deprecated(&ctx, resolution));
+
+    if let Some(import_to_add) = import_to_add {
+        item.add_import(import_to_add);
+    }
     Some(item.build())
 }
 

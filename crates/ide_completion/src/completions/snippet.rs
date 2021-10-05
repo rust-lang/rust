@@ -1,11 +1,12 @@
 //! This file provides snippet completions, like `pd` => `eprintln!(...)`.
 
-use ide_db::helpers::SnippetCap;
+use hir::Documentation;
+use ide_db::helpers::{insert_use::ImportScope, SnippetCap};
 use syntax::T;
 
 use crate::{
     context::PathCompletionContext, item::Builder, CompletionContext, CompletionItem,
-    CompletionItemKind, CompletionKind, Completions,
+    CompletionItemKind, CompletionKind, Completions, SnippetScope,
 };
 
 fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
@@ -29,6 +30,10 @@ pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
         None => return,
     };
 
+    if !ctx.config.snippets.is_empty() {
+        add_custom_completions(acc, ctx, cap, SnippetScope::Expr);
+    }
+
     if can_be_stmt {
         snippet(ctx, cap, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
         snippet(ctx, cap, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
@@ -51,6 +56,10 @@ pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
         Some(it) => it,
         None => return,
     };
+
+    if !ctx.config.snippets.is_empty() {
+        add_custom_completions(acc, ctx, cap, SnippetScope::Item);
+    }
 
     let mut item = snippet(
         ctx,
@@ -85,4 +94,67 @@ fn ${1:feature}() {
 
     let item = snippet(ctx, cap, "macro_rules", "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}");
     item.add_to(acc);
+}
+
+fn add_custom_completions(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    cap: SnippetCap,
+    scope: SnippetScope,
+) -> Option<()> {
+    let import_scope =
+        ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
+    ctx.config.prefix_snippets().filter(|(_, snip)| snip.scope == scope).for_each(
+        |(trigger, snip)| {
+            let imports = match snip.imports(ctx, &import_scope) {
+                Some(imports) => imports,
+                None => return,
+            };
+            let body = snip.snippet();
+            let mut builder = snippet(ctx, cap, &trigger, &body);
+            builder.documentation(Documentation::new(format!("```rust\n{}\n```", body)));
+            for import in imports.into_iter() {
+                builder.add_import(import);
+            }
+            builder.detail(snip.description.as_deref().unwrap_or_default());
+            builder.add_to(acc);
+        },
+    );
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        tests::{check_edit_with_config, TEST_CONFIG},
+        CompletionConfig, Snippet,
+    };
+
+    #[test]
+    fn custom_snippet_completion() {
+        check_edit_with_config(
+            CompletionConfig {
+                snippets: vec![Snippet::new(
+                    &["break".into()],
+                    &[],
+                    &["ControlFlow::Break(())".into()],
+                    "",
+                    &["core::ops::ControlFlow".into()],
+                    crate::SnippetScope::Expr,
+                )
+                .unwrap()],
+                ..TEST_CONFIG
+            },
+            "break",
+            r#"
+//- minicore: try
+fn main() { $0 }
+"#,
+            r#"
+use core::ops::ControlFlow;
+
+fn main() { ControlFlow::Break(()) }
+"#,
+        );
+    }
 }

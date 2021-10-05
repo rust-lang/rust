@@ -11,6 +11,7 @@ use ide_db::{
     },
     SymbolKind,
 };
+use smallvec::SmallVec;
 use stdx::{format_to, impl_from, never};
 use syntax::{algo, TextRange};
 use text_edit::TextEdit;
@@ -76,7 +77,7 @@ pub struct CompletionItem {
     ref_match: Option<Mutability>,
 
     /// The import data to add to completion's edits.
-    import_to_add: Option<ImportEdit>,
+    import_to_add: SmallVec<[ImportEdit; 1]>,
 }
 
 // We use custom debug for CompletionItem to make snapshot tests more readable.
@@ -305,7 +306,7 @@ impl CompletionItem {
             trigger_call_info: None,
             relevance: CompletionRelevance::default(),
             ref_match: None,
-            import_to_add: None,
+            imports_to_add: Default::default(),
         }
     }
 
@@ -364,8 +365,8 @@ impl CompletionItem {
         self.ref_match.map(|mutability| (mutability, relevance))
     }
 
-    pub fn import_to_add(&self) -> Option<&ImportEdit> {
-        self.import_to_add.as_ref()
+    pub fn imports_to_add(&self) -> &[ImportEdit] {
+        &self.import_to_add
     }
 }
 
@@ -398,7 +399,7 @@ impl ImportEdit {
 pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
-    import_to_add: Option<ImportEdit>,
+    imports_to_add: SmallVec<[ImportEdit; 1]>,
     trait_name: Option<String>,
     label: String,
     insert_text: Option<String>,
@@ -422,14 +423,13 @@ impl Builder {
         let mut lookup = self.lookup;
         let mut insert_text = self.insert_text;
 
-        if let Some(original_path) = self
-            .import_to_add
-            .as_ref()
-            .and_then(|import_edit| import_edit.import.original_path.as_ref())
-        {
-            lookup = lookup.or_else(|| Some(label.clone()));
-            insert_text = insert_text.or_else(|| Some(label.clone()));
-            format_to!(label, " (use {})", original_path)
+        if let [import_edit] = &*self.imports_to_add {
+            // snippets can have multiple imports, but normal completions only have up to one
+            if let Some(original_path) = import_edit.import.original_path.as_ref() {
+                lookup = lookup.or_else(|| Some(label.clone()));
+                insert_text = insert_text.or_else(|| Some(label.clone()));
+                format_to!(label, " (use {})", original_path)
+            }
         } else if let Some(trait_name) = self.trait_name {
             insert_text = insert_text.or_else(|| Some(label.clone()));
             format_to!(label, " (as {})", trait_name)
@@ -456,7 +456,7 @@ impl Builder {
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
             relevance: self.relevance,
             ref_match: self.ref_match,
-            import_to_add: self.import_to_add,
+            import_to_add: self.imports_to_add,
         }
     }
     pub(crate) fn lookup_by(&mut self, lookup: impl Into<String>) -> &mut Builder {
@@ -527,8 +527,8 @@ impl Builder {
         self.trigger_call_info = Some(true);
         self
     }
-    pub(crate) fn add_import(&mut self, import_to_add: Option<ImportEdit>) -> &mut Builder {
-        self.import_to_add = import_to_add;
+    pub(crate) fn add_import(&mut self, import_to_add: ImportEdit) -> &mut Builder {
+        self.imports_to_add.push(import_to_add);
         self
     }
     pub(crate) fn ref_match(&mut self, mutability: Mutability) -> &mut Builder {

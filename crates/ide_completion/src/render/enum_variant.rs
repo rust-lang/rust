@@ -68,8 +68,11 @@ impl<'a> EnumRender<'a> {
         item.kind(SymbolKind::Variant)
             .set_documentation(self.variant.docs(self.ctx.db()))
             .set_deprecated(self.ctx.is_deprecated(self.variant))
-            .add_import(import_to_add)
             .detail(self.detail());
+
+        if let Some(import_to_add) = import_to_add {
+            item.add_import(import_to_add);
+        }
 
         if self.variant_kind == hir::StructKind::Tuple {
             cov_mark::hit!(inserts_parens_for_tuple_enums);
