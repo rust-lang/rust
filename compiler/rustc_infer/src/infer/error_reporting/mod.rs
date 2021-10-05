@@ -267,6 +267,18 @@ pub fn unexpected_hidden_region_diagnostic(
                 hidden_region,
                 "",
             );
+            if let Some(reg_info) = tcx.is_suitable_region(hidden_region) {
+                let fn_returns = tcx.return_type_impl_or_dyn_traits(reg_info.def_id);
+                nice_region_error::suggest_new_region_bound(
+                    tcx,
+                    &mut err,
+                    fn_returns,
+                    hidden_region.to_string(),
+                    None,
+                    format!("captures {}", hidden_region),
+                    None,
+                )
+            }
         }
         _ => {
             // Ugh. This is a painful case: the hidden region is not one

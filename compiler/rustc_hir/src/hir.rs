@@ -2235,8 +2235,7 @@ pub enum TyKind<'hir> {
     ///
     /// Type parameters may be stored in each `PathSegment`.
     Path(QPath<'hir>),
-    /// An opaque type definition itself. This is currently only used for the
-    /// `opaque type Foo: Trait` item that `impl Trait` in desugars to.
+    /// An opaque type definition itself. This is only used for `impl Trait`.
     ///
     /// The generic argument list contains the lifetimes (and in the future
     /// possibly parameters) that are actually bound on the `impl Trait`.
