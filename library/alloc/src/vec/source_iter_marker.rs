@@ -6,24 +6,14 @@ use super::{AsIntoIter, InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
 
 /// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
 /// source allocation, i.e. executing the pipeline in place.
-///
-/// The SourceIter parent trait is necessary for the specializing function to access the allocation
-/// which is to be reused. But it is not sufficient for the specialization to be valid. See
-/// additional bounds on the impl.
 #[rustc_unsafe_specialization_marker]
-pub(super) trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
+pub(super) trait InPlaceIterableMarker {}
 
-// The std-internal SourceIter/InPlaceIterable traits are only implemented by chains of
-// Adapter<Adapter<Adapter<IntoIter>>> (all owned by core/std). Additional bounds
-// on the adapter implementations (beyond `impl<I: Trait> Trait for Adapter<I>`) only depend on other
-// traits already marked as specialization traits (Copy, TrustedRandomAccess, FusedIterator).
-// I.e. the marker does not depend on lifetimes of user-supplied types. Modulo the Copy hole, which
-// several other specializations already depend on.
-impl<T> SourceIterMarker for T where T: SourceIter<Source: AsIntoIter> + InPlaceIterable {}
+impl<T> InPlaceIterableMarker for T where T: InPlaceIterable {}
 
 impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
-    I: Iterator<Item = T> + SourceIterMarker,
+    I: Iterator<Item = T> + SourceIter<Source: AsIntoIter> + InPlaceIterableMarker,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Additional requirements which cannot expressed via trait bounds. We rely on const eval

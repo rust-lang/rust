@@ -92,9 +92,10 @@ pub use self::zip::zip;
 /// [`as_inner`]: SourceIter::as_inner
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
+#[rustc_specialization_trait]
 pub unsafe trait SourceIter {
     /// A source stage in an iterator pipeline.
-    type Source: Iterator;
+    type Source;
 
     /// Retrieve the source of an iterator pipeline.
     ///
@@ -200,14 +201,14 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<S: Iterator, I, E> SourceIter for ResultShunt<'_, I, E>
+unsafe impl<I, E> SourceIter for ResultShunt<'_, I, E>
 where
-    I: SourceIter<Source = S>,
+    I: SourceIter,
 {
-    type Source = S;
+    type Source = I::Source;
 
     #[inline]
-    unsafe fn as_inner(&mut self) -> &mut S {
+    unsafe fn as_inner(&mut self) -> &mut Self::Source {
         // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }

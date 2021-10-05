@@ -74,7 +74,7 @@ use rustc_infer::infer::{InferCtxt, RegionckMode, TyCtxtInferExt};
 use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
-use rustc_middle::ty::{self, InstantiatedPredicates, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::{self, translate_substs, wf};
 
@@ -294,13 +294,27 @@ fn check_predicates<'tcx>(
     span: Span,
 ) {
     let tcx = infcx.tcx;
-    let impl1_predicates = tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs);
+    let impl1_predicates: Vec<_> = traits::elaborate_predicates(
+        tcx,
+        tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs).predicates.into_iter(),
+    )
+    .map(|obligation| obligation.predicate)
+    .collect();
+
     let mut impl2_predicates = if impl2_node.is_from_trait() {
         // Always applicable traits have to be always applicable without any
         // assumptions.
-        InstantiatedPredicates::empty()
+        Vec::new()
     } else {
-        tcx.predicates_of(impl2_node.def_id()).instantiate(tcx, impl2_substs)
+        traits::elaborate_predicates(
+            tcx,
+            tcx.predicates_of(impl2_node.def_id())
+                .instantiate(tcx, impl2_substs)
+                .predicates
+                .into_iter(),
+        )
+        .map(|obligation| obligation.predicate)
+        .collect()
     };
     debug!(
         "check_always_applicable(\nimpl1_predicates={:?},\nimpl2_predicates={:?}\n)",
@@ -322,13 +336,12 @@ fn check_predicates<'tcx>(
     // which is sound because we forbid impls like the following
     //
     // impl<D: Debug> AlwaysApplicable for D { }
-    let always_applicable_traits =
-        impl1_predicates.predicates.iter().copied().filter(|&predicate| {
-            matches!(
-                trait_predicate_kind(tcx, predicate),
-                Some(TraitSpecializationKind::AlwaysApplicable)
-            )
-        });
+    let always_applicable_traits = impl1_predicates.iter().copied().filter(|&predicate| {
+        matches!(
+            trait_predicate_kind(tcx, predicate),
+            Some(TraitSpecializationKind::AlwaysApplicable)
+        )
+    });
 
     // Include the well-formed predicates of the type parameters of the impl.
     for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().substs {
@@ -340,18 +353,19 @@ fn check_predicates<'tcx>(
             arg,
             span,
         ) {
-            impl2_predicates
-                .predicates
-                .extend(obligations.into_iter().map(|obligation| obligation.predicate))
+            impl2_predicates.extend(
+                traits::elaborate_obligations(tcx, obligations)
+                    .map(|obligation| obligation.predicate),
+            )
         }
     }
-    impl2_predicates.predicates.extend(
+    impl2_predicates.extend(
         traits::elaborate_predicates(tcx, always_applicable_traits)
             .map(|obligation| obligation.predicate),
     );
 
-    for predicate in impl1_predicates.predicates {
-        if !impl2_predicates.predicates.contains(&predicate) {
+    for predicate in impl1_predicates {
+        if !impl2_predicates.contains(&predicate) {
             check_specialization_on(tcx, predicate, span)
         }
     }
