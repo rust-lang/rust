@@ -111,6 +111,8 @@ bitflags::bitflags! {
         const LLVM                = 1 << 7;
         const INCR_RESULT_HASHING = 1 << 8;
 
+        const CGU_NAMES           = 1 << 9;
+
         const DEFAULT = Self::GENERIC_ACTIVITIES.bits |
                         Self::QUERY_PROVIDERS.bits |
                         Self::QUERY_BLOCKED.bits |
@@ -136,6 +138,7 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("args", EventFilter::ARGS),
     ("llvm", EventFilter::LLVM),
     ("incr-result-hashing", EventFilter::INCR_RESULT_HASHING),
+    ("cgu-names", EventFilter::CGU_NAMES),
 ];
 
 /// Something that uniquely identifies a query invocation.
@@ -425,6 +428,7 @@ pub struct SelfProfiler {
     incremental_result_hashing_event_kind: StringId,
     query_blocked_event_kind: StringId,
     query_cache_hit_event_kind: StringId,
+    cgu_merge_event_kind: StringId,
 }
 
 impl SelfProfiler {
@@ -447,6 +451,7 @@ impl SelfProfiler {
             profiler.alloc_string("IncrementalResultHashing");
         let query_blocked_event_kind = profiler.alloc_string("QueryBlocked");
         let query_cache_hit_event_kind = profiler.alloc_string("QueryCacheHit");
+        let cgu_merge_event_kind = profiler.alloc_string("CguMerged");
 
         let mut event_filter_mask = EventFilter::empty();
 
@@ -491,6 +496,7 @@ impl SelfProfiler {
             incremental_result_hashing_event_kind,
             query_blocked_event_kind,
             query_cache_hit_event_kind,
+            cgu_merge_event_kind,
         })
     }
 
