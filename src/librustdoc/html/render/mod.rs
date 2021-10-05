@@ -1344,7 +1344,7 @@ fn render_impl(
                         // because impls can't have a stability.
                         if item.doc_value().is_some() {
                             document_item_info(&mut info_buffer, cx, it, Some(parent));
-                            document_full(&mut doc_buffer, item, cx, 0);
+                            document_full(&mut doc_buffer, item, cx, 3);
                             short_documented = false;
                         } else {
                             // In case the item isn't documented,
