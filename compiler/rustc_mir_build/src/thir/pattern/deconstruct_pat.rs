@@ -48,11 +48,11 @@ use self::SliceKind::*;
 use super::compare_const_vals;
 use super::usefulness::{MatchCheckCtxt, PatCtxt};
 
-use rustc_attr::{Stability, StabilityLevel};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
 use rustc_hir::{HirId, RangeEnd};
+use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::Field;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
@@ -930,52 +930,38 @@ impl<'tcx> SplitWildcard<'tcx> {
                 // witness.
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
 
+                let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
+
                 // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
                 // as though it had an "unknown" constructor to avoid exposing its emptiness. The
                 // exception is if the pattern is at the top level, because we want empty matches to be
                 // considered exhaustive.
-                let is_secretly_empty = def.variants.is_empty()
-                    && !cx.tcx.features().exhaustive_patterns
-                    && !pcx.is_top_level;
+                let is_secretly_empty =
+                    def.variants.is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
 
-                if is_secretly_empty {
-                    smallvec![NonExhaustive]
-                } else if is_declared_nonexhaustive {
-                    def.variants
-                        .iter_enumerated()
-                        .filter_map(|(idx, def)| {
-                            let x = cx.tcx.lookup_stability(def.def_id);
-                            if let Some(Stability {
-                                feature,
-                                level: StabilityLevel::Unstable { .. },
-                            }) = x
-                            {
-                                // The unstable feature is not activated so ignore this variant
-                                if !cx.tcx.stability().active_features.contains(&feature) {
-                                    None
-                                } else {
-                                    Some(Variant(idx))
-                                }
-                            } else {
-                                Some(Variant(idx))
-                            }
-                        })
-                        .chain(Some(NonExhaustive))
-                        .collect()
-                } else if cx.tcx.features().exhaustive_patterns {
-                    // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                    // uninhabited.
-                    def.variants
-                        .iter_enumerated()
-                        .filter(|(_, v)| {
-                            !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
-                                .contains(cx.tcx, cx.module)
-                        })
-                        .map(|(idx, _)| Variant(idx))
-                        .collect()
-                } else {
-                    def.variants.indices().map(|idx| Variant(idx)).collect()
+                let mut ctors: SmallVec<[_; 1]> = def
+                    .variants
+                    .iter_enumerated()
+                    .filter(|(_, v)| {
+                        // Filter variants that depend on a disabled unstalbe feature.
+                        let is_enabled = !matches!(
+                            cx.tcx.eval_stability(v.def_id, None, DUMMY_SP, None),
+                            EvalResult::Deny { .. }
+                        );
+                        // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                        // uninhabited.
+                        let is_uninhabited = is_exhaustive_pat_feature
+                            && v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
+                                .contains(cx.tcx, cx.module);
+                        is_enabled && !is_uninhabited
+                    })
+                    .map(|(idx, _)| Variant(idx))
+                    .collect();
+
+                if is_secretly_empty || is_declared_nonexhaustive {
+                    ctors.push(NonExhaustive);
                 }
+                ctors
             }
             ty::Char => {
                 smallvec![

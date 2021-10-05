@@ -596,6 +596,7 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                         let mut new: Vec<DeconstructedPat<'_, '_>> = split_wildcard
                             .iter_missing(pcx)
                             .filter_map(|missing_ctor| {
+                                // Check if this variant is marked `doc(hidden)`
                                 if let Constructor::Variant(idx) = missing_ctor {
                                     if let ty::Adt(adt, _) = pcx.ty.kind() {
                                         if pcx
@@ -616,7 +617,7 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                                                     .find(|item| item.has_name(sym::hidden))
                                                     .is_some()
                                             })
-                                            .unwrap_or_default()
+                                            .unwrap_or(false)
                                         {
                                             doc_hidden_variant = true;
                                             return None;
