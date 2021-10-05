@@ -1,10 +1,13 @@
-error[E0380]: auto traits cannot have methods or associated items
+error[E0380]: auto traits cannot have associated items
   --> $DIR/issue-23080.rs:5:8
    |
-LL | unsafe auto trait Trait {
-   |                   ----- auto trait cannot have items
-LL |     fn method(&self) {
-   |        ^^^^^^
+LL |   unsafe auto trait Trait {
+   |                     ----- auto trait cannot have associated items
+LL |       fn method(&self) {
+   |  _____-  ^^^^^^
+LL | |         println!("Hello");
+LL | |     }
+   | |_____- help: remove these associated items
 
 error: aborting due to previous error
 
