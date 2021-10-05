@@ -126,7 +126,7 @@ impl Formatter for HTMLFormatter {
                         error_codes: ErrorCodes::Yes,
                         edition: DEFAULT_EDITION,
                         playground: &Some(playground),
-                        heading_level: 0
+                        heading_level: 1
                     }
                     .into_string()
                 )?

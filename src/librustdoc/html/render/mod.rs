@@ -470,11 +470,7 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
     ))
 }
 
-fn document(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, parent: Option<&clean::Item>) {
-    document_at_level(w, cx, item, parent, 0)
-}
-
-fn document_at_level(
+fn document(
     w: &mut Buffer,
     cx: &Context<'_>,
     item: &clean::Item,
@@ -1344,7 +1340,7 @@ fn render_impl(
                         // because impls can't have a stability.
                         if item.doc_value().is_some() {
                             document_item_info(&mut info_buffer, cx, it, Some(parent));
-                            document_full(&mut doc_buffer, item, cx, 3);
+                            document_full(&mut doc_buffer, item, cx, 4);
                             short_documented = false;
                         } else {
                             // In case the item isn't documented,
@@ -1362,7 +1358,7 @@ fn render_impl(
                 } else {
                     document_item_info(&mut info_buffer, cx, item, Some(parent));
                     if rendering_params.show_def_docs {
-                        document_full(&mut doc_buffer, item, cx, 3);
+                        document_full(&mut doc_buffer, item, cx, 4);
                         short_documented = false;
                     }
                 }
@@ -1603,7 +1599,7 @@ fn render_impl(
                     error_codes: cx.shared.codes,
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
-                    heading_level: 0
+                    heading_level: 1
                 }
                 .into_string()
             );

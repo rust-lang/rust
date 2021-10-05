@@ -46,7 +46,7 @@ impl ExternalHtml {
                 error_codes: codes,
                 edition,
                 playground,
-                heading_level: 0
+                heading_level: 1
             }
             .into_string()
         );
@@ -62,7 +62,7 @@ impl ExternalHtml {
                 error_codes: codes,
                 edition,
                 playground,
-                heading_level: 0
+                heading_level: 1
             }
             .into_string()
         );

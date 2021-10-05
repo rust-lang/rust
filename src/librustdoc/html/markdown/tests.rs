@@ -154,7 +154,7 @@ fn test_header() {
             error_codes: ErrorCodes::Yes,
             edition: DEFAULT_EDITION,
             playground: &None,
-            heading_level: 0,
+            heading_level: 1,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
@@ -196,7 +196,7 @@ fn test_header_ids_multiple_blocks() {
             error_codes: ErrorCodes::Yes,
             edition: DEFAULT_EDITION,
             playground: &None,
-            heading_level: 0,
+            heading_level: 1,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);

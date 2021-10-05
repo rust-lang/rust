@@ -19,7 +19,7 @@
 //!     error_codes: ErrorCodes::Yes,
 //!     edition: Edition::Edition2015,
 //!     playground: &None,
-//!     heading_level: 0
+//!     heading_level: 1
 //! };
 //! let html = md.into_string();
 //! // ... something using html
@@ -544,7 +544,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
                 self.buf.push_front((Event::Html(format!("{} ", sec).into()), 0..0));
             }
 
-            let level = std::cmp::min(level + self.level + 1, MAX_HEADER_LEVEL);
+            let level = std::cmp::min(level + self.level, MAX_HEADER_LEVEL);
             self.buf.push_back((Event::Html(format!("</a></h{}>", level).into()), 0..0));
 
             let start_tags = format!(
