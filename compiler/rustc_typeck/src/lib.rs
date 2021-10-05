@@ -107,6 +107,7 @@ use rustc_middle::util;
 use rustc_session::config::EntryFnType;
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt as _,
@@ -328,7 +329,26 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
                 ObligationCauseCode::MainFunctionType,
             );
             let mut fulfillment_cx = traits::FulfillmentContext::new();
-            fulfillment_cx.register_bound(&infcx, ty::ParamEnv::empty(), return_ty, term_id, cause);
+            // normalize any potential projections in the return type, then add
+            // any possible obligations to the fulfillment context.
+            // HACK(ThePuzzlemaker) this feels symptomatic of a problem within
+            // checking trait fulfillment, not this here. I'm not sure why it
+            // works in the example in `fn test()` given in #88609? This also
+            // probably isn't the best way to do this.
+            let InferOk { value: norm_return_ty, obligations } = infcx
+                .partially_normalize_associated_types_in(
+                    cause.clone(),
+                    ty::ParamEnv::empty(),
+                    return_ty,
+                );
+            fulfillment_cx.register_predicate_obligations(&infcx, obligations);
+            fulfillment_cx.register_bound(
+                &infcx,
+                ty::ParamEnv::empty(),
+                norm_return_ty,
+                term_id,
+                cause,
+            );
             if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
                 infcx.report_fulfillment_errors(&err, None, false);
                 error = true;
