@@ -1490,6 +1490,33 @@ macro_rules! uint_impl {
             (c, b | d)
         }
 
+        /// Computes the absolute difference between `self` and `other`.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(int_abs_diff)]
+        #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".abs_diff(80), 20", stringify!($SelfT), ");")]
+        #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".abs_diff(110), 10", stringify!($SelfT), ");")]
+        /// ```
+        #[unstable(feature = "int_abs_diff", issue = "89492")]
+        #[inline]
+        pub const fn abs_diff(self, other: Self) -> Self {
+            if mem::size_of::<Self>() == 1 {
+                // Trick LLVM into generating the psadbw instruction when SSE2
+                // is available and this function is autovectorized for u8's.
+                (self as i32).wrapping_sub(other as i32).abs() as Self
+            } else {
+                if self < other {
+                    other - self
+                } else {
+                    self - other
+                }
+            }
+        }
+
         /// Calculates the multiplication of `self` and `rhs`.
         ///
         /// Returns a tuple of the multiplication along with a boolean
