@@ -331,7 +331,6 @@
 #![feature(total_cmp)]
 #![feature(trace_macros)]
 #![feature(try_blocks)]
-#![feature(try_reserve)]
 #![feature(try_reserve_kind)]
 #![feature(unboxed_closures)]
 #![feature(unwrap_infallible)]
