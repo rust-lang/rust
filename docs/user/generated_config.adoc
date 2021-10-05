@@ -146,11 +146,6 @@ Custom completion snippets.
 --
 Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
 --
-[[rust-analyzer.completion.postfix.snippets]]rust-analyzer.completion.postfix.snippets (default: `{}`)::
-+
---
-Custom postfix completion snippets.
---
 [[rust-analyzer.completion.autoimport.enable]]rust-analyzer.completion.autoimport.enable (default: `true`)::
 +
 --

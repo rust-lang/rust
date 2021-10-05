@@ -2,6 +2,7 @@
 
 mod format_like;
 
+use hir::Documentation;
 use ide_db::{
     helpers::{insert_use::ImportScope, FamousDefs, SnippetCap},
     ty_filter::TryEnum,
@@ -236,11 +237,10 @@ fn add_custom_postfix_completions(
                 Some(imports) => imports,
                 None => return,
             };
-            let mut builder = postfix_snippet(
-                trigger,
-                snippet.description.as_deref().unwrap_or_default(),
-                &snippet.postfix_snippet(&receiver_text),
-            );
+            let body = snippet.postfix_snippet(&receiver_text);
+            let mut builder =
+                postfix_snippet(trigger, snippet.description.as_deref().unwrap_or_default(), &body);
+            builder.documentation(Documentation::new(format!("```rust\n{}\n```", body)));
             for import in imports.into_iter() {
                 builder.add_import(import);
             }
@@ -481,7 +481,7 @@ fn main() {
                 snippets: vec![Snippet::new(
                     &[],
                     &["break".into()],
-                    &["ControlFlow::Break($receiver)".into()],
+                    &["ControlFlow::Break(${receiver})".into()],
                     "",
                     &["core::ops::ControlFlow".into()],
                     crate::SnippetScope::Expr,
