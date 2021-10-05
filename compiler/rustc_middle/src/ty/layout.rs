@@ -2,7 +2,6 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
-
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_hir as hir;

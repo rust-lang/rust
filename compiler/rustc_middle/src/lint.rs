@@ -1,11 +1,11 @@
 use std::cmp;
 
-use crate::ich::StableHashingContext;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
     FutureIncompatibilityReason, Level, Lint, LintId,

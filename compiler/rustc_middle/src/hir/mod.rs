@@ -6,7 +6,6 @@ pub mod exports;
 pub mod map;
 pub mod place;
 
-use crate::ich::StableHashingContext;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 use rustc_ast::Attribute;
@@ -16,6 +15,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_span::DUMMY_SP;
 use std::collections::BTreeMap;
 

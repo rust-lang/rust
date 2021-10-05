@@ -1,7 +1,4 @@
 use crate::ich;
-use crate::middle::cstore::CrateStore;
-use crate::ty::TyCtxt;
-
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -9,6 +6,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathHash, Definitions};
+use rustc_session::cstore::CrateStore;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
@@ -179,42 +177,15 @@ impl<'a> StableHashingContext<'a> {
     }
 }
 
-/// Something that can provide a stable hashing context.
-pub trait StableHashingContextProvider<'a> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'a>;
-}
-
-impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'a> for &'b T {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
-        (**self).get_stable_hashing_context()
-    }
-}
-
-impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'a> for &'b mut T {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
-        (**self).get_stable_hashing_context()
-    }
-}
-
-impl StableHashingContextProvider<'tcx> for TyCtxt<'tcx> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'tcx> {
-        (*self).create_stable_hashing_context()
-    }
-}
-
-impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
-        self.clone()
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
+    #[inline]
     fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
         panic!("Node IDs should not appear in incremental state");
     }
 }
 
 impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
+    #[inline]
     fn hash_spans(&self) -> bool {
         self.hash_spans
     }
@@ -229,6 +200,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         self.definitions.def_span(def_id)
     }
 
+    #[inline]
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,
@@ -237,4 +209,4 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     }
 }
 
-impl rustc_session::HashStableContext for StableHashingContext<'a> {}
+impl<'a> rustc_session::HashStableContext for StableHashingContext<'a> {}

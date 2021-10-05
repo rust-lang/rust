@@ -1,13 +1,13 @@
 //! This module contains `HashStable` implementations for various data types
 //! from `rustc_middle::ty` in no particular order.
 
-use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::middle::region;
 use crate::mir;
 use crate::ty;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_query_system::ich::StableHashingContext;
 use std::cell::RefCell;
 use std::mem;
 
@@ -161,39 +161,5 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for region::Scope {
     #[inline]
     fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> region::Scope {
         *self
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ty::TyVid {
-    fn hash_stable(&self, _hcx: &mut StableHashingContext<'a>, _hasher: &mut StableHasher) {
-        // `TyVid` values are confined to an inference context and hence
-        // should not be hashed.
-        bug!("ty::TyKind::hash_stable() - can't hash a TyVid {:?}.", *self)
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ty::IntVid {
-    fn hash_stable(&self, _hcx: &mut StableHashingContext<'a>, _hasher: &mut StableHasher) {
-        // `IntVid` values are confined to an inference context and hence
-        // should not be hashed.
-        bug!("ty::TyKind::hash_stable() - can't hash an IntVid {:?}.", *self)
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ty::FloatVid {
-    fn hash_stable(&self, _hcx: &mut StableHashingContext<'a>, _hasher: &mut StableHasher) {
-        // `FloatVid` values are confined to an inference context and hence
-        // should not be hashed.
-        bug!("ty::TyKind::hash_stable() - can't hash a FloatVid {:?}.", *self)
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for crate::middle::privacy::AccessLevels {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            let crate::middle::privacy::AccessLevels { ref map } = *self;
-
-            map.hash_stable(hcx, hasher);
-        });
     }
 }

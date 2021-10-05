@@ -2,6 +2,7 @@
 
 use crate::dep_graph::DepNode;
 use crate::dep_graph::SerializedDepNodeIndex;
+use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::{QueryCacheStore, QueryContext, QueryState};
 
@@ -23,7 +24,7 @@ pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
     pub dep_kind: CTX::DepKind,
     pub eval_always: bool,
 
-    pub hash_result: fn(&mut CTX::StableHashingContext, &V) -> Option<Fingerprint>,
+    pub hash_result: fn(&mut StableHashingContext<'_>, &V) -> Option<Fingerprint>,
     pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_>) -> V,
     pub cache_on_disk: fn(CTX, &K, Option<&V>) -> bool,
     pub try_load_from_disk: fn(CTX, SerializedDepNodeIndex) -> Option<V>,
@@ -39,7 +40,7 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
 
     pub(crate) fn hash_result(
         &self,
-        hcx: &mut CTX::StableHashingContext,
+        hcx: &mut StableHashingContext<'_>,
         value: &V,
     ) -> Option<Fingerprint> {
         (self.hash_result)(hcx, value)
@@ -74,10 +75,8 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute_fn(tcx: CTX, key: &Self::Key) -> fn(CTX::DepContext, Self::Key) -> Self::Value;
 
-    fn hash_result(
-        hcx: &mut CTX::StableHashingContext,
-        result: &Self::Value,
-    ) -> Option<Fingerprint>;
+    fn hash_result(hcx: &mut StableHashingContext<'_>, result: &Self::Value)
+    -> Option<Fingerprint>;
 
     fn handle_cycle_error(tcx: CTX, diag: DiagnosticBuilder<'_>) -> Self::Value;
 }

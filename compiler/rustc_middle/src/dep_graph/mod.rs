@@ -1,7 +1,7 @@
-use crate::ich::StableHashingContext;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Session;
 
 #[macro_use]
@@ -90,10 +90,9 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
 
 impl<'tcx> DepContext for TyCtxt<'tcx> {
     type DepKind = DepKind;
-    type StableHashingContext = StableHashingContext<'tcx>;
 
     #[inline]
-    fn create_stable_hashing_context(&self) -> Self::StableHashingContext {
+    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
         TyCtxt::create_stable_hashing_context(*self)
     }
 

@@ -1,12 +1,11 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use rustc_session::Session;
 use rustc_codegen_ssa::back::archive::ArchiveBuilder;
+use rustc_session::Session;
 
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_middle::middle::cstore::DllImport;
-
+use rustc_session::cstore::DllImport;
 
 struct ArchiveConfig<'a> {
     sess: &'a Session,

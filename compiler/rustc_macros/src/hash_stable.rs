@@ -116,14 +116,14 @@ pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::To
     s.bound_impl(
         quote!(
             ::rustc_data_structures::stable_hasher::HashStable<
-                ::rustc_middle::ich::StableHashingContext<'__ctx>,
+                ::rustc_query_system::ich::StableHashingContext<'__ctx>,
             >
         ),
         quote! {
             #[inline]
             fn hash_stable(
                 &self,
-                __hcx: &mut ::rustc_middle::ich::StableHashingContext<'__ctx>,
+                __hcx: &mut ::rustc_query_system::ich::StableHashingContext<'__ctx>,
                 __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
                 #discriminant
                 match *self { #body }

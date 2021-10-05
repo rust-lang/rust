@@ -1,4 +1,5 @@
 #![feature(crate_visibility_modifier)]
+#![feature(min_specialization)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
 
@@ -14,6 +15,7 @@ pub mod parse;
 mod code_stats;
 #[macro_use]
 pub mod config;
+pub mod cstore;
 pub mod filesearch;
 mod options;
 pub mod search_paths;
@@ -28,4 +30,4 @@ pub use getopts;
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in `rustc_middle`.
-pub trait HashStableContext {}
+pub trait HashStableContext: rustc_ast::HashStableContext + rustc_hir::HashStableContext {}

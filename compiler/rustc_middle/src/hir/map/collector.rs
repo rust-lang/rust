@@ -1,7 +1,6 @@
 use crate::arena::Arena;
 use crate::hir::map::Map;
 use crate::hir::{IndexedHir, OwnerNodes, ParentedNode};
-use crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -12,6 +11,7 @@ use rustc_hir::definitions;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, DUMMY_SP};

@@ -43,10 +43,10 @@
 //!   lost during fingerprint computation.
 
 use super::{DepContext, DepKind};
+use crate::ich::StableHashingContext;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-
 use std::fmt;
 use std::hash::Hash;
 
@@ -119,7 +119,7 @@ pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
 
 impl<Ctxt: DepContext, T> DepNodeParams<Ctxt> for T
 where
-    T: HashStable<Ctxt::StableHashingContext> + fmt::Debug,
+    T: for<'a> HashStable<StableHashingContext<'a>> + fmt::Debug,
 {
     #[inline]
     default fn can_reconstruct_query_key() -> bool {

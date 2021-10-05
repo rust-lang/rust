@@ -8,12 +8,12 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorReported;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::middle::cstore::MetadataLoaderDyn;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::{
     config::{self, OutputFilenames, PrintRequest},
+    cstore::MetadataLoaderDyn,
     Session,
 };
 use rustc_span::symbol::Symbol;

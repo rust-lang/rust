@@ -2,13 +2,12 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
+use crate::search_paths::PathKind;
+use crate::utils::NativeLibKind;
 use rustc_ast as ast;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_hir::def_id::{CrateNum, DefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
-use rustc_macros::HashStable;
-use rustc_session::search_paths::PathKind;
-use rustc_session::utils::NativeLibKind;
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -21,7 +20,7 @@ use std::path::{Path, PathBuf};
 
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
-#[derive(PartialEq, Clone, Debug, HashStable, Encodable, Decodable)]
+#[derive(PartialEq, Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
@@ -29,13 +28,14 @@ pub struct CrateSource {
 }
 
 impl CrateSource {
+    #[inline]
     pub fn paths(&self) -> impl Iterator<Item = &PathBuf> {
         self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter()).map(|p| &p.0)
     }
 }
 
 #[derive(Encodable, Decodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-#[derive(HashStable)]
+#[derive(HashStable_Generic)]
 pub enum CrateDepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
@@ -48,6 +48,7 @@ pub enum CrateDepKind {
 }
 
 impl CrateDepKind {
+    #[inline]
     pub fn macros_only(self) -> bool {
         match self {
             CrateDepKind::MacrosOnly => true,
@@ -56,13 +57,13 @@ impl CrateDepKind {
     }
 }
 
-#[derive(Copy, Debug, PartialEq, Clone, Encodable, Decodable, HashStable)]
+#[derive(Copy, Debug, PartialEq, Clone, Encodable, Decodable, HashStable_Generic)]
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,
 }
 
-#[derive(Debug, Encodable, Decodable, HashStable)]
+#[derive(Debug, Encodable, Decodable, HashStable_Generic)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Option<Symbol>,
@@ -73,7 +74,7 @@ pub struct NativeLib {
     pub dll_imports: Vec<DllImport>,
 }
 
-#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub struct DllImport {
     pub name: Symbol,
     pub ordinal: Option<u16>,
@@ -90,7 +91,7 @@ pub struct DllImport {
 ///
 /// The usize value, where present, indicates the size of the function's argument list
 /// in bytes.
-#[derive(Clone, PartialEq, Debug, Encodable, Decodable, HashStable)]
+#[derive(Clone, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum DllCallingConvention {
     C,
     Stdcall(usize),
@@ -98,13 +99,13 @@ pub enum DllCallingConvention {
     Vectorcall(usize),
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Clone, Encodable, Decodable, HashStable_Generic, Debug)]
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct ExternCrate {
     pub src: ExternCrateSource,
 
@@ -123,10 +124,12 @@ impl ExternCrate {
     /// If true, then this crate is the crate named by the extern
     /// crate referenced above. If false, then this crate is a dep
     /// of the crate.
+    #[inline]
     pub fn is_direct(&self) -> bool {
         self.dependency_of == LOCAL_CRATE
     }
 
+    #[inline]
     pub fn rank(&self) -> impl PartialOrd {
         // Prefer:
         // - direct extern crate to indirect
@@ -135,7 +138,7 @@ impl ExternCrate {
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum ExternCrateSource {
     /// Crate is loaded by `extern crate`.
     Extern(
