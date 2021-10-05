@@ -68,6 +68,10 @@ pub struct OwnedHandle {
 /// `NULL`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `NULL` first.
 ///
+/// This type concerns any value other than `NULL` to be valid, including `INVALID_HANDLE_VALUE`.
+/// This is because APIs that use `NULL` as their sentry value don't treat `INVALID_HANDLE_VALUE`
+/// as special.
+///
 /// If this holds a valid handle, it will close the handle on drop.
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
@@ -83,6 +87,10 @@ pub struct HandleOrNull(OwnedHandle);
 /// `OwnedHandle` using its [`TryFrom`] implementation; this conversion takes care of the check for
 /// `INVALID_HANDLE_VALUE`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `INVALID_HANDLE_VALUE` first.
+///
+/// This type concerns any value other than `INVALID_HANDLE_VALUE` to be valid, including `NULL`.
+/// This is because APIs that use `INVALID_HANDLE_VALUE` as their sentry value may return `NULL`
+/// under `windows_subsystem = "windows"` or other situations where I/O devices are detached.
 ///
 /// If this holds a valid handle, it will close the handle on drop.
 #[repr(transparent)]
