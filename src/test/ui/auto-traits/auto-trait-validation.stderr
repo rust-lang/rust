@@ -1,28 +1,37 @@
 error[E0567]: auto traits cannot have generic parameters
-  --> $DIR/auto-trait-validation.rs:3:19
+  --> $DIR/auto-trait-validation.rs:5:19
    |
 LL | auto trait Generic<T> {}
    |            -------^^^ help: remove the parameters
    |            |
    |            auto trait cannot have generic parameters
 
-error[E0568]: auto traits cannot have super traits
-  --> $DIR/auto-trait-validation.rs:5:20
+error[E0568]: auto traits cannot have super traits or lifetime bounds
+  --> $DIR/auto-trait-validation.rs:7:17
    |
 LL | auto trait Bound : Copy {}
-   |            -----   ^^^^ help: remove the super traits
+   |            -----^^^^^^^ help: remove the super traits or lifetime bounds
    |            |
-   |            auto trait cannot have super traits
+   |            auto trait cannot have super traits or lifetime bounds
 
-error[E0380]: auto traits cannot have methods or associated items
-  --> $DIR/auto-trait-validation.rs:7:25
+error[E0568]: auto traits cannot have super traits or lifetime bounds
+  --> $DIR/auto-trait-validation.rs:9:25
+   |
+LL | auto trait LifetimeBound : 'static {}
+   |            -------------^^^^^^^^^^ help: remove the super traits or lifetime bounds
+   |            |
+   |            auto trait cannot have super traits or lifetime bounds
+
+error[E0380]: auto traits cannot have associated items
+  --> $DIR/auto-trait-validation.rs:11:25
    |
 LL | auto trait MyTrait { fn foo() {} }
-   |            -------      ^^^
-   |            |
-   |            auto trait cannot have items
+   |            -------   ---^^^-----
+   |            |         |
+   |            |         help: remove these associated items
+   |            auto trait cannot have associated items
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0380, E0567, E0568.
 For more information about an error, try `rustc --explain E0380`.
