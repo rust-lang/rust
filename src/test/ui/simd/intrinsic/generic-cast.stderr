@@ -1,23 +1,23 @@
 error[E0511]: invalid monomorphization of `simd_cast` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-cast.rs:34:9
+  --> $DIR/generic-cast.rs:34:9
    |
 LL |         simd_cast::<i32, i32>(0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_cast` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-cast.rs:36:9
+  --> $DIR/generic-cast.rs:36:9
    |
 LL |         simd_cast::<i32, i32x4>(0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_cast` intrinsic: expected SIMD return type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-cast.rs:38:9
+  --> $DIR/generic-cast.rs:38:9
    |
 LL |         simd_cast::<i32x4, i32>(x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_cast` intrinsic: expected return type with length 4 (same as input type `i32x4`), found `i32x8` with length 8
-  --> $DIR/simd-intrinsic-generic-cast.rs:40:9
+  --> $DIR/generic-cast.rs:40:9
    |
 LL |         simd_cast::<_, i32x8>(x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
