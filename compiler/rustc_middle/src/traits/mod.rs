@@ -449,6 +449,7 @@ pub enum SelectionError<'tcx> {
     TraitNotObjectSafe(DefId),
     NotConstEvaluatable(NotConstEvaluatable),
     Overflow,
+    ErrorReporting,
 }
 
 /// When performing resolution, it is typically the case that there
