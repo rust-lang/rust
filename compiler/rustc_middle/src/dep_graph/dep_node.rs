@@ -140,11 +140,11 @@ macro_rules! is_eval_always_attr {
 }
 
 macro_rules! contains_anon_attr {
-    ($($attr:ident $(($($attr_args:tt)*))* ),*) => ({$(is_anon_attr!($attr) | )* false});
+    ($(($attr:ident $($attr_args:tt)* )),*) => ({$(is_anon_attr!($attr) | )* false});
 }
 
 macro_rules! contains_eval_always_attr {
-    ($($attr:ident $(($($attr_args:tt)*))* ),*) => ({$(is_eval_always_attr!($attr) | )* false});
+    ($(($attr:ident $($attr_args:tt)* )),*) => ({$(is_eval_always_attr!($attr) | )* false});
 }
 
 #[allow(non_upper_case_globals)]

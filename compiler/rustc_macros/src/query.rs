@@ -455,28 +455,28 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
         // Pass on the fatal_cycle modifier
         if let Some(fatal_cycle) = &modifiers.fatal_cycle {
-            attributes.push(quote! { #fatal_cycle });
+            attributes.push(quote! { (#fatal_cycle) });
         };
         // Pass on the storage modifier
         if let Some(ref ty) = modifiers.storage {
             let span = ty.span();
-            attributes.push(quote_spanned! {span=> storage(#ty) });
+            attributes.push(quote_spanned! {span=> (storage #ty) });
         };
         // Pass on the cycle_delay_bug modifier
         if let Some(cycle_delay_bug) = &modifiers.cycle_delay_bug {
-            attributes.push(quote! { #cycle_delay_bug });
+            attributes.push(quote! { (#cycle_delay_bug) });
         };
         // Pass on the no_hash modifier
         if let Some(no_hash) = &modifiers.no_hash {
-            attributes.push(quote! { #no_hash });
+            attributes.push(quote! { (#no_hash) });
         };
         // Pass on the anon modifier
         if let Some(anon) = &modifiers.anon {
-            attributes.push(quote! { #anon });
+            attributes.push(quote! { (#anon) });
         };
         // Pass on the eval_always modifier
         if let Some(eval_always) = &modifiers.eval_always {
-            attributes.push(quote! { #eval_always });
+            attributes.push(quote! { (#eval_always) });
         };
 
         // This uses the span of the query definition for the commas,
