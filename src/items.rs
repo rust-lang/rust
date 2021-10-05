@@ -1469,12 +1469,17 @@ fn format_tuple_struct(
         format_empty_struct_or_tuple(context, inner_span, offset, &mut result, "(", ")");
     } else {
         let shape = Shape::indented(offset, context.config).sub_width(1)?;
+        let lo = if let Some(generics) = struct_parts.generics {
+            generics.span.hi()
+        } else {
+            struct_parts.ident.span.hi()
+        };
         result = overflow::rewrite_with_parens(
             context,
             &result,
             fields.iter(),
             shape,
-            span,
+            mk_sp(lo, span.hi()),
             context.config.fn_call_width(),
             None,
         )?;
