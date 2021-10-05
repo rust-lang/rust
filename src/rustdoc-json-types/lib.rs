@@ -221,6 +221,8 @@ pub enum ItemEnum {
     Macro(String),
     ProcMacro(ProcMacro),
 
+    PrimitiveType(String),
+
     AssocConst {
         #[serde(rename = "type")]
         type_: Type,
