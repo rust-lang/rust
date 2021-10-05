@@ -360,7 +360,7 @@ version = "0.1.0"
 dependencies = [
  "directories",
  "rustc-workspace-hack",
- "rustc_version",
+ "rustc_version 0.3.3",
  "serde",
  "serde_json",
  "vergen",
@@ -1087,19 +1087,6 @@ checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
 dependencies = [
  "atty",
  "humantime 1.3.0",
- "log",
- "regex",
- "termcolor",
-]
-
-[[package]]
-name = "env_logger"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54532e3223c5af90a6a757c90b5c5521564b07e5e7a958681bcd2afad421cdcd"
-dependencies = [
- "atty",
- "humantime 2.0.1",
  "log",
  "regex",
  "termcolor",
@@ -2250,7 +2237,7 @@ version = "0.1.0"
 dependencies = [
  "colored",
  "compiletest_rs",
- "env_logger 0.8.1",
+ "env_logger 0.9.0",
  "getrandom 0.2.0",
  "hex 0.4.2",
  "libc",
@@ -2258,7 +2245,7 @@ dependencies = [
  "measureme",
  "rand 0.8.4",
  "rustc-workspace-hack",
- "rustc_version",
+ "rustc_version 0.4.0",
  "shell-escape",
  "smallvec",
 ]
@@ -4549,6 +4536,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_version"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
+dependencies = [
+ "semver 1.0.3",
+]
+
+[[package]]
 name = "rustdoc"
 version = "0.0.0"
 dependencies = [
@@ -4908,9 +4904,9 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
 name = "smallvec"
-version = "1.6.1"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
 
 [[package]]
 name = "snap"
