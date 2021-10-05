@@ -4,12 +4,12 @@ error[E0478]: lifetime bound not satisfied
 LL |     x
    |     ^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the function body at 13:9
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/regions-trait-object-subtyping.rs:13:9
    |
 LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
    |         ^^
-note: but lifetime parameter must outlive the lifetime `'b` as defined on the function body at 13:12
+note: but lifetime parameter must outlive the lifetime `'b` as defined here
   --> $DIR/regions-trait-object-subtyping.rs:13:12
    |
 LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
@@ -21,7 +21,7 @@ error[E0495]: cannot infer an appropriate lifetime for automatic coercion due to
 LL |     x
    |     ^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 13:9...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/regions-trait-object-subtyping.rs:13:9
    |
 LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
@@ -31,7 +31,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |     x
    |     ^
-note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 13:12...
+note: but, the lifetime must be valid for the lifetime `'b` as defined here...
   --> $DIR/regions-trait-object-subtyping.rs:13:12
    |
 LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
@@ -52,12 +52,12 @@ LL |     x
    |
    = note: expected struct `Wrapper<&'b mut (dyn Dummy + 'b)>`
               found struct `Wrapper<&'a mut (dyn Dummy + 'a)>`
-note: the lifetime `'b` as defined on the function body at 20:15...
+note: the lifetime `'b` as defined here...
   --> $DIR/regions-trait-object-subtyping.rs:20:15
    |
 LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut dyn Dummy>) -> Wrapper<&'b mut dyn Dummy> {
    |               ^^
-note: ...does not necessarily outlive the lifetime `'a` as defined on the function body at 20:9
+note: ...does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/regions-trait-object-subtyping.rs:20:9
    |
 LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut dyn Dummy>) -> Wrapper<&'b mut dyn Dummy> {

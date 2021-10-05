@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for borrow expression due to 
 LL |             None => &self.val
    |                     ^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the method body at 14:12...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/regions-free-region-ordering-incorrect.rs:14:12
    |
 LL |     fn get<'a>(&'a self) -> &'b T {
@@ -14,7 +14,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |             None => &self.val
    |                     ^^^^^^^^^
-note: but, the lifetime must be valid for the lifetime `'b` as defined on the impl at 13:6...
+note: but, the lifetime must be valid for the lifetime `'b` as defined here...
   --> $DIR/regions-free-region-ordering-incorrect.rs:13:6
    |
 LL | impl<'b, T> Node<'b, T> {

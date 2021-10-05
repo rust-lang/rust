@@ -6,7 +6,7 @@ LL |     closure_expecting_bound(|x: &'x u32| {
    |
    = note: expected reference `&u32`
               found reference `&'x u32`
-note: the anonymous lifetime #1 defined on the body at 14:29...
+note: the anonymous lifetime #1 defined here...
   --> $DIR/expect-region-supply-region-2.rs:14:29
    |
 LL |       closure_expecting_bound(|x: &'x u32| {
@@ -18,7 +18,7 @@ LL | |
 LL | |         f = Some(x);
 LL | |     });
    | |_____^
-note: ...does not necessarily outlive the lifetime `'x` as defined on the function body at 9:30
+note: ...does not necessarily outlive the lifetime `'x` as defined here
   --> $DIR/expect-region-supply-region-2.rs:9:30
    |
 LL | fn expect_bound_supply_named<'x>() {
@@ -32,12 +32,12 @@ LL |     closure_expecting_bound(|x: &'x u32| {
    |
    = note: expected reference `&u32`
               found reference `&'x u32`
-note: the lifetime `'x` as defined on the function body at 9:30...
+note: the lifetime `'x` as defined here...
   --> $DIR/expect-region-supply-region-2.rs:9:30
    |
 LL | fn expect_bound_supply_named<'x>() {
    |                              ^^
-note: ...does not necessarily outlive the anonymous lifetime #1 defined on the body at 14:29
+note: ...does not necessarily outlive the anonymous lifetime #1 defined here
   --> $DIR/expect-region-supply-region-2.rs:14:29
    |
 LL |       closure_expecting_bound(|x: &'x u32| {

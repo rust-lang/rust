@@ -4,7 +4,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL | fn foo<'a: 'b, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
    |                                                            ^^^^^^^^^
    |
-note: hidden type `*mut &'a i32` captures the lifetime `'a` as defined on the function body at 13:8
+note: hidden type `*mut &'a i32` captures the lifetime `'a` as defined here
   --> $DIR/error-handling-2.rs:13:8
    |
 LL | fn foo<'a: 'b, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {

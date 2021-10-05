@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |     match (&t,) {
    |           ^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 1:23...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/issue-52213.rs:1:23
    |
 LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {
@@ -16,7 +16,7 @@ LL |     match (&t,) {
    |           ^^^^^
    = note: expected `(&&(T,),)`
               found `(&&'a (T,),)`
-note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 1:27...
+note: but, the lifetime must be valid for the lifetime `'b` as defined here...
   --> $DIR/issue-52213.rs:1:27
    |
 LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {

@@ -6,7 +6,7 @@ LL |     let _: Box<dyn Foo<Bar = &'a u32>> = make();
    |
    = note: expected trait object `dyn Foo<Bar = &'a u32>`
               found trait object `dyn Foo<Bar = &'static u32>`
-note: the lifetime `'a` as defined on the function body at 12:9...
+note: the lifetime `'a` as defined here...
   --> $DIR/variance-associated-types2.rs:12:9
    |
 LL | fn take<'a>(_: &'a u32) {

@@ -4,12 +4,12 @@ error[E0312]: lifetime of reference outlives lifetime of borrowed content...
 LL |         g2.get()
    |         ^^^^^^^^
    |
-note: ...the reference is valid for the lifetime `'a` as defined on the impl at 18:6...
+note: ...the reference is valid for the lifetime `'a` as defined here...
   --> $DIR/regions-early-bound-error-method.rs:18:6
    |
 LL | impl<'a> Box<'a> {
    |      ^^
-note: ...but the borrowed content is only valid for the lifetime `'b` as defined on the method body at 19:11
+note: ...but the borrowed content is only valid for the lifetime `'b` as defined here
   --> $DIR/regions-early-bound-error-method.rs:19:11
    |
 LL |     fn or<'b,G:GetRef<'b>>(&self, g2: G) -> &'a isize {

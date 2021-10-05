@@ -10,7 +10,7 @@ LL | | fn(&'y u32)) }
    |
    = note: expected enum `Option<fn(&'x u32)>`
               found enum `Option<fn(&'y u32)>`
-note: the lifetime `'x` as defined on the function body at 44:22...
+note: the lifetime `'x` as defined here...
   --> $DIR/hr-subtype.rs:44:22
    |
 LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {
@@ -19,7 +19,7 @@ LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {
 LL | / check! { free_x_vs_free_y: (fn(&'x u32),
 LL | | fn(&'y u32)) }
    | |______________- in this macro invocation
-note: ...does not necessarily outlive the lifetime `'y` as defined on the function body at 44:26
+note: ...does not necessarily outlive the lifetime `'y` as defined here
   --> $DIR/hr-subtype.rs:44:26
    |
 LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {

@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |     Box::new(move |_| fut)
    |              ^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 11:11...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/issue-75777.rs:11:11
    |
 LL | fn inject<'a, Env: 'a, A: 'a + Send>(v: A) -> Box<dyn FnOnce(&'a Env) -> BoxFuture<'a, A>> {

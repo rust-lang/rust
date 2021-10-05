@@ -6,7 +6,7 @@ LL | impl T1 for &dyn T2 {}
    |
    = note: expected trait `<&dyn T2 as T0>`
               found trait `<&(dyn T2 + 'static) as T0>`
-note: the lifetime `'_` as defined on the impl at 8:13...
+note: the lifetime `'_` as defined here...
   --> $DIR/issue-65230.rs:8:13
    |
 LL | impl T1 for &dyn T2 {}

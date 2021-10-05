@@ -6,12 +6,12 @@ LL |     impls_get::<&'min G>();
    |
    = note: expected type `<&'min G as Get>`
               found type `<&'max G as Get>`
-note: the lifetime `'min` as defined on the function body at 10:21...
+note: the lifetime `'min` as defined here...
   --> $DIR/variance-covariant-self-trait-match.rs:10:21
    |
 LL | fn get_min_from_max<'min, 'max, G>()
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime `'max` as defined on the function body at 10:27
+note: ...does not necessarily outlive the lifetime `'max` as defined here
   --> $DIR/variance-covariant-self-trait-match.rs:10:27
    |
 LL | fn get_min_from_max<'min, 'max, G>()
@@ -25,12 +25,12 @@ LL |     impls_get::<&'max G>();
    |
    = note: expected type `<&'max G as Get>`
               found type `<&'min G as Get>`
-note: the lifetime `'min` as defined on the function body at 17:21...
+note: the lifetime `'min` as defined here...
   --> $DIR/variance-covariant-self-trait-match.rs:17:21
    |
 LL | fn get_max_from_min<'min, 'max, G>()
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime `'max` as defined on the function body at 17:27
+note: ...does not necessarily outlive the lifetime `'max` as defined here
   --> $DIR/variance-covariant-self-trait-match.rs:17:27
    |
 LL | fn get_max_from_min<'min, 'max, G>()

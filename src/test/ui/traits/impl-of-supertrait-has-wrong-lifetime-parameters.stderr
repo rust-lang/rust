@@ -4,12 +4,12 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` d
 LL | impl<'a,'b> T2<'a, 'b> for S<'a, 'b> {
    |             ^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the impl at 24:6...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/impl-of-supertrait-has-wrong-lifetime-parameters.rs:24:6
    |
 LL | impl<'a,'b> T2<'a, 'b> for S<'a, 'b> {
    |      ^^
-note: ...but the lifetime must also be valid for the lifetime `'b` as defined on the impl at 24:9...
+note: ...but the lifetime must also be valid for the lifetime `'b` as defined here...
   --> $DIR/impl-of-supertrait-has-wrong-lifetime-parameters.rs:24:9
    |
 LL | impl<'a,'b> T2<'a, 'b> for S<'a, 'b> {

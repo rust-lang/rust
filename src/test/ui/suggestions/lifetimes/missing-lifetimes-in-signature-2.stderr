@@ -6,7 +6,7 @@ LL | fn func<T: Test>(foo: &Foo, t: T) {
 LL |     foo.bar(move |_| {
    |         ^^^
    |
-note: the parameter type `T` must be valid for the anonymous lifetime defined on the function body at 19:24...
+note: the parameter type `T` must be valid for the anonymous lifetime defined here...
   --> $DIR/missing-lifetimes-in-signature-2.rs:19:24
    |
 LL | fn func<T: Test>(foo: &Foo, t: T) {
