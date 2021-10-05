@@ -1,5 +1,3 @@
-// compile-flags:-Zborrowck=mir
-
 #![feature(type_alias_impl_trait)]
 
 #[derive(Clone)]
