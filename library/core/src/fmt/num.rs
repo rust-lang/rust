@@ -305,7 +305,6 @@ macro_rules! impl_Exp {
                     n /= 10;
                     exponent += 1;
                 }
-                let trailing_zeros = exponent;
 
                 let (added_precision, subtracted_precision) = match f.precision() {
                     Some(fmt_prec) => {
@@ -333,7 +332,7 @@ macro_rules! impl_Exp {
                         n += 1;
                     }
                 }
-                (n, exponent, trailing_zeros, added_precision)
+                (n, exponent, exponent, added_precision)
             };
 
             // 39 digits (worst case u128) + . = 40
