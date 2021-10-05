@@ -397,6 +397,7 @@ struct Build {
     install_stage: Option<u32>,
     dist_stage: Option<u32>,
     bench_stage: Option<u32>,
+    patch_binaries_for_nix: Option<bool>,
 }
 
 /// TOML representation of various global install decisions.

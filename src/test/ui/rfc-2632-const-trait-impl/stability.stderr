@@ -13,7 +13,7 @@ error: `<Int as Add>::add` is not yet stable as a const fn
 LL |     Int(1i32) + Int(2i32)
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: Const-stable functions can only call other const-stable functions
+   = help: const-stable functions can only call other const-stable functions
 
 error: aborting due to 2 previous errors
 

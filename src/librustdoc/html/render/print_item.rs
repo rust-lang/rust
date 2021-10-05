@@ -34,6 +34,8 @@ use crate::html::markdown::MarkdownSummaryLine;
 
 const ITEM_TABLE_OPEN: &'static str = "<div class=\"item-table\">";
 const ITEM_TABLE_CLOSE: &'static str = "</div>";
+const ITEM_TABLE_ROW_OPEN: &'static str = "<div class=\"item-row\">";
+const ITEM_TABLE_ROW_CLOSE: &'static str = "</div>";
 
 pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer, page: &Page<'_>) {
     debug_assert!(!item.is_stripped());
@@ -256,9 +258,6 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
     debug!("{:?}", indices);
     let mut curty = None;
-    // See: https://github.com/rust-lang/rust/issues/88545
-    let item_table_block_size = 900usize;
-    let mut item_table_nth_element = 0usize;
 
     for &idx in &indices {
         let myitem = &items[idx];
@@ -285,13 +284,13 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 id = cx.derive_id(short.to_owned()),
                 name = name
             );
-            item_table_nth_element = 0;
         }
 
         match *myitem.kind {
             clean::ExternCrateItem { ref src } => {
                 use crate::html::format::anchor;
 
+                w.write_str(ITEM_TABLE_ROW_OPEN);
                 match *src {
                     Some(ref src) => write!(
                         w,
@@ -312,6 +311,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     ),
                 }
                 w.write_str("</code></div>");
+                w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
 
             clean::ImportItem(ref import) => {
@@ -336,6 +336,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 let add = if stab.is_some() { " " } else { "" };
 
+                w.write_str(ITEM_TABLE_ROW_OPEN);
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}import-item\">\
@@ -348,6 +349,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     imp = import.print(cx),
                     stab_tags = stab_tags.unwrap_or_default(),
                 );
+                w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
 
             _ => {
@@ -368,6 +370,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let add = if stab.is_some() { " " } else { "" };
 
                 let doc_value = myitem.doc_value().unwrap_or_default();
+                w.write_str(ITEM_TABLE_ROW_OPEN);
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}module-item\">\
@@ -390,14 +393,8 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         .collect::<Vec<_>>()
                         .join(" "),
                 );
+                w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
-        }
-
-        item_table_nth_element += 1;
-        if item_table_nth_element > item_table_block_size {
-            w.write_str(ITEM_TABLE_CLOSE);
-            w.write_str(ITEM_TABLE_OPEN);
-            item_table_nth_element = 0;
         }
     }
 

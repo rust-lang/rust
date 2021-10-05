@@ -143,56 +143,41 @@ impl Formatter for HTMLFormatter {
             r##"<script>
 function onEach(arr, func) {{
     if (arr && arr.length > 0 && func) {{
-        for (var i = 0; i < arr.length; i++) {{
-            func(arr[i]);
-        }}
-    }}
-}}
-
-function hasClass(elem, className) {{
-    if (elem && className && elem.className) {{
-        var elemClass = elem.className;
-        var start = elemClass.indexOf(className);
-        if (start === -1) {{
-            return false;
-        }} else if (elemClass.length === className.length) {{
-            return true;
-        }} else {{
-            if (start > 0 && elemClass[start - 1] !== ' ') {{
-                return false;
+        var length = arr.length;
+        var i;
+        for (i = 0; i < length; ++i) {{
+            if (func(arr[i])) {{
+                return true;
             }}
-            var end = start + className.length;
-            if (end < elemClass.length && elemClass[end] !== ' ') {{
-                return false;
-            }}
-            return true;
         }}
-        if (start > 0 && elemClass[start - 1] !== ' ') {{
-            return false;
-        }}
-        var end = start + className.length;
-        if (end < elemClass.length && elemClass[end] !== ' ') {{
-            return false;
-        }}
-        return true;
     }}
     return false;
 }}
 
-onEach(document.getElementsByClassName('rust-example-rendered'), function(e) {{
+function onEachLazy(lazyArray, func) {{
+    return onEach(
+        Array.prototype.slice.call(lazyArray),
+        func);
+}}
+
+function hasClass(elem, className) {{
+    return elem && elem.classList && elem.classList.contains(className);
+}}
+
+onEachLazy(document.getElementsByClassName('rust-example-rendered'), function(e) {{
     if (hasClass(e, 'compile_fail')) {{
         e.addEventListener("mouseover", function(event) {{
-            e.previousElementSibling.childNodes[0].style.color = '#f00';
+            e.parentElement.previousElementSibling.childNodes[0].style.color = '#f00';
         }});
         e.addEventListener("mouseout", function(event) {{
-            e.previousElementSibling.childNodes[0].style.color = '';
+            e.parentElement.previousElementSibling.childNodes[0].style.color = '';
         }});
     }} else if (hasClass(e, 'ignore')) {{
         e.addEventListener("mouseover", function(event) {{
-            e.previousElementSibling.childNodes[0].style.color = '#ff9200';
+            e.parentElement.previousElementSibling.childNodes[0].style.color = '#ff9200';
         }});
         e.addEventListener("mouseout", function(event) {{
-            e.previousElementSibling.childNodes[0].style.color = '';
+            e.parentElement.previousElementSibling.childNodes[0].style.color = '';
         }});
     }}
 }});

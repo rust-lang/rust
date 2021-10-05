@@ -5,8 +5,6 @@ LL | fn take<'a>(_: &'a u32) {
    |         -- lifetime `'a` defined here
 LL |     let _: Box<dyn Foo<Bar = &'a u32>> = make();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to previous error
 

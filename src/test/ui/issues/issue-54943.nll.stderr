@@ -6,8 +6,6 @@ LL | fn boo<'a>() {
 ...
 LL |     let x = foo::<&'a u32>();
    |             ^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to previous error
 

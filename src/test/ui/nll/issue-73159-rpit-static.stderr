@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-73159-rpit-static.rs:9:26
+   |
+LL | impl<'a> Foo<'a> {
+   |      -- lifetime `'a` defined here
+LL |     fn make_it(&self) -> impl Iterator<Item = u8> {
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^ opaque type requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+

@@ -54,8 +54,6 @@ LL | fn foo_hrtb_bar_not<'b, T>(mut t: T)
 ...
 LL |     foo_hrtb_bar_not(&mut t);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
-   |
-   = help: consider replacing `'b` with `'static`
 
 error: implementation of `Bar` is not general enough
   --> $DIR/hrtb-perfect-forwarding.rs:43:5

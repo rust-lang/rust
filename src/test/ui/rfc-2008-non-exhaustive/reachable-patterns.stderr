@@ -129,13 +129,13 @@ LL |     #[deny(non_exhaustive_omitted_patterns)]
    = note: the matched value is of type `ErrorKind` and the `non_exhaustive_omitted_patterns` attribute was found
 
 error: some variants are not matched explicitly
-  --> $DIR/reachable-patterns.rs:153:9
+  --> $DIR/reachable-patterns.rs:157:9
    |
 LL |         _ => {}
    |         ^ pattern `A(_)` not covered
    |
 note: the lint level is defined here
-  --> $DIR/reachable-patterns.rs:151:12
+  --> $DIR/reachable-patterns.rs:155:12
    |
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

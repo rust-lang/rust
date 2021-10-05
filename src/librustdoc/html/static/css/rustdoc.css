@@ -773,22 +773,18 @@ h2.small-section-header > .anchor {
 .block a.current.crate { font-weight: 500; }
 
 .item-table {
-	display: grid;
-	column-gap: 1.2rem;
-	row-gap: 0.0rem;
-	grid-template-columns: auto 1fr;
+	display: table-row;
 	/* align content left */
 	justify-items: start;
 }
-
+.item-row {
+	display: table-row;
+}
 .item-left, .item-right {
-	display: block;
+	display: table-cell;
 }
 .item-left {
-	grid-column: 1;
-}
-.item-right {
-	grid-column: 2;
+	padding-right: 1.2rem;
 }
 
 .search-container {
@@ -1891,6 +1887,9 @@ details.undocumented[open] > summary::before {
 
 	/* Display an alternating layout on tablets and phones */
 	.item-table {
+		display: block;
+	}
+	.item-row {
 		display: flex;
 		flex-flow: column wrap;
 	}

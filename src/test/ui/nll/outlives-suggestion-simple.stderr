@@ -17,8 +17,6 @@ LL | fn foo2<'a>(x: &'a usize) -> &'static usize {
    |         -- lifetime `'a` defined here
 LL |     x
    |     ^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: lifetime may not live long enough
   --> $DIR/outlives-suggestion-simple.rs:14:5
@@ -66,8 +64,6 @@ LL |     pub fn foo<'a>(x: &'a usize) -> Self {
    |                -- lifetime `'a` defined here
 LL |         Foo { x }
    |         ^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: lifetime may not live long enough
   --> $DIR/outlives-suggestion-simple.rs:41:9

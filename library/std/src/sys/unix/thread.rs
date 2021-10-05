@@ -339,14 +339,18 @@ pub fn available_concurrency() -> io::Result<NonZeroUsize> {
 
             Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
         } else if #[cfg(target_os = "haiku")] {
-            let mut sinfo: libc::system_info = crate::mem::zeroed();
-            let res = libc::get_system_info(&mut sinfo);
+            // system_info cpu_count field gets the static data set at boot time with `smp_set_num_cpus`
+            // `get_system_info` calls then `smp_get_num_cpus`
+            unsafe {
+                let mut sinfo: libc::system_info = crate::mem::zeroed();
+                let res = libc::get_system_info(&mut sinfo);
 
-            if res != libc::B_OK {
-                return Err(io::Error::last_os_error());
+                if res != libc::B_OK {
+                    return Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"));
+                }
+
+                Ok(NonZeroUsize::new_unchecked(sinfo.cpu_count as usize))
             }
-
-            Ok(unsafe { NonZeroUsize::new_unchecked(sinfo.cpu_count as usize) })
         } else {
             // FIXME: implement on vxWorks, Redox, l4re
             Err(io::Error::new_const(io::ErrorKind::Unsupported, &"Getting the number of hardware threads is not supported on the target platform"))

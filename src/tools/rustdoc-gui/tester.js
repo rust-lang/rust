@@ -172,7 +172,7 @@ async function main(argv) {
     }
     files.sort();
 
-    console.log(`Running ${files.length} rustdoc-gui tests...`);
+    console.log(`Running ${files.length} rustdoc-gui (${opts["jobs"]} concurrently) ...`);
 
     if (opts["jobs"] < 1) {
         process.setMaxListeners(files.length + 1);
