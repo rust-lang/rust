@@ -2322,7 +2322,24 @@ impl<'a> Parser<'a> {
                 None
             };
             let arrow_span = this.token.span;
-            this.expect(&token::FatArrow)?;
+            if let Err(mut err) = this.expect(&token::FatArrow) {
+                // We might have a `=>` -> `=` or `->` typo (issue #89396).
+                if TokenKind::FatArrow
+                    .similar_tokens()
+                    .map_or(false, |similar_tokens| similar_tokens.contains(&this.token.kind))
+                {
+                    err.span_suggestion(
+                        this.token.span,
+                        "try using a fat arrow here",
+                        "=>".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.emit();
+                    this.bump();
+                } else {
+                    return Err(err);
+                }
+            }
             let arm_start_span = this.token.span;
 
             let expr = this.parse_expr_res(Restrictions::STMT_EXPR, None).map_err(|mut err| {
