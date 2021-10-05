@@ -842,6 +842,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             Overflow => {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
+            SelectionError::ErrorReporting => {
+                bug!("ErrorReporting Overflow should not reach `report_selection_err` call")
+            }
         };
 
         self.note_obligation_cause(&mut err, &obligation);
