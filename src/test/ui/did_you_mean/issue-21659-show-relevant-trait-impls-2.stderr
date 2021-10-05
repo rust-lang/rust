@@ -10,6 +10,11 @@ LL |     f1.foo(1usize);
              <Bar as Foo<i8>>
              <Bar as Foo<u16>>
            and 2 others
+note: required by `Foo::foo`
+  --> $DIR/issue-21659-show-relevant-trait-impls-2.rs:2:5
+   |
+LL |     fn foo(&self, a: A) -> A {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

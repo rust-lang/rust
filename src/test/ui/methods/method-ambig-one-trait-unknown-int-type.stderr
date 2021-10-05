@@ -20,6 +20,11 @@ LL | impl Foo for Vec<usize> {
 ...
 LL | impl Foo for Vec<isize> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
+note: required by `Foo::foo`
+  --> $DIR/method-ambig-one-trait-unknown-int-type.rs:6:5
+   |
+LL |     fn foo(&self) -> isize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:33:20

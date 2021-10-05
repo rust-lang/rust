@@ -29,6 +29,11 @@ LL | impl Into<u32> for Impl {
    = note: and another `impl` found in the `core` crate:
            - impl<T, U> Into<U> for T
              where U: From<T>;
+note: required by `into`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn into(self) -> T;
+   |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
