@@ -6,8 +6,6 @@ LL | pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
 ...
 LL |             s
    |             ^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: lifetime may not live long enough
   --> $DIR/lub-match.rs:39:13
@@ -17,8 +15,6 @@ LL | pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
 ...
 LL |             s
    |             ^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to 2 previous errors
 

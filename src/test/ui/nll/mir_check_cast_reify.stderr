@@ -6,8 +6,6 @@ LL | fn bar<'a>(x: &'a u32) -> &'static u32 {
 ...
 LL |     f(x)
    |     ^^^^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to previous error
 

@@ -5,8 +5,6 @@ LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
    |                        -- lifetime `'a` defined here
 LL |     t
    |     ^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error[E0621]: explicit lifetime required in the type of `u`
   --> $DIR/regions-static-bound.rs:14:5

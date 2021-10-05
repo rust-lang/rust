@@ -19,7 +19,6 @@ LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
    |                    |
    |                    lifetime `'a` defined here
    |
-   = help: consider replacing `'a` with `'static`
 help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, add `'a` as a bound
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {

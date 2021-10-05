@@ -6,8 +6,6 @@ LL | fn foo<'a>(x: i32) {
 ...
 LL |         A::<'a>::X..=A::<'static>::X => (),
    |         ^^^^^^^^^^ requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: lifetime may not live long enough
   --> $DIR/issue-58299.rs:24:27
@@ -17,8 +15,6 @@ LL | fn bar<'a>(x: i32) {
 ...
 LL |         A::<'static>::X..=A::<'a>::X => (),
    |                           ^^^^^^^^^^ requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to 2 previous errors
 

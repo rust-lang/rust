@@ -15,8 +15,6 @@ LL | fn test<'a>() {
    |         -- lifetime `'a` defined here
 LL |     let _:fn(&()) = |_:&'a ()| {};
    |                      ^ requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to 2 previous errors
 

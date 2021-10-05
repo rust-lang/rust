@@ -29,8 +29,6 @@ LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
    |      -- lifetime `'a` defined here
 LL |     Box::new(B(&*v)) as Box<dyn X>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
-   |
-   = help: consider replacing `'a` with `'static`
 
 error[E0515]: cannot return value referencing local data `*v`
   --> $DIR/regions-close-object-into-object-4.rs:9:5

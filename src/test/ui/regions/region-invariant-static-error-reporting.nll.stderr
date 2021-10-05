@@ -6,8 +6,6 @@ LL | fn unify<'a>(x: Option<Invariant<'a>>, f: fn(Invariant<'a>)) {
 LL |     let bad = if x.is_some() {
 LL |         x.unwrap()
    |         ^^^^^^^^^^ `x` escapes the function body here
-   |
-   = help: consider replacing `'a` with `'static`
 
 error: aborting due to previous error
 
