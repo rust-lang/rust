@@ -1,4 +1,3 @@
-#![feature(member_constraints)]
 #![feature(type_alias_impl_trait)]
 
 pub trait A {
