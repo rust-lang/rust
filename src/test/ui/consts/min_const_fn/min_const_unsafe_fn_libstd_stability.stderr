@@ -4,7 +4,7 @@ error: `foo` is not yet stable as a const fn
 LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
    |                                         ^^^^^
    |
-   = help: Const-stable functions can only call other const-stable functions
+   = help: const-stable functions can only call other const-stable functions
 
 error: `foo2` is not yet stable as a const fn
   --> $DIR/min_const_unsafe_fn_libstd_stability.rs:24:42
@@ -12,7 +12,7 @@ error: `foo2` is not yet stable as a const fn
 LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
    |                                          ^^^^^^
    |
-   = help: Const-stable functions can only call other const-stable functions
+   = help: const-stable functions can only call other const-stable functions
 
 error: const-stable function cannot use `#[feature(const_fn_floating_point_arithmetic)]`
   --> $DIR/min_const_unsafe_fn_libstd_stability.rs:29:33
@@ -35,7 +35,7 @@ error: `foo2_gated` is not yet stable as a const fn
 LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
    |                                                ^^^^^^^^^^^^
    |
-   = help: Const-stable functions can only call other const-stable functions
+   = help: const-stable functions can only call other const-stable functions
 
 error: aborting due to 4 previous errors
 

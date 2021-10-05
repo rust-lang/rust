@@ -58,7 +58,7 @@ pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ab
             tcx.sess,
             span,
             E0781,
-            "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers."
+            "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
         )
         .emit()
     }
