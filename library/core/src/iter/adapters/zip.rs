@@ -414,16 +414,14 @@ where
 // Arbitrarily selects the left side of the zip iteration as extractable "source"
 // it would require negative trait bounds to be able to try both
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<S, A, B> SourceIter for Zip<A, B>
+unsafe impl<A, B> SourceIter for Zip<A, B>
 where
-    A: SourceIter<Source = S>,
-    B: Iterator,
-    S: Iterator,
+    A: SourceIter,
 {
-    type Source = S;
+    type Source = A::Source;
 
     #[inline]
-    unsafe fn as_inner(&mut self) -> &mut S {
+    unsafe fn as_inner(&mut self) -> &mut A::Source {
         // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.a) }
     }
