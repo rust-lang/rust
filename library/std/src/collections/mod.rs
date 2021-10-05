@@ -420,7 +420,7 @@ pub use self::hash_map::HashMap;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_set::HashSet;
 
-#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
+#[stable(feature = "try_reserve", since = "1.57.0")]
 pub use alloc_crate::collections::TryReserveError;
 #[unstable(
     feature = "try_reserve_kind",

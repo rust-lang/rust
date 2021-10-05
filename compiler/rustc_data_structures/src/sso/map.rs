@@ -31,7 +31,7 @@ const SSO_ARRAY_SIZE: usize = 8;
 //
 // Missing HashMap API:
 //   all hasher-related
-//   try_reserve (unstable)
+//   try_reserve
 //   shrink_to (unstable)
 //   drain_filter (unstable)
 //   into_keys/into_values (unstable)
