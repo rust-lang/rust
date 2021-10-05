@@ -69,7 +69,21 @@ impl JsonRenderer<'tcx> {
                     .iter()
                     .filter_map(|i| {
                         let item = &i.impl_item;
-                        if item.def_id.is_local() {
+
+                        // HACK(hkmatsumoto): For impls of primitive types, we index them
+                        // regardless of whether they're local. This is because users can
+                        // document primitive items in an arbitrary crate by using
+                        // `doc(primitive)`.
+                        let mut is_primitive_impl = false;
+                        if let clean::types::ItemKind::ImplItem(ref impl_) = *item.kind {
+                            if impl_.trait_.is_none() {
+                                if let clean::types::Type::Primitive(_) = impl_.for_ {
+                                    is_primitive_impl = true;
+                                }
+                            }
+                        }
+
+                        if item.def_id.is_local() || is_primitive_impl {
                             self.item(item.clone()).unwrap();
                             Some(from_item_id(item.def_id))
                         } else {
@@ -191,6 +205,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
     fn after_krate(&mut self) -> Result<(), Error> {
         debug!("Done with crate");
+
+        for primitive in Rc::clone(&self.cache).primitive_locations.values() {
+            self.get_impls(primitive.clone());
+        }
+
         let mut index = (*self.index).clone().into_inner();
         index.extend(self.get_trait_items());
         // This needs to be the default HashMap for compatibility with the public interface for
@@ -236,7 +255,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     )
                 })
                 .collect(),
-            format_version: 7,
+            format_version: 8,
         };
         let mut p = self.out_path.clone();
         p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());
