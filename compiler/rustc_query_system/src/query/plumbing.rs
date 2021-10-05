@@ -540,7 +540,7 @@ where
         // We always expect to find a cached result for things that
         // can be forced from `DepNode`.
         debug_assert!(
-            !dep_node.kind.can_reconstruct_query_key() || result.is_some(),
+            !dep_node.kind.fingerprint_style().reconstructible() || result.is_some(),
             "missing on-disk cache entry for {:?}",
             dep_node
         );
@@ -778,7 +778,7 @@ where
         return false;
     }
 
-    if !<Q::Key as DepNodeParams<CTX::DepContext>>::can_reconstruct_query_key() {
+    if !<Q::Key as DepNodeParams<CTX::DepContext>>::fingerprint_style().reconstructible() {
         return false;
     }
 
