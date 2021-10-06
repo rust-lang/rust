@@ -239,6 +239,8 @@ enum class DerivativeMode {
   ReverseModePrimal = 1,
   ReverseModeGradient = 2,
   ReverseModeCombined = 3,
+  ForwardModeVector = 4,
+  ForwardModeSplit = 5,
 };
 
 static inline std::string to_string(DerivativeMode mode) {

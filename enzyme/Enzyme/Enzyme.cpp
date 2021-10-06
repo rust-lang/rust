@@ -899,7 +899,7 @@ public:
       newFunc = Logic.CreateForwardDiff(
           cast<Function>(fn), retType, constants, TLI, TA,
           /*should return*/ false, /*dretPtr*/ false, mode,
-          /*addedType*/ nullptr, type_args, volatile_args, AtomicAdd, PostOpt);
+          /*addedType*/ nullptr, type_args, volatile_args, PostOpt);
       break;
     case DerivativeMode::ReverseModeCombined:
       newFunc = Logic.CreatePrimalAndGradient(

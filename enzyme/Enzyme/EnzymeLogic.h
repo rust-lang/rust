@@ -165,6 +165,14 @@ public:
                  llvm::Type *, const FnTypeInfo>;
   std::map<ReverseCacheKey, llvm::Function *> ReverseCachedFunctions;
 
+  using ForwardCacheKey =
+      std::tuple<llvm::Function *, DIFFE_TYPE /*retType*/,
+                 std::vector<DIFFE_TYPE> /*constant_args*/,
+                 std::map<llvm::Argument *, bool> /*uncacheable_args*/,
+                 bool /*retval*/, bool /*dretPtr*/, DerivativeMode,
+                 llvm::Type *, const FnTypeInfo>;
+  std::map<ForwardCacheKey, llvm::Function *> ForwardCachedFunctions;
+
   /// Create the derivative function itself.
   ///  \p todiff is the function to differentiate
   ///  \p retType is the activity info of the return
@@ -196,7 +204,7 @@ public:
                     bool returnValue, bool dretUsed, DerivativeMode mode,
                     llvm::Type *additionalArg, const FnTypeInfo &typeInfo,
                     const std::map<llvm::Argument *, bool> _uncacheable_args,
-                    bool AtomicAdd, bool PostOpt = false, bool omp = false);
+                    bool PostOpt = false, bool omp = false);
 
   void clear();
 };

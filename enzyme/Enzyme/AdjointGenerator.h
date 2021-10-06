@@ -384,9 +384,15 @@ public:
                      Value *mask = nullptr, Value *orig_maskInit = nullptr) {
     auto &DL = gutils->newFunc->getParent()->getDataLayout();
 
-    assert(gutils->can_modref_map);
-    assert(gutils->can_modref_map->find(&I) != gutils->can_modref_map->end());
-    bool can_modref = gutils->can_modref_map->find(&I)->second;
+    assert(Mode == DerivativeMode::ForwardMode ||
+           Mode == DerivativeMode::ForwardModeVector || gutils->can_modref_map);
+    assert(Mode == DerivativeMode::ForwardMode ||
+           Mode == DerivativeMode::ForwardModeVector ||
+           gutils->can_modref_map->find(&I) != gutils->can_modref_map->end());
+    bool can_modref = Mode == DerivativeMode::ForwardMode ||
+                              Mode == DerivativeMode::ForwardModeVector
+                          ? false
+                          : gutils->can_modref_map->find(&I)->second;
 
     constantval |= gutils->isConstantValue(&I);
 
@@ -5726,14 +5732,18 @@ public:
     IRBuilder<> BuilderZ(newCall);
     BuilderZ.setFastMathFlags(getFast());
 
-    if (uncacheable_args_map.find(&call) == uncacheable_args_map.end()) {
+    if (uncacheable_args_map.find(&call) == uncacheable_args_map.end() &&
+        Mode != DerivativeMode::ForwardMode &&
+        Mode != DerivativeMode::ForwardModeVector) {
       llvm::errs() << " call: " << call << "\n";
       for (auto &pair : uncacheable_args_map) {
         llvm::errs() << " + " << *pair.first << "\n";
       }
     }
 
-    assert(uncacheable_args_map.find(&call) != uncacheable_args_map.end());
+    assert(uncacheable_args_map.find(&call) != uncacheable_args_map.end() ||
+           Mode == DerivativeMode::ForwardMode ||
+           Mode == DerivativeMode::ForwardModeVector);
     const std::map<Argument *, bool> &uncacheable_args =
         uncacheable_args_map.find(&call)->second;
 
@@ -7613,7 +7623,9 @@ public:
       // If we need this value and it is illegal to recompute it (it writes or
       // may load uncacheable data)
       //    Store and reload it
-      if (Mode != DerivativeMode::ReverseModeCombined && subretused &&
+      if (Mode != DerivativeMode::ReverseModeCombined &&
+          Mode != DerivativeMode::ForwardMode &&
+          Mode != DerivativeMode::ForwardModeVector && subretused &&
           (orig->mayWriteToMemory() ||
            !gutils->legalRecompute(orig, ValueToValueMapTy(), nullptr))) {
         if (!gutils->unnecessaryIntermediates.count(orig)) {
@@ -7719,8 +7731,7 @@ public:
           cast<Function>(called), subretType, argsInverted, gutils->TLI,
           TR.analyzer.interprocedural, /*returnValue*/ retUsed,
           /*subdretptr*/ false, DerivativeMode::ForwardMode, nullptr,
-          nextTypeInfo, uncacheable_args,
-          /*AtomicAdd*/ gutils->AtomicAdd);
+          nextTypeInfo, {});
 
       assert(newcalled);
       FunctionType *FT = cast<FunctionType>(
