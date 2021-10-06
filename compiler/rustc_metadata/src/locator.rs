@@ -232,7 +232,6 @@ use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
 
 use snap::read::FrameDecoder;
-use std::fmt::Write as _;
 use std::io::{Read, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt, fs};
@@ -921,25 +920,13 @@ impl CrateError {
                 // This has to `clone()` to work around lifetime restrictions with `sort_by_key()`.
                 // `sort_by()` could be used instead, but this is in the error path,
                 // so the performance shouldn't matter.
-                libraries.sort_by_cached_key(|lib| lib.source.paths().next().unwrap().clone());
+                libraries.sort_by_cached_key(|lib| lib.source.path().clone());
                 let candidates = libraries
                     .iter()
                     .map(|lib| {
                         let crate_name = &lib.metadata.get_root().name().as_str();
-                        let mut paths = lib.source.paths();
-
-                        // This `unwrap()` should be okay because there has to be at least one
-                        // source file. `CrateSource`'s docs confirm that too.
-                        let mut s = format!(
-                            "\ncrate `{}`: {}",
-                            crate_name,
-                            paths.next().unwrap().display()
-                        );
-                        let padding = 8 + crate_name.len();
-                        for path in paths {
-                            write!(s, "\n{:>padding$}", path.display(), padding = padding).unwrap();
-                        }
-                        s
+                        let path = lib.source.path();
+                        format!("\ncrate `{}`: {}", crate_name, path.display())
                     })
                     .collect::<String>();
                 err.note(&format!("candidates:{}", candidates));
@@ -992,9 +979,8 @@ impl CrateError {
                         msg.push_str(&format!("\ncrate `{}`: {}", crate_name, path.display()));
                     }
                     if let Some(r) = locator.root {
-                        for path in r.source.paths() {
-                            msg.push_str(&format!("\ncrate `{}`: {}", r.name, path.display()));
-                        }
+                        let path = r.source.path();
+                        msg.push_str(&format!("\ncrate `{}`: {}", r.name, path.display()));
                     }
                     err.note(&msg);
                     err

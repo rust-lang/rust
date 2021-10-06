@@ -47,11 +47,6 @@ impl CrateSource {
     }
 
     #[inline]
-    pub fn paths(&self) -> impl Iterator<Item = &PathBuf> {
-        std::iter::once(self.path())
-    }
-
-    #[inline]
     pub fn is_dylib(&self) -> bool {
         self.as_dylib().is_some()
     }
