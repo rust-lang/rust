@@ -167,6 +167,80 @@ impl str {
         self.len() == 0
     }
 
+    /// Returns the first character of a string slice, or [`None`] if it is
+    /// empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_first_last)]
+    /// let s = "🗻∈🌏";
+    /// assert_eq!(s.first(), Some('🗻'));
+    ///
+    /// let s = "";
+    /// assert_eq!(s.first(), None);
+    /// ```
+    #[unstable(feature = "str_first_last", issue = "none")]
+    #[inline]
+    pub fn first(&self) -> Option<char> {
+        self.chars().next()
+    }
+
+    /// Returns the first character and the rest of the string slice, or
+    /// [`None`] if it is empty.
+    ///
+    /// ```
+    /// #![feature(str_first_last)]
+    /// let s = "🗻∈🌏";
+    /// assert_eq!(s.split_first(), Some(('🗻', "∈🌏")));
+    ///
+    /// let s = "";
+    /// assert_eq!(s.split_first(), None);
+    /// ```
+    #[unstable(feature = "str_first_last", issue = "none")]
+    #[inline]
+    pub fn split_first(&self) -> Option<(char, &str)> {
+        let mut iter = self.chars();
+        iter.next().map(|c| (c, iter.as_str()))
+    }
+
+    /// Returns the last character of a string slice, or [`None`] if it is
+    /// empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_first_last)]
+    /// let s = "🗻∈🌏";
+    /// assert_eq!(s.last(), Some('🌏'));
+    ///
+    /// let s = "";
+    /// assert_eq!(s.last(), None);
+    /// ```
+    #[unstable(feature = "str_first_last", issue = "none")]
+    #[inline]
+    pub fn last(&self) -> Option<char> {
+        self.chars().next_back()
+    }
+
+    /// Returns the last character and the rest of the string slice, or
+    /// [`None`] if it is empty.
+    ///
+    /// ```
+    /// #![feature(str_first_last)]
+    /// let s = "🗻∈🌏";
+    /// assert_eq!(s.split_last(), Some(('🌏', "🗻∈")));
+    ///
+    /// let s = "";
+    /// assert_eq!(s.split_last(), None);
+    /// ```
+    #[unstable(feature = "str_first_last", issue = "none")]
+    #[inline]
+    pub fn split_last(&self) -> Option<(char, &str)> {
+        let mut iter = self.chars();
+        iter.next_back().map(|c| (c, iter.as_str()))
+    }
+
     /// Checks that `index`-th byte is the first byte in a UTF-8 code point
     /// sequence or the end of the string.
     ///
