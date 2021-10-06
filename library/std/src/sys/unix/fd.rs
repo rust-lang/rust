@@ -85,7 +85,7 @@ impl FileDesc {
 
     #[cfg(target_os = "espidf")]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        return crate::io::default_read_vectored(|b| self.read(b), bufs);
+        io::default_read_vectored(|b| self.read(b), bufs)
     }
 
     #[inline]
@@ -142,7 +142,7 @@ impl FileDesc {
 
     #[cfg(target_os = "espidf")]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
-        return crate::io::default_read_vectored(|b| self.read_at(b, offset), bufs);
+        io::default_read_vectored(|b| self.read_at(b, offset), bufs)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -170,7 +170,7 @@ impl FileDesc {
 
     #[cfg(target_os = "espidf")]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        return crate::io::default_write_vectored(|b| self.write(b), bufs);
+        io::default_write_vectored(|b| self.write(b), bufs)
     }
 
     #[inline]
@@ -222,7 +222,7 @@ impl FileDesc {
 
     #[cfg(target_os = "espidf")]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
-        return crate::io::default_write_vectored(|b| self.write_at(b, offset), bufs);
+        io::default_write_vectored(|b| self.write_at(b, offset), bufs)
     }
 
     #[cfg(target_os = "linux")]
