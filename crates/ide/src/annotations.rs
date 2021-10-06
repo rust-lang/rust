@@ -66,14 +66,26 @@ pub(crate) fn annotations(
         Either::Left(def) => {
             let (range, ranges_enum_variants) = match def {
                 hir::ModuleDef::Const(konst) => {
-                    (konst.source(db).and_then(|node| name_range(&node, file_id)), vec![])
+                    if config.annotate_references {
+                        (konst.source(db).and_then(|node| name_range(&node, file_id)), vec![])
+                    } else {
+                        (None, vec![])
+                    }
                 }
                 hir::ModuleDef::Trait(trait_) => {
-                    (trait_.source(db).and_then(|node| name_range(&node, file_id)), vec![])
+                    if config.annotate_references || config.annotate_impls {
+                        (trait_.source(db).and_then(|node| name_range(&node, file_id)), vec![])
+                    } else {
+                        (None, vec![])
+                    }
                 }
                 hir::ModuleDef::Adt(adt) => match adt {
                     hir::Adt::Enum(enum_) => (
-                        enum_.source(db).and_then(|node| name_range(&node, file_id)),
+                        if config.annotate_references || config.annotate_impls {
+                            enum_.source(db).and_then(|node| name_range(&node, file_id))
+                        } else {
+                            None
+                        },
                         if config.annotate_enum_variant_references {
                             enum_
                                 .variants(db)
@@ -86,7 +98,13 @@ pub(crate) fn annotations(
                             vec![]
                         },
                     ),
-                    _ => (adt.source(db).and_then(|node| name_range(&node, file_id)), vec![]),
+                    _ => {
+                        if config.annotate_references || config.annotate_impls {
+                            (adt.source(db).and_then(|node| name_range(&node, file_id)), vec![])
+                        } else {
+                            (None, vec![])
+                        }
+                    }
                 },
                 _ => (None, vec![]),
             };
