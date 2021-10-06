@@ -297,6 +297,7 @@
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
+#![feature(mixed_integer_ops)]
 #![cfg_attr(not(bootstrap), feature(must_not_suspend))]
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]

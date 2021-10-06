@@ -245,7 +245,7 @@ const ASCII_CASE_MASK: u8 = 0b0010_0000;
 #[lang = "u8"]
 impl u8 {
     widening_impl! { u8, u16, 8 }
-    uint_impl! { u8, u8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
+    uint_impl! { u8, u8, i8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
     "[0x12]", "", "" }
 
     /// Checks if the value is within the ASCII range.
@@ -779,21 +779,21 @@ impl u8 {
 #[lang = "u16"]
 impl u16 {
     widening_impl! { u16, u32, 16 }
-    uint_impl! { u16, u16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
+    uint_impl! { u16, u16, i16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "u32"]
 impl u32 {
     widening_impl! { u32, u64, 32 }
-    uint_impl! { u32, u32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
+    uint_impl! { u32, u32, i32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
 #[lang = "u64"]
 impl u64 {
     widening_impl! { u64, u128, 64 }
-    uint_impl! { u64, u64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
+    uint_impl! { u64, u64, i64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
@@ -802,7 +802,7 @@ impl u64 {
 
 #[lang = "u128"]
 impl u128 {
-    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, 16,
+    uint_impl! { u128, u128, i128, 128, 340282366920938463463374607431768211455, 16,
     "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
     "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
     "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
@@ -816,7 +816,7 @@ impl u128 {
 #[lang = "usize"]
 impl usize {
     widening_impl! { usize, u32, 16 }
-    uint_impl! { usize, u16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
+    uint_impl! { usize, u16, isize, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
@@ -824,7 +824,7 @@ impl usize {
 #[lang = "usize"]
 impl usize {
     widening_impl! { usize, u64, 32 }
-    uint_impl! { usize, u32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
+    uint_impl! { usize, u32, isize, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
@@ -833,7 +833,7 @@ impl usize {
 #[lang = "usize"]
 impl usize {
     widening_impl! { usize, u128, 64 }
-    uint_impl! { usize, u64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
+    uint_impl! { usize, u64, isize, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
      "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
