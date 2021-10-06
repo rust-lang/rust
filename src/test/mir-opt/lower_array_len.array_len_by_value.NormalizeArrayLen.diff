@@ -1,0 +1,30 @@
+- // MIR for `array_len_by_value` before NormalizeArrayLen
++ // MIR for `array_len_by_value` after NormalizeArrayLen
+  
+  fn array_len_by_value(_1: [u8; N]) -> usize {
+      debug arr => _1;                     // in scope 0 at $DIR/lower_array_len.rs:37:43: 37:46
+      let mut _0: usize;                   // return place in scope 0 at $DIR/lower_array_len.rs:37:60: 37:65
+      let mut _2: &[u8];                   // in scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
+      let mut _3: &[u8; N];                // in scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
++     let mut _4: &[u8; N];                // in scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
+          StorageLive(_3);                 // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
+          _3 = &_1;                        // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
++         StorageLive(_4);                 // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
++         _4 = _3;                         // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
+          _2 = move _3 as &[u8] (Pointer(Unsize)); // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
+          StorageDead(_3);                 // scope 0 at $DIR/lower_array_len.rs:38:7: 38:8
+-         _0 = Len((*_2));                 // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
++         _0 = Len((*_4));                 // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
++         StorageDead(_4);                 // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
+          goto -> bb1;                     // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
+      }
+  
+      bb1: {
+          StorageDead(_2);                 // scope 0 at $DIR/lower_array_len.rs:38:13: 38:14
+          return;                          // scope 0 at $DIR/lower_array_len.rs:39:2: 39:2
+      }
+  }
+  

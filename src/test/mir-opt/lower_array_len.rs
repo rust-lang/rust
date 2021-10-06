@@ -1,6 +1,3 @@
-
-Viewed
-@@ -0,0 +1,47 @@
 // compile-flags: -Z mir-opt-level=3
 
 // EMIT_MIR lower_array_len.array_bound.NormalizeArrayLen.diff

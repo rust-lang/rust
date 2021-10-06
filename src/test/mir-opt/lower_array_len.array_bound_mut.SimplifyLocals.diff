@@ -1,0 +1,96 @@
+- // MIR for `array_bound_mut` before SimplifyLocals
++ // MIR for `array_bound_mut` after SimplifyLocals
+  
+  fn array_bound_mut(_1: usize, _2: &mut [u8; N]) -> u8 {
+      debug index => _1;                   // in scope 0 at $DIR/lower_array_len.rs:17:40: 17:45
+      debug slice => _2;                   // in scope 0 at $DIR/lower_array_len.rs:17:54: 17:59
+      let mut _0: u8;                      // return place in scope 0 at $DIR/lower_array_len.rs:17:78: 17:80
+      let mut _3: bool;                    // in scope 0 at $DIR/lower_array_len.rs:18:8: 18:27
+      let mut _4: usize;                   // in scope 0 at $DIR/lower_array_len.rs:18:8: 18:13
+      let mut _5: usize;                   // in scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-     let mut _6: &[u8];                   // in scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-     let mut _7: &[u8; N];                // in scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-     let _8: usize;                       // in scope 0 at $DIR/lower_array_len.rs:19:15: 19:20
+-     let mut _9: usize;                   // in scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
+-     let mut _10: bool;                   // in scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
+-     let _11: usize;                      // in scope 0 at $DIR/lower_array_len.rs:21:15: 21:16
+-     let mut _12: usize;                  // in scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
+-     let mut _13: bool;                   // in scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
+-     let mut _14: &[u8; N];               // in scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
++     let _6: usize;                       // in scope 0 at $DIR/lower_array_len.rs:19:15: 19:20
++     let mut _7: usize;                   // in scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
++     let mut _8: bool;                    // in scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
++     let _9: usize;                       // in scope 0 at $DIR/lower_array_len.rs:21:15: 21:16
++     let mut _10: usize;                  // in scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
++     let mut _11: bool;                   // in scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/lower_array_len.rs:18:8: 18:27
+          StorageLive(_4);                 // scope 0 at $DIR/lower_array_len.rs:18:8: 18:13
+          _4 = _1;                         // scope 0 at $DIR/lower_array_len.rs:18:8: 18:13
+          StorageLive(_5);                 // scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-         StorageLive(_6);                 // scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-         StorageLive(_7);                 // scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-         _7 = &(*_2);                     // scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-         StorageLive(_14);                // scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-         _14 = _7;                        // scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-         _6 = move _7 as &[u8] (Pointer(Unsize)); // scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-         StorageDead(_7);                 // scope 0 at $DIR/lower_array_len.rs:18:20: 18:21
+          _5 = const N;                    // scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-         StorageDead(_14);                // scope 0 at $DIR/lower_array_len.rs:18:16: 18:27
+-         StorageDead(_6);                 // scope 0 at $DIR/lower_array_len.rs:18:26: 18:27
+          _3 = Lt(move _4, move _5);       // scope 0 at $DIR/lower_array_len.rs:18:8: 18:27
+          StorageDead(_5);                 // scope 0 at $DIR/lower_array_len.rs:18:26: 18:27
+          StorageDead(_4);                 // scope 0 at $DIR/lower_array_len.rs:18:26: 18:27
+          switchInt(move _3) -> [false: bb3, otherwise: bb1]; // scope 0 at $DIR/lower_array_len.rs:18:8: 18:27
+      }
+  
+      bb1: {
+-         StorageLive(_8);                 // scope 0 at $DIR/lower_array_len.rs:19:15: 19:20
+-         _8 = _1;                         // scope 0 at $DIR/lower_array_len.rs:19:15: 19:20
+-         _9 = const N;                    // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
+-         _10 = Lt(_8, _9);                // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
+-         assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, _8) -> bb2; // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
++         StorageLive(_6);                 // scope 0 at $DIR/lower_array_len.rs:19:15: 19:20
++         _6 = _1;                         // scope 0 at $DIR/lower_array_len.rs:19:15: 19:20
++         _7 = const N;                    // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
++         _8 = Lt(_6, _7);                 // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
++         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb2; // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
+      }
+  
+      bb2: {
+-         _0 = (*_2)[_8];                  // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
+-         StorageDead(_8);                 // scope 0 at $DIR/lower_array_len.rs:20:5: 20:6
++         _0 = (*_2)[_6];                  // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
++         StorageDead(_6);                 // scope 0 at $DIR/lower_array_len.rs:20:5: 20:6
+          goto -> bb5;                     // scope 0 at $DIR/lower_array_len.rs:18:5: 24:6
+      }
+  
+      bb3: {
+-         StorageLive(_11);                // scope 0 at $DIR/lower_array_len.rs:21:15: 21:16
+-         _11 = const 0_usize;             // scope 0 at $DIR/lower_array_len.rs:21:15: 21:16
+-         _12 = const N;                   // scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
+-         _13 = Lt(const 0_usize, _12);    // scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
+-         assert(move _13, "index out of bounds: the length is {} but the index is {}", move _12, const 0_usize) -> bb4; // scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
++         StorageLive(_9);                 // scope 0 at $DIR/lower_array_len.rs:21:15: 21:16
++         _9 = const 0_usize;              // scope 0 at $DIR/lower_array_len.rs:21:15: 21:16
++         _10 = const N;                   // scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
++         _11 = Lt(const 0_usize, _10);    // scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
++         assert(move _11, "index out of bounds: the length is {} but the index is {}", move _10, const 0_usize) -> bb4; // scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
+      }
+  
+      bb4: {
+-         (*_2)[_11] = const 42_u8;        // scope 0 at $DIR/lower_array_len.rs:21:9: 21:22
+-         StorageDead(_11);                // scope 0 at $DIR/lower_array_len.rs:21:22: 21:23
++         (*_2)[_9] = const 42_u8;         // scope 0 at $DIR/lower_array_len.rs:21:9: 21:22
++         StorageDead(_9);                 // scope 0 at $DIR/lower_array_len.rs:21:22: 21:23
+          _0 = const 42_u8;                // scope 0 at $DIR/lower_array_len.rs:23:9: 23:11
+          goto -> bb5;                     // scope 0 at $DIR/lower_array_len.rs:18:5: 24:6
+      }
+  
+      bb5: {
+          StorageDead(_3);                 // scope 0 at $DIR/lower_array_len.rs:24:5: 24:6
+          return;                          // scope 0 at $DIR/lower_array_len.rs:25:2: 25:2
+      }
+  }
+  
