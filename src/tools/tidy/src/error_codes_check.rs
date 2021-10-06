@@ -15,7 +15,7 @@ const EXEMPTED_FROM_TEST: &[&str] = &[
 ];
 
 // Some error codes don't have any tests apparently...
-const IGNORE_EXPLANATION_CHECK: &[&str] = &["E0570", "E0601", "E0602", "E0729"];
+const IGNORE_EXPLANATION_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602", "E0729"];
 
 // If the file path contains any of these, we don't want to try to extract error codes from it.
 //
