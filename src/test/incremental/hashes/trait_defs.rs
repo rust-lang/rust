@@ -33,7 +33,7 @@ trait TraitVisibility { }
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="hir_owner", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 pub trait TraitVisibility { }
 
@@ -46,7 +46,7 @@ trait TraitUnsafety { }
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="hir_owner", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 unsafe trait TraitUnsafety { }
 
@@ -60,7 +60,7 @@ trait TraitAddMethod {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,associated_item_def_ids,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 pub trait TraitAddMethod {
     fn method();
