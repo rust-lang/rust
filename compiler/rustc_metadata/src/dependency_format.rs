@@ -134,7 +134,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                     continue;
                 }
                 let src = tcx.used_crate_source(cnum);
-                if src.rlib.is_some() {
+                if src.is_rlib() {
                     continue;
                 }
                 sess.err(&format!(
@@ -158,7 +158,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         }
         let name = tcx.crate_name(cnum);
         let src = tcx.used_crate_source(cnum);
-        if src.dylib.is_some() {
+        if src.is_dylib() {
             tracing::info!("adding dylib: {}", name);
             add_library(tcx, cnum, RequireDynamic, &mut formats);
             let deps = tcx.dylib_dependency_formats(cnum);
@@ -186,11 +186,11 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     // (e.g., it's an allocator) then we skip it here as well.
     for &cnum in tcx.crates(()).iter() {
         let src = tcx.used_crate_source(cnum);
-        if src.dylib.is_none()
+        if !src.is_dylib()
             && !formats.contains_key(&cnum)
             && tcx.dep_kind(cnum) == CrateDepKind::Explicit
         {
-            assert!(src.rlib.is_some() || src.rmeta.is_some());
+            assert!(src.is_rlib() || src.is_rmeta());
             tracing::info!("adding staticlib: {}", tcx.crate_name(cnum));
             add_library(tcx, cnum, RequireStatic, &mut formats);
             ret[cnum.as_usize() - 1] = Linkage::Static;
@@ -218,8 +218,8 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let src = tcx.used_crate_source(cnum);
         match *kind {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
-            Linkage::Static if src.rlib.is_some() => continue,
-            Linkage::Dynamic if src.dylib.is_some() => continue,
+            Linkage::Static if src.is_rlib() => continue,
+            Linkage::Dynamic if src.is_dylib() => continue,
             kind => {
                 let kind = match kind {
                     Linkage::Static => "rlib",
@@ -282,7 +282,7 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
             if tcx.dep_kind(cnum).macros_only() {
                 return None;
             }
-            Some(tcx.used_crate_source(cnum).rlib.is_some())
+            Some(tcx.used_crate_source(cnum).is_rlib())
         })
         .all(|is_rlib| is_rlib);
     if !all_crates_available_as_rlib {

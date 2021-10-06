@@ -21,16 +21,73 @@ use std::path::{Path, PathBuf};
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
 #[derive(PartialEq, Clone, Debug, HashStable_Generic, Encodable, Decodable)]
-pub struct CrateSource {
-    pub dylib: Option<(PathBuf, PathKind)>,
-    pub rlib: Option<(PathBuf, PathKind)>,
-    pub rmeta: Option<(PathBuf, PathKind)>,
+pub enum CrateSource {
+    Dylib(PathBuf, PathKind),
+    Rlib(PathBuf, PathKind),
+    Rmeta(PathBuf, PathKind),
 }
 
 impl CrateSource {
     #[inline]
+    pub fn path(&self) -> &PathBuf {
+        match self {
+            CrateSource::Dylib(p, _) => p,
+            CrateSource::Rlib(p, _) => p,
+            CrateSource::Rmeta(p, _) => p,
+        }
+    }
+
+    #[inline]
+    pub fn kind(&self) -> PathKind {
+        match *self {
+            CrateSource::Dylib(_, k) => k,
+            CrateSource::Rlib(_, k) => k,
+            CrateSource::Rmeta(_, k) => k,
+        }
+    }
+
+    #[inline]
     pub fn paths(&self) -> impl Iterator<Item = &PathBuf> {
-        self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter()).map(|p| &p.0)
+        std::iter::once(self.path())
+    }
+
+    #[inline]
+    pub fn is_dylib(&self) -> bool {
+        self.as_dylib().is_some()
+    }
+
+    #[inline]
+    pub fn as_dylib(&self) -> Option<(&PathBuf, PathKind)> {
+        match self {
+            CrateSource::Dylib(p, k) => Some((p, *k)),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn is_rlib(&self) -> bool {
+        self.as_rlib().is_some()
+    }
+
+    #[inline]
+    pub fn as_rlib(&self) -> Option<(&PathBuf, PathKind)> {
+        match self {
+            CrateSource::Rlib(p, k) => Some((p, *k)),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn is_rmeta(&self) -> bool {
+        self.as_rmeta().is_some()
+    }
+
+    #[inline]
+    pub fn as_rmeta(&self) -> Option<(&PathBuf, PathKind)> {
+        match self {
+            CrateSource::Rmeta(p, k) => Some((p, *k)),
+            _ => None,
+        }
     }
 }
 

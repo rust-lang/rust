@@ -468,11 +468,16 @@ impl<'a> CrateLocator<'a> {
         let mut slot = None;
         // Order here matters, rmeta should come first. See comment in
         // `extract_one` below.
-        let source = CrateSource {
-            rmeta: self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot)?,
-            rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)?,
-            dylib: self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot)?,
-        };
+        let source =
+            if let Some((p, k)) = self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot)? {
+                CrateSource::Rmeta(p, k)
+            } else if let Some((p, k)) = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)? {
+                CrateSource::Rlib(p, k)
+            } else if let Some((p, k)) = self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot)? {
+                CrateSource::Dylib(p, k)
+            } else {
+                panic!("no source found")
+            };
         Ok(slot.map(|(svh, metadata)| (svh, Library { source, metadata })))
     }
 
@@ -801,9 +806,9 @@ fn find_plugin_registrar_impl<'a>(
     );
 
     match locator.maybe_load_library_crate()? {
-        Some(library) => match library.source.dylib {
-            Some(dylib) => Ok(dylib.0),
-            None => Err(CrateError::NonDylibPlugin(name)),
+        Some(library) => match library.source {
+            CrateSource::Dylib(path, _) => Ok(path),
+            _ => Err(CrateError::NonDylibPlugin(name)),
         },
         None => Err(locator.into_error(None)),
     }

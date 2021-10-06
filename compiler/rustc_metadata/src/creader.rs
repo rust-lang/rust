@@ -112,15 +112,16 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
                     writeln!(fmt, "  cnum: {}", cnum)?;
                     writeln!(fmt, "  hash: {}", data.hash())?;
                     writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
-                    let CrateSource { dylib, rlib, rmeta } = data.source();
-                    if let Some(dylib) = dylib {
-                        writeln!(fmt, "  dylib: {}", dylib.0.display())?;
-                    }
-                    if let Some(rlib) = rlib {
-                        writeln!(fmt, "   rlib: {}", rlib.0.display())?;
-                    }
-                    if let Some(rmeta) = rmeta {
-                        writeln!(fmt, "   rmeta: {}", rmeta.0.display())?;
+                    match data.source() {
+                        CrateSource::Dylib(path, _) => {
+                            writeln!(fmt, "  dylib: {}", path.display())?;
+                        }
+                        CrateSource::Rlib(path, _) => {
+                            writeln!(fmt, "   rlib: {}", path.display())?;
+                        }
+                        CrateSource::Rmeta(path, _) => {
+                            writeln!(fmt, "   rmeta: {}", path.display())?;
+                        }
                     }
                 },
             );
@@ -297,9 +298,7 @@ impl<'a> CrateLoader<'a> {
                 if let Some(mut files) = entry.files() {
                     if files.any(|l| {
                         let l = l.canonicalized();
-                        source.dylib.as_ref().map(|(p, _)| p) == Some(l)
-                            || source.rlib.as_ref().map(|(p, _)| p) == Some(l)
-                            || source.rmeta.as_ref().map(|(p, _)| p) == Some(l)
+                        source.path() == l
                     }) {
                         ret = Some(cnum);
                     }
@@ -313,13 +312,7 @@ impl<'a> CrateLoader<'a> {
             // have to make sure that this crate was found in the crate lookup
             // path (this is a top-level dependency) as we don't want to
             // implicitly load anything inside the dependency lookup path.
-            let prev_kind = source
-                .dylib
-                .as_ref()
-                .or(source.rlib.as_ref())
-                .or(source.rmeta.as_ref())
-                .expect("No sources for crate")
-                .1;
+            let prev_kind = source.kind();
             if kind.matches(prev_kind) {
                 ret = Some(cnum);
             } else {
@@ -414,8 +407,11 @@ impl<'a> CrateLoader<'a> {
                 }),
                 None => (&source, &crate_root),
             };
-            let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
-            Some(self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.stable_crate_id())?)
+            let dlsym_dylib = match dlsym_source {
+                CrateSource::Dylib(path, _) => path,
+                _ => panic!("no dylib for a proc-macro crate"),
+            };
+            Some(self.dlsym_proc_macros(&dlsym_dylib, dlsym_root.stable_crate_id())?)
         } else {
             None
         };

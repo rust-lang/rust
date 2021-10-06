@@ -6,7 +6,7 @@ use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
-use rustc_session::cstore::DllImport;
+use rustc_session::cstore::{CrateSource, DllImport};
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
@@ -185,16 +185,18 @@ pub fn each_linked_rlib(
             None => return Err("could not find formats for rlibs".to_string()),
         }
         let name = &info.crate_name[&cnum];
-        let used_crate_source = &info.used_crate_source[&cnum];
-        let path = if let Some((path, _)) = &used_crate_source.rlib {
-            path
-        } else if used_crate_source.rmeta.is_some() {
-            return Err(format!(
-                "could not find rlib for: `{}`, found rmeta (metadata) file",
-                name
-            ));
-        } else {
-            return Err(format!("could not find rlib for: `{}`", name));
+        let used_crate_source = info.used_crate_source[&cnum].as_ref();
+        let path = match used_crate_source {
+            CrateSource::Rlib(path, _) => path,
+            CrateSource::Rmeta(..) => {
+                return Err(format!(
+                    "could not find rlib for: `{}`, found rmeta (metadata) file",
+                    name
+                ));
+            }
+            CrateSource::Dylib(..) => {
+                return Err(format!("could not find rlib for: `{}`", name));
+            }
         };
         f(cnum, &path);
     }
@@ -1735,9 +1737,8 @@ fn add_rpath_args(
             .iter()
             .filter_map(|cnum| {
                 codegen_results.crate_info.used_crate_source[cnum]
-                    .dylib
-                    .as_ref()
-                    .map(|(path, _)| &**path)
+                    .as_dylib()
+                    .map(|(p, _)| p.as_ref())
             })
             .collect::<Vec<_>>();
         let mut rpath_config = RPathConfig {
@@ -2239,7 +2240,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                     }
                 }
             }
-            Linkage::Dynamic => add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0),
+            Linkage::Dynamic => add_dynamic_crate(cmd, sess, src.as_dylib().unwrap().0),
         }
 
         if group_end == Some(cnum) {
@@ -2288,7 +2289,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         cnum: CrateNum,
     ) {
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
-        let cratepath = &src.rlib.as_ref().unwrap().0;
+        let cratepath = src.as_rlib().unwrap().0;
 
         let mut link_upstream = |path: &Path| {
             // If we're creating a dylib, then we need to include the
