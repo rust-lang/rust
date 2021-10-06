@@ -1,7 +1,7 @@
 //! This pass eliminates casting of arrays into slices when their length
 //! is taken using `.len()` method. Handy to preserve information in MIR for const prop
 
-use crate::transform::MirPass;
+use crate::MirPass;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
