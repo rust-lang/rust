@@ -98,6 +98,17 @@ pub fn run(update_mode: UpdateMode) {
     )
     .changed;
 
+    // This has to be in lib.rs, otherwise rustfmt doesn't work
+    file_change |= replace_region_in_file(
+        Path::new("clippy_lints/src/lib.rs"),
+        "begin lints modules",
+        "end lints modules",
+        false,
+        update_mode == UpdateMode::Change,
+        || vec![gen_modules_list(usable_lints.iter())],
+    )
+    .changed;
+
     if file_change && update_mode == UpdateMode::Check {
         exit_with_failure();
     }
@@ -111,11 +122,6 @@ pub fn run(update_mode: UpdateMode) {
         "clippy_lints/src/lib.deprecated.rs",
         update_mode,
         &gen_deprecated(deprecated_lints.iter()),
-    );
-    process_file(
-        "clippy_lints/src/lib.mods.rs",
-        update_mode,
-        &gen_modules_list(usable_lints.iter()),
     );
 
     let all_group_lints = usable_lints.iter().filter(|l| {
