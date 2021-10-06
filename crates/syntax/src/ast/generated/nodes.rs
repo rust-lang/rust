@@ -1290,6 +1290,7 @@ impl BoxPat {
 pub struct RestPat {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::HasAttrs for RestPat {}
 impl RestPat {
     pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
 }
@@ -1418,7 +1419,7 @@ pub struct RecordPatFieldList {
 impl RecordPatFieldList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn fields(&self) -> AstChildren<RecordPatField> { support::children(&self.syntax) }
-    pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
+    pub fn rest_pat(&self) -> Option<RestPat> { support::child(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 
@@ -3836,6 +3837,7 @@ impl AstNode for AnyHasAttrs {
             | MATCH_ARM_LIST
             | MATCH_ARM
             | IDENT_PAT
+            | REST_PAT
             | RECORD_PAT_FIELD => true,
             _ => false,
         }

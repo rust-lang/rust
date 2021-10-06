@@ -62,7 +62,8 @@ SOURCE_FILE@0..103
             RECORD_PAT_FIELD_LIST@66..72
               L_CURLY@66..67 "{"
               WHITESPACE@67..68 " "
-              DOT2@68..70 ".."
+              REST_PAT@68..70
+                DOT2@68..70 ".."
               WHITESPACE@70..71 " "
               R_CURLY@71..72 "}"
           WHITESPACE@72..73 " "
