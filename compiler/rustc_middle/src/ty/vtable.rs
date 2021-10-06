@@ -52,11 +52,6 @@ impl<'tcx> TyCtxt<'tcx> {
         poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
     ) -> AllocId {
         let tcx = self;
-        let vtables_cache = tcx.vtables_cache.lock();
-        if let Some(alloc_id) = vtables_cache.get(&(ty, poly_trait_ref)).cloned() {
-            return alloc_id;
-        }
-        drop(vtables_cache);
 
         let vtable_entries = if let Some(poly_trait_ref) = poly_trait_ref {
             let trait_ref = poly_trait_ref.with_self_ty(tcx, ty);
@@ -119,9 +114,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         vtable.mutability = Mutability::Not;
-        let alloc_id = tcx.create_memory_alloc(tcx.intern_const_alloc(vtable));
-        let mut vtables_cache = self.vtables_cache.lock();
-        vtables_cache.insert((ty, poly_trait_ref), alloc_id);
-        alloc_id
+        tcx.create_memory_alloc(tcx.intern_const_alloc(vtable))
     }
 }
