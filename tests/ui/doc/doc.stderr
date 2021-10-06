@@ -186,11 +186,5 @@ error: you should put `mycrate::Collection` between ticks in the documentation
 LL | /// An iterator over mycrate::Collection's values.
    |                      ^^^^^^^^^^^^^^^^^^^
 
-error: you should put `text][path::to::item` between ticks in the documentation
-  --> $DIR/doc.rs:208:12
-   |
-LL | /// [plain text][path::to::item]
-   |            ^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 32 previous errors
+error: aborting due to 31 previous errors
 
