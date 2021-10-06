@@ -141,8 +141,30 @@ pub unsafe fn _mm_blend_ps<const IMM4: i32>(a: __m128, b: __m128) -> __m128 {
 }
 
 /// Extracts a single-precision (32-bit) floating-point element from `a`,
-/// selected with `IMM8`
+/// selected with `IMM8`. The returned `i32` stores the float's bit-pattern,
+/// and may be converted back to a floating point number via casting.
 ///
+/// # Example
+/// ```rust
+/// #[cfg(target_arch = "x86")]
+/// #use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// #use std::arch::x86_64::*;
+/// #fn main() {
+/// #    if is_x86_feature_detected!("sse4.1") {
+/// #        #[target_feature(enable = "sse4.1")]
+/// #        unsafe fn worker() {
+/// let mut float_store = vec![1.0, 1.0, 2.0, 3.0];
+/// unsafe {
+///     let simd_floats = _mm_set_ps(2.5, 5.0, 7.5, 10.0);
+///     let x: i32 = _mm_extract_ps::<2>(simd_floats);
+///     float_store.push(f32::from_bits(x as u32));
+/// }
+/// assert_eq!(float_store, vec![1.0, 1.0, 2.0, 3.0, 5.0]);
+/// #        }
+/// #    unsafe { worker() }
+/// #}
+/// ```
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_ps)
 #[inline]
 #[target_feature(enable = "sse4.1")]
