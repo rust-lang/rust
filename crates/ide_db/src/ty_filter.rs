@@ -5,7 +5,7 @@
 use std::iter;
 
 use hir::Semantics;
-use syntax::ast::{self, make};
+use syntax::ast::{self, make, Pat};
 
 use crate::RootDatabase;
 
@@ -51,7 +51,18 @@ impl TryEnum {
         }
     }
 
-    pub fn happy_pattern(self) -> ast::Pat {
+    pub fn happy_pattern(self, pat: Pat) -> ast::Pat {
+        match self {
+            TryEnum::Result => {
+                make::tuple_struct_pat(make::ext::ident_path("Ok"), iter::once(pat)).into()
+            }
+            TryEnum::Option => {
+                make::tuple_struct_pat(make::ext::ident_path("Some"), iter::once(pat)).into()
+            }
+        }
+    }
+
+    pub fn happy_pattern_wildcard(self) -> ast::Pat {
         match self {
             TryEnum::Result => make::tuple_struct_pat(
                 make::ext::ident_path("Ok"),
