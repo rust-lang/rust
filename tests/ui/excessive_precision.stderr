@@ -84,5 +84,11 @@ error: float has excessive precision
 LL |     let _ = 2.225_073_858_507_201_1e-308_f64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `2.225_073_858_507_201e-308_f64`
 
-error: aborting due to 14 previous errors
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:68:13
+   |
+LL |     let _ = 1.000_000_000_000_001e-324_f64;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0_f64`
+
+error: aborting due to 15 previous errors
 
