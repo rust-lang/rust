@@ -3,3 +3,4 @@ print-type-size     variant `Ok`: 4 bytes
 print-type-size         field `.0`: 4 bytes
 print-type-size type: `std::option::Option<!>`: 0 bytes, alignment: 1 bytes
 print-type-size     variant `None`: 0 bytes
+print-type-size type: `std::result::Result<!, !>`: 0 bytes, alignment: 1 bytes

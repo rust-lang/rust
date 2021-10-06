@@ -1826,8 +1826,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         match layout.variants {
             Variants::Single { index } => {
-                debug!("print-type-size `{:#?}` variant {}", layout, adt_def.variants[index].ident);
-                if !adt_def.variants.is_empty() {
+                if !adt_def.variants.is_empty() && layout.fields != FieldsShape::Primitive {
+                    debug!(
+                        "print-type-size `{:#?}` variant {}",
+                        layout, adt_def.variants[index].ident
+                    );
                     let variant_def = &adt_def.variants[index];
                     let fields: Vec<_> = variant_def.fields.iter().map(|f| f.ident.name).collect();
                     record(
