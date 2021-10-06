@@ -49,7 +49,7 @@ fn check_error_code_explanation(
             } else if s.contains("compile-fail") {
                 invalid_compile_fail_format = true;
             }
-        } else if s.starts_with("### Note: this error code is no longer emitted by the compiler") {
+        } else if s.starts_with("#### Note: this error code is no longer emitted by the compiler") {
             if !found_error_code {
                 error_codes.get_mut(&err_code).map(|x| x.has_test = true);
                 found_error_code = true;
@@ -64,7 +64,7 @@ fn check_if_error_code_is_test_in_explanation(f: &str, err_code: &str) -> bool {
 
     for line in f.lines() {
         let s = line.trim();
-        if s.starts_with("### Note: this error code is no longer emitted by the compiler") {
+        if s.starts_with("#### Note: this error code is no longer emitted by the compiler") {
             return true;
         }
         if s.starts_with("```") {

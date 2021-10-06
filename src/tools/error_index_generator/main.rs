@@ -126,7 +126,7 @@ impl Formatter for HTMLFormatter {
                         error_codes: ErrorCodes::Yes,
                         edition: DEFAULT_EDITION,
                         playground: &Some(playground),
-                        heading_offset: HeadingOffset::H2,
+                        heading_offset: HeadingOffset::H1,
                     }
                     .into_string()
                 )?
