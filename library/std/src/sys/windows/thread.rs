@@ -100,7 +100,7 @@ impl Thread {
     }
 }
 
-pub fn available_concurrency() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     let res = unsafe {
         let mut sysinfo: c::SYSTEM_INFO = crate::mem::zeroed();
         c::GetSystemInfo(&mut sysinfo);
