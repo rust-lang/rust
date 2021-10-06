@@ -822,7 +822,7 @@ impl<'a> ControlFlow<'a> {
             let pat_string = pat.rewrite(context, pat_shape)?;
             let comments_lo = context
                 .snippet_provider
-                .span_after(self.span, self.connector.trim());
+                .span_after(self.span.with_lo(pat.span.hi()), self.connector.trim());
             let comments_span = mk_sp(comments_lo, expr.span.lo());
             return rewrite_assign_rhs_with_comments(
                 context,
