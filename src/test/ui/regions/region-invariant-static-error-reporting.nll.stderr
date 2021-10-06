@@ -2,10 +2,15 @@ error[E0521]: borrowed data escapes outside of function
   --> $DIR/region-invariant-static-error-reporting.rs:15:9
    |
 LL | fn unify<'a>(x: Option<Invariant<'a>>, f: fn(Invariant<'a>)) {
-   |              - `x` is a reference that is only valid in the function body
+   |          --  - `x` is a reference that is only valid in the function body
+   |          |
+   |          lifetime `'a` defined here
 LL |     let bad = if x.is_some() {
 LL |         x.unwrap()
-   |         ^^^^^^^^^^ `x` escapes the function body here
+   |         ^^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
 
 error: aborting due to previous error
 

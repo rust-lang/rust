@@ -1,0 +1,21 @@
+error[E0521]: borrowed data escapes outside of associated function
+  --> $DIR/issue-67007-escaping-data.rs:17:21
+   |
+LL | impl<'tcx> Consumer<'tcx> {
+   |      ---- lifetime `'tcx` defined here
+LL |     fn bad_method<'a>(&self, fcx: &FnCtxt<'a, 'tcx>) {
+   |                   --  -----  --- `fcx` is a reference that is only valid in the associated function body
+   |                   |   |
+   |                   |   `self` declared here, outside of the associated function body
+   |                   lifetime `'a` defined here
+LL |         let other = self.use_fcx(fcx);
+   |                     ^^^^^^^^^^^^^^^^^
+   |                     |
+   |                     `fcx` escapes the associated function body here
+   |                     argument requires that `'a` must outlive `'tcx`
+   |
+   = help: consider adding the following bound: `'a: 'tcx`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0521`.
