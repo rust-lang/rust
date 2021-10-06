@@ -18,6 +18,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::{FulfillmentError, TraitEngine, TraitEngineExt};
 
 use std::ops::ControlFlow;
 
@@ -257,12 +258,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method.sig.output()
             }
             // error types are considered "builtin"
-            Err(()) if lhs_ty.references_error() || rhs_ty.references_error() => {
-                self.tcx.ty_error()
-            }
-            Err(()) => {
+            Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
+            Err(errors) => {
                 let source_map = self.tcx.sess.source_map();
-                let (mut err, missing_trait, use_output, involves_fn) = match is_assign {
+                let (mut err, missing_trait, use_output) = match is_assign {
                     IsAssign::Yes => {
                         let mut err = struct_span_err!(
                             self.tcx.sess,
@@ -289,7 +288,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             hir::BinOpKind::Shr => Some("std::ops::ShrAssign"),
                             _ => None,
                         };
-                        (err, missing_trait, false, false)
+                        self.note_unmet_impls_on_type(&mut err, errors);
+                        (err, missing_trait, false)
                     }
                     IsAssign::No => {
                         let (message, missing_trait, use_output) = match op.node {
@@ -376,9 +376,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
                         let mut err =
                             struct_span_err!(self.tcx.sess, op.span, E0369, "{}", message.as_str());
-                        let mut involves_fn = false;
                         if !lhs_expr.span.eq(&rhs_expr.span) {
-                            involves_fn |= self.add_type_neq_err_label(
+                            self.add_type_neq_err_label(
                                 &mut err,
                                 lhs_expr.span,
                                 lhs_ty,
@@ -386,7 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 op,
                                 is_assign,
                             );
-                            involves_fn |= self.add_type_neq_err_label(
+                            self.add_type_neq_err_label(
                                 &mut err,
                                 rhs_expr.span,
                                 rhs_ty,
@@ -395,10 +394,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 is_assign,
                             );
                         }
-                        (err, missing_trait, use_output, involves_fn)
+                        self.note_unmet_impls_on_type(&mut err, errors);
+                        (err, missing_trait, use_output)
                     }
                 };
-                let mut suggested_deref = false;
                 if let Ref(_, rty, _) = lhs_ty.kind() {
                     if {
                         self.infcx.type_is_copy_modulo_regions(self.param_env, rty, lhs_expr.span)
@@ -423,7 +422,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 "*".to_string(),
                                 rustc_errors::Applicability::MachineApplicable,
                             );
-                            suggested_deref = true;
                         }
                     }
                 }
@@ -474,8 +472,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             bug!("type param visitor stored a non type param: {:?}", ty.kind());
                         }
-                    } else if !suggested_deref && !involves_fn {
-                        suggest_impl_missing(&mut err, lhs_ty, missing_trait);
                     }
                 }
                 err.emit();
@@ -665,7 +661,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.write_method_call(ex.hir_id, method);
                 method.sig.output()
             }
-            Err(()) => {
+            Err(errors) => {
                 let actual = self.resolve_vars_if_possible(operand_ty);
                 if !actual.references_error() {
                     let mut err = struct_span_err!(
@@ -720,12 +716,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Str | Never | Char | Tuple(_) | Array(_, _) => {}
                             Ref(_, lty, _) if *lty.kind() == Str => {}
                             _ => {
-                                let missing_trait = match op {
-                                    hir::UnOp::Neg => "std::ops::Neg",
-                                    hir::UnOp::Not => "std::ops::Not",
-                                    hir::UnOp::Deref => "std::ops::UnDerf",
-                                };
-                                suggest_impl_missing(&mut err, operand_ty, missing_trait);
+                                self.note_unmet_impls_on_type(&mut err, errors);
                             }
                         }
                     }
@@ -741,7 +732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs_ty: Ty<'tcx>,
         other_tys: &[Ty<'tcx>],
         op: Op,
-    ) -> Result<MethodCallee<'tcx>, ()> {
+    ) -> Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>> {
         let lang = self.tcx.lang_items();
 
         let span = match op {
@@ -820,22 +811,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Op::Unary(..) => 0,
             },
         ) {
-            return Err(());
+            return Err(vec![]);
         }
 
+        let opname = Ident::with_dummy_span(opname);
         let method = trait_did.and_then(|trait_did| {
-            let opname = Ident::with_dummy_span(opname);
             self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys))
         });
 
-        match method {
-            Some(ok) => {
+        match (method, trait_did) {
+            (Some(ok), _) => {
                 let method = self.register_infer_ok_obligations(ok);
                 self.select_obligations_where_possible(false, |_| {});
-
                 Ok(method)
             }
-            None => Err(()),
+            (None, None) => Err(vec![]),
+            (None, Some(trait_did)) => {
+                let (obligation, _) =
+                    self.obligation_for_method(span, trait_did, lhs_ty, Some(other_tys));
+                let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);
+                fulfill.register_predicate_obligation(self, obligation);
+                Err(match fulfill.select_where_possible(&self.infcx) {
+                    Err(errors) => errors,
+                    _ => vec![],
+                })
+            }
         }
     }
 }
@@ -958,18 +958,6 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
 
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() || lhs.is_scalar() && rhs.is_scalar()
-        }
-    }
-}
-
-/// If applicable, note that an implementation of `trait` for `ty` may fix the error.
-fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_trait: &str) {
-    if let Adt(def, _) = ty.peel_refs().kind() {
-        if def.did.is_local() {
-            err.note(&format!(
-                "an implementation of `{}` might be missing for `{}`",
-                missing_trait, ty
-            ));
         }
     }
 }

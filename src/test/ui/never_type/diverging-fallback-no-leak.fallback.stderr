@@ -5,7 +5,7 @@ LL |     unconstrained_arg(return);
    |     ^^^^^^^^^^^^^^^^^ the trait `Test` is not implemented for `!`
    |
    = note: this trait is implemented for `()`
-   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #48950 <https://github.com/rust-lang/rust/issues/48950> for more information).
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #48950 <https://github.com/rust-lang/rust/issues/48950> for more information)
    = help: did you intend to use the type `()` here instead?
 note: required by a bound in `unconstrained_arg`
   --> $DIR/diverging-fallback-no-leak.rs:12:25

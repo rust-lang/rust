@@ -99,7 +99,22 @@ LL |     S { x: a, y: b } += s;
    |     |
    |     cannot use `+=` on type `S`
    |
-   = note: an implementation of `std::ops::AddAssign` might be missing for `S`
+note: an implementation of `AddAssign<_>` might be missing for `S`
+  --> $DIR/note-unsupported.rs:1:1
+   |
+LL | struct S { x: u8, y: u8 }
+   | ^^^^^^^^ must implement `AddAssign<_>`
+note: the following trait must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+LL | / pub trait AddAssign<Rhs = Self> {
+LL | |     /// Performs the `+=` operation.
+LL | |     ///
+LL | |     /// # Example
+...  |
+LL | |     fn add_assign(&mut self, rhs: Rhs);
+LL | | }
+   | |_^
 
 error[E0067]: invalid left-hand side of assignment
   --> $DIR/note-unsupported.rs:17:22

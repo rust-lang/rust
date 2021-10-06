@@ -55,6 +55,17 @@ LL |      .take()
    = note: the following trait bounds were not satisfied:
            `Foo: Iterator`
            which is required by `&mut Foo: Iterator`
+note: the following trait must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL | / pub trait Iterator {
+LL | |     /// The type of the elements being iterated over.
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     type Item;
+...  |
+LL | |     }
+LL | | }
+   | |_^
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `take`, perhaps you need to implement it:
            candidate #1: `Iterator`

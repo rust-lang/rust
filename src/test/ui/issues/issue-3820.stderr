@@ -6,7 +6,22 @@ LL |     let w = u * 3;
    |             |
    |             Thing
    |
-   = note: an implementation of `std::ops::Mul` might be missing for `Thing`
+note: an implementation of `Mul<_>` might be missing for `Thing`
+  --> $DIR/issue-3820.rs:1:1
+   |
+LL | struct Thing {
+   | ^^^^^^^^^^^^ must implement `Mul<_>`
+note: the following trait must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+LL | / pub trait Mul<Rhs = Self> {
+LL | |     /// The resulting type after applying the `*` operator.
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     type Output;
+...  |
+LL | |     fn mul(self, rhs: Rhs) -> Self::Output;
+LL | | }
+   | |_^
 
 error: aborting due to previous error
 
