@@ -24,10 +24,10 @@ use crate::assist_context::{AssistContext, Assists};
 // ```
 // ->
 // ```
-//let pat = match Some(true) {
-//    Some(it) => it,
-//    None => return None,
-//};
+// let pat = match Some(true) {
+//     Some(it) => it,
+//     None => return None,
+// };
 // ```
 pub(crate) fn replace_try_expr_with_match(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let qm_kw = ctx.find_token_syntax_at_offset(T![?])?;

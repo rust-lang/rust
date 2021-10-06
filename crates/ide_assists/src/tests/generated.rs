@@ -1721,6 +1721,22 @@ fn main() {
 }
 
 #[test]
+fn doctest_replace_try_expr_with_match() {
+    check_doc_test(
+        "replace_try_expr_with_match",
+        r#####"
+let pat = Some(true)$0?;
+"#####,
+        r#####"
+let pat = match Some(true) {
+    Some(it) => it,
+    None => return None,
+};
+"#####,
+    )
+}
+
+#[test]
 fn doctest_sort_items() {
     check_doc_test(
         "sort_items",
