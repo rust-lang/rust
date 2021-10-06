@@ -3,10 +3,10 @@
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
-use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
+use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_span;
@@ -99,7 +99,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
         }
 
-        self.cx.cache.hidden_cfg = self.cx.tcx.hir().attrs(CRATE_HIR_ID)
+        self.cx.cache.hidden_cfg = self
+            .cx
+            .tcx
+            .hir()
+            .attrs(CRATE_HIR_ID)
             .iter()
             .filter(|attr| attr.has_name(sym::doc))
             .flat_map(|attr| attr.meta_item_list().into_iter().flatten())

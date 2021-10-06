@@ -786,7 +786,9 @@ impl AttributesExt for [ast::Attribute] {
             fn single(self) -> Option<Self::Item> {
                 let mut iter = self.into_iter();
                 let item = iter.next()?;
-                iter.next().is_none().then_some(())?;
+                if iter.next().is_some() {
+                    return None;
+                }
                 Some(item)
             }
         }
@@ -802,16 +804,19 @@ impl AttributesExt for [ast::Attribute] {
             if doc_cfg.peek().is_some() {
                 doc_cfg
                     .filter_map(|attr| {
-                        Cfg::parse(&attr).map_err(|e| sess.diagnostic().span_err(e.span, e.msg)).ok()
+                        Cfg::parse(&attr)
+                            .map_err(|e| sess.diagnostic().span_err(e.span, e.msg))
+                            .ok()
                     })
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
             } else {
-                self
-                    .iter()
+                self.iter()
                     .filter(|attr| attr.has_name(sym::cfg))
                     .filter_map(|attr| Some(attr.meta_item_list()?.single()?.meta_item()?.clone()))
                     .filter_map(|attr| {
-                        Cfg::parse(&attr).map_err(|e| sess.diagnostic().span_err(e.span, e.msg)).ok()
+                        Cfg::parse(&attr)
+                            .map_err(|e| sess.diagnostic().span_err(e.span, e.msg))
+                            .ok()
                     })
                     .filter(|cfg| !hidden_cfg.contains(cfg))
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)

@@ -676,7 +676,7 @@ declare_features! (
     (active, closure_track_caller, "1.57.0", Some(87417), None),
 
     /// Allows `#[doc(cfg_hide(...))]`.
-    (active, doc_cfg_hide, "1.53.0", Some(43781), None),
+    (active, doc_cfg_hide, "1.57.0", Some(43781), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
