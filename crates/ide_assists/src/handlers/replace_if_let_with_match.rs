@@ -142,7 +142,7 @@ fn make_else_arm(
         let pattern = match pattern {
             Some((it, pat)) => {
                 if does_pat_match_variant(pat, &it.sad_pattern()) {
-                    it.happy_pattern()
+                    it.happy_pattern_wildcard()
                 } else {
                     it.sad_pattern()
                 }
