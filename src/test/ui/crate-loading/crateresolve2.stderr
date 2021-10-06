@@ -5,6 +5,9 @@ LL | extern crate crateresolve2;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: candidates:
+           crate `crateresolve2`: $TEST_BUILD_DIR/crate-loading/crateresolve2/auxiliary/libcrateresolve2-1.rmeta
+           crate `crateresolve2`: $TEST_BUILD_DIR/crate-loading/crateresolve2/auxiliary/libcrateresolve2-2.rmeta
+           crate `crateresolve2`: $TEST_BUILD_DIR/crate-loading/crateresolve2/auxiliary/libcrateresolve2-3.rmeta
 
 error: aborting due to previous error
 
