@@ -126,7 +126,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3, h4 {
+h1, h2, h3, h4, h5, h6 {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -179,7 +179,7 @@ div.impl-items > div {
 	padding-left: 0;
 }
 
-h1, h2, h3, h4,
+h1, h2, h3, h4, h5, h6,
 .sidebar, a.source, .search-input, .search-results .result-name,
 .content table td:first-child > a,
 .item-left > a,
@@ -501,21 +501,20 @@ nav.sub {
 	white-space: pre-wrap;
 }
 
-.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
 	border-bottom: 1px solid;
 }
 
-.top-doc .docblock h1 { font-size: 1.3em; }
-.top-doc .docblock h2 { font-size: 1.15em; }
-.top-doc .docblock h3,
+.top-doc .docblock h2 { font-size: 1.3em; }
+.top-doc .docblock h3 { font-size: 1.15em; }
 .top-doc .docblock h4,
-.top-doc .docblock h5 {
+.top-doc .docblock h5,
+.top-doc .docblock h6 {
 	font-size: 1em;
 }
 
-.docblock h1 { font-size: 1em; }
-.docblock h2 { font-size: 0.95em; }
-.docblock h3, .docblock h4, .docblock h5 { font-size: 0.9em; }
+.docblock h5 { font-size: 1em; }
+.docblock h6 { font-size: 0.95em; }
 
 .docblock {
 	margin-left: 24px;

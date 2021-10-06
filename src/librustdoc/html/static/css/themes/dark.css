@@ -93,7 +93,7 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #0a042f !important;
 }
 
-.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
 	border-bottom-color: #DDD;
 }
 

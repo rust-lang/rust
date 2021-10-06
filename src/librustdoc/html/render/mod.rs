@@ -67,7 +67,7 @@ use crate::html::format::{
     href, print_abi_with_space, print_constness_with_space, print_default_space,
     print_generic_bounds, print_where_clause, Buffer, HrefError, PrintWithSpace,
 };
-use crate::html::markdown::{Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
 
 /// A pair of name and its optional document.
 crate type NameDoc = (String, Option<String>);
@@ -470,32 +470,45 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
     ))
 }
 
-fn document(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, parent: Option<&clean::Item>) {
+fn document(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    item: &clean::Item,
+    parent: Option<&clean::Item>,
+    heading_offset: HeadingOffset,
+) {
     if let Some(ref name) = item.name {
         info!("Documenting {}", name);
     }
     document_item_info(w, cx, item, parent);
     if parent.is_none() {
-        document_full_collapsible(w, item, cx);
+        document_full_collapsible(w, item, cx, heading_offset);
     } else {
-        document_full(w, item, cx);
+        document_full(w, item, cx, heading_offset);
     }
 }
 
 /// Render md_text as markdown.
-fn render_markdown(w: &mut Buffer, cx: &Context<'_>, md_text: &str, links: Vec<RenderedLink>) {
+fn render_markdown(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    md_text: &str,
+    links: Vec<RenderedLink>,
+    heading_offset: HeadingOffset,
+) {
     let mut ids = cx.id_map.borrow_mut();
     write!(
         w,
         "<div class=\"docblock\">{}</div>",
-        Markdown(
-            md_text,
-            &links,
-            &mut ids,
-            cx.shared.codes,
-            cx.shared.edition(),
-            &cx.shared.playground
-        )
+        Markdown {
+            content: md_text,
+            links: &links,
+            ids: &mut ids,
+            error_codes: cx.shared.codes,
+            edition: cx.shared.edition(),
+            playground: &cx.shared.playground,
+            heading_offset,
+        }
         .into_string()
     )
 }
@@ -531,15 +544,31 @@ fn document_short(
     }
 }
 
-fn document_full_collapsible(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>) {
-    document_full_inner(w, item, cx, true);
+fn document_full_collapsible(
+    w: &mut Buffer,
+    item: &clean::Item,
+    cx: &Context<'_>,
+    heading_offset: HeadingOffset,
+) {
+    document_full_inner(w, item, cx, true, heading_offset);
 }
 
-fn document_full(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>) {
-    document_full_inner(w, item, cx, false);
+fn document_full(
+    w: &mut Buffer,
+    item: &clean::Item,
+    cx: &Context<'_>,
+    heading_offset: HeadingOffset,
+) {
+    document_full_inner(w, item, cx, false, heading_offset);
 }
 
-fn document_full_inner(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>, is_collapsible: bool) {
+fn document_full_inner(
+    w: &mut Buffer,
+    item: &clean::Item,
+    cx: &Context<'_>,
+    is_collapsible: bool,
+    heading_offset: HeadingOffset,
+) {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
         if is_collapsible {
@@ -549,10 +578,10 @@ fn document_full_inner(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>, is_
                      <span>Expand description</span>\
                 </summary>",
             );
-            render_markdown(w, cx, &s, item.links(cx));
+            render_markdown(w, cx, &s, item.links(cx), heading_offset);
             w.write_str("</details>");
         } else {
-            render_markdown(w, cx, &s, item.links(cx));
+            render_markdown(w, cx, &s, item.links(cx), heading_offset);
         }
     }
 }
@@ -1321,7 +1350,7 @@ fn render_impl(
                         // because impls can't have a stability.
                         if item.doc_value().is_some() {
                             document_item_info(&mut info_buffer, cx, it, Some(parent));
-                            document_full(&mut doc_buffer, item, cx);
+                            document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
                             short_documented = false;
                         } else {
                             // In case the item isn't documented,
@@ -1339,7 +1368,7 @@ fn render_impl(
                 } else {
                     document_item_info(&mut info_buffer, cx, item, Some(parent));
                     if rendering_params.show_def_docs {
-                        document_full(&mut doc_buffer, item, cx);
+                        document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
                         short_documented = false;
                     }
                 }
@@ -1573,14 +1602,15 @@ fn render_impl(
             write!(
                 w,
                 "<div class=\"docblock\">{}</div>",
-                Markdown(
-                    &*dox,
-                    &i.impl_item.links(cx),
-                    &mut ids,
-                    cx.shared.codes,
-                    cx.shared.edition(),
-                    &cx.shared.playground
-                )
+                Markdown {
+                    content: &*dox,
+                    links: &i.impl_item.links(cx),
+                    ids: &mut ids,
+                    error_codes: cx.shared.codes,
+                    edition: cx.shared.edition(),
+                    playground: &cx.shared.playground,
+                    heading_offset: HeadingOffset::H2
+                }
                 .into_string()
             );
         }
