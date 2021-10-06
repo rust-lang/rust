@@ -161,9 +161,6 @@ impl AnalysisHost {
         self.db.apply_change(change)
     }
 
-    pub fn collect_garbage(&mut self) {
-        self.db.collect_garbage();
-    }
     /// NB: this clears the database
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, profile::Bytes)> {
         self.db.per_query_memory_usage()

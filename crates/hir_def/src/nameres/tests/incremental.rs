@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use base_db::{salsa::SweepStrategy, SourceDatabaseExt};
+use base_db::SourceDatabaseExt;
 
 use crate::{AdtId, ModuleDefId};
 
@@ -199,8 +199,7 @@ pub type Ty = ();
     }
 
     // Delete the parse tree.
-    let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
-    base_db::ParseQuery.in_db(&db).sweep(sweep);
+    base_db::ParseQuery.in_db(&db).purge();
 
     {
         let events = db.log_executed(|| {

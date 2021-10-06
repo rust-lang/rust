@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use base_db::{
-    salsa::{Database, Durability, SweepStrategy},
+    salsa::{Database, Durability},
     Change, SourceRootId,
 };
 use profile::{memory_usage, Bytes};
@@ -38,32 +38,6 @@ impl RootDatabase {
         change.apply(self);
     }
 
-    pub fn collect_garbage(&mut self) {
-        if cfg!(target_arch = "wasm32") {
-            return;
-        }
-
-        let _p = profile::span("RootDatabase::collect_garbage");
-
-        let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
-
-        base_db::ParseQuery.in_db(self).sweep(sweep);
-        hir::db::ParseMacroExpansionQuery.in_db(self).sweep(sweep);
-
-        // Macros do take significant space, but less then the syntax trees
-        // self.query(hir::db::MacroDefQuery).sweep(sweep);
-        // self.query(hir::db::MacroArgTextQuery).sweep(sweep);
-        // self.query(hir::db::MacroExpandQuery).sweep(sweep);
-
-        hir::db::AstIdMapQuery.in_db(self).sweep(sweep);
-
-        hir::db::BodyWithSourceMapQuery.in_db(self).sweep(sweep);
-
-        hir::db::ExprScopesQuery.in_db(self).sweep(sweep);
-        hir::db::InferQueryQuery.in_db(self).sweep(sweep);
-        hir::db::BodyQuery.in_db(self).sweep(sweep);
-    }
-
     // Feature: Memory Usage
     //
     // Clears rust-analyzer's internal database and prints memory usage statistics.
@@ -76,32 +50,17 @@ impl RootDatabase {
     // image::https://user-images.githubusercontent.com/48062697/113065592-08559f00-91b1-11eb-8c96-64b88068ec02.gif[]
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {
         let mut acc: Vec<(String, Bytes)> = vec![];
-        let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
-        macro_rules! sweep_each_query {
+        macro_rules! purge_each_query {
             ($($q:path)*) => {$(
-                let before = memory_usage().allocated;
-                $q.in_db(self).sweep(sweep);
-                let after = memory_usage().allocated;
-                let q: $q = Default::default();
-                let name = format!("{:?}", q);
-                acc.push((name, before - after));
-
-                let before = memory_usage().allocated;
-                $q.in_db(self).sweep(sweep.discard_everything());
-                let after = memory_usage().allocated;
-                let q: $q = Default::default();
-                let name = format!("{:?} (deps)", q);
-                acc.push((name, before - after));
-
                 let before = memory_usage().allocated;
                 $q.in_db(self).purge();
                 let after = memory_usage().allocated;
                 let q: $q = Default::default();
-                let name = format!("{:?} (purge)", q);
+                let name = format!("{:?}", q);
                 acc.push((name, before - after));
             )*}
         }
-        sweep_each_query![
+        purge_each_query![
             // SourceDatabase
             base_db::ParseQuery
             base_db::CrateGraphQuery
@@ -119,6 +78,7 @@ impl RootDatabase {
             hir::db::ParseMacroExpansionQuery
             hir::db::MacroExpandQuery
             hir::db::HygieneFrameQuery
+            hir::db::InternMacroQuery
 
             // DefDatabase
             hir::db::FileItemTreeQuery
@@ -174,6 +134,7 @@ impl RootDatabase {
             hir::db::InternClosureQuery
             hir::db::AssociatedTyValueQuery
             hir::db::TraitSolveQueryQuery
+            hir::db::InternTypeParamIdQuery
 
             // SymbolsDatabase
             crate::symbol_index::FileSymbolsQuery
@@ -183,17 +144,6 @@ impl RootDatabase {
 
             // LineIndexDatabase
             crate::LineIndexQuery
-        ];
-
-        // To collect interned data, we need to bump the revision counter by performing a synthetic
-        // write.
-        // We do this after collecting the non-interned queries to correctly attribute memory used
-        // by interned data.
-        self.salsa_runtime_mut().synthetic_write(Durability::HIGH);
-
-        sweep_each_query![
-            // AstDatabase
-            hir::db::InternMacroQuery
 
             // InternDatabase
             hir::db::InternFunctionQuery
@@ -205,9 +155,6 @@ impl RootDatabase {
             hir::db::InternTraitQuery
             hir::db::InternTypeAliasQuery
             hir::db::InternImplQuery
-
-            // HirDatabase
-            hir::db::InternTypeParamIdQuery
         ];
 
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));
