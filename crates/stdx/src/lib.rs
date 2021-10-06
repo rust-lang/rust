@@ -1,4 +1,5 @@
 //! Missing batteries for standard libraries.
+use std::iter;
 use std::{cmp::Ordering, ops, time::Instant};
 
 mod macros;
@@ -37,22 +38,44 @@ pub fn to_lower_snake_case(s: &str) -> String {
 pub fn to_upper_snake_case(s: &str) -> String {
     to_snake_case(s, char::to_ascii_uppercase)
 }
-fn to_snake_case<F: Fn(&char) -> char>(s: &str, change_case: F) -> String {
-    let mut buf = String::with_capacity(s.len());
-    let mut prev = false;
-    for c in s.chars() {
-        // `&& prev` is required to not insert `_` before the first symbol.
-        if c.is_ascii_uppercase() && prev {
-            // This check is required to not translate `Weird_Case` into `weird__case`.
-            if !buf.ends_with('_') {
-                buf.push('_');
-            }
-        }
-        prev = true;
 
-        buf.push(change_case(&c));
+// Code partially taken from rust/compiler/rustc_lint/src/nonstandard_style.rs
+// commit: 9626f2b
+fn to_snake_case<F: Fn(&char) -> char>(mut s: &str, change_case: F) -> String {
+    let mut words = vec![];
+
+    // Preserve leading underscores
+    s = s.trim_start_matches(|c: char| {
+        if c == '_' {
+            words.push(String::new());
+            true
+        } else {
+            false
+        }
+    });
+
+    for s in s.split('_') {
+        let mut last_upper = false;
+        let mut buf = String::new();
+
+        if s.is_empty() {
+            continue;
+        }
+
+        for ch in s.chars() {
+            if !buf.is_empty() && buf != "'" && ch.is_uppercase() && !last_upper {
+                words.push(buf);
+                buf = String::new();
+            }
+
+            last_upper = ch.is_uppercase();
+            buf.extend(iter::once(change_case(&ch)));
+        }
+
+        words.push(buf);
     }
-    buf
+
+    words.join("_")
 }
 
 pub fn replace(buf: &mut String, from: char, to: &str) {
