@@ -31,10 +31,9 @@ use syntax::{
 // ```
 
 pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let statement = ctx.find_node_at_offset::<ast::Stmt>()?;
-    let arg_list = ctx.find_node_at_offset::<ast::ArgList>()?;
-    let expr = ctx.find_node_at_offset::<ast::Expr>()?;
     let constant_token = ctx.find_node_at_offset::<ast::NameRef>()?;
+    let expr = constant_token.syntax().ancestors().find_map(ast::Expr::cast)?;
+    let statement = expr.syntax().ancestors().find_map(ast::Stmt::cast)?;
     let ty = ctx.sema.type_of_expr(&expr)?;
     let scope = ctx.sema.scope(statement.syntax());
     let module = scope.module()?;
