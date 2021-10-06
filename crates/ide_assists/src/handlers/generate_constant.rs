@@ -57,14 +57,13 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext) -> Optio
         "Generate constant",
         target,
         |builder| {
-            builder.replace(
-                statement.syntax().text_range(),
+            builder.insert(
+                statement.syntax().text_range.start(),
                 format!(
-                    "const {}: {} = $0;\n{}{}",
+                    "const {}: {} = $0;\n{}",
                     constant_token,
                     type_name,
-                    indent,
-                    statement_syntax.text()
+                    indent
                 ),
             );
         },
