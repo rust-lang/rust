@@ -245,7 +245,7 @@ const ASCII_CASE_MASK: u8 = 0b0010_0000;
 #[lang = "u8"]
 impl u8 {
     widening_impl! { u8, u16, 8 }
-    uint_impl! { u8, u8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
+    uint_impl! { u8, u8, i8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
     "[0x12]", "", "" }
 
     /// Checks if the value is within the ASCII range.
@@ -779,21 +779,21 @@ impl u8 {
 #[lang = "u16"]
 impl u16 {
     widening_impl! { u16, u32, 16 }
-    uint_impl! { u16, u16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
+    uint_impl! { u16, u16, i16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "u32"]
 impl u32 {
     widening_impl! { u32, u64, 32 }
-    uint_impl! { u32, u32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
+    uint_impl! { u32, u32, i32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
 #[lang = "u64"]
 impl u64 {
     widening_impl! { u64, u128, 64 }
-    uint_impl! { u64, u64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
+    uint_impl! { u64, u64, i64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
@@ -802,7 +802,7 @@ impl u64 {
 
 #[lang = "u128"]
 impl u128 {
-    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, 16,
+    uint_impl! { u128, u128, i128, 128, 340282366920938463463374607431768211455, 16,
     "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
     "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
     "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
@@ -816,7 +816,7 @@ impl u128 {
 #[lang = "usize"]
 impl usize {
     widening_impl! { usize, u32, 16 }
-    uint_impl! { usize, u16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
+    uint_impl! { usize, u16, isize, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
@@ -824,7 +824,7 @@ impl usize {
 #[lang = "usize"]
 impl usize {
     widening_impl! { usize, u64, 32 }
-    uint_impl! { usize, u32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
+    uint_impl! { usize, u32, isize, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
@@ -833,7 +833,7 @@ impl usize {
 #[lang = "usize"]
 impl usize {
     widening_impl! { usize, u128, 64 }
-    uint_impl! { usize, u64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
+    uint_impl! { usize, u64, isize, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
      "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
@@ -865,23 +865,41 @@ impl usize {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum FpCategory {
-    /// "Not a Number", often obtained by dividing by zero.
+    /// NaN (not a number): this value results from calculations like `(-1.0).sqrt()`.
+    ///
+    /// See [the documentation for `f32`](f32) for more information on the unusual properties
+    /// of NaN.
     #[stable(feature = "rust1", since = "1.0.0")]
     Nan,
 
-    /// Positive or negative infinity.
+    /// Positive or negative infinity, which often results from dividing a nonzero number
+    /// by zero.
     #[stable(feature = "rust1", since = "1.0.0")]
     Infinite,
 
     /// Positive or negative zero.
+    ///
+    /// See [the documentation for `f32`](f32) for more information on the signedness of zeroes.
     #[stable(feature = "rust1", since = "1.0.0")]
     Zero,
 
-    /// De-normalized floating point representation (less precise than `Normal`).
+    /// “Subnormal” or “denormal” floating point representation (less precise, relative to
+    /// their magnitude, than [`Normal`]).
+    ///
+    /// Subnormal numbers are larger in magnitude than [`Zero`] but smaller in magnitude than all
+    /// [`Normal`] numbers.
+    ///
+    /// [`Normal`]: Self::Normal
+    /// [`Zero`]: Self::Zero
     #[stable(feature = "rust1", since = "1.0.0")]
     Subnormal,
 
-    /// A regular floating point number.
+    /// A regular floating point number, not any of the exceptional categories.
+    ///
+    /// The smallest positive normal numbers are [`f32::MIN_POSITIVE`] and [`f64::MIN_POSITIVE`],
+    /// and the largest positive normal numbers are [`f32::MAX`] and [`f64::MAX`]. (Unlike signed
+    /// integers, floating point numbers are symmetric in their range, so negating any of these
+    /// constants will produce their negative counterpart.)
     #[stable(feature = "rust1", since = "1.0.0")]
     Normal,
 }

@@ -1,10 +1,19 @@
 error[E0521]: borrowed data escapes outside of associated function
   --> $DIR/issue-16683.rs:4:9
    |
+LL | trait T<'a> {
+   |         -- lifetime `'a` defined here
+LL |     fn a(&'a self) -> &'a bool;
 LL |     fn b(&self) {
-   |          ----- `self` is a reference that is only valid in the associated function body
+   |          -----
+   |          |
+   |          `self` is a reference that is only valid in the associated function body
+   |          let's call the lifetime of this reference `'1`
 LL |         self.a();
-   |         ^^^^^^^^ `self` escapes the associated function body here
+   |         ^^^^^^^^
+   |         |
+   |         `self` escapes the associated function body here
+   |         argument requires that `'1` must outlive `'a`
 
 error: aborting due to previous error
 

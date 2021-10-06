@@ -1000,12 +1000,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         // SAFETY: The internal `IterMut` safety invariant is established because the
         // `ring` we create is a dereferencable slice for lifetime '_.
-        IterMut {
-            tail: self.tail,
-            head: self.head,
-            ring: ptr::slice_from_raw_parts_mut(self.ptr(), self.cap()),
-            phantom: PhantomData,
-        }
+        let ring = ptr::slice_from_raw_parts_mut(self.ptr(), self.cap());
+
+        unsafe { IterMut::new(ring, self.tail, self.head, PhantomData) }
     }
 
     /// Returns a pair of slices which contain, in order, the contents of the
@@ -1192,12 +1189,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
         // SAFETY: The internal `IterMut` safety invariant is established because the
         // `ring` we create is a dereferencable slice for lifetime '_.
-        IterMut {
-            tail,
-            head,
-            ring: ptr::slice_from_raw_parts_mut(self.ptr(), self.cap()),
-            phantom: PhantomData,
-        }
+        let ring = ptr::slice_from_raw_parts_mut(self.ptr(), self.cap());
+
+        unsafe { IterMut::new(ring, tail, head, PhantomData) }
     }
 
     /// Creates a draining iterator that removes the specified range in the
@@ -1269,19 +1263,17 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // the drain is complete and the Drain destructor is run.
         self.head = drain_tail;
 
-        Drain {
-            deque: NonNull::from(&mut *self),
-            after_tail: drain_head,
-            after_head: head,
-            iter: Iter {
-                tail: drain_tail,
-                head: drain_head,
-                // Crucially, we only create shared references from `self` here and read from
-                // it.  We do not write to `self` nor reborrow to a mutable reference.
-                // Hence the raw pointer we created above, for `deque`, remains valid.
-                ring: unsafe { self.buffer_as_slice() },
-            },
-        }
+        let deque = NonNull::from(&mut *self);
+        let iter = Iter {
+            tail: drain_tail,
+            head: drain_head,
+            // Crucially, we only create shared references from `self` here and read from
+            // it.  We do not write to `self` nor reborrow to a mutable reference.
+            // Hence the raw pointer we created above, for `deque`, remains valid.
+            ring: unsafe { self.buffer_as_slice() },
+        };
+
+        unsafe { Drain::new(drain_head, head, iter, deque) }
     }
 
     /// Clears the `VecDeque`, removing all values.

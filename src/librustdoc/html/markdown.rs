@@ -8,11 +8,19 @@
 //! extern crate rustc_span;
 //!
 //! use rustc_span::edition::Edition;
-//! use rustdoc::html::markdown::{IdMap, Markdown, ErrorCodes};
+//! use rustdoc::html::markdown::{HeadingOffset, IdMap, Markdown, ErrorCodes};
 //!
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();
-//! let md = Markdown(s, &[], &mut id_map, ErrorCodes::Yes, Edition::Edition2015, &None);
+//! let md = Markdown {
+//!     content: s,
+//!     links: &[],
+//!     ids: &mut id_map,
+//!     error_codes: ErrorCodes::Yes,
+//!     edition: Edition::Edition2015,
+//!     playground: &None,
+//!     heading_offset: HeadingOffset::H2,
+//! };
 //! let html = md.into_string();
 //! // ... something using html
 //! ```
@@ -47,6 +55,8 @@ use pulldown_cmark::{
 #[cfg(test)]
 mod tests;
 
+const MAX_HEADER_LEVEL: u32 = 6;
+
 /// Options for rendering Markdown in the main body of documentation.
 pub(crate) fn main_body_opts() -> Options {
     Options::ENABLE_TABLES
@@ -65,20 +75,33 @@ pub(crate) fn summary_opts() -> Options {
         | Options::ENABLE_SMART_PUNCTUATION
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum HeadingOffset {
+    H1 = 0,
+    H2,
+    H3,
+    H4,
+    H5,
+    H6,
+}
+
 /// When `to_string` is called, this struct will emit the HTML corresponding to
 /// the rendered version of the contained markdown string.
-pub struct Markdown<'a>(
-    pub &'a str,
+pub struct Markdown<'a> {
+    pub content: &'a str,
     /// A list of link replacements.
-    pub &'a [RenderedLink],
+    pub links: &'a [RenderedLink],
     /// The current list of used header IDs.
-    pub &'a mut IdMap,
+    pub ids: &'a mut IdMap,
     /// Whether to allow the use of explicit error codes in doctest lang strings.
-    pub ErrorCodes,
+    pub error_codes: ErrorCodes,
     /// Default edition to use when parsing doctests (to add a `fn main`).
-    pub Edition,
-    pub &'a Option<Playground>,
-);
+    pub edition: Edition,
+    pub playground: &'a Option<Playground>,
+    /// Offset at which we render headings.
+    /// E.g. if `heading_offset: HeadingOffset::H2`, then `# something` renders an `<h2>`.
+    pub heading_offset: HeadingOffset,
+}
 /// A tuple struct like `Markdown` that renders the markdown with a table of contents.
 crate struct MarkdownWithToc<'a>(
     crate &'a str,
@@ -489,11 +512,17 @@ struct HeadingLinks<'a, 'b, 'ids, I> {
     toc: Option<&'b mut TocBuilder>,
     buf: VecDeque<SpannedEvent<'a>>,
     id_map: &'ids mut IdMap,
+    heading_offset: HeadingOffset,
 }
 
 impl<'a, 'b, 'ids, I> HeadingLinks<'a, 'b, 'ids, I> {
-    fn new(iter: I, toc: Option<&'b mut TocBuilder>, ids: &'ids mut IdMap) -> Self {
-        HeadingLinks { inner: iter, toc, buf: VecDeque::new(), id_map: ids }
+    fn new(
+        iter: I,
+        toc: Option<&'b mut TocBuilder>,
+        ids: &'ids mut IdMap,
+        heading_offset: HeadingOffset,
+    ) -> Self {
+        HeadingLinks { inner: iter, toc, buf: VecDeque::new(), id_map: ids, heading_offset }
     }
 }
 
@@ -530,6 +559,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
                 self.buf.push_front((Event::Html(format!("{} ", sec).into()), 0..0));
             }
 
+            let level = std::cmp::min(level + (self.heading_offset as u32), MAX_HEADER_LEVEL);
             self.buf.push_back((Event::Html(format!("</a></h{}>", level).into()), 0..0));
 
             let start_tags = format!(
@@ -1005,7 +1035,15 @@ impl LangString {
 
 impl Markdown<'_> {
     pub fn into_string(self) -> String {
-        let Markdown(md, links, mut ids, codes, edition, playground) = self;
+        let Markdown {
+            content: md,
+            links,
+            mut ids,
+            error_codes: codes,
+            edition,
+            playground,
+            heading_offset,
+        } = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1026,7 +1064,7 @@ impl Markdown<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids);
+        let p = HeadingLinks::new(p, None, &mut ids, heading_offset);
         let p = Footnotes::new(p);
         let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
         let p = TableWrapper::new(p);
@@ -1048,7 +1086,7 @@ impl MarkdownWithToc<'_> {
         let mut toc = TocBuilder::new();
 
         {
-            let p = HeadingLinks::new(p, Some(&mut toc), &mut ids);
+            let p = HeadingLinks::new(p, Some(&mut toc), &mut ids, HeadingOffset::H1);
             let p = Footnotes::new(p);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
@@ -1077,7 +1115,7 @@ impl MarkdownHtml<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids);
+        let p = HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1);
         let p = Footnotes::new(p);
         let p = TableWrapper::new(p.map(|(ev, _)| ev));
         let p = CodeBlocks::new(p, codes, edition, playground);
@@ -1295,7 +1333,7 @@ crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
     // There's no need to thread an IdMap through to here because
     // the IDs generated aren't going to be emitted anywhere.
     let mut ids = IdMap::new();
-    let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids));
+    let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1));
 
     for ev in iter {
         if let Event::Start(Tag::Link(kind, dest, _)) = ev.0 {

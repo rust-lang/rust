@@ -1,5 +1,5 @@
 macro_rules! uint_impl {
-    ($SelfT:ty, $ActualT:ident, $BITS:expr, $MaxV:expr,
+    ($SelfT:ty, $ActualT:ident, $SignedT:ident, $BITS:expr, $MaxV:expr,
         $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
         $reversed:expr, $le_bytes:expr, $be_bytes:expr,
         $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr) => {
@@ -440,6 +440,29 @@ macro_rules! uint_impl {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_add`.
             unsafe { intrinsics::unchecked_add(self, rhs) }
+        }
+
+        /// Checked addition with a signed integer. Computes `self + rhs`,
+        /// returning `None` if overflow occurred.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_add_signed(2), Some(3));")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_add_signed(-2), None);")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add_signed(3), None);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn checked_add_signed(self, rhs: $SignedT) -> Option<Self> {
+            let (a, b) = self.overflowing_add_signed(rhs);
+            if unlikely!(b) {None} else {Some(a)}
         }
 
         /// Checked integer subtraction. Computes `self - rhs`, returning
@@ -995,6 +1018,35 @@ macro_rules! uint_impl {
             intrinsics::saturating_add(self, rhs)
         }
 
+        /// Saturating addition with a signed integer. Computes `self + rhs`,
+        /// saturating at the numeric bounds instead of overflowing.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_add_signed(2), 3);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_add_signed(-2), 0);")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).saturating_add_signed(4), ", stringify!($SelfT), "::MAX);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn saturating_add_signed(self, rhs: $SignedT) -> Self {
+            let (res, overflow) = self.overflowing_add(rhs as Self);
+            if overflow == (rhs < 0) {
+                res
+            } else if overflow {
+                Self::MAX
+            } else {
+                0
+            }
+        }
+
         /// Saturating integer subtraction. Computes `self - rhs`, saturating
         /// at the numeric bounds instead of overflowing.
         ///
@@ -1109,6 +1161,28 @@ macro_rules! uint_impl {
         #[inline(always)]
         pub const fn wrapping_add(self, rhs: Self) -> Self {
             intrinsics::wrapping_add(self, rhs)
+        }
+
+        /// Wrapping (modular) addition with a signed integer. Computes
+        /// `self + rhs`, wrapping around at the boundary of the type.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_add_signed(2), 3);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_add_signed(-2), ", stringify!($SelfT), "::MAX);")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).wrapping_add_signed(4), 1);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn wrapping_add_signed(self, rhs: $SignedT) -> Self {
+            self.wrapping_add(rhs as Self)
         }
 
         /// Wrapping (modular) subtraction. Computes `self - rhs`,
@@ -1433,6 +1507,32 @@ macro_rules! uint_impl {
             let (a, b) = self.overflowing_add(rhs);
             let (c, d) = a.overflowing_add(carry as $SelfT);
             (c, b | d)
+        }
+
+        /// Calculates `self` + `rhs` with a signed `rhs`
+        ///
+        /// Returns a tuple of the addition along with a boolean indicating
+        /// whether an arithmetic overflow would occur. If an overflow would
+        /// have occurred then the wrapped value is returned.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_add_signed(2), (3, false));")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_add_signed(-2), (", stringify!($SelfT), "::MAX, true));")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_add_signed(4), (1, true));")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn overflowing_add_signed(self, rhs: $SignedT) -> (Self, bool) {
+            let (res, overflowed) = self.overflowing_add(rhs as Self);
+            (res, overflowed ^ (rhs < 0))
         }
 
         /// Calculates `self` - `rhs`

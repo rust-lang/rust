@@ -1,5 +1,5 @@
 // @has issue_42760/struct.NonGen.html
-// @has - '//h1' 'Example'
+// @has - '//h2' 'Example'
 
 /// Item docs.
 ///

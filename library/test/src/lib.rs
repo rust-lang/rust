@@ -23,7 +23,7 @@
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(nll)]
-#![feature(available_concurrency)]
+#![feature(available_parallelism)]
 #![feature(bench_black_box)]
 #![feature(internal_output_capture)]
 #![feature(panic_unwind)]

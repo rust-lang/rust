@@ -21,7 +21,7 @@
 //! ```
 
 // @has "foo/index.html" "//p" "This is the “start” of the ‘document’! How’d you know that “it’s” the start?"
-// @has "foo/index.html" "//h1" "Header with “smart punct’”"
+// @has "foo/index.html" "//h2" "Header with “smart punct’”"
 // @has "foo/index.html" '//a[@href="https://www.rust-lang.org"]' "link with “smart punct’” – yessiree!"
 // @has "foo/index.html" '//code' "this inline code -- it shouldn't have \"smart punct\""
 // @has "foo/index.html" '//pre' "let x = \"don't smart-punct me -- please!\";"
