@@ -52,6 +52,9 @@ bitflags! {
         /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
         /// (i.e., this flag is never set unless this ADT is an enum).
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
+        /// Indicates whether any particular variant of this ADT is `#[non_exhaustive]`.
+        /// (i.e., this flag is never set unless this ADT is an enum).
+        const HAS_NON_EXHAUSTIVE_VARIANT = 1 << 9;
     }
 }
 
@@ -194,6 +197,12 @@ impl<'tcx> AdtDef {
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
 
+        for variant in &variants {
+            if tcx.has_attr(variant.def_id, sym::non_exhaustive) {
+                flags = flags | AdtFlags::HAS_NON_EXHAUSTIVE_VARIANT;
+            }
+        }
+
         flags |= match kind {
             AdtKind::Enum => AdtFlags::IS_ENUM,
             AdtKind::Union => AdtFlags::IS_UNION,
@@ -239,10 +248,18 @@ impl<'tcx> AdtDef {
         self.flags.contains(AdtFlags::IS_ENUM)
     }
 
-    /// Returns `true` if the variant list of this ADT is `#[non_exhaustive]`.
+    /// Returns `true` if the variant list of this ADT is `#[non_exhaustive]`
+    /// (i.e. it may get additional variants in the future).
     #[inline]
     pub fn is_variant_list_non_exhaustive(&self) -> bool {
         self.flags.contains(AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE)
+    }
+
+    /// Returns `true` if any of the variants of this ADT is `#[non_exhaustive]`
+    /// (i.e. it may get additional fields on the variant in the future).
+    #[inline]
+    pub fn has_non_exhaustive_variant(&self) -> bool {
+        self.flags.contains(AdtFlags::HAS_NON_EXHAUSTIVE_VARIANT)
     }
 
     /// Returns the kind of the ADT.
@@ -354,6 +371,20 @@ impl<'tcx> AdtDef {
             return false;
         }
         self.variants.iter().all(|v| v.fields.is_empty())
+    }
+
+    /// Whether all variants have only constant constructors
+    /// (i.e. there are no tuple or struct variants).
+    /// This is distinct from `is_payloadfree` specifically for the case of
+    /// empty tuple constructors, e.g. for:
+    /// ```
+    /// enum Number {
+    ///   Zero(),
+    /// }
+    /// ```
+    /// this function returns false, where `is_payloadfree` returns true.
+    pub fn is_c_like_enum(&self) -> bool {
+        self.is_enum() && self.variants.iter().all(|v| v.ctor_kind == CtorKind::Const)
     }
 
     /// Return a `VariantDef` given a variant id.

@@ -1,0 +1,33 @@
+error[E0277]: the trait bound `AttrOnEnum: HasAsReprImpl` is not satisfied
+  --> $DIR/enum-as-repr-non-exhaustive.rs:24:21
+   |
+LL |     consumes_asrepr(AttrOnEnum::Zero);
+   |     --------------- ^^^^^^^^^^^^^^^^ the trait `HasAsReprImpl` is not implemented for `AttrOnEnum`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: required because of the requirements on the impl of `AsRepr` for `AttrOnEnum`
+note: required by a bound in `consumes_asrepr`
+  --> $DIR/enum-as-repr-non-exhaustive.rs:31:23
+   |
+LL | fn consumes_asrepr<V: AsRepr>(_v: V) {}
+   |                       ^^^^^^ required by this bound in `consumes_asrepr`
+
+error[E0277]: the trait bound `AttrOnVariant: HasAsReprImpl` is not satisfied
+  --> $DIR/enum-as-repr-non-exhaustive.rs:27:21
+   |
+LL |     consumes_asrepr(AttrOnVariant::Zero);
+   |     --------------- ^^^^^^^^^^^^^^^^^^^ the trait `HasAsReprImpl` is not implemented for `AttrOnVariant`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: required because of the requirements on the impl of `AsRepr` for `AttrOnVariant`
+note: required by a bound in `consumes_asrepr`
+  --> $DIR/enum-as-repr-non-exhaustive.rs:31:23
+   |
+LL | fn consumes_asrepr<V: AsRepr>(_v: V) {}
+   |                       ^^^^^^ required by this bound in `consumes_asrepr`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -281,6 +281,9 @@ pub mod f64;
 #[macro_use]
 pub mod num;
 
+#[unstable(feature = "enum_as_repr", issue = "86772")]
+pub mod enums;
+
 /* The libcore prelude, not as all-encompassing as the libstd prelude */
 
 pub mod prelude;

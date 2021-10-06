@@ -206,6 +206,8 @@ language_item_table! {
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
     /// The associated item of the [`DiscriminantKind`] trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy,        GenericRequirement::None;
+    AsRepr,                  sym::AsRepr,              as_repr_trait,              Target::Trait,          GenericRequirement::None;
+    HasAsReprImpl,           sym::HasAsReprImpl,       has_as_repr_impl_trait,     Target::Trait,          GenericRequirement::None;
 
     PointeeTrait,            sym::pointee_trait,       pointee_trait,              Target::Trait,          GenericRequirement::None;
     Metadata,                sym::metadata_type,       metadata_type,              Target::AssocTy,        GenericRequirement::None;

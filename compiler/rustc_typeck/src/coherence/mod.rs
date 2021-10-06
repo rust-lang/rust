@@ -75,6 +75,35 @@ fn enforce_trait_manually_implementable(
         return;
     }
 
+    // Only allow AsRepr to be implemented via blanket impls inside `core`.
+    if did == li.as_repr_trait() && !trait_def_id.is_local() {
+        let span = impl_header_span(tcx, impl_def_id);
+        struct_span_err!(
+            tcx.sess,
+            span,
+            E0788,
+            "explicit impls for the `AsRepr` trait are not permitted"
+        )
+        .span_label(span, "impl of `AsRepr` not allowed, it is automatically implemented for C-like enum types with explicit numeric reprs")
+        .emit();
+        return;
+    }
+
+    // HasAsReprImpl is only implemented via custom logic in trait selection.
+    // Manual impls are not allowed anywhere.
+    if did == li.has_as_repr_impl_trait() {
+        let span = impl_header_span(tcx, impl_def_id);
+        struct_span_err!(
+            tcx.sess,
+            span,
+            E0788,
+            "explicit impls for the `HasAsReprImpl` trait are not permitted"
+        )
+            .span_label(span, "impl of `HasAsReprImpl` not allowed, it is automatically implemented for C-like enum types with explicit numeric reprs")
+            .emit();
+        return;
+    }
+
     if did == li.sized_trait() {
         let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(

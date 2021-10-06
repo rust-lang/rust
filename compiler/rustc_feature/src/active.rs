@@ -366,6 +366,10 @@ declare_features! (
     (active, doc_cfg_hide, "1.57.0", Some(43781), None),
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
+    /// Allows using doc(primitive) without a future-incompat warning
+    (active, doc_primitive, "1.56.0", Some(88070), None),
+    /// Allows converting enums to/from their repr.
+    (active, enum_as_repr, "1.60.0", Some(86772), None),
     /// Allows `X..Y` patterns.
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.

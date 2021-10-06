@@ -972,6 +972,12 @@ pub const unsafe fn transmute_copy<T, U>(src: &T) -> U {
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub struct Discriminant<T>(<T as DiscriminantKind>::Discriminant);
 
+impl<T> Discriminant<T> {
+    pub(crate) fn discriminant(&self) -> <T as DiscriminantKind>::Discriminant {
+        self.0
+    }
+}
+
 // N.B. These trait implementations cannot be derived because we don't want any bounds on T.
 
 #[stable(feature = "discriminant_value", since = "1.21.0")]

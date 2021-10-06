@@ -314,6 +314,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // `~const Drop` when we are not in a const context has no effect.
                     candidates.vec.push(ConstDropCandidate)
                 }
+            } else if lang_items.has_as_repr_impl_trait() == Some(def_id) {
+                if let ty::Adt(def, ..) =
+                    self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty()).kind()
+                {
+                    // Automatically implement AsRepr for C-like enums which have an explicit numeric repr.
+                    if def.is_c_like_enum()
+                        && def.repr.int.is_some()
+                        && !def.is_variant_list_non_exhaustive()
+                        && !def.has_non_exhaustive_variant()
+                    {
+                        candidates.vec.push(BuiltinCandidate { has_nested: false });
+                    }
+                }
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
