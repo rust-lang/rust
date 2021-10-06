@@ -15,7 +15,7 @@ cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core" }
-libc = { version = "0.2.99", default-features = false, features = ['rustc-dep-of-std'] }
+libc = { version = "0.2.103", default-features = false, features = ['rustc-dep-of-std'] }
 compiler_builtins = { version = "0.1.44" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
