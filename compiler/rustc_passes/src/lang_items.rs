@@ -152,18 +152,9 @@ impl LanguageItemCollector<'tcx> {
                         let note = if def_id.is_local() {
                             format!("{} definition in the local crate (`{}`)", which, crate_name)
                         } else {
-                            let paths: Vec<_> = self
-                                .tcx
-                                .crate_extern_paths(def_id.krate)
-                                .iter()
-                                .map(|p| p.display().to_string())
-                                .collect();
-                            format!(
-                                "{} definition in `{}` loaded from {}",
-                                which,
-                                crate_name,
-                                paths.join(", ")
-                            )
+                            let path =
+                                self.tcx.crate_extern_paths(def_id.krate).display().to_string();
+                            format!("{} definition in `{}` loaded from {}", which, crate_name, path)
                         };
                         err.note(&note);
                     };

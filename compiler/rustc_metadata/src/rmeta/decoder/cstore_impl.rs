@@ -229,7 +229,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         syms
     }
 
-    crate_extern_paths => { vec![cdata.source().path().clone()] }
+    crate_extern_paths => { cdata.source().path().clone() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
 }
 

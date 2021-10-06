@@ -1326,9 +1326,9 @@ rustc_queries! {
         eval_always
         desc { "looking up the extra filename for a crate" }
     }
-    query crate_extern_paths(_: CrateNum) -> Vec<PathBuf> {
+    query crate_extern_paths(_: CrateNum) -> PathBuf {
         eval_always
-        desc { "looking up the paths for extern crates" }
+        desc { "looking up the path for an external crate" }
     }
 
     /// Given a crate and a trait, look up all impls of that trait in the crate.
