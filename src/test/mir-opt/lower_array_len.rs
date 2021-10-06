@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=3
+// compile-flags: -Z mir-opt-level=4
 
 // EMIT_MIR lower_array_len.array_bound.NormalizeArrayLen.diff
 // EMIT_MIR lower_array_len.array_bound.SimplifyLocals.diff
