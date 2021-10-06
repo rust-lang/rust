@@ -18,10 +18,21 @@ pub struct Drain<
     T: 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
-    pub(crate) after_tail: usize,
-    pub(crate) after_head: usize,
-    pub(crate) iter: Iter<'a, T>,
-    pub(crate) deque: NonNull<VecDeque<T, A>>,
+    after_tail: usize,
+    after_head: usize,
+    iter: Iter<'a, T>,
+    deque: NonNull<VecDeque<T, A>>,
+}
+
+impl<'a, T, A: Allocator> Drain<'a, T, A> {
+    pub(super) unsafe fn new(
+        after_tail: usize,
+        after_head: usize,
+        iter: Iter<'a, T>,
+        deque: NonNull<VecDeque<T, A>>,
+    ) -> Self {
+        Drain { after_tail, after_head, iter, deque }
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]

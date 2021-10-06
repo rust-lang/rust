@@ -1269,19 +1269,17 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // the drain is complete and the Drain destructor is run.
         self.head = drain_tail;
 
-        Drain {
-            deque: NonNull::from(&mut *self),
-            after_tail: drain_head,
-            after_head: head,
-            iter: Iter {
-                tail: drain_tail,
-                head: drain_head,
-                // Crucially, we only create shared references from `self` here and read from
-                // it.  We do not write to `self` nor reborrow to a mutable reference.
-                // Hence the raw pointer we created above, for `deque`, remains valid.
-                ring: unsafe { self.buffer_as_slice() },
-            },
-        }
+        let deque = NonNull::from(&mut *self);
+        let iter = Iter {
+            tail: drain_tail,
+            head: drain_head,
+            // Crucially, we only create shared references from `self` here and read from
+            // it.  We do not write to `self` nor reborrow to a mutable reference.
+            // Hence the raw pointer we created above, for `deque`, remains valid.
+            ring: unsafe { self.buffer_as_slice() },
+        };
+
+        unsafe { Drain::new(drain_head, head, iter, deque) }
     }
 
     /// Clears the `VecDeque`, removing all values.
