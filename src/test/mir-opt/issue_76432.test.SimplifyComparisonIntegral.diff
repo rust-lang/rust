@@ -22,6 +22,7 @@
       let mut _20: *const T;               // in scope 0 at $DIR/issue_76432.rs:9:70: 9:84
       let mut _21: *const T;               // in scope 0 at $DIR/issue_76432.rs:9:70: 9:84
       let mut _22: !;                      // in scope 0 at $SRC_DIR/core/src/panic.rs:LL:COL
+      let mut _23: &[T; 3];                // in scope 0 at $DIR/issue_76432.rs:7:19: 7:29
       scope 1 {
           debug v => _2;                   // in scope 1 at $DIR/issue_76432.rs:7:9: 7:10
           let _13: &T;                     // in scope 1 at $DIR/issue_76432.rs:9:10: 9:16
@@ -51,16 +52,17 @@
           StorageDead(_6);                 // scope 0 at $DIR/issue_76432.rs:7:28: 7:29
           _4 = &_5;                        // scope 0 at $DIR/issue_76432.rs:7:19: 7:29
           _3 = _4;                         // scope 0 at $DIR/issue_76432.rs:7:19: 7:29
+          StorageLive(_23);                // scope 0 at $DIR/issue_76432.rs:7:19: 7:29
+          _23 = _3;                        // scope 0 at $DIR/issue_76432.rs:7:19: 7:29
           _2 = move _3 as &[T] (Pointer(Unsize)); // scope 0 at $DIR/issue_76432.rs:7:19: 7:29
           StorageDead(_3);                 // scope 0 at $DIR/issue_76432.rs:7:28: 7:29
           StorageDead(_4);                 // scope 0 at $DIR/issue_76432.rs:7:29: 7:30
           StorageLive(_9);                 // scope 1 at $DIR/issue_76432.rs:8:5: 11:6
-          _10 = Len((*_2));                // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
+          _10 = const 3_usize;             // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
+          StorageDead(_23);                // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
           _11 = const 3_usize;             // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
--         _12 = Eq(move _10, const 3_usize); // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
--         switchInt(move _12) -> [false: bb1, otherwise: bb2]; // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
-+         nop;                             // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
-+         switchInt(move _10) -> [3_usize: bb2, otherwise: bb1]; // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
+          _12 = const true;                // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
+          goto -> bb2;                     // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
       }
   
       bb1: {
