@@ -1,11 +1,11 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/traits-misc-mismatch-2.rs:13:5
+  --> $DIR/traits-misc-mismatch-2.rs:13:18
    |
 LL |     fn zip<B, U: Iterator<U>>(self, other: U) -> ZipIterator<Self, U>;
    |     ------------------------------------------------------------------ definition of `zip` from trait
 ...
 LL |     fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<T, U> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `U: Iterator<B>`
+   |                  ^^^^^^^^^^^ impl has extra requirement `U: Iterator<B>`
 
 error: aborting due to previous error
 
