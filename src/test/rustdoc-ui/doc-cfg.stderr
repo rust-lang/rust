@@ -1,0 +1,26 @@
+error: `cfg` predicate is not specified
+  --> $DIR/doc-cfg.rs:3:7
+   |
+LL | #[doc(cfg(), cfg(foo, bar))]
+   |       ^^^^^
+
+error: multiple `cfg` predicates are specified
+  --> $DIR/doc-cfg.rs:3:23
+   |
+LL | #[doc(cfg(), cfg(foo, bar))]
+   |                       ^^^
+
+error: `cfg` predicate is not specified
+  --> $DIR/doc-cfg.rs:7:7
+   |
+LL | #[doc(cfg())]
+   |       ^^^^^
+
+error: multiple `cfg` predicates are specified
+  --> $DIR/doc-cfg.rs:8:16
+   |
+LL | #[doc(cfg(foo, bar))]
+   |                ^^^
+
+error: aborting due to 4 previous errors
+

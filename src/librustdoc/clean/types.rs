@@ -776,48 +776,31 @@ impl AttributesExt for [ast::Attribute] {
         let sess = tcx.sess;
         let doc_cfg_active = tcx.features().doc_cfg;
 
-        trait SingleExt {
-            type Item;
-            fn single(self) -> Option<Self::Item>;
-        }
-
-        impl<T: IntoIterator> SingleExt for T {
-            type Item = T::Item;
-            fn single(self) -> Option<Self::Item> {
-                let mut iter = self.into_iter();
-                let item = iter.next()?;
-                if iter.next().is_some() {
-                    return None;
-                }
-                Some(item)
+        fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
+            let mut iter = it.into_iter();
+            let item = iter.next()?;
+            if iter.next().is_some() {
+                return None;
             }
+            Some(item)
         }
 
         let mut cfg = if doc_cfg_active {
             let mut doc_cfg = self
                 .iter()
                 .filter(|attr| attr.has_name(sym::doc))
-                .filter_map(|attr| Some(attr.meta_item_list()?.single()?))
+                .flat_map(|attr| attr.meta_item_list().unwrap_or_else(Vec::new))
                 .filter(|attr| attr.has_name(sym::cfg))
-                .filter_map(|attr| Some(attr.meta_item_list()?.single()?.meta_item()?.clone()))
                 .peekable();
             if doc_cfg.peek().is_some() {
                 doc_cfg
-                    .filter_map(|attr| {
-                        Cfg::parse(&attr)
-                            .map_err(|e| sess.diagnostic().span_err(e.span, e.msg))
-                            .ok()
-                    })
+                    .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
             } else {
                 self.iter()
                     .filter(|attr| attr.has_name(sym::cfg))
-                    .filter_map(|attr| Some(attr.meta_item_list()?.single()?.meta_item()?.clone()))
-                    .filter_map(|attr| {
-                        Cfg::parse(&attr)
-                            .map_err(|e| sess.diagnostic().span_err(e.span, e.msg))
-                            .ok()
-                    })
+                    .filter_map(|attr| single(attr.meta_item_list()?))
+                    .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
                     .filter(|cfg| !hidden_cfg.contains(cfg))
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
             }
