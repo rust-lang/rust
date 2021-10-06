@@ -20,6 +20,17 @@ LL |     let y = x.test();
            `Enum: Clone`
            `Enum: Default`
            `CloneEnum: Default`
+note: the following trait must be implemented
+  --> $SRC_DIR/core/src/default.rs:LL:COL
+   |
+LL | / pub trait Default: Sized {
+LL | |     /// Returns the "default value" for a type.
+LL | |     ///
+LL | |     /// Default values are often some kind of initial value, identity value, or anything else that
+...  |
+LL | |     fn default() -> Self;
+LL | | }
+   | |_^
 help: consider annotating `Enum` with `#[derive(Clone)]`
    |
 LL | #[derive(Clone)]
