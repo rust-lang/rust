@@ -77,7 +77,7 @@ borrow.
 [converted]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/cx/expr/trait.ToBorrowKind.html#method.to_borrow_kind
 [`BorrowKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.BorrowKind.html
 [`GatherBorrows`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.Visitor.html#method.visit_local
-[`BorrowData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/borrow_set/struct.BorrowData.html
+[`BorrowData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/borrow_set/struct.BorrowData.html
 
 ## Checking two-phase borrows
 
@@ -95,6 +95,6 @@ following exceptions:
    by using the [`Dominators`] for the MIR graph.
 4. After the activation point, the two-phase borrow acts as a mutable borrow.
 
-[check]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/struct.MirBorrowckCtxt.html#method.check_activations
+[check]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/struct.MirBorrowckCtxt.html#method.check_activations
 [`Dominators`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/dominators/struct.Dominators.html
-[`is_active`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/path_utils/fn.is_active.html
+[`is_active`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/path_utils/fn.is_active.html
