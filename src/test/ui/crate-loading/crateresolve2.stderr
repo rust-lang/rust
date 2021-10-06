@@ -1,0 +1,10 @@
+error[E0464]: multiple matching crates for `crateresolve2`
+  --> $DIR/crateresolve2.rs:7:1
+   |
+LL | extern crate crateresolve2;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: candidates:
+
+error: aborting due to previous error
+
