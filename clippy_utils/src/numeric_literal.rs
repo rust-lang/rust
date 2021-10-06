@@ -157,8 +157,10 @@ impl<'a> NumericLiteral<'a> {
         }
 
         if let Some((separator, exponent)) = self.exponent {
-            output.push_str(separator);
-            Self::group_digits(&mut output, exponent, group_size, true, false);
+            if exponent != "0" {
+                output.push_str(separator);
+                Self::group_digits(&mut output, exponent, group_size, true, false);
+            }
         }
 
         if let Some(suffix) = self.suffix {
