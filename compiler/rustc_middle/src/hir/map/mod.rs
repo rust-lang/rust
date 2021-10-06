@@ -144,11 +144,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
 impl<'hir> Map<'hir> {
     #[inline]
-    pub fn krate(self) -> &'hir Crate<'hir> {
-        self.tcx.hir_crate(())
-    }
-
-    #[inline]
     pub fn root_module(self) -> &'hir Mod<'hir> {
         match self.tcx.hir_owner_node(CRATE_OWNER_ID) {
             OwnerNode::Crate(item) => item,
@@ -386,12 +381,11 @@ impl<'hir> Map<'hir> {
     where
         V: Visitor<'hir>,
     {
-        let krate = self.krate();
-        for info in krate.owners.iter() {
-            if let MaybeOwner::Owner(info) = info {
-                for attrs in info.attrs.map.values() {
-                    walk_list!(visitor, visit_attribute, *attrs);
-                }
+        let krate = self.tcx.hir_crate_items(());
+        for owner in krate.owners() {
+            let attrs = self.tcx.hir_attrs(owner);
+            for attrs in attrs.map.values() {
+                walk_list!(visitor, visit_attribute, *attrs);
             }
         }
         V::Result::output()

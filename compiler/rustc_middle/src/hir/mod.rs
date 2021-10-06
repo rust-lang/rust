@@ -22,6 +22,9 @@ use rustc_span::{ErrorGuaranteed, ExpnId};
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
 #[derive(Debug, HashStable, Encodable, Decodable)]
 pub struct ModuleItems {
+    /// Whether this represents the whole crate, in which case we need to add `CRATE_OWNER_ID` to
+    /// the iterators if we want to account for the crate root.
+    pub add_root: bool,
     pub submodules: Box<[OwnerId]>,
     pub free_items: Box<[ItemId]>,
     pub trait_items: Box<[TraitItemId]>,
@@ -56,9 +59,10 @@ impl ModuleItems {
     }
 
     pub fn owners(&self) -> impl Iterator<Item = OwnerId> + '_ {
-        self.free_items
-            .iter()
-            .map(|id| id.owner_id)
+        self.add_root
+            .then_some(CRATE_OWNER_ID)
+            .into_iter()
+            .chain(self.free_items.iter().map(|id| id.owner_id))
             .chain(self.trait_items.iter().map(|id| id.owner_id))
             .chain(self.impl_items.iter().map(|id| id.owner_id))
             .chain(self.foreign_items.iter().map(|id| id.owner_id))

@@ -71,7 +71,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
+use rustc_hir::{ItemLocalId, ItemLocalMap, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_macros::rustc_queries;
 use rustc_query_system::ich::StableHashingContext;
@@ -156,18 +156,6 @@ rustc_queries! {
     query lower_to_hir(key: LocalDefId) -> hir::MaybeOwner<'tcx> {
         eval_always
         desc { |tcx| "lower HIR for `{}`", tcx.def_path_str(key.to_def_id()) }
-    }
-
-    /// Represents crate as a whole (as distinct from the top-level crate module).
-    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
-    /// we will have to assume that any change means that you need to be recompiled.
-    /// This is because the `hir_crate` query gives you access to all other items.
-    /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
-    /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
-    query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
-        arena_cache
-        eval_always
-        desc { "getting the crate HIR" }
     }
 
     /// All items in the crate.

@@ -8,14 +8,14 @@ use rustc_middle::hir::{nested_filter, ModuleItems};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
+use rustc_span::DUMMY_SP;
 
-use crate::{hir_crate, index_ast, lower_to_hir};
+use crate::{index_ast, lower_to_hir};
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         lower_to_hir,
         index_ast,
-        hir_crate,
         crate_hash,
         hir_module_items,
         hir_crate_items,
@@ -24,8 +24,23 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
-    let krate = tcx.hir_crate(());
-    let hir_body_hash = krate.opt_hir_hash.expect("HIR hash missing while computing crate hash");
+    let mut hir_body_nodes: Vec<_> = tcx
+        .hir_crate_items(())
+        .owners()
+        .map(|owner| {
+            let def_id = owner.def_id;
+            let def_path_hash = tcx.hir().def_path_hash(def_id);
+            let info = tcx.lower_to_hir(def_id).unwrap();
+            let span = if tcx.sess.opts.incremental.is_some() {
+                tcx.source_span(def_id)
+            } else {
+                DUMMY_SP
+            };
+            debug_assert_eq!(span.parent(), None);
+            (def_path_hash, info, span)
+        })
+        .collect();
+    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
     let upstream_crates = upstream_crates(tcx);
 
@@ -63,26 +78,10 @@ fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
 
     let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
         let mut stable_hasher = StableHasher::new();
-        hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
+        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
         upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
         source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
         debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);
-        if tcx.sess.opts.incremental.is_some() {
-            let definitions = tcx.untracked().definitions.freeze();
-            let mut owner_spans: Vec<_> = krate
-                .owners
-                .iter_enumerated()
-                .filter_map(|(def_id, info)| {
-                    let _ = info.as_owner()?;
-                    let def_path_hash = definitions.def_path_hash(def_id);
-                    let span = tcx.source_span(def_id);
-                    debug_assert_eq!(span.parent(), None);
-                    Some((def_path_hash, span))
-                })
-                .collect();
-            owner_spans.sort_unstable_by_key(|bn| bn.0);
-            owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
-        }
         tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
         tcx.stable_crate_id(LOCAL_CRATE).hash_stable(&mut hcx, &mut stable_hasher);
         // Hash visibility information since it does not appear in HIR.
@@ -126,6 +125,7 @@ fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> ModuleItems {
         ..
     } = collector;
     return ModuleItems {
+        add_root: false,
         submodules: submodules.into_boxed_slice(),
         free_items: items.into_boxed_slice(),
         trait_items: trait_items.into_boxed_slice(),
@@ -155,6 +155,7 @@ fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
     } = collector;
 
     return ModuleItems {
+        add_root: true,
         submodules: submodules.into_boxed_slice(),
         free_items: items.into_boxed_slice(),
         trait_items: trait_items.into_boxed_slice(),

@@ -484,37 +484,9 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
     })
 }
 
-fn hir_crate<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> rustc_hir::Crate<'tcx> {
-    let mut owners: IndexVec<LocalDefId, _> = IndexVec::new();
-    while owners.next_index().index() < tcx.definitions_untracked().def_index_count() {
-        let next = owners.next_index();
-        owners.push(tcx.lower_to_hir(next));
-    }
-
-    let mut hir_body_nodes: Vec<_> = owners
-        .iter_enumerated()
-        .filter_map(|(def_id, info)| {
-            let info = info.as_owner()?;
-            let def_path_hash = tcx.hir().def_path_hash(def_id);
-            Some((def_path_hash, info))
-        })
-        .collect();
-    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
-
-    let opt_hir_hash = if tcx.needs_crate_hash() {
-        Some(tcx.with_stable_hashing_context(|mut hcx| {
-            let mut stable_hasher = StableHasher::new();
-            hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
-            stable_hasher.finish()
-        }))
-    } else {
-        None
-    };
-
-    rustc_hir::Crate { owners, opt_hir_hash }
-}
-
 #[derive(Copy, Clone, PartialEq, Debug)]
+enum ParamMode {
+    /// Any path in a type context.
     Explicit,
     /// Path in a type definition, where the anonymous lifetime `'_` is not allowed.
     ExplicitNamed,
@@ -545,6 +517,7 @@ impl<'hir> LoweringContext<'hir> {
             self.tcx.hir().def_key(self.local_def_id(node_id)),
         );
 
+        let def_id = self.tcx.at(span).create_def(parent, name, def_kind).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
         self.node_id_to_def_id.insert(node_id, def_id);
