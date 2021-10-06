@@ -20,14 +20,19 @@ use crate::assist_context::{AssistContext, Assists};
 // Replaces a `try` expression with a `match` expression.
 //
 // ```
-// let pat = Some(true)$0?;
+// # //- minicore:option
+// fn handle() {
+//     let pat = Some(true)$0?;
+// }
 // ```
 // ->
 // ```
-// let pat = match Some(true) {
-//     Some(it) => it,
-//     None => return None,
-// };
+// fn handle() {
+//     let pat = match Some(true) {
+//         Some(it) => it,
+//         None => return None,
+//     };
+// }
 // ```
 pub(crate) fn replace_try_expr_with_match(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let qm_kw = ctx.find_token_syntax_at_offset(T![?])?;
@@ -93,7 +98,7 @@ mod tests {
             replace_try_expr_with_match,
             r#"
                 fn test() {
-                    let pat = 25$0;
+                    let pat: u32 = 25$0;
                 }
             "#,
         );
