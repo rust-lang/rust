@@ -224,15 +224,15 @@ fn is_normalizable_helper<'tcx>(
     result
 }
 
-/// Returns true iff the given type is a non aggregate primitive (a bool or char, any integer or
-/// floating-point number type). For checking aggregation of primitive types (e.g. tuples and slices
-/// of primitive type) see `is_recursively_primitive_type`
+/// Returns `true` if the given type is a non aggregate primitive (a `bool` or `char`, any
+/// integer or floating-point number type). For checking aggregation of primitive types (e.g.
+/// tuples and slices of primitive type) see `is_recursively_primitive_type`
 pub fn is_non_aggregate_primitive_type(ty: Ty<'_>) -> bool {
     matches!(ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_))
 }
 
-/// Returns true iff the given type is a primitive (a bool or char, any integer or floating-point
-/// number type, a str, or an array, slice, or tuple of those types).
+/// Returns `true` if the given type is a primitive (a `bool` or `char`, any integer or
+/// floating-point number type, a `str`, or an array, slice, or tuple of those types).
 pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     match ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
