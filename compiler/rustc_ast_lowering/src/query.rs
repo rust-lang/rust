@@ -1,23 +1,87 @@
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{ForeignItem, ImplItem, Item, ItemKind, Mod, TraitItem};
+use rustc_hir::{Crate, ForeignItem, ImplItem, Item, ItemKind, Mod, TraitItem};
 use rustc_hir::{ForeignItemId, HirId, ImplItemId, ItemId, ModuleItems, TraitItemId};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { crate_hash, hir_module_items, hir_crate_items, ..*providers };
+    *providers =
+        Providers { hir_crate, crate_hash, hir_module_items, hir_crate_items, ..*providers };
+}
+
+fn hir_crate<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> Crate<'tcx> {
+    let mut collector = CrateCollector { tcx, owners: vec![CRATE_DEF_ID] };
+    tcx.hir().walk_toplevel_module(&mut collector);
+    let owners = tcx.arena.alloc_from_iter(collector.owners);
+
+    // Discard hygiene data, which isn't required after lowering to HIR.
+    if !tcx.sess.opts.debugging_opts.keep_hygiene_data {
+        rustc_span::hygiene::clear_syntax_context_map();
+    }
+
+    return Crate { owners };
+
+    struct CrateCollector<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        owners: Vec<LocalDefId>,
+    }
+
+    impl<'hir> Visitor<'hir> for CrateCollector<'hir> {
+        type NestedFilter = nested_filter::All;
+
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.tcx.hir()
+        }
+
+        fn visit_item(&mut self, item: &'hir Item<'hir>) {
+            self.owners.push(item.def_id);
+            intravisit::walk_item(self, item)
+        }
+
+        fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
+            self.owners.push(item.def_id);
+            intravisit::walk_trait_item(self, item)
+        }
+
+        fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
+            self.owners.push(item.def_id);
+            intravisit::walk_impl_item(self, item)
+        }
+
+        fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
+            self.owners.push(item.def_id);
+            intravisit::walk_foreign_item(self, item)
+        }
+    }
 }
 
 fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     debug_assert_eq!(crate_num, LOCAL_CRATE);
     let krate = tcx.hir_crate(());
-    let hir_body_hash = krate.hir_hash;
+    let definitions = tcx.definitions_untracked();
+
+    let mut hir_body_nodes: Vec<_> = krate
+        .owners
+        .iter()
+        .map(|&def_id| {
+            let def_path_hash = tcx.hir().def_path_hash(def_id);
+            let info = tcx.lower_to_hir(def_id).unwrap();
+            let span = if tcx.sess.opts.debugging_opts.incremental_relative_spans {
+                definitions.def_span(def_id)
+            } else {
+                DUMMY_SP
+            };
+            debug_assert_eq!(span.parent(), None);
+            (def_path_hash, info, span)
+        })
+        .collect();
+    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
     let upstream_crates = upstream_crates(tcx);
 
@@ -39,25 +103,9 @@ fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
 
     let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
         let mut stable_hasher = StableHasher::new();
-        hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
+        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
         upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
         source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
-        if tcx.sess.opts.debugging_opts.incremental_relative_spans {
-            let definitions = tcx.definitions_untracked();
-            let mut owner_spans: Vec<_> = krate
-                .owners
-                .iter_enumerated()
-                .filter_map(|(def_id, info)| {
-                    let _ = info.as_owner()?;
-                    let def_path_hash = definitions.def_path_hash(def_id);
-                    let span = definitions.def_span(def_id);
-                    debug_assert_eq!(span.parent(), None);
-                    Some((def_path_hash, span))
-                })
-                .collect();
-            owner_spans.sort_unstable_by_key(|bn| bn.0);
-            owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
-        }
         tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
         tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
         // Hash visibility information since it does not appear in HIR.

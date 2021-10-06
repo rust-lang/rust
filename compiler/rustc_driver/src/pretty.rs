@@ -461,7 +461,12 @@ pub fn print_after_hir_lowering<'tcx>(
         HirTree => {
             call_with_pp_support_hir(&PpHirMode::Normal, tcx, move |_annotation, hir_map| {
                 debug!("pretty printing HIR tree");
-                format!("{:#?}", hir_map.krate())
+                hir_map
+                    .krate()
+                    .owners
+                    .iter()
+                    .map(|&owner| format!("{:#?} => {:#?}\n", owner, tcx.lower_to_hir(owner)))
+                    .collect()
             })
         }
 

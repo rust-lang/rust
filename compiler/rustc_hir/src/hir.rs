@@ -831,10 +831,10 @@ impl ModuleItems {
 /// For more details, see the [rustc dev guide].
 ///
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
-#[derive(Debug)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Crate<'hir> {
-    pub owners: IndexVec<LocalDefId, MaybeOwner<&'hir OwnerInfo<'hir>>>,
-    pub hir_hash: Fingerprint,
+    /// List of all the definitions in visitor order.
+    pub owners: &'hir [LocalDefId],
 }
 
 /// A block of statements `{ .. }`, which may have a label (in this case the

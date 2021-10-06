@@ -8,15 +8,12 @@ use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
-use rustc_hir::def_id::{LocalDefId, StableCrateId, LOCAL_CRATE};
+use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
-use rustc_hir::Crate;
-use rustc_index::vec::{Idx, IndexVec};
 use rustc_lint::{EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_metadata::{encode_metadata, EncodedMetadata};
@@ -492,39 +489,6 @@ pub fn configure_and_expand(
     Ok(krate)
 }
 
-fn hir_crate<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> Crate<'tcx> {
-    let mut owners: IndexVec<LocalDefId, _> = IndexVec::new();
-    while owners.next_index().index() < tcx.definitions_untracked().def_index_count() {
-        let next = owners.next_index();
-        owners.push(tcx.lower_to_hir(next));
-    }
-
-    // Discard hygiene data, which isn't required after lowering to HIR.
-    if !tcx.sess.opts.debugging_opts.keep_hygiene_data {
-        rustc_span::hygiene::clear_syntax_context_map();
-    }
-
-    let mut hir_body_nodes: Vec<_> = owners
-        .iter_enumerated()
-        .filter_map(|(def_id, info)| {
-            let info = info.as_owner()?;
-            let def_path_hash = tcx.hir().def_path_hash(def_id);
-            Some((def_path_hash, info))
-        })
-        .collect();
-    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
-
-    let hir_hash = tcx.with_stable_hashing_context(|mut hcx| {
-        let mut stable_hasher = StableHasher::new();
-        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
-        stable_hasher.finish()
-    });
-
-    let hir_crate = Crate { owners, hir_hash };
-
-    hir_crate
-}
-
 // Returns all the paths that correspond to generated files.
 fn generated_output_paths(
     sess: &Session,
@@ -789,7 +753,6 @@ pub fn prepare_outputs(
 pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
-    providers.hir_crate = hir_crate;
     providers.lower_to_hir =
         |tcx, def_id| rustc_ast_lowering::lower_to_hir(tcx, def_id, rustc_parse::nt_to_tokenstream);
     rustc_ast_lowering::provide(providers);

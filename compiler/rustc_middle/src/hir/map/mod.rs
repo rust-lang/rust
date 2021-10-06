@@ -499,18 +499,14 @@ impl<'hir> Map<'hir> {
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
     pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
-        self.krate()
-            .owners
-            .iter_enumerated()
-            .flat_map(move |(owner, owner_info)| {
-                let bodies = &owner_info.as_owner()?.nodes.bodies;
-                Some(bodies.iter().map(move |&(local_id, _)| {
-                    let hir_id = HirId { owner, local_id };
-                    let body_id = BodyId { hir_id };
-                    self.body_owner_def_id(body_id)
-                }))
+        self.krate().owners.iter().flat_map(move |&owner| {
+            let bodies = &self.tcx.hir_owner_nodes(owner).unwrap().bodies;
+            bodies.iter().filter_map(move |(local_id, _)| {
+                let hir_id = HirId { owner, local_id: *local_id };
+                let body_id = BodyId { hir_id };
+                Some(self.body_owner_def_id(body_id))
             })
-            .flatten()
+        })
     }
 
     pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
@@ -518,15 +514,13 @@ impl<'hir> Map<'hir> {
         #[cfg(parallel_compiler)]
         use rustc_rayon::iter::IndexedParallelIterator;
 
-        par_iter(&self.krate().owners.raw).enumerate().for_each(|(owner, owner_info)| {
-            let owner = LocalDefId::new(owner);
-            if let MaybeOwner::Owner(owner_info) = owner_info {
-                par_iter(owner_info.nodes.bodies.range(..)).for_each(|(local_id, _)| {
-                    let hir_id = HirId { owner, local_id: *local_id };
-                    let body_id = BodyId { hir_id };
-                    f(self.body_owner_def_id(body_id))
-                })
-            }
+        par_iter(&*self.krate().owners).for_each(|&owner| {
+            let owner_info = self.tcx.lower_to_hir(owner).unwrap();
+            par_iter(owner_info.nodes.bodies.range(..)).for_each(|(local_id, _)| {
+                let hir_id = HirId { owner, local_id: *local_id };
+                let body_id = BodyId { hir_id };
+                f(self.body_owner_def_id(body_id))
+            })
         });
     }
 
@@ -583,13 +577,12 @@ impl<'hir> Map<'hir> {
     /// Walks the attributes in a crate.
     pub fn walk_attributes(self, visitor: &mut impl Visitor<'hir>) {
         let krate = self.krate();
-        for (owner, info) in krate.owners.iter_enumerated() {
-            if let MaybeOwner::Owner(info) = info {
-                for (local_id, attrs) in info.attrs.map.iter() {
-                    let id = HirId { owner, local_id: *local_id };
-                    for a in *attrs {
-                        visitor.visit_attribute(id, a)
-                    }
+        for &owner in krate.owners.iter() {
+            let info = self.tcx.lower_to_hir(owner).unwrap();
+            for (local_id, attrs) in info.attrs.map.iter() {
+                let id = HirId { owner, local_id: *local_id };
+                for a in *attrs {
+                    visitor.visit_attribute(id, a)
                 }
             }
         }
@@ -608,8 +601,9 @@ impl<'hir> Map<'hir> {
         V: itemlikevisit::ItemLikeVisitor<'hir>,
     {
         let krate = self.krate();
-        for owner in krate.owners.iter().filter_map(|i| i.as_owner()) {
-            match owner.node() {
+        for &owner in krate.owners.iter() {
+            let info = self.tcx.hir_owner(owner).unwrap();
+            match info.node {
                 OwnerNode::Item(item) => visitor.visit_item(item),
                 OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
                 OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
@@ -625,12 +619,12 @@ impl<'hir> Map<'hir> {
         V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
     {
         let krate = self.krate();
-        par_for_each_in(&krate.owners.raw, |owner| match owner.map(OwnerInfo::node) {
-            MaybeOwner::Owner(OwnerNode::Item(item)) => visitor.visit_item(item),
-            MaybeOwner::Owner(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
-            MaybeOwner::Owner(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
-            MaybeOwner::Owner(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
-            MaybeOwner::Owner(OwnerNode::Crate(_)) | MaybeOwner::NonOwner(_) => {}
+        par_for_each_in(&*krate.owners, |&owner| match self.tcx.hir_owner(owner).unwrap().node {
+            OwnerNode::Item(item) => visitor.visit_item(item),
+            OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
+            OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
+            OwnerNode::TraitItem(item) => visitor.visit_trait_item(item),
+            OwnerNode::Crate(_) => {}
         })
     }
 
