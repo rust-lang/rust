@@ -64,28 +64,17 @@ pub(crate) fn annotations(
 
     visit_file_defs(&Semantics::new(db), file_id, &mut |def| match def {
         Either::Left(def) => {
-            let (range, ranges_enum_variants) = match def {
-                hir::ModuleDef::Const(konst) => {
-                    if config.annotate_references {
-                        (konst.source(db).and_then(|node| name_range(&node, file_id)), vec![])
-                    } else {
-                        (None, vec![])
-                    }
+            let range = match def {
+                hir::ModuleDef::Const(konst) if config.annotate_references => {
+                    konst.source(db).and_then(|node| name_range(&node, file_id))
                 }
-                hir::ModuleDef::Trait(trait_) => {
-                    if config.annotate_references || config.annotate_impls {
-                        (trait_.source(db).and_then(|node| name_range(&node, file_id)), vec![])
-                    } else {
-                        (None, vec![])
-                    }
+                hir::ModuleDef::Trait(trait_)
+                    if config.annotate_references || config.annotate_impls =>
+                {
+                    trait_.source(db).and_then(|node| name_range(&node, file_id))
                 }
                 hir::ModuleDef::Adt(adt) => match adt {
-                    hir::Adt::Enum(enum_) => (
-                        if config.annotate_references || config.annotate_impls {
-                            enum_.source(db).and_then(|node| name_range(&node, file_id))
-                        } else {
-                            None
-                        },
+                    hir::Adt::Enum(enum_) => {
                         if config.annotate_enum_variant_references {
                             enum_
                                 .variants(db)
@@ -93,20 +82,35 @@ pub(crate) fn annotations(
                                 .map(|variant| {
                                     variant.source(db).and_then(|node| name_range(&node, file_id))
                                 })
-                                .collect()
+                                .filter_map(std::convert::identity)
+                                .for_each(|range| {
+                                    annotations.push(Annotation {
+                                        range,
+                                        kind: AnnotationKind::HasReferences {
+                                            position: FilePosition {
+                                                file_id,
+                                                offset: range.start(),
+                                            },
+                                            data: None,
+                                        },
+                                    })
+                                })
+                        }
+                        if config.annotate_references || config.annotate_impls {
+                            enum_.source(db).and_then(|node| name_range(&node, file_id))
                         } else {
-                            vec![]
-                        },
-                    ),
+                            None
+                        }
+                    }
                     _ => {
                         if config.annotate_references || config.annotate_impls {
-                            (adt.source(db).and_then(|node| name_range(&node, file_id)), vec![])
+                            adt.source(db).and_then(|node| name_range(&node, file_id))
                         } else {
-                            (None, vec![])
+                            None
                         }
                     }
                 },
-                _ => (None, vec![]),
+                _ => None,
             };
 
             let (range, offset) = match range {
@@ -131,20 +135,6 @@ pub(crate) fn annotations(
                         data: None,
                     },
                 });
-            }
-
-            if config.annotate_enum_variant_references {
-                for range_enum_variant in
-                    ranges_enum_variants.into_iter().filter_map(std::convert::identity)
-                {
-                    annotations.push(Annotation {
-                        range: range_enum_variant,
-                        kind: AnnotationKind::HasReferences {
-                            position: FilePosition { file_id, offset: range_enum_variant.start() },
-                            data: None,
-                        },
-                    });
-                }
             }
 
             fn name_range<T: HasName>(node: &InFile<T>, file_id: FileId) -> Option<TextRange> {
