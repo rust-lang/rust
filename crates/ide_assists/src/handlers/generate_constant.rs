@@ -39,9 +39,6 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext) -> Optio
     let module = scope.module()?;
     let type_name = ty.original().display_source_code(ctx.db(), module.into()).ok()?;
     let indent = IndentLevel::from_node(statement.syntax());
-    if !arg_list.syntax().text_range().contains_range(constant_token.syntax().text_range()) {
-        return None;
-    }
     if constant_token.to_string().chars().any(|it| !(it.is_uppercase() || it == '_')) {
         cov_mark::hit!(not_constant_name);
         return None;
@@ -51,20 +48,14 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext) -> Optio
         return None;
     }
     let target = statement.syntax().parent()?.text_range();
-    let statement_syntax = statement.syntax().clone_for_update();
     acc.add(
         AssistId("generate_constant", AssistKind::QuickFix),
         "Generate constant",
         target,
         |builder| {
             builder.insert(
-                statement.syntax().text_range.start(),
-                format!(
-                    "const {}: {} = $0;\n{}",
-                    constant_token,
-                    type_name,
-                    indent
-                ),
+                statement.syntax().text_range().start(),
+                format!("const {}: {} = $0;\n{}", constant_token, type_name, indent),
             );
         },
     )
