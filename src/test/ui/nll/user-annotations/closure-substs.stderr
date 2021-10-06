@@ -28,9 +28,14 @@ error[E0521]: borrowed data escapes outside of closure
   --> $DIR/closure-substs.rs:29:9
    |
 LL |     |x: &i32, b: fn(&'static i32)| {
-   |      - `x` is a reference that is only valid in the closure body
+   |      -  - let's call the lifetime of this reference `'1`
+   |      |
+   |      `x` is a reference that is only valid in the closure body
 LL |         b(x);
-   |         ^^^^ `x` escapes the closure body here
+   |         ^^^^
+   |         |
+   |         `x` escapes the closure body here
+   |         argument requires that `'1` must outlive `'static`
 
 error: aborting due to 4 previous errors
 

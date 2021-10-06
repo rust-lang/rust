@@ -498,6 +498,27 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             diag.span_label(*span, format!("`{}` escapes the {} body here", fr_name, escapes_from));
         }
 
+        // Only show an extra note if we can find an 'error region' for both of the region
+        // variables. This avoids showing a noisy note that just mentions 'synthetic' regions
+        // that don't help the user understand the error.
+        if self.to_error_region(errci.fr).is_some()
+            && self.to_error_region(errci.outlived_fr).is_some()
+        {
+            let fr_region_name = self.give_region_a_name(errci.fr).unwrap();
+            fr_region_name.highlight_region_name(&mut diag);
+            let outlived_fr_region_name = self.give_region_a_name(errci.outlived_fr).unwrap();
+            outlived_fr_region_name.highlight_region_name(&mut diag);
+
+            diag.span_label(
+                *span,
+                format!(
+                    "{}requires that `{}` must outlive `{}`",
+                    category.description(),
+                    fr_region_name,
+                    outlived_fr_region_name,
+                ),
+            );
+        }
         diag
     }
 

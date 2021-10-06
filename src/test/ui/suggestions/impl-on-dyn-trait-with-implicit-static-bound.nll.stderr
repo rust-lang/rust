@@ -2,33 +2,53 @@ error[E0521]: borrowed data escapes outside of function
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:20:9
    |
 LL |     fn use_it<'a, T>(val: &'a dyn ObjectTrait<T>) -> impl OtherTrait<'a> + 'a {
-   |                      --- `val` is a reference that is only valid in the function body
+   |               --     --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
 LL |         val.use_self::<T>()
-   |         ^^^^^^^^^^^^^^^^^^^ `val` escapes the function body here
+   |         ^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:69:9
    |
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
-   |                   --- `val` is a reference that is only valid in the function body
+   |               --  --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
 LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^ `val` escapes the function body here
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:88:9
    |
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> {
-   |                   --- `val` is a reference that is only valid in the function body
+   |               --  --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
 LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^ `val` escapes the function body here
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:108:9
    |
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
-   |                   --- `val` is a reference that is only valid in the function body
+   |               --  --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
 LL |         MyTrait::use_self(val)
-   |         ^^^^^^^^^^^^^^^^^^^^^^ `val` escapes the function body here
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
 
 error: aborting due to 4 previous errors
 
