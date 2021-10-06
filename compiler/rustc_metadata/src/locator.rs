@@ -910,9 +910,15 @@ impl CrateError {
                     "multiple matching crates for `{}`",
                     crate_name
                 );
+                let mut libraries: Vec<_> = libraries.into_values().collect();
+                // Make ordering of candidates deterministic.
+                // This has to `clone()` to work around lifetime restrictions with `sort_by_key()`.
+                // `sort_by()` could be used instead, but this is in the error path,
+                // so the performance shouldn't matter.
+                libraries.sort_by_cached_key(|lib| lib.source.paths().next().unwrap().clone());
                 let candidates = libraries
                     .iter()
-                    .filter_map(|(_, lib)| {
+                    .filter_map(|lib| {
                         let crate_name = &lib.metadata.get_root().name().as_str();
                         match (&lib.source.dylib, &lib.source.rlib) {
                             (Some((pd, _)), Some((pr, _))) => Some(format!(
