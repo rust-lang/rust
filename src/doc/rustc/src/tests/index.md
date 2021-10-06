@@ -196,7 +196,8 @@ Note that `--shuffle` does not affect whether the tests are run in parallel. To
 run the tests in random order sequentially, use `--shuffle --test-threads 1`.
 
 ⚠️ 🚧 This option is [unstable](#unstable-options), and requires the `-Z
-unstable-options` flag.
+unstable-options` flag. See [tracking issue
+#89583](https://github.com/rust-lang/rust/issues/89583) for more information.
 
 #### `--shuffle-seed` _SEED_
 
@@ -211,7 +212,8 @@ This can also be specified with the `RUST_TEST_SHUFFLE_SEED` environment
 variable.
 
 ⚠️ 🚧 This option is [unstable](#unstable-options), and requires the `-Z
-unstable-options` flag.
+unstable-options` flag. See [tracking issue
+#89583](https://github.com/rust-lang/rust/issues/89583) for more information.
 
 ### Output options
 
