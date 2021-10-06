@@ -32,7 +32,10 @@ fn generic_arg(p: &mut Parser) {
         k if k.is_literal() => const_arg(p),
         // test associated_type_bounds
         // fn print_all<T: Iterator<Item, Item::Item, Item::<true>, Item: Display, Item<'a> = Item>>(printables: T) {}
-        IDENT if [T![<], T![=], T![:]].contains(&p.nth(1)) => {
+
+        // test macro_inside_generic_arg
+        // type A = Foo<syn::Token![_]>;
+        IDENT if [T![<], T![=], T![:]].contains(&p.nth(1)) && !p.nth_at(1, T![::]) => {
             let m = p.start();
             name_ref(p);
             opt_generic_arg_list(p, false);

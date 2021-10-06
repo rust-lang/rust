@@ -1,0 +1,36 @@
+SOURCE_FILE@0..30
+  TYPE_ALIAS@0..29
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "A"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    PATH_TYPE@9..28
+      PATH@9..28
+        PATH_SEGMENT@9..28
+          NAME_REF@9..12
+            IDENT@9..12 "Foo"
+          GENERIC_ARG_LIST@12..28
+            L_ANGLE@12..13 "<"
+            TYPE_ARG@13..27
+              MACRO_TYPE@13..27
+                MACRO_CALL@13..27
+                  PATH@13..23
+                    PATH@13..16
+                      PATH_SEGMENT@13..16
+                        NAME_REF@13..16
+                          IDENT@13..16 "syn"
+                    COLON2@16..18 "::"
+                    PATH_SEGMENT@18..23
+                      NAME_REF@18..23
+                        IDENT@18..23 "Token"
+                  BANG@23..24 "!"
+                  TOKEN_TREE@24..27
+                    L_BRACK@24..25 "["
+                    UNDERSCORE@25..26 "_"
+                    R_BRACK@26..27 "]"
+            R_ANGLE@27..28 ">"
+    SEMICOLON@28..29 ";"
+  WHITESPACE@29..30 "\n"
