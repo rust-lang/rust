@@ -28,8 +28,9 @@ LL |     let _ = v as &u8;
    |
 help: consider borrowing the value
    |
-LL |     let _ = &*v as &u8;
-   |             ++
+LL -     let _ = v as &u8;
+LL +     let _ = &*v;
+   | 
 
 error[E0605]: non-primitive cast: `*const u8` as `E`
   --> $DIR/cast-rfc0401.rs:30:13

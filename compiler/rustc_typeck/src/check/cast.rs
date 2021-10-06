@@ -351,7 +351,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 );
                 let mut sugg = None;
                 let mut sugg_mutref = false;
-                if let ty::Ref(reg, _, mutbl) = *self.cast_ty.kind() {
+                if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
                     if let ty::RawPtr(TypeAndMut { ty: expr_ty, .. }) = *self.expr_ty.kind() {
                         if fcx
                             .try_coerce(
@@ -366,7 +366,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             )
                             .is_ok()
                         {
-                            sugg = Some(format!("&{}*", mutbl.prefix_str()));
+                            sugg = Some((format!("&{}*", mutbl.prefix_str()), cast_ty == expr_ty));
                         }
                     } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind() {
                         if expr_mutbl == Mutability::Not
@@ -400,7 +400,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             )
                             .is_ok()
                     {
-                        sugg = Some(format!("&{}", mutbl.prefix_str()));
+                        sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
                 } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind() {
                     if fcx
@@ -416,19 +416,47 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         )
                         .is_ok()
                     {
-                        sugg = Some(format!("&{}", mutbl.prefix_str()));
+                        sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
                 }
                 if sugg_mutref {
                     err.span_label(self.span, "invalid cast");
                     err.span_note(self.expr.span, "this reference is immutable");
                     err.span_note(self.cast_span, "trying to cast to a mutable reference type");
-                } else if let Some(sugg) = sugg {
+                } else if let Some((sugg, remove_cast)) = sugg {
                     err.span_label(self.span, "invalid cast");
-                    err.span_suggestion_verbose(
-                        self.expr.span.shrink_to_lo(),
+
+                    let has_parens = fcx
+                        .tcx
+                        .sess
+                        .source_map()
+                        .span_to_snippet(self.expr.span)
+                        .map_or(false, |snip| snip.starts_with("("));
+
+                    // Very crude check to see whether the expression must be wrapped
+                    // in parentheses for the suggestion to work (issue #89497).
+                    // Can/should be extended in the future.
+                    let needs_parens = !has_parens
+                        && match self.expr.kind {
+                            hir::ExprKind::Cast(..) => true,
+                            _ => false,
+                        };
+
+                    let mut suggestion = vec![(self.expr.span.shrink_to_lo(), sugg)];
+                    if needs_parens {
+                        suggestion[0].1 += "(";
+                        suggestion.push((self.expr.span.shrink_to_hi(), ")".to_string()));
+                    }
+                    if remove_cast {
+                        suggestion.push((
+                            self.expr.span.shrink_to_hi().to(self.cast_span),
+                            String::new(),
+                        ));
+                    }
+
+                    err.multipart_suggestion_verbose(
                         "consider borrowing the value",
-                        sugg,
+                        suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if !matches!(
