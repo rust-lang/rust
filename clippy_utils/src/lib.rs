@@ -251,11 +251,7 @@ pub fn is_lang_ctor(cx: &LateContext<'_>, qpath: &QPath<'_>, lang_item: LangItem
 /// Returns `true` if this `span` was expanded by any macro.
 #[must_use]
 pub fn in_macro(span: Span) -> bool {
-    if span.from_expansion() {
-        !matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
-    } else {
-        false
-    }
+    span.from_expansion() && !matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
 }
 
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
@@ -1285,10 +1281,9 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
     }
     let enclosing_body = cx.tcx.hir().local_def_id(cx.tcx.hir().enclosing_body_owner(e.hir_id));
     if let Some((Constant::Int(v), _)) = constant(cx, cx.tcx.typeck(enclosing_body), e) {
-        value == v
-    } else {
-        false
+        return value == v;
     }
+    false
 }
 
 /// Checks whether the given expression is a constant literal of the given value.
@@ -1315,7 +1310,7 @@ pub fn is_adjusted(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 
 /// Returns the pre-expansion span if is this comes from an expansion of the
 /// macro `name`.
-/// See also `is_direct_expn_of`.
+/// See also [`is_direct_expn_of`].
 #[must_use]
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
@@ -1338,13 +1333,13 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 
 /// Returns the pre-expansion span if the span directly comes from an expansion
 /// of the macro `name`.
-/// The difference with `is_expn_of` is that in
-/// ```rust,ignore
+/// The difference with [`is_expn_of`] is that in
+/// ```rust
+/// # macro_rules! foo { ($e:tt) => { $e } }; macro_rules! bar { ($e:expr) => { $e } }
 /// foo!(bar!(42));
 /// ```
 /// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only
-/// `bar!` by
-/// `is_direct_expn_of`.
+/// from `bar!` by `is_direct_expn_of`.
 #[must_use]
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
     if span.from_expansion() {
@@ -1467,11 +1462,9 @@ pub fn is_self(slf: &Param<'_>) -> bool {
 }
 
 pub fn is_self_ty(slf: &hir::Ty<'_>) -> bool {
-    if_chain! {
-        if let TyKind::Path(QPath::Resolved(None, path)) = slf.kind;
-        if let Res::SelfTy(..) = path.res;
-        then {
-            return true
+    if let TyKind::Path(QPath::Resolved(None, path)) = slf.kind {
+        if let Res::SelfTy(..) = path.res {
+            return true;
         }
     }
     false
@@ -2063,15 +2056,12 @@ macro_rules! unwrap_cargo_metadata {
 }
 
 pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
-    if_chain! {
-        if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
-        if let Res::Def(_, def_id) = path.res;
-        then {
-            cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr)
-        } else {
-            false
+    if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
+        if let Res::Def(_, def_id) = path.res {
+            return cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr);
         }
     }
+    false
 }
 
 /// Checks whether item either has `test` attribute applied, or
@@ -2083,7 +2073,7 @@ pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
         }
     }
 
-    matches!(item.kind, ItemKind::Mod(..)) && item.ident.name.as_str().contains("test")
+    matches!(item.kind, ItemKind::Mod(..)) && item.ident.name.as_str().split('_').any(|a| a == "test" || a == "tests")
 }
 
 macro_rules! op_utils {

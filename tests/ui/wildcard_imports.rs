@@ -231,4 +231,12 @@ mod super_imports {
             let _ = foofoo();
         }
     }
+
+    mod attestation_should_be_replaced {
+        use super::*;
+
+        fn with_explicit() {
+            let _ = foofoo();
+        }
+    }
 }
