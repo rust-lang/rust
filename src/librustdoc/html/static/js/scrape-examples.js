@@ -15,7 +15,8 @@
 
     function updateScrapedExample(example) {
         var locs = JSON.parse(example.attributes.getNamedItem("data-locs").textContent);
-        var offset = parseInt(example.attributes.getNamedItem("data-offset").textContent);
+        var first_line_no = example.querySelector('.line-numbers > span:first-child');
+        var offset = parseInt(first_line_no.innerHTML) - 1;
 
         var locIndex = 0;
         var highlights = example.querySelectorAll('.highlight');
@@ -68,11 +69,8 @@
             example.querySelector('.next').remove();
         }
 
-        var codeEl = example.querySelector('.rust');
-        var codeOverflows = codeEl.scrollHeight > codeEl.clientHeight;
         var expandButton = example.querySelector('.expand');
-        if (codeOverflows) {
-            // If file is larger than default height, give option to expand the viewer
+        if (expandButton) {
             expandButton.addEventListener('click', function () {
                 if (hasClass(example, "expanded")) {
                     removeClass(example, "expanded");
@@ -81,10 +79,6 @@
                     addClass(example, "expanded");
                 }
             });
-        } else {
-            // Otherwise remove expansion buttons
-            addClass(example, 'expanded');
-            expandButton.remove();
         }
 
         // Start with the first example in view

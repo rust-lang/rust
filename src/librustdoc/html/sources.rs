@@ -212,7 +212,7 @@ impl SourceCollector<'_, 'tcx> {
                     &self.cx,
                     &root_path,
                     None,
-                    None,
+                    SourceContext::Standalone,
                 )
             },
             &self.cx.shared.style_files,
@@ -250,6 +250,11 @@ where
     }
 }
 
+crate enum SourceContext {
+    Standalone,
+    Embedded { offset: usize },
+}
+
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
 crate fn print_src(
@@ -259,8 +264,8 @@ crate fn print_src(
     file_span: rustc_span::Span,
     context: &Context<'_>,
     root_path: &str,
-    offset: Option<usize>,
     decoration_info: Option<highlight::DecorationInfo>,
+    source_context: SourceContext,
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
@@ -271,9 +276,15 @@ crate fn print_src(
         tmp /= 10;
     }
     line_numbers.write_str("<pre class=\"line-numbers\">");
-    let offset = offset.unwrap_or(0);
     for i in 1..=lines {
-        writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i + offset, cols);
+        match source_context {
+            SourceContext::Standalone => {
+                writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i, cols)
+            }
+            SourceContext::Embedded { offset } => {
+                writeln!(line_numbers, "<span>{0:1$}</span>", i + offset, cols)
+            }
+        }
     }
     line_numbers.write_str("</pre>");
     highlight::render_with_highlighting(

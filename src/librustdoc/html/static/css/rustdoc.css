@@ -1978,9 +1978,13 @@ details.undocumented[open] > summary::before {
 	font-family: 'Fira Sans';
 }
 
-.scraped-example:not(.expanded) .code-wrapper pre.line-numbers,
-.scraped-example:not(.expanded) .code-wrapper .example-wrap pre.rust {
+.scraped-example:not(.expanded) .code-wrapper pre.line-numbers {
 	overflow: hidden;
+	max-height: 240px;
+}
+
+.scraped-example:not(.expanded) .code-wrapper .example-wrap pre.rust {
+	overflow-y: hidden;
 	max-height: 240px;
 }
 
@@ -2019,7 +2023,7 @@ details.undocumented[open] > summary::before {
 .scraped-example:not(.expanded) .code-wrapper:before {
 	content: " ";
 	width: 100%;
-	height: 10px;
+	height: 5px;
 	position: absolute;
 	z-index: 100;
 	top: 0;
@@ -2029,7 +2033,7 @@ details.undocumented[open] > summary::before {
 .scraped-example:not(.expanded) .code-wrapper:after {
 	content: " ";
 	width: 100%;
-	height: 10px;
+	height: 5px;
 	position: absolute;
 	z-index: 100;
 	bottom: 0;

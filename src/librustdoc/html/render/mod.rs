@@ -2461,6 +2461,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
 }
 
 const MAX_FULL_EXAMPLES: usize = 5;
+const NUM_VISIBLE_LINES: usize = 10;
 
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
 fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: &clean::Item) {
@@ -2480,10 +2481,10 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
         w,
         "<div class=\"docblock scraped-example-list\">\
           <span></span>
-          <h5 id=\"scraped-examples\" class=\"section-header\">\
-             <a href=\"#{}\">Examples found in repository</a>\
+          <h5 id=\"{id}\" class=\"section-header\">\
+             <a href=\"#{id}\">Examples found in repository</a>\
           </h5>",
-        id
+        id = id
     );
 
     // Generate the HTML for a single example, being the title and code block
@@ -2503,54 +2504,58 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
         assert!(!call_data.locations.is_empty());
         let min_loc =
             call_data.locations.iter().min_by_key(|loc| loc.enclosing_item.byte_span.0).unwrap();
-        let (byte_offset, _) = min_loc.enclosing_item.byte_span;
-        let (line_offset, _) = min_loc.enclosing_item.line_span;
-        let byte_ceiling =
-            call_data.locations.iter().map(|loc| loc.enclosing_item.byte_span.1).max().unwrap();
+        let byte_min = min_loc.enclosing_item.byte_span.0;
+        let line_min = min_loc.enclosing_item.line_span.0;
+        let max_loc =
+            call_data.locations.iter().max_by_key(|loc| loc.enclosing_item.byte_span.1).unwrap();
+        let byte_max = max_loc.enclosing_item.byte_span.1;
+        let line_max = max_loc.enclosing_item.line_span.1;
 
         // The output code is limited to that byte range.
-        let contents_subset = &contents[(byte_offset as usize)..(byte_ceiling as usize)];
+        let contents_subset = &contents[(byte_min as usize)..(byte_max as usize)];
 
         // The call locations need to be updated to reflect that the size of the program has changed.
-        // Specifically, the ranges are all subtracted by `byte_offset` since that's the new zero point.
+        // Specifically, the ranges are all subtracted by `byte_min` since that's the new zero point.
         let (byte_ranges, line_ranges): (Vec<_>, Vec<_>) = call_data
             .locations
             .iter()
             .map(|loc| {
                 let (byte_lo, byte_hi) = loc.call_expr.byte_span;
                 let (line_lo, line_hi) = loc.call_expr.line_span;
-                (
-                    (byte_lo - byte_offset, byte_hi - byte_offset),
-                    (line_lo - line_offset, line_hi - line_offset),
-                )
+                ((byte_lo - byte_min, byte_hi - byte_min), (line_lo - line_min, line_hi - line_min))
             })
             .unzip();
 
         let (init_min, init_max) = line_ranges[0];
         let line_range = if init_min == init_max {
-            format!("line {}", init_min + line_offset + 1)
+            format!("line {}", init_min + line_min + 1)
         } else {
-            format!("lines {}-{}", init_min + line_offset + 1, init_max + line_offset + 1)
+            format!("lines {}-{}", init_min + line_min + 1, init_max + line_min + 1)
         };
+
+        let needs_expansion = line_max - line_min > NUM_VISIBLE_LINES;
 
         write!(
             w,
-            "<div class=\"scraped-example\" data-locs=\"{locations}\" data-offset=\"{offset}\">\
+            "<div class=\"scraped-example {expanded_cls}\" data-locs=\"{locations}\">\
                 <div class=\"scraped-example-title\">\
-                   {name} (<a href=\"{root}{url}\" target=\"_blank\">{line_range}</a>)\
+                   {name} (<a href=\"{root}{url}\">{line_range}</a>)\
                 </div>\
                 <div class=\"code-wrapper\">",
             root = cx.root_path(),
             url = call_data.url,
             name = call_data.display_name,
             line_range = line_range,
-            offset = line_offset,
+            expanded_cls = if needs_expansion { "" } else { "expanded" },
             // The locations are encoded as a data attribute, so they can be read
             // later by the JS for interactions.
             locations = serde_json::to_string(&line_ranges).unwrap(),
         );
         write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
-        write!(w, r#"<span class="expand">&varr;</span>"#);
+
+        if needs_expansion {
+            write!(w, r#"<span class="expand">&varr;</span>"#);
+        }
 
         // Look for the example file in the source map if it exists, otherwise return a dummy span
         let file_span = (|| {
@@ -2565,8 +2570,8 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
                 _ => false,
             })?;
             Some(rustc_span::Span::with_root_ctxt(
-                file.start_pos + BytePos(byte_offset),
-                file.start_pos + BytePos(byte_ceiling),
+                file.start_pos + BytePos(byte_min),
+                file.start_pos + BytePos(byte_max),
             ))
         })()
         .unwrap_or(rustc_span::DUMMY_SP);
@@ -2584,8 +2589,8 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
             file_span,
             cx,
             &root_path,
-            Some(line_offset),
             Some(highlight::DecorationInfo(decoration_info)),
+            sources::SourceContext::Embedded { offset: line_min },
         );
         write!(w, "</div></div>");
 
@@ -2648,7 +2653,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
             it.for_each(|(_, call_data)| {
                 write!(
                     w,
-                    r#"<li><a href="{root}{url}" target="_blank">{name}</a></li>"#,
+                    r#"<li><a href="{root}{url}">{name}</a></li>"#,
                     root = cx.root_path(),
                     url = call_data.url,
                     name = call_data.display_name
