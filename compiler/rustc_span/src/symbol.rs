@@ -570,6 +570,7 @@ symbols! {
         dyn_metadata,
         dyn_trait,
         edition_macro_pats,
+        edition_panic,
         eh_catch_typeinfo,
         eh_personality,
         emit_enum,
