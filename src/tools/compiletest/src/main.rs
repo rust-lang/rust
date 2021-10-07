@@ -28,6 +28,7 @@ use self::header::{make_test_description, EarlyProps};
 mod tests;
 
 pub mod common;
+pub mod compute_diff;
 pub mod errors;
 pub mod header;
 mod json;
