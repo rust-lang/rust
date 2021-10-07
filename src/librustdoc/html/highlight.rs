@@ -691,7 +691,7 @@ fn string<T: Display>(
                 // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
                 match href {
                     LinkFromSrc::Local(span) => context
-                        .href_from_span(*span)
+                        .href_from_span(*span, true)
                         .map(|s| format!("{}{}", context_info.root_path, s)),
                     LinkFromSrc::External(def_id) => {
                         format::href_with_root_path(*def_id, context, Some(context_info.root_path))

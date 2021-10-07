@@ -1986,6 +1986,7 @@ details.undocumented[open] > summary::before {
 .scraped-example:not(.expanded) .code-wrapper .example-wrap pre.rust {
 	overflow-y: hidden;
 	max-height: 240px;
+	padding-bottom: 0;
 }
 
 .scraped-example .code-wrapper .prev {

@@ -15,41 +15,23 @@
 
     function updateScrapedExample(example) {
         var locs = JSON.parse(example.attributes.getNamedItem("data-locs").textContent);
-        var first_line_no = example.querySelector('.line-numbers > span:first-child');
-        var offset = parseInt(first_line_no.innerHTML) - 1;
-
         var locIndex = 0;
         var highlights = example.querySelectorAll('.highlight');
         var link = example.querySelector('.scraped-example-title a');
-        addClass(highlights[0], 'focus');
+
         if (locs.length > 1) {
             // Toggle through list of examples in a given file
-            var onChangeLoc = function(f) {
+            var onChangeLoc = function(changeIndex) {
                 removeClass(highlights[locIndex], 'focus');
-                f();
-                scrollToLoc(example, locs[locIndex]);
+                changeIndex();
+                scrollToLoc(example, locs[locIndex][0]);
                 addClass(highlights[locIndex], 'focus');
 
-                var curLoc = locs[locIndex];
-                var minLine = curLoc[0] + offset + 1;
-                var maxLine = curLoc[1] + offset + 1;
+                var url = locs[locIndex][1];
+                var title = locs[locIndex][2];
 
-                var text;
-                var anchor;
-                if (minLine == maxLine) {
-                    text = 'line ' + minLine.toString();
-                    anchor = minLine.toString();
-                } else {
-                    var range = minLine.toString() + '-' + maxLine.toString();
-                    text = 'lines ' + range;
-                    anchor = range;
-                }
-
-                var url = new URL(link.href);
-                url.hash = anchor;
-
-                link.href = url.toString();
-                link.innerHTML = text;
+                link.href = url;
+                link.innerHTML = title;
             };
 
             example.querySelector('.prev')
@@ -61,12 +43,10 @@
 
             example.querySelector('.next')
                 .addEventListener('click', function() {
-                    onChangeLoc(function() { locIndex = (locIndex + 1) % locs.length; });
+                    onChangeLoc(function() {
+                        locIndex = (locIndex + 1) % locs.length;
+                    });
                 });
-        } else {
-            // Remove buttons if there's only one example in the file
-            example.querySelector('.prev').remove();
-            example.querySelector('.next').remove();
         }
 
         var expandButton = example.querySelector('.expand');
@@ -74,7 +54,7 @@
             expandButton.addEventListener('click', function () {
                 if (hasClass(example, "expanded")) {
                     removeClass(example, "expanded");
-                    scrollToLoc(example, locs[0]);
+                    scrollToLoc(example, locs[0][0]);
                 } else {
                     addClass(example, "expanded");
                 }
@@ -82,7 +62,7 @@
         }
 
         // Start with the first example in view
-        scrollToLoc(example, locs[0]);
+        scrollToLoc(example, locs[0][0]);
     }
 
     var firstExamples = document.querySelectorAll('.scraped-example-list > .scraped-example');

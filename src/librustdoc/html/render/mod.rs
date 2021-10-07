@@ -2475,12 +2475,11 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
     };
 
     // Generate a unique ID so users can link to this section for a given method
-    // FIXME: this should use init_id_map instead of derive
     let id = cx.id_map.borrow_mut().derive("scraped-examples");
     write!(
         w,
         "<div class=\"docblock scraped-example-list\">\
-          <span></span>
+          <span></span>\
           <h5 id=\"{id}\" class=\"section-header\">\
              <a href=\"#{id}\">Examples found in repository</a>\
           </h5>",
@@ -2516,42 +2515,51 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
 
         // The call locations need to be updated to reflect that the size of the program has changed.
         // Specifically, the ranges are all subtracted by `byte_min` since that's the new zero point.
-        let (byte_ranges, line_ranges): (Vec<_>, Vec<_>) = call_data
+        let (mut byte_ranges, line_ranges): (Vec<_>, Vec<_>) = call_data
             .locations
             .iter()
             .map(|loc| {
                 let (byte_lo, byte_hi) = loc.call_expr.byte_span;
                 let (line_lo, line_hi) = loc.call_expr.line_span;
-                ((byte_lo - byte_min, byte_hi - byte_min), (line_lo - line_min, line_hi - line_min))
+                let byte_range = (byte_lo - byte_min, byte_hi - byte_min);
+                let line_range = (line_lo - line_min, line_hi - line_min);
+                let (anchor, line_title) = if line_lo == line_hi {
+                    (format!("{}", line_lo + 1), format!("line {}", line_lo + 1))
+                } else {
+                    (
+                        format!("{}-{}", line_lo + 1, line_hi + 1),
+                        format!("lines {}-{}", line_lo + 1, line_hi + 1),
+                    )
+                };
+                let line_url = format!("{}{}#{}", cx.root_path(), call_data.url, anchor);
+
+                (byte_range, (line_range, line_url, line_title))
             })
             .unzip();
 
-        let (init_min, init_max) = line_ranges[0];
-        let line_range = if init_min == init_max {
-            format!("line {}", init_min + line_min + 1)
-        } else {
-            format!("lines {}-{}", init_min + line_min + 1, init_max + line_min + 1)
-        };
-
+        let (_, init_url, init_title) = &line_ranges[0];
         let needs_expansion = line_max - line_min > NUM_VISIBLE_LINES;
+        let locations_encoded = serde_json::to_string(&line_ranges).unwrap();
 
         write!(
             w,
             "<div class=\"scraped-example {expanded_cls}\" data-locs=\"{locations}\">\
                 <div class=\"scraped-example-title\">\
-                   {name} (<a href=\"{root}{url}\">{line_range}</a>)\
+                   {name} (<a href=\"{url}\">{title}</a>)\
                 </div>\
                 <div class=\"code-wrapper\">",
-            root = cx.root_path(),
-            url = call_data.url,
-            name = call_data.display_name,
-            line_range = line_range,
             expanded_cls = if needs_expansion { "" } else { "expanded" },
+            name = call_data.display_name,
+            url = init_url,
+            title = init_title,
             // The locations are encoded as a data attribute, so they can be read
             // later by the JS for interactions.
-            locations = serde_json::to_string(&line_ranges).unwrap(),
+            locations = Escape(&locations_encoded)
         );
-        write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
+
+        if line_ranges.len() > 1 {
+            write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
+        }
 
         if needs_expansion {
             write!(w, r#"<span class="expand">&varr;</span>"#);
@@ -2580,6 +2588,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
         let root_path = vec!["../"; cx.current.len() - 1].join("");
 
         let mut decoration_info = FxHashMap::default();
+        decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);
         decoration_info.insert("highlight", byte_ranges);
 
         sources::print_src(

@@ -171,7 +171,7 @@ where
                 let cx = &self.cx;
                 let mk_call_data = || {
                     let clean_span = crate::clean::types::Span::new(span);
-                    let url = cx.href_from_span(clean_span).unwrap();
+                    let url = cx.href_from_span(clean_span, false).unwrap();
                     let display_name = file_path.display().to_string();
                     let edition = span.edition();
                     CallData { locations: Vec::new(), url, display_name, edition }
@@ -233,6 +233,7 @@ crate fn run(
     Ok(())
 }
 
+// Note: the Handler must be passed in explicitly because sess isn't available while parsing options
 crate fn load_call_locations(
     with_examples: Vec<String>,
     diag: &rustc_errors::Handler,

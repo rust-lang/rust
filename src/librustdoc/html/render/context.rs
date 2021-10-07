@@ -295,10 +295,10 @@ impl<'tcx> Context<'tcx> {
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
     pub(super) fn src_href(&self, item: &clean::Item) -> Option<String> {
-        self.href_from_span(item.span(self.tcx()))
+        self.href_from_span(item.span(self.tcx()), true)
     }
 
-    crate fn href_from_span(&self, span: clean::Span) -> Option<String> {
+    crate fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
         if span.is_dummy() {
             return None;
         }
@@ -345,16 +345,26 @@ impl<'tcx> Context<'tcx> {
             (&*symbol, &path)
         };
 
-        let loline = span.lo(self.sess()).line;
-        let hiline = span.hi(self.sess()).line;
-        let lines =
-            if loline == hiline { loline.to_string() } else { format!("{}-{}", loline, hiline) };
+        let anchor = if with_lines {
+            let loline = span.lo(self.sess()).line;
+            let hiline = span.hi(self.sess()).line;
+            format!(
+                "#{}",
+                if loline == hiline {
+                    loline.to_string()
+                } else {
+                    format!("{}-{}", loline, hiline)
+                }
+            )
+        } else {
+            "".to_string()
+        };
         Some(format!(
-            "{root}src/{krate}/{path}#{lines}",
+            "{root}src/{krate}/{path}{anchor}",
             root = Escape(&root),
             krate = krate,
             path = path,
-            lines = lines
+            anchor = anchor
         ))
     }
 }
