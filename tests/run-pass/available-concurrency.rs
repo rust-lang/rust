@@ -1,5 +1,5 @@
-#![feature(available_concurrency)]
+#![feature(available_parallelism)]
 
 fn main() {
-    assert_eq!(std::thread::available_concurrency().unwrap().get(), 1);
+    assert_eq!(std::thread::available_parallelism().unwrap().get(), 1);
 }
