@@ -4,6 +4,7 @@ use clippy_utils::get_attr;
 use rustc_ast::ast::{Attribute, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_session::cstore::CrateSource;
 use rustc_session::Session;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -364,11 +365,16 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
         hir::ItemKind::ExternCrate(ref _renamed_from) => {
             if let Some(crate_id) = cx.tcx.extern_mod_stmt_cnum(did) {
                 let source = cx.tcx.used_crate_source(crate_id);
-                if let Some(ref src) = source.dylib {
-                    println!("extern crate dylib source: {:?}", src.0);
-                }
-                if let Some(ref src) = source.rlib {
-                    println!("extern crate rlib source: {:?}", src.0);
+                match source.as_ref() {
+                    CrateSource::Dylib(path, _) => {
+                        println!("extern crate dylib source: {:?}", path)
+                    },
+                    CrateSource::Rlib(path, _) => {
+                        println!("extern crate rlib source: {:?}", path)
+                    },
+                    CrateSource::Rmeta(path, _) => {
+                        println!("extern crate rmeta source: {:?}", path)
+                    },
                 }
             } else {
                 println!("weird extern crate without a crate id");
