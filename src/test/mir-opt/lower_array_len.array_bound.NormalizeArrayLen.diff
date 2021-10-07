@@ -1,0 +1,68 @@
+- // MIR for `array_bound` before NormalizeArrayLen
++ // MIR for `array_bound` after NormalizeArrayLen
+  
+  fn array_bound(_1: usize, _2: &[u8; N]) -> u8 {
+      debug index => _1;                   // in scope 0 at $DIR/lower_array_len.rs:6:36: 6:41
+      debug slice => _2;                   // in scope 0 at $DIR/lower_array_len.rs:6:50: 6:55
+      let mut _0: u8;                      // return place in scope 0 at $DIR/lower_array_len.rs:6:70: 6:72
+      let mut _3: bool;                    // in scope 0 at $DIR/lower_array_len.rs:7:8: 7:27
+      let mut _4: usize;                   // in scope 0 at $DIR/lower_array_len.rs:7:8: 7:13
+      let mut _5: usize;                   // in scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+      let mut _6: &[u8];                   // in scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+      let mut _7: &[u8; N];                // in scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+      let _8: usize;                       // in scope 0 at $DIR/lower_array_len.rs:8:15: 8:20
+      let mut _9: usize;                   // in scope 0 at $DIR/lower_array_len.rs:8:9: 8:21
+      let mut _10: bool;                   // in scope 0 at $DIR/lower_array_len.rs:8:9: 8:21
++     let mut _11: &[u8; N];               // in scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/lower_array_len.rs:7:8: 7:27
+          StorageLive(_4);                 // scope 0 at $DIR/lower_array_len.rs:7:8: 7:13
+          _4 = _1;                         // scope 0 at $DIR/lower_array_len.rs:7:8: 7:13
+          StorageLive(_5);                 // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+          StorageLive(_6);                 // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+          StorageLive(_7);                 // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+          _7 = &(*_2);                     // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
++         StorageLive(_11);                // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
++         _11 = _7;                        // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+          _6 = move _7 as &[u8] (Pointer(Unsize)); // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+          StorageDead(_7);                 // scope 0 at $DIR/lower_array_len.rs:7:20: 7:21
+-         _5 = Len((*_6));                 // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
++         _5 = Len((*_11));                // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
++         StorageDead(_11);                // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+          goto -> bb1;                     // scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
+      }
+  
+      bb1: {
+          StorageDead(_6);                 // scope 0 at $DIR/lower_array_len.rs:7:26: 7:27
+          _3 = Lt(move _4, move _5);       // scope 0 at $DIR/lower_array_len.rs:7:8: 7:27
+          StorageDead(_5);                 // scope 0 at $DIR/lower_array_len.rs:7:26: 7:27
+          StorageDead(_4);                 // scope 0 at $DIR/lower_array_len.rs:7:26: 7:27
+          switchInt(move _3) -> [false: bb4, otherwise: bb2]; // scope 0 at $DIR/lower_array_len.rs:7:8: 7:27
+      }
+  
+      bb2: {
+          StorageLive(_8);                 // scope 0 at $DIR/lower_array_len.rs:8:15: 8:20
+          _8 = _1;                         // scope 0 at $DIR/lower_array_len.rs:8:15: 8:20
+          _9 = Len((*_2));                 // scope 0 at $DIR/lower_array_len.rs:8:9: 8:21
+          _10 = Lt(_8, _9);                // scope 0 at $DIR/lower_array_len.rs:8:9: 8:21
+          assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, _8) -> bb3; // scope 0 at $DIR/lower_array_len.rs:8:9: 8:21
+      }
+  
+      bb3: {
+          _0 = (*_2)[_8];                  // scope 0 at $DIR/lower_array_len.rs:8:9: 8:21
+          StorageDead(_8);                 // scope 0 at $DIR/lower_array_len.rs:9:5: 9:6
+          goto -> bb5;                     // scope 0 at $DIR/lower_array_len.rs:7:5: 11:6
+      }
+  
+      bb4: {
+          _0 = const 42_u8;                // scope 0 at $DIR/lower_array_len.rs:10:9: 10:11
+          goto -> bb5;                     // scope 0 at $DIR/lower_array_len.rs:7:5: 11:6
+      }
+  
+      bb5: {
+          StorageDead(_3);                 // scope 0 at $DIR/lower_array_len.rs:11:5: 11:6
+          return;                          // scope 0 at $DIR/lower_array_len.rs:12:2: 12:2
+      }
+  }
+  

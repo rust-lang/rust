@@ -58,6 +58,7 @@ mod lower_intrinsics;
 mod lower_slice_len;
 mod match_branches;
 mod multiple_return_terminators;
+mod normalize_array_len;
 mod nrvo;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
@@ -488,6 +489,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // machine than on MIR with async primitives.
     let optimizations_with_generators: &[&dyn MirPass<'tcx>] = &[
         &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
+        &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
         &unreachable_prop::UnreachablePropagation,
         &uninhabited_enum_branching::UninhabitedEnumBranching,
         &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),

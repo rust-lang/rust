@@ -12,6 +12,7 @@
       let mut _7: usize;                   // in scope 0 at $DIR/slice_len.rs:5:5: 5:33
       let mut _8: bool;                    // in scope 0 at $DIR/slice_len.rs:5:5: 5:33
       let mut _9: &[u32; 3];               // in scope 0 at $DIR/slice_len.rs:5:6: 5:19
+      let mut _10: &[u32; 3];              // in scope 0 at $DIR/slice_len.rs:5:6: 5:19
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
@@ -27,14 +28,16 @@
                                            // + literal: Const { ty: &[u32; 3], val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:3 ~ slice_len[6547]::main), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
           _4 = _9;                         // scope 0 at $DIR/slice_len.rs:5:6: 5:19
           _3 = _4;                         // scope 0 at $DIR/slice_len.rs:5:6: 5:19
+          StorageLive(_10);                // scope 0 at $DIR/slice_len.rs:5:6: 5:19
+          _10 = _3;                        // scope 0 at $DIR/slice_len.rs:5:6: 5:19
           _2 = move _3 as &[u32] (Pointer(Unsize)); // scope 0 at $DIR/slice_len.rs:5:6: 5:19
           StorageDead(_3);                 // scope 0 at $DIR/slice_len.rs:5:18: 5:19
           StorageLive(_6);                 // scope 0 at $DIR/slice_len.rs:5:31: 5:32
           _6 = const 1_usize;              // scope 0 at $DIR/slice_len.rs:5:31: 5:32
--         _7 = Len((*_2));                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
+          _7 = const 3_usize;              // scope 0 at $DIR/slice_len.rs:5:5: 5:33
+          StorageDead(_10);                // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 -         _8 = Lt(_6, _7);                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 -         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
-+         _7 = const 3_usize;              // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 +         _8 = const true;                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 +         assert(const true, "index out of bounds: the length is {} but the index is {}", const 3_usize, const 1_usize) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
       }
