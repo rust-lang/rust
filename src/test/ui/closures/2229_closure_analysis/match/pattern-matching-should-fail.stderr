@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: type `u8` is non-empty
-  --> $DIR/pattern-matching-should-fail.rs:70:23
+  --> $DIR/pattern-matching-should-fail.rs:68:23
    |
 LL |     let c1 = || match x { };
    |                       ^
@@ -8,13 +8,13 @@ LL |     let c1 = || match x { };
    = note: the matched value is of type `u8`
 
 error[E0381]: use of possibly-uninitialized variable: `x`
-  --> $DIR/pattern-matching-should-fail.rs:8:23
+  --> $DIR/pattern-matching-should-fail.rs:6:23
    |
 LL |     let c1 = || match x { };
    |                       ^ use of possibly-uninitialized `x`
 
 error[E0381]: borrow of possibly-uninitialized variable: `x`
-  --> $DIR/pattern-matching-should-fail.rs:15:14
+  --> $DIR/pattern-matching-should-fail.rs:13:14
    |
 LL |     let c2 = || match x { _ => () };
    |              ^^       - borrow occurs due to use in closure
@@ -22,7 +22,7 @@ LL |     let c2 = || match x { _ => () };
    |              use of possibly-uninitialized `x`
 
 error[E0381]: borrow of possibly-uninitialized variable: `variant`
-  --> $DIR/pattern-matching-should-fail.rs:27:13
+  --> $DIR/pattern-matching-should-fail.rs:25:13
    |
 LL |     let c = || {
    |             ^^ use of possibly-uninitialized `variant`
@@ -31,7 +31,7 @@ LL |         match variant {
    |               ------- borrow occurs due to use in closure
 
 error[E0381]: borrow of possibly-uninitialized variable: `variant`
-  --> $DIR/pattern-matching-should-fail.rs:39:13
+  --> $DIR/pattern-matching-should-fail.rs:37:13
    |
 LL |     let c = || {
    |             ^^ use of possibly-uninitialized `variant`
@@ -40,19 +40,19 @@ LL |         match variant {
    |               ------- borrow occurs due to use in closure
 
 error[E0381]: use of possibly-uninitialized variable: `g`
-  --> $DIR/pattern-matching-should-fail.rs:55:15
+  --> $DIR/pattern-matching-should-fail.rs:53:15
    |
 LL |         match g { };
    |               ^ use of possibly-uninitialized `g`
 
 error[E0381]: use of possibly-uninitialized variable: `t`
-  --> $DIR/pattern-matching-should-fail.rs:58:19
+  --> $DIR/pattern-matching-should-fail.rs:56:19
    |
 LL |             match t { };
    |                   ^ use of possibly-uninitialized `t`
 
 error[E0381]: use of possibly-uninitialized variable: `x`
-  --> $DIR/pattern-matching-should-fail.rs:70:23
+  --> $DIR/pattern-matching-should-fail.rs:68:23
    |
 LL |     let c1 = || match x { };
    |                       ^ use of possibly-uninitialized `x`

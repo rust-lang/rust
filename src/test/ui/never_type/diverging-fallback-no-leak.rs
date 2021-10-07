@@ -1,7 +1,4 @@
-// revisions: nofallback fallback
-//[nofallback] check-pass
-
-#![cfg_attr(fallback, feature(never_type, never_type_fallback))]
+// This test should pass, but currently does not.
 
 fn make_unit() {}
 
@@ -15,5 +12,5 @@ fn main() {
     // Here the type variable falls back to `!`,
     // and hence we get a type error.
     unconstrained_arg(return);
-    //[fallback]~^ ERROR trait bound `!: Test` is not satisfied
+    //~^ ERROR trait bound `!: Test` is not satisfied
 }

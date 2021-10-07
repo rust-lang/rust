@@ -7,14 +7,11 @@
 // encountering a set of obligations like `?T: Foo` and `Trait::Projection =
 // ?T`. In the code below, these are `R: Bar` and `Fn::Output = R`.
 //
-// revisions: nofallback fallback
 // check-pass
 
-#![cfg_attr(fallback, feature(never_type_fallback))]
-
-trait Bar { }
-impl Bar for () {  }
-impl Bar for u32 {  }
+trait Bar {}
+impl Bar for () {}
+impl Bar for u32 {}
 
 fn foo<R: Bar>(_: impl Fn() -> R) {}
 

@@ -1,5 +1,5 @@
 error: changes to closure capture in Rust 2021 will affect `UnwindSafe`, `RefUnwindSafe` trait implementation for closure
-  --> $DIR/mir_calls_to_shims.rs:20:38
+  --> $DIR/mir_calls_to_shims.rs:19:38
    |
 LL |     let result = panic::catch_unwind(move || {
    |                                      ^^^^^^^ in Rust 2018, this closure implements `UnwindSafe`, `RefUnwindSafe` as `f` implements `UnwindSafe`, `RefUnwindSafe`, but in Rust 2021, this closure will no longer implement `UnwindSafe`, `RefUnwindSafe` as `f.0` does not implement `UnwindSafe`, `RefUnwindSafe`

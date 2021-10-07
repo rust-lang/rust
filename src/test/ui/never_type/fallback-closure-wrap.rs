@@ -6,17 +6,13 @@
 // Crater did not find many cases of this occuring, but it is included for
 // awareness.
 //
-// revisions: nofallback fallback
-//[nofallback] check-pass
-//[fallback] check-fail
-
-#![cfg_attr(fallback, feature(never_type_fallback))]
+// check-fail
 
 use std::marker::PhantomData;
 
 fn main() {
     let error = Closure::wrap(Box::new(move || {
-        //[fallback]~^ ERROR type mismatch resolving
+        //~^ ERROR type mismatch resolving
         panic!("Can't connect to server.");
     }) as Box<dyn FnMut()>);
 }
