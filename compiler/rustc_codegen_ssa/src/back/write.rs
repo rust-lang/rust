@@ -254,7 +254,11 @@ impl ModuleConfig {
             },
 
             inline_threshold: sess.opts.cg.inline_threshold,
-            new_llvm_pass_manager: sess.opts.debugging_opts.new_llvm_pass_manager,
+            new_llvm_pass_manager: sess
+                .opts
+                .debugging_opts
+                .new_llvm_pass_manager
+                .or(sess.target.llvm_new_pass_manager),
             emit_lifetime_markers: sess.emit_lifetime_markers(),
         }
     }

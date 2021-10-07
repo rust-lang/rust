@@ -1350,6 +1350,9 @@ pub struct TargetOptions {
 
     /// Minimum number of bits in #[repr(C)] enum. Defaults to 32.
     pub c_enum_min_bits: u64,
+
+    /// Default for the new LLVM pass manager, usually unspecified (None).
+    pub llvm_new_pass_manager: Option<bool>,
 }
 
 impl Default for TargetOptions {
@@ -1455,6 +1458,7 @@ impl Default for TargetOptions {
             supported_sanitizers: SanitizerSet::empty(),
             default_adjusted_cabi: None,
             c_enum_min_bits: 32,
+            llvm_new_pass_manager: None,
         }
     }
 }

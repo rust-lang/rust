@@ -13,6 +13,10 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.min_global_align = Some(16);
 
+    // FIXME: There are currently some troubles with the new pass manager
+    // and this target, see https://github.com/rust-lang/rust/issues/89609
+    base.llvm_new_pass_manager = Some(false);
+
     Target {
         llvm_target: "s390x-unknown-linux-gnu".to_string(),
         pointer_width: 64,
