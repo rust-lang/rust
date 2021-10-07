@@ -1,10 +1,10 @@
-use rustc_errors::{Applicability, DiagnosticBuilder};
-
+use crate::panic::use_panic_2021;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -28,7 +28,7 @@ pub fn expand_assert<'cx>(
     let sp = cx.with_call_site_ctxt(span);
 
     let panic_call = if let Some(tokens) = custom_message {
-        let path = if span.rust_2021() {
+        let path = if use_panic_2021(span) {
             // On edition 2021, we always call `$crate::panic::panic_2021!()`.
             Path {
                 span: sp,
