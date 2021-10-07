@@ -736,9 +736,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 source_trait_ref = principal_a.with_self_ty(tcx, source);
                 upcast_trait_ref = util::supertraits(tcx, source_trait_ref).nth(idx).unwrap();
                 assert_eq!(data_b.principal_def_id(), Some(upcast_trait_ref.def_id()));
-                let existential_predicate = upcast_trait_ref.map_bound(|trait_ref| {
-                    ty::WhereClause::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
-                });
+                let existential_predicate = upcast_trait_ref
+                    .map_bound(|trait_ref| ty::WhereClause::Trait(trait_ref.into()));
                 let iter = Some(existential_predicate)
                     .into_iter()
                     .chain(

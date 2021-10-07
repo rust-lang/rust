@@ -285,8 +285,7 @@ pub fn upcast_choices(
 /// that come from `trait_ref`, excluding its supertraits. Used in
 /// computing the vtable base for an upcast trait of a trait object.
 pub fn count_own_vtable_entries(tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> usize {
-    let existential_trait_ref =
-        trait_ref.map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+    let existential_trait_ref = trait_ref.map_bound(|trait_ref| trait_ref.into());
     let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
     tcx.own_existential_vtable_entries(existential_trait_ref).len()
 }
@@ -299,9 +298,7 @@ pub fn get_vtable_index_of_object_method<N>(
     object: &super::ImplSourceObjectData<'tcx, N>,
     method_def_id: DefId,
 ) -> usize {
-    let existential_trait_ref = object
-        .upcast_trait_ref
-        .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+    let existential_trait_ref = object.upcast_trait_ref.map_bound(|trait_ref| trait_ref.into());
     let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.

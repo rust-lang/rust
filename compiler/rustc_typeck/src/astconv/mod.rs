@@ -1458,7 +1458,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         ),
                     );
                 }
-                ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+                trait_ref.into()
             })
         });
         let existential_projections = bounds.projection_bounds.iter().map(|(bound, _)| {
@@ -1469,7 +1469,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         &format!("trait_ref_to_existential called on {:?} with non-dummy Self", b),
                     );
                 }
-                ty::ExistentialProjection::erase_self_ty(tcx, b)
+                b.into()
             })
         });
 

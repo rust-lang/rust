@@ -76,7 +76,6 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     // No need to do any alignment checks on the memory accesses below, because we know the
     // allocation is correctly aligned as we created it above. Also we're only offsetting by
     // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
-
     for (idx, entry) in vtable_entries.iter().enumerate() {
         let idx: u64 = u64::try_from(idx).unwrap();
         let scalar = match entry {
@@ -97,8 +96,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
                 ScalarMaybeUninit::from_pointer(fn_ptr, &tcx)
             }
             VtblEntry::TraitVPtr(trait_ref) => {
-                let super_trait_ref = trait_ref
-                    .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+                let super_trait_ref = trait_ref.map_bound(|trait_ref| trait_ref.into());
                 let supertrait_alloc_id = tcx.vtable_allocation((ty, Some(super_trait_ref)));
                 let vptr = Pointer::from(supertrait_alloc_id);
                 ScalarMaybeUninit::from_pointer(vptr, &tcx)

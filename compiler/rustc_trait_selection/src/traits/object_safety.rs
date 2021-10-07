@@ -554,9 +554,7 @@ fn object_ty_for_trait<'tcx>(
 
     let trait_ref = ty::TraitRef::identity(tcx, trait_def_id);
 
-    let trait_predicate = trait_ref.map_bound(|trait_ref| {
-        ty::WhereClause::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
-    });
+    let trait_predicate = trait_ref.map_bound(|trait_ref| ty::WhereClause::Trait(trait_ref.into()));
 
     let mut associated_types = traits::supertraits(tcx, trait_ref)
         .flat_map(|super_trait_ref| {

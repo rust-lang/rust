@@ -675,8 +675,7 @@ fn vtable_entries<'tcx>(
                 entries.extend(COMMON_VTABLE_ENTRIES);
             }
             VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                let existential_trait_ref = trait_ref
-                    .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+                let existential_trait_ref = trait_ref.map_bound(|trait_ref| trait_ref.into());
 
                 // Lookup the shape of vtable for the trait.
                 let own_existential_entries =

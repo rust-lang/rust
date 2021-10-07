@@ -963,20 +963,13 @@ pub struct ExistentialTraitRef<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-impl<'tcx> ExistentialTraitRef<'tcx> {
-    pub fn erase_self_ty(
-        tcx: TyCtxt<'tcx>,
-        trait_ref: ty::TraitRef<'tcx>,
-    ) -> ty::ExistentialTraitRef<'tcx> {
-        // Assert there is a Self.
-        trait_ref.substs.type_at(0);
-
-        ty::ExistentialTraitRef {
-            def_id: trait_ref.def_id,
-            substs: tcx.intern_substs(&trait_ref.substs[1..]),
-        }
+impl From<TraitRef<'tcx>> for ExistentialTraitRef<'tcx> {
+    fn from(trait_ref: TraitRef<'tcx>) -> Self {
+        Self { def_id: trait_ref.def_id, substs: trait_ref.substs }
     }
+}
 
+impl<'tcx> ExistentialTraitRef<'tcx> {
     /// Object types don't have a self type specified. Therefore, when
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self type. A common choice is `mk_err()`
@@ -1532,6 +1525,16 @@ pub struct ExistentialProjection<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+impl From<ty::ProjectionPredicate<'tcx>> for ExistentialProjection<'tcx> {
+    fn from(projection_predicate: ty::ProjectionPredicate<'tcx>) -> Self {
+        Self {
+            item_def_id: projection_predicate.projection_ty.item_def_id,
+            substs: projection_predicate.projection_ty.substs,
+            ty: projection_predicate.ty,
+        }
+    }
+}
+
 pub type PolyExistentialProjection<'tcx> = Binder<'tcx, ExistentialProjection<'tcx>>;
 
 impl<'tcx> ExistentialProjection<'tcx> {
@@ -1560,20 +1563,6 @@ impl<'tcx> ExistentialProjection<'tcx> {
                 substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
             ty: self.ty,
-        }
-    }
-
-    pub fn erase_self_ty(
-        tcx: TyCtxt<'tcx>,
-        projection_predicate: ty::ProjectionPredicate<'tcx>,
-    ) -> Self {
-        // Assert there is a Self.
-        projection_predicate.projection_ty.substs.type_at(0);
-
-        Self {
-            item_def_id: projection_predicate.projection_ty.item_def_id,
-            substs: tcx.intern_substs(&projection_predicate.projection_ty.substs[1..]),
-            ty: projection_predicate.ty,
         }
     }
 }
