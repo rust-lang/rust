@@ -460,7 +460,7 @@ class RustBuild(object):
             # LLVM more often than necessary.
             #
             # This git command finds that commit SHA, looking for bors-authored
-            # merges that modified src/llvm-project or other relevant version
+            # commits that modified src/llvm-project or other relevant version
             # stamp files.
             #
             # This works even in a repository that has not yet initialized
@@ -470,7 +470,7 @@ class RustBuild(object):
             ]).decode(sys.getdefaultencoding()).strip()
             llvm_sha = subprocess.check_output([
                 "git", "rev-list", "--author=bors@rust-lang.org", "-n1",
-                "--merges", "--first-parent", "HEAD",
+                "--first-parent", "HEAD",
                 "--",
                 "{}/src/llvm-project".format(top_level),
                 "{}/src/bootstrap/download-ci-llvm-stamp".format(top_level),
@@ -685,7 +685,7 @@ class RustBuild(object):
         # Only commits merged by bors will have CI artifacts.
         merge_base = [
             "git", "rev-list", "--author=bors@rust-lang.org", "-n1",
-            "--merges", "--first-parent", "HEAD"
+            "--first-parent", "HEAD"
         ]
         commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
 
