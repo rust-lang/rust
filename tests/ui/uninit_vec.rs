@@ -20,6 +20,23 @@ fn main() {
         vec.set_len(200);
     }
 
+    // new() -> set_len() should be detected
+    let mut vec: Vec<u8> = Vec::new();
+    unsafe {
+        vec.set_len(200);
+    }
+
+    // default() -> set_len() should be detected
+    let mut vec: Vec<u8> = Default::default();
+    unsafe {
+        vec.set_len(200);
+    }
+
+    let mut vec: Vec<u8> = Vec::default();
+    unsafe {
+        vec.set_len(200);
+    }
+
     // test when both calls are enclosed in the same unsafe block
     unsafe {
         let mut vec: Vec<u8> = Vec::with_capacity(1000);

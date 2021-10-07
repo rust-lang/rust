@@ -658,18 +658,18 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
             {
                 if name.ident.name == sym::new {
                     return Some(VecInitKind::New);
+                } else if name.ident.name.as_str() == "default" {
+                    return Some(VecInitKind::Default);
                 } else if name.ident.name.as_str() == "with_capacity" {
-                    return args.get(0).and_then(|arg| {
-                        if_chain! {
-                            if let ExprKind::Lit(lit) = &arg.kind;
-                            if let LitKind::Int(num, _) = lit.node;
-                            then {
-                                Some(VecInitKind::WithLiteralCapacity(num.try_into().ok()?))
-                            } else {
-                                Some(VecInitKind::WithExprCapacity(arg.hir_id))
-                            }
+                    let arg = args.get(0)?;
+                    if_chain! {
+                        if let ExprKind::Lit(lit) = &arg.kind;
+                        if let LitKind::Int(num, _) = lit.node;
+                        then {
+                            return Some(VecInitKind::WithLiteralCapacity(num.try_into().ok()?))
                         }
-                    });
+                    }
+                    return Some(VecInitKind::WithExprCapacity(arg.hir_id));
                 }
             }
             ExprKind::Path(QPath::Resolved(_, path))
