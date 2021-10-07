@@ -467,16 +467,15 @@ impl<'a> CrateLocator<'a> {
         let mut slot = None;
         // Order here matters, rmeta should come first. See comment in
         // `extract_one` below.
-        let source =
-            if let Some((p, k)) = self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot)? {
-                CrateSource::Rmeta(p, k)
-            } else if let Some((p, k)) = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)? {
-                CrateSource::Rlib(p, k)
-            } else if let Some((p, k)) = self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot)? {
-                CrateSource::Dylib(p, k)
-            } else {
-                panic!("no source found")
-            };
+        let source = if let Some((p, k)) = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)? {
+            CrateSource::Rlib(p, k)
+        } else if let Some((p, k)) = self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot)? {
+            CrateSource::Dylib(p, k)
+        } else if let Some((p, k)) = self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot)? {
+            CrateSource::Rmeta(p, k)
+        } else {
+            panic!("no source found")
+        };
         Ok(slot.map(|(svh, metadata)| (svh, Library { source, metadata })))
     }
 
