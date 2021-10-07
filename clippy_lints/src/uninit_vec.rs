@@ -1,5 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::higher::get_vec_init_kind;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
 use clippy_utils::ty::{is_type_diagnostic_item, is_uninit_value_valid_for_ty};
 use clippy_utils::{is_lint_allowed, path_to_local_id, peel_hir_expr_while, SpanlessEq};
 use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, PathSegment, Stmt, StmtKind};
@@ -83,69 +83,108 @@ fn handle_uninit_vec_pair(
     if_chain! {
         if let Some(vec) = extract_init_or_reserve_target(cx, maybe_init_or_reserve);
         if let Some((set_len_self, call_span)) = extract_set_len_self(cx, maybe_set_len);
-        if vec.eq_expr(cx, set_len_self);
+        if vec.location.eq_expr(cx, set_len_self);
         if let ty::Ref(_, vec_ty, _) = cx.typeck_results().expr_ty_adjusted(set_len_self).kind();
         if let ty::Adt(_, substs) = vec_ty.kind();
-        // Check T of Vec<T>
-        if !is_uninit_value_valid_for_ty(cx, substs.type_at(0));
         // `#[allow(...)]` attribute can be set on enclosing unsafe block of `set_len()`
         if !is_lint_allowed(cx, UNINIT_VEC, maybe_set_len.hir_id);
         then {
-            // FIXME: #7698, false positive of the internal lints
-            #[allow(clippy::collapsible_span_lint_calls)]
-            span_lint_and_then(
-                cx,
-                UNINIT_VEC,
-                vec![call_span, maybe_init_or_reserve.span],
-                "calling `set_len()` immediately after reserving a buffer creates uninitialized values",
-                |diag| {
-                    diag.help("initialize the buffer or wrap the content in `MaybeUninit`");
-                },
-            );
+            if vec.has_capacity() {
+                // with_capacity / reserve -> set_len
+
+                // Check T of Vec<T>
+                if !is_uninit_value_valid_for_ty(cx, substs.type_at(0)) {
+                    // FIXME: #7698, false positive of the internal lints
+                    #[allow(clippy::collapsible_span_lint_calls)]
+                    span_lint_and_then(
+                        cx,
+                        UNINIT_VEC,
+                        vec![call_span, maybe_init_or_reserve.span],
+                        "calling `set_len()` immediately after reserving a buffer creates uninitialized values",
+                        |diag| {
+                            diag.help("initialize the buffer or wrap the content in `MaybeUninit`");
+                        },
+                    );
+                }
+            } else {
+                // new / default -> set_len
+                span_lint(
+                    cx,
+                    UNINIT_VEC,
+                    vec![call_span, maybe_init_or_reserve.span],
+                    "calling `set_len()` on empty `Vec` creates out-of-bound values",
+                )
+            }
         }
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-enum LocalOrExpr<'tcx> {
+/// The target `Vec` that is initialized or reserved
+#[derive(Clone, Copy)]
+struct TargetVec<'tcx> {
+    location: VecLocation<'tcx>,
+    /// `None` if `reserve()`
+    init_kind: Option<VecInitKind>,
+}
+
+impl TargetVec<'_> {
+    pub fn has_capacity(self) -> bool {
+        !matches!(self.init_kind, Some(VecInitKind::New | VecInitKind::Default))
+    }
+}
+
+#[derive(Clone, Copy)]
+enum VecLocation<'tcx> {
     Local(HirId),
     Expr(&'tcx Expr<'tcx>),
 }
 
-impl<'tcx> LocalOrExpr<'tcx> {
-    fn eq_expr(self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+impl<'tcx> VecLocation<'tcx> {
+    pub fn eq_expr(self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
         match self {
-            LocalOrExpr::Local(hir_id) => path_to_local_id(expr, hir_id),
-            LocalOrExpr::Expr(self_expr) => SpanlessEq::new(cx).eq_expr(self_expr, expr),
+            VecLocation::Local(hir_id) => path_to_local_id(expr, hir_id),
+            VecLocation::Expr(self_expr) => SpanlessEq::new(cx).eq_expr(self_expr, expr),
         }
     }
 }
 
 /// Finds the target location where the result of `Vec` initialization is stored
 /// or `self` expression for `Vec::reserve()`.
-fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) -> Option<LocalOrExpr<'tcx>> {
+fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) -> Option<TargetVec<'tcx>> {
     match stmt.kind {
         StmtKind::Local(local) => {
             if_chain! {
                 if let Some(init_expr) = local.init;
                 if let PatKind::Binding(_, hir_id, _, None) = local.pat.kind;
-                if get_vec_init_kind(cx, init_expr).is_some();
+                if let Some(init_kind) = get_vec_init_kind(cx, init_expr);
                 then {
-                    Some(LocalOrExpr::Local(hir_id))
-                } else {
-                    None
+                    return Some(TargetVec {
+                        location: VecLocation::Local(hir_id),
+                        init_kind: Some(init_kind),
+                    })
                 }
             }
         },
         StmtKind::Expr(expr) | StmtKind::Semi(expr) => match expr.kind {
-            ExprKind::Assign(lhs, rhs, _span) if get_vec_init_kind(cx, rhs).is_some() => Some(LocalOrExpr::Expr(lhs)),
-            ExprKind::MethodCall(path, _, [self_expr, _], _) if is_reserve(cx, path, self_expr) => {
-                Some(LocalOrExpr::Expr(self_expr))
+            ExprKind::Assign(lhs, rhs, _span) => {
+                if let Some(init_kind) = get_vec_init_kind(cx, rhs) {
+                    return Some(TargetVec {
+                        location: VecLocation::Expr(lhs),
+                        init_kind: Some(init_kind),
+                    });
+                }
             },
-            _ => None,
+            ExprKind::MethodCall(path, _, [self_expr, _], _) if is_reserve(cx, path, self_expr) => {
+                return Some(TargetVec {
+                    location: VecLocation::Expr(self_expr),
+                    init_kind: None,
+                });
+            },
+            _ => (),
         },
-        StmtKind::Item(_) => None,
+        StmtKind::Item(_) => (),
     }
+    None
 }
 
 fn is_reserve(cx: &LateContext<'_>, path: &PathSegment<'_>, self_expr: &Expr<'_>) -> bool {

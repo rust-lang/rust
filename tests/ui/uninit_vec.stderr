@@ -21,7 +21,7 @@ LL |         vec.set_len(200);
    |
    = help: initialize the buffer or wrap the content in `MaybeUninit`
 
-error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+error: calling `set_len()` on empty `Vec` creates out-of-bound values
   --> $DIR/uninit_vec.rs:24:5
    |
 LL |     let mut vec: Vec<u8> = Vec::new();
@@ -29,10 +29,8 @@ LL |     let mut vec: Vec<u8> = Vec::new();
 LL |     unsafe {
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
-   |
-   = help: initialize the buffer or wrap the content in `MaybeUninit`
 
-error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+error: calling `set_len()` on empty `Vec` creates out-of-bound values
   --> $DIR/uninit_vec.rs:30:5
    |
 LL |     let mut vec: Vec<u8> = Default::default();
@@ -40,10 +38,8 @@ LL |     let mut vec: Vec<u8> = Default::default();
 LL |     unsafe {
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
-   |
-   = help: initialize the buffer or wrap the content in `MaybeUninit`
 
-error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+error: calling `set_len()` on empty `Vec` creates out-of-bound values
   --> $DIR/uninit_vec.rs:35:5
    |
 LL |     let mut vec: Vec<u8> = Vec::default();
@@ -51,8 +47,6 @@ LL |     let mut vec: Vec<u8> = Vec::default();
 LL |     unsafe {
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
-   |
-   = help: initialize the buffer or wrap the content in `MaybeUninit`
 
 error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
   --> $DIR/uninit_vec.rs:49:5
