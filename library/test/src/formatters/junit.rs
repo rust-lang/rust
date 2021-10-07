@@ -27,7 +27,11 @@ impl<T: Write> JunitFormatter<T> {
 }
 
 impl<T: Write> OutputFormatter for JunitFormatter<T> {
-    fn write_run_start(&mut self, _test_count: usize) -> io::Result<()> {
+    fn write_run_start(
+        &mut self,
+        _test_count: usize,
+        _shuffle_seed: Option<u64>,
+    ) -> io::Result<()> {
         // We write xml header on run start
         self.out.write_all(b"\n")?;
         self.write_message("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
