@@ -2140,8 +2140,9 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "9.1.2"
-source = "git+https://github.com/rylev/measureme#b9cccd7ad4c859a5e0e3dd6bff3daac7a190bdd7"
+version = "10.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd460fad6e55ca82fa0cd9dab0d315294188fd9ec6efbf4105e5635d4872ef9c"
 dependencies = [
  "log",
  "memmap2",
@@ -2255,8 +2256,8 @@ dependencies = [
  "hex 0.4.2",
  "libc",
  "log",
- "measureme 9.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.8.3",
+ "measureme 9.1.2",
+ "rand 0.8.4",
  "rustc-workspace-hack",
  "rustc_version 0.4.0",
  "shell-escape",
@@ -3232,7 +3233,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
- "measureme 9.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "measureme 9.1.2",
  "memmap2",
  "parking_lot",
  "rustc-ap-rustc_graphviz",
@@ -3670,7 +3671,7 @@ dependencies = [
  "bitflags",
  "cstr",
  "libc",
- "measureme 9.1.2 (git+https://github.com/rylev/measureme)",
+ "measureme 10.0.0",
  "rustc-demangle",
  "rustc_arena",
  "rustc_ast",
@@ -3765,7 +3766,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
- "measureme 9.1.2 (git+https://github.com/rylev/measureme)",
+ "measureme 10.0.0",
  "memmap2",
  "parking_lot",
  "rustc-hash",
@@ -4289,7 +4290,7 @@ dependencies = [
 name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
- "measureme 9.1.2 (git+https://github.com/rylev/measureme)",
+ "measureme 10.0.0",
  "rustc-rayon-core",
  "rustc_ast",
  "rustc_data_structures",
