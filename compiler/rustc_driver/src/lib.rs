@@ -1260,7 +1260,7 @@ pub fn init_env_logger(env: &str) {
 
     let filter = match std::env::var(env) {
         Ok(env) => EnvFilter::from_env(env),
-        _ => EnvFilter::default().add_directive(filter::Directive::from(LevelFilter: WARN)),
+        _ => EnvFilter::default().add_directive(filter::Directive::from(LevelFilter::WARN)),
     };
 
     let color_logs = match std::env::var(String::from(env) + "_COLOR") {
