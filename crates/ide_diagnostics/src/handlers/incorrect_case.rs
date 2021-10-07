@@ -102,8 +102,8 @@ fn some_fn() {
 "#,
             r#"
 fn some_fn() {
-    let what_a_weird_formatting = 10;
-    another_func(what_a_weird_formatting);
+    let what_aweird_formatting = 10;
+    another_func(what_aweird_formatting);
 }
 "#,
         );

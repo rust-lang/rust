@@ -161,6 +161,7 @@ mod tests {
         check(to_lower_snake_case, "lowerCamelCase", expect![["lower_camel_case"]]);
         check(to_lower_snake_case, "a", expect![[""]]);
         check(to_lower_snake_case, "abc", expect![[""]]);
+        check(to_lower_snake_case, "foo__bar", expect![["foo_bar"]]);
     }
 
     #[test]
@@ -192,5 +193,7 @@ mod tests {
         check(to_upper_snake_case, "A", expect![[""]]);
         check(to_upper_snake_case, "ABC", expect![[""]]);
         check(to_upper_snake_case, "X86_64", expect![[""]]);
+        check(to_upper_snake_case, "FOO_BAr", expect![["FOO_BAR"]]);
+        check(to_upper_snake_case, "FOO__BAR", expect![["FOO_BAR"]]);
     }
 }
