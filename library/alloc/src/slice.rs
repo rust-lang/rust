@@ -374,7 +374,8 @@ impl<T> [T] {
     /// During sorting, the key function is called only once per element.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*m* \* *n* + *n* \* log(*n*))
-    /// worst-case, where the key function is *O*(*m*).
+    /// worst-case, where the key function is *O*(*m*). If the slice requires sorting,
+    /// the key function is called on all elements of the slice in the original order.
     ///
     /// For simple key functions (e.g., functions that are property accesses or
     /// basic operations), [`sort_by_key`](slice::sort_by_key) is likely to be
