@@ -8,7 +8,7 @@
 #![feature(min_specialization)]
 #![feature(option_get_or_insert_default)]
 #![feature(once_cell)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]

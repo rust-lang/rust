@@ -76,7 +76,7 @@ mod prim_bool {}
 /// write:
 ///
 /// ```
-/// #![feature(never_type)]
+/// #![cfg_attr(bootstrap, feature(never_type))]
 /// # fn foo() -> u32 {
 /// let x: ! = {
 ///     return 123
@@ -235,7 +235,7 @@ mod prim_bool {}
 /// for example:
 ///
 /// ```
-/// #![feature(never_type)]
+/// #![cfg_attr(bootstrap, feature(never_type))]
 /// # use std::fmt;
 /// # trait Debug {
 /// #     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result;

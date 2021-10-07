@@ -19,7 +19,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(type_alias_impl_trait)]
 #![feature(new_uninit)]
 #![feature(nll)]

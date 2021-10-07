@@ -15,7 +15,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
