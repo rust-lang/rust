@@ -664,6 +664,38 @@ impl Step for Cargo {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct LldWrapper {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+    pub flavor_feature: &'static str,
+}
+
+impl Step for LldWrapper {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never()
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let src_exe = builder
+            .ensure(ToolBuild {
+                compiler: self.compiler,
+                target: self.target,
+                tool: "lld-wrapper",
+                mode: Mode::ToolStd,
+                path: "src/tools/lld-wrapper",
+                is_optional_tool: false,
+                source_type: SourceType::InTree,
+                extra_features: vec![self.flavor_feature.to_owned()],
+            })
+            .expect("expected to build -- essential tool");
+
+        src_exe
+    }
+}
+
 macro_rules! tool_extended {
     (($sel:ident, $builder:ident),
        $($name:ident,

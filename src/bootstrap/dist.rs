@@ -409,11 +409,14 @@ impl Step for Rustc {
                 let rust_lld = exe("rust-lld", compiler.host);
                 builder.copy(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
                 // for `-Z gcc-ld=lld`
-                let gcc_lld_dir = dst_dir.join("gcc-ld");
-                t!(fs::create_dir(&gcc_lld_dir));
-                builder.copy(&src_dir.join(&rust_lld), &gcc_lld_dir.join(exe("ld", compiler.host)));
-                builder
-                    .copy(&src_dir.join(&rust_lld), &gcc_lld_dir.join(exe("ld64", compiler.host)));
+                let gcc_lld_src_dir = src_dir.join("gcc-ld");
+                let gcc_lld_dst_dir = dst_dir.join("gcc-ld");
+                t!(fs::create_dir(&gcc_lld_dst_dir));
+                for flavor in ["ld", "ld64"] {
+                    let exe_name = exe(flavor, compiler.host);
+                    builder
+                        .copy(&gcc_lld_src_dir.join(&exe_name), &gcc_lld_dst_dir.join(&exe_name));
+                }
             }
 
             // Copy over llvm-dwp if it's there
