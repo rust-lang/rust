@@ -199,7 +199,7 @@ Mutability and Type and is defined in
 comments, "`cmt` is a complete categorization of a value indicating where it
 originated and how it is located, as well as the mutability of the memory in
 which the value is stored". Based on the callback (consume, borrow etc.), we
-will call the relevant *adjust_upvar_borrow_kind_for_<something>* and pass the
+will call the relevant *adjust_upvar_borrow_kind_for_\<something\>* and pass the
 `cmt` along. Once the borrow type is adjusted, we store it in the table, which
 basically says what borrows were made for each closure.
 
