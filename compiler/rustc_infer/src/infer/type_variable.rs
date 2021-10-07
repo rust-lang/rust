@@ -400,6 +400,7 @@ pub(crate) struct TyVidEqKey<'tcx> {
 }
 
 impl<'tcx> From<ty::TyVid> for TyVidEqKey<'tcx> {
+    #[inline] // make this function eligible for inlining - it is quite hot.
     fn from(vid: ty::TyVid) -> Self {
         TyVidEqKey { vid, phantom: PhantomData }
     }

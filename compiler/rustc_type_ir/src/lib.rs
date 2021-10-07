@@ -437,6 +437,7 @@ impl EqUnifyValue for IntVarValue {}
 
 impl UnifyKey for IntVid {
     type Value = Option<IntVarValue>;
+    #[inline] // make this function eligible for inlining - it is quite hot.
     fn index(&self) -> u32 {
         self.index
     }
