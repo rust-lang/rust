@@ -1,0 +1,8 @@
+error: missing type for `const` item
+  --> $DIR/issue-89574.rs:2:11
+   |
+LL |     const EMPTY_ARRAY = [];
+   |           ^^^^^^^^^^^ help: provide a type for the item: `EMPTY_ARRAY: <type>`
+
+error: aborting due to previous error
+

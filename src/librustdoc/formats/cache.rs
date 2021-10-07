@@ -119,6 +119,8 @@ crate struct Cache {
     ///
     /// Links are indexed by the DefId of the item they document.
     crate intra_doc_links: FxHashMap<ItemId, Vec<clean::ItemLink>>,
+    /// Cfg that have been hidden via #![doc(cfg_hide(...))]
+    crate hidden_cfg: FxHashSet<clean::cfg::Cfg>,
 }
 
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.

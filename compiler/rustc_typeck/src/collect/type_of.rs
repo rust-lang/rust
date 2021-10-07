@@ -752,29 +752,31 @@ fn infer_placeholder_type<'a>(
     // us to improve in typeck so we do that now.
     match tcx.sess.diagnostic().steal_diagnostic(span, StashKey::ItemNoType) {
         Some(mut err) => {
-            // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
-            // We are typeck and have the real type, so remove that and suggest the actual type.
-            err.suggestions.clear();
+            if !ty.references_error() {
+                // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
+                // We are typeck and have the real type, so remove that and suggest the actual type.
+                err.suggestions.clear();
 
-            // Suggesting unnameable types won't help.
-            let mut mk_nameable = MakeNameable::new(tcx);
-            let ty = mk_nameable.fold_ty(ty);
-            let sugg_ty = if mk_nameable.success { Some(ty) } else { None };
-            if let Some(sugg_ty) = sugg_ty {
-                err.span_suggestion(
-                    span,
-                    &format!("provide a type for the {item}", item = kind),
-                    format!("{}: {}", item_ident, sugg_ty),
-                    Applicability::MachineApplicable,
-                );
-            } else {
-                err.span_note(
-                    tcx.hir().body(body_id).value.span,
-                    &format!("however, the inferred type `{}` cannot be named", ty.to_string()),
-                );
+                // Suggesting unnameable types won't help.
+                let mut mk_nameable = MakeNameable::new(tcx);
+                let ty = mk_nameable.fold_ty(ty);
+                let sugg_ty = if mk_nameable.success { Some(ty) } else { None };
+                if let Some(sugg_ty) = sugg_ty {
+                    err.span_suggestion(
+                        span,
+                        &format!("provide a type for the {item}", item = kind),
+                        format!("{}: {}", item_ident, sugg_ty),
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    err.span_note(
+                        tcx.hir().body(body_id).value.span,
+                        &format!("however, the inferred type `{}` cannot be named", ty.to_string()),
+                    );
+                }
             }
 
-            err.emit_unless(ty.references_error());
+            err.emit();
         }
         None => {
             let mut diag = bad_placeholder_type(tcx, vec![span], kind);

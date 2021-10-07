@@ -20,7 +20,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, symbol::kw, Span, Symbol};
 use rustc_target::abi::{self, HasDataLayout, Primitive};
-use rustc_target::spec::PanicStrategy;
+use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 
 use std::cmp::Ordering;
 use std::iter;
@@ -1190,11 +1190,28 @@ fn generic_simd_intrinsic(
     // FIXME: use:
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
-    fn llvm_vector_str(elem_ty: Ty<'_>, vec_len: u64, no_pointers: usize) -> String {
+    fn llvm_vector_str(
+        elem_ty: Ty<'_>,
+        vec_len: u64,
+        no_pointers: usize,
+        bx: &Builder<'a, 'll, 'tcx>,
+    ) -> String {
         let p0s: String = "p0".repeat(no_pointers);
         match *elem_ty.kind() {
-            ty::Int(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
-            ty::Uint(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
+            ty::Int(v) => format!(
+                "v{}{}i{}",
+                vec_len,
+                p0s,
+                // Normalize to prevent crash if v: IntTy::Isize
+                v.normalize(bx.target_spec().pointer_width).bit_width().unwrap()
+            ),
+            ty::Uint(v) => format!(
+                "v{}{}i{}",
+                vec_len,
+                p0s,
+                // Normalize to prevent crash if v: UIntTy::Usize
+                v.normalize(bx.target_spec().pointer_width).bit_width().unwrap()
+            ),
             ty::Float(v) => format!("v{}{}f{}", vec_len, p0s, v.bit_width()),
             _ => unreachable!(),
         }
@@ -1330,11 +1347,11 @@ fn generic_simd_intrinsic(
 
         // Type of the vector of pointers:
         let llvm_pointer_vec_ty = llvm_vector_ty(bx, underlying_ty, in_len, pointer_count);
-        let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count);
+        let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count, bx);
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, underlying_ty, in_len, pointer_count - 1);
-        let llvm_elem_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count - 1);
+        let llvm_elem_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count - 1, bx);
 
         let llvm_intrinsic =
             format!("llvm.masked.gather.{}.{}", llvm_elem_vec_str, llvm_pointer_vec_str);
@@ -1458,11 +1475,11 @@ fn generic_simd_intrinsic(
 
         // Type of the vector of pointers:
         let llvm_pointer_vec_ty = llvm_vector_ty(bx, underlying_ty, in_len, pointer_count);
-        let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count);
+        let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count, bx);
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, underlying_ty, in_len, pointer_count - 1);
-        let llvm_elem_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count - 1);
+        let llvm_elem_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count - 1, bx);
 
         let llvm_intrinsic =
             format!("llvm.masked.scatter.{}.{}", llvm_elem_vec_str, llvm_pointer_vec_str);

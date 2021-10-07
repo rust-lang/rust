@@ -318,10 +318,10 @@ fn merge_attrs(
             } else {
                 Attributes::from_ast(&both, None)
             },
-            both.cfg(cx.sess()),
+            both.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     } else {
-        (old_attrs.clean(cx), old_attrs.cfg(cx.sess()))
+        (old_attrs.clean(cx), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
     }
 }
 

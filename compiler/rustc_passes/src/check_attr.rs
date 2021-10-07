@@ -938,6 +938,7 @@ impl CheckAttrVisitor<'tcx> {
                         // plugins: removed, but rustdoc warns about it itself
                         sym::alias
                         | sym::cfg
+                        | sym::cfg_hide
                         | sym::hidden
                         | sym::html_favicon_url
                         | sym::html_logo_url

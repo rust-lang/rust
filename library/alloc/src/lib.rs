@@ -67,6 +67,10 @@
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
 )]
+#![cfg_attr(
+    not(bootstrap),
+    doc(cfg_hide(not(test), not(any(test, bootstrap)), target_has_atomic = "ptr"))
+)]
 #![no_std]
 #![needs_allocator]
 #![warn(deprecated_in_future)]
@@ -146,6 +150,8 @@
 #![feature(associated_type_bounds)]
 #![feature(slice_group_by)]
 #![feature(decl_macro)]
+#![feature(doc_cfg)]
+#![cfg_attr(not(bootstrap), feature(doc_cfg_hide))]
 // Allow testing this library
 
 #[cfg(test)]

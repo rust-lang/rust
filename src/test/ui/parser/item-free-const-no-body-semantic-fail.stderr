@@ -14,5 +14,11 @@ LL | const B;
    |        |
    |        help: provide a definition for the constant: `= <expr>;`
 
-error: aborting due to 2 previous errors
+error: missing type for `const` item
+  --> $DIR/item-free-const-no-body-semantic-fail.rs:6:7
+   |
+LL | const B;
+   |       ^ help: provide a type for the item: `B: <type>`
+
+error: aborting due to 3 previous errors
 

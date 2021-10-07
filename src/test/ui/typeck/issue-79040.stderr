@@ -6,13 +6,11 @@ LL |     const FOO = "hello" + 1;
    |                 |
    |                 &str
 
-error[E0369]: cannot add `{integer}` to `&str`
-  --> $DIR/issue-79040.rs:2:25
+error: missing type for `const` item
+  --> $DIR/issue-79040.rs:2:11
    |
 LL |     const FOO = "hello" + 1;
-   |                 ------- ^ - {integer}
-   |                 |
-   |                 &str
+   |           ^^^ help: provide a type for the item: `FOO: <type>`
 
 error: aborting due to 2 previous errors
 
