@@ -539,6 +539,8 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(iter_intersperse)]
+    ///
     /// let mut a = [0, 1, 2].iter().intersperse(&100);
     /// assert_eq!(a.next(), Some(&0));   // The first element from `a`.
     /// assert_eq!(a.next(), Some(&100)); // The separator.
@@ -549,8 +551,9 @@ pub trait Iterator {
     /// ```
     ///
     /// `intersperse` can be very useful to join an iterator's items using a common element:
-    ///
     /// ```
+    /// #![feature(iter_intersperse)]
+    ///
     /// let hello = ["Hello", "World", "!"].iter().copied().intersperse(" ").collect::<String>();
     /// assert_eq!(hello, "Hello World !");
     /// ```
@@ -558,7 +561,7 @@ pub trait Iterator {
     /// [`Clone`]: crate::clone::Clone
     /// [`intersperse_with`]: Iterator::intersperse_with
     #[inline]
-    #[stable(feature = "iter_intersperse", since = "1.56.0")]
+    #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
     fn intersperse(self, separator: Self::Item) -> Intersperse<Self>
     where
         Self: Sized,
@@ -583,6 +586,8 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(iter_intersperse)]
+    ///
     /// #[derive(PartialEq, Debug)]
     /// struct NotClone(usize);
     ///
@@ -599,8 +604,9 @@ pub trait Iterator {
     ///
     /// `intersperse_with` can be used in situations where the separator needs
     /// to be computed:
-    ///
     /// ```
+    /// #![feature(iter_intersperse)]
+    ///
     /// let src = ["Hello", "to", "all", "people", "!!"].iter().copied();
     ///
     /// // The closure mutably borrows its context to generate an item.
@@ -613,7 +619,7 @@ pub trait Iterator {
     /// [`Clone`]: crate::clone::Clone
     /// [`intersperse`]: Iterator::intersperse
     #[inline]
-    #[stable(feature = "iter_intersperse", since = "1.56.0")]
+    #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
     fn intersperse_with<G>(self, separator: G) -> IntersperseWith<Self, G>
     where
         Self: Sized,

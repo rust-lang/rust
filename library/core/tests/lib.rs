@@ -48,6 +48,7 @@
 #![feature(int_log)]
 #![feature(iter_advance_by)]
 #![feature(iter_partition_in_place)]
+#![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
 #![feature(iter_order_by)]
 #![feature(const_mut_refs)]
