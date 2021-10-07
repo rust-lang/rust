@@ -1969,4 +1969,8 @@ details.undocumented[open] > summary::before {
 	.docblock {
 		margin-left: 12px;
 	}
+
+	.docblock code {
+		overflow-wrap: anywhere;
+	}
 }
