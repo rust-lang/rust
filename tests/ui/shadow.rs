@@ -17,6 +17,11 @@ fn shadow_reuse() -> Option<()> {
     let x = foo(x);
     let x = || x;
     let x = Some(1).map(|_| x)?;
+    let y = 1;
+    let y = match y {
+        1 => 2,
+        _ => 3,
+    };
     None
 }
 
