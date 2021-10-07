@@ -2176,6 +2176,7 @@ extern "C" {
         PrepareForThinLTO: bool,
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
+        PGOSampleUsePath: *const c_char,
     );
     pub fn LLVMRustAddLibraryInfo(
         PM: &PassManager<'a>,
@@ -2210,6 +2211,8 @@ extern "C" {
         PGOUsePath: *const c_char,
         InstrumentCoverage: bool,
         InstrumentGCOV: bool,
+        PGOSampleUsePath: *const c_char,
+        DebugInfoForProfiling: bool,
         llvm_selfprofiler: *mut c_void,
         begin_callback: SelfProfileBeforePassCallback,
         end_callback: SelfProfileAfterPassCallback,

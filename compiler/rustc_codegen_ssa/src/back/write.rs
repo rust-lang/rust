@@ -83,6 +83,8 @@ pub struct ModuleConfig {
 
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
+    pub pgo_sample_use: Option<PathBuf>,
+    pub debug_info_for_profiling: bool,
     pub instrument_coverage: bool,
     pub instrument_gcov: bool,
 
@@ -176,6 +178,8 @@ impl ModuleConfig {
                 SwitchWithOptPath::Disabled
             ),
             pgo_use: if_regular!(sess.opts.cg.profile_use.clone(), None),
+            pgo_sample_use: if_regular!(sess.opts.debugging_opts.profile_sample_use.clone(), None),
+            debug_info_for_profiling: sess.opts.debugging_opts.debug_info_for_profiling,
             instrument_coverage: if_regular!(sess.instrument_coverage(), false),
             instrument_gcov: if_regular!(
                 // compiler_builtins overrides the codegen-units settings,
