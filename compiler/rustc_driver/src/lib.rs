@@ -1253,12 +1253,6 @@ pub fn init_rustc_env_logger() {
 /// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to choose an env var
 /// other than `RUSTC_LOG`.
 pub fn init_env_logger(env: &str) {
-    // Don't register a dispatcher if there's no filter to print anything
-    match std::env::var(env) {
-        Err(_) => return,
-        Ok(s) if s.is_empty() => return,
-        Ok(_) => {}
-    }
     let color_logs = match std::env::var(String::from(env) + "_COLOR") {
         Ok(value) => match value.as_ref() {
             "always" => true,
