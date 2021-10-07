@@ -408,6 +408,7 @@ symbols! {
         cfg_target_thread_local,
         cfg_target_vendor,
         cfg_version,
+        cfi,
         char,
         client,
         clippy,

@@ -13,7 +13,8 @@ pub fn target() -> Target {
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
-    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD;
+    base.supported_sanitizers =
+        SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;
 
     // Clang automatically chooses a more specific target based on
     // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work

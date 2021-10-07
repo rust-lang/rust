@@ -24,6 +24,8 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     ///
     /// Currently has any effect only when LLVM versions prior to 12.0 are used as the backend.
     fn sideeffect(&mut self);
+    /// Trait method used to test whether a given pointer is associated with a type identifier.
+    fn type_test(&mut self, pointer: Self::Value, typeid: Self::Value) -> Self::Value;
     /// Trait method used to inject `va_start` on the "spoofed" `VaListImpl` in
     /// Rust defined C-variadic functions.
     fn va_start(&mut self, val: Self::Value) -> Self::Value;

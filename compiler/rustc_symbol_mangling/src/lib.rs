@@ -103,8 +103,9 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
+use rustc_target::abi::call::FnAbi;
 
 use tracing::debug;
 
@@ -148,6 +149,11 @@ fn symbol_name_provider(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::Symb
     });
 
     ty::SymbolName::new(tcx, &symbol_name)
+}
+
+/// This function computes the typeid for the given function ABI.
+pub fn typeid_for_fnabi(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> String {
+    v0::mangle_typeid_for_fnabi(tcx, fn_abi)
 }
 
 /// Computes the symbol name for the given instance. This function will call

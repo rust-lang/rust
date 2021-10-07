@@ -604,6 +604,32 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn type_metadata(&mut self, function: &'ll Value, typeid: String) {
+        let typeid_metadata = self.typeid_metadata(typeid);
+        let v = [self.const_usize(0), typeid_metadata];
+        unsafe {
+            llvm::LLVMGlobalSetMetadata(
+                function,
+                llvm::MD_type as c_uint,
+                llvm::LLVMValueAsMetadata(llvm::LLVMMDNodeInContext(
+                    self.cx.llcx,
+                    v.as_ptr(),
+                    v.len() as c_uint,
+                )),
+            )
+        }
+    }
+
+    fn typeid_metadata(&mut self, typeid: String) -> Self::Value {
+        unsafe {
+            llvm::LLVMMDStringInContext(
+                self.cx.llcx,
+                typeid.as_ptr() as *const c_char,
+                typeid.as_bytes().len() as c_uint,
+            )
+        }
+    }
+
     fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }

@@ -9,6 +9,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             max_atomic_width: Some(128),
             supported_sanitizers: SanitizerSet::ADDRESS
+                | SanitizerSet::CFI
                 | SanitizerSet::MEMORY
                 | SanitizerSet::THREAD,
             ..super::freebsd_base::opts()

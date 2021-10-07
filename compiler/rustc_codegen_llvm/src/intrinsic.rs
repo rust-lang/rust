@@ -401,6 +401,14 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn type_test(&mut self, pointer: Self::Value, typeid: Self::Value) -> Self::Value {
+        // Test the called operand using llvm.type.test intrinsic. The LowerTypeTests link-time
+        // optimization pass replaces calls to this intrinsic with code to test type membership.
+        let i8p_ty = self.type_i8p();
+        let bitcast = self.bitcast(pointer, i8p_ty);
+        self.call_intrinsic("llvm.type.test", &[bitcast, typeid])
+    }
+
     fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {
         self.call_intrinsic("llvm.va_start", &[va_list])
     }

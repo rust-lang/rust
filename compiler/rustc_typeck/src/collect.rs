@@ -2879,6 +2879,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 for item in list.iter() {
                     if item.has_name(sym::address) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::ADDRESS;
+                    } else if item.has_name(sym::cfi) {
+                        codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI;
                     } else if item.has_name(sym::memory) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
                     } else if item.has_name(sym::thread) {
