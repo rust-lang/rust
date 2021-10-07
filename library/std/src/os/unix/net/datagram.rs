@@ -139,7 +139,7 @@ impl UnixDatagram {
         unsafe {
             let socket = UnixDatagram::unbound()?;
             cvt(libc::bind(
-                *socket.0.as_inner(),
+                socket.as_raw_fd(),
                 &socket_addr.addr as *const _ as *const _,
                 socket_addr.len as _,
             ))?;
@@ -254,7 +254,7 @@ impl UnixDatagram {
     pub fn connect_addr(&self, socket_addr: &SocketAddr) -> io::Result<()> {
         unsafe {
             cvt(libc::connect(
-                *self.0.as_inner(),
+                self.as_raw_fd(),
                 &socket_addr.addr as *const _ as *const _,
                 socket_addr.len,
             ))?;
@@ -568,7 +568,7 @@ impl UnixDatagram {
     pub fn send_to_addr(&self, buf: &[u8], socket_addr: &SocketAddr) -> io::Result<usize> {
         unsafe {
             let count = cvt(libc::sendto(
-                *self.0.as_inner(),
+                self.as_raw_fd(),
                 buf.as_ptr() as *const _,
                 buf.len(),
                 MSG_NOSIGNAL,

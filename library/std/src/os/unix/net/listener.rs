@@ -110,12 +110,11 @@ impl UnixListener {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             cvt(libc::bind(
-                *inner.as_inner(),
+                inner.as_raw_fd(),
                 &socket_addr.addr as *const _ as *const _,
                 socket_addr.len as _,
             ))?;
-            cvt(libc::listen(*inner.as_inner(), 128))?;
-
+            cvt(libc::listen(inner.as_raw_fd(), 128))?;
             Ok(UnixListener(inner))
         }
     }

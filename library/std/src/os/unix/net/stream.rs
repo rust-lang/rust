@@ -135,7 +135,7 @@ impl UnixStream {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             cvt(libc::connect(
-                *inner.as_inner(),
+                inner.as_raw_fd(),
                 &socket_addr.addr as *const _ as *const _,
                 socket_addr.len,
             ))?;
