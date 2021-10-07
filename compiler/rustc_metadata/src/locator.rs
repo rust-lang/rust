@@ -474,7 +474,7 @@ impl<'a> CrateLocator<'a> {
         } else if let Some((p, k)) = self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot)? {
             CrateSource::Rmeta(p, k)
         } else {
-            panic!("no source found")
+            return Ok(None);
         };
         Ok(slot.map(|(svh, metadata)| (svh, Library { source, metadata })))
     }
