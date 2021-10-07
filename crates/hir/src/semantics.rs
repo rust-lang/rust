@@ -25,9 +25,9 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Access, AssocItem, Callable, ConstParam, Crate, Field, Function, HirFileId, Impl, InFile,
-    Label, LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait, Type,
-    TypeAlias, TypeParam, VariantDef,
+    Access, AssocItem, Callable, ConstParam, Crate, Field, Function, HasSource, HirFileId, Impl,
+    InFile, Label, LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait,
+    Type, TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -188,6 +188,14 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     /// Maps a node down by mapping its first and last token down.
     pub fn descend_node_into_attributes<N: AstNode>(&self, node: N) -> SmallVec<[N; 1]> {
         self.imp.descend_node_into_attributes(node)
+    }
+
+    /// Search for a definition's source and cache its syntax tree
+    pub fn source<Def: HasSource>(&self, def: Def) -> Option<InFile<Def::Ast>>
+    where
+        Def::Ast: AstNode,
+    {
+        self.imp.source(def)
     }
 
     pub fn hir_file_for(&self, syntax_node: &SyntaxNode) -> HirFileId {
@@ -843,6 +851,15 @@ impl<'db> SemanticsImpl<'db> {
         let file_id = self.db.lookup_intern_trait(def.id).id.file_id();
         let resolver = def.id.resolver(self.db.upcast());
         SemanticsScope { db: self.db, file_id, resolver }
+    }
+
+    fn source<Def: HasSource>(&self, def: Def) -> Option<InFile<Def::Ast>>
+    where
+        Def::Ast: AstNode,
+    {
+        let res = def.source(self.db)?;
+        self.cache(find_root(res.value.syntax()), res.file_id);
+        Some(res)
     }
 
     fn analyze(&self, node: &SyntaxNode) -> SourceAnalyzer {
