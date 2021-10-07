@@ -540,6 +540,12 @@ class RustBuild(object):
         unpack(tarball, tarball_suffix, self.bin_root(stage0), match=pattern, verbose=self.verbose)
 
     def _download_ci_llvm(self, llvm_sha, llvm_assertions):
+        if not llvm_sha:
+            print("error: could not find commit hash for downloading LLVM")
+            print("help: maybe your repository history is too shallow?")
+            print("help: consider disabling `download-ci-llvm`")
+            print("help: or fetch enough history to include one upstream commit")
+            exit(1)
         cache_prefix = "llvm-{}-{}".format(llvm_sha, llvm_assertions)
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, cache_prefix)
@@ -688,6 +694,12 @@ class RustBuild(object):
             "--first-parent", "HEAD"
         ]
         commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
+        if not commit:
+            print("error: could not find commit hash for downloading rustc")
+            print("help: maybe your repository history is too shallow?")
+            print("help: consider disabling `download-rustc`")
+            print("help: or fetch enough history to include one upstream commit")
+            exit(1)
 
         # Warn if there were changes to the compiler or standard library since the ancestor commit.
         status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler, library])
