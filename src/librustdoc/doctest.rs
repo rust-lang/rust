@@ -1123,7 +1123,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         let ast_attrs = self.tcx.hir().attrs(hir_id);
         let mut attrs = Attributes::from_ast(ast_attrs, None);
 
-        if let Some(ref cfg) = ast_attrs.cfg(self.sess) {
+        if let Some(ref cfg) = ast_attrs.cfg(self.tcx, &FxHashSet::default()) {
             if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
                 return;
             }

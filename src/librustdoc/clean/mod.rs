@@ -1973,7 +1973,7 @@ fn clean_extern_crate(
         def_id: crate_def_id.into(),
         visibility: krate.vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },
-        cfg: attrs.cfg(cx.sess()),
+        cfg: attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
     }]
 }
 

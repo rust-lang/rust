@@ -421,7 +421,7 @@ impl Item {
             kind,
             box ast_attrs.clean(cx),
             cx,
-            ast_attrs.cfg(cx.sess()),
+            ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     }
 
@@ -747,7 +747,7 @@ crate trait AttributesExt {
 
     fn other_attrs(&self) -> Vec<ast::Attribute>;
 
-    fn cfg(&self, sess: &Session) -> Option<Arc<Cfg>>;
+    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>>;
 }
 
 impl AttributesExt for [ast::Attribute] {
@@ -772,8 +772,41 @@ impl AttributesExt for [ast::Attribute] {
         self.iter().filter(|attr| attr.doc_str().is_none()).cloned().collect()
     }
 
-    fn cfg(&self, sess: &Session) -> Option<Arc<Cfg>> {
-        let mut cfg = Cfg::True;
+    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
+        let sess = tcx.sess;
+        let doc_cfg_active = tcx.features().doc_cfg;
+
+        fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
+            let mut iter = it.into_iter();
+            let item = iter.next()?;
+            if iter.next().is_some() {
+                return None;
+            }
+            Some(item)
+        }
+
+        let mut cfg = if doc_cfg_active {
+            let mut doc_cfg = self
+                .iter()
+                .filter(|attr| attr.has_name(sym::doc))
+                .flat_map(|attr| attr.meta_item_list().unwrap_or_else(Vec::new))
+                .filter(|attr| attr.has_name(sym::cfg))
+                .peekable();
+            if doc_cfg.peek().is_some() {
+                doc_cfg
+                    .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
+                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+            } else {
+                self.iter()
+                    .filter(|attr| attr.has_name(sym::cfg))
+                    .filter_map(|attr| single(attr.meta_item_list()?))
+                    .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
+                    .filter(|cfg| !hidden_cfg.contains(cfg))
+                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+            }
+        } else {
+            Cfg::True
+        };
 
         for attr in self.iter() {
             // #[doc]
@@ -800,6 +833,8 @@ impl AttributesExt for [ast::Attribute] {
             }
         }
 
+        // treat #[target_feature(enable = "feat")] attributes as if they were
+        // #[doc(cfg(target_feature = "feat"))] attributes as well
         for attr in self.lists(sym::target_feature) {
             if attr.has_name(sym::enable) {
                 if let Some(feat) = attr.value_str() {
