@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use regex::Regex;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::lazy::SyncLazy;
@@ -105,7 +105,7 @@ pub fn run(update_mode: UpdateMode) {
         "end lints modules",
         false,
         update_mode == UpdateMode::Change,
-        || vec![gen_modules_list(usable_lints.iter())],
+        || gen_modules_list(usable_lints.iter()),
     )
     .changed;
 
@@ -262,14 +262,13 @@ fn gen_lint_group_list<'a>(group_name: &str, lints: impl Iterator<Item = &'a Lin
 
 /// Generates the module declarations for `lints`
 #[must_use]
-fn gen_modules_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> String {
-    let module_names: BTreeSet<_> = lints.map(|l| &l.module).collect();
-
-    let mut output = GENERATED_FILE_COMMENT.to_string();
-    for name in module_names {
-        output.push_str(&format!("mod {};\n", name));
-    }
-    output
+fn gen_modules_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String> {
+    lints
+        .map(|l| &l.module)
+        .unique()
+        .map(|module| format!("mod {};", module))
+        .sorted()
+        .collect::<Vec<String>>()
 }
 
 /// Generates the list of lint links at the bottom of the CHANGELOG
@@ -677,8 +676,7 @@ mod tests {
             Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
             Lint::new("incorrect_stuff", "group3", "abc", None, "another_module"),
         ];
-        let expected =
-            GENERATED_FILE_COMMENT.to_string() + &["mod another_module;", "mod module_name;"].join("\n") + "\n";
+        let expected = vec!["mod another_module;".to_string(), "mod module_name;".to_string()];
         assert_eq!(expected, gen_modules_list(lints.iter()));
     }
 
