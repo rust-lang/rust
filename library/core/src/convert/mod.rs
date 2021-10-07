@@ -657,16 +657,6 @@ impl AsMut<str> for str {
 ///
 /// … and eventually deprecate `Infallible`.
 ///
-/// However there is one case where `!` syntax can be used
-/// before `!` is stabilized as a full-fledged type: in the position of a function’s return type.
-/// Specifically, it is possible implementations for two different function pointer types:
-///
-/// ```
-/// trait MyTrait {}
-/// impl MyTrait for fn() -> ! {}
-/// impl MyTrait for fn() -> std::convert::Infallible {}
-/// ```
-///
 /// With `Infallible` being an enum, this code is valid.
 /// However when `Infallible` becomes an alias for the never type,
 /// the two `impl`s will start to overlap
