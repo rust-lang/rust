@@ -21,10 +21,6 @@ fn main() {
         //~^ ERROR asm template modifiers are not allowed for `const` arguments
         asm!("{:a}", sym main);
         //~^ ERROR asm template modifiers are not allowed for `sym` arguments
-        asm!("{}", in(zmm_reg) foo);
-        //~^ ERROR register class `zmm_reg` requires the `avx512f` target feature
-        asm!("", in("zmm0") foo);
-        //~^ ERROR register class `zmm_reg` requires the `avx512f` target feature
         asm!("", in("ebp") foo);
         //~^ ERROR invalid register `ebp`: the frame pointer cannot be used as an operand
         asm!("", in("rsp") foo);
