@@ -30,7 +30,6 @@ use project_model::{ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize, T};
-use vfs::AbsPath;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -615,21 +614,7 @@ pub(crate) fn handle_parent_module(
                 .filter_map(|ws| match ws {
                     ProjectWorkspace::Cargo { cargo, .. } => cargo
                         .packages()
-                        .find(|&pkg| {
-                            cargo[pkg]
-                                .targets
-                                .iter()
-                                .find_map(|&it| {
-                                    let pkg_parent_path = cargo[it].root.parent()?;
-                                    let file_parent_path = AbsPath::assert(file_path.parent()?);
-                                    if pkg_parent_path == file_parent_path {
-                                        Some(())
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .is_some()
-                        })
+                        .find(|&pkg| cargo[pkg].manifest.as_ref() == file_path)
                         .and_then(|_| Some(cargo)),
                     _ => None,
                 })
