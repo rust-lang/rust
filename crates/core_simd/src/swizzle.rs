@@ -47,11 +47,11 @@ macro_rules! simd_swizzle {
     } => {
         {
             use $crate::simd::Swizzle;
-            struct SwizzleImpl;
-            impl<const LANES: usize> Swizzle<LANES, {$index.len()}> for SwizzleImpl {
+            struct Impl;
+            impl<const LANES: usize> Swizzle<LANES, {$index.len()}> for Impl {
                 const INDEX: [usize; {$index.len()}] = $index;
             }
-            SwizzleImpl::swizzle($vector)
+            Impl::swizzle($vector)
         }
     };
     {
@@ -59,11 +59,11 @@ macro_rules! simd_swizzle {
     } => {
         {
             use $crate::simd::{Which, Swizzle2};
-            struct SwizzleImpl;
-            impl<const LANES: usize> Swizzle2<LANES, {$index.len()}> for SwizzleImpl {
+            struct Impl;
+            impl<const LANES: usize> Swizzle2<LANES, {$index.len()}> for Impl {
                 const INDEX: [Which; {$index.len()}] = $index;
             }
-            SwizzleImpl::swizzle2($first, $second)
+            Impl::swizzle2($first, $second)
         }
     }
 }
@@ -118,6 +118,7 @@ pub trait Swizzle2<const INPUT_LANES: usize, const OUTPUT_LANES: usize> {
 }
 
 /// The `simd_shuffle` intrinsic expects `u32`, so do error checking and conversion here.
+/// This trait hides `INDEX_IMPL` from the public API.
 trait SwizzleImpl<const INPUT_LANES: usize, const OUTPUT_LANES: usize> {
     const INDEX_IMPL: [u32; OUTPUT_LANES];
 }
@@ -142,6 +143,7 @@ where
 }
 
 /// The `simd_shuffle` intrinsic expects `u32`, so do error checking and conversion here.
+/// This trait hides `INDEX_IMPL` from the public API.
 trait Swizzle2Impl<const INPUT_LANES: usize, const OUTPUT_LANES: usize> {
     const INDEX_IMPL: [u32; OUTPUT_LANES];
 }
@@ -258,8 +260,6 @@ where
     /// The second result contains the last `LANES / 2` lanes from `self` and `other`,
     /// alternating, starting with the lane `LANES / 2` from the start of `self`.
     ///
-    /// This particular permutation is efficient on many architectures.
-    ///
     /// ```
     /// #![feature(portable_simd)]
     /// # use core_simd::Simd;
@@ -321,8 +321,6 @@ where
     ///
     /// The second result takes every other lane of `self` and then `other`, starting with
     /// the second lane.
-    ///
-    /// This particular permutation is efficient on many architectures.
     ///
     /// ```
     /// #![feature(portable_simd)]
