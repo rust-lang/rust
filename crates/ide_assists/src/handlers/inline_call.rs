@@ -1,6 +1,6 @@
 use ast::make;
 use either::Either;
-use hir::{db::HirDatabase, HasSource, PathResolution, Semantics, TypeInfo};
+use hir::{db::HirDatabase, PathResolution, Semantics, TypeInfo};
 use ide_db::{
     base_db::{FileId, FileRange},
     defs::Definition,
@@ -194,7 +194,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
         }
     };
 
-    let fn_source = function.source(ctx.db())?;
+    let fn_source = ctx.sema.source(function)?;
     let fn_body = fn_source.value.body()?;
     let param_list = fn_source.value.param_list()?;
 

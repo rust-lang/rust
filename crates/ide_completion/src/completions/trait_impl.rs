@@ -185,7 +185,7 @@ fn get_transformed_assoc_item(
     let assoc_item = assoc_item.clone_for_update();
     let trait_ = impl_def.trait_(ctx.db)?;
     let source_scope = &ctx.sema.scope_for_def(trait_);
-    let target_scope = &ctx.sema.scope(impl_def.source(ctx.db)?.syntax().value);
+    let target_scope = &ctx.sema.scope(ctx.sema.source(impl_def)?.syntax().value);
     let transform = PathTransform::trait_impl(
         target_scope,
         source_scope,
