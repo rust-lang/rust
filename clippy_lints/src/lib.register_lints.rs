@@ -67,6 +67,7 @@ store.register_lints(&[
     casts::CAST_SIGN_LOSS,
     casts::CHAR_LIT_AS_U8,
     casts::FN_TO_NUMERIC_CAST,
+    casts::FN_TO_NUMERIC_CAST_ANY,
     casts::FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
     casts::PTR_AS_PTR,
     casts::UNNECESSARY_CAST,

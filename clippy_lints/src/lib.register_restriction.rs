@@ -8,6 +8,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(as_conversions::AS_CONVERSIONS),
     LintId::of(asm_syntax::INLINE_ASM_X86_ATT_SYNTAX),
     LintId::of(asm_syntax::INLINE_ASM_X86_INTEL_SYNTAX),
+    LintId::of(casts::FN_TO_NUMERIC_CAST_ANY),
     LintId::of(create_dir::CREATE_DIR),
     LintId::of(dbg_macro::DBG_MACRO),
     LintId::of(default_numeric_fallback::DEFAULT_NUMERIC_FALLBACK),
