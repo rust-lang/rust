@@ -316,8 +316,11 @@ Stmt =
 LetStmt =
   Attr* 'let' Pat (':' Type)?
   '=' initializer:Expr
-  ('else' else_branch:BlockExpr)?
+  LetElse?
   ';'
+
+LetElse =
+  'else' BlockExpr
 
 ExprStmt =
   Expr ';'?
