@@ -1,0 +1,38 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/issue-65230.rs:10:28
+   |
+LL |       fn f(&self) -> Self::U {
+   |  ____________________________^
+LL | |         self.0
+LL | |     }
+   | |_____^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime defined on the method body at 10:10...
+  --> $DIR/issue-65230.rs:10:10
+   |
+LL |     fn f(&self) -> Self::U {
+   |          ^^^^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/issue-65230.rs:11:9
+   |
+LL |         self.0
+   |         ^^^^^^
+note: but, the lifetime must be valid for the lifetime `'a` as defined on the impl at 8:6...
+  --> $DIR/issue-65230.rs:8:6
+   |
+LL | impl<'a> T for X<'a> {
+   |      ^^
+note: ...so that the types are compatible
+  --> $DIR/issue-65230.rs:10:28
+   |
+LL |       fn f(&self) -> Self::U {
+   |  ____________________________^
+LL | |         self.0
+LL | |     }
+   | |_____^
+   = note: expected `<X<'a> as T>`
+              found `<X<'_> as T>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

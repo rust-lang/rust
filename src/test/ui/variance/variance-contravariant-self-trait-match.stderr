@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     impls_get::<&'min G>();
    |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `Get`
-              found type `Get`
+   = note: expected type `<&'min G as Get>`
+              found type `<&'max G as Get>`
 note: the lifetime `'min` as defined on the function body at 10:21...
   --> $DIR/variance-contravariant-self-trait-match.rs:10:21
    |
@@ -23,8 +23,8 @@ error[E0308]: mismatched types
 LL |     impls_get::<&'max G>();
    |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `Get`
-              found type `Get`
+   = note: expected type `<&'max G as Get>`
+              found type `<&'min G as Get>`
 note: the lifetime `'min` as defined on the function body at 16:21...
   --> $DIR/variance-contravariant-self-trait-match.rs:16:21
    |

@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     let _x = *s;
    |         ^^ lifetime mismatch
    |
-   = note: expected type `Sized`
-              found type `Sized`
+   = note: expected type `<<&'a T as A>::X as Sized>`
+              found type `<<&'static T as A>::X as Sized>`
 note: the lifetime `'a` as defined on the function body at 9:8...
   --> $DIR/issue-50716.rs:9:8
    |
