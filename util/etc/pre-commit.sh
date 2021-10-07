@@ -6,6 +6,7 @@ set -e
 # Update lints
 cargo dev update_lints
 git add clippy_lints/src/lib.rs
+git add clippy_lints/src/lib.*.rs
 
 # Formatting:
 #     Git will not automatically add the formatted code to the staged changes once

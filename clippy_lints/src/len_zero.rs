@@ -455,14 +455,10 @@ fn is_empty_array(expr: &Expr<'_>) -> bool {
 fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Gets an `AssocItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_>, item: &ty::AssocItem) -> bool {
-        if let ty::AssocKind::Fn = item.kind {
-            if item.ident.name.as_str() == "is_empty" {
-                let sig = cx.tcx.fn_sig(item.def_id);
-                let ty = sig.skip_binder();
-                ty.inputs().len() == 1
-            } else {
-                false
-            }
+        if item.kind == ty::AssocKind::Fn && item.ident.name.as_str() == "is_empty" {
+            let sig = cx.tcx.fn_sig(item.def_id);
+            let ty = sig.skip_binder();
+            ty.inputs().len() == 1
         } else {
             false
         }

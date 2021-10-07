@@ -73,5 +73,17 @@ LL | | }
    |
    = help: try annotating `WithoutSelfParan` with `#[derive(Default)]`
 
-error: aborting due to 6 previous errors
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:214:1
+   |
+LL | / impl Default for RepeatDefault1 {
+LL | |     fn default() -> Self {
+LL | |         RepeatDefault1 { a: [0; 32] }
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: try annotating `RepeatDefault1` with `#[derive(Default)]`
+
+error: aborting due to 7 previous errors
 

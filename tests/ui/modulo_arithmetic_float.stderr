@@ -1,5 +1,5 @@
 error: you are using modulo operator on constants with different signs: `-1.600 % 2.100`
-  --> $DIR/modulo_arithmetic_float.rs:13:5
+  --> $DIR/modulo_arithmetic_float.rs:6:5
    |
 LL |     -1.6 % 2.1;
    |     ^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     -1.6 % 2.1;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on constants with different signs: `1.600 % -2.100`
-  --> $DIR/modulo_arithmetic_float.rs:14:5
+  --> $DIR/modulo_arithmetic_float.rs:7:5
    |
 LL |     1.6 % -2.1;
    |     ^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     1.6 % -2.1;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on constants with different signs: `-1.200 % 3.400`
-  --> $DIR/modulo_arithmetic_float.rs:15:5
+  --> $DIR/modulo_arithmetic_float.rs:8:5
    |
 LL |     (1.1 - 2.3) % (1.1 + 2.3);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     (1.1 - 2.3) % (1.1 + 2.3);
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on constants with different signs: `3.400 % -1.200`
-  --> $DIR/modulo_arithmetic_float.rs:16:5
+  --> $DIR/modulo_arithmetic_float.rs:9:5
    |
 LL |     (1.1 + 2.3) % (1.1 - 2.3);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     (1.1 + 2.3) % (1.1 - 2.3);
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_float.rs:21:5
+  --> $DIR/modulo_arithmetic_float.rs:14:5
    |
 LL |     a_f32 % b_f32;
    |     ^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     a_f32 % b_f32;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_float.rs:22:5
+  --> $DIR/modulo_arithmetic_float.rs:15:5
    |
 LL |     b_f32 % a_f32;
    |     ^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL |     b_f32 % a_f32;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_float.rs:23:5
+  --> $DIR/modulo_arithmetic_float.rs:16:5
    |
 LL |     b_f32 %= a_f32;
    |     ^^^^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     b_f32 %= a_f32;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_float.rs:27:5
+  --> $DIR/modulo_arithmetic_float.rs:20:5
    |
 LL |     a_f64 % b_f64;
    |     ^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |     a_f64 % b_f64;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_float.rs:28:5
+  --> $DIR/modulo_arithmetic_float.rs:21:5
    |
 LL |     b_f64 % a_f64;
    |     ^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL |     b_f64 % a_f64;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_float.rs:29:5
+  --> $DIR/modulo_arithmetic_float.rs:22:5
    |
 LL |     b_f64 %= a_f64;
    |     ^^^^^^^^^^^^^^

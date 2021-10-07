@@ -1,0 +1,171 @@
+error: this implementation is unsound, as some fields in `RingBuffer<T>` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:16:1
+   |
+LL | unsafe impl<T> Send for RingBuffer<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::non-send-fields-in-send-ty` implied by `-D warnings`
+note: the type of field `data` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:11:5
+   |
+LL |     data: Vec<UnsafeCell<T>>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: add bounds on type parameter `T` that satisfy `Vec<UnsafeCell<T>>: Send`
+
+error: this implementation is unsound, as some fields in `MvccRwLock<T>` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:24:1
+   |
+LL | unsafe impl<T> Send for MvccRwLock<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `lock` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:21:5
+   |
+LL |     lock: Mutex<Box<T>>,
+   |     ^^^^^^^^^^^^^^^^^^^
+   = help: add bounds on type parameter `T` that satisfy `Mutex<Box<T>>: Send`
+
+error: this implementation is unsound, as some fields in `ArcGuard<RC, T>` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:32:1
+   |
+LL | unsafe impl<RC, T: Send> Send for ArcGuard<RC, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `head` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:29:5
+   |
+LL |     head: Arc<RC>,
+   |     ^^^^^^^^^^^^^
+   = help: add bounds on type parameter `RC` that satisfy `Arc<RC>: Send`
+
+error: this implementation is unsound, as some fields in `DeviceHandle<T>` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:48:1
+   |
+LL | unsafe impl<T: UsbContext> Send for DeviceHandle<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `context` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:44:5
+   |
+LL |     context: T,
+   |     ^^^^^^^^^^
+   = help: add `T: Send` bound in `Send` impl
+
+error: this implementation is unsound, as some fields in `NoGeneric` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:55:1
+   |
+LL | unsafe impl Send for NoGeneric {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `rc_is_not_send` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:52:5
+   |
+LL |     rc_is_not_send: Rc<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use a thread-safe type that implements `Send`
+
+error: this implementation is unsound, as some fields in `MultiField<T>` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:63:1
+   |
+LL | unsafe impl<T> Send for MultiField<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `field1` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:58:5
+   |
+LL |     field1: T,
+   |     ^^^^^^^^^
+   = help: add `T: Send` bound in `Send` impl
+note: the type of field `field2` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:59:5
+   |
+LL |     field2: T,
+   |     ^^^^^^^^^
+   = help: add `T: Send` bound in `Send` impl
+note: the type of field `field3` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:60:5
+   |
+LL |     field3: T,
+   |     ^^^^^^^^^
+   = help: add `T: Send` bound in `Send` impl
+
+error: this implementation is unsound, as some fields in `MyOption<T>` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:70:1
+   |
+LL | unsafe impl<T> Send for MyOption<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `0` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:66:12
+   |
+LL |     MySome(T),
+   |            ^
+   = help: add `T: Send` bound in `Send` impl
+
+error: this implementation is unsound, as some fields in `MultiParam<A, B>` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:77:1
+   |
+LL | unsafe impl<A, B> Send for MultiParam<A, B> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `vec` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:74:5
+   |
+LL |     vec: Vec<(A, B)>,
+   |     ^^^^^^^^^^^^^^^^
+   = help: add bounds on type parameters `A, B` that satisfy `Vec<(A, B)>: Send`
+
+error: this implementation is unsound, as some fields in `HeuristicTest` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:95:1
+   |
+LL | unsafe impl Send for HeuristicTest {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `field4` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:90:5
+   |
+LL |     field4: (*const NonSend, Rc<u8>),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use a thread-safe type that implements `Send`
+
+error: this implementation is unsound, as some fields in `AttrTest3<T>` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:114:1
+   |
+LL | unsafe impl<T> Send for AttrTest3<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `0` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:109:11
+   |
+LL |     Enum2(T),
+   |           ^
+   = help: add `T: Send` bound in `Send` impl
+
+error: this implementation is unsound, as some fields in `Complex<P, u32>` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:122:1
+   |
+LL | unsafe impl<P> Send for Complex<P, u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `field1` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:118:5
+   |
+LL |     field1: A,
+   |     ^^^^^^^^^
+   = help: add `P: Send` bound in `Send` impl
+
+error: this implementation is unsound, as some fields in `Complex<Q, MutexGuard<'static, bool>>` are `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:125:1
+   |
+LL | unsafe impl<Q: Send> Send for Complex<Q, MutexGuard<'static, bool>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type of field `field2` is `!Send`
+  --> $DIR/non_send_fields_in_send_ty.rs:119:5
+   |
+LL |     field2: B,
+   |     ^^^^^^^^^
+   = help: use a thread-safe type that implements `Send`
+
+error: aborting due to 12 previous errors
+

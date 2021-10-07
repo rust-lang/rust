@@ -1,4 +1,5 @@
 #![warn(clippy::match_ref_pats)]
+#![allow(clippy::equatable_if_let)]
 
 fn ref_pats() {
     {

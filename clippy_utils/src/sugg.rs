@@ -311,7 +311,7 @@ impl<'a> Sugg<'a> {
 /// Return `true` if `sugg` is enclosed in parenthesis.
 fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
     let mut chars = sugg.as_ref().chars();
-    if let Some('(') = chars.next() {
+    if chars.next() == Some('(') {
         let mut depth = 1;
         for c in &mut chars {
             if c == '(' {

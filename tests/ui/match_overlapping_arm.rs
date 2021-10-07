@@ -2,7 +2,7 @@
 #![feature(half_open_range_patterns)]
 #![warn(clippy::match_overlapping_arm)]
 #![allow(clippy::redundant_pattern_matching)]
-#![allow(clippy::if_same_then_else)]
+#![allow(clippy::if_same_then_else, clippy::equatable_if_let)]
 
 /// Tests for match_overlapping_arm
 

@@ -1,5 +1,5 @@
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:15:5
+  --> $DIR/modulo_arithmetic_integral.rs:8:5
    |
 LL |     a % b;
    |     ^^^^^
@@ -9,7 +9,7 @@ LL |     a % b;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:16:5
+  --> $DIR/modulo_arithmetic_integral.rs:9:5
    |
 LL |     b % a;
    |     ^^^^^
@@ -18,7 +18,7 @@ LL |     b % a;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:17:5
+  --> $DIR/modulo_arithmetic_integral.rs:10:5
    |
 LL |     b %= a;
    |     ^^^^^^
@@ -27,7 +27,7 @@ LL |     b %= a;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:21:5
+  --> $DIR/modulo_arithmetic_integral.rs:14:5
    |
 LL |     a_i8 % b_i8;
    |     ^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL |     a_i8 % b_i8;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:22:5
+  --> $DIR/modulo_arithmetic_integral.rs:15:5
    |
 LL |     b_i8 %= a_i8;
    |     ^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |     b_i8 %= a_i8;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:26:5
+  --> $DIR/modulo_arithmetic_integral.rs:19:5
    |
 LL |     a_i16 % b_i16;
    |     ^^^^^^^^^^^^^
@@ -54,7 +54,7 @@ LL |     a_i16 % b_i16;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:27:5
+  --> $DIR/modulo_arithmetic_integral.rs:20:5
    |
 LL |     b_i16 %= a_i16;
    |     ^^^^^^^^^^^^^^
@@ -63,7 +63,7 @@ LL |     b_i16 %= a_i16;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:31:5
+  --> $DIR/modulo_arithmetic_integral.rs:24:5
    |
 LL |     a_i32 % b_i32;
    |     ^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL |     a_i32 % b_i32;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:32:5
+  --> $DIR/modulo_arithmetic_integral.rs:25:5
    |
 LL |     b_i32 %= a_i32;
    |     ^^^^^^^^^^^^^^
@@ -81,7 +81,7 @@ LL |     b_i32 %= a_i32;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:36:5
+  --> $DIR/modulo_arithmetic_integral.rs:29:5
    |
 LL |     a_i64 % b_i64;
    |     ^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL |     a_i64 % b_i64;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:37:5
+  --> $DIR/modulo_arithmetic_integral.rs:30:5
    |
 LL |     b_i64 %= a_i64;
    |     ^^^^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL |     b_i64 %= a_i64;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:41:5
+  --> $DIR/modulo_arithmetic_integral.rs:34:5
    |
 LL |     a_i128 % b_i128;
    |     ^^^^^^^^^^^^^^^
@@ -108,7 +108,7 @@ LL |     a_i128 % b_i128;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:42:5
+  --> $DIR/modulo_arithmetic_integral.rs:35:5
    |
 LL |     b_i128 %= a_i128;
    |     ^^^^^^^^^^^^^^^^
@@ -117,7 +117,7 @@ LL |     b_i128 %= a_i128;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:46:5
+  --> $DIR/modulo_arithmetic_integral.rs:39:5
    |
 LL |     a_isize % b_isize;
    |     ^^^^^^^^^^^^^^^^^
@@ -126,7 +126,7 @@ LL |     a_isize % b_isize;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:47:5
+  --> $DIR/modulo_arithmetic_integral.rs:40:5
    |
 LL |     b_isize %= a_isize;
    |     ^^^^^^^^^^^^^^^^^^
@@ -135,7 +135,7 @@ LL |     b_isize %= a_isize;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:51:5
+  --> $DIR/modulo_arithmetic_integral.rs:44:5
    |
 LL |     a % b;
    |     ^^^^^
@@ -144,7 +144,7 @@ LL |     a % b;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> $DIR/modulo_arithmetic_integral.rs:52:5
+  --> $DIR/modulo_arithmetic_integral.rs:45:5
    |
 LL |     b %= a;
    |     ^^^^^^
