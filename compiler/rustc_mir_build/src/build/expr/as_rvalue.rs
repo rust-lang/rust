@@ -130,7 +130,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::Call {
                         func: exchange_malloc,
                         args: vec![Operand::Move(size), Operand::Move(align)],
-                        destination: Some((Place::from(storage), success)),
+                        destination: Some((storage, success)),
                         cleanup: None,
                         from_hir_call: false,
                         fn_span: expr_span,
@@ -153,7 +153,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 // Transmute `*mut u8` to the box (thus far, uninitialized):
-                let box_ = Rvalue::ShallowInitBox(Operand::Move(Place::from(storage)), value.ty);
+                let box_ = Rvalue::ShallowInitBox(Operand::Move(storage), value.ty);
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
                 // initialize the box contents:

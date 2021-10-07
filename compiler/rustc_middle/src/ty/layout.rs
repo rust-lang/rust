@@ -986,7 +986,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             let niche = if def.repr.hide_niche() {
                                 None
                             } else {
-                                Niche::from_scalar(dl, Size::ZERO, scalar.clone())
+                                Niche::from_scalar(dl, Size::ZERO, *scalar)
                             };
                             if let Some(niche) = niche {
                                 match st.largest_niche {
@@ -2273,7 +2273,7 @@ where
         ) -> TyMaybeWithLayout<'tcx> {
             let tcx = cx.tcx();
             let tag_layout = |tag: Scalar| -> TyAndLayout<'tcx> {
-                let layout = Layout::scalar(cx, tag.clone());
+                let layout = Layout::scalar(cx, tag);
                 TyAndLayout { layout: tcx.intern_layout(layout), ty: tag.value.to_ty(tcx) }
             };
 

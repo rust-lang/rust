@@ -1766,8 +1766,7 @@ impl CheckAttrVisitor<'tcx> {
     fn check_macro_export(&self, hir_id: HirId, attr: &Attribute, target: Target) {
         if target != Target::MacroDef {
             self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                lint.build(&format!("`#[macro_export]` only has an effect on macro definitions"))
-                    .emit();
+                lint.build("`#[macro_export]` only has an effect on macro definitions").emit();
             });
         }
     }

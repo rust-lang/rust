@@ -278,14 +278,14 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
             fn visit_expr(&mut self, expr: &thir::Expr<'tcx>) {
                 self.is_poly |= expr.ty.definitely_has_param_types_or_consts(self.tcx);
-                if self.is_poly == false {
+                if !self.is_poly {
                     visit::walk_expr(self, expr)
                 }
             }
 
             fn visit_pat(&mut self, pat: &thir::Pat<'tcx>) {
                 self.is_poly |= pat.ty.definitely_has_param_types_or_consts(self.tcx);
-                if self.is_poly == false {
+                if !self.is_poly {
                     visit::walk_pat(self, pat);
                 }
             }
@@ -298,7 +298,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         let mut is_poly_vis = IsThirPolymorphic { is_poly: false, thir: body, tcx };
         visit::walk_expr(&mut is_poly_vis, &body[body_id]);
         debug!("AbstractConstBuilder: is_poly={}", is_poly_vis.is_poly);
-        if is_poly_vis.is_poly == false {
+        if !is_poly_vis.is_poly {
             return Ok(None);
         }
 

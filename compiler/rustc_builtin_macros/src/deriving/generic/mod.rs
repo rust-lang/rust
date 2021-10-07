@@ -594,7 +594,7 @@ impl<'a> TraitDef<'a> {
             GenericParamKind::Const { ty, kw_span, .. } => {
                 let const_nodefault_kind = GenericParamKind::Const {
                     ty: ty.clone(),
-                    kw_span: kw_span.clone(),
+                    kw_span: *kw_span,
 
                     // We can't have default values inside impl block
                     default: None,
