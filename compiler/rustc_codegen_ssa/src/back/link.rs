@@ -853,7 +853,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         if is_illegal_instruction(&output.status) {
             warn!(
                 "looks like the linker hit an illegal instruction when we \
-                 tried to call it, automatically retrying again."
+                 tried to call it, automatically retrying again.",
                 ?cmd, %out, status = %output.status,
             );
             continue;

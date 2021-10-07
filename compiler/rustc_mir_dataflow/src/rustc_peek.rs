@@ -289,7 +289,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeMutBorrowedLocals<'_, 'tcx> {
         flow_state: &BitSet<Local>,
         call: PeekCall,
     ) {
-        info!(?place, "peek_at",);
+        info!(?place, "peek_at");
         let local = if let Some(l) = place.as_local() {
             l
         } else {
