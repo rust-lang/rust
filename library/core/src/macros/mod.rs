@@ -210,6 +210,7 @@ pub macro assert_matches {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "debug_assert_macro"]
+#[allow_internal_unstable(edition_panic)]
 macro_rules! debug_assert {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert!($($arg)*); })
 }
