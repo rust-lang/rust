@@ -844,8 +844,8 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         if out.contains(msg_segv) || out.contains(msg_bus) {
             warn!(
                 "looks like the linker segfaulted when we tried to call it, \
-                 automatically retrying again. cmd = {:?}, out = {}.",
-                cmd, out,
+                 automatically retrying again",
+                ?cmd, %out,
             );
             continue;
         }
@@ -853,9 +853,8 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         if is_illegal_instruction(&output.status) {
             warn!(
                 "looks like the linker hit an illegal instruction when we \
-                 tried to call it, automatically retrying again. cmd = {:?}, ]\
-                 out = {}, status = {}.",
-                cmd, out, output.status,
+                 tried to call it, automatically retrying again."
+                ?cmd, %out, status = %output.status,
             );
             continue;
         }
