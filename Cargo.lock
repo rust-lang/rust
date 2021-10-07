@@ -3670,6 +3670,7 @@ dependencies = [
  "rustc_lexer",
  "rustc_middle",
  "rustc_mir_dataflow",
+ "rustc_mir_pretty",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
@@ -3782,6 +3783,7 @@ dependencies = [
  "rustc_macros",
  "rustc_middle",
  "rustc_mir_dataflow",
+ "rustc_mir_pretty",
  "rustc_query_system",
  "rustc_session",
  "rustc_span",
@@ -3839,6 +3841,7 @@ dependencies = [
  "rustc_lint",
  "rustc_metadata",
  "rustc_middle",
+ "rustc_mir_pretty",
  "rustc_parse",
  "rustc_plugin_impl",
  "rustc_save_analysis",
@@ -4132,8 +4135,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "chalk-ir",
- "either",
- "gsgdt",
  "polonius-engine",
  "rand 0.8.4",
  "rand_xoshiro 0.6.0",
@@ -4146,7 +4147,6 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
- "rustc_graphviz",
  "rustc_hir",
  "rustc_index",
  "rustc_macros",
@@ -4195,11 +4195,29 @@ dependencies = [
  "rustc_hir",
  "rustc_index",
  "rustc_middle",
+ "rustc_mir_pretty",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
  "smallvec",
+ "tracing",
+]
+
+[[package]]
+name = "rustc_mir_pretty"
+version = "0.0.0"
+dependencies = [
+ "either",
+ "gsgdt",
+ "rustc_data_structures",
+ "rustc_graphviz",
+ "rustc_hir",
+ "rustc_index",
+ "rustc_middle",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
  "tracing",
 ]
 
@@ -4218,6 +4236,7 @@ dependencies = [
  "rustc_index",
  "rustc_middle",
  "rustc_mir_dataflow",
+ "rustc_mir_pretty",
  "rustc_query_system",
  "rustc_serialize",
  "rustc_session",

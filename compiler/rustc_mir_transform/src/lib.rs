@@ -27,9 +27,10 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
-use rustc_middle::mir::{dump_mir, traversal, Body, ConstQualifs, MirPhase, Promoted};
+use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_mir_pretty::dump_mir;
 use rustc_span::{Span, Symbol};
 
 mod abort_unwinding_calls;
@@ -276,7 +277,7 @@ fn mir_const<'tcx>(
 
     let mut body = tcx.mir_built(def).steal();
 
-    rustc_middle::mir::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
+    rustc_mir_pretty::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
 
     run_passes(
         tcx,

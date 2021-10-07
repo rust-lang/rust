@@ -1,5 +1,5 @@
 [package]
-name = "rustc_mir_dataflow"
+name = "rustc_mir_pretty"
 version = "0.0.0"
 edition = "2021"
 
@@ -7,18 +7,14 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-polonius-engine = "0.13.0"
-regex = "1"
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+either = "1.5.0"
+gsgdt = "0.1.2"
 tracing = "0.1"
-rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_middle = { path = "../rustc_middle" }
-rustc_mir_pretty = { path = "../rustc_mir_pretty" }
-rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
-rustc_target = { path = "../rustc_target" }
 rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }

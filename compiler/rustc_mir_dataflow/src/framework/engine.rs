@@ -11,8 +11,8 @@ use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{self, traversal, BasicBlock};
-use rustc_middle::mir::{create_dump_file, dump_enabled};
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_pretty::{create_dump_file, dump_enabled};
 use rustc_span::symbol::{sym, Symbol};
 
 use super::fmt::DebugWithContext;

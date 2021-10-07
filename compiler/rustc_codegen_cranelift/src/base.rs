@@ -22,7 +22,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let mir = tcx.instance_mir(instance.def);
     let _mir_guard = crate::PrintOnPanic(|| {
         let mut buf = Vec::new();
-        rustc_middle::mir::write_mir_pretty(tcx, Some(instance.def_id()), &mut buf).unwrap();
+        rustc_mir_pretty::write_mir_pretty(tcx, Some(instance.def_id()), &mut buf).unwrap();
         String::from_utf8_lossy(&buf).into_owned()
     });
 

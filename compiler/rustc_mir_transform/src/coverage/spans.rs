@@ -2,12 +2,12 @@ use super::debug::term_type;
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
 
 use rustc_data_structures::graph::WithNumNodes;
-use rustc_middle::mir::spanview::source_range_no_file;
 use rustc_middle::mir::{
     self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_pretty::spanview::source_range_no_file;
 use rustc_span::source_map::original_sp;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 

@@ -111,14 +111,13 @@
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use super::spans::CoverageSpan;
 
-use rustc_middle::mir::create_dump_file;
-use rustc_middle::mir::generic_graphviz::GraphvizWriter;
-use rustc_middle::mir::spanview::{self, SpanViewable};
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_pretty::create_dump_file;
+use rustc_mir_pretty::generic_graphviz::GraphvizWriter;
+use rustc_mir_pretty::spanview::{self, SpanViewable};
 use rustc_span::Span;
 
 use std::iter;

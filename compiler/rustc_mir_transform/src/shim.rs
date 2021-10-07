@@ -791,7 +791,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
         span,
     );
 
-    rustc_middle::mir::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
+    rustc_mir_pretty::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
 
     body
 }

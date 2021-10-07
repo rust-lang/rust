@@ -4,12 +4,12 @@ use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::Diagnostic;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
 use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
 use rustc_middle::ty::{self, OpaqueTypeKey, RegionKind, RegionVid, Ty};
+use rustc_mir_pretty::{create_dump_file, dump_enabled, dump_mir, PassWhere};
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;

@@ -17,6 +17,7 @@ extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_interface;
 extern crate rustc_metadata;
+extern crate rustc_mir_pretty;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;

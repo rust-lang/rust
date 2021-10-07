@@ -21,12 +21,12 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
-use rustc_middle::mir::dump_enabled;
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, Coverage, SourceInfo, Statement, StatementKind, Terminator,
     TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_pretty::dump_enabled;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{CharPos, ExpnKind, Pos, SourceFile, Span, Symbol};

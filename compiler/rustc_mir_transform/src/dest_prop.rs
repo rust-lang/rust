@@ -105,7 +105,6 @@ use rustc_index::{
 };
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
-use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
     traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, PlaceElem,
     Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
@@ -113,6 +112,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{MaybeInitializedLocals, MaybeLiveLocals};
 use rustc_mir_dataflow::Analysis;
+use rustc_mir_pretty::{dump_mir, PassWhere};
 
 // Empirical measurements have resulted in some observations:
 // - Running on a body with a single block and 500 locals takes barely any time

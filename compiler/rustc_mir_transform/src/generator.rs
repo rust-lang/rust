@@ -57,7 +57,6 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::{BitMatrix, BitSet};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::mir::dump_mir;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
@@ -68,6 +67,7 @@ use rustc_mir_dataflow::impls::{
 };
 use rustc_mir_dataflow::storage;
 use rustc_mir_dataflow::{self, Analysis};
+use rustc_mir_pretty::dump_mir;
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::PanicStrategy;
 use std::{iter, ops};

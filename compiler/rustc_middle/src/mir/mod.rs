@@ -41,29 +41,18 @@ use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
 
 pub mod coverage;
-mod generic_graph;
-pub mod generic_graphviz;
 mod graph_cyclic_cache;
-pub mod graphviz;
 pub mod interpret;
 pub mod mono;
 pub mod patch;
 mod predecessors;
-pub mod pretty;
 mod query;
-pub mod spanview;
 pub mod tcx;
 pub mod terminator;
 pub use terminator::*;
 pub mod traversal;
 mod type_foldable;
 pub mod visit;
-
-pub use self::generic_graph::graphviz_safe_def_name;
-pub use self::graphviz::write_mir_graphviz;
-pub use self::pretty::{
-    create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty, PassWhere,
-};
 
 /// Types for locals
 pub type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
