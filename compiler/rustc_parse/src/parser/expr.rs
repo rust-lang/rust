@@ -1096,7 +1096,7 @@ impl<'a> Parser<'a> {
             (Err(ref mut err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
                 let name = pprust::path_to_string(&path);
                 snapshot.bump(); // `(`
-                match snapshot.parse_struct_fields(path.clone(), false, token::Paren) {
+                match snapshot.parse_struct_fields(path, false, token::Paren) {
                     Ok((fields, ..)) if snapshot.eat(&token::CloseDelim(token::Paren)) => {
                         // We have are certain we have `Enum::Foo(a: 3, b: 4)`, suggest
                         // `Enum::Foo { a: 3, b: 4 }` or `Enum::Foo(3, 4)`.
