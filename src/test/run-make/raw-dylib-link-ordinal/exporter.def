@@ -1,0 +1,3 @@
+LIBRARY exporter
+EXPORTS
+    exported_function @13 NONAME

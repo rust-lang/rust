@@ -3,8 +3,8 @@
 
 #[link(name = "foo")]
 extern "C" {
-    #[link_ordinal(72436)]
-    //~^ ERROR ordinal value in `link_ordinal` is too large: `72436`
+    #[link_ordinal(3, 4)]
+    //~^ ERROR incorrect number of arguments to `#[link_ordinal]`
     fn foo();
 }
 
