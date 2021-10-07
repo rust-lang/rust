@@ -13,6 +13,8 @@ use core::task::Poll;
 /// # Examples
 ///
 /// ```
+/// #![feature(ready_macro)]
+///
 /// use std::task::{ready, Context, Poll};
 /// use std::future::{self, Future};
 /// use std::pin::Pin;
@@ -32,6 +34,7 @@ use core::task::Poll;
 /// The `ready!` call expands to:
 ///
 /// ```
+/// # #![feature(ready_macro)]
 /// # use std::task::{Context, Poll};
 /// # use std::future::{self, Future};
 /// # use std::pin::Pin;
@@ -50,7 +53,7 @@ use core::task::Poll;
 ///     # Poll::Ready(())
 /// # }
 /// ```
-#[stable(feature = "ready_macro", since = "1.56.0")]
+#[unstable(feature = "ready_macro", issue = "70922")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro ready($e:expr) {
     match $e {
