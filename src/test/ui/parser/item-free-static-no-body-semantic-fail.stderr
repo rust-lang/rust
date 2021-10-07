@@ -15,7 +15,7 @@ LL | static B;
    |         help: provide a definition for the static: `= <expr>;`
 
 error: free static item without body
-  --> $DIR/item-free-static-no-body-semantic-fail.rs:8:1
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:9:1
    |
 LL | static mut C: u8;
    | ^^^^^^^^^^^^^^^^-
@@ -23,12 +23,24 @@ LL | static mut C: u8;
    |                 help: provide a definition for the static: `= <expr>;`
 
 error: free static item without body
-  --> $DIR/item-free-static-no-body-semantic-fail.rs:9:1
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:10:1
    |
 LL | static mut D;
    | ^^^^^^^^^^^^-
    |             |
    |             help: provide a definition for the static: `= <expr>;`
 
-error: aborting due to 4 previous errors
+error: missing type for `static` item
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:6:8
+   |
+LL | static B;
+   |        ^ help: provide a type for the item: `B: <type>`
+
+error: missing type for `static mut` item
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:10:12
+   |
+LL | static mut D;
+   |            ^ help: provide a type for the item: `D: <type>`
+
+error: aborting due to 6 previous errors
 
