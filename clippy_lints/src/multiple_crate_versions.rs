@@ -3,7 +3,7 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_lint_allowed;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::{Crate, CRATE_HIR_ID};
+use rustc_hir::CRATE_HIR_ID;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::DUMMY_SP;
@@ -41,7 +41,7 @@ declare_clippy_lint! {
 declare_lint_pass!(MultipleCrateVersions => [MULTIPLE_CRATE_VERSIONS]);
 
 impl LateLintPass<'_> for MultipleCrateVersions {
-    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
         if is_lint_allowed(cx, MULTIPLE_CRATE_VERSIONS, CRATE_HIR_ID) {
             return;
         }

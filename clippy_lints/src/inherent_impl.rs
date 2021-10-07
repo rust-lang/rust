@@ -3,7 +3,7 @@
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::{in_macro, is_lint_allowed};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{def_id::LocalDefId, Crate, Item, ItemKind, Node};
+use rustc_hir::{def_id::LocalDefId, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
@@ -44,7 +44,7 @@ declare_clippy_lint! {
 declare_lint_pass!(MultipleInherentImpl => [MULTIPLE_INHERENT_IMPL]);
 
 impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
-    fn check_crate_post(&mut self, cx: &LateContext<'tcx>, _: &'tcx Crate<'_>) {
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         // Map from a type to it's first impl block. Needed to distinguish generic arguments.
         // e.g. `Foo<Bar>` and `Foo<Baz>`
         let mut type_map = FxHashMap::default();

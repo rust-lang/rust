@@ -2,7 +2,7 @@ use clippy_utils::{diagnostics::span_lint_and_sugg, source::snippet_opt};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
-use rustc_hir::{def::Res, def_id::DefId, Crate, Item, ItemKind, UseKind};
+use rustc_hir::{def::Res, def_id::DefId, Item, ItemKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Symbol;
@@ -55,7 +55,7 @@ impl ImportRename {
 impl_lint_pass!(ImportRename => [MISSING_ENFORCED_IMPORT_RENAMES]);
 
 impl LateLintPass<'_> for ImportRename {
-    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
         for Rename { path, rename } in &self.conf_renames {
             if let Res::Def(_, id) = clippy_utils::path_to_res(cx, &path.split("::").collect::<Vec<_>>()) {
                 self.renames.insert(id, Symbol::intern(rename));

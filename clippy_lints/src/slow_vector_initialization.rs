@@ -120,7 +120,7 @@ impl SlowVectorInit {
             if let ExprKind::Call(func, [arg]) = expr.kind;
             if let ExprKind::Path(QPath::TypeRelative(ty, name)) = func.kind;
             if name.ident.as_str() == "with_capacity";
-            if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::vec_type);
+            if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::Vec);
             then {
                 Some(arg)
             } else {

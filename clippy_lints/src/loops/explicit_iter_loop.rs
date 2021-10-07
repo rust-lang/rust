@@ -54,11 +54,11 @@ fn is_ref_iterable_type(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     // will allow further borrows afterwards
     let ty = cx.typeck_results().expr_ty(e);
     is_iterable_array(ty, cx) ||
-    is_type_diagnostic_item(cx, ty, sym::vec_type) ||
+    is_type_diagnostic_item(cx, ty, sym::Vec) ||
     is_type_diagnostic_item(cx, ty, sym::LinkedList) ||
-    is_type_diagnostic_item(cx, ty, sym::hashmap_type) ||
-    is_type_diagnostic_item(cx, ty, sym::hashset_type) ||
-    is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
+    is_type_diagnostic_item(cx, ty, sym::HashMap) ||
+    is_type_diagnostic_item(cx, ty, sym::HashSet) ||
+    is_type_diagnostic_item(cx, ty, sym::VecDeque) ||
     is_type_diagnostic_item(cx, ty, sym::BinaryHeap) ||
     is_type_diagnostic_item(cx, ty, sym::BTreeMap) ||
     is_type_diagnostic_item(cx, ty, sym::BTreeSet)

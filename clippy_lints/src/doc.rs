@@ -212,7 +212,7 @@ impl_lint_pass!(DocMarkdown =>
 );
 
 impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>, _: &'tcx hir::Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
         let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
         check_attrs(cx, &self.valid_idents, attrs);
     }
@@ -317,7 +317,7 @@ fn lint_for_missing_headers<'tcx>(
     }
     if !headers.errors {
         let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
-        if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::result_type) {
+        if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::Result) {
             span_lint(
                 cx,
                 MISSING_ERRORS_DOC,
@@ -335,7 +335,7 @@ fn lint_for_missing_headers<'tcx>(
                 if let ty::Opaque(_, subs) = ret_ty.kind();
                 if let Some(gen) = subs.types().next();
                 if let ty::Generator(_, subs, _) = gen.kind();
-                if is_type_diagnostic_item(cx, subs.as_generator().return_ty(), sym::result_type);
+                if is_type_diagnostic_item(cx, subs.as_generator().return_ty(), sym::Result);
                 then {
                     span_lint(
                         cx,
@@ -782,8 +782,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
         // check for `unwrap`
         if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
             let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
-            if is_type_diagnostic_item(self.cx, reciever_ty, sym::option_type)
-                || is_type_diagnostic_item(self.cx, reciever_ty, sym::result_type)
+            if is_type_diagnostic_item(self.cx, reciever_ty, sym::Option)
+                || is_type_diagnostic_item(self.cx, reciever_ty, sym::Result)
             {
                 self.panic_span = Some(expr.span);
             }

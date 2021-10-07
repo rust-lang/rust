@@ -55,7 +55,7 @@ fn check_case_sensitive_file_extension_comparison(ctx: &LateContext<'_>, expr: &
                     return Some(span);
                 },
                 ty::Adt(&ty::AdtDef { did, .. }, _) => {
-                    if ctx.tcx.is_diagnostic_item(sym::string_type, did) {
+                    if ctx.tcx.is_diagnostic_item(sym::String, did) {
                         return Some(span);
                     }
                 },

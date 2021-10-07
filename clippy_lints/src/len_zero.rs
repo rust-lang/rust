@@ -245,10 +245,10 @@ enum LenOutput<'tcx> {
 fn parse_len_output(cx: &LateContext<'_>, sig: FnSig<'tcx>) -> Option<LenOutput<'tcx>> {
     match *sig.output().kind() {
         ty::Int(_) | ty::Uint(_) => Some(LenOutput::Integral),
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::option_type, adt.did) => {
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Option, adt.did) => {
             subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did))
         },
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::result_type, adt.did) => subs
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Result, adt.did) => subs
             .type_at(0)
             .is_integral()
             .then(|| LenOutput::Result(adt.did, subs.type_at(1))),

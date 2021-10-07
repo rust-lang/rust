@@ -55,7 +55,7 @@ fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         return true;
     }
 
-    if is_type_diagnostic_item(cx, ty, sym::string_type) {
+    if is_type_diagnostic_item(cx, ty, sym::String) {
         return true;
     }
 

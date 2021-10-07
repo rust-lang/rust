@@ -122,7 +122,7 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::
 fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
     let ty = ty.peel_refs();
     if let Adt(def, substs) = ty.kind() {
-        let is_keyed_type = [sym::hashmap_type, sym::BTreeMap, sym::hashset_type, sym::BTreeSet]
+        let is_keyed_type = [sym::HashMap, sym::BTreeMap, sym::HashSet, sym::BTreeSet]
             .iter()
             .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did));
         if is_keyed_type && is_interior_mutable_type(cx, substs.type_at(0), span) {
@@ -147,11 +147,11 @@ fn is_interior_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Sp
             // that of their type parameters.  Note: we don't include `HashSet` and `HashMap`
             // because they have no impl for `Hash` or `Ord`.
             let is_std_collection = [
-                sym::option_type,
-                sym::result_type,
+                sym::Option,
+                sym::Result,
                 sym::LinkedList,
-                sym::vec_type,
-                sym::vecdeque_type,
+                sym::Vec,
+                sym::VecDeque,
                 sym::BTreeMap,
                 sym::BTreeSet,
                 sym::Rc,

@@ -18,7 +18,6 @@
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
-extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
@@ -647,13 +646,13 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
 /// constructor from the std library
 fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<'_>) -> bool {
     let std_types_symbols = &[
-        sym::string_type,
-        sym::vec_type,
-        sym::vecdeque_type,
+        sym::String,
+        sym::Vec,
+        sym::VecDeque,
         sym::LinkedList,
-        sym::hashmap_type,
+        sym::HashMap,
         sym::BTreeMap,
-        sym::hashset_type,
+        sym::HashSet,
         sym::BTreeSet,
         sym::BinaryHeap,
     ];

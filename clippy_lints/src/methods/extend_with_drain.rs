@@ -12,7 +12,7 @@ use super::EXTEND_WITH_DRAIN;
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) {
     let ty = cx.typeck_results().expr_ty(recv).peel_refs();
     if_chain! {
-        if is_type_diagnostic_item(cx, ty, sym::vec_type);
+        if is_type_diagnostic_item(cx, ty, sym::Vec);
         //check source object
         if let ExprKind::MethodCall(src_method, _, [drain_vec, drain_arg], _) = &arg.kind;
         if src_method.ident.as_str() == "drain";
@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
         //check if actual src type is mutable for code suggestion
         let immutable = src_ty.is_mutable_ptr();
         let src_ty = src_ty.peel_refs();
-        if is_type_diagnostic_item(cx, src_ty, sym::vec_type);
+        if is_type_diagnostic_item(cx, src_ty, sym::Vec);
         //check drain range
         if let src_ty_range = cx.typeck_results().expr_ty(drain_arg).peel_refs();
         if is_type_lang_item(cx, src_ty_range, LangItem::RangeFull);

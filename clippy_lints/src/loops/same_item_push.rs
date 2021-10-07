@@ -192,7 +192,7 @@ fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&
             if let Some(self_expr) = args.get(0);
             if let Some(pushed_item) = args.get(1);
             // Check that the method being called is push() on a Vec
-            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::vec_type);
+            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::Vec);
             if path.ident.name.as_str() == "push";
             then {
                 return Some((self_expr, pushed_item))

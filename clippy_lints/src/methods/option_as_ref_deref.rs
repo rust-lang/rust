@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
     let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
 
     let option_ty = cx.typeck_results().expr_ty(as_ref_recv);
-    if !is_type_diagnostic_item(cx, option_ty, sym::option_type) {
+    if !is_type_diagnostic_item(cx, option_ty, sym::Option) {
         return;
     }
 

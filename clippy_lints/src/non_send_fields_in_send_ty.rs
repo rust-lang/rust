@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
         // single `AdtDef` may have multiple `Send` impls due to generic
         // parameters, and the lint is much easier to implement in this way.
         if_chain! {
-            if let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::send_trait);
+            if let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send);
             if let ItemKind::Impl(hir_impl) = &item.kind;
             if let Some(trait_ref) = &hir_impl.of_trait;
             if let Some(trait_id) = trait_ref.trait_def_id();

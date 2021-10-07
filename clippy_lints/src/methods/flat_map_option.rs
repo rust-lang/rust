@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, arg
         _ if arg_ty.is_fn() => arg_ty.fn_sig(cx.tcx),
         _ => return,
     };
-    if !is_type_diagnostic_item(cx, sig.output().skip_binder(), sym::option_type) {
+    if !is_type_diagnostic_item(cx, sig.output().skip_binder(), sym::Option) {
         return;
     }
     span_lint_and_sugg(

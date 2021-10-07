@@ -105,7 +105,7 @@ pub(super) fn check<'tcx>(
                     _ => (),
                 }
 
-                if is_type_diagnostic_item(cx, ty, sym::vec_type) {
+                if is_type_diagnostic_item(cx, ty, sym::Vec) {
                     return;
                 }
             }

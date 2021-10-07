@@ -29,8 +29,8 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
             let mut applicability = Applicability::MaybeIncorrect;
             let is_empty_sugg = "next().is_none()".to_string();
             let method_name = &*method.ident.name.as_str();
-            let sugg = if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
-                        is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
+            let sugg = if is_type_diagnostic_item(cx, ty, sym::Vec) ||
+                        is_type_diagnostic_item(cx, ty, sym::VecDeque) ||
                         is_type_diagnostic_item(cx, ty, sym::LinkedList) ||
                         is_type_diagnostic_item(cx, ty, sym::BinaryHeap) {
                 match method_name {
@@ -47,7 +47,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                 }
             }
             else if is_type_diagnostic_item(cx, ty, sym::BTreeMap) ||
-                is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
+                is_type_diagnostic_item(cx, ty, sym::HashMap) {
                 match method_name {
                     "is_empty" => is_empty_sugg,
                     _ => return,
@@ -79,8 +79,8 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                 if let ExprKind::MethodCall(method_name, collect_span, &[ref iter_source], ..) = init_expr.kind;
                 if method_name.ident.name == sym!(collect) && is_trait_method(cx, init_expr, sym::Iterator);
                 let ty = cx.typeck_results().expr_ty(init_expr);
-                if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
-                    is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
+                if is_type_diagnostic_item(cx, ty, sym::Vec) ||
+                    is_type_diagnostic_item(cx, ty, sym::VecDeque) ||
                     is_type_diagnostic_item(cx, ty, sym::BinaryHeap) ||
                     is_type_diagnostic_item(cx, ty, sym::LinkedList);
                 if let Some(iter_calls) = detect_iter_and_into_iters(block, id);

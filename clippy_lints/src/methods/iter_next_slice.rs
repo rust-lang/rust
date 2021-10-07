@@ -64,6 +64,6 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, cal
 }
 
 fn is_vec_or_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) -> bool {
-    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::vec_type)
+    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Vec)
         || matches!(&cx.typeck_results().expr_ty(expr).peel_refs().kind(), ty::Array(_, _))
 }

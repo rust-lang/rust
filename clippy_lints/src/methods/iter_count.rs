@@ -13,13 +13,13 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
     let ty = cx.typeck_results().expr_ty(recv);
     let caller_type = if derefs_to_slice(cx, recv, ty).is_some() {
         "slice"
-    } else if is_type_diagnostic_item(cx, ty, sym::vec_type) {
+    } else if is_type_diagnostic_item(cx, ty, sym::Vec) {
         "Vec"
-    } else if is_type_diagnostic_item(cx, ty, sym::vecdeque_type) {
+    } else if is_type_diagnostic_item(cx, ty, sym::VecDeque) {
         "VecDeque"
-    } else if is_type_diagnostic_item(cx, ty, sym::hashset_type) {
+    } else if is_type_diagnostic_item(cx, ty, sym::HashSet) {
         "HashSet"
-    } else if is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
+    } else if is_type_diagnostic_item(cx, ty, sym::HashMap) {
         "HashMap"
     } else if is_type_diagnostic_item(cx, ty, sym::BTreeMap) {
         "BTreeMap"

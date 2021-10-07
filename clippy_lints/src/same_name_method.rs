@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Crate, Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
+use rustc_hir::{Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::AssocKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -46,10 +46,10 @@ struct ExistingName {
 }
 
 impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
-    fn check_crate_post(&mut self, cx: &LateContext<'tcx>, krate: &'tcx Crate<'tcx>) {
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
-        for item in krate.items() {
+        for item in cx.tcx.hir().items() {
             if let ItemKind::Impl(Impl {
                 items,
                 of_trait,

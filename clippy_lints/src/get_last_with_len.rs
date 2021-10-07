@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for GetLastWithLen {
             // Argument 0 (the struct we're calling the method on) is a vector
             if let Some(struct_calling_on) = args.get(0);
             let struct_ty = cx.typeck_results().expr_ty(struct_calling_on);
-            if is_type_diagnostic_item(cx, struct_ty, sym::vec_type);
+            if is_type_diagnostic_item(cx, struct_ty, sym::Vec);
 
             // Argument to "get" is a subtraction
             if let Some(get_index_arg) = args.get(1);

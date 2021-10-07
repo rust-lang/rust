@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
             if_chain! {
                 if format_args.format_string_symbols == [kw::Empty];
                 if match cx.typeck_results().expr_ty(value).peel_refs().kind() {
-                    ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::string_type, adt.did),
+                    ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::String, adt.did),
                     ty::Str => true,
                     _ => false,
                 };
@@ -112,7 +112,7 @@ fn is_display_arg(expr: &Expr<'_>) -> bool {
         if let ExprKind::Call(_, [_, fmt]) = expr.kind;
         if let ExprKind::Path(QPath::Resolved(_, path)) = fmt.kind;
         if let [.., t, _] = path.segments;
-        if t.ident.name.as_str() == "Display";
+        if t.ident.name == sym::Display;
         then { true } else { false }
     }
 }

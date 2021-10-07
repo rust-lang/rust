@@ -88,7 +88,7 @@ pub const MEM_SIZE_OF_VAL: [&str; 3] = ["core", "mem", "size_of_val"];
 pub const MUTEX_GUARD: [&str; 4] = ["std", "sync", "mutex", "MutexGuard"];
 pub const OPEN_OPTIONS: [&str; 3] = ["std", "fs", "OpenOptions"];
 pub const OPS_MODULE: [&str; 2] = ["core", "ops"];
-/// Preferably use the diagnostic item `sym::option_type` where possible
+/// Preferably use the diagnostic item `sym::Option` where possible
 pub const OPTION: [&str; 3] = ["core", "option", "Option"];
 pub const OPTION_NONE: [&str; 4] = ["core", "option", "Option", "None"];
 pub const OPTION_SOME: [&str; 4] = ["core", "option", "Option", "Some"];
@@ -129,13 +129,19 @@ pub const RANGE_ARGUMENT_TRAIT: [&str; 3] = ["core", "ops", "RangeBounds"];
 pub const RC_PTR_EQ: [&str; 4] = ["alloc", "rc", "Rc", "ptr_eq"];
 pub const REFCELL_REF: [&str; 3] = ["core", "cell", "Ref"];
 pub const REFCELL_REFMUT: [&str; 3] = ["core", "cell", "RefMut"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "unicode", "RegexBuilder", "new"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "bytes", "RegexBuilder", "new"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_NEW: [&str; 4] = ["regex", "re_bytes", "Regex", "new"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_SET_NEW: [&str; 5] = ["regex", "re_set", "bytes", "RegexSet", "new"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_NEW: [&str; 4] = ["regex", "re_unicode", "Regex", "new"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_SET_NEW: [&str; 5] = ["regex", "re_set", "unicode", "RegexSet", "new"];
-/// Preferably use the diagnostic item `sym::result_type` where possible
+/// Preferably use the diagnostic item `sym::Result` where possible
 pub const RESULT: [&str; 3] = ["core", "result", "Result"];
 pub const RESULT_ERR: [&str; 4] = ["core", "result", "Result", "Err"];
 pub const RESULT_OK: [&str; 4] = ["core", "result", "Result", "Ok"];

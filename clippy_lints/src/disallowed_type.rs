@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{
-    def::Res, def_id::DefId, Crate, Item, ItemKind, PolyTraitRef, PrimTy, TraitBoundModifier, Ty, TyKind, UseKind,
+    def::Res, def_id::DefId, Item, ItemKind, PolyTraitRef, PrimTy, TraitBoundModifier, Ty, TyKind, UseKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -75,7 +75,7 @@ impl DisallowedType {
 impl_lint_pass!(DisallowedType => [DISALLOWED_TYPE]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedType {
-    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
         for path in &self.disallowed {
             let segs = path.iter().map(ToString::to_string).collect::<Vec<_>>();
             match clippy_utils::path_to_res(cx, &segs.iter().map(String::as_str).collect::<Vec<_>>()) {
