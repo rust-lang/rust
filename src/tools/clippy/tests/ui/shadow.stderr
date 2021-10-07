@@ -1,138 +1,233 @@
-error: `x` is shadowed by itself in `&mut x`
-  --> $DIR/shadow.rs:27:5
+error: `x` is shadowed by itself in `x`
+  --> $DIR/shadow.rs:5:9
    |
-LL |     let x = &mut x;
-   |     ^^^^^^^^^^^^^^^
+LL |     let x = x;
+   |         ^
    |
    = note: `-D clippy::shadow-same` implied by `-D warnings`
 note: previous binding is here
-  --> $DIR/shadow.rs:26:13
+  --> $DIR/shadow.rs:4:9
    |
-LL |     let mut x = 1;
-   |             ^
+LL |     let x = 1;
+   |         ^
 
-error: `x` is shadowed by itself in `{ x }`
-  --> $DIR/shadow.rs:28:5
+error: `mut x` is shadowed by itself in `&x`
+  --> $DIR/shadow.rs:6:13
    |
-LL |     let x = { x };
-   |     ^^^^^^^^^^^^^^
+LL |     let mut x = &x;
+   |             ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:27:9
+  --> $DIR/shadow.rs:5:9
+   |
+LL |     let x = x;
+   |         ^
+
+error: `x` is shadowed by itself in `&mut x`
+  --> $DIR/shadow.rs:7:9
+   |
+LL |     let x = &mut x;
+   |         ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:6:9
+   |
+LL |     let mut x = &x;
+   |         ^^^^^
+
+error: `x` is shadowed by itself in `*x`
+  --> $DIR/shadow.rs:8:9
+   |
+LL |     let x = *x;
+   |         ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:7:9
    |
 LL |     let x = &mut x;
    |         ^
 
-error: `x` is shadowed by itself in `(&*x)`
-  --> $DIR/shadow.rs:29:5
+error: `x` is shadowed by `x.0` which reuses the original value
+  --> $DIR/shadow.rs:13:9
    |
-LL |     let x = (&*x);
-   |     ^^^^^^^^^^^^^^
-   |
-note: previous binding is here
-  --> $DIR/shadow.rs:28:9
-   |
-LL |     let x = { x };
-   |         ^
-
-error: `x` is shadowed by `{ *x + 1 }` which reuses the original value
-  --> $DIR/shadow.rs:30:9
-   |
-LL |     let x = { *x + 1 };
+LL |     let x = x.0;
    |         ^
    |
    = note: `-D clippy::shadow-reuse` implied by `-D warnings`
-note: initialization happens here
-  --> $DIR/shadow.rs:30:13
-   |
-LL |     let x = { *x + 1 };
-   |             ^^^^^^^^^^
 note: previous binding is here
-  --> $DIR/shadow.rs:29:9
+  --> $DIR/shadow.rs:12:9
    |
-LL |     let x = (&*x);
+LL |     let x = ([[0]], ());
    |         ^
 
-error: `x` is shadowed by `id(x)` which reuses the original value
-  --> $DIR/shadow.rs:31:9
+error: `x` is shadowed by `x[0]` which reuses the original value
+  --> $DIR/shadow.rs:14:9
    |
-LL |     let x = id(x);
+LL |     let x = x[0];
    |         ^
    |
-note: initialization happens here
-  --> $DIR/shadow.rs:31:13
-   |
-LL |     let x = id(x);
-   |             ^^^^^
 note: previous binding is here
-  --> $DIR/shadow.rs:30:9
+  --> $DIR/shadow.rs:13:9
    |
-LL |     let x = { *x + 1 };
+LL |     let x = x.0;
    |         ^
 
-error: `x` is shadowed by `(1, x)` which reuses the original value
-  --> $DIR/shadow.rs:32:9
+error: `x` is shadowed by `x` which reuses the original value
+  --> $DIR/shadow.rs:15:10
    |
-LL |     let x = (1, x);
-   |         ^
+LL |     let [x] = x;
+   |          ^
    |
-note: initialization happens here
-  --> $DIR/shadow.rs:32:13
-   |
-LL |     let x = (1, x);
-   |             ^^^^^^
 note: previous binding is here
-  --> $DIR/shadow.rs:31:9
+  --> $DIR/shadow.rs:14:9
    |
-LL |     let x = id(x);
+LL |     let x = x[0];
    |         ^
 
-error: `x` is shadowed by `first(x)` which reuses the original value
-  --> $DIR/shadow.rs:33:9
+error: `x` is shadowed by `Some(x)` which reuses the original value
+  --> $DIR/shadow.rs:16:9
    |
-LL |     let x = first(x);
+LL |     let x = Some(x);
    |         ^
    |
-note: initialization happens here
-  --> $DIR/shadow.rs:33:13
-   |
-LL |     let x = first(x);
-   |             ^^^^^^^^
 note: previous binding is here
-  --> $DIR/shadow.rs:32:9
+  --> $DIR/shadow.rs:15:10
    |
-LL |     let x = (1, x);
+LL |     let [x] = x;
+   |          ^
+
+error: `x` is shadowed by `foo(x)` which reuses the original value
+  --> $DIR/shadow.rs:17:9
+   |
+LL |     let x = foo(x);
+   |         ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:16:9
+   |
+LL |     let x = Some(x);
    |         ^
 
-error: `x` is being shadowed
-  --> $DIR/shadow.rs:35:9
+error: `x` is shadowed by `|| x` which reuses the original value
+  --> $DIR/shadow.rs:18:9
    |
-LL |     let x = y;
+LL |     let x = || x;
+   |         ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:17:9
+   |
+LL |     let x = foo(x);
+   |         ^
+
+error: `x` is shadowed by `Some(1).map(|_| x)?` which reuses the original value
+  --> $DIR/shadow.rs:19:9
+   |
+LL |     let x = Some(1).map(|_| x)?;
+   |         ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:18:9
+   |
+LL |     let x = || x;
+   |         ^
+
+error: `x` shadows a previous, unrelated binding
+  --> $DIR/shadow.rs:25:9
+   |
+LL |     let x = 2;
    |         ^
    |
    = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
-note: initialization happens here
-  --> $DIR/shadow.rs:35:13
+note: previous binding is here
+  --> $DIR/shadow.rs:24:9
    |
-LL |     let x = y;
+LL |     let x = 1;
+   |         ^
+
+error: `x` shadows a previous, unrelated binding
+  --> $DIR/shadow.rs:30:13
+   |
+LL |         let x = 1;
    |             ^
-note: previous binding is here
-  --> $DIR/shadow.rs:33:9
-   |
-LL |     let x = first(x);
-   |         ^
-
-error: `x` shadows a previous declaration
-  --> $DIR/shadow.rs:37:5
-   |
-LL |     let x;
-   |     ^^^^^^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:35:9
+  --> $DIR/shadow.rs:29:10
    |
-LL |     let x = y;
+LL |     fn f(x: u32) {
+   |          ^
+
+error: `x` shadows a previous, unrelated binding
+  --> $DIR/shadow.rs:35:14
+   |
+LL |         Some(x) => {
+   |              ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:32:9
+   |
+LL |     let x = 1;
    |         ^
 
-error: aborting due to 9 previous errors
+error: `x` shadows a previous, unrelated binding
+  --> $DIR/shadow.rs:36:17
+   |
+LL |             let x = 1;
+   |                 ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:35:14
+   |
+LL |         Some(x) => {
+   |              ^
+
+error: `x` shadows a previous, unrelated binding
+  --> $DIR/shadow.rs:40:17
+   |
+LL |     if let Some(x) = Some(1) {}
+   |                 ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:32:9
+   |
+LL |     let x = 1;
+   |         ^
+
+error: `x` shadows a previous, unrelated binding
+  --> $DIR/shadow.rs:41:20
+   |
+LL |     while let Some(x) = Some(1) {}
+   |                    ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:32:9
+   |
+LL |     let x = 1;
+   |         ^
+
+error: `x` shadows a previous, unrelated binding
+  --> $DIR/shadow.rs:42:15
+   |
+LL |     let _ = |[x]: [u32; 1]| {
+   |               ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:32:9
+   |
+LL |     let x = 1;
+   |         ^
+
+error: `x` shadows a previous, unrelated binding
+  --> $DIR/shadow.rs:43:13
+   |
+LL |         let x = 1;
+   |             ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:42:15
+   |
+LL |     let _ = |[x]: [u32; 1]| {
+   |               ^
+
+error: aborting due to 19 previous errors
 

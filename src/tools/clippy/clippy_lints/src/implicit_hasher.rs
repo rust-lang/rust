@@ -167,12 +167,20 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             continue;
                         }
                         let generics_suggestion_span = generics.span.substitute_dummy({
-                            let pos = snippet_opt(cx, item.span.until(body.params[0].pat.span))
-                                .and_then(|snip| {
-                                    let i = snip.find("fn")?;
-                                    Some(item.span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))
-                                })
-                                .expect("failed to create span for type parameters");
+                            let pos = snippet_opt(
+                                cx,
+                                Span::new(
+                                    item.span.lo(),
+                                    body.params[0].pat.span.lo(),
+                                    item.span.ctxt(),
+                                    item.span.parent(),
+                                ),
+                            )
+                            .and_then(|snip| {
+                                let i = snip.find("fn")?;
+                                Some(item.span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))
+                            })
+                            .expect("failed to create span for type parameters");
                             Span::new(pos, pos, item.span.ctxt(), item.span.parent())
                         });
 

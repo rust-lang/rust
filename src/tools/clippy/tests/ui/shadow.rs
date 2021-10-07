@@ -1,54 +1,77 @@
-#![warn(
-    clippy::all,
-    clippy::pedantic,
-    clippy::shadow_same,
-    clippy::shadow_reuse,
-    clippy::shadow_unrelated
-)]
-#![allow(
-    unused_parens,
-    unused_variables,
-    clippy::manual_unwrap_or,
-    clippy::missing_docs_in_private_items,
-    clippy::single_match
-)]
+#![warn(clippy::shadow_same, clippy::shadow_reuse, clippy::shadow_unrelated)]
 
-fn id<T>(x: T) -> T {
-    x
-}
-
-#[must_use]
-fn first(x: (isize, isize)) -> isize {
-    x.0
-}
-
-fn main() {
-    let mut x = 1;
+fn shadow_same() {
+    let x = 1;
+    let x = x;
+    let mut x = &x;
     let x = &mut x;
-    let x = { x };
-    let x = (&*x);
-    let x = { *x + 1 };
-    let x = id(x);
-    let x = (1, x);
-    let x = first(x);
-    let y = 1;
-    let x = y;
-
-    let x;
-    x = 42;
-
-    let o = Some(1_u8);
-
-    if let Some(p) = o {
-        assert_eq!(1, p);
-    }
-    match o {
-        Some(p) => p, // no error, because the p above is in its own scope
-        None => 0,
-    };
-
-    match (x, o) {
-        (1, Some(a)) | (a, Some(1)) => (), // no error though `a` appears twice
-        _ => (),
-    }
+    let x = *x;
 }
+
+fn shadow_reuse() -> Option<()> {
+    let x = ([[0]], ());
+    let x = x.0;
+    let x = x[0];
+    let [x] = x;
+    let x = Some(x);
+    let x = foo(x);
+    let x = || x;
+    let x = Some(1).map(|_| x)?;
+    None
+}
+
+fn shadow_unrelated() {
+    let x = 1;
+    let x = 2;
+}
+
+fn syntax() {
+    fn f(x: u32) {
+        let x = 1;
+    }
+    let x = 1;
+    match Some(1) {
+        Some(1) => {},
+        Some(x) => {
+            let x = 1;
+        },
+        _ => {},
+    }
+    if let Some(x) = Some(1) {}
+    while let Some(x) = Some(1) {}
+    let _ = |[x]: [u32; 1]| {
+        let x = 1;
+    };
+}
+
+fn negative() {
+    match Some(1) {
+        Some(x) if x == 1 => {},
+        Some(x) => {},
+        None => {},
+    }
+    match [None, Some(1)] {
+        [Some(x), None] | [None, Some(x)] => {},
+        _ => {},
+    }
+    if let Some(x) = Some(1) {
+        let y = 1;
+    } else {
+        let x = 1;
+        let y = 1;
+    }
+    let x = 1;
+    #[allow(clippy::shadow_unrelated)]
+    let x = 1;
+}
+
+fn foo<T>(_: T) {}
+
+fn question_mark() -> Option<()> {
+    let val = 1;
+    // `?` expands with a `val` binding
+    None?;
+    None
+}
+
+fn main() {}

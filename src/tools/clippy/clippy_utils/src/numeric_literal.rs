@@ -74,7 +74,7 @@ impl<'a> NumericLiteral<'a> {
         };
 
         // Grab part of the literal after prefix, if present.
-        let (prefix, mut sans_prefix) = if let Radix::Decimal = radix {
+        let (prefix, mut sans_prefix) = if radix == Radix::Decimal {
             (None, lit)
         } else {
             let (p, s) = lit.split_at(2);
@@ -157,8 +157,10 @@ impl<'a> NumericLiteral<'a> {
         }
 
         if let Some((separator, exponent)) = self.exponent {
-            output.push_str(separator);
-            Self::group_digits(&mut output, exponent, group_size, true, false);
+            if exponent != "0" {
+                output.push_str(separator);
+                Self::group_digits(&mut output, exponent, group_size, true, false);
+            }
         }
 
         if let Some(suffix) = self.suffix {
@@ -176,6 +178,13 @@ impl<'a> NumericLiteral<'a> {
         debug_assert!(group_size > 0);
 
         let mut digits = input.chars().filter(|&c| c != '_');
+
+        // The exponent may have a sign, output it early, otherwise it will be
+        // treated as a digit
+        if digits.clone().next() == Some('-') {
+            let _ = digits.next();
+            output.push('-');
+        }
 
         let first_group_size;
 

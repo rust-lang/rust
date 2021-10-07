@@ -1,5 +1,5 @@
 error: you don't need to add `&` to all patterns
-  --> $DIR/match_ref_pats.rs:6:9
+  --> $DIR/match_ref_pats.rs:7:9
    |
 LL | /         match v {
 LL | |             &Some(v) => println!("{:?}", v),
@@ -16,7 +16,7 @@ LL ~             None => println!("none"),
    |
 
 error: you don't need to add `&` to all patterns
-  --> $DIR/match_ref_pats.rs:17:5
+  --> $DIR/match_ref_pats.rs:18:5
    |
 LL | /     match tup {
 LL | |         &(v, 1) => println!("{}", v),
@@ -31,7 +31,7 @@ LL ~         (v, 1) => println!("{}", v),
    |
 
 error: you don't need to add `&` to both the expression and the patterns
-  --> $DIR/match_ref_pats.rs:23:5
+  --> $DIR/match_ref_pats.rs:24:5
    |
 LL | /     match &w {
 LL | |         &Some(v) => println!("{:?}", v),
@@ -47,7 +47,7 @@ LL ~         None => println!("none"),
    |
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/match_ref_pats.rs:35:12
+  --> $DIR/match_ref_pats.rs:36:12
    |
 LL |     if let &None = a {
    |     -------^^^^^---- help: try this: `if a.is_none()`
@@ -55,7 +55,7 @@ LL |     if let &None = a {
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: you don't need to add `&` to all patterns
-  --> $DIR/match_ref_pats.rs:35:5
+  --> $DIR/match_ref_pats.rs:36:5
    |
 LL | /     if let &None = a {
 LL | |         println!("none");
@@ -68,13 +68,13 @@ LL |     if let None = *a {
    |            ~~~~   ~~
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/match_ref_pats.rs:40:12
+  --> $DIR/match_ref_pats.rs:41:12
    |
 LL |     if let &None = &b {
    |     -------^^^^^----- help: try this: `if b.is_none()`
 
 error: you don't need to add `&` to both the expression and the patterns
-  --> $DIR/match_ref_pats.rs:40:5
+  --> $DIR/match_ref_pats.rs:41:5
    |
 LL | /     if let &None = &b {
 LL | |         println!("none");
@@ -87,7 +87,7 @@ LL |     if let None = b {
    |            ~~~~   ~
 
 error: you don't need to add `&` to all patterns
-  --> $DIR/match_ref_pats.rs:67:9
+  --> $DIR/match_ref_pats.rs:68:9
    |
 LL | /         match foo_variant!(0) {
 LL | |             &Foo::A => println!("A"),

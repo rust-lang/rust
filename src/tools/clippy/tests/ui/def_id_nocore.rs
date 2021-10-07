@@ -3,6 +3,7 @@
 
 #![feature(no_core, lang_items, start)]
 #![no_core]
+#![allow(clippy::missing_safety_doc)]
 
 #[link(name = "c")]
 extern "C" {}

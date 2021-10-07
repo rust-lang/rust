@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
         if_chain! {
             if let ExprKind::MethodCall(path, _, [receiver, count], _) = &expr.kind;
             if path.ident.name == sym!(repeat);
-            if let Some(Constant::Int(1)) = constant_context(cx, cx.typeck_results()).expr(count);
+            if constant_context(cx, cx.typeck_results()).expr(count) == Some(Constant::Int(1));
             if !in_macro(receiver.span);
             then {
                 let ty = cx.typeck_results().expr_ty(receiver).peel_refs();

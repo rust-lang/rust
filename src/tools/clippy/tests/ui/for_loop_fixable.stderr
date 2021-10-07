@@ -1,5 +1,5 @@
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:43:15
+  --> $DIR/for_loop_fixable.rs:38:15
    |
 LL |     for _v in vec.iter() {}
    |               ^^^^^^^^^^ help: to write this more concisely, try: `&vec`
@@ -7,13 +7,13 @@ LL |     for _v in vec.iter() {}
    = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:45:15
+  --> $DIR/for_loop_fixable.rs:40:15
    |
 LL |     for _v in vec.iter_mut() {}
    |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut vec`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:48:15
+  --> $DIR/for_loop_fixable.rs:43:15
    |
 LL |     for _v in out_vec.into_iter() {}
    |               ^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `out_vec`
@@ -21,73 +21,73 @@ LL |     for _v in out_vec.into_iter() {}
    = note: `-D clippy::explicit-into-iter-loop` implied by `-D warnings`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:53:15
+  --> $DIR/for_loop_fixable.rs:48:15
    |
 LL |     for _v in [1, 2, 3].iter() {}
    |               ^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[1, 2, 3]`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:57:15
+  --> $DIR/for_loop_fixable.rs:52:15
    |
 LL |     for _v in [0; 32].iter() {}
    |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[0; 32]`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:62:15
+  --> $DIR/for_loop_fixable.rs:57:15
    |
 LL |     for _v in ll.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&ll`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:65:15
+  --> $DIR/for_loop_fixable.rs:60:15
    |
 LL |     for _v in vd.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&vd`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:68:15
+  --> $DIR/for_loop_fixable.rs:63:15
    |
 LL |     for _v in bh.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&bh`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:71:15
+  --> $DIR/for_loop_fixable.rs:66:15
    |
 LL |     for _v in hm.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&hm`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:74:15
+  --> $DIR/for_loop_fixable.rs:69:15
    |
 LL |     for _v in bt.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&bt`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:77:15
+  --> $DIR/for_loop_fixable.rs:72:15
    |
 LL |     for _v in hs.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&hs`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:80:15
+  --> $DIR/for_loop_fixable.rs:75:15
    |
 LL |     for _v in bs.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&bs`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:255:18
+  --> $DIR/for_loop_fixable.rs:250:18
    |
 LL |         for i in iterator.into_iter() {
    |                  ^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `iterator`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:275:18
+  --> $DIR/for_loop_fixable.rs:270:18
    |
 LL |         for _ in t.into_iter() {}
    |                  ^^^^^^^^^^^^^ help: to write this more concisely, try: `&t`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
-  --> $DIR/for_loop_fixable.rs:277:18
+  --> $DIR/for_loop_fixable.rs:272:18
    |
 LL |         for _ in r.into_iter() {}
    |                  ^^^^^^^^^^^^^ help: to write this more concisely, try: `r`

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::PanicExpn;
-use clippy_utils::is_expn_of;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{is_expn_of, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -74,12 +74,14 @@ impl LateLintPass<'_> for IfThenPanic {
                 };
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = snippet_with_applicability(cx, span, "..", &mut applicability);
-
-                let cond_sugg =
-                if let ExprKind::DropTemps(Expr{kind: ExprKind::Unary(UnOp::Not, not_expr), ..}) = cond.kind {
-                    snippet_with_applicability(cx, not_expr.span, "..", &mut applicability).to_string()
+                let cond_sugg = if let ExprKind::DropTemps(e, ..) = cond.kind {
+                    if let Expr{kind: ExprKind::Unary(UnOp::Not, not_expr), ..} = e {
+                         sugg::Sugg::hir_with_applicability(cx, not_expr, "..", &mut applicability).maybe_par().to_string()
+                    } else {
+                       format!("!{}", sugg::Sugg::hir_with_applicability(cx, e, "..", &mut applicability).maybe_par().to_string())
+                    }
                 } else {
-                    format!("!{}", snippet_with_applicability(cx, cond.span, "..", &mut applicability))
+                   format!("!{}", sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability).maybe_par().to_string())
                 };
 
                 span_lint_and_sugg(

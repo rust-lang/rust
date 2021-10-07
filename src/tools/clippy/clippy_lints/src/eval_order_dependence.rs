@@ -141,7 +141,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
                 match typ.kind() {
                     ty::FnDef(..) | ty::FnPtr(_) => {
                         let sig = typ.fn_sig(self.cx.tcx);
-                        if let ty::Never = self.cx.tcx.erase_late_bound_regions(sig).output().kind() {
+                        if self.cx.tcx.erase_late_bound_regions(sig).output().kind() == &ty::Never {
                             self.report_diverging_sub_expr(e);
                         }
                     },

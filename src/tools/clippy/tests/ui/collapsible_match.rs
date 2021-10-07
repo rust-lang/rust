@@ -1,5 +1,10 @@
 #![warn(clippy::collapsible_match)]
-#![allow(clippy::needless_return, clippy::no_effect, clippy::single_match)]
+#![allow(
+    clippy::needless_return,
+    clippy::no_effect,
+    clippy::single_match,
+    clippy::equatable_if_let
+)]
 
 fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>) {
     // match without block

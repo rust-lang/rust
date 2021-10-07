@@ -8,7 +8,7 @@ use clippy_utils::{
     paths, SpanlessEq,
 };
 use if_chain::if_chain;
-use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, ModKind, NodeId};
+use rustc_ast::ast::{Crate, ItemKind, LitKind, ModKind, NodeId};
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -18,8 +18,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{
-    BinOpKind, Block, Crate, Expr, ExprKind, HirId, Item, Local, MutTy, Mutability, Node, Path, Stmt, StmtKind, Ty,
-    TyKind, UnOp,
+    BinOpKind, Block, Expr, ExprKind, HirId, Item, Local, MutTy, Mutability, Node, Path, Stmt, StmtKind, Ty, TyKind,
+    UnOp,
 };
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -317,7 +317,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
 
 impl EarlyLintPass for ClippyLintsInternal {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &AstCrate) {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
         if let Some(utils) = krate.items.iter().find(|item| item.ident.name.as_str() == "utils") {
             if let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = utils.kind {
                 if let Some(paths) = items.iter().find(|item| item.ident.name.as_str() == "paths") {
@@ -412,7 +412,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
         }
     }
 
-    fn check_crate_post(&mut self, cx: &LateContext<'tcx>, _: &'tcx Crate<'_>) {
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         if is_lint_allowed(cx, LINT_WITHOUT_LINT_PASS, CRATE_HIR_ID) {
             return;
         }
@@ -907,7 +907,7 @@ pub struct InterningDefinedSymbol {
 impl_lint_pass!(InterningDefinedSymbol => [INTERNING_DEFINED_SYMBOL, UNNECESSARY_SYMBOL_STR]);
 
 impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
-    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
         if !self.symbol_map.is_empty() {
             return;
         }

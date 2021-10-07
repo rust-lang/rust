@@ -35,6 +35,7 @@ enum LargeEnum2 {
     VariantOk(i32, u32),
     ContainingLargeEnum(LargeEnum),
 }
+
 enum LargeEnum3 {
     ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
     VoidVariant,
@@ -54,6 +55,23 @@ enum LargeEnum5 {
 enum LargeEnumOk {
     LargeA([i32; 8000]),
     LargeB([i32; 8001]),
+}
+
+enum LargeEnum6 {
+    A,
+    B([u8; 255]),
+    C([u8; 200]),
+}
+
+enum LargeEnum7 {
+    A,
+    B([u8; 1255]),
+    C([u8; 200]),
+}
+
+enum LargeEnum8 {
+    VariantOk(i32, u32),
+    ContainingMoreThanOneField([i32; 8000], [i32; 2], [i32; 9500], [i32; 30]),
 }
 
 fn main() {

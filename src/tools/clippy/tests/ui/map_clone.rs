@@ -1,11 +1,11 @@
 // run-rustfix
-#![warn(clippy::all, clippy::pedantic)]
-#![allow(clippy::iter_cloned_collect)]
-#![allow(clippy::clone_on_copy, clippy::redundant_clone)]
-#![allow(clippy::let_underscore_drop)]
-#![allow(clippy::missing_docs_in_private_items)]
-#![allow(clippy::redundant_closure_for_method_calls)]
-#![allow(clippy::many_single_char_names)]
+#![warn(clippy::map_clone)]
+#![allow(
+    clippy::clone_on_copy,
+    clippy::iter_cloned_collect,
+    clippy::many_single_char_names,
+    clippy::redundant_clone
+)]
 
 fn main() {
     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();

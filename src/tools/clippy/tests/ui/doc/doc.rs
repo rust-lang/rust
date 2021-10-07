@@ -203,6 +203,11 @@ fn issue_2343() {}
 /// __|_ _|__||_|
 fn pulldown_cmark_crash() {}
 
+/// This should not lint
+/// (regression test for #7758)
+/// [plain text][path::to::item]
+fn intra_doc_link() {}
+
 // issue #7033 - generic_const_exprs ICE
 struct S<T, const N: usize>
 where [(); N.checked_next_power_of_two().unwrap()]: {

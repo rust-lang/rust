@@ -83,6 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if !attrs.iter().any(|attr| attr.doc_str().is_some());
             if let child_attrs = cx.tcx.hir().attrs(impl_item_hir);
             if !child_attrs.iter().any(|attr| attr.doc_str().is_some());
+            if adt_def.is_struct();
             then {
                 if let TyKind::Path(QPath::Resolved(_, p)) = self_ty.kind {
                     if let Some(PathSegment { args: Some(a), .. }) = p.segments.last() {
