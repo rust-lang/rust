@@ -18,6 +18,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
+use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::hir::exports::Export;
@@ -1052,16 +1053,23 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over the diagnostic items in the given crate.
-    fn get_diagnostic_items(&self) -> FxHashMap<Symbol, DefId> {
+    fn get_diagnostic_items(&self) -> DiagnosticItems {
         if self.root.is_proc_macro_crate() {
             // Proc macro crates do not export any diagnostic-items to the target.
             Default::default()
         } else {
-            self.root
+            let mut id_to_name = FxHashMap::default();
+            let name_to_id = self
+                .root
                 .diagnostic_items
                 .decode(self)
-                .map(|(name, def_index)| (name, self.local_def_id(def_index)))
-                .collect()
+                .map(|(name, def_index)| {
+                    let id = self.local_def_id(def_index);
+                    id_to_name.insert(id, name);
+                    (name, id)
+                })
+                .collect();
+            DiagnosticItems { id_to_name, name_to_id }
         }
     }
 

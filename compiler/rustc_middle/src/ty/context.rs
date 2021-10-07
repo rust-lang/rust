@@ -1232,12 +1232,17 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
     /// compare against another `DefId`, since `is_diagnostic_item` is cheaper.
     pub fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {
-        self.all_diagnostic_items(()).get(&name).copied()
+        self.all_diagnostic_items(()).name_to_id.get(&name).copied()
+    }
+
+    /// Obtain the diagnostic item's name
+    pub fn get_diagnostic_name(self, id: DefId) -> Option<Symbol> {
+        self.diagnostic_items(id.krate).id_to_name.get(&id).copied()
     }
 
     /// Check whether the diagnostic item with the given `name` has the given `DefId`.
     pub fn is_diagnostic_item(self, name: Symbol, did: DefId) -> bool {
-        self.diagnostic_items(did.krate).get(&name) == Some(&did)
+        self.diagnostic_items(did.krate).name_to_id.get(&name) == Some(&did)
     }
 
     pub fn stability(self) -> &'tcx stability::Index<'tcx> {

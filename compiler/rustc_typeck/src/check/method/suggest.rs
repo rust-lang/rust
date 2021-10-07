@@ -1047,51 +1047,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         unsatisfied_predicates: &Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
     ) {
-        let derivables = [
-            sym::Eq,
-            sym::PartialEq,
-            sym::Ord,
-            sym::PartialOrd,
-            sym::Clone,
-            sym::Copy,
-            sym::Hash,
-            sym::Default,
-            sym::Debug,
-        ];
-        let mut derives = unsatisfied_predicates
-            .iter()
-            .filter_map(|(pred, _)| {
-                let trait_pred =
-                    if let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder() {
-                        trait_pred
-                    } else {
-                        return None;
-                    };
-                let trait_ref = trait_pred.trait_ref;
-                let adt_def = if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind() {
-                    adt_def
-                } else {
-                    return None;
-                };
-                if adt_def.did.is_local() {
-                    let diagnostic_items = self.tcx.diagnostic_items(trait_ref.def_id.krate);
-                    return derivables.iter().find_map(|trait_derivable| {
-                        let item_def_id = diagnostic_items.get(trait_derivable)?;
-                        if item_def_id == &trait_pred.trait_ref.def_id
-                            && !(adt_def.is_enum() && *trait_derivable == sym::Default)
-                        {
-                            return Some((
-                                format!("{}", trait_ref.self_ty()),
-                                self.tcx.def_span(adt_def.did),
-                                format!("{}", trait_ref.print_only_trait_name()),
-                            ));
-                        }
-                        None
-                    });
-                }
-                None
-            })
-            .collect::<Vec<(String, Span, String)>>();
+        let mut derives = Vec::<(String, Span, String)>::new();
+        let mut traits = Vec::<Span>::new();
+        for (pred, _) in unsatisfied_predicates {
+            let trait_pred = match pred.kind().skip_binder() {
+                ty::PredicateKind::Trait(trait_pred) => trait_pred,
+                _ => continue,
+            };
+            let adt = match trait_pred.self_ty().ty_adt_def() {
+                Some(adt) if adt.did.is_local() => adt,
+                _ => continue,
+            };
+            let can_derive = match self.tcx.get_diagnostic_name(trait_pred.def_id()) {
+                Some(sym::Default) => !adt.is_enum(),
+                Some(
+                    sym::Eq
+                    | sym::PartialEq
+                    | sym::Ord
+                    | sym::PartialOrd
+                    | sym::Clone
+                    | sym::Copy
+                    | sym::Hash
+                    | sym::Debug,
+                ) => true,
+                _ => false,
+            };
+            if can_derive {
+                derives.push((
+                    format!("{}", trait_pred.self_ty()),
+                    self.tcx.def_span(adt.did),
+                    format!("{}", trait_pred.trait_ref.print_only_trait_name()),
+                ));
+            } else {
+                traits.push(self.tcx.def_span(trait_pred.def_id()));
+            }
+        }
         derives.sort();
         let derives_grouped = derives.into_iter().fold(
             Vec::<(String, Span, String)>::new(),
@@ -1106,36 +1096,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 acc
             },
         );
-        let mut traits: Vec<_> = unsatisfied_predicates
-            .iter()
-            .filter_map(|(pred, _)| {
-                let trait_pred =
-                    if let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder() {
-                        trait_pred
-                    } else {
-                        return None;
-                    };
-                if let ty::Adt(adt_def, _) = trait_pred.trait_ref.self_ty().kind() {
-                    if !adt_def.did.is_local() {
-                        return None;
-                    }
-                } else {
-                    return None;
-                };
-
-                let did = trait_pred.def_id();
-                let diagnostic_items = self.tcx.diagnostic_items(did.krate);
-
-                if !derivables
-                    .iter()
-                    .any(|trait_derivable| diagnostic_items.get(trait_derivable) == Some(&did))
-                {
-                    Some(self.tcx.def_span(did))
-                } else {
-                    None
-                }
-            })
-            .collect();
         traits.sort();
         traits.dedup();
 

@@ -51,9 +51,10 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             Some((DefKind::AssocFn, did)) => match cx.tcx.trait_of_item(did) {
                 // Check that we're dealing with a trait method for one of the traits we care about.
                 Some(trait_id)
-                    if [sym::Clone, sym::Deref, sym::Borrow]
-                        .iter()
-                        .any(|s| cx.tcx.is_diagnostic_item(*s, trait_id)) =>
+                    if matches!(
+                        cx.tcx.get_diagnostic_name(trait_id),
+                        Some(sym::Borrow | sym::Clone | sym::Deref)
+                    ) =>
                 {
                     (trait_id, did)
                 }

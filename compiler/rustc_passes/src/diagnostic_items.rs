@@ -10,8 +10,8 @@
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -19,9 +19,8 @@ use rustc_span::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_span::symbol::{sym, Symbol};
 
 struct DiagnosticItemCollector<'tcx> {
-    // items from this crate
-    items: FxHashMap<Symbol, DefId>,
     tcx: TyCtxt<'tcx>,
+    diagnostic_items: DiagnosticItems,
 }
 
 impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
@@ -44,7 +43,7 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
 
 impl<'tcx> DiagnosticItemCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> DiagnosticItemCollector<'tcx> {
-        DiagnosticItemCollector { tcx, items: Default::default() }
+        DiagnosticItemCollector { tcx, diagnostic_items: DiagnosticItems::default() }
     }
 
     fn observe_item(&mut self, def_id: LocalDefId) {
@@ -52,19 +51,14 @@ impl<'tcx> DiagnosticItemCollector<'tcx> {
         let attrs = self.tcx.hir().attrs(hir_id);
         if let Some(name) = extract(attrs) {
             // insert into our table
-            collect_item(self.tcx, &mut self.items, name, def_id.to_def_id());
+            collect_item(self.tcx, &mut self.diagnostic_items, name, def_id.to_def_id());
         }
     }
 }
 
-fn collect_item(
-    tcx: TyCtxt<'_>,
-    items: &mut FxHashMap<Symbol, DefId>,
-    name: Symbol,
-    item_def_id: DefId,
-) {
-    // Check for duplicates.
-    if let Some(original_def_id) = items.insert(name, item_def_id) {
+fn collect_item(tcx: TyCtxt<'_>, items: &mut DiagnosticItems, name: Symbol, item_def_id: DefId) {
+    items.id_to_name.insert(item_def_id, name);
+    if let Some(original_def_id) = items.name_to_id.insert(name, item_def_id) {
         if original_def_id != item_def_id {
             let mut err = match tcx.hir().span_if_local(item_def_id) {
                 Some(span) => tcx.sess.struct_span_err(
@@ -98,7 +92,7 @@ fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
 }
 
 /// Traverse and collect the diagnostic items in the current
-fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> FxHashMap<Symbol, DefId> {
+fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> DiagnosticItems {
     assert_eq!(cnum, LOCAL_CRATE);
 
     // Initialize the collector.
@@ -107,22 +101,22 @@ fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> FxHashMap<Symbol
     // Collect diagnostic items in this crate.
     tcx.hir().visit_all_item_likes(&mut collector);
 
-    collector.items
+    collector.diagnostic_items
 }
 
 /// Traverse and collect all the diagnostic items in all crates.
-fn all_diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashMap<Symbol, DefId> {
+fn all_diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> DiagnosticItems {
     // Initialize the collector.
-    let mut collector = FxHashMap::default();
+    let mut items = DiagnosticItems::default();
 
     // Collect diagnostic items in other crates.
     for &cnum in tcx.crates(()).iter().chain(std::iter::once(&LOCAL_CRATE)) {
-        for (&name, &def_id) in tcx.diagnostic_items(cnum).iter() {
-            collect_item(tcx, &mut collector, name, def_id);
+        for (&name, &def_id) in &tcx.diagnostic_items(cnum).name_to_id {
+            collect_item(tcx, &mut items, name, def_id);
         }
     }
 
-    collector
+    items
 }
 
 pub fn provide(providers: &mut Providers) {
