@@ -12,7 +12,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
     }
 
     let from_nbits = utils::int_ty_to_nbits(cast_from, cx.tcx);
-    let to_nbits = if let ty::Float(FloatTy::F32) = cast_to.kind() {
+    let to_nbits = if cast_to.kind() == &ty::Float(FloatTy::F32) {
         32
     } else {
         64

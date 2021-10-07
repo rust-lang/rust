@@ -248,7 +248,7 @@ fn check_comparison<'a, 'tcx>(
         if l_ty.is_bool() && r_ty.is_bool() {
             let mut applicability = Applicability::MachineApplicable;
 
-            if let BinOpKind::Eq = op.node {
+            if op.node == BinOpKind::Eq {
                 let expression_info = one_side_is_unary_not(left_side, right_side);
                 if expression_info.one_side_is_unary_not {
                     span_lint_and_sugg(

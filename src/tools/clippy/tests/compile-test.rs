@@ -92,7 +92,9 @@ fn extern_flags() -> String {
         .collect();
     assert!(
         not_found.is_empty(),
-        "dependencies not found in depinfo: {:?}",
+        "dependencies not found in depinfo: {:?}\n\
+        help: Make sure the `-Z binary-dep-depinfo` rust flag is enabled\n\
+        help: Try adding to dev-dependencies in Cargo.toml",
         not_found
     );
     crates

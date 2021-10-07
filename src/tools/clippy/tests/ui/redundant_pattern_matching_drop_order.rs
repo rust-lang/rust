@@ -2,7 +2,7 @@
 
 // Issue #5746
 #![warn(clippy::redundant_pattern_matching)]
-#![allow(clippy::if_same_then_else)]
+#![allow(clippy::if_same_then_else, clippy::equatable_if_let)]
 use std::task::Poll::{Pending, Ready};
 
 fn main() {

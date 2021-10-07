@@ -1,5 +1,5 @@
 error: this operation will panic at runtime
-  --> $DIR/integer_arithmetic.rs:37:5
+  --> $DIR/integer_arithmetic.rs:30:5
    |
 LL |     i /= 0;
    |     ^^^^^^ attempt to divide `_` by zero
@@ -7,13 +7,13 @@ LL |     i /= 0;
    = note: `#[deny(unconditional_panic)]` on by default
 
 error: this operation will panic at runtime
-  --> $DIR/integer_arithmetic.rs:42:5
+  --> $DIR/integer_arithmetic.rs:35:5
    |
 LL |     i %= 0;
    |     ^^^^^^ attempt to calculate the remainder of `_` with a divisor of zero
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:16:5
+  --> $DIR/integer_arithmetic.rs:9:5
    |
 LL |     1 + i;
    |     ^^^^^
@@ -21,146 +21,146 @@ LL |     1 + i;
    = note: `-D clippy::integer-arithmetic` implied by `-D warnings`
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:17:5
+  --> $DIR/integer_arithmetic.rs:10:5
    |
 LL |     i * 2;
    |     ^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:18:5
+  --> $DIR/integer_arithmetic.rs:11:5
    |
 LL | /     1 %
 LL | |     i / 2; // no error, this is part of the expression in the preceding line
    | |_____^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:20:5
+  --> $DIR/integer_arithmetic.rs:13:5
    |
 LL |     i - 2 + 2 - i;
    |     ^^^^^^^^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:21:5
+  --> $DIR/integer_arithmetic.rs:14:5
    |
 LL |     -i;
    |     ^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:22:5
+  --> $DIR/integer_arithmetic.rs:15:5
    |
 LL |     i >> 1;
    |     ^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:23:5
+  --> $DIR/integer_arithmetic.rs:16:5
    |
 LL |     i << 1;
    |     ^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:33:5
+  --> $DIR/integer_arithmetic.rs:26:5
    |
 LL |     i += 1;
    |     ^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:34:5
+  --> $DIR/integer_arithmetic.rs:27:5
    |
 LL |     i -= 1;
    |     ^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:35:5
+  --> $DIR/integer_arithmetic.rs:28:5
    |
 LL |     i *= 2;
    |     ^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:38:11
+  --> $DIR/integer_arithmetic.rs:31:11
    |
 LL |     i /= -1;
    |           ^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:39:5
+  --> $DIR/integer_arithmetic.rs:32:5
    |
 LL |     i /= var1;
    |     ^^^^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:40:5
+  --> $DIR/integer_arithmetic.rs:33:5
    |
 LL |     i /= var2;
    |     ^^^^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:43:11
+  --> $DIR/integer_arithmetic.rs:36:11
    |
 LL |     i %= -1;
    |           ^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:44:5
+  --> $DIR/integer_arithmetic.rs:37:5
    |
 LL |     i %= var1;
    |     ^^^^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:45:5
+  --> $DIR/integer_arithmetic.rs:38:5
    |
 LL |     i %= var2;
    |     ^^^^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:46:5
+  --> $DIR/integer_arithmetic.rs:39:5
    |
 LL |     i <<= 3;
    |     ^^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:47:5
+  --> $DIR/integer_arithmetic.rs:40:5
    |
 LL |     i >>= 2;
    |     ^^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:89:5
+  --> $DIR/integer_arithmetic.rs:82:5
    |
 LL |     3 + &1;
    |     ^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:90:5
+  --> $DIR/integer_arithmetic.rs:83:5
    |
 LL |     &3 + 1;
    |     ^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:91:5
+  --> $DIR/integer_arithmetic.rs:84:5
    |
 LL |     &3 + &1;
    |     ^^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:96:5
+  --> $DIR/integer_arithmetic.rs:89:5
    |
 LL |     a + x
    |     ^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:100:5
+  --> $DIR/integer_arithmetic.rs:93:5
    |
 LL |     x + y
    |     ^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:104:5
+  --> $DIR/integer_arithmetic.rs:97:5
    |
 LL |     x + y
    |     ^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:108:5
+  --> $DIR/integer_arithmetic.rs:101:5
    |
 LL |     (&x + &y)
    |     ^^^^^^^^^

@@ -35,4 +35,20 @@ fn main() {
     } else {
         println!("qwq");
     }
+    let b = vec![1, 2, 3];
+    if b.is_empty() {
+        panic!("panic1");
+    }
+    if b.is_empty() && a.is_empty() {
+        panic!("panic2");
+    }
+    if a.is_empty() && !b.is_empty() {
+        panic!("panic3");
+    }
+    if b.is_empty() || a.is_empty() {
+        panic!("panic4");
+    }
+    if a.is_empty() || !b.is_empty() {
+        panic!("panic5");
+    }
 }

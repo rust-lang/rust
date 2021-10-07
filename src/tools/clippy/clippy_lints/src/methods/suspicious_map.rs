@@ -28,7 +28,7 @@ pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, count_recv: &hi
                 expr.span,
                 "this call to `map()` won't have an effect on the call to `count()`",
                 None,
-                "make sure you did not confuse `map` with `filter` or `for_each`",
+                "make sure you did not confuse `map` with `filter`, `for_each` or `inspect`",
             );
         }
     }

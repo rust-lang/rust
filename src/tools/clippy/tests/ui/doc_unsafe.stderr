@@ -22,8 +22,16 @@ error: unsafe function's docs miss `# Safety` section
 LL |     unsafe fn woefully_underdocumented(self);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: docs for unsafe trait missing `# Safety` section
+  --> $DIR/doc_unsafe.rs:44:1
+   |
+LL | / pub unsafe trait UnsafeTrait {
+LL | |     fn method();
+LL | | }
+   | |_^
+
 error: unsafe function's docs miss `# Safety` section
-  --> $DIR/doc_unsafe.rs:57:5
+  --> $DIR/doc_unsafe.rs:74:5
    |
 LL | /     pub unsafe fn more_undocumented_unsafe() -> Self {
 LL | |         unimplemented!();
@@ -31,7 +39,7 @@ LL | |     }
    | |_____^
 
 error: unsafe function's docs miss `# Safety` section
-  --> $DIR/doc_unsafe.rs:73:9
+  --> $DIR/doc_unsafe.rs:90:9
    |
 LL | /         pub unsafe fn whee() {
 LL | |             unimplemented!()
@@ -43,5 +51,5 @@ LL |   very_unsafe!();
    |
    = note: this error originates in the macro `very_unsafe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 

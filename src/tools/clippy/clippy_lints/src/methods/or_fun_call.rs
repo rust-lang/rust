@@ -178,15 +178,15 @@ pub(super) fn check<'tcx>(
             hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
                 check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
             },
-            hir::ExprKind::Block(block, _) => {
-                if let BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) = block.rules {
-                    if let Some(block_expr) = block.expr {
-                        if let hir::ExprKind::MethodCall(..) = block_expr.kind {
-                            check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
-                        }
+            hir::ExprKind::Block(block, _)
+                if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) =>
+            {
+                if let Some(block_expr) = block.expr {
+                    if let hir::ExprKind::MethodCall(..) = block_expr.kind {
+                        check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
                     }
                 }
-            },
+            }
             _ => (),
         }
     }
