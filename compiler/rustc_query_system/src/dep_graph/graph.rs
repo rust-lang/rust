@@ -33,12 +33,6 @@ pub struct DepGraph<K: DepKind> {
     /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
     /// ID is used for self-profiling.
     virtual_dep_node_index: Lrc<AtomicU32>,
-
-    /// The cached event id for profiling node interning. This saves us
-    /// from having to look up the event id every time we intern a node
-    /// which may incur too much overhead.
-    /// This will be None if self-profiling is disabled.
-    node_intern_event_id: Option<EventId>,
 }
 
 rustc_index::newtype_index! {
@@ -116,8 +110,13 @@ impl<K: DepKind> DepGraph<K> {
     ) -> DepGraph<K> {
         let prev_graph_node_count = prev_graph.node_count();
 
-        let current =
-            CurrentDepGraph::new(prev_graph_node_count, encoder, record_graph, record_stats);
+        let current = CurrentDepGraph::new(
+            profiler,
+            prev_graph_node_count,
+            encoder,
+            record_graph,
+            record_stats,
+        );
 
         // Instantiate a dependy-less node only once for anonymous queries.
         let _green_node_index = current.intern_new_node(
@@ -127,10 +126,6 @@ impl<K: DepKind> DepGraph<K> {
             Fingerprint::ZERO,
         );
         debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
-
-        let node_intern_event_id = profiler
-            .get_or_alloc_cached_string("incr_comp_intern_dep_graph_node")
-            .map(EventId::from_label);
 
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
@@ -142,16 +137,11 @@ impl<K: DepKind> DepGraph<K> {
                 colors: DepNodeColorMap::new(prev_graph_node_count),
             })),
             virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
-            node_intern_event_id,
         }
     }
 
     pub fn new_disabled() -> DepGraph<K> {
-        DepGraph {
-            data: None,
-            virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
-            node_intern_event_id: None,
-        }
+        DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU32::new(0)) }
     }
 
     /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.
@@ -275,9 +265,6 @@ impl<K: DepKind> DepGraph<K> {
 
         let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
 
-        // Get timer for profiling `DepNode` interning
-        let node_intern_timer =
-            self.node_intern_event_id.map(|eid| dcx.profiler().generic_activity_with_event_id(eid));
         // Intern the new `DepNode`.
         let (dep_node_index, prev_and_color) = data.current.intern_node(
             dcx.profiler(),
@@ -287,7 +274,6 @@ impl<K: DepKind> DepGraph<K> {
             current_fingerprint,
             print_status,
         );
-        drop(node_intern_timer);
 
         hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -876,10 +862,17 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
     /// debugging and only active with `debug_assertions`.
     total_read_count: AtomicU64,
     total_duplicate_read_count: AtomicU64,
+
+    /// The cached event id for profiling node interning. This saves us
+    /// from having to look up the event id every time we intern a node
+    /// which may incur too much overhead.
+    /// This will be None if self-profiling is disabled.
+    node_intern_event_id: Option<EventId>,
 }
 
 impl<K: DepKind> CurrentDepGraph<K> {
     fn new(
+        profiler: &SelfProfilerRef,
         prev_graph_node_count: usize,
         encoder: FileEncoder,
         record_graph: bool,
@@ -908,6 +901,10 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 
+        let node_intern_event_id = profiler
+            .get_or_alloc_cached_string("incr_comp_intern_dep_graph_node")
+            .map(EventId::from_label);
+
         CurrentDepGraph {
             encoder: Steal::new(GraphEncoder::new(
                 encoder,
@@ -927,6 +924,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             forbidden_edge,
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
+            node_intern_event_id,
         }
     }
 
@@ -969,6 +967,10 @@ impl<K: DepKind> CurrentDepGraph<K> {
         print_status: bool,
     ) -> (DepNodeIndex, Option<(SerializedDepNodeIndex, DepNodeColor)>) {
         let print_status = cfg!(debug_assertions) && print_status;
+
+        // Get timer for profiling `DepNode` interning
+        let _node_intern_timer =
+            self.node_intern_event_id.map(|eid| profiler.generic_activity_with_event_id(eid));
 
         if let Some(prev_index) = prev_graph.node_to_index_opt(&key) {
             // Determine the color and index of the new `DepNode`.
