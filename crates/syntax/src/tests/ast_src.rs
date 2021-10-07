@@ -198,6 +198,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "NAME",
         "NAME_REF",
         "LET_STMT",
+        "LET_ELSE",
         "EXPR_STMT",
         "GENERIC_PARAM_LIST",
         "GENERIC_PARAM",

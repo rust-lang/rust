@@ -639,7 +639,16 @@ impl ExprCollector<'_> {
                 let type_ref =
                     stmt.ty().map(|it| Interned::new(TypeRef::from_ast(&self.ctx(), it)));
                 let initializer = stmt.initializer().map(|e| self.collect_expr(e));
-                self.statements_in_scope.push(Statement::Let { pat, type_ref, initializer });
+                let else_branch = stmt
+                    .let_else()
+                    .and_then(|let_else| let_else.block_expr())
+                    .map(|block| self.collect_block(block));
+                self.statements_in_scope.push(Statement::Let {
+                    pat,
+                    type_ref,
+                    initializer,
+                    else_branch,
+                });
             }
             ast::Stmt::ExprStmt(stmt) => {
                 if let Some(expr) = stmt.expr() {

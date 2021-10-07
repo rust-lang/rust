@@ -1,0 +1,51 @@
+SOURCE_FILE@0..46
+  FN@0..45
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    PARAM_LIST@4..6
+      L_PAREN@4..5 "("
+      R_PAREN@5..6 ")"
+    WHITESPACE@6..7 " "
+    BLOCK_EXPR@7..45
+      STMT_LIST@7..45
+        L_CURLY@7..8 "{"
+        WHITESPACE@8..9 " "
+        LET_STMT@9..43
+          LET_KW@9..12 "let"
+          WHITESPACE@12..13 " "
+          TUPLE_STRUCT_PAT@13..20
+            PATH@13..17
+              PATH_SEGMENT@13..17
+                NAME_REF@13..17
+                  IDENT@13..17 "Some"
+            L_PAREN@17..18 "("
+            IDENT_PAT@18..19
+              NAME@18..19
+                IDENT@18..19 "x"
+            R_PAREN@19..20 ")"
+          WHITESPACE@20..21 " "
+          EQ@21..22 "="
+          WHITESPACE@22..23 " "
+          PATH_EXPR@23..26
+            PATH@23..26
+              PATH_SEGMENT@23..26
+                NAME_REF@23..26
+                  IDENT@23..26 "opt"
+          WHITESPACE@26..27 " "
+          LET_ELSE@27..42
+            ELSE_KW@27..31 "else"
+            WHITESPACE@31..32 " "
+            BLOCK_EXPR@32..42
+              STMT_LIST@32..42
+                L_CURLY@32..33 "{"
+                WHITESPACE@33..34 " "
+                RETURN_EXPR@34..40
+                  RETURN_KW@34..40 "return"
+                WHITESPACE@40..41 " "
+                R_CURLY@41..42 "}"
+          SEMICOLON@42..43 ";"
+        WHITESPACE@43..44 " "
+        R_CURLY@44..45 "}"
+  WHITESPACE@45..46 "\n"

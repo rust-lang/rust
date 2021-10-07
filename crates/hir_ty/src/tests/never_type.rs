@@ -407,3 +407,39 @@ fn diverging_expression_3_break() {
         "]],
     );
 }
+
+#[test]
+fn let_else_must_diverge() {
+    check_infer_with_mismatches(
+        r#"
+        fn f() {
+            let 1 = 2 else {
+                return;
+            };
+        }
+        "#,
+        expect![[r#"
+            7..54 '{     ...  }; }': ()
+            17..18 '1': i32
+            17..18 '1': i32
+            21..22 '2': i32
+            28..51 '{     ...     }': !
+            38..44 'return': !
+        "#]],
+    );
+    check_infer_with_mismatches(
+        r#"
+        fn f() {
+            let 1 = 2 else {};
+        }
+        "#,
+        expect![[r#"
+            7..33 '{     ... {}; }': ()
+            17..18 '1': i32
+            17..18 '1': i32
+            21..22 '2': i32
+            28..30 '{}': ()
+            28..30: expected !, got ()
+        "#]],
+    );
+}

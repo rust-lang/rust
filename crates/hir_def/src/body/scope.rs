@@ -149,8 +149,12 @@ fn compute_block_scopes(
 ) {
     for stmt in statements {
         match stmt {
-            Statement::Let { pat, initializer, .. } => {
+            Statement::Let { pat, initializer, else_branch, .. } => {
                 if let Some(expr) = initializer {
+                    scopes.set_scope(*expr, scope);
+                    compute_expr_scopes(*expr, body, scopes, scope);
+                }
+                if let Some(expr) = else_branch {
                     scopes.set_scope(*expr, scope);
                     compute_expr_scopes(*expr, body, scopes, scope);
                 }
