@@ -216,7 +216,7 @@ crate fn run(
         // Run call-finder on all items
         let mut calls = FxHashMap::default();
         let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates };
-        tcx.hir().krate().visit_all_item_likes(&mut finder.as_deep_visitor());
+        tcx.hir().visit_all_item_likes(&mut finder.as_deep_visitor());
 
         // Save output to provided path
         let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;

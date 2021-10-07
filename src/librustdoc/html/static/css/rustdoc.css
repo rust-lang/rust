@@ -2071,6 +2071,10 @@ details.undocumented[open] > summary::before {
 	background: #f6fdb0;
 }
 
+.more-examples-toggle {
+	margin-top: 10px;
+}
+
 .more-examples-toggle summary {
 	color: #999;
 	font-family: 'Fira Sans';
@@ -2104,10 +2108,6 @@ details.undocumented[open] > summary::before {
 	min-width: 2px;
 	background: #ddd;
 	height: 100%;
-}
-
-h1 + .scraped-example {
-	margin-bottom: 10px;
 }
 
 .more-scraped-examples .scraped-example {

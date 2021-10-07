@@ -72,8 +72,8 @@ use crate::html::format::{
     href, print_abi_with_space, print_constness_with_space, print_default_space,
     print_generic_bounds, print_where_clause, Buffer, HrefError, PrintWithSpace,
 };
-use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::highlight;
+use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
 use crate::scrape_examples::CallData;
 
@@ -2479,9 +2479,10 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: 
     write!(
         w,
         "<div class=\"docblock scraped-example-list\">\
-          <h1 id=\"scraped-examples\" class=\"small-section-header\">\
+          <span></span>
+          <h5 id=\"scraped-examples\" class=\"section-header\">\
              <a href=\"#{}\">Examples found in repository</a>\
-          </h1>",
+          </h5>",
         id
     );
 
