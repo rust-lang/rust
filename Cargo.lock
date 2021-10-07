@@ -3736,8 +3736,6 @@ dependencies = [
 name = "rustc_const_eval"
 version = "0.0.0"
 dependencies = [
- "either",
- "gsgdt",
  "rustc_apfloat",
  "rustc_ast",
  "rustc_attr",

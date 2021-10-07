@@ -7,8 +7,6 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-either = "1.5.0"
-gsgdt = "0.1.2"
 tracing = "0.1"
 rustc_apfloat = { path = "../rustc_apfloat" }
 rustc_ast = { path = "../rustc_ast" }
