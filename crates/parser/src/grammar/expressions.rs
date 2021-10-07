@@ -102,6 +102,16 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
             expressions::expr(p);
         }
 
+        if p.at(T![else]) {
+            // test let_else
+            // fn f() { let Some(x) = opt else { return }; }
+
+            let m = p.start();
+            p.bump(T![else]);
+            block_expr(p);
+            m.complete(p, LET_ELSE);
+        }
+
         match with_semi {
             StmtWithSemi::No => (),
             StmtWithSemi::Optional => {

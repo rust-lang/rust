@@ -722,7 +722,17 @@ impl LetStmt {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn initializer(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn let_else(&self) -> Option<LetElse> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LetElse {
+    pub(crate) syntax: SyntaxNode,
+}
+impl LetElse {
+    pub fn else_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![else]) }
+    pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2295,6 +2305,17 @@ impl AstNode for ExprStmt {
 }
 impl AstNode for LetStmt {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LET_STMT }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for LetElse {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LET_ELSE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -4316,6 +4337,11 @@ impl std::fmt::Display for ExprStmt {
     }
 }
 impl std::fmt::Display for LetStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for LetElse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

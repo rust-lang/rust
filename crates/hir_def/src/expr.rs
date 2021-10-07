@@ -208,8 +208,16 @@ pub struct RecordLitField {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Statement {
-    Let { pat: PatId, type_ref: Option<Interned<TypeRef>>, initializer: Option<ExprId> },
-    Expr { expr: ExprId, has_semi: bool },
+    Let {
+        pat: PatId,
+        type_ref: Option<Interned<TypeRef>>,
+        initializer: Option<ExprId>,
+        else_branch: Option<ExprId>,
+    },
+    Expr {
+        expr: ExprId,
+        has_semi: bool,
+    },
 }
 
 impl Expr {
