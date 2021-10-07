@@ -140,12 +140,12 @@ window.initSearch = function(rawSearchIndex) {
             }
             return NO_TYPE_FILTER;
         }
-
+        var splitRegex = /::|(?:\s+)/;
         var valLower = query.query.toLowerCase(),
             val = valLower,
             typeFilter = itemTypeFromName(query.type),
             results = {}, results_in_args = {}, results_returned = {},
-            split = valLower.split("::");
+            split = valLower.split(splitRegex);
 
         removeEmptyStringsFromArray(split);
 
@@ -477,7 +477,7 @@ window.initSearch = function(rawSearchIndex) {
                 return 0;
             }
             var ret_lev = MAX_LEV_DISTANCE + 1;
-            var path = ty.path.split("::");
+            var path = ty.path.split(splitRegex);
 
             if (ty.parent && ty.parent.name) {
                 path.push(ty.parent.name.toLowerCase());
@@ -720,7 +720,7 @@ window.initSearch = function(rawSearchIndex) {
 
             var valGenerics = extractGenerics(val);
 
-            var paths = valLower.split("::");
+            var paths = valLower.split(splitRegex);
             removeEmptyStringsFromArray(paths);
             val = paths[paths.length - 1];
             var contains = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
