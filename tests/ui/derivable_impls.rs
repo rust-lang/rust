@@ -207,4 +207,37 @@ impl Default for Color2 {
     }
 }
 
+pub struct RepeatDefault1 {
+    a: [i8; 32],
+}
+
+impl Default for RepeatDefault1 {
+    fn default() -> Self {
+        RepeatDefault1 { a: [0; 32] }
+    }
+}
+
+pub struct RepeatDefault2 {
+    a: [i8; 33],
+}
+
+impl Default for RepeatDefault2 {
+    fn default() -> Self {
+        RepeatDefault2 { a: [0; 33] }
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/7753
+
+pub enum IntOrString {
+    Int(i32),
+    String(String),
+}
+
+impl Default for IntOrString {
+    fn default() -> Self {
+        IntOrString::Int(0)
+    }
+}
+
 fn main() {}

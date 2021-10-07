@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
                 for trait_item in items {
                     if trait_item.id.hir_id() == hir_id {
                         // be sure we have `self` parameter in this function
-                        if let AssocItemKind::Fn { has_self: true } = trait_item.kind {
+                        if trait_item.kind == (AssocItemKind::Fn { has_self: true }) {
                             trait_self_ty = Some(
                                 TraitRef::identity(cx.tcx, trait_item.id.def_id.to_def_id())
                                     .self_ty()

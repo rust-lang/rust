@@ -3,7 +3,12 @@
 
 #![feature(let_else)]
 #![allow(unused)]
-#![allow(clippy::if_same_then_else, clippy::single_match, clippy::needless_bool)]
+#![allow(
+    clippy::if_same_then_else,
+    clippy::single_match,
+    clippy::needless_bool,
+    clippy::equatable_if_let
+)]
 #![warn(clippy::needless_return)]
 
 macro_rules! the_answer {

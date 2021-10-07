@@ -5,7 +5,7 @@ LL |     let _ = (0..3).map(|x| x + 2).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::suspicious-map` implied by `-D warnings`
-   = help: make sure you did not confuse `map` with `filter` or `for_each`
+   = help: make sure you did not confuse `map` with `filter`, `for_each` or `inspect`
 
 error: this call to `map()` won't have an effect on the call to `count()`
   --> $DIR/suspicious_map.rs:7:13
@@ -13,7 +13,7 @@ error: this call to `map()` won't have an effect on the call to `count()`
 LL |     let _ = (0..3).map(f).count();
    |             ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: make sure you did not confuse `map` with `filter` or `for_each`
+   = help: make sure you did not confuse `map` with `filter`, `for_each` or `inspect`
 
 error: aborting due to 2 previous errors
 

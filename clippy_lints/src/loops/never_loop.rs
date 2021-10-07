@@ -14,7 +14,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             NeverLoopResult::AlwaysBreak => {
                 span_lint_and_then(cx, NEVER_LOOP, expr.span, "this loop never actually loops", |diag| {
                     if_chain! {
-                        if let LoopSource::ForLoop = source;
+                        if source == LoopSource::ForLoop;
                         if let Some((_, Node::Expr(parent_match))) = cx.tcx.hir().parent_iter(expr.hir_id).nth(1);
                         if let Some(ForLoop { arg: iterator, pat, span: for_span, .. }) = ForLoop::hir(parent_match);
                         then {

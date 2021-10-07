@@ -112,7 +112,7 @@ fn is_display_arg(expr: &Expr<'_>) -> bool {
         if let ExprKind::Call(_, [_, fmt]) = expr.kind;
         if let ExprKind::Path(QPath::Resolved(_, path)) = fmt.kind;
         if let [.., t, _] = path.segments;
-        if t.ident.name.as_str() == "Display";
+        if t.ident.name == sym::Display;
         then { true } else { false }
     }
 }

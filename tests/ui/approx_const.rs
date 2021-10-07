@@ -1,5 +1,5 @@
 #[warn(clippy::approx_constant)]
-#[allow(unused, clippy::shadow_unrelated, clippy::similar_names)]
+#[allow(clippy::similar_names)]
 fn main() {
     let my_e = 2.7182;
     let almost_e = 2.718;

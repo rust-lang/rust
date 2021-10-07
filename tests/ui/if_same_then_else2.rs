@@ -2,6 +2,7 @@
 #![allow(
     clippy::blacklisted_name,
     clippy::collapsible_else_if,
+    clippy::equatable_if_let,
     clippy::collapsible_if,
     clippy::ifs_same_cond,
     clippy::needless_return,

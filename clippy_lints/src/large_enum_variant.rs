@@ -1,13 +1,14 @@
 //! lint when there is a large size difference between variants on an enum
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
-use rustc_hir::{Item, ItemKind, VariantData};
+use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -58,6 +59,17 @@ impl LargeEnumVariant {
     }
 }
 
+struct FieldInfo {
+    ind: usize,
+    size: u64,
+}
+
+struct VariantInfo {
+    ind: usize,
+    size: u64,
+    fields_size: Vec<FieldInfo>,
+}
+
 impl_lint_pass!(LargeEnumVariant => [LARGE_ENUM_VARIANT]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
@@ -68,72 +80,95 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
         if let ItemKind::Enum(ref def, _) = item.kind {
             let ty = cx.tcx.type_of(item.def_id);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
-
-            let mut largest_variant: Option<(_, _)> = None;
-            let mut second_variant: Option<(_, _)> = None;
-
-            for (i, variant) in adt.variants.iter().enumerate() {
-                let size: u64 = variant
-                    .fields
-                    .iter()
-                    .filter_map(|f| {
-                        let ty = cx.tcx.type_of(f.did);
-                        // don't count generics by filtering out everything
-                        // that does not have a layout
-                        cx.layout_of(ty).ok().map(|l| l.size.bytes())
-                    })
-                    .sum();
-
-                let grouped = (size, (i, variant));
-
-                if grouped.0 >= largest_variant.map_or(0, |x| x.0) {
-                    second_variant = largest_variant;
-                    largest_variant = Some(grouped);
-                }
+            if adt.variants.len() <= 1 {
+                return;
             }
+            let mut variants_size: Vec<VariantInfo> = adt
+                .variants
+                .iter()
+                .enumerate()
+                .map(|(i, variant)| {
+                    let mut fields_size = Vec::new();
+                    let size: u64 = variant
+                        .fields
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, f)| {
+                            let ty = cx.tcx.type_of(f.did);
+                            // don't count generics by filtering out everything
+                            // that does not have a layout
+                            cx.layout_of(ty).ok().map(|l| {
+                                let size = l.size.bytes();
+                                fields_size.push(FieldInfo { ind: i, size });
+                                size
+                            })
+                        })
+                        .sum();
+                    VariantInfo {
+                        ind: i,
+                        size,
+                        fields_size,
+                    }
+                })
+                .collect();
 
-            if let (Some(largest), Some(second)) = (largest_variant, second_variant) {
-                let difference = largest.0 - second.0;
+            variants_size.sort_by(|a, b| (b.size.cmp(&a.size)));
 
-                if difference > self.maximum_size_difference_allowed {
-                    let (i, variant) = largest.1;
+            let mut difference = variants_size[0].size - variants_size[1].size;
+            if difference > self.maximum_size_difference_allowed {
+                let help_text = "consider boxing the large fields to reduce the total size of the enum";
+                span_lint_and_then(
+                    cx,
+                    LARGE_ENUM_VARIANT,
+                    def.variants[variants_size[0].ind].span,
+                    "large size difference between variants",
+                    |diag| {
+                        diag.span_label(
+                            def.variants[variants_size[0].ind].span,
+                            &format!("this variant is {} bytes", variants_size[0].size),
+                        );
+                        diag.span_note(
+                            def.variants[variants_size[1].ind].span,
+                            &format!("and the second-largest variant is {} bytes:", variants_size[1].size),
+                        );
 
-                    let help_text = "consider boxing the large fields to reduce the total size of the enum";
-                    span_lint_and_then(
-                        cx,
-                        LARGE_ENUM_VARIANT,
-                        def.variants[i].span,
-                        "large size difference between variants",
-                        |diag| {
-                            diag.span_label(
-                                def.variants[(largest.1).0].span,
-                                &format!("this variant is {} bytes", largest.0),
-                            );
-                            diag.span_note(
-                                def.variants[(second.1).0].span,
-                                &format!("and the second-largest variant is {} bytes:", second.0),
-                            );
-                            if variant.fields.len() == 1 {
-                                let span = match def.variants[i].data {
-                                    VariantData::Struct(fields, ..) | VariantData::Tuple(fields, ..) => {
-                                        fields[0].ty.span
-                                    },
-                                    VariantData::Unit(..) => unreachable!(),
-                                };
-                                if let Some(snip) = snippet_opt(cx, span) {
-                                    diag.span_suggestion(
-                                        span,
-                                        help_text,
-                                        format!("Box<{}>", snip),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                    return;
+                        let fields = def.variants[variants_size[0].ind].data.fields();
+                        variants_size[0].fields_size.sort_by(|a, b| (a.size.cmp(&b.size)));
+                        let mut applicability = Applicability::MaybeIncorrect;
+                        let sugg: Vec<(Span, String)> = variants_size[0]
+                            .fields_size
+                            .iter()
+                            .rev()
+                            .map_while(|val| {
+                                if difference > self.maximum_size_difference_allowed {
+                                    difference = difference.saturating_sub(val.size);
+                                    Some((
+                                        fields[val.ind].ty.span,
+                                        format!(
+                                            "Box<{}>",
+                                            snippet_with_applicability(
+                                                cx,
+                                                fields[val.ind].ty.span,
+                                                "..",
+                                                &mut applicability
+                                            )
+                                            .into_owned()
+                                        ),
+                                    ))
+                                } else {
+                                    None
                                 }
-                            }
-                            diag.span_help(def.variants[i].span, help_text);
-                        },
-                    );
-                }
+                            })
+                            .collect();
+
+                        if !sugg.is_empty() {
+                            diag.multipart_suggestion(help_text, sugg, Applicability::MaybeIncorrect);
+                            return;
+                        }
+
+                        diag.span_help(def.variants[variants_size[0].ind].span, help_text);
+                    },
+                );
             }
         }
     }

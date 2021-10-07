@@ -7,9 +7,7 @@ use rustc_span::symbol::sym;
 use super::OPTION_OPTION;
 
 pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
-    if cx.tcx.is_diagnostic_item(sym::Option, def_id)
-        && is_ty_param_diagnostic_item(cx, qpath, sym::Option).is_some()
-    {
+    if cx.tcx.is_diagnostic_item(sym::Option, def_id) && is_ty_param_diagnostic_item(cx, qpath, sym::Option).is_some() {
         span_lint(
             cx,
             OPTION_OPTION,

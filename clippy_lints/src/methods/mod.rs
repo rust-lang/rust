@@ -1284,8 +1284,9 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// It looks suspicious. Maybe `map` was confused with `filter`.
-    /// If the `map` call is intentional, this should be rewritten. Or, if you intend to
-    /// drive the iterator to completion, you can just use `for_each` instead.
+    /// If the `map` call is intentional, this should be rewritten
+    /// using `inspect`. Or, if you intend to drive the iterator to
+    /// completion, you can just use `for_each` instead.
     ///
     /// ### Example
     /// ```rust

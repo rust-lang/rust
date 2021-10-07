@@ -1,3 +1,4 @@
+// edition:2018
 // aux-build:implicit_hasher_macros.rs
 #![deny(clippy::implicit_hasher)]
 #![allow(unused)]
@@ -95,5 +96,8 @@ __implicit_hasher_test_macro!(impl<K, V> for HashMap<K, V> where V: test_macro::
 
 // #4260
 implicit_hasher_fn!();
+
+// #7712
+pub async fn election_vote(_data: HashMap<i32, i32>) {}
 
 fn main() {}

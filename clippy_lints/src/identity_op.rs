@@ -1,5 +1,4 @@
 use clippy_utils::source::snippet;
-use if_chain::if_chain;
 use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -62,16 +61,9 @@ impl<'tcx> LateLintPass<'tcx> for IdentityOp {
 
 fn is_allowed(cx: &LateContext<'_>, cmp: BinOp, left: &Expr<'_>, right: &Expr<'_>) -> bool {
     // `1 << 0` is a common pattern in bit manipulation code
-    if_chain! {
-        if let BinOpKind::Shl = cmp.node;
-        if let Some(Constant::Int(0)) = constant_simple(cx, cx.typeck_results(), right);
-        if let Some(Constant::Int(1)) = constant_simple(cx, cx.typeck_results(), left);
-        then {
-            return true;
-        }
-    }
-
-    false
+    cmp.node == BinOpKind::Shl
+        && constant_simple(cx, cx.typeck_results(), right) == Some(Constant::Int(0))
+        && constant_simple(cx, cx.typeck_results(), left) == Some(Constant::Int(1))
 }
 
 #[allow(clippy::cast_possible_wrap)]

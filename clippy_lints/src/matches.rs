@@ -1025,8 +1025,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
     let adt_def = match ty.kind() {
         ty::Adt(adt_def, _)
             if adt_def.is_enum()
-                && !(is_type_diagnostic_item(cx, ty, sym::Option)
-                    || is_type_diagnostic_item(cx, ty, sym::Result)) =>
+                && !(is_type_diagnostic_item(cx, ty, sym::Option) || is_type_diagnostic_item(cx, ty, sym::Result)) =>
         {
             adt_def
         },
