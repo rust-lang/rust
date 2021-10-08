@@ -1021,7 +1021,6 @@ impl Metadata {
     ///
     #[cfg_attr(unix, doc = "```no_run")]
     #[cfg_attr(not(unix), doc = "```ignore")]
-    /// #![feature(is_symlink)]
     /// use std::fs;
     /// use std::path::Path;
     /// use std::os::unix::fs::symlink;
@@ -1036,7 +1035,7 @@ impl Metadata {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "is_symlink", issue = "85748")]
+    #[stable(feature = "is_symlink", since = "1.57.0")]
     pub fn is_symlink(&self) -> bool {
         self.file_type().is_symlink()
     }
