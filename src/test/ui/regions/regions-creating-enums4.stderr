@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` d
 LL |     Ast::Add(x, y)
    |     ^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 6:16...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/regions-creating-enums4.rs:6:16
    |
 LL | fn mk_add_bad2<'a,'b>(x: &'a Ast<'a>, y: &'a Ast<'a>, z: &Ast) -> Ast<'b> {
@@ -16,7 +16,7 @@ LL |     Ast::Add(x, y)
    |              ^
    = note: expected `&Ast<'_>`
               found `&Ast<'a>`
-note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 6:19...
+note: but, the lifetime must be valid for the lifetime `'b` as defined here...
   --> $DIR/regions-creating-enums4.rs:6:19
    |
 LL | fn mk_add_bad2<'a,'b>(x: &'a Ast<'a>, y: &'a Ast<'a>, z: &Ast) -> Ast<'b> {

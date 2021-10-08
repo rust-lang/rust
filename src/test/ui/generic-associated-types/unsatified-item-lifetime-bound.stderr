@@ -12,7 +12,7 @@ error[E0478]: lifetime bound not satisfied
 LL |     f: <T as X>::Y<'a>,
    |        ^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the struct at 12:10
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatified-item-lifetime-bound.rs:12:10
    |
 LL | struct B<'a, T: for<'r> X<Y<'r> = &'r ()>> {
@@ -25,7 +25,7 @@ error[E0478]: lifetime bound not satisfied
 LL |     f: <T as X>::Y<'a>,
    |        ^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the struct at 17:10
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatified-item-lifetime-bound.rs:17:10
    |
 LL | struct C<'a, T: X> {
@@ -38,7 +38,7 @@ error[E0478]: lifetime bound not satisfied
 LL |     f: <() as X>::Y<'a>,
    |        ^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the struct at 22:10
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatified-item-lifetime-bound.rs:22:10
    |
 LL | struct D<'a> {

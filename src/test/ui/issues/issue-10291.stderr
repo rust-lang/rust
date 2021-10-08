@@ -4,7 +4,7 @@ error[E0312]: lifetime of reference outlives lifetime of borrowed content...
 LL |         x
    |         ^
    |
-note: ...the reference is valid for the anonymous lifetime #1 defined on the body at 2:69...
+note: ...the reference is valid for the anonymous lifetime #1 defined here...
   --> $DIR/issue-10291.rs:2:69
    |
 LL |       drop::<Box<dyn for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
@@ -12,7 +12,7 @@ LL |       drop::<Box<dyn for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
 LL | |         x
 LL | |     }));
    | |_____^
-note: ...but the borrowed content is only valid for the lifetime `'x` as defined on the function body at 1:9
+note: ...but the borrowed content is only valid for the lifetime `'x` as defined here
   --> $DIR/issue-10291.rs:1:9
    |
 LL | fn test<'x>(x: &'x isize) {

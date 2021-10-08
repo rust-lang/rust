@@ -4,12 +4,12 @@ error[E0312]: lifetime of reference outlives lifetime of borrowed content...
 LL |         self.y = b.z
    |                  ^^^
    |
-note: ...the reference is valid for the lifetime `'_` as defined on the impl at 12:10...
+note: ...the reference is valid for the lifetime `'_` as defined here...
   --> $DIR/issue-52742.rs:12:10
    |
 LL | impl Foo<'_, '_> {
    |          ^^
-note: ...but the borrowed content is only valid for the anonymous lifetime defined on the method body at 13:31
+note: ...but the borrowed content is only valid for the anonymous lifetime defined here
   --> $DIR/issue-52742.rs:13:31
    |
 LL |     fn take_bar(&mut self, b: Bar<'_>) {

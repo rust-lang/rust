@@ -8,12 +8,12 @@ LL | | where
 LL | |     <() as Project<'a, 'b>>::Item: Eq,
    | |______________________________________^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 24:8...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/regions-normalize-in-where-clause-list.rs:24:8
    |
 LL | fn bar<'a, 'b>()
    |        ^^
-note: ...but the lifetime must also be valid for the lifetime `'b` as defined on the function body at 24:12...
+note: ...but the lifetime must also be valid for the lifetime `'b` as defined here...
   --> $DIR/regions-normalize-in-where-clause-list.rs:24:12
    |
 LL | fn bar<'a, 'b>()
@@ -36,12 +36,12 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` d
 LL | fn bar<'a, 'b>()
    |    ^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 24:8...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/regions-normalize-in-where-clause-list.rs:24:8
    |
 LL | fn bar<'a, 'b>()
    |        ^^
-note: ...but the lifetime must also be valid for the lifetime `'b` as defined on the function body at 24:12...
+note: ...but the lifetime must also be valid for the lifetime `'b` as defined here...
   --> $DIR/regions-normalize-in-where-clause-list.rs:24:12
    |
 LL | fn bar<'a, 'b>()

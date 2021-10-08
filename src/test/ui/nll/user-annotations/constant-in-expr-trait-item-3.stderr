@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` d
 LL |     T::C
    |     ^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 9:8...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/constant-in-expr-trait-item-3.rs:9:8
    |
 LL | fn foo<'a, T: Foo<'a>>() -> &'static u32 {

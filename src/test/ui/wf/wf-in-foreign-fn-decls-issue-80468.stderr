@@ -17,7 +17,7 @@ note: because this has an unmet lifetime requirement
    |
 LL | pub struct Wrapper<T: Trait>(T);
    |                       ^^^^^ introduces a `'static` lifetime requirement
-note: the anonymous lifetime #1 defined on the method body at 16:5...
+note: the anonymous lifetime #1 defined here...
   --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:16:5
    |
 LL |     pub fn repro(_: Wrapper<Ref>);

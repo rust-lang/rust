@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for automatic coercion due to
 LL |     ss
    |     ^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 54:10...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/object-lifetime-default-elision.rs:54:10
    |
 LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
@@ -14,7 +14,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |     ss
    |     ^^
-note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 54:13...
+note: but, the lifetime must be valid for the lifetime `'b` as defined here...
   --> $DIR/object-lifetime-default-elision.rs:54:13
    |
 LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
@@ -33,7 +33,7 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |     ss
    |     ^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 54:10...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/object-lifetime-default-elision.rs:54:10
    |
 LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
@@ -43,7 +43,7 @@ note: ...so that the declared lifetime parameter bounds are satisfied
    |
 LL |     ss
    |     ^^
-note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 54:13...
+note: but, the lifetime must be valid for the lifetime `'b` as defined here...
   --> $DIR/object-lifetime-default-elision.rs:54:13
    |
 LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {

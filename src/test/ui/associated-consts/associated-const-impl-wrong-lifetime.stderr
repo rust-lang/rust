@@ -6,7 +6,7 @@ LL |     const NAME: &'a str = "unit";
    |
    = note: expected reference `&'static str`
               found reference `&'a str`
-note: the lifetime `'a` as defined on the impl at 6:6...
+note: the lifetime `'a` as defined here...
   --> $DIR/associated-const-impl-wrong-lifetime.rs:6:6
    |
 LL | impl<'a> Foo for &'a () {

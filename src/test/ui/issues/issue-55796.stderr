@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |         Box::new(self.out_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the trait at 7:17...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/issue-55796.rs:7:17
    |
 LL | pub trait Graph<'a> {
@@ -29,7 +29,7 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |         Box::new(self.in_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the trait at 7:17...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/issue-55796.rs:7:17
    |
 LL | pub trait Graph<'a> {

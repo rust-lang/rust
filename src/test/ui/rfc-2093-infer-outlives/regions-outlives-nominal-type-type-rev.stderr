@@ -4,12 +4,12 @@ error[E0491]: in type `&'a Foo<&'b i32>`, reference has a longer lifetime than t
 LL |         type Out = &'a Foo<&'b i32>;
    |                    ^^^^^^^^^^^^^^^^
    |
-note: the pointer is valid for the lifetime `'a` as defined on the impl at 16:10
+note: the pointer is valid for the lifetime `'a` as defined here
   --> $DIR/regions-outlives-nominal-type-type-rev.rs:16:10
    |
 LL |     impl<'a, 'b> Trait<'a, 'b> for usize {
    |          ^^
-note: but the referenced data is only valid for the lifetime `'b` as defined on the impl at 16:14
+note: but the referenced data is only valid for the lifetime `'b` as defined here
   --> $DIR/regions-outlives-nominal-type-type-rev.rs:16:14
    |
 LL |     impl<'a, 'b> Trait<'a, 'b> for usize {

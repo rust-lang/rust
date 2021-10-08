@@ -6,12 +6,12 @@ LL |            Foo<'b,'a>
    |
    = note: expected struct `Foo<'a, 'b>`
               found struct `Foo<'b, 'a>`
-note: the lifetime `'b` as defined on the impl at 6:9...
+note: the lifetime `'b` as defined here...
   --> $DIR/explicit-self-lifetime-mismatch.rs:6:9
    |
 LL | impl<'a,'b> Foo<'a,'b> {
    |         ^^
-note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 6:6
+note: ...does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/explicit-self-lifetime-mismatch.rs:6:6
    |
 LL | impl<'a,'b> Foo<'a,'b> {
@@ -25,12 +25,12 @@ LL |            Foo<'b,'a>
    |
    = note: expected struct `Foo<'a, 'b>`
               found struct `Foo<'b, 'a>`
-note: the lifetime `'a` as defined on the impl at 6:6...
+note: the lifetime `'a` as defined here...
   --> $DIR/explicit-self-lifetime-mismatch.rs:6:6
    |
 LL | impl<'a,'b> Foo<'a,'b> {
    |      ^^
-note: ...does not necessarily outlive the lifetime `'b` as defined on the impl at 6:9
+note: ...does not necessarily outlive the lifetime `'b` as defined here
   --> $DIR/explicit-self-lifetime-mismatch.rs:6:9
    |
 LL | impl<'a,'b> Foo<'a,'b> {

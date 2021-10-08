@@ -6,12 +6,12 @@ LL |     fn foo(x: Foo<'b,'a>) {
    |
    = note: expected fn pointer `fn(Foo<'a, 'b>)`
               found fn pointer `fn(Foo<'b, 'a>)`
-note: the lifetime `'b` as defined on the impl at 13:9...
+note: the lifetime `'b` as defined here...
   --> $DIR/matching-lifetimes.rs:13:9
    |
 LL | impl<'a,'b> Tr for Foo<'a,'b> {
    |         ^^
-note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 13:6
+note: ...does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/matching-lifetimes.rs:13:6
    |
 LL | impl<'a,'b> Tr for Foo<'a,'b> {
@@ -25,12 +25,12 @@ LL |     fn foo(x: Foo<'b,'a>) {
    |
    = note: expected fn pointer `fn(Foo<'a, 'b>)`
               found fn pointer `fn(Foo<'b, 'a>)`
-note: the lifetime `'a` as defined on the impl at 13:6...
+note: the lifetime `'a` as defined here...
   --> $DIR/matching-lifetimes.rs:13:6
    |
 LL | impl<'a,'b> Tr for Foo<'a,'b> {
    |      ^^
-note: ...does not necessarily outlive the lifetime `'b` as defined on the impl at 13:9
+note: ...does not necessarily outlive the lifetime `'b` as defined here
   --> $DIR/matching-lifetimes.rs:13:9
    |
 LL | impl<'a,'b> Tr for Foo<'a,'b> {

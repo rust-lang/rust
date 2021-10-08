@@ -6,7 +6,7 @@ LL |     ref_obj(x)
    |
    = note: expected reference `&Box<(dyn Fn() + 'static)>`
               found reference `&Box<(dyn Fn() + 'a)>`
-note: the lifetime `'a` as defined on the function body at 32:10...
+note: the lifetime `'a` as defined here...
   --> $DIR/lifetime-bound-will-change-warning.rs:32:10
    |
 LL | fn test2<'a>(x: &'a Box<dyn Fn() + 'a>) {
@@ -21,7 +21,7 @@ LL |     lib::ref_obj(x)
    |
    = note: expected reference `&Box<(dyn Fn() + 'static)>`
               found reference `&Box<(dyn Fn() + 'a)>`
-note: the lifetime `'a` as defined on the function body at 37:12...
+note: the lifetime `'a` as defined here...
   --> $DIR/lifetime-bound-will-change-warning.rs:37:12
    |
 LL | fn test2cc<'a>(x: &'a Box<dyn Fn() + 'a>) {

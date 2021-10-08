@@ -30,7 +30,7 @@ LL | impl                    Drop for N<'static>     { fn drop(&mut self) { } } 
    |
    = note: expected struct `N<'n>`
               found struct `N<'static>`
-note: the lifetime `'n` as defined on the struct at 7:10...
+note: the lifetime `'n` as defined here...
   --> $DIR/reject-specialized-drops-8142.rs:7:10
    |
 LL | struct N<'n> { x: &'n i8 }
@@ -91,12 +91,12 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'lw` 
 LL | impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'l1` as defined on the struct at 16:10...
+note: first, the lifetime cannot outlive the lifetime `'l1` as defined here...
   --> $DIR/reject-specialized-drops-8142.rs:16:10
    |
 LL | struct W<'l1, 'l2> { x: &'l1 i8, y: &'l2 u8 }
    |          ^^^
-note: ...but the lifetime must also be valid for the lifetime `'l2` as defined on the struct at 16:15...
+note: ...but the lifetime must also be valid for the lifetime `'l2` as defined here...
   --> $DIR/reject-specialized-drops-8142.rs:16:15
    |
 LL | struct W<'l1, 'l2> { x: &'l1 i8, y: &'l2 u8 }

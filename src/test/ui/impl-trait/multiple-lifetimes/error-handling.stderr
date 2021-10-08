@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/error-handling.rs:22:16
+  --> $DIR/error-handling.rs:20:16
    |
 LL | fn foo<'a, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
    |        --  -- lifetime `'b` defined here

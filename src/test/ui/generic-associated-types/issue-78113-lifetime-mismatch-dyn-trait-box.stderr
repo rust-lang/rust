@@ -9,7 +9,7 @@ note: because this has an unmet lifetime requirement
    |
 LL |     type T<'a>: A;
    |                 ^ introduces a `'static` lifetime requirement
-note: the lifetime `'a` as defined on the associated item at 17:12...
+note: the lifetime `'a` as defined here...
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:17:12
    |
 LL |     type T<'a> = Box<dyn A + 'a>;
@@ -36,7 +36,7 @@ note: because this has an unmet lifetime requirement
    |
 LL |     type T<'a>: C;
    |                 ^ introduces a `'static` lifetime requirement
-note: the lifetime `'a` as defined on the associated item at 27:12...
+note: the lifetime `'a` as defined here...
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:27:12
    |
 LL |     type T<'a> = Box<dyn A + 'a>;
@@ -58,7 +58,7 @@ note: because this has an unmet lifetime requirement
    |
 LL |     type T<'a>: E;
    |                 ^ introduces a `'static` lifetime requirement
-note: the lifetime `'a` as defined on the associated item at 37:12...
+note: the lifetime `'a` as defined here...
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:37:12
    |
 LL |     type T<'a> = (Box<dyn A + 'a>, Box<dyn A + 'a>);

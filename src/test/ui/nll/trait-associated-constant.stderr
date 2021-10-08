@@ -6,12 +6,12 @@ LL |     const AC: Option<&'c str> = None;
    |
    = note: expected enum `Option<&'b str>`
               found enum `Option<&'c str>`
-note: the lifetime `'c` as defined on the impl at 20:18...
+note: the lifetime `'c` as defined here...
   --> $DIR/trait-associated-constant.rs:20:18
    |
 LL | impl<'a: 'b, 'b, 'c> Anything<'a, 'b> for FailStruct {
    |                  ^^
-note: ...does not necessarily outlive the lifetime `'b` as defined on the impl at 20:14
+note: ...does not necessarily outlive the lifetime `'b` as defined here
   --> $DIR/trait-associated-constant.rs:20:14
    |
 LL | impl<'a: 'b, 'b, 'c> Anything<'a, 'b> for FailStruct {

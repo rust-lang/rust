@@ -6,12 +6,12 @@ LL |     return e;
    |
    = note: expected struct `TupleStruct<'b>`
               found struct `TupleStruct<'a>`
-note: the lifetime `'a` as defined on the function body at 8:10...
+note: the lifetime `'a` as defined here...
   --> $DIR/regions-bounds.rs:8:10
    |
 LL | fn a_fn1<'a,'b>(e: TupleStruct<'a>) -> TupleStruct<'b> {
    |          ^^
-note: ...does not necessarily outlive the lifetime `'b` as defined on the function body at 8:13
+note: ...does not necessarily outlive the lifetime `'b` as defined here
   --> $DIR/regions-bounds.rs:8:13
    |
 LL | fn a_fn1<'a,'b>(e: TupleStruct<'a>) -> TupleStruct<'b> {
@@ -25,12 +25,12 @@ LL |     return e;
    |
    = note: expected struct `Struct<'b>`
               found struct `Struct<'a>`
-note: the lifetime `'a` as defined on the function body at 12:10...
+note: the lifetime `'a` as defined here...
   --> $DIR/regions-bounds.rs:12:10
    |
 LL | fn a_fn3<'a,'b>(e: Struct<'a>) -> Struct<'b> {
    |          ^^
-note: ...does not necessarily outlive the lifetime `'b` as defined on the function body at 12:13
+note: ...does not necessarily outlive the lifetime `'b` as defined here
   --> $DIR/regions-bounds.rs:12:13
    |
 LL | fn a_fn3<'a,'b>(e: Struct<'a>) -> Struct<'b> {

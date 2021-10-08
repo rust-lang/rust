@@ -6,12 +6,12 @@ LL |     v
    |
    = note: expected trait object `dyn Get<&'min i32>`
               found trait object `dyn Get<&'max i32>`
-note: the lifetime `'min` as defined on the function body at 10:21...
+note: the lifetime `'min` as defined here...
   --> $DIR/variance-covariant-arg-object.rs:10:21
    |
 LL | fn get_min_from_max<'min, 'max>(v: Box<dyn Get<&'max i32>>)
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime `'max` as defined on the function body at 10:27
+note: ...does not necessarily outlive the lifetime `'max` as defined here
   --> $DIR/variance-covariant-arg-object.rs:10:27
    |
 LL | fn get_min_from_max<'min, 'max>(v: Box<dyn Get<&'max i32>>)
@@ -25,12 +25,12 @@ LL |     v
    |
    = note: expected trait object `dyn Get<&'max i32>`
               found trait object `dyn Get<&'min i32>`
-note: the lifetime `'min` as defined on the function body at 18:21...
+note: the lifetime `'min` as defined here...
   --> $DIR/variance-covariant-arg-object.rs:18:21
    |
 LL | fn get_max_from_min<'min, 'max, G>(v: Box<dyn Get<&'min i32>>)
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime `'max` as defined on the function body at 18:27
+note: ...does not necessarily outlive the lifetime `'max` as defined here
   --> $DIR/variance-covariant-arg-object.rs:18:27
    |
 LL | fn get_max_from_min<'min, 'max, G>(v: Box<dyn Get<&'min i32>>)

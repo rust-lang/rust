@@ -6,12 +6,12 @@ LL |         x
    |
    = note: expected mutable reference `&'a mut &'a i32`
               found mutable reference `&'a mut &'b i32`
-note: the lifetime `'a` as defined on the method body at 9:12...
+note: the lifetime `'a` as defined here...
   --> $DIR/match-ref-mut-let-invariance.rs:9:12
    |
 LL |     fn bar<'a>(&'a mut self) -> &'a mut &'a i32 {
    |            ^^
-note: ...does not necessarily outlive the lifetime `'b` as defined on the impl at 8:6
+note: ...does not necessarily outlive the lifetime `'b` as defined here
   --> $DIR/match-ref-mut-let-invariance.rs:8:6
    |
 LL | impl<'b> S<'b> {

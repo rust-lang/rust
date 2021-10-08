@@ -26,12 +26,12 @@ error[E0491]: in type `&'a &'b T`, reference has a longer lifetime than the data
 LL |     type Out = &'a &'b T;
    |                ^^^^^^^^^
    |
-note: the pointer is valid for the lifetime `'a` as defined on the impl at 24:6
+note: the pointer is valid for the lifetime `'a` as defined here
   --> $DIR/regions-struct-not-wf.rs:24:6
    |
 LL | impl<'a, 'b, T> Trait1<'a, 'b, T> for u32 {
    |      ^^
-note: but the referenced data is only valid for the lifetime `'b` as defined on the impl at 24:10
+note: but the referenced data is only valid for the lifetime `'b` as defined here
   --> $DIR/regions-struct-not-wf.rs:24:10
    |
 LL | impl<'a, 'b, T> Trait1<'a, 'b, T> for u32 {

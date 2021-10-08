@@ -6,12 +6,12 @@ LL |     v
    |
    = note: expected struct `SomeStruct<&'min ()>`
               found struct `SomeStruct<&'max ()>`
-note: the lifetime `'min` as defined on the function body at 8:8...
+note: the lifetime `'min` as defined here...
   --> $DIR/variance-use-contravariant-struct-1.rs:8:8
    |
 LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
    |        ^^^^
-note: ...does not necessarily outlive the lifetime `'max` as defined on the function body at 8:13
+note: ...does not necessarily outlive the lifetime `'max` as defined here
   --> $DIR/variance-use-contravariant-struct-1.rs:8:13
    |
 LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)

@@ -22,12 +22,12 @@ error[E0478]: lifetime bound not satisfied
 LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the associated item at 17:12
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/impl_bounds.rs:17:12
    |
 LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
    |            ^^
-note: but lifetime parameter must outlive the lifetime `'b` as defined on the associated item at 17:16
+note: but lifetime parameter must outlive the lifetime `'b` as defined here
   --> $DIR/impl_bounds.rs:17:16
    |
 LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());

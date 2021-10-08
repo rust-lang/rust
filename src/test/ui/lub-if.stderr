@@ -5,7 +5,7 @@ LL |         s
    |         ^
    |
    = note: ...the reference is valid for the static lifetime...
-note: ...but the borrowed content is only valid for the lifetime `'a` as defined on the function body at 23:17
+note: ...but the borrowed content is only valid for the lifetime `'a` as defined here
   --> $DIR/lub-if.rs:23:17
    |
 LL | pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
@@ -18,7 +18,7 @@ LL |         s
    |         ^
    |
    = note: ...the reference is valid for the static lifetime...
-note: ...but the borrowed content is only valid for the lifetime `'a` as defined on the function body at 32:17
+note: ...but the borrowed content is only valid for the lifetime `'a` as defined here
   --> $DIR/lub-if.rs:32:17
    |
 LL | pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {

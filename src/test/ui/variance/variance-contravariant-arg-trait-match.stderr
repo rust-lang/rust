@@ -6,12 +6,12 @@ LL |     impls_get::<G,&'min i32>()
    |
    = note: expected type `Get<&'min i32>`
               found type `Get<&'max i32>`
-note: the lifetime `'min` as defined on the function body at 10:21...
+note: the lifetime `'min` as defined here...
   --> $DIR/variance-contravariant-arg-trait-match.rs:10:21
    |
 LL | fn get_min_from_max<'min, 'max, G>()
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime `'max` as defined on the function body at 10:27
+note: ...does not necessarily outlive the lifetime `'max` as defined here
   --> $DIR/variance-contravariant-arg-trait-match.rs:10:27
    |
 LL | fn get_min_from_max<'min, 'max, G>()
@@ -25,12 +25,12 @@ LL |     impls_get::<G,&'max i32>()
    |
    = note: expected type `Get<&'max i32>`
               found type `Get<&'min i32>`
-note: the lifetime `'min` as defined on the function body at 16:21...
+note: the lifetime `'min` as defined here...
   --> $DIR/variance-contravariant-arg-trait-match.rs:16:21
    |
 LL | fn get_max_from_min<'min, 'max, G>()
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime `'max` as defined on the function body at 16:27
+note: ...does not necessarily outlive the lifetime `'max` as defined here
   --> $DIR/variance-contravariant-arg-trait-match.rs:16:27
    |
 LL | fn get_max_from_min<'min, 'max, G>()

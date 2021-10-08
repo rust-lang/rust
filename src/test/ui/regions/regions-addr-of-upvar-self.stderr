@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for borrow expression due to 
 LL |             let p: &'static mut usize = &mut self.food;
    |                                         ^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'_` as defined on the body at 7:18...
+note: first, the lifetime cannot outlive the lifetime `'_` as defined here...
   --> $DIR/regions-addr-of-upvar-self.rs:7:18
    |
 LL |         let _f = || {
