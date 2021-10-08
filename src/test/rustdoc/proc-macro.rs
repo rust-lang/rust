@@ -6,7 +6,7 @@
 #![crate_name="some_macros"]
 
 // @has some_macros/index.html
-// @has - '//a/[@href="attr.some_proc_attr.html"]' 'some_proc_attr'
+// @has - '//a[@href="attr.some_proc_attr.html"]' 'some_proc_attr'
 
 //! include a link to [some_proc_macro] to make sure it works.
 
