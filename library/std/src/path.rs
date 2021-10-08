@@ -1208,6 +1208,9 @@ impl PathBuf {
     /// * if `path` has a root but no prefix (e.g., `\windows`), it
     ///   replaces everything except for the prefix (if any) of `self`.
     /// * if `path` has a prefix but no root, it replaces `self`.
+    /// * if `self` has a verbatim prefix (e.g. `\\?\C:\windows`)
+    ///   and `path` is not empty, the new path is normalized: all references
+    ///   to `.` and `..` are removed.
     ///
     /// # Examples
     ///
@@ -1254,7 +1257,7 @@ impl PathBuf {
             self.as_mut_vec().truncate(0);
 
         // verbatim paths need . and .. removed
-        } else if comps.prefix_verbatim() {
+        } else if comps.prefix_verbatim() && !path.inner.is_empty() {
             let mut buf: Vec<_> = comps.collect();
             for c in path.components() {
                 match c {
