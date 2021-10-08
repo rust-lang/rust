@@ -412,6 +412,8 @@ mod desc {
     pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub const parse_split_debuginfo: &str =
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
+    pub const parse_split_dwarf_kind: &str =
+        "one of supported split dwarf modes (`split` or `single`)";
     pub const parse_gcc_ld: &str = "one of: no value, `lld`";
     pub const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
@@ -941,6 +943,14 @@ mod parse {
         true
     }
 
+    crate fn parse_split_dwarf_kind(slot: &mut SplitDwarfKind, v: Option<&str>) -> bool {
+        match v.and_then(|s| SplitDwarfKind::from_str(s).ok()) {
+            Some(e) => *slot = e,
+            _ => return false,
+        }
+        true
+    }
+
     crate fn parse_gcc_ld(slot: &mut Option<LdImpl>, v: Option<&str>) -> bool {
         match v {
             None => *slot = None,
@@ -1403,6 +1413,14 @@ options! {
         "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
+    split_dwarf_kind: SplitDwarfKind = (SplitDwarfKind::Split, parse_split_dwarf_kind, [UNTRACKED],
+        "split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
+        (default: `split`)
+
+        `split`: sections which do not require relocation are written into a DWARF object (`.dwo`)
+                 file which is ignored by the linker
+        `single`: sections which do not require relocation are written into object file but ignored
+                  by the linker"),
     split_dwarf_inlining: bool = (true, parse_bool, [UNTRACKED],
         "provide minimal debug info in the object/executable to facilitate online \
          symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),

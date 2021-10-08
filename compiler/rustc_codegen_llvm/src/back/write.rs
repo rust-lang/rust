@@ -23,7 +23,7 @@ use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, Lto, OutputType, Passes, SwitchWithOptPath};
+use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
@@ -106,7 +106,11 @@ pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm:
 
 pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut llvm::TargetMachine {
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
-        tcx.output_filenames(()).split_dwarf_path(tcx.sess.split_debuginfo(), Some(mod_name))
+        tcx.output_filenames(()).split_dwarf_path(
+            tcx.sess.split_debuginfo(),
+            tcx.sess.opts.debugging_opts.split_dwarf_kind,
+            Some(mod_name),
+        )
     } else {
         None
     };
@@ -892,17 +896,18 @@ pub(crate) unsafe fn codegen(
                     .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &*module.name);
 
                 let dwo_out = cgcx.output_filenames.temp_path_dwo(module_name);
-                let dwo_out = match cgcx.split_debuginfo {
-                    // Don't change how DWARF is emitted in single mode (or when disabled).
-                    SplitDebuginfo::Off | SplitDebuginfo::Packed => None,
-                    // Emit (a subset of the) DWARF into a separate file in split mode.
-                    SplitDebuginfo::Unpacked => {
-                        if cgcx.target_can_use_split_dwarf {
-                            Some(dwo_out.as_path())
-                        } else {
-                            None
-                        }
-                    }
+                let dwo_out = match (cgcx.split_debuginfo, cgcx.split_dwarf_kind) {
+                    // Don't change how DWARF is emitted when disabled.
+                    (SplitDebuginfo::Off, _) => None,
+                    // Don't provide a DWARF object path if split debuginfo is enabled but this is
+                    // a platform that doesn't support Split DWARF.
+                    _ if !cgcx.target_can_use_split_dwarf => None,
+                    // Don't provide a DWARF object path in single mode, sections will be written
+                    // into the object as normal but ignored by linker.
+                    (_, SplitDwarfKind::Single) => None,
+                    // Emit (a subset of the) DWARF into a separate dwarf object file in split
+                    // mode.
+                    (_, SplitDwarfKind::Split) => Some(dwo_out.as_path()),
                 };
 
                 with_codegen(tm, llmod, config.no_builtins, |cpm| {
@@ -939,7 +944,9 @@ pub(crate) unsafe fn codegen(
 
     Ok(module.into_compiled_module(
         config.emit_obj != EmitObj::None,
-        cgcx.target_can_use_split_dwarf && cgcx.split_debuginfo == SplitDebuginfo::Unpacked,
+        cgcx.target_can_use_split_dwarf
+            && cgcx.split_debuginfo != SplitDebuginfo::Off
+            && cgcx.split_dwarf_kind == SplitDwarfKind::Split,
         config.emit_bc,
         &cgcx.output_filenames,
     ))

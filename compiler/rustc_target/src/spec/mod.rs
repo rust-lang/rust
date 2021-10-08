@@ -479,7 +479,7 @@ pub enum SplitDebuginfo {
     ///
     /// * Windows - not supported
     /// * macOS - supported, scattered object files
-    /// * ELF - supported, scattered `*.dwo` files
+    /// * ELF - supported, scattered `*.dwo` or `*.o` files (see `SplitDwarfKind`)
     Unpacked,
 }
 

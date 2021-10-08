@@ -44,16 +44,30 @@ off:
 	[ ! -f $(TMPDIR)/*.dwp ]
 	[ ! -f $(TMPDIR)/*.dwo ]
 
-packed:
-	$(RUSTC) foo.rs -g -C split-debuginfo=packed -Z unstable-options
+packed: packed-split packed-single
+
+packed-split:
+	$(RUSTC) foo.rs -g -C split-debuginfo=packed -Z unstable-options -Zsplit-dwarf-kind=split
+	ls $(TMPDIR)/*.dwp
+	rm -rf $(TMPDIR)/*.dwp $(TMPDIR)/*.dwo
+
+packed-single:
+	$(RUSTC) foo.rs -g -C split-debuginfo=packed -Z unstable-options -Zsplit-dwarf-kind=single
 	ls $(TMPDIR)/*.dwp
 	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 	rm -rf $(TMPDIR)/*.dwp
 
-unpacked:
-	$(RUSTC) foo.rs -g -C split-debuginfo=unpacked -Z unstable-options
+unpacked: unpacked-split unpacked-single
+
+unpacked-split:
+	$(RUSTC) foo.rs -g -C split-debuginfo=unpacked -Z unstable-options -Zsplit-dwarf-kind=split
 	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
 	ls $(TMPDIR)/*.dwo
-	rm -rf $(TMPDIR)/*.dwo
+	rm -rf $(TMPDIR)/*.dwp $(TMPDIR)/*.dwo
+
+unpacked-single:
+	$(RUSTC) foo.rs -g -C split-debuginfo=unpacked -Z unstable-options -Zsplit-dwarf-kind=single
+	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
+	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 endif
 endif

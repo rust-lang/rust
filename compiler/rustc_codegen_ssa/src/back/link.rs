@@ -5,7 +5,7 @@ use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
-use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
+use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SplitDwarfKind};
 use rustc_session::cstore::DllImport;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -134,31 +134,47 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
         }
     }
 
-    // Remove the temporary object file and metadata if we aren't saving temps
+    // Remove the temporary object file and metadata if we aren't saving temps.
     sess.time("link_binary_remove_temps", || {
-        if !sess.opts.cg.save_temps {
-            let remove_temps_from_module = |module: &CompiledModule| {
-                if let Some(ref obj) = module.object {
-                    ensure_removed(sess.diagnostic(), obj);
-                }
+        // If the user requests that temporaries are saved, don't delete any.
+        if sess.opts.cg.save_temps {
+            return;
+        }
 
+        let remove_temps_from_module = |module: &CompiledModule| {
+            if let Some(ref obj) = module.object {
+                ensure_removed(sess.diagnostic(), obj);
+            }
+        };
+
+        // Otherwise, always remove the metadata and allocator module temporaries.
+        if let Some(ref metadata_module) = codegen_results.metadata_module {
+            remove_temps_from_module(metadata_module);
+        }
+
+        if let Some(ref allocator_module) = codegen_results.allocator_module {
+            remove_temps_from_module(allocator_module);
+        }
+
+        // If no requested outputs require linking, then the object temporaries should
+        // be kept.
+        if !sess.opts.output_types.should_link() {
+            return;
+        }
+
+        // Potentially keep objects for their debuginfo.
+        let (preserve_objects, preserve_dwarf_objects) = preserve_objects_for_their_debuginfo(sess);
+        debug!(?preserve_objects, ?preserve_dwarf_objects);
+
+        for module in &codegen_results.modules {
+            if !preserve_objects {
+                remove_temps_from_module(module);
+            }
+
+            if !preserve_dwarf_objects {
                 if let Some(ref obj) = module.dwarf_object {
                     ensure_removed(sess.diagnostic(), obj);
                 }
-            };
-
-            if sess.opts.output_types.should_link() && !preserve_objects_for_their_debuginfo(sess) {
-                for module in &codegen_results.modules {
-                    remove_temps_from_module(module);
-                }
-            }
-
-            if let Some(ref metadata_module) = codegen_results.metadata_module {
-                remove_temps_from_module(metadata_module);
-            }
-
-            if let Some(ref allocator_module) = codegen_results.allocator_module {
-                remove_temps_from_module(allocator_module);
             }
         }
     });
@@ -1138,26 +1154,36 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     bug!("Not enough information provided to determine how to invoke the linker");
 }
 
-/// Returns a boolean indicating whether we should preserve the object files on
-/// the filesystem for their debug information. This is often useful with
-/// split-dwarf like schemes.
-fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
+/// Returns a pair of boolean indicating whether we should preserve the object and
+/// dwarf object files on the filesystem for their debug information. This is often
+/// useful with split-dwarf like schemes.
+fn preserve_objects_for_their_debuginfo(sess: &Session) -> (bool, bool) {
     // If the objects don't have debuginfo there's nothing to preserve.
     if sess.opts.debuginfo == config::DebugInfo::None {
-        return false;
+        return (false, false);
     }
 
     // If we're only producing artifacts that are archives, no need to preserve
     // the objects as they're losslessly contained inside the archives.
-    let output_linked =
-        sess.crate_types().iter().any(|&x| x != CrateType::Rlib && x != CrateType::Staticlib);
-    if !output_linked {
-        return false;
+    if sess.crate_types().iter().all(|&x| x.is_archive()) {
+        return (false, false);
     }
 
-    // "unpacked" split debuginfo means that we leave object files as the
-    // debuginfo is found in the original object files themselves
-    sess.split_debuginfo() == SplitDebuginfo::Unpacked
+    match (sess.split_debuginfo(), sess.opts.debugging_opts.split_dwarf_kind) {
+        // If there is no split debuginfo then do not preserve objects.
+        (SplitDebuginfo::Off, _) => (false, false),
+        // If there is packed split debuginfo, then the debuginfo in the objects
+        // has been packaged and the objects can be deleted.
+        (SplitDebuginfo::Packed, _) => (false, false),
+        // If there is unpacked split debuginfo and the current target can not use
+        // split dwarf, then keep objects.
+        (SplitDebuginfo::Unpacked, _) if !sess.target_can_use_split_dwarf() => (true, false),
+        // If there is unpacked split debuginfo and the target can use split dwarf, then
+        // keep the object containing that debuginfo (whether that is an object file or
+        // dwarf object file depends on the split dwarf kind).
+        (SplitDebuginfo::Unpacked, SplitDwarfKind::Single) => (true, false),
+        (SplitDebuginfo::Unpacked, SplitDwarfKind::Split) => (false, true),
+    }
 }
 
 fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
