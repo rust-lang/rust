@@ -286,6 +286,9 @@ impl<'a> GccLinker<'a> {
             config::OptLevel::Aggressive => "O3",
         };
 
+        if let Some(path) = &self.sess.opts.debugging_opts.profile_sample_use {
+            self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
+        };
         self.linker_arg(&format!("-plugin-opt={}", opt_level));
         self.linker_arg(&format!("-plugin-opt=mcpu={}", self.target_cpu));
     }
