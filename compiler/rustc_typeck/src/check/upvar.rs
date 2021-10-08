@@ -2278,7 +2278,7 @@ fn determine_place_ancestry_relation(
     let projections_b = &place_b.projections;
 
     let same_initial_projections =
-        iter::zip(projections_a, projections_b).all(|(proj_a, proj_b)| proj_a == proj_b);
+        iter::zip(projections_a, projections_b).all(|(proj_a, proj_b)| proj_a.kind == proj_b.kind);
 
     if same_initial_projections {
         // First min(n, m) projections are the same
