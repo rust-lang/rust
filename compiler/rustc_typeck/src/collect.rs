@@ -927,7 +927,22 @@ fn convert_variant_ctor(tcx: TyCtxt<'_>, ctor_id: hir::HirId) {
 fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::Variant<'_>]) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr.discr_type();
-    let initial = repr_type.initial_discriminant(tcx);
+    let no_explicit_discriminants = def
+        .variants
+        .iter_enumerated()
+        .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
+    let mut any_dataful_variants = false;
+    for fields in def.variants.iter() {
+        if fields.fields.len() > 0 {
+            any_dataful_variants = true;
+            break;
+        }
+    }
+    let initial_discr = no_explicit_discriminants
+        && !def.repr.inhibit_enum_layout_opt()
+        && !def.repr.inhibit_struct_field_reordering_opt()
+        && !any_dataful_variants;
+    let initial = Discr { val: initial_discr as u128, ty: repr_type.to_ty(tcx) };
     let mut prev_discr = None::<Discr<'_>>;
 
     // fill the discriminant values and field types

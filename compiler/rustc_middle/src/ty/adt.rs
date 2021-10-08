@@ -402,8 +402,24 @@ impl<'tcx> AdtDef {
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
         assert!(self.is_enum());
+        let no_explicit_discriminants = self
+            .variants
+            .iter_enumerated()
+            .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
+
+        let mut any_dataful_variants = false;
+        for fields in self.variants.iter() {
+            if fields.fields.len() > 0 {
+                any_dataful_variants = true;
+                break;
+            }
+        }
+        let initial_discr = no_explicit_discriminants
+            && !self.repr.inhibit_enum_layout_opt()
+            && !self.repr.inhibit_struct_field_reordering_opt()
+            && !any_dataful_variants;
         let repr_type = self.repr.discr_type();
-        let initial = repr_type.initial_discriminant(tcx);
+        let initial = Discr { val: initial_discr as u128, ty: repr_type.to_ty(tcx) };
         let mut prev_discr = None::<Discr<'tcx>>;
         self.variants.iter_enumerated().map(move |(i, v)| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
@@ -436,9 +452,26 @@ impl<'tcx> AdtDef {
     ) -> Discr<'tcx> {
         assert!(self.is_enum());
         let (val, offset) = self.discriminant_def_for_variant(variant_index);
+        let no_explicit_discriminants = self
+            .variants
+            .iter_enumerated()
+            .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
+
+        let mut any_dataful_variants = false;
+        for fields in self.variants.iter() {
+            if fields.fields.len() > 0 {
+                any_dataful_variants = true;
+                break;
+            }
+        }
+        let initial_discr = no_explicit_discriminants
+            && !self.repr.inhibit_enum_layout_opt()
+            && !self.repr.inhibit_struct_field_reordering_opt()
+            && !any_dataful_variants;
+        let initial = Discr { val: initial_discr as u128, ty: self.repr.discr_type().to_ty(tcx) };
         let explicit_value = val
             .and_then(|expr_did| self.eval_explicit_discr(tcx, expr_did))
-            .unwrap_or_else(|| self.repr.discr_type().initial_discriminant(tcx));
+            .unwrap_or_else(|| initial);
         explicit_value.checked_add(tcx, offset as u128).0
     }
 
