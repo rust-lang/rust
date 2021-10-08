@@ -358,6 +358,7 @@ mod transmute;
 mod transmuting_null;
 mod try_err;
 mod types;
+mod undocumented_unsafe_blocks;
 mod undropped_manually_drops;
 mod unicode;
 mod unit_return_expecting_ord;
@@ -769,6 +770,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(if_then_panic::IfThenPanic));
     let enable_raw_pointer_heuristic_for_send = conf.enable_raw_pointer_heuristic_for_send;
     store.register_late_pass(move || Box::new(non_send_fields_in_send_ty::NonSendFieldInSendTy::new(enable_raw_pointer_heuristic_for_send)));
+    store.register_late_pass(move || Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::default()));
 }
 
 #[rustfmt::skip]

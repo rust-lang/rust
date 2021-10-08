@@ -465,6 +465,7 @@ store.register_lints(&[
     types::REDUNDANT_ALLOCATION,
     types::TYPE_COMPLEXITY,
     types::VEC_BOX,
+    undocumented_unsafe_blocks::UNDOCUMENTED_UNSAFE_BLOCKS,
     undropped_manually_drops::UNDROPPED_MANUALLY_DROPS,
     unicode::INVISIBLE_CHARACTERS,
     unicode::NON_ASCII_LITERAL,
