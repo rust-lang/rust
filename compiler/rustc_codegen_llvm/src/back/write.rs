@@ -370,6 +370,13 @@ fn get_pgo_use_path(config: &ModuleConfig) -> Option<CString> {
         .map(|path_buf| CString::new(path_buf.to_string_lossy().as_bytes()).unwrap())
 }
 
+fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
+    config
+        .pgo_sample_use
+        .as_ref()
+        .map(|path_buf| CString::new(path_buf.to_string_lossy().as_bytes()).unwrap())
+}
+
 pub(crate) fn should_use_new_llvm_pass_manager(config: &ModuleConfig) -> bool {
     // The new pass manager is enabled by default for LLVM >= 13.
     // This matches Clang, which also enables it since Clang 13.
@@ -389,6 +396,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
     let pgo_gen_path = get_pgo_gen_path(config);
     let pgo_use_path = get_pgo_use_path(config);
+    let pgo_sample_use_path = get_pgo_sample_use_path(config);
     let is_lto = opt_stage == llvm::OptStage::ThinLTO || opt_stage == llvm::OptStage::FatLTO;
     // Sanitizer instrumentation is only inserted during the pre-link optimization stage.
     let sanitizer_options = if !is_lto {
@@ -439,6 +447,8 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.instrument_coverage,
         config.instrument_gcov,
+        pgo_sample_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+        config.debug_info_for_profiling,
         llvm_selfprofiler,
         selfprofile_before_pass_callback,
         selfprofile_after_pass_callback,
@@ -543,6 +553,9 @@ pub(crate) unsafe fn optimize(
             }
             if config.instrument_coverage {
                 llvm::LLVMRustAddPass(mpm, find_pass("instrprof").unwrap());
+            }
+            if config.debug_info_for_profiling {
+                llvm::LLVMRustAddPass(mpm, find_pass("add-discriminators").unwrap());
             }
 
             add_sanitizer_passes(config, &mut extra_passes);
@@ -1001,6 +1014,7 @@ pub unsafe fn with_llvm_pmb(
     let inline_threshold = config.inline_threshold;
     let pgo_gen_path = get_pgo_gen_path(config);
     let pgo_use_path = get_pgo_use_path(config);
+    let pgo_sample_use_path = get_pgo_sample_use_path(config);
 
     llvm::LLVMRustConfigurePassManagerBuilder(
         builder,
@@ -1011,6 +1025,7 @@ pub unsafe fn with_llvm_pmb(
         prepare_for_thin_lto,
         pgo_gen_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
+        pgo_sample_use_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
     );
 
     llvm::LLVMPassManagerBuilderSetSizeLevel(builder, opt_size as u32);

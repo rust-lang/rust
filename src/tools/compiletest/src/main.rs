@@ -506,6 +506,8 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
             Err(_) => false,
         },
         color: config.color,
+        shuffle: false,
+        shuffle_seed: None,
         test_threads: None,
         skip: vec![],
         list: false,

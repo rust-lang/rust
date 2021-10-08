@@ -1,0 +1,19 @@
+warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/link-ordinal-too-many-arguments.rs:1:12
+   |
+LL | #![feature(raw_dylib)]
+   |            ^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
+
+error: incorrect number of arguments to `#[link_ordinal]`
+  --> $DIR/link-ordinal-too-many-arguments.rs:6:5
+   |
+LL |     #[link_ordinal(3, 4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the attribute requires exactly one argument
+
+error: aborting due to previous error; 1 warning emitted
+

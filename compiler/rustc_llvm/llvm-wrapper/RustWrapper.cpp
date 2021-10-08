@@ -1753,10 +1753,11 @@ LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
 }
 
 // This struct contains all necessary info about a symbol exported from a DLL.
-// At the moment, it's just the symbol's name, but we use a separate struct to
-// make it easier to add other information like ordinal later.
 struct LLVMRustCOFFShortExport {
   const char* name;
+  bool ordinal_present;
+  // The value of `ordinal` is only meaningful if `ordinal_present` is true.
+  uint16_t ordinal;
 };
 
 // Machine must be a COFF machine type, as defined in PE specs.
@@ -1772,13 +1773,15 @@ extern "C" LLVMRustResult LLVMRustWriteImportLibrary(
   ConvertedExports.reserve(NumExports);
 
   for (size_t i = 0; i < NumExports; ++i) {
+    bool ordinal_present = Exports[i].ordinal_present;
+    uint16_t ordinal = ordinal_present ? Exports[i].ordinal : 0;
     ConvertedExports.push_back(llvm::object::COFFShortExport{
       Exports[i].name,  // Name
       std::string{},    // ExtName
       std::string{},    // SymbolName
       std::string{},    // AliasTarget
-      0,                // Ordinal
-      false,            // Noname
+      ordinal,          // Ordinal
+      ordinal_present,  // Noname
       false,            // Data
       false,            // Private
       false             // Constant

@@ -2009,6 +2009,15 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
+    if debugging_opts.profile_sample_use.is_some()
+        && (cg.profile_generate.enabled() || cg.profile_use.is_some())
+    {
+        early_error(
+            error_format,
+            "option `-Z profile-sample-use` cannot be used with `-C profile-generate` or `-C profile-use`",
+        );
+    }
+
     if debugging_opts.instrument_coverage.is_some()
         && debugging_opts.instrument_coverage != Some(InstrumentCoverage::Off)
     {

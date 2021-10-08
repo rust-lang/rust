@@ -2861,6 +2861,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::link_name) {
             codegen_fn_attrs.link_name = attr.value_str();
         } else if attr.has_name(sym::link_ordinal) {
+            if link_ordinal_span.is_some() {
+                tcx.sess
+                    .struct_span_err(
+                        attr.span,
+                        "multiple `link_ordinal` attributes on a single definition",
+                    )
+                    .emit();
+            }
             link_ordinal_span = Some(attr.span);
             if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
                 codegen_fn_attrs.link_ordinal = ordinal;
@@ -3156,22 +3164,41 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     false
 }
 
-fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
+fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
     use rustc_ast::{Lit, LitIntType, LitKind};
     let meta_item_list = attr.meta_item_list();
     let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
     let sole_meta_list = match meta_item_list {
         Some([item]) => item.literal(),
+        Some(_) => {
+            tcx.sess
+                .struct_span_err(attr.span, "incorrect number of arguments to `#[link_ordinal]`")
+                .note("the attribute requires exactly one argument")
+                .emit();
+            return None;
+        }
         _ => None,
     };
     if let Some(Lit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) = sole_meta_list {
-        if *ordinal <= usize::MAX as u128 {
-            Some(*ordinal as usize)
+        // According to the table at https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header,
+        // the ordinal must fit into 16 bits.  Similarly, the Ordinal field in COFFShortExport (defined
+        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import information
+        // to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
+        //
+        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for this:
+        // both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that specifies
+        // a zero ordinal.  However, llvm-dlltool is perfectly happy to generate an import library
+        // for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an import
+        // library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I don't know yet
+        // if the resulting EXE runs, as I haven't yet built the necessary DLL -- see earlier comment
+        // about LINK.EXE failing.)
+        if *ordinal <= u16::MAX as u128 {
+            Some(*ordinal as u16)
         } else {
             let msg = format!("ordinal value in `link_ordinal` is too large: `{}`", &ordinal);
             tcx.sess
                 .struct_span_err(attr.span, &msg)
-                .note("the value may not exceed `usize::MAX`")
+                .note("the value may not exceed `u16::MAX`")
                 .emit();
             None
         }

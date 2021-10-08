@@ -7,13 +7,13 @@ LL | #![feature(raw_dylib)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
 
-error: ordinal value in `link_ordinal` is too large: `18446744073709551616`
+error: ordinal value in `link_ordinal` is too large: `72436`
   --> $DIR/link-ordinal-too-large.rs:6:5
    |
-LL |     #[link_ordinal(18446744073709551616)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[link_ordinal(72436)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the value may not exceed `usize::MAX`
+   = note: the value may not exceed `u16::MAX`
 
 error: aborting due to previous error; 1 warning emitted
 
