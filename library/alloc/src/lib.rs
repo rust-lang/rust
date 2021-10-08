@@ -69,7 +69,12 @@
 )]
 #![cfg_attr(
     not(bootstrap),
-    doc(cfg_hide(not(test), not(any(test, bootstrap)), target_has_atomic = "ptr"))
+    doc(cfg_hide(
+        not(test),
+        not(any(test, bootstrap)),
+        any(not(feature = "miri-test-libstd"), test, doctest),
+        target_has_atomic = "ptr"
+    ))
 )]
 #![no_std]
 #![needs_allocator]

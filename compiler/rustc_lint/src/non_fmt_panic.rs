@@ -230,8 +230,7 @@ fn check_panic_str<'tcx>(
         Err(_) => (None, None),
     };
 
-    let mut fmt_parser =
-        Parser::new(fmt.as_ref(), style, snippet.clone(), false, ParseMode::Format);
+    let mut fmt_parser = Parser::new(fmt, style, snippet.clone(), false, ParseMode::Format);
     let n_arguments = (&mut fmt_parser).filter(|a| matches!(a, Piece::NextArgument(_))).count();
 
     if n_arguments > 0 && fmt_parser.errors.is_empty() {

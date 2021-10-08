@@ -388,8 +388,6 @@ pub enum Type {
     },
     /// `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),
-    /// `!`
-    Never,
     /// `_`
     Infer,
     /// `*mut u32`, `*u8`, etc.

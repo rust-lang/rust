@@ -6,7 +6,6 @@ LL |     let _result = &Some(42).as_deref();
    |
    = note: the following trait bounds were not satisfied:
            `{integer}: Deref`
-           `<{integer} as Deref>::Target = _`
 
 error: aborting due to previous error
 
