@@ -7,10 +7,10 @@ LL | fn foo<T: ?Sized>() { bar::<T>() }
    |        this type parameter needs to be `std::marker::Sized`
    |
 note: required by a bound in `bar`
-  --> $DIR/unsized-bare-typaram.rs:1:8
+  --> $DIR/unsized-bare-typaram.rs:1:11
    |
 LL | fn bar<T: Sized>() { }
-   |        ^ required by this bound in `bar`
+   |           ^^^^^ required by this bound in `bar`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn foo<T: ?Sized>() { bar::<T>() }
