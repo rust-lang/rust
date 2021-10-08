@@ -795,9 +795,8 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Maps a `Result<T, E>` to `U` by applying a provided default fallback
-    /// function to a contained [`Err`] value, or a provided function to a
-    /// contained [`Ok`] value.
+    /// Maps a `Result<T, E>` to `U` by applying fallback function `default` to
+    /// a contained [`Err`] value, or function `f` to a contained [`Ok`] value.
     ///
     /// This function can be used to unpack a successful result
     /// while handling an error.
