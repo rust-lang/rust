@@ -21,6 +21,8 @@ pub struct TestOpts {
     pub nocapture: bool,
     pub color: ColorConfig,
     pub format: OutputFormat,
+    pub shuffle: bool,
+    pub shuffle_seed: Option<u64>,
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
     pub time_options: Option<TestTimeOptions>,
@@ -138,6 +140,13 @@ fn optgroups() -> getopts::Options {
 
             `CRITICAL_TIME` here means the limit that should not be exceeded by test.
             ",
+        )
+        .optflag("", "shuffle", "Run tests in random order")
+        .optopt(
+            "",
+            "shuffle-seed",
+            "Run tests in random order; seed the random number generator with SEED",
+            "SEED",
         );
     opts
 }
@@ -154,6 +163,12 @@ be passed, which will run all tests matching any of the filters.
 By default, all tests are run in parallel. This can be altered with the
 --test-threads flag or the RUST_TEST_THREADS environment variable when running
 tests (set it to 1).
+
+By default, the tests are run in alphabetical order. Use --shuffle or set
+RUST_TEST_SHUFFLE to run the tests in random order. Pass the generated
+"shuffle seed" to --shuffle-seed (or set RUST_TEST_SHUFFLE_SEED) to run the
+tests in the same order again. Note that --shuffle and --shuffle-seed do not
+affect whether the tests are run in parallel.
 
 All tests have their standard output and standard error captured by default.
 This can be overridden with the --nocapture flag or setting RUST_TEST_NOCAPTURE
@@ -218,6 +233,21 @@ macro_rules! unstable_optflag {
     }};
 }
 
+// Gets the option value and checks if unstable features are enabled.
+macro_rules! unstable_optopt {
+    ($matches:ident, $allow_unstable:ident, $option_name:literal) => {{
+        let opt = $matches.opt_str($option_name);
+        if !$allow_unstable && opt.is_some() {
+            return Err(format!(
+                "The \"{}\" option is only accepted on the nightly compiler with -Z unstable-options",
+                $option_name
+            ));
+        }
+
+        opt
+    }};
+}
+
 // Implementation of `parse_opts` that doesn't care about help message
 // and returns a `Result`.
 fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
@@ -227,6 +257,8 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let force_run_in_process = unstable_optflag!(matches, allow_unstable, "force-run-in-process");
     let exclude_should_panic = unstable_optflag!(matches, allow_unstable, "exclude-should-panic");
     let time_options = get_time_options(&matches, allow_unstable)?;
+    let shuffle = get_shuffle(&matches, allow_unstable)?;
+    let shuffle_seed = get_shuffle_seed(&matches, allow_unstable)?;
 
     let include_ignored = matches.opt_present("include-ignored");
     let quiet = matches.opt_present("quiet");
@@ -260,6 +292,8 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         nocapture,
         color,
         format,
+        shuffle,
+        shuffle_seed,
         test_threads,
         skip,
         time_options,
@@ -301,6 +335,46 @@ fn get_time_options(
     };
 
     Ok(options)
+}
+
+fn get_shuffle(matches: &getopts::Matches, allow_unstable: bool) -> OptPartRes<bool> {
+    let mut shuffle = unstable_optflag!(matches, allow_unstable, "shuffle");
+    if !shuffle && allow_unstable {
+        shuffle = match env::var("RUST_TEST_SHUFFLE") {
+            Ok(val) => &val != "0",
+            Err(_) => false,
+        };
+    }
+
+    Ok(shuffle)
+}
+
+fn get_shuffle_seed(matches: &getopts::Matches, allow_unstable: bool) -> OptPartRes<Option<u64>> {
+    let mut shuffle_seed = match unstable_optopt!(matches, allow_unstable, "shuffle-seed") {
+        Some(n_str) => match n_str.parse::<u64>() {
+            Ok(n) => Some(n),
+            Err(e) => {
+                return Err(format!(
+                    "argument for --shuffle-seed must be a number \
+                     (error: {})",
+                    e
+                ));
+            }
+        },
+        None => None,
+    };
+
+    if shuffle_seed.is_none() && allow_unstable {
+        shuffle_seed = match env::var("RUST_TEST_SHUFFLE_SEED") {
+            Ok(val) => match val.parse::<u64>() {
+                Ok(n) => Some(n),
+                Err(_) => panic!("RUST_TEST_SHUFFLE_SEED is `{}`, should be a number.", val),
+            },
+            Err(_) => None,
+        };
+    }
+
+    Ok(shuffle_seed)
 }
 
 fn get_test_threads(matches: &getopts::Matches) -> OptPartRes<Option<usize>> {

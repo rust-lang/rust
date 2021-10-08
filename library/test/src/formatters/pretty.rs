@@ -181,9 +181,14 @@ impl<T: Write> PrettyFormatter<T> {
 }
 
 impl<T: Write> OutputFormatter for PrettyFormatter<T> {
-    fn write_run_start(&mut self, test_count: usize) -> io::Result<()> {
+    fn write_run_start(&mut self, test_count: usize, shuffle_seed: Option<u64>) -> io::Result<()> {
         let noun = if test_count != 1 { "tests" } else { "test" };
-        self.write_plain(&format!("\nrunning {} {}\n", test_count, noun))
+        let shuffle_seed_msg = if let Some(shuffle_seed) = shuffle_seed {
+            format!(" (shuffle seed: {})", shuffle_seed)
+        } else {
+            String::new()
+        };
+        self.write_plain(&format!("\nrunning {} {}{}\n", test_count, noun, shuffle_seed_msg))
     }
 
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
