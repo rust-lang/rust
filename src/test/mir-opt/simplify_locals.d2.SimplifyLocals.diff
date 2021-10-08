@@ -17,18 +17,18 @@
 -         (_2.1: E) = const E::A;          // scope 0 at $DIR/simplify-locals.rs:28:6: 28:16
 -                                          // ty::Const
 -                                          // + ty: E
--                                          // + val: Value(Scalar(0x00))
+-                                          // + val: Value(Scalar(0x01))
 -                                          // mir::Constant
 -                                          // + span: $DIR/simplify-locals.rs:28:6: 28:16
--                                          // + literal: Const { ty: E, val: Value(Scalar(0x00)) }
+-                                          // + literal: Const { ty: E, val: Value(Scalar(0x01)) }
 -         StorageDead(_3);                 // scope 0 at $DIR/simplify-locals.rs:28:15: 28:16
 -         (_2.1: E) = const E::B;          // scope 0 at $DIR/simplify-locals.rs:28:5: 28:26
 -                                          // ty::Const
 -                                          // + ty: E
--                                          // + val: Value(Scalar(0x01))
+-                                          // + val: Value(Scalar(0x02))
 -                                          // mir::Constant
 -                                          // + span: $DIR/simplify-locals.rs:28:5: 28:26
--                                          // + literal: Const { ty: E, val: Value(Scalar(0x01)) }
+-                                          // + literal: Const { ty: E, val: Value(Scalar(0x02)) }
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:28:25: 28:26
 -         StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:28:26: 28:27
           return;                          // scope 0 at $DIR/simplify-locals.rs:29:2: 29:2

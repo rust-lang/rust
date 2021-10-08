@@ -27,7 +27,7 @@ pub enum IntPredicate {
 }
 
 pub enum RealPredicate {
-    RealPredicateFalse,
+    RealPredicateFalse = 0, // FIXME(bonega)
     RealOEQ,
     RealOGT,
     RealOGE,

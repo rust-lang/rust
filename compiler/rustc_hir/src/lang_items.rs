@@ -20,7 +20,7 @@ use rustc_span::Span;
 use std::lazy::SyncLazy;
 
 pub enum LangItemGroup {
-    Op,
+    Op = 0, //FIXME(bonega)
 }
 
 const NUM_GROUPS: usize = 1;
@@ -44,6 +44,7 @@ macro_rules! language_item_table {
         enum_from_u32! {
             /// A representation of all the valid language items in Rust.
             #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
+            #[repr(u32)]
             pub enum LangItem {
                 $(
                     #[doc = concat!("The `", stringify!($name), "` lang item.")]

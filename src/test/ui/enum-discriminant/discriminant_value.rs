@@ -9,14 +9,14 @@ enum CLike1 {
     A,
     B,
     C,
-    D
+    D,
 }
 
 enum CLike2 {
     A = 5,
     B = 2,
     C = 19,
-    D
+    D,
 }
 
 #[repr(i8)]
@@ -24,37 +24,34 @@ enum CLike3 {
     A = 5,
     B,
     C = -1,
-    D
+    D,
 }
 
 enum ADT {
     First(u32, u32),
-    Second(u64)
+    Second(u64),
 }
 
 enum NullablePointer {
     Something(&'static u32),
-    Nothing
+    Nothing,
 }
 
-static CONST : u32 = 0xBEEF;
+static CONST: u32 = 0xBEEF;
 
 #[allow(dead_code)]
 #[repr(isize)]
 enum Mixed {
     Unit = 3,
     Tuple(u16) = 2,
-    Struct {
-        a: u8,
-        b: u16,
-    } = 1,
+    Struct { a: u8, b: u16 } = 1,
 }
 
 pub fn main() {
-    assert_eq!(discriminant_value(&CLike1::A), 0isize);
-    assert_eq!(discriminant_value(&CLike1::B), 1);
-    assert_eq!(discriminant_value(&CLike1::C), 2);
-    assert_eq!(discriminant_value(&CLike1::D), 3);
+    assert_eq!(discriminant_value(&CLike1::A), 1isize);
+    assert_eq!(discriminant_value(&CLike1::B), 2);
+    assert_eq!(discriminant_value(&CLike1::C), 3);
+    assert_eq!(discriminant_value(&CLike1::D), 4);
 
     assert_eq!(discriminant_value(&CLike2::A), 5isize);
     assert_eq!(discriminant_value(&CLike2::B), 2);
@@ -66,7 +63,7 @@ pub fn main() {
     assert_eq!(discriminant_value(&CLike3::C), -1);
     assert_eq!(discriminant_value(&CLike3::D), 0);
 
-    assert_eq!(discriminant_value(&ADT::First(0,0)), 0isize);
+    assert_eq!(discriminant_value(&ADT::First(0, 0)), 0isize);
     assert_eq!(discriminant_value(&ADT::Second(5)), 1);
 
     assert_eq!(discriminant_value(&NullablePointer::Nothing), 1isize);
@@ -77,5 +74,5 @@ pub fn main() {
 
     assert_eq!(discriminant_value(&Mixed::Unit), 3isize);
     assert_eq!(discriminant_value(&Mixed::Tuple(5)), 2);
-    assert_eq!(discriminant_value(&Mixed::Struct{a: 7, b: 11}), 1);
+    assert_eq!(discriminant_value(&Mixed::Struct { a: 7, b: 11 }), 1);
 }

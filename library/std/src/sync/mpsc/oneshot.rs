@@ -52,20 +52,23 @@ pub struct Packet<T> {
     upgrade: UnsafeCell<MyUpgrade<T>>,
 }
 
+#[repr(usize)]
 pub enum Failure<T> {
-    Empty,
+    Empty = 0, //FIXME(bonega) repr
     Disconnected,
     Upgraded(Receiver<T>),
 }
 
+#[repr(usize)]
 pub enum UpgradeResult {
-    UpSuccess,
+    UpSuccess = 0, //FIXME(bonega) repr
     UpDisconnected,
     UpWoke(SignalToken),
 }
 
+#[repr(usize)]
 enum MyUpgrade<T> {
-    NothingSent,
+    NothingSent = 0, //FIXME(bonega) repr
     SendUsed,
     GoUp(Receiver<T>),
 }

@@ -30,9 +30,9 @@ enum E4 {
 fn main() {
     let mut target: [isize; 3] = [0, 0, 0];
     target[1] = discriminant_value(&E1::A);
-    assert_eq!(target, [0, 0, 0]);
-    target[1] = discriminant_value(&E1::B);
     assert_eq!(target, [0, 1, 0]);
+    target[1] = discriminant_value(&E1::B);
+    assert_eq!(target, [0, 2, 0]);
 
     let mut target: [i8; 3] = [0, 0, 0];
     target[1] = discriminant_value(&E2::A);

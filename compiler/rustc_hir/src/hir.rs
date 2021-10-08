@@ -2631,7 +2631,7 @@ impl Item<'_> {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum Unsafety {
-    Unsafe,
+    Unsafe = 0, //FIXME(bonega)
     Normal,
 }
 

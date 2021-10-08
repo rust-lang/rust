@@ -106,10 +106,10 @@
                                            // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r i32, &'s i32, std::option::Option<std::fmt::Arguments<'t0>>) -> ! {core::panicking::assert_failed::<i32, i32>}, val: Value(Scalar(<ZST>)) }
                                            // ty::Const
                                            // + ty: core::panicking::AssertKind
-                                           // + val: Value(Scalar(0x00))
+                                           // + val: Value(Scalar(0x01))
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                           // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x00)) }
+                                           // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x01)) }
       }
   
       bb2: {

@@ -125,7 +125,7 @@ pub enum Alignment {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Flag {
     /// A `+` will be used to denote positive numbers.
-    FlagSignPlus,
+    FlagSignPlus = 0, //FIXME(bonega)
     /// A `-` will be used to denote negative numbers. This is the default.
     FlagSignMinus,
     /// An alternate form will be used for the value. In the case of numbers,

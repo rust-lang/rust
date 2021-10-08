@@ -8,7 +8,7 @@
   
       bb0: {
           _2 = discriminant(_1);           // scope 0 at $DIR/matches_u8.rs:12:11: 12:12
-          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_u8.rs:12:5: 12:12
+          switchInt(move _2) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_u8.rs:12:5: 12:12
       }
   
       bb1: {

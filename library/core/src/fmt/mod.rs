@@ -343,7 +343,7 @@ impl<'a> ArgumentV1<'a> {
 // flags available in the v1 format of format_args
 #[derive(Copy, Clone)]
 enum FlagV1 {
-    SignPlus,
+    SignPlus = 0, //FIXME(bonega)
     SignMinus,
     Alternate,
     SignAwareZeroPad,

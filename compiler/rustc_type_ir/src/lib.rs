@@ -240,7 +240,7 @@ impl DebruijnIndex {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable)]
 pub enum IntTy {
-    Isize,
+    Isize = 0, //FIXME(bonega)
     I8,
     I16,
     I32,
@@ -287,7 +287,7 @@ impl IntTy {
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Debug)]
 #[derive(Encodable, Decodable)]
 pub enum UintTy {
-    Usize,
+    Usize = 0, //FIXME(bonega)
     U8,
     U16,
     U32,
@@ -334,7 +334,7 @@ impl UintTy {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable)]
 pub enum FloatTy {
-    F32,
+    F32 = 0, //FIXME(bonega)
     F64,
 }
 
