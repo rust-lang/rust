@@ -23,6 +23,14 @@ pub enum DisallowedMethod {
     WithReason { path: String, reason: Option<String> },
 }
 
+/// A single disallowed type, used by the `DISALLOWED_TYPE` lint.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum DisallowedType {
+    Simple(String),
+    WithReason { path: String, reason: Option<String> },
+}
+
 /// Conf with parse errors
 #[derive(Default)]
 pub struct TryConf {
@@ -255,7 +263,7 @@ define_Conf! {
     /// Lint: DISALLOWED_TYPE.
     ///
     /// The list of disallowed types, written as fully qualified paths.
-    (disallowed_types: Vec<String> = Vec::new()),
+    (disallowed_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),
     /// Lint: UNREADABLE_LITERAL.
     ///
     /// Should the fraction of a decimal be linted to include separators.

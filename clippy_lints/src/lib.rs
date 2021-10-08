@@ -757,8 +757,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(bool_assert_comparison::BoolAssertComparison));
     store.register_early_pass(move || Box::new(module_style::ModStyle));
     store.register_late_pass(|| Box::new(unused_async::UnusedAsync));
-    let disallowed_types = conf.disallowed_types.iter().cloned().collect::<FxHashSet<_>>();
-    store.register_late_pass(move || Box::new(disallowed_type::DisallowedType::new(&disallowed_types)));
+    let disallowed_types = conf.disallowed_types.clone();
+    store.register_late_pass(move || Box::new(disallowed_type::DisallowedType::new(disallowed_types.clone())));
     let import_renames = conf.enforced_import_renames.clone();
     store.register_late_pass(move || Box::new(missing_enforced_import_rename::ImportRename::new(import_renames.clone())));
     let scripts = conf.allowed_scripts.clone();
