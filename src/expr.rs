@@ -1962,6 +1962,9 @@ fn choose_rhs<R: Rewrite>(
     has_rhs_comment: bool,
 ) -> Option<String> {
     match orig_rhs {
+        Some(ref new_str) if new_str.is_empty() => {
+            return Some(String::new());
+        }
         Some(ref new_str)
             if !new_str.contains('\n') && unicode_str_width(new_str) <= shape.width =>
         {
