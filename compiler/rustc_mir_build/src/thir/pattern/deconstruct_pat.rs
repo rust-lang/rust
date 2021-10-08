@@ -1068,9 +1068,7 @@ impl<'tcx> SplitWildcard<'tcx> {
                     Missing {
                         nonexhaustive_enum_missing_real_variants: self
                             .iter_missing(pcx)
-                            .filter(|c| !c.is_non_exhaustive())
-                            .next()
-                            .is_some(),
+                            .any(|c| !c.is_non_exhaustive()),
                     }
                 } else {
                     Missing { nonexhaustive_enum_missing_real_variants: false }

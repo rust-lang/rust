@@ -329,7 +329,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let obligation = Obligation::new(
                             ObligationCause::dummy_with_span(callee_expr.span),
                             self.param_env,
-                            predicate.clone(),
+                            *predicate,
                         );
                         let result = self.infcx.evaluate_obligation(&obligation);
                         self.tcx

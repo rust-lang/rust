@@ -972,8 +972,7 @@ fn suggest_ampmut<'tcx>(
     if let Some(assignment_rhs_span) = opt_assignment_rhs_span {
         if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
             let is_mutbl = |ty: &str| -> bool {
-                if ty.starts_with("mut") {
-                    let rest = &ty[3..];
+                if let Some(rest) = ty.strip_prefix("mut") {
                     match rest.chars().next() {
                         // e.g. `&mut x`
                         Some(c) if c.is_whitespace() => true,

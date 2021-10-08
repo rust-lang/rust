@@ -892,7 +892,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
         match r {
             ty::ReLateBound(index, br) if *index == self.binder_index => match br.kind {
                 ty::BoundRegionKind::BrNamed(def_id, _name) => {
-                    if self.named_parameters.iter().find(|d| **d == def_id).is_none() {
+                    if !self.named_parameters.iter().any(|d| *d == def_id) {
                         self.named_parameters.push(def_id);
                     }
                 }

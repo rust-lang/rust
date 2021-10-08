@@ -207,7 +207,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         debug!("Done with crate");
 
         for primitive in Rc::clone(&self.cache).primitive_locations.values() {
-            self.get_impls(primitive.clone());
+            self.get_impls(*primitive);
         }
 
         let mut index = (*self.index).clone().into_inner();

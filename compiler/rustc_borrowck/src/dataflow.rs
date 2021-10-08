@@ -201,7 +201,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
                 let bb_data = &self.body[bb];
                 debug_assert!(hi == bb_data.statements.len());
                 for &succ_bb in bb_data.terminator().successors() {
-                    if self.visited.insert(succ_bb) == false {
+                    if !self.visited.insert(succ_bb) {
                         if succ_bb == location.block && first_lo > 0 {
                             // `succ_bb` has been seen before. If it wasn't
                             // fully processed, add its first part to `stack`

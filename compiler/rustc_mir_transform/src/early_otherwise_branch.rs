@@ -263,7 +263,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
             }
 
             // check that the value being matched on is the same. The
-            if this_bb_discr_info.targets_with_values.iter().find(|x| x.0 == value).is_none() {
+            if !this_bb_discr_info.targets_with_values.iter().any(|x| x.0 == value) {
                 trace!("NO: values being matched on are not the same");
                 return None;
             }
