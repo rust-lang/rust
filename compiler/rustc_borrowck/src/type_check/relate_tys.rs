@@ -9,30 +9,32 @@ use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
 use crate::type_check::{Locations, TypeChecker};
 
-/// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
-///
-/// - "Covariant" `a <: b`
-/// - "Invariant" `a == b`
-/// - "Contravariant" `a :> b`
-///
-/// N.B., the type `a` is permitted to have unresolved inference
-/// variables, but not the type `b`.
-#[instrument(skip(type_checker), level = "debug")]
-pub(super) fn relate_types<'tcx>(
-    type_checker: &mut TypeChecker<'_, 'tcx>,
-    a: Ty<'tcx>,
-    v: ty::Variance,
-    b: Ty<'tcx>,
-    locations: Locations,
-    category: ConstraintCategory,
-) -> Fallible<()> {
-    TypeRelating::new(
-        type_checker.infcx,
-        NllTypeRelatingDelegate::new(type_checker, locations, category, UniverseInfo::relate(a, b)),
-        v,
-    )
-    .relate(a, b)?;
-    Ok(())
+impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
+    /// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
+    ///
+    /// - "Covariant" `a <: b`
+    /// - "Invariant" `a == b`
+    /// - "Contravariant" `a :> b`
+    ///
+    /// N.B., the type `a` is permitted to have unresolved inference
+    /// variables, but not the type `b`.
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn relate_types(
+        &mut self,
+        a: Ty<'tcx>,
+        v: ty::Variance,
+        b: Ty<'tcx>,
+        locations: Locations,
+        category: ConstraintCategory,
+    ) -> Fallible<()> {
+        TypeRelating::new(
+            self.infcx,
+            NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::relate(a, b)),
+            v,
+        )
+        .relate(a, b)?;
+        Ok(())
+    }
 }
 
 struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
