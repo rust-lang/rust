@@ -9,7 +9,6 @@ use crate::{BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet, Weak};
 use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
 
-use rustc_ast::unwrap_or;
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
@@ -349,10 +348,10 @@ impl<'a> Resolver<'a> {
             if !self.is_accessible_from(single_import.vis.get(), parent_scope.module) {
                 continue;
             }
-            let module = unwrap_or!(
-                single_import.imported_module.get(),
-                return Err((Undetermined, Weak::No))
-            );
+            let module = match single_import.imported_module.get() {
+                Some(x) => x,
+                None => return Err((Undetermined, Weak::No)),
+            };
             let ident = match single_import.kind {
                 ImportKind::Single { source, .. } => source,
                 _ => unreachable!(),
