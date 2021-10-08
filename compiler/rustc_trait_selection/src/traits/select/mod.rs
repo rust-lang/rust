@@ -20,8 +20,8 @@ use super::ObligationCauseCode;
 use super::Selection;
 use super::SelectionResult;
 use super::TraitQueryMode;
+use super::{ErrorReporting, Overflow, SelectionError, Unimplemented};
 use super::{ObligationCause, PredicateObligation, TraitObligation};
-use super::{Overflow, SelectionError, Unimplemented};
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::traits::error_reporting::InferCtxtExt;
@@ -900,7 +900,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Ok(None) => Ok(EvaluatedToAmbig),
-            Err(Overflow) => Err(OverflowError),
+            Err(Overflow) => Err(OverflowError::Cannonical),
+            Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
             Err(..) => Ok(EvaluatedToErr),
         }
     }
@@ -1057,10 +1058,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if !self.infcx.tcx.recursion_limit().value_within_limit(depth) {
             match self.query_mode {
                 TraitQueryMode::Standard => {
+                    if self.infcx.is_tainted_by_errors() {
+                        return Err(OverflowError::ErrorReporting);
+                    }
                     self.infcx.report_overflow_error(error_obligation, true);
                 }
                 TraitQueryMode::Canonical => {
-                    return Err(OverflowError);
+                    return Err(OverflowError::Cannonical);
                 }
             }
         }
