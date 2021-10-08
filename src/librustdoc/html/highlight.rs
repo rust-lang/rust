@@ -435,7 +435,27 @@ impl<'a> Classifier<'a> {
                 _ => Class::RefKeyWord,
             },
 
-            // Operators.
+            // These can either be operators, or arrows.
+            TokenKind::Eq => match lookahead {
+                Some(TokenKind::Eq) => {
+                    self.next();
+                    sink(Highlight::Token { text: "==", class: Some(Class::Op) });
+                    return;
+                }
+                Some(TokenKind::Gt) => {
+                    self.next();
+                    sink(Highlight::Token { text: "=>", class: None });
+                    return;
+                }
+                _ => Class::Op,
+            },
+            TokenKind::Minus if lookahead == Some(TokenKind::Gt) => {
+                self.next();
+                sink(Highlight::Token { text: "->", class: None });
+                return;
+            }
+
+            // Other operators.
             TokenKind::Minus
             | TokenKind::Plus
             | TokenKind::Or
@@ -443,7 +463,6 @@ impl<'a> Classifier<'a> {
             | TokenKind::Caret
             | TokenKind::Percent
             | TokenKind::Bang
-            | TokenKind::Eq
             | TokenKind::Lt
             | TokenKind::Gt => Class::Op,
 
