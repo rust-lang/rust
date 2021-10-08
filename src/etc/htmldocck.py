@@ -110,72 +110,9 @@ import os.path
 import re
 import shlex
 from collections import namedtuple
-try:
-    from html.parser import HTMLParser
-except ImportError:
-    from HTMLParser import HTMLParser
-try:
-    from xml.etree import cElementTree as ET
-except ImportError:
-    from xml.etree import ElementTree as ET
-
-try:
-    from html.entities import name2codepoint
-except ImportError:
-    from htmlentitydefs import name2codepoint
-
-# "void elements" (no closing tag) from the HTML Standard section 12.1.2
-VOID_ELEMENTS = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen',
-                     'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr'}
-
-# Python 2 -> 3 compatibility
-try:
-    unichr
-except NameError:
-    unichr = chr
-
+from parsel import Selector
 
 channel = os.environ["DOC_RUST_LANG_ORG_CHANNEL"]
-
-class CustomHTMLParser(HTMLParser):
-    """simplified HTML parser.
-
-    this is possible because we are dealing with very regular HTML from
-    rustdoc; we only have to deal with i) void elements and ii) empty
-    attributes."""
-    def __init__(self, target=None):
-        HTMLParser.__init__(self)
-        self.__builder = target or ET.TreeBuilder()
-
-    def handle_starttag(self, tag, attrs):
-        attrs = {k: v or '' for k, v in attrs}
-        self.__builder.start(tag, attrs)
-        if tag in VOID_ELEMENTS:
-            self.__builder.end(tag)
-
-    def handle_endtag(self, tag):
-        self.__builder.end(tag)
-
-    def handle_startendtag(self, tag, attrs):
-        attrs = {k: v or '' for k, v in attrs}
-        self.__builder.start(tag, attrs)
-        self.__builder.end(tag)
-
-    def handle_data(self, data):
-        self.__builder.data(data)
-
-    def handle_entityref(self, name):
-        self.__builder.data(unichr(name2codepoint[name]))
-
-    def handle_charref(self, name):
-        code = int(name[1:], 16) if name.startswith(('x', 'X')) else int(name, 10)
-        self.__builder.data(unichr(code))
-
-    def close(self):
-        HTMLParser.close(self)
-        return self.__builder.close()
-
-
 Command = namedtuple('Command', 'negated cmd args lineno context')
 
 
@@ -256,29 +193,11 @@ def get_commands(template):
             yield Command(negated=negated, cmd=cmd, args=args, lineno=lineno+1, context=line)
 
 
-def _flatten(node, acc):
-    if node.text:
-        acc.append(node.text)
-    for e in node:
-        _flatten(e, acc)
-        if e.tail:
-            acc.append(e.tail)
-
-
-def flatten(node):
-    acc = []
-    _flatten(node, acc)
-    return ''.join(acc)
-
-
 def normalize_xpath(path):
     path = path.replace("{{channel}}", channel)
-    if path.startswith('//'):
-        return '.' + path  # avoid warnings
-    elif path.startswith('.//'):
-        return path
-    else:
+    if not path.startswith('//'):
         raise InvalidCheck('Non-absolute XPath is not supported due to implementation issues')
+    return path
 
 
 class CachedFiles(object):
@@ -323,7 +242,7 @@ class CachedFiles(object):
 
         with io.open(abspath, encoding='utf-8') as f:
             try:
-                tree = ET.fromstringlist(f.readlines(), CustomHTMLParser())
+                tree = Selector(text=f.read())
             except Exception as e:
                 raise RuntimeError('Cannot parse an HTML file {!r}: {}'.format(path, e))
             self.trees[path] = tree
@@ -351,7 +270,7 @@ def check_string(data, pat, regexp):
 def check_tree_attr(tree, path, attr, pat, regexp):
     path = normalize_xpath(path)
     ret = False
-    for e in tree.findall(path):
+    for e in tree.xpath(path):
         if attr in e.attrib:
             value = e.attrib[attr]
         else:
@@ -363,19 +282,19 @@ def check_tree_attr(tree, path, attr, pat, regexp):
     return ret
 
 
+def flatten(elem):
+    return ''.join(elem.css('::text').getall())
+
+
 def check_tree_text(tree, path, pat, regexp):
     path = normalize_xpath(path)
     ret = False
     try:
-        for e in tree.findall(path):
-            try:
-                value = flatten(e)
-            except KeyError:
-                continue
-            else:
-                ret = check_string(value, pat, regexp)
-                if ret:
-                    break
+        for e in tree.xpath(path):
+            value = flatten(e)
+            ret = check_string(value, pat, regexp)
+            if ret:
+                break
     except Exception:
         print('Failed to get path "{}"'.format(path))
         raise
@@ -384,7 +303,7 @@ def check_tree_text(tree, path, pat, regexp):
 
 def get_tree_count(tree, path):
     path = normalize_xpath(path)
-    return len(tree.findall(path))
+    return len(tree.xpath(path))
 
 
 def stderr(*args):
