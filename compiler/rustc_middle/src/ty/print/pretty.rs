@@ -2208,6 +2208,7 @@ forward_display_to_print! {
     // because `for<'tcx>` isn't possible yet.
     ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>,
     ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+    ty::Binder<'tcx, ty::ExistentialTraitRef<'tcx>>,
     ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     ty::Binder<'tcx, TraitRefPrintOnlyTraitName<'tcx>>,
     ty::Binder<'tcx, ty::FnSig<'tcx>>,
