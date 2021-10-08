@@ -181,6 +181,40 @@ unstable-options` flag. See [tracking issue
 #64888](https://github.com/rust-lang/rust/issues/64888) and the [unstable
 docs](../../unstable-book/compiler-flags/report-time.html) for more information.
 
+#### `--shuffle`
+
+Runs the tests in random order, as opposed to the default alphabetical order.
+
+This may also be specified by setting the `RUST_TEST_SHUFFLE` environment
+variable to anything but `0`.
+
+The random number generator seed that is output can be passed to
+[`--shuffle-seed`](#--shuffle-seed-seed) to run the tests in the same order
+again.
+
+Note that `--shuffle` does not affect whether the tests are run in parallel. To
+run the tests in random order sequentially, use `--shuffle --test-threads 1`.
+
+⚠️ 🚧 This option is [unstable](#unstable-options), and requires the `-Z
+unstable-options` flag. See [tracking issue
+#89583](https://github.com/rust-lang/rust/issues/89583) for more information.
+
+#### `--shuffle-seed` _SEED_
+
+Like [`--shuffle`](#--shuffle), but seeds the random number generator with
+_SEED_. Thus, calling the test harness with `--shuffle-seed` _SEED_ twice runs
+the tests in the same order both times.
+
+_SEED_ is any 64-bit unsigned integer, for example, one produced by
+[`--shuffle`](#--shuffle).
+
+This can also be specified with the `RUST_TEST_SHUFFLE_SEED` environment
+variable.
+
+⚠️ 🚧 This option is [unstable](#unstable-options), and requires the `-Z
+unstable-options` flag. See [tracking issue
+#89583](https://github.com/rust-lang/rust/issues/89583) for more information.
+
 ### Output options
 
 The following options affect the output behavior.
@@ -197,7 +231,7 @@ to the console. Usually the output is captured, and only displayed if the test
 fails.
 
 This may also be specified by setting the `RUST_TEST_NOCAPTURE` environment
-variable set to anything but `0`.
+variable to anything but `0`.
 
 #### `--show-output`
 
