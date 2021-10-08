@@ -424,6 +424,7 @@ fn array_try_from_fn_drops_inserted_elements_on_panic() {
     assert_eq!(DROP_COUNTER.load(Ordering::SeqCst), 2);
 }
 
+#[cfg(not(panic = "abort"))]
 // https://stackoverflow.com/a/59211505
 fn catch_unwind_silent<F, R>(f: F) -> std::thread::Result<R>
 where
