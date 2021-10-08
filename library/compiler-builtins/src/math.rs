@@ -21,6 +21,7 @@ macro_rules! no_mangle {
         not(target_env = "wasi")
     ),
     all(target_arch = "x86_64", target_os = "uefi"),
+    all(target_arch = "xtensa", target_os = "none"),
     all(target_vendor = "fortanix", target_env = "sgx")
 ))]
 no_mangle! {
@@ -69,6 +70,7 @@ no_mangle! {
         target_os = "unknown",
         not(target_env = "wasi")
     ),
+    all(target_arch = "xtensa", target_os = "none"),
     all(target_vendor = "fortanix", target_env = "sgx")
 ))]
 no_mangle! {
