@@ -7,7 +7,7 @@ use std::io;
 
 use crate::MirPass;
 use rustc_middle::mir::Body;
-use rustc_middle::mir::{dump_enabled, dump_mir, write_mir_pretty};
+use rustc_middle::mir::{dump_mir, write_mir_pretty};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutputFilenames, OutputType};
 
@@ -39,9 +39,7 @@ pub fn on_mir_pass<'tcx>(
     body: &Body<'tcx>,
     is_after: bool,
 ) {
-    if dump_enabled(tcx, pass_name, body.source.def_id()) {
-        dump_mir(tcx, Some(pass_num), pass_name, &Disambiguator { is_after }, body, |_, _| Ok(()));
-    }
+    dump_mir(tcx, Some(pass_num), pass_name, &Disambiguator { is_after }, body, |_, _| Ok(()));
 }
 
 pub fn emit_mir(tcx: TyCtxt<'_>, outputs: &OutputFilenames) -> io::Result<()> {
