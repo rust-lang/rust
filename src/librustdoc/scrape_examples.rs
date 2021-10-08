@@ -149,9 +149,11 @@ where
             }
         };
 
-        // We need to get the file the example originates in. If the call is contained
-        // in a macro, then trace the span back to the macro source (rather than macro definition).
-        let span = span.source_callsite();
+        // If this span comes from a macro expansion, then the source code may not actually show
+        // a use of the given item, so it would be a poor example. Hence, we skip all uses in macros.
+        if span.from_expansion() {
+            return;
+        }
 
         // Save call site if the function resolves to a concrete definition
         if let ty::FnDef(def_id, _) = ty.kind() {

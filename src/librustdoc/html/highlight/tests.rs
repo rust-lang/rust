@@ -1,6 +1,7 @@
-use super::write_code;
+use super::{write_code, DecorationInfo};
 use crate::html::format::Buffer;
 use expect_test::expect_file;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_span::create_default_session_globals_then;
 use rustc_span::edition::Edition;
 
@@ -62,5 +63,19 @@ fn test_union_highlighting() {
         let mut html = Buffer::new();
         write_code(&mut html, src, Edition::Edition2018, None, None);
         expect_file!["fixtures/union.html"].assert_eq(&html.into_inner());
+    });
+}
+
+#[test]
+fn test_decorations() {
+    create_default_session_globals_then(|| {
+        let src = "let x = 1;
+let y = 2;";
+        let mut decorations = FxHashMap::default();
+        decorations.insert("example", vec![(0, 10)]);
+
+        let mut html = Buffer::new();
+        write_code(&mut html, src, Edition::Edition2018, None, Some(DecorationInfo(decorations)));
+        expect_file!["fixtures/decorations.html"].assert_eq(&html.into_inner());
     });
 }
