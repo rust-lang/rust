@@ -163,13 +163,13 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         // All import names are Rust identifiers and therefore cannot contain \0 characters.
         // FIXME: when support for #[link_name] implemented, ensure that import.name values don't
         // have any \0 characters
-        let import_name_vector: Vec<CString> = dll_imports
+        let import_name_and_ordinal_vector: Vec<(CString, Option<u16>)> = dll_imports
             .iter()
             .map(|import: &DllImport| {
                 if self.config.sess.target.arch == "x86" {
-                    LlvmArchiveBuilder::i686_decorated_name(import)
+                    (LlvmArchiveBuilder::i686_decorated_name(import), import.ordinal)
                 } else {
-                    CString::new(import.name.to_string()).unwrap()
+                    (CString::new(import.name.to_string()).unwrap(), import.ordinal)
                 }
             })
             .collect();
@@ -184,9 +184,9 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             dll_imports.iter().map(|import| import.name.to_string()).collect::<Vec<_>>().join(", "),
         );
 
-        let ffi_exports: Vec<LLVMRustCOFFShortExport> = import_name_vector
+        let ffi_exports: Vec<LLVMRustCOFFShortExport> = import_name_and_ordinal_vector
             .iter()
-            .map(|name_z| LLVMRustCOFFShortExport::from_name(name_z.as_ptr()))
+            .map(|(name_z, ordinal)| LLVMRustCOFFShortExport::new(name_z.as_ptr(), *ordinal))
             .collect();
         let result = unsafe {
             crate::llvm::LLVMRustWriteImportLibrary(
