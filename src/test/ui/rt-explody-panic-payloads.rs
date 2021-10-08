@@ -25,6 +25,6 @@ fn main() {
     println!("{:#?}", output);
     let stderr = std::str::from_utf8(&output.stderr);
     assert!(stderr.map(|v| {
-        v.ends_with("drop of the panic payload panicked")
+        v.ends_with("fatal runtime error: drop of the panic payload panicked\n")
     }).unwrap_or(false));
 }
