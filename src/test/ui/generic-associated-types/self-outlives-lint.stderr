@@ -1,0 +1,56 @@
+error: Missing bound: Self: 'x
+  --> $DIR/self-outlives-lint.rs:6:14
+   |
+LL |     type Item<'x>;
+   |              ^^^^
+
+error: Missing bound: T: 'x
+  --> $DIR/self-outlives-lint.rs:21:13
+   |
+LL |     type Out<'x>;
+   |             ^^^^
+
+error: Missing bound: T: 'x
+  --> $DIR/self-outlives-lint.rs:34:13
+   |
+LL |     type Out<'x>;
+   |             ^^^^
+
+error: Missing bound: T: 'x
+  --> $DIR/self-outlives-lint.rs:40:13
+   |
+LL |     type Out<'x, 'y>;
+   |             ^^^^^^^^
+
+error: Missing bound: U: 'y
+  --> $DIR/self-outlives-lint.rs:40:13
+   |
+LL |     type Out<'x, 'y>;
+   |             ^^^^^^^^
+
+error: Missing bound: T: 'x
+  --> $DIR/self-outlives-lint.rs:47:13
+   |
+LL |     type Out<'x>;
+   |             ^^^^
+
+error: Missing bound: T: 'x
+  --> $DIR/self-outlives-lint.rs:55:13
+   |
+LL |     type Out<'x, D>;
+   |             ^^^^^^^
+
+error: Missing bound: T: 'x
+  --> $DIR/self-outlives-lint.rs:69:13
+   |
+LL |     type Out<'x, D>;
+   |             ^^^^^^^
+
+error: Missing bound: T: 'x
+  --> $DIR/self-outlives-lint.rs:83:13
+   |
+LL |     type Out<'x, D>;
+   |             ^^^^^^^
+
+error: aborting due to 9 previous errors
+
