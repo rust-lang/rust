@@ -98,3 +98,15 @@ fn unsafe_checks() {
     let mut s = MaybeUninit::<String>::uninit();
     let _d = || unsafe { ptr::drop_in_place(s.as_mut_ptr()) };
 }
+
+// Issue #7768
+#[rustfmt::skip]
+fn macro_with_semicolon() {
+    macro_rules! repro {
+        () => {
+            while false {
+            }
+        };
+    }
+    repro!();
+}
