@@ -821,12 +821,4 @@ mod tests {
         let tt = syntax_node_to_token_tree(token_tree.syntax()).0;
         assert_eq!(tt.delimiter_kind(), Some(tt::DelimiterKind::Brace));
     }
-
-    #[test]
-    fn test_missing_closing_delim() {
-        let source_file = ast::SourceFile::parse("m!(x").tree();
-        let node = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        let tt = syntax_node_to_token_tree(node.syntax()).0.to_string();
-        assert_eq_text!(&*tt, "( x");
-    }
 }

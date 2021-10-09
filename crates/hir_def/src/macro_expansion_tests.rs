@@ -151,3 +151,23 @@ type qual: ::T = qual::T;
         "#]],
     )
 }
+
+#[test]
+fn broken_parenthesis_sequence() {
+    check(
+        r#"
+macro_rules! m1 { ($x:ident) => { ($x } }
+macro_rules! m2 { ($x:ident) => {} }
+
+m1!();
+m2!(x
+"#,
+        expect![[r#"
+macro_rules! m1 { ($x:ident) => { ($x } }
+macro_rules! m2 { ($x:ident) => {} }
+
+/* error: Failed to find macro definition */
+/* error: Failed to lower macro args to token tree */
+        "#]],
+    )
+}
