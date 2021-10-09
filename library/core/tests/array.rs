@@ -1,5 +1,6 @@
 use core::array;
 use core::convert::TryFrom;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
 fn array_from_ref() {
@@ -303,8 +304,6 @@ fn array_map() {
 #[test]
 #[should_panic(expected = "test succeeded")]
 fn array_map_drop_safety() {
-    use core::sync::atomic::AtomicUsize;
-    use core::sync::atomic::Ordering;
     static DROPPED: AtomicUsize = AtomicUsize::new(0);
     struct DropCounter;
     impl Drop for DropCounter {
@@ -355,4 +354,85 @@ fn cell_allows_array_cycle() {
 
     b3.a[0].set(Some(&b1));
     b3.a[1].set(Some(&b2));
+}
+
+#[test]
+fn array_from_fn() {
+    let array = core::array::from_fn(|idx| idx);
+    assert_eq!(array, [0, 1, 2, 3, 4]);
+}
+
+#[test]
+fn array_try_from_fn() {
+    #[derive(Debug, PartialEq)]
+    enum SomeError {
+        Foo,
+    }
+
+    let array = core::array::try_from_fn(|i| Ok::<_, SomeError>(i));
+    assert_eq!(array, Ok([0, 1, 2, 3, 4]));
+
+    let another_array = core::array::try_from_fn::<SomeError, _, (), 2>(|_| Err(SomeError::Foo));
+    assert_eq!(another_array, Err(SomeError::Foo));
+}
+
+#[cfg(not(panic = "abort"))]
+#[test]
+fn array_try_from_fn_drops_inserted_elements_on_err() {
+    static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    struct CountDrop;
+    impl Drop for CountDrop {
+        fn drop(&mut self) {
+            DROP_COUNTER.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let _ = catch_unwind_silent(move || {
+        let _: Result<[CountDrop; 4], ()> = core::array::try_from_fn(|idx| {
+            if idx == 2 {
+                return Err(());
+            }
+            Ok(CountDrop)
+        });
+    });
+
+    assert_eq!(DROP_COUNTER.load(Ordering::SeqCst), 2);
+}
+
+#[cfg(not(panic = "abort"))]
+#[test]
+fn array_try_from_fn_drops_inserted_elements_on_panic() {
+    static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    struct CountDrop;
+    impl Drop for CountDrop {
+        fn drop(&mut self) {
+            DROP_COUNTER.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let _ = catch_unwind_silent(move || {
+        let _: Result<[CountDrop; 4], ()> = core::array::try_from_fn(|idx| {
+            if idx == 2 {
+                panic!("peek a boo");
+            }
+            Ok(CountDrop)
+        });
+    });
+
+    assert_eq!(DROP_COUNTER.load(Ordering::SeqCst), 2);
+}
+
+#[cfg(not(panic = "abort"))]
+// https://stackoverflow.com/a/59211505
+fn catch_unwind_silent<F, R>(f: F) -> std::thread::Result<R>
+where
+    F: FnOnce() -> R + core::panic::UnwindSafe,
+{
+    let prev_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let result = std::panic::catch_unwind(f);
+    std::panic::set_hook(prev_hook);
+    result
 }
