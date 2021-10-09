@@ -65,6 +65,7 @@ use std::iter;
 enum PlaceAncestryRelation {
     Ancestor,
     Descendant,
+    SamePlace,
     Divergent,
 }
 
@@ -565,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for possible_ancestor in min_cap_list.iter_mut() {
                     match determine_place_ancestry_relation(&place, &possible_ancestor.place) {
                         // current place is descendant of possible_ancestor
-                        PlaceAncestryRelation::Descendant => {
+                        PlaceAncestryRelation::Descendant | PlaceAncestryRelation::SamePlace => {
                             ancestor_found = true;
                             let backup_path_expr_id = possible_ancestor.info.path_expr_id;
 
@@ -2306,12 +2307,14 @@ fn determine_place_ancestry_relation(
         iter::zip(projections_a, projections_b).all(|(proj_a, proj_b)| proj_a.kind == proj_b.kind);
 
     if same_initial_projections {
+        use std::cmp::Ordering;
+
         // First min(n, m) projections are the same
         // Select Ancestor/Descendant
-        if projections_b.len() >= projections_a.len() {
-            PlaceAncestryRelation::Ancestor
-        } else {
-            PlaceAncestryRelation::Descendant
+        match projections_b.len().cmp(&projections_a.len()) {
+            Ordering::Greater => PlaceAncestryRelation::Ancestor,
+            Ordering::Equal => PlaceAncestryRelation::SamePlace,
+            Ordering::Less => PlaceAncestryRelation::Descendant,
         }
     } else {
         PlaceAncestryRelation::Divergent
