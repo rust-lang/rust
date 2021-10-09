@@ -204,7 +204,7 @@ impl HirFileId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroFile {
-    macro_call_id: MacroCallId,
+    pub macro_call_id: MacroCallId,
 }
 
 /// `MacroCallId` identifies a particular macro invocation, like

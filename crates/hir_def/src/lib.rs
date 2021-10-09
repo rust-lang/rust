@@ -49,6 +49,8 @@ pub mod import_map;
 
 #[cfg(test)]
 mod test_db;
+#[cfg(test)]
+mod macro_expansion_tests;
 
 use std::{
     hash::{Hash, Hasher},
