@@ -1373,7 +1373,7 @@ impl From<Cow<'_, str>> for Box<str> {
     ///
     /// When `cow` is the `Cow::Borrowed` variant, this
     /// conversion allocates on the heap and copies the
-    /// underlying `str`. Otherwise, it will try to re-use the owned
+    /// underlying `str`. Otherwise, it will try to reuse the owned
     /// `String`'s allocation.
     ///
     /// # Examples
