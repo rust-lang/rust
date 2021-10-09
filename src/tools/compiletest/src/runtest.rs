@@ -38,6 +38,9 @@ use tracing::*;
 use crate::extract_gdb_version;
 use crate::is_android_gdb_target;
 
+mod debugger;
+use debugger::DebuggerCommands;
+
 #[cfg(test)]
 mod tests;
 
@@ -198,12 +201,6 @@ struct TestCx<'test> {
     props: &'test TestProps,
     testpaths: &'test TestPaths,
     revision: Option<&'test str>,
-}
-
-struct DebuggerCommands {
-    commands: Vec<String>,
-    check_lines: Vec<String>,
-    breakpoint_lines: Vec<usize>,
 }
 
 enum ReadFrom {
@@ -674,7 +671,10 @@ impl<'test> TestCx<'test> {
 
         // Parse debugger commands etc from test files
         let DebuggerCommands { commands, check_lines, breakpoint_lines, .. } =
-            self.parse_debugger_commands(prefixes);
+            match DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes) {
+                Ok(cmds) => cmds,
+                Err(e) => self.fatal(&e),
+            };
 
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
         let mut script_str = String::with_capacity(2048);
@@ -757,7 +757,10 @@ impl<'test> TestCx<'test> {
         };
 
         let DebuggerCommands { commands, check_lines, breakpoint_lines } =
-            self.parse_debugger_commands(prefixes);
+            match DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes) {
+                Ok(cmds) => cmds,
+                Err(e) => self.fatal(&e),
+            };
         let mut cmds = commands.join("\n");
 
         // compile test file (it should have 'compile-flags:-g' in the header)
@@ -1018,7 +1021,10 @@ impl<'test> TestCx<'test> {
 
         // Parse debugger commands etc from test files
         let DebuggerCommands { commands, check_lines, breakpoint_lines, .. } =
-            self.parse_debugger_commands(prefixes);
+            match DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes) {
+                Ok(cmds) => cmds,
+                Err(e) => self.fatal(&e),
+            };
 
         // Write debugger script:
         // We don't want to hang when calling `quit` while the process is still running
@@ -1129,45 +1135,6 @@ impl<'test> TestCx<'test> {
 
         self.dump_output(&out, &err);
         ProcRes { status, stdout: out, stderr: err, cmdline: format!("{:?}", cmd) }
-    }
-
-    fn parse_debugger_commands(&self, debugger_prefixes: &[&str]) -> DebuggerCommands {
-        let directives = debugger_prefixes
-            .iter()
-            .map(|prefix| (format!("{}-command", prefix), format!("{}-check", prefix)))
-            .collect::<Vec<_>>();
-
-        let mut breakpoint_lines = vec![];
-        let mut commands = vec![];
-        let mut check_lines = vec![];
-        let mut counter = 1;
-        let reader = BufReader::new(File::open(&self.testpaths.file).unwrap());
-        for line in reader.lines() {
-            match line {
-                Ok(line) => {
-                    let line =
-                        if line.starts_with("//") { line[2..].trim_start() } else { line.as_str() };
-
-                    if line.contains("#break") {
-                        breakpoint_lines.push(counter);
-                    }
-
-                    for &(ref command_directive, ref check_directive) in &directives {
-                        self.config
-                            .parse_name_value_directive(&line, command_directive)
-                            .map(|cmd| commands.push(cmd));
-
-                        self.config
-                            .parse_name_value_directive(&line, check_directive)
-                            .map(|cmd| check_lines.push(cmd));
-                    }
-                }
-                Err(e) => self.fatal(&format!("Error while parsing debugger commands: {}", e)),
-            }
-            counter += 1;
-        }
-
-        DebuggerCommands { commands, check_lines, breakpoint_lines }
     }
 
     fn cleanup_debug_info_options(&self, options: &Option<String>) -> Option<String> {
