@@ -888,4 +888,30 @@ fn foo() {
 "#,
         );
     }
+
+    #[test]
+    fn nested_type() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<i32, ()>) {
+    let bar: Result<_, ()> = Ok(Some(1));
+    $0if let Ok(Some(_)) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<i32, ()>) {
+    let bar: Result<_, ()> = Ok(Some(1));
+    match bar {
+        Ok(Some(_)) => (),
+        _ => (),
+    }
+"#,
+        );
+    }
 }
