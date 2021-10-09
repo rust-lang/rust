@@ -93,7 +93,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
         available_range,
         move |edit| {
             let match_expr = {
-                let else_arm = make_else_arm(ctx, else_block, &cond_bodies);
+                let else_arm = make_else_arm(else_block);
                 let make_match_arm = |(pat, body): (_, ast::BlockExpr)| {
                     let body = body.reset_indent().indent(IndentLevel(1));
                     match pat {
@@ -125,30 +125,9 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
     )
 }
 
-fn make_else_arm(
-    ctx: &AssistContext,
-    else_block: Option<ast::BlockExpr>,
-    conditionals: &[(Either<ast::Pat, ast::Expr>, ast::BlockExpr)],
-) -> ast::MatchArm {
+fn make_else_arm(else_block: Option<ast::BlockExpr>) -> ast::MatchArm {
     if let Some(else_block) = else_block {
-        let pattern = if let [(Either::Left(pat), _)] = conditionals {
-            ctx.sema
-                .type_of_pat(pat)
-                .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty.adjusted()))
-                .zip(Some(pat))
-        } else {
-            None
-        };
-        let pattern = match pattern {
-            Some((it, pat)) => {
-                if does_pat_match_variant(pat, &it.sad_pattern()) {
-                    it.happy_pattern_wildcard()
-                } else {
-                    it.sad_pattern()
-                }
-            }
-            None => make::wildcard_pat().into(),
-        };
+        let pattern = make::wildcard_pat().into();
         make::match_arm(iter::once(pattern), None, unwrap_trivial_block(else_block))
     } else {
         make::match_arm(iter::once(make::wildcard_pat().into()), None, make::expr_unit())
@@ -460,7 +439,7 @@ fn foo(x: Option<i32>) {
 fn foo(x: Option<i32>) {
     match x {
         Some(x) => println!("{}", x),
-        None => println!("none"),
+        _ => println!("none"),
     }
 }
 "#,
@@ -485,7 +464,7 @@ fn foo(x: Option<i32>) {
 fn foo(x: Option<i32>) {
     match x {
         None => println!("none"),
-        Some(_) => println!("some"),
+        _ => println!("some"),
     }
 }
 "#,
@@ -510,7 +489,7 @@ fn foo(x: Result<i32, ()>) {
 fn foo(x: Result<i32, ()>) {
     match x {
         Ok(x) => println!("{}", x),
-        Err(_) => println!("none"),
+        _ => println!("none"),
     }
 }
 "#,
@@ -535,7 +514,7 @@ fn foo(x: Result<i32, ()>) {
 fn foo(x: Result<i32, ()>) {
     match x {
         Err(x) => println!("{}", x),
-        Ok(_) => println!("ok"),
+        _ => println!("ok"),
     }
 }
 "#,
@@ -572,6 +551,33 @@ fn main() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn replace_if_let_with_match_nested_type() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<i32, ()>) {
+    let bar: Result<_, ()> = Ok(Some(1));
+    $0if let Ok(Some(_)) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<i32, ()>) {
+    let bar: Result<_, ()> = Ok(Some(1));
+    match bar {
+        Ok(Some(_)) => (),
+        _ => (),
+    }
+}
+"#,
+        );
     }
 
     #[test]
@@ -885,32 +891,6 @@ fn foo() {
         Bar(bar) => println!("bar {}", bar),
     }
 }
-"#,
-        );
-    }
-
-    #[test]
-    fn nested_type() {
-        check_assist(
-            replace_if_let_with_match,
-            r#"
-//- minicore: result
-fn foo(x: Result<i32, ()>) {
-    let bar: Result<_, ()> = Ok(Some(1));
-    $0if let Ok(Some(_)) = bar {
-        ()
-    } else {
-        ()
-    }
-}
-"#,
-            r#"
-fn foo(x: Result<i32, ()>) {
-    let bar: Result<_, ()> = Ok(Some(1));
-    match bar {
-        Ok(Some(_)) => (),
-        _ => (),
-    }
 "#,
         );
     }
