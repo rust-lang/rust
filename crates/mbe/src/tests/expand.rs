@@ -210,28 +210,6 @@ fn test_expr_order() {
 }
 
 #[test]
-fn test_fail_match_pattern_by_word_token() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:ident) => (
-                mod $ i {}
-            );
-            (spam $ i:ident) => (
-                fn $ i() {}
-            );
-            (eggs $ i:ident) => (
-                struct $ i;
-            )
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo }", "mod foo {}")
-    .assert_expand_items("foo! { spam bar }", "fn bar () {}")
-    .assert_expand_items("foo! { eggs Baz }", "struct Baz ;");
-}
-
-#[test]
 fn test_match_group_pattern_by_separator_token() {
     parse_macro(
         r#"
