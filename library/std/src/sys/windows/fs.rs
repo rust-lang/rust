@@ -558,7 +558,7 @@ impl IntoInner<Handle> for File {
 
 impl FromInner<Handle> for File {
     fn from_inner(handle: Handle) -> File {
-        File { handle: handle }
+        File { handle }
     }
 }
 
@@ -672,7 +672,7 @@ impl FilePermissions {
 
 impl FileType {
     fn new(attrs: c::DWORD, reparse_tag: c::DWORD) -> FileType {
-        FileType { attributes: attrs, reparse_tag: reparse_tag }
+        FileType { attributes: attrs, reparse_tag }
     }
     pub fn is_dir(&self) -> bool {
         !self.is_symlink() && self.is_directory()

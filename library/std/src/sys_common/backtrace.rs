@@ -93,10 +93,8 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
         if stop {
             return false;
         }
-        if !hit {
-            if start {
-                res = bt_fmt.frame().print_raw(frame.ip(), None, None, None);
-            }
+        if !hit && start {
+            res = bt_fmt.frame().print_raw(frame.ip(), None, None, None);
         }
 
         idx += 1;
