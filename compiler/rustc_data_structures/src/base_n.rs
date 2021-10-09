@@ -14,7 +14,7 @@ const BASE_64: &[u8; MAX_BASE as usize] =
 
 #[inline]
 pub fn push_str(mut n: u128, base: usize, output: &mut String) {
-    debug_assert!(base >= 2 && base <= MAX_BASE);
+    debug_assert!((2..=MAX_BASE).contains(&base));
     let mut s = [0u8; 128];
     let mut index = 0;
 

@@ -48,7 +48,7 @@ impl<T: PartialEq> TinyList<T> {
     #[inline]
     pub fn contains(&self, data: &T) -> bool {
         let mut elem = self.head.as_ref();
-        while let Some(ref e) = elem {
+        while let Some(e) = elem {
             if &e.data == data {
                 return true;
             }

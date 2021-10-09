@@ -5,6 +5,7 @@ const RED_ZONE: usize = 100 * 1024; // 100k
 
 // Only the first stack that is pushed, grows exponentially (2^n * STACK_PER_RECURSION) from then
 // on. This flag has performance relevant characteristics. Don't set it too high.
+#[allow(clippy::identity_op)]
 const STACK_PER_RECURSION: usize = 1 * 1024 * 1024; // 1MB
 
 /// Grows the stack on demand to prevent stack overflow. Call this in strategic locations

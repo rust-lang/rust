@@ -24,11 +24,9 @@ fn parse_attributes(field: &syn::Field) -> Attributes {
                         }
                         if meta.path().is_ident("project") {
                             if let Meta::List(list) = meta {
-                                if let Some(nested) = list.nested.iter().next() {
-                                    if let NestedMeta::Meta(meta) = nested {
-                                        attrs.project = meta.path().get_ident().cloned();
-                                        any_attr = true;
-                                    }
+                                if let Some(NestedMeta::Meta(meta)) = list.nested.iter().next() {
+                                    attrs.project = meta.path().get_ident().cloned();
+                                    any_attr = true;
                                 }
                             }
                         }

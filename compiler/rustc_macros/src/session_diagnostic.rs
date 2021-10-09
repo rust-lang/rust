@@ -349,14 +349,14 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
     ) -> Result<proc_macro2::TokenStream, SessionDiagnosticDeriveError> {
         let field_binding = &info.binding.binding;
 
-        let option_ty = option_inner_ty(&info.ty);
+        let option_ty = option_inner_ty(info.ty);
 
         let generated_code = self.generate_non_option_field_code(
             attr,
             FieldInfo {
                 vis: info.vis,
                 binding: info.binding,
-                ty: option_ty.unwrap_or(&info.ty),
+                ty: option_ty.unwrap_or(info.ty),
                 span: info.span,
             },
         )?;
@@ -388,7 +388,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                 let formatted_str = self.build_format(&s.value(), attr.span());
                 match name {
                     "message" => {
-                        if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
+                        if type_matches_path(info.ty, &["rustc_span", "Span"]) {
                             quote! {
                                 #diag.set_span(*#field_binding);
                                 #diag.set_primary_message(#formatted_str);
@@ -401,7 +401,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                         }
                     }
                     "label" => {
-                        if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
+                        if type_matches_path(info.ty, &["rustc_span", "Span"]) {
                             quote! {
                                 #diag.span_label(*#field_binding, #formatted_str);
                             }

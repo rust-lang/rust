@@ -48,7 +48,7 @@ fn post_order_walk<G: DirectedGraph + WithSuccessors + WithNumNodes>(
         let node = frame.node;
         visited[node] = true;
 
-        while let Some(successor) = frame.iter.next() {
+        for successor in frame.iter.by_ref() {
             if !visited[successor] {
                 stack.push(PostOrderFrame { node: successor, iter: graph.successors(successor) });
                 continue 'recurse;
@@ -112,7 +112,7 @@ where
     /// This is equivalent to just invoke `next` repeatedly until
     /// you get a `None` result.
     pub fn complete_search(&mut self) {
-        while let Some(_) = self.next() {}
+        for _ in self {}
     }
 
     /// Returns true if node has been visited thus far.

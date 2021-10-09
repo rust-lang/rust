@@ -991,8 +991,8 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         assert!(row.index() < self.num_rows);
         let (start, end) = self.range(row);
         let words = &mut self.words[..];
-        for index in start..end {
-            words[index] = !0;
+        for word in words[start..end].iter_mut() {
+            *word = !0;
         }
         self.clear_excess_bits(row);
     }
@@ -1144,7 +1144,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
-    pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
+    pub fn iter(&self, row: R) -> impl Iterator<Item = C> + '_ {
         self.row(row).into_iter().flat_map(|r| r.iter())
     }
 
