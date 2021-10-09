@@ -1,19 +1,11 @@
-trait T {
-    type U;
-    fn f(&self) -> Self::U;
-}
+trait T0 {}
+trait T1: T0 {}
 
-struct X<'a>(&'a mut i32);
+trait T2 {}
 
-impl<'a> T for X<'a> {
-    type U = &'a i32;
-    fn f(&self) -> Self::U {
-        self.0
-    }
-    //~^^^ ERROR cannot infer an appropriate lifetime for lifetime parameter `'a`
-    //
-    // Return type of `f` has lifetime `'a` but it tries to return `self.0` which
-    // has lifetime `'_`.
-}
+impl<'a> T0 for &'a (dyn T2 + 'static) {}
+
+impl T1 for &dyn T2 {}
+//~^ ERROR mismatched types
 
 fn main() {}
