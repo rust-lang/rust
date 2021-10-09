@@ -635,3 +635,72 @@ macro panic_2015 {
 "#]],
     );
 }
+
+#[test]
+fn test_path() {
+    check(
+        r#"
+macro_rules! m {
+    ($p:path) => { fn foo() { let a = $p; } }
+}
+
+m! { foo }
+
+m! { bar::<u8>::baz::<u8> }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($p:path) => { fn foo() { let a = $p; } }
+}
+
+fn foo() {
+    let a = foo;
+}
+
+fn foo() {
+    let a = bar::<u8>::baz::<u8> ;
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_two_paths() {
+    check(
+        r#"
+macro_rules! m {
+    ($i:path, $j:path) => { fn foo() { let a = $ i; let b = $j; } }
+}
+m! { foo, bar }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($i:path, $j:path) => { fn foo() { let a = $ i; let b = $j; } }
+}
+fn foo() {
+    let a = foo;
+    let b = bar;
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_path_with_path() {
+    check(
+        r#"
+macro_rules! m {
+    ($p:path) => { fn foo() { let a = $p::bar; } }
+}
+m! { foo }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($p:path) => { fn foo() { let a = $p::bar; } }
+}
+fn foo() {
+    let a = foo::bar;
+}
+"#]],
+    );
+}

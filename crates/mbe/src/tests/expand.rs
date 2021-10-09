@@ -102,52 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_path() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:path) => {
-                fn foo() { let a = $ i; }
-            }
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo }", "fn foo () {let a = foo ;}")
-    .assert_expand_items(
-        "foo! { bar::<u8>::baz::<u8> }",
-        "fn foo () {let a = bar ::< u8 >:: baz ::< u8 > ;}",
-    );
-}
-
-#[test]
-fn test_two_paths() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:path, $ j:path) => {
-                fn foo() { let a = $ i; let b = $j; }
-            }
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
-}
-
-#[test]
-fn test_path_with_path() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:path) => {
-                fn foo() { let a = $ i :: bar; }
-            }
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo }", "fn foo () {let a = foo :: bar ;}");
-}
-
-#[test]
 fn test_expr() {
     parse_macro(
         r#"
