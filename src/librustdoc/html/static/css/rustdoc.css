@@ -261,9 +261,17 @@ main {
 	overflow-y: auto;
 }
 
+.source main {
+	padding: 15px;
+}
+
 .main-inner {
 	max-width: 960px;
 	margin-right: auto;
+}
+
+.source .main-inner {
+	max-width: unset;
 }
 
 details:not(.rustdoc-toggle) summary {
@@ -310,6 +318,7 @@ li {
 }
 
 nav.sub {
+	position: relative;
 	font-size: 16px;
 	text-transform: uppercase;
 }
@@ -323,6 +332,10 @@ nav.sub {
 	overflow-y: auto;
 	min-width: 200px;
 	height: 100vh;
+}
+
+.source .sidebar {
+	display: none;
 }
 
 /* Improve the scrollbar display on firefox */
@@ -352,6 +365,18 @@ nav.sub {
 
 .hidden {
 	display: none !important;
+}
+
+.logo-source {
+	display: none;
+}
+
+.source .logo-source {
+	display: block;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 200px;
 }
 
 .logo-container {
@@ -716,6 +741,9 @@ nav:not(.sidebar) {
 	padding-bottom: 10px;
 	margin-bottom: 25px;
 }
+.source nav:not(.sidebar).sub {
+	margin-left: 230px;
+}
 nav.main {
 	padding: 20px 0;
 	text-align: center;
@@ -805,6 +833,7 @@ h2.small-section-header > .anchor {
 
 .search-container {
 	position: relative;
+	max-width: 960px;
 }
 .search-container > div {
 	display: inline-flex;
@@ -1357,8 +1386,8 @@ pre.rust {
 
 .theme-picker {
 	position: absolute;
-	left: 11px;
-	top: 19px;
+	left: -34px;
+	top: 9px;
 }
 
 .theme-picker button {
@@ -1767,8 +1796,16 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		margin-bottom: 10px;
 	}
 
+	.source nav:not(.sidebar).sub {
+		margin-left: 32px;
+	}
+
 	.content {
 		margin-left: 0px;
+	}
+
+	.source .content {
+		margin-top: 10px;
 	}
 
 	#search {
@@ -1781,8 +1818,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 
 	.theme-picker {
-		left: 10px;
-		top: 9px;
 		z-index: 1;
 	}
 
@@ -1908,6 +1943,10 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 	.search-results div.desc, .search-results .result-description, .item-right {
 		padding-left: 2em;
+	}
+
+	.source .logo-source {
+		display: none;
 	}
 }
 
