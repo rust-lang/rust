@@ -2,6 +2,9 @@
 //! `macro_rules` macros. It uses `TokenTree` (from `tt` package) as the
 //! interface, although it contains some code to bridge `SyntaxNode`s and
 //! `TokenTree`s as well!
+//!
+//! The tes for this functionality live in another crate:
+//! `hir_def::macro_expansion_tests::mbe`.
 
 mod parser;
 mod expander;
