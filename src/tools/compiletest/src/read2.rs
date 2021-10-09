@@ -2,6 +2,77 @@
 // Consider unify the read2() in libstd, cargo and this to prevent further code duplication.
 
 pub use self::imp::read2;
+use std::io;
+use std::process::{Child, Output};
+
+pub fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
+    use io::Write;
+    use std::mem::replace;
+
+    const HEAD_LEN: usize = 160 * 1024;
+    const TAIL_LEN: usize = 256 * 1024;
+
+    enum ProcOutput {
+        Full(Vec<u8>),
+        Abbreviated { head: Vec<u8>, skipped: usize, tail: Box<[u8]> },
+    }
+
+    impl ProcOutput {
+        fn extend(&mut self, data: &[u8]) {
+            let new_self = match *self {
+                ProcOutput::Full(ref mut bytes) => {
+                    bytes.extend_from_slice(data);
+                    let new_len = bytes.len();
+                    if new_len <= HEAD_LEN + TAIL_LEN {
+                        return;
+                    }
+                    let tail = bytes.split_off(new_len - TAIL_LEN).into_boxed_slice();
+                    let head = replace(bytes, Vec::new());
+                    let skipped = new_len - HEAD_LEN - TAIL_LEN;
+                    ProcOutput::Abbreviated { head, skipped, tail }
+                }
+                ProcOutput::Abbreviated { ref mut skipped, ref mut tail, .. } => {
+                    *skipped += data.len();
+                    if data.len() <= TAIL_LEN {
+                        tail[..data.len()].copy_from_slice(data);
+                        tail.rotate_left(data.len());
+                    } else {
+                        tail.copy_from_slice(&data[(data.len() - TAIL_LEN)..]);
+                    }
+                    return;
+                }
+            };
+            *self = new_self;
+        }
+
+        fn into_bytes(self) -> Vec<u8> {
+            match self {
+                ProcOutput::Full(bytes) => bytes,
+                ProcOutput::Abbreviated { mut head, skipped, tail } => {
+                    write!(&mut head, "\n\n<<<<<< SKIPPED {} BYTES >>>>>>\n\n", skipped).unwrap();
+                    head.extend_from_slice(&tail);
+                    head
+                }
+            }
+        }
+    }
+
+    let mut stdout = ProcOutput::Full(Vec::new());
+    let mut stderr = ProcOutput::Full(Vec::new());
+
+    drop(child.stdin.take());
+    read2(
+        child.stdout.take().unwrap(),
+        child.stderr.take().unwrap(),
+        &mut |is_stdout, data, _| {
+            if is_stdout { &mut stdout } else { &mut stderr }.extend(data);
+            data.clear();
+        },
+    )?;
+    let status = child.wait()?;
+
+    Ok(Output { status, stdout: stdout.into_bytes(), stderr: stderr.into_bytes() })
+}
 
 #[cfg(not(any(unix, windows)))]
 mod imp {

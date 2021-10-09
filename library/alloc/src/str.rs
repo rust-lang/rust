@@ -367,6 +367,8 @@ impl str {
     /// assert_eq!(new_year, new_year.to_lowercase());
     /// ```
     #[cfg(not(no_global_oom_handling))]
+    #[must_use = "this returns the lowercase string as a new String, \
+                  without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
@@ -447,6 +449,8 @@ impl str {
     /// assert_eq!("TSCHÜSS", s.to_uppercase());
     /// ```
     #[cfg(not(no_global_oom_handling))]
+    #[must_use = "this returns the uppercase string as a new String, \
+                  without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
@@ -534,6 +538,7 @@ impl str {
     /// [`make_ascii_uppercase`]: str::make_ascii_uppercase
     /// [`to_uppercase`]: #method.to_uppercase
     #[cfg(not(no_global_oom_handling))]
+    #[must_use = "to uppercase the value in-place, use `make_ascii_lowercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> String {
@@ -565,6 +570,7 @@ impl str {
     /// [`make_ascii_lowercase`]: str::make_ascii_lowercase
     /// [`to_lowercase`]: #method.to_lowercase
     #[cfg(not(no_global_oom_handling))]
+    #[must_use = "to lowercase the value in-place, use `make_ascii_lowercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> String {
