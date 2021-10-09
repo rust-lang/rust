@@ -232,10 +232,8 @@ impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
-        if self.props.should_ice {
-            if self.config.mode != Incremental {
-                self.fatal("cannot use should-ice in a test that is not cfail");
-            }
+        if self.props.should_ice && self.config.mode != Incremental {
+            self.fatal("cannot use should-ice in a test that is not cfail");
         }
         match self.config.mode {
             RunPassValgrind => self.run_valgrind_test(),
@@ -3162,11 +3160,10 @@ impl<'test> TestCx<'test> {
                 if !proc_res.status.success() {
                     self.fatal_proc_rec("test run failed!", &proc_res);
                 }
-            } else {
-                if proc_res.status.success() {
-                    self.fatal_proc_rec("test run succeeded!", &proc_res);
-                }
+            } else if proc_res.status.success() {
+                self.fatal_proc_rec("test run succeeded!", &proc_res);
             }
+
             if !self.props.error_patterns.is_empty() {
                 // "// error-pattern" comments
                 self.check_error_patterns(&proc_res.stderr, &proc_res, pm);
@@ -3213,10 +3210,11 @@ impl<'test> TestCx<'test> {
             if !res.status.success() {
                 self.fatal_proc_rec("failed to compile fixed code", &res);
             }
-            if !res.stderr.is_empty() && !self.props.rustfix_only_machine_applicable {
-                if !json::rustfix_diagnostics_only(&res.stderr).is_empty() {
-                    self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
-                }
+            if !res.stderr.is_empty()
+                && !self.props.rustfix_only_machine_applicable
+                && !json::rustfix_diagnostics_only(&res.stderr).is_empty()
+            {
+                self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
             }
         }
     }
