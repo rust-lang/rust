@@ -4,12 +4,12 @@ error[E0491]: in type `&'a &'b usize`, reference has a longer lifetime than the 
 LL | fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {
    |                                                                    ^^^^^^^^^^^^^^^^^^^^^
    |
-note: the pointer is valid for the lifetime `'a` as defined on the function body at 5:14
+note: the pointer is valid for the lifetime `'a` as defined here
   --> $DIR/regions-free-region-ordering-callee-4.rs:5:14
    |
 LL | fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {
    |              ^^
-note: but the referenced data is only valid for the lifetime `'b` as defined on the function body at 5:18
+note: but the referenced data is only valid for the lifetime `'b` as defined here
   --> $DIR/regions-free-region-ordering-callee-4.rs:5:18
    |
 LL | fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {

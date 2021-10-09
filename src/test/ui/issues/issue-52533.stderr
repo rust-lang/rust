@@ -4,12 +4,12 @@ error[E0312]: lifetime of reference outlives lifetime of borrowed content...
 LL |     foo(|a, b| b)
    |                ^
    |
-note: ...the reference is valid for the anonymous lifetime #1 defined on the body at 5:9...
+note: ...the reference is valid for the anonymous lifetime #1 defined here...
   --> $DIR/issue-52533.rs:5:9
    |
 LL |     foo(|a, b| b)
    |         ^^^^^^^^
-note: ...but the borrowed content is only valid for the anonymous lifetime #2 defined on the body at 5:9
+note: ...but the borrowed content is only valid for the anonymous lifetime #2 defined here
   --> $DIR/issue-52533.rs:5:9
    |
 LL |     foo(|a, b| b)

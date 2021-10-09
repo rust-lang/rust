@@ -2,25 +2,27 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
   --> $DIR/hidden-lifetimes.rs:28:54
    |
 LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
-   |                                                      ^^^^^^^^^^^^^^
+   |                 --                                   ^^^^^^^^^^^^^^
+   |                 |
+   |                 hidden type `&'a mut &'b T` captures the lifetime `'b` as defined here
    |
-note: hidden type `&'a mut &'b T` captures the lifetime `'b` as defined on the function body at 28:17
-  --> $DIR/hidden-lifetimes.rs:28:17
+help: to declare that the `impl Trait` captures 'b, you can add an explicit `'b` lifetime bound
    |
-LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
-   |                 ^^
+LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a + 'b {
+   |                                                                     ++++
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/hidden-lifetimes.rs:45:70
    |
 LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
-   |                                                                      ^^^^^^^^^^^^^^
+   |                        --                                            ^^^^^^^^^^^^^^
+   |                        |
+   |                        hidden type `Rc<RefCell<&'b T>>` captures the lifetime `'b` as defined here
    |
-note: hidden type `Rc<RefCell<&'b T>>` captures the lifetime `'b` as defined on the function body at 45:24
-  --> $DIR/hidden-lifetimes.rs:45:24
+help: to declare that the `impl Trait` captures 'b, you can add an explicit `'b` lifetime bound
    |
-LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
-   |                        ^^
+LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a + 'b {
+   |                                                                                     ++++
 
 error: aborting due to 2 previous errors
 

@@ -33,12 +33,12 @@ LL |     fn dummy2(self: &Bar<T>) {}
    |
    = note: expected reference `&'a Bar<T>`
               found reference `&Bar<T>`
-note: the anonymous lifetime defined on the method body at 37:21...
+note: the anonymous lifetime defined here...
   --> $DIR/ufcs-explicit-self-bad.rs:37:21
    |
 LL |     fn dummy2(self: &Bar<T>) {}
    |                     ^^^^^^^
-note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 35:6
+note: ...does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/ufcs-explicit-self-bad.rs:35:6
    |
 LL | impl<'a, T> SomeTrait for &'a Bar<T> {
@@ -52,12 +52,12 @@ LL |     fn dummy2(self: &Bar<T>) {}
    |
    = note: expected reference `&'a Bar<T>`
               found reference `&Bar<T>`
-note: the lifetime `'a` as defined on the impl at 35:6...
+note: the lifetime `'a` as defined here...
   --> $DIR/ufcs-explicit-self-bad.rs:35:6
    |
 LL | impl<'a, T> SomeTrait for &'a Bar<T> {
    |      ^^
-note: ...does not necessarily outlive the anonymous lifetime defined on the method body at 37:21
+note: ...does not necessarily outlive the anonymous lifetime defined here
   --> $DIR/ufcs-explicit-self-bad.rs:37:21
    |
 LL |     fn dummy2(self: &Bar<T>) {}
@@ -71,12 +71,12 @@ LL |     fn dummy3(self: &&Bar<T>) {}
    |
    = note: expected reference `&'a Bar<T>`
               found reference `&Bar<T>`
-note: the anonymous lifetime defined on the method body at 39:22...
+note: the anonymous lifetime defined here...
   --> $DIR/ufcs-explicit-self-bad.rs:39:22
    |
 LL |     fn dummy3(self: &&Bar<T>) {}
    |                      ^^^^^^^
-note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 35:6
+note: ...does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/ufcs-explicit-self-bad.rs:35:6
    |
 LL | impl<'a, T> SomeTrait for &'a Bar<T> {
@@ -90,12 +90,12 @@ LL |     fn dummy3(self: &&Bar<T>) {}
    |
    = note: expected reference `&'a Bar<T>`
               found reference `&Bar<T>`
-note: the lifetime `'a` as defined on the impl at 35:6...
+note: the lifetime `'a` as defined here...
   --> $DIR/ufcs-explicit-self-bad.rs:35:6
    |
 LL | impl<'a, T> SomeTrait for &'a Bar<T> {
    |      ^^
-note: ...does not necessarily outlive the anonymous lifetime defined on the method body at 39:22
+note: ...does not necessarily outlive the anonymous lifetime defined here
   --> $DIR/ufcs-explicit-self-bad.rs:39:22
    |
 LL |     fn dummy3(self: &&Bar<T>) {}

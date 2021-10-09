@@ -18,7 +18,7 @@ LL |     load0(ss)
    |
    = note: expected reference `&MyBox<(dyn SomeTrait + 'static)>`
               found reference `&MyBox<(dyn SomeTrait + 'a)>`
-note: the lifetime `'a` as defined on the function body at 30:10...
+note: the lifetime `'a` as defined here...
   --> $DIR/object-lifetime-default-mybox.rs:30:10
    |
 LL | fn load2<'a>(ss: &MyBox<dyn SomeTrait + 'a>) -> MyBox<dyn SomeTrait + 'a> {

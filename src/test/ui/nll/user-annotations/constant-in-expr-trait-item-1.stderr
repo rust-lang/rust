@@ -5,7 +5,7 @@ LL |     <() as Foo<'a>>::C
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: ...the reference is valid for the static lifetime...
-note: ...but the borrowed content is only valid for the lifetime `'a` as defined on the function body at 9:8
+note: ...but the borrowed content is only valid for the lifetime `'a` as defined here
   --> $DIR/constant-in-expr-trait-item-1.rs:9:8
    |
 LL | fn foo<'a>(_: &'a u32) -> &'static u32 {

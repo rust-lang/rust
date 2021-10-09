@@ -6,7 +6,7 @@ LL |     b_isize
    |
    = note: expected struct `Invariant<'static>`
               found struct `Invariant<'r>`
-note: the lifetime `'r` as defined on the function body at 9:23...
+note: the lifetime `'r` as defined here...
   --> $DIR/regions-infer-invariance-due-to-mutability-3.rs:9:23
    |
 LL | fn to_longer_lifetime<'r>(b_isize: Invariant<'r>) -> Invariant<'static> {

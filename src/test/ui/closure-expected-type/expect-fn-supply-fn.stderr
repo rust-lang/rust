@@ -6,12 +6,12 @@ LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
    |
    = note: expected fn pointer `fn(&u32)`
               found fn pointer `fn(&'x u32)`
-note: the anonymous lifetime #1 defined on the body at 16:48...
+note: the anonymous lifetime #1 defined here...
   --> $DIR/expect-fn-supply-fn.rs:16:48
    |
 LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
    |                                                ^^^^^^^^^^^^^^^^^^^^^^
-note: ...does not necessarily outlive the lifetime `'x` as defined on the function body at 13:36
+note: ...does not necessarily outlive the lifetime `'x` as defined here
   --> $DIR/expect-fn-supply-fn.rs:13:36
    |
 LL | fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {
@@ -25,12 +25,12 @@ LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
    |
    = note: expected fn pointer `fn(&u32)`
               found fn pointer `fn(&'x u32)`
-note: the lifetime `'x` as defined on the function body at 13:36...
+note: the lifetime `'x` as defined here...
   --> $DIR/expect-fn-supply-fn.rs:13:36
    |
 LL | fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {
    |                                    ^^
-note: ...does not necessarily outlive the anonymous lifetime #1 defined on the body at 16:48
+note: ...does not necessarily outlive the anonymous lifetime #1 defined here
   --> $DIR/expect-fn-supply-fn.rs:16:48
    |
 LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});

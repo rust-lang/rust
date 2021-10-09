@@ -24,12 +24,12 @@ LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d
    |
    = note: expected fn pointer `fn(&'a isize, Inv<'c>, Inv<'c>, Inv<'_>)`
               found fn pointer `fn(&'a isize, Inv<'_>, Inv<'c>, Inv<'_>)`
-note: the lifetime `'c` as defined on the method body at 27:24...
+note: the lifetime `'c` as defined here...
   --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
    |
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
    |                        ^^
-note: ...does not necessarily outlive the lifetime `'c` as defined on the method body at 27:24
+note: ...does not necessarily outlive the lifetime `'c` as defined here
   --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
    |
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
@@ -43,12 +43,12 @@ LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d
    |
    = note: expected fn pointer `fn(&'a isize, Inv<'c>, Inv<'c>, Inv<'_>)`
               found fn pointer `fn(&'a isize, Inv<'_>, Inv<'c>, Inv<'_>)`
-note: the lifetime `'c` as defined on the method body at 27:24...
+note: the lifetime `'c` as defined here...
   --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
    |
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
    |                        ^^
-note: ...does not necessarily outlive the lifetime `'c` as defined on the method body at 27:24
+note: ...does not necessarily outlive the lifetime `'c` as defined here
   --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
    |
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
