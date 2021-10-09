@@ -41,7 +41,9 @@ use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -467,7 +469,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        hir::OwnerInfo { node, attrs, bodies, trait_map }
+        let (hash, node_hash) = self.hash_body(node, &bodies);
+
+        hir::OwnerInfo { hash, node_hash, node, attrs, bodies, trait_map }
+    }
+
+    /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate
+    /// queries which depend on the full HIR tree and those which only depend on the item signature.
+    fn hash_body(
+        &mut self,
+        node: hir::OwnerNode<'hir>,
+        bodies: &IndexVec<hir::ItemLocalId, Option<&'hir hir::Body<'hir>>>,
+    ) -> (Fingerprint, Fingerprint) {
+        let mut hcx = self.resolver.create_stable_hashing_context();
+        let mut stable_hasher = StableHasher::new();
+        hcx.with_hir_bodies(true, node.def_id(), bodies, |hcx| {
+            node.hash_stable(hcx, &mut stable_hasher)
+        });
+        let full_hash = stable_hasher.finish();
+        let mut stable_hasher = StableHasher::new();
+        hcx.with_hir_bodies(false, node.def_id(), bodies, |hcx| {
+            node.hash_stable(hcx, &mut stable_hasher)
+        });
+        let node_hash = stable_hasher.finish();
+        (full_hash, node_hash)
     }
 
     /// This method allocates a new `HirId` for the given `NodeId` and stores it in

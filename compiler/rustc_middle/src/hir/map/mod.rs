@@ -1071,13 +1071,11 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexedHir<'tc
     let _prof_timer = tcx.sess.prof.generic_activity("build_hir_map");
 
     // We can access untracked state since we are an eval_always query.
-    let hcx = tcx.create_stable_hashing_context();
     let mut collector = NodeCollector::root(
         tcx.sess,
         &**tcx.arena,
         tcx.untracked_crate,
         &tcx.untracked_resolutions.definitions,
-        hcx,
     );
     let top_mod = tcx.untracked_crate.module();
     collector.visit_mod(top_mod, top_mod.inner, CRATE_HIR_ID);

@@ -1,9 +1,7 @@
 use crate::arena::Arena;
 use crate::hir::map::Map;
 use crate::hir::{IndexedHir, OwnerNodes, ParentedNode};
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
@@ -11,7 +9,6 @@ use rustc_hir::definitions;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, DUMMY_SP};
@@ -37,8 +34,6 @@ pub(super) struct NodeCollector<'a, 'hir> {
     current_dep_node_owner: LocalDefId,
 
     definitions: &'a definitions::Definitions,
-
-    hcx: StableHashingContext<'a>,
 }
 
 fn insert_vec_map<K: Idx, V: Clone>(map: &mut IndexVec<K, Option<V>>, k: K, v: V) {
@@ -51,27 +46,12 @@ fn insert_vec_map<K: Idx, V: Clone>(map: &mut IndexVec<K, Option<V>>, k: K, v: V
     map[k] = Some(v);
 }
 
-fn hash_body<'s, 'hir: 's>(
-    hcx: &mut StableHashingContext<'s>,
-    item_like: impl for<'a> HashStable<StableHashingContext<'a>>,
-    hash_bodies: bool,
-    owner: LocalDefId,
-    bodies: &'hir IndexVec<ItemLocalId, Option<&'hir Body<'hir>>>,
-) -> Fingerprint {
-    let mut stable_hasher = StableHasher::new();
-    hcx.with_hir_bodies(hash_bodies, owner, bodies, |hcx| {
-        item_like.hash_stable(hcx, &mut stable_hasher)
-    });
-    stable_hasher.finish()
-}
-
 impl<'a, 'hir: 'a> NodeCollector<'a, 'hir> {
     pub(super) fn root(
         sess: &'a Session,
         arena: &'hir Arena<'hir>,
         krate: &'hir Crate<'hir>,
         definitions: &'a definitions::Definitions,
-        hcx: StableHashingContext<'a>,
     ) -> NodeCollector<'a, 'hir> {
         let mut collector = NodeCollector {
             arena,
@@ -80,7 +60,6 @@ impl<'a, 'hir: 'a> NodeCollector<'a, 'hir> {
             parent_node: hir::CRATE_HIR_ID,
             current_dep_node_owner: CRATE_DEF_ID,
             definitions,
-            hcx,
             map: IndexVec::from_fn_n(|_| None, definitions.def_index_count()),
             parenting: FxHashMap::default(),
         };
@@ -97,10 +76,10 @@ impl<'a, 'hir: 'a> NodeCollector<'a, 'hir> {
         let mut nodes = IndexVec::new();
         nodes.push(Some(ParentedNode { parent: ItemLocalId::new(0), node: node.into() }));
 
-        let bodies = &self.krate.owners[owner].as_ref().unwrap().bodies;
-
-        let hash = hash_body(&mut self.hcx, node, true, owner, bodies);
-        let node_hash = hash_body(&mut self.hcx, node, false, owner, bodies);
+        let info = self.krate.owners[owner].as_ref().unwrap();
+        let hash = info.hash;
+        let node_hash = info.node_hash;
+        let bodies = &info.bodies;
 
         debug_assert!(self.map[owner].is_none());
         self.map[owner] = Some(self.arena.alloc(OwnerNodes { hash, node_hash, nodes, bodies }));
