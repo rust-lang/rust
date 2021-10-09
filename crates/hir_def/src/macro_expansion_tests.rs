@@ -65,6 +65,11 @@ fn check(ra_fixture: &str, mut expect: Expect) {
             format_to!(expn_text, "/* error: {} */", err);
         }
         if let Some((parse, _token_map)) = exp.value {
+            assert!(
+                parse.errors().is_empty(),
+                "parse errors in expansion: \n{:#?}",
+                parse.errors()
+            );
             let pp = pretty_print_macro_expansion(parse.syntax_node());
             let indent = IndentLevel::from_node(call.syntax());
             let pp = reindent(indent, pp);

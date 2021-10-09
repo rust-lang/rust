@@ -16,7 +16,7 @@ macro_rules! m {
     ($($i:ident)*) => ($_);
     ($($true:ident)*) => ($true);
     ($($false:ident)*) => ($false);
-    ($) => ($);
+    ($) => (m!($););
 }
 m!($);
 "#,
@@ -29,9 +29,9 @@ macro_rules! m {
     ($($i:ident)*) => ($_);
     ($($true:ident)*) => ($true);
     ($($false:ident)*) => ($false);
-    ($) => ($);
+    ($) => (m!($););
 }
-$
+m!($);
 "#]],
     )
 }

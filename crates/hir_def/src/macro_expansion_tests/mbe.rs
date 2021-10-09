@@ -165,17 +165,17 @@ fn test_match_group_pattern_with_multiple_defs() {
     check(
         r#"
 macro_rules! m {
-    ($($i:ident),*) => ( impl Bar { $(fn $i {})* } );
+    ($($i:ident),*) => ( impl Bar { $(fn $i() {})* } );
 }
 m! { foo, bar }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($($i:ident),*) => ( impl Bar { $(fn $i {})* } );
+    ($($i:ident),*) => ( impl Bar { $(fn $i() {})* } );
 }
 impl Bar {
-    fn foo {}
-    fn bar {}
+    fn foo() {}
+    fn bar() {}
 }
 "#]],
     );
@@ -186,15 +186,15 @@ fn test_match_group_pattern_with_multiple_statement() {
     check(
         r#"
 macro_rules! m {
-    ($($i:ident),*) => ( fn baz { $($i ();)* } );
+    ($($i:ident),*) => ( fn baz() { $($i ();)* } );
 }
 m! { foo, bar }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($($i:ident),*) => ( fn baz { $($i ();)* } );
+    ($($i:ident),*) => ( fn baz() { $($i ();)* } );
 }
-fn baz {
+fn baz() {
     foo();
     bar();
 }
@@ -207,15 +207,15 @@ fn test_match_group_pattern_with_multiple_statement_without_semi() {
     check(
         r#"
 macro_rules! m {
-    ($($i:ident),*) => ( fn baz { $($i() );* } );
+    ($($i:ident),*) => ( fn baz() { $($i() );* } );
 }
 m! { foo, bar }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($($i:ident),*) => ( fn baz { $($i() );* } );
+    ($($i:ident),*) => ( fn baz() { $($i() );* } );
 }
-fn baz {
+fn baz() {
     foo();
     bar()
 }
@@ -228,15 +228,15 @@ fn test_match_group_empty_fixed_token() {
     check(
         r#"
 macro_rules! m {
-    ($($i:ident)* #abc) => ( fn baz { $($i ();)* } );
+    ($($i:ident)* #abc) => ( fn baz() { $($i ();)* } );
 }
 m!{#abc}
 "#,
         expect![[r##"
 macro_rules! m {
-    ($($i:ident)* #abc) => ( fn baz { $($i ();)* } );
+    ($($i:ident)* #abc) => ( fn baz() { $($i ();)* } );
 }
-fn baz {}
+fn baz() {}
 "##]],
     )
 }
@@ -248,7 +248,7 @@ fn test_match_group_in_subtree() {
 macro_rules! m {
     (fn $name:ident { $($i:ident)* } ) => ( fn $name() { $($i ();)* } );
 }
-m! {fn baz { a b } }
+m! { fn baz { a b } }
 "#,
         expect![[r#"
 macro_rules! m {
