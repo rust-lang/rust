@@ -210,48 +210,6 @@ fn test_expr_order() {
 }
 
 #[test]
-fn test_match_group_pattern_with_multiple_defs() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ ($ i:ident),*) => ( struct Bar { $ (
-                fn $ i {}
-            )*} );
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo, bar }", "struct Bar {fn foo {} fn bar {}}");
-}
-
-#[test]
-fn test_match_group_pattern_with_multiple_statement() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ ($ i:ident),*) => ( fn baz { $ (
-                $ i ();
-            )*} );
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo, bar }", "fn baz {foo () ; bar () ;}");
-}
-
-#[test]
-fn test_match_group_pattern_with_multiple_statement_without_semi() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ ($ i:ident),*) => ( fn baz { $ (
-                $i()
-            );*} );
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo, bar }", "fn baz {foo () ;bar ()}");
-}
-
-#[test]
 fn test_match_group_empty_fixed_token() {
     parse_macro(
         r#"

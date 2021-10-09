@@ -159,3 +159,66 @@ struct Bar;
 "##]],
     );
 }
+
+#[test]
+fn test_match_group_pattern_with_multiple_defs() {
+    check(
+        r#"
+macro_rules! m {
+    ($ ($ i:ident),*) => ( impl Bar { $ ( fn $ i {} )*} );
+}
+m! { foo, bar }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($ ($ i:ident),*) => ( impl Bar { $ ( fn $ i {} )*} );
+}
+impl Bar {
+fn foo {}
+fn bar {}
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_match_group_pattern_with_multiple_statement() {
+    check(
+        r#"
+macro_rules! m {
+    ($ ($ i:ident),*) => ( fn baz { $ ( $ i (); )*} );
+}
+m! { foo, bar }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($ ($ i:ident),*) => ( fn baz { $ ( $ i (); )*} );
+}
+fn baz {
+foo();
+bar();
+}
+"#]],
+    )
+}
+
+#[test]
+fn test_match_group_pattern_with_multiple_statement_without_semi() {
+    check(
+        r#"
+macro_rules! m {
+    ($ ($ i:ident),*) => ( fn baz { $ ( $i() );*} );
+}
+m! { foo, bar }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($ ($ i:ident),*) => ( fn baz { $ ( $i() );*} );
+}
+fn baz {
+foo();
+bar()
+}
+"#]],
+    )
+}
