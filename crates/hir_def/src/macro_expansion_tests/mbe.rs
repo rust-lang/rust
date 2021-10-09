@@ -48,7 +48,7 @@ macro_rules! m {
 }
 
 #[test]
-fn tries_all_branches_matching_token_literally() {
+fn tries_all_branches_matching_first_token_literally() {
     check(
         r#"
 macro_rules! m {
@@ -70,5 +70,31 @@ mod foo {}
 fn bar() {}
 struct Baz;
 "#]],
-    )
+    );
+}
+
+#[test]
+fn tries_all_branches_matching_last_token_literally() {
+    check(
+        r#"
+macro_rules! m {
+    ($ i:ident) => ( mod $ i {} );
+    ($ i:ident =) => ( fn $ i() {} );
+    ($ i:ident +) => ( struct $ i; )
+}
+m! { foo }
+m! { bar = }
+m! { Baz + }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($ i:ident) => ( mod $ i {} );
+    ($ i:ident =) => ( fn $ i() {} );
+    ($ i:ident +) => ( struct $ i; )
+}
+mod foo {}
+fn bar() {}
+struct Baz;
+"#]],
+    );
 }
