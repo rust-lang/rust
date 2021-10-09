@@ -52,9 +52,9 @@ fn match_by_first_token_literally() {
     check(
         r#"
 macro_rules! m {
-    ($ i:ident) => ( mod $ i {} );
-    (= $ i:ident) => ( fn $ i() {} );
-    (+ $ i:ident) => ( struct $ i; )
+    ($i:ident) => ( mod $i {} );
+    (= $i:ident) => ( fn $i() {} );
+    (+ $i:ident) => ( struct $i; )
 }
 m! { foo }
 m! { = bar }
@@ -62,9 +62,9 @@ m! { + Baz }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($ i:ident) => ( mod $ i {} );
-    (= $ i:ident) => ( fn $ i() {} );
-    (+ $ i:ident) => ( struct $ i; )
+    ($i:ident) => ( mod $i {} );
+    (= $i:ident) => ( fn $i() {} );
+    (+ $i:ident) => ( struct $i; )
 }
 mod foo {}
 fn bar() {}
@@ -78,9 +78,9 @@ fn match_by_last_token_literally() {
     check(
         r#"
 macro_rules! m {
-    ($ i:ident) => ( mod $ i {} );
-    ($ i:ident =) => ( fn $ i() {} );
-    ($ i:ident +) => ( struct $ i; )
+    ($i:ident) => ( mod $i {} );
+    ($i:ident =) => ( fn $i() {} );
+    ($i:ident +) => ( struct $i; )
 }
 m! { foo }
 m! { bar = }
@@ -88,9 +88,9 @@ m! { Baz + }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($ i:ident) => ( mod $ i {} );
-    ($ i:ident =) => ( fn $ i() {} );
-    ($ i:ident +) => ( struct $ i; )
+    ($i:ident) => ( mod $i {} );
+    ($i:ident =) => ( fn $i() {} );
+    ($i:ident +) => ( struct $i; )
 }
 mod foo {}
 fn bar() {}
@@ -104,9 +104,9 @@ fn match_by_ident() {
     check(
         r#"
 macro_rules! m {
-    ($ i:ident) => ( mod $ i {} );
-    (spam $ i:ident) => ( fn $ i() {} );
-    (eggs $ i:ident) => ( struct $ i; )
+    ($i:ident) => ( mod $i {} );
+    (spam $i:ident) => ( fn $i() {} );
+    (eggs $i:ident) => ( struct $i; )
 }
 m! { foo }
 m! { spam bar }
@@ -114,9 +114,9 @@ m! { eggs Baz }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($ i:ident) => ( mod $ i {} );
-    (spam $ i:ident) => ( fn $ i() {} );
-    (eggs $ i:ident) => ( struct $ i; )
+    ($i:ident) => ( mod $i {} );
+    (spam $i:ident) => ( fn $i() {} );
+    (eggs $i:ident) => ( struct $i; )
 }
 mod foo {}
 fn bar() {}
@@ -130,9 +130,9 @@ fn match_by_separator_token() {
     check(
         r#"
 macro_rules! m {
-    ($ ($ i:ident),*) => ($ ( mod $ i {} )*);
-    ($ ($ i:ident)#*) => ($ ( fn $ i() {} )*);
-    ($ i:ident ,# $ j:ident) => ( struct $ i; struct $ j; )
+    ($($i:ident),*) => ($(mod $i {} )*);
+    ($($i:ident)#*) => ($(fn $i() {} )*);
+    ($i:ident ,# $ j:ident) => ( struct $i; struct $ j; )
 }
 
 m! { foo, bar }
@@ -143,9 +143,9 @@ m! { Foo,# Bar }
 "#,
         expect![[r##"
 macro_rules! m {
-    ($ ($ i:ident),*) => ($ ( mod $ i {} )*);
-    ($ ($ i:ident)#*) => ($ ( fn $ i() {} )*);
-    ($ i:ident ,# $ j:ident) => ( struct $ i; struct $ j; )
+    ($($i:ident),*) => ($(mod $i {} )*);
+    ($($i:ident)#*) => ($(fn $i() {} )*);
+    ($i:ident ,# $ j:ident) => ( struct $i; struct $ j; )
 }
 
 mod foo {}
@@ -165,13 +165,13 @@ fn test_match_group_pattern_with_multiple_defs() {
     check(
         r#"
 macro_rules! m {
-    ($ ($ i:ident),*) => ( impl Bar { $ ( fn $ i {} )*} );
+    ($($i:ident),*) => ( impl Bar { $(fn $i {})* } );
 }
 m! { foo, bar }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($ ($ i:ident),*) => ( impl Bar { $ ( fn $ i {} )*} );
+    ($($i:ident),*) => ( impl Bar { $(fn $i {})* } );
 }
 impl Bar {
 fn foo {}
@@ -186,13 +186,13 @@ fn test_match_group_pattern_with_multiple_statement() {
     check(
         r#"
 macro_rules! m {
-    ($ ($ i:ident),*) => ( fn baz { $ ( $ i (); )*} );
+    ($($i:ident),*) => ( fn baz { $($i ();)* } );
 }
 m! { foo, bar }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($ ($ i:ident),*) => ( fn baz { $ ( $ i (); )*} );
+    ($($i:ident),*) => ( fn baz { $($i ();)* } );
 }
 fn baz {
 foo();
@@ -207,13 +207,13 @@ fn test_match_group_pattern_with_multiple_statement_without_semi() {
     check(
         r#"
 macro_rules! m {
-    ($ ($ i:ident),*) => ( fn baz { $ ( $i() );*} );
+    ($($i:ident),*) => ( fn baz { $($i() );* } );
 }
 m! { foo, bar }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($ ($ i:ident),*) => ( fn baz { $ ( $i() );*} );
+    ($($i:ident),*) => ( fn baz { $($i() );* } );
 }
 fn baz {
 foo();
