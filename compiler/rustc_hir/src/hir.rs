@@ -2293,6 +2293,13 @@ impl<'hir> InlineAsmOperand<'hir> {
             Self::Const { .. } | Self::Sym { .. } => None,
         }
     }
+
+    pub fn is_clobber(&self) -> bool {
+        matches!(
+            self,
+            InlineAsmOperand::Out { reg: InlineAsmRegOrRegClass::Reg(_), late: _, expr: None }
+        )
+    }
 }
 
 #[derive(Debug, HashStable_Generic)]
