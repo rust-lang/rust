@@ -18,17 +18,6 @@ pub(crate) struct SubtreeTokenSource {
 }
 
 impl<'a> SubtreeTokenSource {
-    // Helper function used in test
-    #[cfg(test)]
-    pub(crate) fn text(&self) -> SmolStr {
-        match self.cached.get(self.curr.1) {
-            Some(tt) => tt.text.clone(),
-            _ => SmolStr::new(""),
-        }
-    }
-}
-
-impl<'a> SubtreeTokenSource {
     pub(crate) fn new(buffer: &TokenBuffer) -> SubtreeTokenSource {
         let mut current = buffer.begin();
         let mut cached = Vec::with_capacity(100);
@@ -179,26 +168,5 @@ fn convert_leaf(leaf: &tt::Leaf) -> TtToken {
         tt::Leaf::Literal(l) => convert_literal(l),
         tt::Leaf::Ident(ident) => convert_ident(ident),
         tt::Leaf::Punct(punct) => convert_punct(*punct),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{convert_literal, TtToken};
-    use parser::Token;
-    use syntax::{SmolStr, SyntaxKind};
-
-    #[test]
-    fn test_negative_literal() {
-        assert_eq!(
-            convert_literal(&tt::Literal {
-                id: tt::TokenId::unspecified(),
-                text: SmolStr::new("-42.0")
-            }),
-            TtToken {
-                tt: Token { kind: SyntaxKind::FLOAT_NUMBER, is_jointed_to_next: false },
-                text: SmolStr::new("-42.0")
-            }
-        );
     }
 }
