@@ -48,7 +48,7 @@ macro_rules! m {
 }
 
 #[test]
-fn tries_all_branches_matching_first_token_literally() {
+fn match_by_first_token_literally() {
     check(
         r#"
 macro_rules! m {
@@ -74,7 +74,7 @@ struct Baz;
 }
 
 #[test]
-fn tries_all_branches_matching_last_token_literally() {
+fn match_by_last_token_literally() {
     check(
         r#"
 macro_rules! m {
@@ -100,7 +100,7 @@ struct Baz;
 }
 
 #[test]
-fn tries_all_branches_matching_ident() {
+fn match_by_ident() {
     check(
         r#"
 macro_rules! m {
