@@ -32,7 +32,7 @@ impl<T> Context for io::Result<T> {
 /// # Errors
 ///
 /// This function errors out if the files couldn't be created or written to.
-pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str>) -> io::Result<()> {
+pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str>, msrv: bool) -> io::Result<()> {
     let lint = LintData {
         pass: pass.expect("`pass` argument is validated by clap"),
         name: lint_name.expect("`name` argument is validated by clap"),
@@ -40,11 +40,11 @@ pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str
         project_root: clippy_project_root(),
     };
 
-    create_lint(&lint).context("Unable to create lint implementation")?;
+    create_lint(&lint, msrv).context("Unable to create lint implementation")?;
     create_test(&lint).context("Unable to create a test for the new lint")
 }
 
-fn create_lint(lint: &LintData<'_>) -> io::Result<()> {
+fn create_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
     let (pass_type, pass_lifetimes, pass_import, context_import) = match lint.pass {
         "early" => ("EarlyLintPass", "", "use rustc_ast::ast::*;", "EarlyContext"),
         "late" => ("LateLintPass", "<'_>", "use rustc_hir::*;", "LateContext"),
@@ -55,6 +55,7 @@ fn create_lint(lint: &LintData<'_>) -> io::Result<()> {
 
     let camel_case_name = to_camel_case(lint.name);
     let lint_contents = get_lint_file_contents(
+        lint.pass,
         pass_type,
         pass_lifetimes,
         lint.name,
@@ -62,6 +63,7 @@ fn create_lint(lint: &LintData<'_>) -> io::Result<()> {
         lint.category,
         pass_import,
         context_import,
+        enable_msrv,
     );
 
     let lint_path = format!("clippy_lints/src/{}.rs", lint.name);
@@ -155,6 +157,7 @@ publish = false
 }
 
 fn get_lint_file_contents(
+    pass_name: &str,
     pass_type: &str,
     pass_lifetimes: &str,
     lint_name: &str,
@@ -162,13 +165,41 @@ fn get_lint_file_contents(
     category: &str,
     pass_import: &str,
     context_import: &str,
+    enable_msrv: bool,
 ) -> String {
-    format!(
-        "use rustc_lint::{{{type}, {context_import}}};
-use rustc_session::{{declare_lint_pass, declare_tool_lint}};
-{pass_import}
+    let mut result = String::new();
 
-declare_clippy_lint! {{
+    let name_camel = camel_case_name;
+    let name_upper = lint_name.to_uppercase();
+
+    result.push_str(&if enable_msrv {
+        format!(
+            "use clippy_utils::msrvs;
+{pass_import}
+use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
+use rustc_semver::RustcVersion;
+use rustc_session::{{declare_tool_lint, impl_lint_pass}};
+
+",
+            pass_type = pass_type,
+            pass_import = pass_import,
+            context_import = context_import,
+        )
+    } else {
+        format!(
+            "{pass_import}
+use rustc_lint::{{{context_import}, {pass_type}}};
+use rustc_session::{{declare_lint_pass, declare_tool_lint}};
+
+",
+            pass_import = pass_import,
+            pass_type = pass_type,
+            context_import = context_import
+        )
+    });
+
+    result.push_str(&format!(
+        "declare_clippy_lint! {{
     /// ### What it does
     ///
     /// ### Why is this bad?
@@ -184,20 +215,65 @@ declare_clippy_lint! {{
     pub {name_upper},
     {category},
     \"default lint description\"
+}}",
+        name_upper = name_upper,
+        category = category,
+    ));
+
+    result.push_str(&if enable_msrv {
+        format!(
+            "
+pub struct {name_camel} {{
+    msrv: Option<RustcVersion>,
 }}
 
+impl {name_camel} {{
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {{
+        Self {{ msrv }}
+    }}
+}}
+
+impl_lint_pass!({name_camel} => [{name_upper}]);
+
+impl {pass_type}{pass_lifetimes} for {name_camel} {{
+    extract_msrv_attr!({context_import});
+}}
+
+// TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
+//       e.g. store.register_{pass_name}_pass(move || Box::new({module_name}::{name_camel}::new(msrv)));
+// TODO: Add MSRV level to `clippy_utils/src/msrvs.rs` if needed.
+// TODO: Add MSRV test to `tests/ui/min_rust_version_attr.rs`.
+// TODO: Update msrv config comment in `clippy_lints/src/utils/conf.rs`
+",
+            pass_type = pass_type,
+            pass_lifetimes = pass_lifetimes,
+            pass_name = pass_name,
+            name_upper = name_upper,
+            name_camel = name_camel,
+            module_name = lint_name,
+            context_import = context_import,
+        )
+    } else {
+        format!(
+            "
 declare_lint_pass!({name_camel} => [{name_upper}]);
 
-impl {type}{lifetimes} for {name_camel} {{}}
+impl {pass_type}{pass_lifetimes} for {name_camel} {{}}
+//
+// TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
+//       e.g. store.register_{pass_name}_pass(|| Box::new({module_name}::{name_camel}));
 ",
-        type=pass_type,
-        lifetimes=pass_lifetimes,
-        name_upper=lint_name.to_uppercase(),
-        name_camel=camel_case_name,
-        category=category,
-        pass_import=pass_import,
-        context_import=context_import
-    )
+            pass_type = pass_type,
+            pass_lifetimes = pass_lifetimes,
+            pass_name = pass_name,
+            name_upper = name_upper,
+            name_camel = name_camel,
+            module_name = lint_name,
+        )
+    });
+
+    result
 }
 
 #[test]
