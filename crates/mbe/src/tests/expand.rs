@@ -72,28 +72,6 @@ macro_rules! foobar {
 }
 
 #[test]
-fn test_match_group_zero_match() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ( $($i:ident)* ) => ();
-        }"#,
-    )
-    .assert_expand_items("foo! ();", "");
-}
-
-#[test]
-fn test_match_group_in_group() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            { $( ( $($i:ident)* ) )* } => ( $( ( $($i)* ) )* );
-        }"#,
-    )
-    .assert_expand_items("foo! ( (a b) );", "(a b)");
-}
-
-#[test]
 fn test_expand_to_item_list() {
     let tree = parse_macro(
         "

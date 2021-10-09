@@ -383,3 +383,35 @@ fn baz() -> bool {
 "#]],
     );
 }
+
+#[test]
+fn test_match_group_zero_match() {
+    check(
+        r#"
+macro_rules! m { ( $($i:ident)* ) => (); }
+m!();
+"#,
+        expect![[r#"
+macro_rules! m { ( $($i:ident)* ) => (); }
+
+"#]],
+    );
+}
+
+#[test]
+fn test_match_group_in_group() {
+    check(
+        r#"
+macro_rules! m {
+    [ $( ( $($i:ident)* ) )* ] => [ x![$( ( $($i)* ) )*]; ]
+}
+m! ( (a b) );
+"#,
+        expect![[r#"
+macro_rules! m {
+    [ $( ( $($i:ident)* ) )* ] => [ x![$( ( $($i)* ) )*]; ]
+}
+x![(a b)];
+"#]],
+    )
+}
