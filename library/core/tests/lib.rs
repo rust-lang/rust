@@ -26,6 +26,7 @@
 #![feature(extern_types)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
+#![feature(array_from_fn)]
 #![feature(hashmap_internals)]
 #![feature(try_find)]
 #![feature(is_sorted)]
