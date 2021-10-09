@@ -1074,7 +1074,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
     ) -> (Vec<MigrationDiagnosticInfo>, String) {
         let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) else {
-            return (Vec::new(), format!(""));
+            return (Vec::new(), String::new());
         };
 
         let mut need_migrations = Vec::new();
