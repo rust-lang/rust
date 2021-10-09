@@ -69,6 +69,13 @@ fn check(ra_fixture: &str, mut expect: Expect) {
             let indent = IndentLevel::from_node(call.syntax());
             let pp = reindent(indent, pp);
             format_to!(expn_text, "{}", pp);
+            if call.to_string().contains("// +tree") {
+                let tree = format!("{:#?}", parse.syntax_node())
+                    .split_inclusive("\n")
+                    .map(|line| format!("// {}", line))
+                    .collect::<String>();
+                format_to!(expn_text, "\n{}", tree)
+            }
         }
         let range = call.syntax().text_range();
         let range: Range<usize> = range.into();

@@ -261,3 +261,49 @@ fn baz() {
 "#]],
     )
 }
+
+#[test]
+fn test_expr_order() {
+    check(
+        r#"
+macro_rules! m {
+    ($ i:expr) => { fn bar() { $ i * 3; } }
+}
+// +tree
+m! { 1 + 2 }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($ i:expr) => { fn bar() { $ i * 3; } }
+}
+fn bar() {
+    1+2*3;
+}
+// MACRO_ITEMS@0..15
+//   FN@0..15
+//     FN_KW@0..2 "fn"
+//     NAME@2..5
+//       IDENT@2..5 "bar"
+//     PARAM_LIST@5..7
+//       L_PAREN@5..6 "("
+//       R_PAREN@6..7 ")"
+//     BLOCK_EXPR@7..15
+//       STMT_LIST@7..15
+//         L_CURLY@7..8 "{"
+//         EXPR_STMT@8..14
+//           BIN_EXPR@8..13
+//             BIN_EXPR@8..11
+//               LITERAL@8..9
+//                 INT_NUMBER@8..9 "1"
+//               PLUS@9..10 "+"
+//               LITERAL@10..11
+//                 INT_NUMBER@10..11 "2"
+//             STAR@11..12 "*"
+//             LITERAL@12..13
+//               INT_NUMBER@12..13 "3"
+//           SEMICOLON@13..14 ";"
+//         R_CURLY@14..15 "}"
+
+"#]],
+    )
+}
