@@ -67,7 +67,7 @@ winapi = "0.3.8"
 jemallocator = { version = "0.4.1", package = "tikv-jemallocator", optional = true }
 
 [dev-dependencies]
-expect-test = "1.1"
+expect-test = "1.2.0-pre.1"
 xshell = "0.1"
 
 test_utils = { path = "../test_utils" }

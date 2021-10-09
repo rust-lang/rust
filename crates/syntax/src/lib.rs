@@ -89,6 +89,9 @@ impl<T> Parse<T> {
     pub fn syntax_node(&self) -> SyntaxNode {
         SyntaxNode::new_root(self.green.clone())
     }
+    pub fn errors(&self) -> &[SyntaxError] {
+        &*self.errors
+    }
 }
 
 impl<T: AstNode> Parse<T> {
@@ -98,10 +101,6 @@ impl<T: AstNode> Parse<T> {
 
     pub fn tree(&self) -> T {
         T::cast(self.syntax_node()).unwrap()
-    }
-
-    pub fn errors(&self) -> &[SyntaxError] {
-        &*self.errors
     }
 
     pub fn ok(self) -> Result<T, Arc<Vec<SyntaxError>>> {

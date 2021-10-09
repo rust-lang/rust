@@ -28,7 +28,7 @@ use crate::{
     db::DefDatabase, nameres::ModuleSource, resolver::HasResolver, test_db::TestDB, AsMacroCall,
 };
 
-fn check(ra_fixture: &str, expect: Expect) {
+fn check(ra_fixture: &str, mut expect: Expect) {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.crate_graph().iter().next().unwrap();
     let def_map = db.crate_def_map(krate);
@@ -65,16 +65,29 @@ fn check(ra_fixture: &str, expect: Expect) {
             format_to!(expn_text, "/* error: {} */", err);
         }
         if let Some((parse, _token_map)) = exp.value {
+            assert!(
+                parse.errors().is_empty(),
+                "parse errors in expansion: \n{:#?}",
+                parse.errors()
+            );
             let pp = pretty_print_macro_expansion(parse.syntax_node());
             let indent = IndentLevel::from_node(call.syntax());
             let pp = reindent(indent, pp);
             format_to!(expn_text, "{}", pp);
+            if call.to_string().contains("// +tree") {
+                let tree = format!("{:#?}", parse.syntax_node())
+                    .split_inclusive("\n")
+                    .map(|line| format!("// {}", line))
+                    .collect::<String>();
+                format_to!(expn_text, "\n{}", tree)
+            }
         }
         let range = call.syntax().text_range();
         let range: Range<usize> = range.into();
         expanded_text.replace_range(range, &expn_text)
     }
 
+    expect.indent(false);
     expect.assert_eq(&expanded_text);
 }
 
@@ -97,20 +110,37 @@ fn reindent(indent: IndentLevel, pp: String) -> String {
 fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
     let mut res = String::new();
     let mut prev_kind = SyntaxKind::EOF;
+    let mut indent_level = 0;
     for token in iter::successors(expn.first_token(), |t| t.next_token()) {
         let curr_kind = token.kind();
         let space = match (prev_kind, curr_kind) {
             _ if prev_kind.is_trivia() || curr_kind.is_trivia() => "",
+            (T!['{'], T!['}']) => "",
             (T![=], _) | (_, T![=]) => " ",
             (_, T!['{']) => " ",
-            (T![;] | T!['}'], _) => "\n",
+            (T![;] | T!['{'] | T!['}'], _) => "\n",
+            (_, T!['}']) => "\n",
             (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
             (IDENT, _) if curr_kind.is_keyword() => " ",
             (_, IDENT) if prev_kind.is_keyword() => " ",
+            (T![>], IDENT) => " ",
+            (T![>], _) if curr_kind.is_keyword() => " ",
+            (T![->], _) | (_, T![->]) => " ",
+            (T![&&], _) | (_, T![&&]) => " ",
             _ => "",
         };
 
+        match prev_kind {
+            T!['{'] => indent_level += 1,
+            T!['}'] => indent_level -= 1,
+            _ => (),
+        }
+
         res.push_str(space);
+        if space == "\n" {
+            let level = if curr_kind == T!['}'] { indent_level - 1 } else { indent_level };
+            res.push_str(&"    ".repeat(level));
+        }
         prev_kind = curr_kind;
         format_to!(res, "{}", token)
     }
