@@ -98,6 +98,7 @@ fn reindent(indent: IndentLevel, pp: String) -> String {
 fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
     let mut res = String::new();
     let mut prev_kind = SyntaxKind::EOF;
+    let mut indent_level = 0;
     for token in iter::successors(expn.first_token(), |t| t.next_token()) {
         let curr_kind = token.kind();
         let space = match (prev_kind, curr_kind) {
@@ -113,7 +114,16 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
             _ => "",
         };
 
+        match prev_kind {
+            T!['{'] => indent_level += 1,
+            T!['}'] => indent_level -= 1,
+            _ => (),
+        }
+
         res.push_str(space);
+        if space == "\n" && curr_kind != T!['}'] {
+            res.push_str(&"    ".repeat(indent_level));
+        }
         prev_kind = curr_kind;
         format_to!(res, "{}", token)
     }

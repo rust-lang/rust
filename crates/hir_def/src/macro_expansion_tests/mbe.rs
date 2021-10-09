@@ -174,8 +174,8 @@ macro_rules! m {
     ($($i:ident),*) => ( impl Bar { $(fn $i {})* } );
 }
 impl Bar {
-fn foo {}
-fn bar {}
+    fn foo {}
+    fn bar {}
 }
 "#]],
     );
@@ -195,8 +195,8 @@ macro_rules! m {
     ($($i:ident),*) => ( fn baz { $($i ();)* } );
 }
 fn baz {
-foo();
-bar();
+    foo();
+    bar();
 }
 "#]],
     )
@@ -216,8 +216,8 @@ macro_rules! m {
     ($($i:ident),*) => ( fn baz { $($i() );* } );
 }
 fn baz {
-foo();
-bar()
+    foo();
+    bar()
 }
 "#]],
     )
