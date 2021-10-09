@@ -270,7 +270,7 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
                         0 => String::new(),
                         _ if f.alternate() => {
                             format!(
-                                "for<{:#}> ",
+                                "for&lt;{:#}&gt; ",
                                 comma_sep(bound_params.iter().map(|lt| lt.print()))
                             )
                         }
@@ -1059,7 +1059,11 @@ impl clean::BareFunctionDecl {
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             if !self.generic_params.is_empty() {
-                write!(f, "for<{}> ", comma_sep(self.generic_params.iter().map(|g| g.print(cx))))
+                write!(
+                    f,
+                    "for&lt;{}&gt; ",
+                    comma_sep(self.generic_params.iter().map(|g| g.print(cx)))
+                )
             } else {
                 Ok(())
             }
