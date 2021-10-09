@@ -1,3 +1,8 @@
+//! Unlike rustc, rust-analyzer's syntax tree are not "made of" token trees.
+//! Rather, token trees are an explicit bridge between the parser and
+//! (procedural or declarative) macros.
+//!
+//! This module tests tt <-> syntax tree conversion specifically
 use expect_test::expect;
 
 use crate::macro_expansion_tests::check;

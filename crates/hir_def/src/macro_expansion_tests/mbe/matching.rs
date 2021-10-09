@@ -1,3 +1,5 @@
+//! Test that `$var:expr` captures function correctly.
+
 use expect_test::expect;
 
 use crate::macro_expansion_tests::check;
@@ -20,22 +22,4 @@ literal!()
 /* error: leftover tokens */not_a_literal!()
 "#]],
     )
-}
-
-#[test]
-fn wrong_nesting_level() {
-    check(
-        r#"
-macro_rules! m {
-    ($($i:ident);*) => ($i)
-}
-m!{a}
-"#,
-        expect![[r#"
-macro_rules! m {
-    ($($i:ident);*) => ($i)
-}
-/* error: expected simple binding, found nested binding `i` */
-"#]],
-    );
 }

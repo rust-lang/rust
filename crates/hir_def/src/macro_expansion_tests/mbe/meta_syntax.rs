@@ -1,3 +1,5 @@
+//! Test for the syntax of macros themselves.
+
 use expect_test::expect;
 
 use crate::macro_expansion_tests::check;
