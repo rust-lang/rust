@@ -9,13 +9,17 @@
 //! write unit-tests (in fact, we used to do that), but that makes tests brittle
 //! and harder to understand.
 
-use std::ops::Range;
+use std::{iter, ops::Range};
 
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::{expect, Expect};
 use hir_expand::{db::AstDatabase, InFile, MacroFile};
 use stdx::format_to;
-use syntax::{ast, AstNode};
+use syntax::{
+    ast, AstNode,
+    SyntaxKind::{self, IDENT},
+    SyntaxNode, T,
+};
 
 use crate::{
     db::DefDatabase, nameres::ModuleSource, resolver::HasResolver, test_db::TestDB, AsMacroCall,
@@ -58,7 +62,8 @@ fn check(ra_fixture: &str, expect: Expect) {
             format_to!(expn_text, "/* error: {} */", err);
         }
         if let Some((parse, _token_map)) = exp.value {
-            format_to!(expn_text, "{}", parse.syntax_node());
+            let pp = pretty_print_macro_expansion(parse.syntax_node());
+            format_to!(expn_text, "{}", pp);
         }
         let range = call.syntax().text_range();
         let range: Range<usize> = range.into();
@@ -66,6 +71,29 @@ fn check(ra_fixture: &str, expect: Expect) {
     }
 
     expect.assert_eq(&expanded_text);
+}
+
+fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
+    let mut res = String::new();
+    let mut prev_kind = SyntaxKind::EOF;
+    for token in iter::successors(expn.first_token(), |t| t.next_token()) {
+        let curr_kind = token.kind();
+        let needs_space = match (prev_kind, curr_kind) {
+            _ if prev_kind.is_trivia() || curr_kind.is_trivia() => false,
+            (T![=], _) | (_, T![=]) => true,
+            (IDENT, IDENT) => true,
+            (IDENT, _) => curr_kind.is_keyword(),
+            (_, IDENT) => prev_kind.is_keyword(),
+            _ => false,
+        };
+
+        if needs_space {
+            res.push(' ')
+        }
+        prev_kind = curr_kind;
+        format_to!(res, "{}", token)
+    }
+    res
 }
 
 #[test]
@@ -103,5 +131,23 @@ macro_rules! stmts {
 
 fn f() { let _ = /* error: could not convert tokens */; }
 "#]],
+    )
+}
+
+#[test]
+fn round_trips_compound_tokens() {
+    check(
+        r#"
+macro_rules! m {
+    () => { type qual: ::T = qual::T; }
+}
+m!();
+"#,
+        expect![[r#"
+macro_rules! m {
+    () => { type qual: ::T = qual::T; }
+}
+type qual: ::T = qual::T;
+        "#]],
     )
 }

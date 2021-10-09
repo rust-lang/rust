@@ -823,14 +823,6 @@ mod tests {
     }
 
     #[test]
-    fn test_token_tree_multi_char_punct() {
-        let source_file = ast::SourceFile::parse("struct Foo { a: x::Y }").ok().unwrap();
-        let struct_def = source_file.syntax().descendants().find_map(ast::Struct::cast).unwrap();
-        let tt = syntax_node_to_token_tree(struct_def.syntax()).0;
-        token_tree_to_syntax_node(&tt, ParserEntryPoint::Item).unwrap();
-    }
-
-    #[test]
     fn test_missing_closing_delim() {
         let source_file = ast::SourceFile::parse("m!(x").tree();
         let node = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
