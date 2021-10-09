@@ -20,7 +20,7 @@ use stdx::format_to;
 use syntax::{
     ast::{self, edit::IndentLevel},
     AstNode,
-    SyntaxKind::{self, IDENT},
+    SyntaxKind::{self, IDENT, LIFETIME_IDENT},
     SyntaxNode, T,
 };
 
@@ -103,7 +103,7 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
             _ if prev_kind.is_trivia() || curr_kind.is_trivia() => "",
             (T![=], _) | (_, T![=]) => " ",
             (T![;], _) => "\n",
-            (IDENT, IDENT) => " ",
+            (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
             (IDENT, _) if curr_kind.is_keyword() => " ",
             (_, IDENT) if prev_kind.is_keyword() => " ",
             _ => "",

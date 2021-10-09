@@ -167,33 +167,6 @@ SUBTREE $
 }
 
 #[test]
-fn test_lifetime_split() {
-    parse_macro(
-        r#"
-macro_rules! foo {
-    ($($t:tt)*) => { $($t)*}
-}
-"#,
-    )
-    .assert_expand(
-        r#"foo!(static bar: &'static str = "hello";);"#,
-        r#"
-SUBTREE $
-  IDENT   static 17
-  IDENT   bar 18
-  PUNCH   : [alone] 19
-  PUNCH   & [alone] 20
-  PUNCH   ' [joint] 21
-  IDENT   static 22
-  IDENT   str 23
-  PUNCH   = [alone] 24
-  LITERAL "hello" 25
-  PUNCH   ; [joint] 26
-"#,
-    );
-}
-
-#[test]
 fn test_expr_order() {
     let expanded = parse_macro(
         r#"

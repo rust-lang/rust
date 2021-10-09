@@ -64,6 +64,24 @@ fn f() {
 }
 
 #[test]
+fn roundtrip_lifetime() {
+    check(
+        r#"
+macro_rules! m {
+    ($($t:tt)*) => { $($t)*}
+}
+m!(static bar: &'static str = "hello";);
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($($t:tt)*) => { $($t)*}
+}
+static bar: & 'static str = "hello";
+"#]],
+    );
+}
+
+#[test]
 fn broken_parenthesis_sequence() {
     check(
         r#"
