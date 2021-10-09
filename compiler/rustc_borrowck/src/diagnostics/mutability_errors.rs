@@ -712,7 +712,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             }) => {
                                 capture_reason = format!("mutable borrow of `{}`", upvar);
                             }
-                            ty::UpvarCapture::ByValue(_) => {
+                            ty::UpvarCapture::ByValue => {
                                 capture_reason = format!("possible mutation of `{}`", upvar);
                             }
                             _ => bug!("upvar `{}` borrowed, but not mutably", upvar),

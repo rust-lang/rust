@@ -409,7 +409,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let updated = match capture_info.capture_kind {
-                ty::UpvarCapture::ByValue(..) => match closure_kind {
+                ty::UpvarCapture::ByValue => match closure_kind {
                     ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
                         (ty::ClosureKind::FnOnce, Some((usage_span, place.clone())))
                     }
@@ -1086,7 +1086,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for captured_place in root_var_min_capture_list.iter() {
             match captured_place.info.capture_kind {
                 // Only care about captures that are moved into the closure
-                ty::UpvarCapture::ByValue(..) => {
+                ty::UpvarCapture::ByValue => {
                     projections_list.push(captured_place.place.projections.as_slice());
                     diagnostics_info.insert(UpvarMigrationInfo::CapturingPrecise {
                         source_expr: captured_place.info.path_expr_id,
@@ -1481,7 +1481,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // at the first Deref in `adjust_upvar_borrow_kind_for_consume` and then moved into
             // the closure.
             hir::CaptureBy::Value if !place.deref_tys().any(ty::TyS::is_ref) => {
-                ty::UpvarCapture::ByValue(None)
+                ty::UpvarCapture::ByValue
             }
             hir::CaptureBy::Value | hir::CaptureBy::Ref => {
                 let origin = UpvarRegion(upvar_id, closure_span);
@@ -1678,7 +1678,7 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
     capture_kind: UpvarCapture<'tcx>,
 ) -> Ty<'tcx> {
     match capture_kind {
-        ty::UpvarCapture::ByValue(_) => ty,
+        ty::UpvarCapture::ByValue => ty,
         ty::UpvarCapture::ByRef(borrow) => tcx
             .mk_ref(borrow.region, ty::TypeAndMut { ty: ty, mutbl: borrow.kind.to_mutbl_lossy() }),
     }
@@ -1756,12 +1756,10 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
         debug!(?upvar_id);
 
-        let usage_span = tcx.hir().span(diag_expr_id);
-
         let capture_info = ty::CaptureInfo {
             capture_kind_expr_id: Some(diag_expr_id),
             path_expr_id: Some(diag_expr_id),
-            capture_kind: ty::UpvarCapture::ByValue(Some(usage_span)),
+            capture_kind: ty::UpvarCapture::ByValue,
         };
 
         let curr_info = self.capture_information[&place_with_id.place];
@@ -1841,7 +1839,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
         debug!(?curr_capture_info);
 
-        if let ty::UpvarCapture::ByValue(_) = curr_capture_info.capture_kind {
+        if let ty::UpvarCapture::ByValue = curr_capture_info.capture_kind {
             // It's already captured by value, we don't need to do anything here
             return;
         } else if let ty::UpvarCapture::ByRef(curr_upvar_borrow) = curr_capture_info.capture_kind {
@@ -1961,7 +1959,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
             },
 
             // Just truncating the place will never cause capture kind to be updated to ByValue
-            ty::UpvarCapture::ByValue(..) => unreachable!(),
+            ty::UpvarCapture::ByValue => unreachable!(),
         }
     }
 
@@ -1980,7 +1978,7 @@ fn restrict_precision_for_drop_types<'a, 'tcx>(
 ) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
     let is_copy_type = fcx.infcx.type_is_copy_modulo_regions(fcx.param_env, place.ty(), span);
 
-    if let (false, UpvarCapture::ByValue(..)) = (is_copy_type, curr_mode) {
+    if let (false, UpvarCapture::ByValue) = (is_copy_type, curr_mode) {
         for i in 0..place.projections.len() {
             match place.ty_before_projection(i).kind() {
                 ty::Adt(def, _) if def.destructor(fcx.tcx).is_some() => {
@@ -2070,9 +2068,7 @@ fn adjust_for_move_closure<'tcx>(
         truncate_place_to_len_and_update_capture_kind(&mut place, &mut kind, idx);
     }
 
-    // AMAN: I think we don't need the span inside the ByValue anymore
-    //       we have more detailed span in CaptureInfo
-    (place, ty::UpvarCapture::ByValue(None))
+    (place, ty::UpvarCapture::ByValue)
 }
 
 /// Adjust closure capture just that if taking ownership of data, only move data
@@ -2085,7 +2081,7 @@ fn adjust_for_non_move_closure<'tcx>(
         place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
     match kind {
-        ty::UpvarCapture::ByValue(..) => {
+        ty::UpvarCapture::ByValue => {
             if let Some(idx) = contains_deref {
                 truncate_place_to_len_and_update_capture_kind(&mut place, &mut kind, idx);
             }
@@ -2128,7 +2124,7 @@ fn construct_capture_kind_reason_string<'tcx>(
     let place_str = construct_place_string(tcx, place);
 
     let capture_kind_str = match capture_info.capture_kind {
-        ty::UpvarCapture::ByValue(_) => "ByValue".into(),
+        ty::UpvarCapture::ByValue => "ByValue".into(),
         ty::UpvarCapture::ByRef(borrow) => format!("{:?}", borrow.kind),
     };
 
@@ -2149,7 +2145,7 @@ fn construct_capture_info_string<'tcx>(
     let place_str = construct_place_string(tcx, place);
 
     let capture_kind_str = match capture_info.capture_kind {
-        ty::UpvarCapture::ByValue(_) => "ByValue".into(),
+        ty::UpvarCapture::ByValue => "ByValue".into(),
         ty::UpvarCapture::ByRef(borrow) => format!("{:?}", borrow.kind),
     };
     format!("{} -> {}", place_str, capture_kind_str)
@@ -2240,18 +2236,11 @@ fn determine_capture_info<'tcx>(
     // If the capture kind is equivalent then, we don't need to escalate and can compare the
     // expressions.
     let eq_capture_kind = match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-        (ty::UpvarCapture::ByValue(_), ty::UpvarCapture::ByValue(_)) => {
-            // We don't need to worry about the spans being ignored here.
-            //
-            // The expr_id in capture_info corresponds to the span that is stored within
-            // ByValue(span) and therefore it gets handled with priortizing based on
-            // expressions below.
-            true
-        }
+        (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByValue) => true,
         (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
             ref_a.kind == ref_b.kind
         }
-        (ty::UpvarCapture::ByValue(_), _) | (ty::UpvarCapture::ByRef(_), _) => false,
+        (ty::UpvarCapture::ByValue, _) | (ty::UpvarCapture::ByRef(_), _) => false,
     };
 
     if eq_capture_kind {
@@ -2263,8 +2252,8 @@ fn determine_capture_info<'tcx>(
         // We select the CaptureKind which ranks higher based the following priority order:
         // ByValue > MutBorrow > UniqueImmBorrow > ImmBorrow
         match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-            (ty::UpvarCapture::ByValue(_), _) => capture_info_a,
-            (_, ty::UpvarCapture::ByValue(_)) => capture_info_b,
+            (ty::UpvarCapture::ByValue, _) => capture_info_a,
+            (_, ty::UpvarCapture::ByValue) => capture_info_b,
             (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
                 match (ref_a.kind, ref_b.kind) {
                     // Take LHS:
@@ -2319,7 +2308,7 @@ fn truncate_place_to_len_and_update_capture_kind<'tcx>(
         }
 
         ty::UpvarCapture::ByRef(..) => {}
-        ty::UpvarCapture::ByValue(..) => {}
+        ty::UpvarCapture::ByValue => {}
     }
 
     place.projections.truncate(len);

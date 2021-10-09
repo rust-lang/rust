@@ -867,7 +867,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                         all_captures_are_imm_borrow = false;
                     }
                 }
-                ty::UpvarCapture::ByValue(_) => {
+                ty::UpvarCapture::ByValue => {
                     all_captures_are_imm_borrow = false;
                 }
             }
