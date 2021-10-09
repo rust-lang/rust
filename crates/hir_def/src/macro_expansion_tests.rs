@@ -121,6 +121,7 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
             (T![;] | T!['{'] | T!['}'], _) => "\n",
             (_, T!['}']) => "\n",
             (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
+            _ if prev_kind.is_keyword() && curr_kind.is_keyword() => " ",
             (IDENT, _) if curr_kind.is_keyword() => " ",
             (_, IDENT) if prev_kind.is_keyword() => " ",
             (T![>], IDENT) => " ",

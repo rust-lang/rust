@@ -102,58 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_expr() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:expr) => {
-                 fn bar() { $ i; }
-            }
-        }
-"#,
-    )
-    .assert_expand_items(
-        "foo! { 2 + 2 * baz(3).quux() }",
-        "fn bar () {2 + 2 * baz (3) . quux () ;}",
-    );
-}
-
-#[test]
-fn test_last_expr() {
-    parse_macro(
-        r#"
-        macro_rules! vec {
-            ($($item:expr),*) => {
-                {
-                    let mut v = Vec::new();
-                    $(
-                        v.push($item);
-                    )*
-                    v
-                }
-            };
-        }
-"#,
-    )
-    .assert_expand_items(
-        "vec!(1,2,3);",
-        "{let mut v = Vec :: new () ; v . push (1) ; v . push (2) ; v . push (3) ; v}",
-    );
-}
-
-#[test]
-fn test_expr_with_attr() {
-    parse_macro(
-        r#"
-macro_rules! m {
-    ($a:expr) => {0}
-}
-"#,
-    )
-    .assert_expand_items("m!(#[allow(a)]())", "0");
-}
-
-#[test]
 fn test_ty() {
     parse_macro(
         r#"

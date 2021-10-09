@@ -704,3 +704,77 @@ fn foo() {
 "#]],
     );
 }
+
+#[test]
+fn test_expr() {
+    check(
+        r#"
+macro_rules! m {
+    ($e:expr) => { fn bar() { $e; } }
+}
+
+m! { 2 + 2 * baz(3).quux() }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($e:expr) => { fn bar() { $e; } }
+}
+
+fn bar() {
+    2+2*baz(3).quux();
+}
+"#]],
+    )
+}
+
+#[test]
+fn test_last_expr() {
+    check(
+        r#"
+macro_rules! vec {
+    ($($item:expr),*) => {{
+            let mut v = Vec::new();
+            $( v.push($item); )*
+            v
+    }};
+}
+
+fn f() {
+    vec![1,2,3];
+}
+"#,
+        expect![[r#"
+macro_rules! vec {
+    ($($item:expr),*) => {{
+            let mut v = Vec::new();
+            $( v.push($item); )*
+            v
+    }};
+}
+
+fn f() {
+     {
+        let mut v = Vec::new();
+        v.push(1);
+        v.push(2);
+        v.push(3);
+        v
+    };
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_expr_with_attr() {
+    check(
+        r#"
+macro_rules! m { ($a:expr) => { x!(); } }
+m!(#[allow(a)]());
+"#,
+        expect![[r#"
+macro_rules! m { ($a:expr) => { x!(); } }
+x!();
+"#]],
+    )
+}
