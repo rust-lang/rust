@@ -222,3 +222,42 @@ fn baz {
 "#]],
     )
 }
+
+#[test]
+fn test_match_group_empty_fixed_token() {
+    check(
+        r#"
+macro_rules! m {
+    ($($i:ident)* #abc) => ( fn baz { $($i ();)* } );
+}
+m!{#abc}
+"#,
+        expect![[r##"
+macro_rules! m {
+    ($($i:ident)* #abc) => ( fn baz { $($i ();)* } );
+}
+fn baz {}
+"##]],
+    )
+}
+
+#[test]
+fn test_match_group_in_subtree() {
+    check(
+        r#"
+macro_rules! m {
+    (fn $name:ident { $($i:ident)* } ) => ( fn $name() { $($i ();)* } );
+}
+m! {fn baz { a b } }
+"#,
+        expect![[r#"
+macro_rules! m {
+    (fn $name:ident { $($i:ident)* } ) => ( fn $name() { $($i ();)* } );
+}
+fn baz() {
+    a();
+    b();
+}
+"#]],
+    )
+}

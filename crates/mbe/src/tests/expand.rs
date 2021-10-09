@@ -210,33 +210,6 @@ fn test_expr_order() {
 }
 
 #[test]
-fn test_match_group_empty_fixed_token() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ ($ i:ident)* #abc) => ( fn baz { $ (
-                $ i ();
-            )*} );
-        }
-"#,
-    )
-    .assert_expand_items("foo! {#abc}", "fn baz {}");
-}
-
-#[test]
-fn test_match_group_in_subtree() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            (fn $name:ident {$($i:ident)*} ) => ( fn $name() { $ (
-                $ i ();
-            )*} );
-        }"#,
-    )
-    .assert_expand_items("foo! {fn baz {a b} }", "fn baz () {a () ; b () ;}");
-}
-
-#[test]
 fn test_match_group_with_multichar_sep() {
     parse_macro(
         r#"
