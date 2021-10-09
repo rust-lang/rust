@@ -798,6 +798,8 @@ impl str {
     ///
     /// assert_eq!(None, iter.next());
     /// ```
+    #[must_use = "this returns the split string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "split_whitespace", since = "1.1.0")]
     #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace<'_> {
@@ -839,6 +841,8 @@ impl str {
     ///
     /// assert_eq!(None, iter.next());
     /// ```
+    #[must_use = "this returns the split string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
     #[inline]
     pub fn split_ascii_whitespace(&self) -> SplitAsciiWhitespace<'_> {
@@ -914,6 +918,8 @@ impl str {
     ///
     /// assert!(utf16_len <= utf8_len);
     /// ```
+    #[must_use = "this returns the encoded string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "encode_utf16", since = "1.8.0")]
     pub fn encode_utf16(&self) -> EncodeUtf16<'_> {
         EncodeUtf16 { chars: self.chars(), extra: 0 }
@@ -1840,6 +1846,8 @@ impl str {
     /// let s = "  עברית";
     /// assert!(Some('ע') == s.trim_left().chars().next());
     /// ```
+    #[must_use = "this returns the trimmed string as a new slice, \
+                  without modifying the original"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(
@@ -1882,6 +1890,8 @@ impl str {
     /// let s = "עברית  ";
     /// assert!(Some('ת') == s.trim_right().chars().rev().next());
     /// ```
+    #[must_use = "this returns the trimmed string as a new slice, \
+                  without modifying the original"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(
@@ -2346,6 +2356,8 @@ impl str {
     /// ```
     /// assert_eq!("❤\n!".escape_debug().to_string(), "❤\\n!");
     /// ```
+    #[must_use = "this returns the escaped string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_debug(&self) -> EscapeDebug<'_> {
         let mut chars = self.chars();
@@ -2390,6 +2402,8 @@ impl str {
     /// ```
     /// assert_eq!("❤\n!".escape_default().to_string(), "\\u{2764}\\n!");
     /// ```
+    #[must_use = "this returns the escaped string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_default(&self) -> EscapeDefault<'_> {
         EscapeDefault { inner: self.chars().flat_map(CharEscapeDefault) }
@@ -2426,6 +2440,8 @@ impl str {
     /// ```
     /// assert_eq!("❤\n!".escape_unicode().to_string(), "\\u{2764}\\u{a}\\u{21}");
     /// ```
+    #[must_use = "this returns the escaped string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_unicode(&self) -> EscapeUnicode<'_> {
         EscapeUnicode { inner: self.chars().flat_map(CharEscapeUnicode) }
