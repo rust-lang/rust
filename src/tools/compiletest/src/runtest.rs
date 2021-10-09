@@ -39,7 +39,7 @@ use crate::extract_gdb_version;
 use crate::is_android_gdb_target;
 
 mod debugger;
-use debugger::DebuggerCommands;
+use debugger::{check_debugger_output, DebuggerCommands};
 
 #[cfg(test)]
 mod tests;
@@ -726,7 +726,9 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("Error while running CDB", &debugger_run_result);
         }
 
-        self.check_debugger_output(&debugger_run_result, &check_lines);
+        if let Err(e) = check_debugger_output(&debugger_run_result, &check_lines) {
+            self.fatal_proc_rec(&e, &debugger_run_result);
+        }
     }
 
     fn run_debuginfo_gdb_test(&self) {
@@ -963,7 +965,9 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("gdb failed to execute", &debugger_run_result);
         }
 
-        self.check_debugger_output(&debugger_run_result, &check_lines);
+        if let Err(e) = check_debugger_output(&debugger_run_result, &check_lines) {
+            self.fatal_proc_rec(&e, &debugger_run_result);
+        }
     }
 
     fn run_debuginfo_lldb_test(&self) {
@@ -1100,7 +1104,9 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("Error while running LLDB", &debugger_run_result);
         }
 
-        self.check_debugger_output(&debugger_run_result, &check_lines);
+        if let Err(e) = check_debugger_output(&debugger_run_result, &check_lines) {
+            self.fatal_proc_rec(&e, &debugger_run_result);
+        }
     }
 
     fn run_lldb(
@@ -1180,66 +1186,6 @@ impl<'test> TestCx<'test> {
                 continue;
             }
             cmd.arg(arg);
-        }
-    }
-
-    fn check_debugger_output(&self, debugger_run_result: &ProcRes, check_lines: &[String]) {
-        let num_check_lines = check_lines.len();
-
-        let mut check_line_index = 0;
-        for line in debugger_run_result.stdout.lines() {
-            if check_line_index >= num_check_lines {
-                break;
-            }
-
-            if check_single_line(line, &(check_lines[check_line_index])[..]) {
-                check_line_index += 1;
-            }
-        }
-        if check_line_index != num_check_lines && num_check_lines > 0 {
-            self.fatal_proc_rec(
-                &format!("line not found in debugger output: {}", check_lines[check_line_index]),
-                debugger_run_result,
-            );
-        }
-
-        fn check_single_line(line: &str, check_line: &str) -> bool {
-            // Allow check lines to leave parts unspecified (e.g., uninitialized
-            // bits in the  wrong case of an enum) with the notation "[...]".
-            let line = line.trim();
-            let check_line = check_line.trim();
-            let can_start_anywhere = check_line.starts_with("[...]");
-            let can_end_anywhere = check_line.ends_with("[...]");
-
-            let check_fragments: Vec<&str> =
-                check_line.split("[...]").filter(|frag| !frag.is_empty()).collect();
-            if check_fragments.is_empty() {
-                return true;
-            }
-
-            let (mut rest, first_fragment) = if can_start_anywhere {
-                match line.find(check_fragments[0]) {
-                    Some(pos) => (&line[pos + check_fragments[0].len()..], 1),
-                    None => return false,
-                }
-            } else {
-                (line, 0)
-            };
-
-            for current_fragment in &check_fragments[first_fragment..] {
-                match rest.find(current_fragment) {
-                    Some(pos) => {
-                        rest = &rest[pos + current_fragment.len()..];
-                    }
-                    None => return false,
-                }
-            }
-
-            if !can_end_anywhere && !rest.is_empty() {
-                return false;
-            }
-
-            true
         }
     }
 

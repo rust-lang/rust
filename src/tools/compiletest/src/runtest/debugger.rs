@@ -1,4 +1,5 @@
 use crate::common::Config;
+use crate::runtest::ProcRes;
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -53,4 +54,62 @@ impl DebuggerCommands {
 
         Ok(Self { commands, check_lines, breakpoint_lines })
     }
+}
+
+pub(super) fn check_debugger_output(
+    debugger_run_result: &ProcRes,
+    check_lines: &[String],
+) -> Result<(), String> {
+    let num_check_lines = check_lines.len();
+
+    let mut check_line_index = 0;
+    for line in debugger_run_result.stdout.lines() {
+        if check_line_index >= num_check_lines {
+            break;
+        }
+
+        if check_single_line(line, &(check_lines[check_line_index])[..]) {
+            check_line_index += 1;
+        }
+    }
+    if check_line_index != num_check_lines && num_check_lines > 0 {
+        Err(format!("line not found in debugger output: {}", check_lines[check_line_index]))
+    } else {
+        Ok(())
+    }
+}
+
+fn check_single_line(line: &str, check_line: &str) -> bool {
+    // Allow check lines to leave parts unspecified (e.g., uninitialized
+    // bits in the  wrong case of an enum) with the notation "[...]".
+    let line = line.trim();
+    let check_line = check_line.trim();
+    let can_start_anywhere = check_line.starts_with("[...]");
+    let can_end_anywhere = check_line.ends_with("[...]");
+
+    let check_fragments: Vec<&str> =
+        check_line.split("[...]").filter(|frag| !frag.is_empty()).collect();
+    if check_fragments.is_empty() {
+        return true;
+    }
+
+    let (mut rest, first_fragment) = if can_start_anywhere {
+        match line.find(check_fragments[0]) {
+            Some(pos) => (&line[pos + check_fragments[0].len()..], 1),
+            None => return false,
+        }
+    } else {
+        (line, 0)
+    };
+
+    for current_fragment in &check_fragments[first_fragment..] {
+        match rest.find(current_fragment) {
+            Some(pos) => {
+                rest = &rest[pos + current_fragment.len()..];
+            }
+            None => return false,
+        }
+    }
+
+    if !can_end_anywhere && !rest.is_empty() { false } else { true }
 }
