@@ -180,6 +180,7 @@ macro_rules! m {
         let _ = 1000;
         let _ = 12E+99_f64;
         let _ = "rust1";
+        let _ = -92;
     }
 }
 fn f() {
@@ -193,6 +194,7 @@ macro_rules! m {
         let _ = 1000;
         let _ = 12E+99_f64;
         let _ = "rust1";
+        let _ = -92;
     }
 }
 fn f() {
@@ -200,6 +202,7 @@ fn f() {
     let_ = 1000;
     let_ = 12E+99_f64;
     let_ = "rust1";
+    let_ = -92;
 }
 "#]],
     );
@@ -221,6 +224,26 @@ macro_rules! m2 { ($x:ident) => {} }
 
 /* error: Failed to find macro definition */
 /* error: Failed to lower macro args to token tree */
+"#]],
+    )
+}
+
+#[test]
+fn unary_minus_is_a_literal() {
+    check(
+        r#"
+macro_rules! m { ($x:literal) => (literal!()); ($x:tt) => (not_a_literal!()); }
+m!(92);
+m!(-92);
+m!(-9.2);
+m!(--92);
+"#,
+        expect![[r#"
+macro_rules! m { ($x:literal) => (literal!()); ($x:tt) => (not_a_literal!()); }
+literal!()
+literal!()
+literal!()
+/* error: leftover tokens */not_a_literal!()
 "#]],
     )
 }

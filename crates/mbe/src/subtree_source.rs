@@ -181,24 +181,3 @@ fn convert_leaf(leaf: &tt::Leaf) -> TtToken {
         tt::Leaf::Punct(punct) => convert_punct(*punct),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{convert_literal, TtToken};
-    use parser::Token;
-    use syntax::{SmolStr, SyntaxKind};
-
-    #[test]
-    fn test_negative_literal() {
-        assert_eq!(
-            convert_literal(&tt::Literal {
-                id: tt::TokenId::unspecified(),
-                text: SmolStr::new("-42.0")
-            }),
-            TtToken {
-                tt: Token { kind: SyntaxKind::FLOAT_NUMBER, is_jointed_to_next: false },
-                text: SmolStr::new("-42.0")
-            }
-        );
-    }
-}
