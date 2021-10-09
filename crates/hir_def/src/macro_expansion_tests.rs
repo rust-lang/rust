@@ -16,7 +16,8 @@ use expect_test::{expect, Expect};
 use hir_expand::{db::AstDatabase, InFile, MacroFile};
 use stdx::format_to;
 use syntax::{
-    ast, AstNode,
+    ast::{self, edit::IndentLevel},
+    AstNode,
     SyntaxKind::{self, IDENT},
     SyntaxNode, T,
 };
@@ -63,6 +64,8 @@ fn check(ra_fixture: &str, expect: Expect) {
         }
         if let Some((parse, _token_map)) = exp.value {
             let pp = pretty_print_macro_expansion(parse.syntax_node());
+            let indent = IndentLevel::from_node(call.syntax());
+            let pp = reindent(indent, pp);
             format_to!(expn_text, "{}", pp);
         }
         let range = call.syntax().text_range();
@@ -73,23 +76,38 @@ fn check(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&expanded_text);
 }
 
+fn reindent(indent: IndentLevel, pp: String) -> String {
+    if !pp.contains('\n') {
+        return pp;
+    }
+    let mut lines = pp.split_inclusive('\n');
+    let mut res = lines.next().unwrap().to_string();
+    for line in lines {
+        if line.trim().is_empty() {
+            res.push_str(&line)
+        } else {
+            format_to!(res, "{}{}", indent, line)
+        }
+    }
+    res
+}
+
 fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
     let mut res = String::new();
     let mut prev_kind = SyntaxKind::EOF;
     for token in iter::successors(expn.first_token(), |t| t.next_token()) {
         let curr_kind = token.kind();
-        let needs_space = match (prev_kind, curr_kind) {
-            _ if prev_kind.is_trivia() || curr_kind.is_trivia() => false,
-            (T![=], _) | (_, T![=]) => true,
-            (IDENT, IDENT) => true,
-            (IDENT, _) => curr_kind.is_keyword(),
-            (_, IDENT) => prev_kind.is_keyword(),
-            _ => false,
+        let space = match (prev_kind, curr_kind) {
+            _ if prev_kind.is_trivia() || curr_kind.is_trivia() => "",
+            (T![=], _) | (_, T![=]) => " ",
+            (T![;], _) => "\n",
+            (IDENT, IDENT) => " ",
+            (IDENT, _) if curr_kind.is_keyword() => " ",
+            (_, IDENT) if prev_kind.is_keyword() => " ",
+            _ => "",
         };
 
-        if needs_space {
-            res.push(' ')
-        }
+        res.push_str(space);
         prev_kind = curr_kind;
         format_to!(res, "{}", token)
     }
@@ -148,8 +166,43 @@ macro_rules! m {
     () => { type qual: ::T = qual::T; }
 }
 type qual: ::T = qual::T;
-        "#]],
+"#]],
     )
+}
+
+#[test]
+fn round_trips_literals() {
+    check(
+        r#"
+macro_rules! m {
+    () => {
+        let _ = 'c';
+        let _ = 1000;
+        let _ = 12E+99_f64;
+        let _ = "rust1";
+    }
+}
+fn f() {
+    m!()
+}
+"#,
+        expect![[r#"
+macro_rules! m {
+    () => {
+        let _ = 'c';
+        let _ = 1000;
+        let _ = 12E+99_f64;
+        let _ = "rust1";
+    }
+}
+fn f() {
+    let_ = 'c';
+    let_ = 1000;
+    let_ = 12E+99_f64;
+    let_ = "rust1";
+}
+"#]],
+    );
 }
 
 #[test]
@@ -168,6 +221,6 @@ macro_rules! m2 { ($x:ident) => {} }
 
 /* error: Failed to find macro definition */
 /* error: Failed to lower macro args to token tree */
-        "#]],
+"#]],
     )
 }
