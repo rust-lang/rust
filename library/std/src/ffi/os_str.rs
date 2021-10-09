@@ -777,6 +777,7 @@ impl OsStr {
     ///
     /// assert_eq!("grüße, jürgen ❤", s.to_ascii_lowercase());
     /// ```
+    #[must_use = "to lowercase the value in-place, use `make_ascii_lowercase`"]
     #[stable(feature = "osstring_ascii", since = "1.53.0")]
     pub fn to_ascii_lowercase(&self) -> OsString {
         OsString::from_inner(self.inner.to_ascii_lowercase())
@@ -798,6 +799,7 @@ impl OsStr {
     ///
     /// assert_eq!("GRüßE, JüRGEN ❤", s.to_ascii_uppercase());
     /// ```
+    #[must_use = "to uppercase the value in-place, use `make_ascii_uppercase`"]
     #[stable(feature = "osstring_ascii", since = "1.53.0")]
     pub fn to_ascii_uppercase(&self) -> OsString {
         OsString::from_inner(self.inner.to_ascii_uppercase())
