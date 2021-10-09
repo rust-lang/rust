@@ -11,7 +11,7 @@ use rustc_hir::{
     Arm, Block, BorrowKind, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StmtKind, UnOp,
 };
 use rustc_lint::LateContext;
-use rustc_span::{sym, ExpnKind, Span, Symbol};
+use rustc_span::{sym, symbol, ExpnKind, Span, Symbol};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Return `(pat, arg, body, span)`.
@@ -658,7 +658,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
             {
                 if name.ident.name == sym::new {
                     return Some(VecInitKind::New);
-                } else if name.ident.name.as_str() == "default" {
+                } else if name.ident.name == symbol::kw::Default {
                     return Some(VecInitKind::Default);
                 } else if name.ident.name.as_str() == "with_capacity" {
                     let arg = args.get(0)?;

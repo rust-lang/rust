@@ -113,7 +113,7 @@ fn handle_uninit_vec_pair(
                     UNINIT_VEC,
                     vec![call_span, maybe_init_or_reserve.span],
                     "calling `set_len()` on empty `Vec` creates out-of-bound values",
-                )
+                );
             }
         }
     }
