@@ -177,6 +177,7 @@ macro_rules! expect {
             column: column!(),
         },
         data: $data,
+        indent: true,
     }};
     [[]] => { $crate::expect![[""]] };
 }
@@ -202,6 +203,8 @@ pub struct Expect {
     pub position: Position,
     #[doc(hidden)]
     pub data: &'static str,
+    #[doc(hidden)]
+    pub indent: bool,
 }
 
 /// Self-updating file.
@@ -243,6 +246,10 @@ impl Expect {
     pub fn assert_debug_eq(&self, actual: &impl fmt::Debug) {
         let actual = format!("{:#?}\n", actual);
         self.assert_eq(&actual)
+    }
+    /// If `true` (default), in-place update will indent the string literal.
+    pub fn indent(&mut self, yes: bool) {
+        self.indent = yes;
     }
 
     fn trimmed(&self) -> String {
@@ -381,7 +388,8 @@ impl FileRuntime {
     }
     fn update(&mut self, expect: &Expect, actual: &str) {
         let loc = expect.locate(&self.original_text);
-        let patch = format_patch(loc.line_indent.clone(), actual);
+        let desired_indent = if expect.indent { Some(loc.line_indent) } else { None };
+        let patch = format_patch(desired_indent, actual);
         self.patchwork.patch(loc.literal_range, &patch);
         fs::write(&self.path, &self.patchwork.text).unwrap()
     }
@@ -423,7 +431,7 @@ impl Patchwork {
     }
 }
 
-fn format_patch(line_indent: usize, patch: &str) -> String {
+fn format_patch(desired_indent: Option<usize>, patch: &str) -> String {
     let mut max_hashes = 0;
     let mut cur_hashes = 0;
     for byte in patch.bytes() {
@@ -435,7 +443,7 @@ fn format_patch(line_indent: usize, patch: &str) -> String {
         max_hashes = max_hashes.max(cur_hashes);
     }
     let hashes = &"#".repeat(max_hashes + 1);
-    let indent = &" ".repeat(line_indent);
+    let indent = desired_indent.map(|it| " ".repeat(it));
     let is_multiline = patch.contains('\n');
 
     let mut buf = String::new();
@@ -448,14 +456,18 @@ fn format_patch(line_indent: usize, patch: &str) -> String {
     let mut final_newline = false;
     for line in lines_with_ends(patch) {
         if is_multiline && !line.trim().is_empty() {
-            buf.push_str(indent);
-            buf.push_str("    ");
+            if let Some(indent) = &indent {
+                buf.push_str(indent);
+                buf.push_str("    ");
+            }
         }
         buf.push_str(line);
         final_newline = line.ends_with('\n');
     }
     if final_newline {
-        buf.push_str(indent);
+        if let Some(indent) = &indent {
+            buf.push_str(indent);
+        }
     }
     buf.push('"');
     buf.push_str(hashes);
@@ -537,7 +549,15 @@ mod tests {
 
     #[test]
     fn test_format_patch() {
-        let patch = format_patch(0, "hello\nworld\n");
+        let patch = format_patch(None, "hello\nworld\n");
+        expect![[r##"
+            r#"
+            hello
+            world
+            "#"##]]
+        .assert_eq(&patch);
+
+        let patch = format_patch(Some(0), "hello\nworld\n");
         expect![[r##"
             r#"
                 hello
@@ -545,7 +565,7 @@ mod tests {
             "#"##]]
         .assert_eq(&patch);
 
-        let patch = format_patch(4, "single line");
+        let patch = format_patch(Some(4), "single line");
         expect![[r##"r#"single line"#"##]].assert_eq(&patch);
     }
 
@@ -580,5 +600,39 @@ mod tests {
     #[test]
     fn test_expect_file() {
         expect_file!["./lib.rs"].assert_eq(include_str!("./lib.rs"))
+    }
+
+    #[test]
+    fn smoke_test_indent() {
+        fn check_indented(input: &str, mut expect: Expect) {
+            expect.indent(true);
+            expect.assert_eq(input);
+        }
+        fn check_not_indented(input: &str, mut expect: Expect) {
+            expect.indent(false);
+            expect.assert_eq(input);
+        }
+
+        check_indented(
+            "\
+line1
+  line2
+",
+            expect![[r#"
+                line1
+                  line2
+            "#]],
+        );
+
+        check_not_indented(
+            "\
+line1
+  line2
+",
+            expect![[r#"
+line1
+  line2
+"#]],
+        );
     }
 }
