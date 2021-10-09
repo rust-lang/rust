@@ -10,7 +10,7 @@ use crate::cmp::Ordering::{self, Greater, Less};
 use crate::marker::Copy;
 use crate::mem;
 use crate::num::NonZeroUsize;
-use crate::ops::{FnMut, Range, RangeBounds};
+use crate::ops::{Bound, FnMut, OneSidedRange, Range, RangeBounds};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
 use crate::ptr;
@@ -81,6 +81,29 @@ pub use index::range;
 
 #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
 pub use ascii::EscapeAscii;
+
+/// Calculates the direction and split point of a one-sided range.
+///
+/// This is a helper function for `take` and `take_mut` that returns
+/// the direction of the split (front or back) as well as the index at
+/// which to split. Returns `None` if the split index would overflow.
+#[inline]
+fn split_point_of(range: impl OneSidedRange<usize>) -> Option<(Direction, usize)> {
+    use Bound::*;
+
+    Some(match (range.start_bound(), range.end_bound()) {
+        (Unbounded, Excluded(i)) => (Direction::Front, *i),
+        (Unbounded, Included(i)) => (Direction::Front, i.checked_add(1)?),
+        (Excluded(i), Unbounded) => (Direction::Back, i.checked_add(1)?),
+        (Included(i), Unbounded) => (Direction::Back, *i),
+        _ => unreachable!(),
+    })
+}
+
+enum Direction {
+    Front,
+    Back,
+}
 
 #[lang = "slice"]
 #[cfg(not(test))]
@@ -3575,6 +3598,245 @@ impl<T> [T] {
         P: FnMut(&T) -> bool,
     {
         self.binary_search_by(|x| if pred(x) { Less } else { Greater }).unwrap_or_else(|i| i)
+    }
+
+    /// Removes the subslice corresponding to the given range
+    /// and returns a reference to it.
+    ///
+    /// Returns `None` and does not modify the slice if the given
+    /// range is out of bounds.
+    ///
+    /// Note that this method only accepts one-sided ranges such as
+    /// `2..` or `..6`, but not `2..6`.
+    ///
+    /// # Examples
+    ///
+    /// Taking the first three elements of a slice:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
+    /// let mut first_three = slice.take(..3).unwrap();
+    ///
+    /// assert_eq!(slice, &['d']);
+    /// assert_eq!(first_three, &['a', 'b', 'c']);
+    /// ```
+    ///
+    /// Taking the last two elements of a slice:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
+    /// let mut tail = slice.take(2..).unwrap();
+    ///
+    /// assert_eq!(slice, &['a', 'b']);
+    /// assert_eq!(tail, &['c', 'd']);
+    /// ```
+    ///
+    /// Getting `None` when `range` is out of bounds:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
+    ///
+    /// assert_eq!(None, slice.take(5..));
+    /// assert_eq!(None, slice.take(..5));
+    /// assert_eq!(None, slice.take(..=4));
+    /// let expected: &[char] = &['a', 'b', 'c', 'd'];
+    /// assert_eq!(Some(expected), slice.take(..4));
+    /// ```
+    #[inline]
+    #[must_use = "method does not modify the slice if the range is out of bounds"]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take<'a, R: OneSidedRange<usize>>(self: &mut &'a Self, range: R) -> Option<&'a Self> {
+        let (direction, split_index) = split_point_of(range)?;
+        if split_index > self.len() {
+            return None;
+        }
+        let (front, back) = self.split_at(split_index);
+        match direction {
+            Direction::Front => {
+                *self = back;
+                Some(front)
+            }
+            Direction::Back => {
+                *self = front;
+                Some(back)
+            }
+        }
+    }
+
+    /// Removes the subslice corresponding to the given range
+    /// and returns a mutable reference to it.
+    ///
+    /// Returns `None` and does not modify the slice if the given
+    /// range is out of bounds.
+    ///
+    /// Note that this method only accepts one-sided ranges such as
+    /// `2..` or `..6`, but not `2..6`.
+    ///
+    /// # Examples
+    ///
+    /// Taking the first three elements of a slice:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
+    /// let mut first_three = slice.take_mut(..3).unwrap();
+    ///
+    /// assert_eq!(slice, &mut ['d']);
+    /// assert_eq!(first_three, &mut ['a', 'b', 'c']);
+    /// ```
+    ///
+    /// Taking the last two elements of a slice:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
+    /// let mut tail = slice.take_mut(2..).unwrap();
+    ///
+    /// assert_eq!(slice, &mut ['a', 'b']);
+    /// assert_eq!(tail, &mut ['c', 'd']);
+    /// ```
+    ///
+    /// Getting `None` when `range` is out of bounds:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
+    ///
+    /// assert_eq!(None, slice.take_mut(5..));
+    /// assert_eq!(None, slice.take_mut(..5));
+    /// assert_eq!(None, slice.take_mut(..=4));
+    /// let expected: &mut [_] = &mut ['a', 'b', 'c', 'd'];
+    /// assert_eq!(Some(expected), slice.take_mut(..4));
+    /// ```
+    #[inline]
+    #[must_use = "method does not modify the slice if the range is out of bounds"]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take_mut<'a, R: OneSidedRange<usize>>(
+        self: &mut &'a mut Self,
+        range: R,
+    ) -> Option<&'a mut Self> {
+        let (direction, split_index) = split_point_of(range)?;
+        if split_index > self.len() {
+            return None;
+        }
+        let (front, back) = mem::take(self).split_at_mut(split_index);
+        match direction {
+            Direction::Front => {
+                *self = back;
+                Some(front)
+            }
+            Direction::Back => {
+                *self = front;
+                Some(back)
+            }
+        }
+    }
+
+    /// Removes the first element of the slice and returns a reference
+    /// to it.
+    ///
+    /// Returns `None` if the slice is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &[_] = &['a', 'b', 'c'];
+    /// let first = slice.take_first().unwrap();
+    ///
+    /// assert_eq!(slice, &['b', 'c']);
+    /// assert_eq!(first, &'a');
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take_first<'a>(self: &mut &'a Self) -> Option<&'a T> {
+        let (first, rem) = self.split_first()?;
+        *self = rem;
+        Some(first)
+    }
+
+    /// Removes the first element of the slice and returns a mutable
+    /// reference to it.
+    ///
+    /// Returns `None` if the slice is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c'];
+    /// let first = slice.take_first_mut().unwrap();
+    /// *first = 'd';
+    ///
+    /// assert_eq!(slice, &['b', 'c']);
+    /// assert_eq!(first, &'d');
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take_first_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
+        let (first, rem) = mem::take(self).split_first_mut()?;
+        *self = rem;
+        Some(first)
+    }
+
+    /// Removes the last element of the slice and returns a reference
+    /// to it.
+    ///
+    /// Returns `None` if the slice is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &[_] = &['a', 'b', 'c'];
+    /// let last = slice.take_last().unwrap();
+    ///
+    /// assert_eq!(slice, &['a', 'b']);
+    /// assert_eq!(last, &'c');
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take_last<'a>(self: &mut &'a Self) -> Option<&'a T> {
+        let (last, rem) = self.split_last()?;
+        *self = rem;
+        Some(last)
+    }
+
+    /// Removes the last element of the slice and returns a mutable
+    /// reference to it.
+    ///
+    /// Returns `None` if the slice is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c'];
+    /// let last = slice.take_last_mut().unwrap();
+    /// *last = 'd';
+    ///
+    /// assert_eq!(slice, &['a', 'b']);
+    /// assert_eq!(last, &'d');
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take_last_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
+        let (last, rem) = mem::take(self).split_last_mut()?;
+        *self = rem;
+        Some(last)
     }
 }
 

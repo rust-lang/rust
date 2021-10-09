@@ -34,6 +34,7 @@
 #![feature(pattern)]
 #![feature(sort_internals)]
 #![feature(slice_partition_at_index)]
+#![feature(slice_take)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_extra)]
