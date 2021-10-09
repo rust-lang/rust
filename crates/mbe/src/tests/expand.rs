@@ -167,33 +167,6 @@ SUBTREE $
 }
 
 #[test]
-fn test_lifetime_split() {
-    parse_macro(
-        r#"
-macro_rules! foo {
-    ($($t:tt)*) => { $($t)*}
-}
-"#,
-    )
-    .assert_expand(
-        r#"foo!(static bar: &'static str = "hello";);"#,
-        r#"
-SUBTREE $
-  IDENT   static 17
-  IDENT   bar 18
-  PUNCH   : [alone] 19
-  PUNCH   & [alone] 20
-  PUNCH   ' [joint] 21
-  IDENT   static 22
-  IDENT   str 23
-  PUNCH   = [alone] 24
-  LITERAL "hello" 25
-  PUNCH   ; [joint] 26
-"#,
-    );
-}
-
-#[test]
 fn test_expr_order() {
     let expanded = parse_macro(
         r#"
@@ -234,95 +207,6 @@ fn test_expr_order() {
         R_CURLY@14..15 "}""#,
         dump.trim()
     );
-}
-
-#[test]
-fn test_fail_match_pattern_by_first_token() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:ident) => (
-                mod $ i {}
-            );
-            (= $ i:ident) => (
-                fn $ i() {}
-            );
-            (+ $ i:ident) => (
-                struct $ i;
-            )
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo }", "mod foo {}")
-    .assert_expand_items("foo! { = bar }", "fn bar () {}")
-    .assert_expand_items("foo! { + Baz }", "struct Baz ;");
-}
-
-#[test]
-fn test_fail_match_pattern_by_last_token() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:ident) => (
-                mod $ i {}
-            );
-            ($ i:ident =) => (
-                fn $ i() {}
-            );
-            ($ i:ident +) => (
-                struct $ i;
-            )
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo }", "mod foo {}")
-    .assert_expand_items("foo! { bar = }", "fn bar () {}")
-    .assert_expand_items("foo! { Baz + }", "struct Baz ;");
-}
-
-#[test]
-fn test_fail_match_pattern_by_word_token() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:ident) => (
-                mod $ i {}
-            );
-            (spam $ i:ident) => (
-                fn $ i() {}
-            );
-            (eggs $ i:ident) => (
-                struct $ i;
-            )
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo }", "mod foo {}")
-    .assert_expand_items("foo! { spam bar }", "fn bar () {}")
-    .assert_expand_items("foo! { eggs Baz }", "struct Baz ;");
-}
-
-#[test]
-fn test_match_group_pattern_by_separator_token() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ ($ i:ident),*) => ($ (
-                mod $ i {}
-            )*);
-            ($ ($ i:ident)#*) => ($ (
-                fn $ i() {}
-            )*);
-            ($ i:ident ,# $ j:ident) => (
-                struct $ i;
-                struct $ j;
-            )
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo, bar }", "mod foo {} mod bar {}")
-    .assert_expand_items("foo! { foo# bar }", "fn foo () {} fn bar () {}")
-    .assert_expand_items("foo! { Foo,# Bar }", "struct Foo ; struct Bar ;");
 }
 
 #[test]
