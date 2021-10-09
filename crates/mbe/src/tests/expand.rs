@@ -72,28 +72,6 @@ macro_rules! foobar {
 }
 
 #[test]
-fn test_match_group_with_multichar_sep() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            (fn $name:ident {$($i:literal)*} ) => ( fn $name() -> bool { $($i)&&*} );
-        }"#,
-    )
-    .assert_expand_items("foo! (fn baz {true true} );", "fn baz () -> bool {true &&true}");
-}
-
-#[test]
-fn test_match_group_with_multichar_sep2() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            (fn $name:ident {$($i:literal)&&*} ) => ( fn $name() -> bool { $($i)&&*} );
-        }"#,
-    )
-    .assert_expand_items("foo! (fn baz {true && true} );", "fn baz () -> bool {true &&true}");
-}
-
-#[test]
 fn test_match_group_zero_match() {
     parse_macro(
         r#"

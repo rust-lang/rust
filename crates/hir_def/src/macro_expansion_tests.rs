@@ -126,6 +126,7 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
             (T![>], IDENT) => " ",
             (T![>], _) if curr_kind.is_keyword() => " ",
             (T![->], _) | (_, T![->]) => " ",
+            (T![&&], _) | (_, T![&&]) => " ",
             _ => "",
         };
 

@@ -346,3 +346,40 @@ fn bar() {
 "#]],
     )
 }
+
+#[test]
+fn test_match_group_with_multichar_sep() {
+    check(
+        r#"
+macro_rules! m {
+    (fn $name:ident { $($i:literal)* }) => ( fn $name() -> bool { $($i)&&* } );
+}
+m! (fn baz { true false } );
+"#,
+        expect![[r#"
+macro_rules! m {
+    (fn $name:ident { $($i:literal)* }) => ( fn $name() -> bool { $($i)&&* } );
+}
+fn baz() -> bool {
+    true && false
+}
+"#]],
+    );
+
+    check(
+        r#"
+macro_rules! m {
+    (fn $name:ident { $($i:literal)&&* }) => ( fn $name() -> bool { $($i)&&* } );
+}
+m! (fn baz { true && false } );
+"#,
+        expect![[r#"
+macro_rules! m {
+    (fn $name:ident { $($i:literal)&&* }) => ( fn $name() -> bool { $($i)&&* } );
+}
+fn baz() -> bool {
+    true && false
+}
+"#]],
+    );
+}
