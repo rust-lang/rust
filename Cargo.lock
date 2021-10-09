@@ -345,9 +345,9 @@ dependencies = [
 
 [[package]]
 name = "expect-test"
-version = "1.1.0"
+version = "1.2.0-pre.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2300477aab3a378f2ca00a4fbd4dc713654ab7ed790e4017493cb33656280633"
+checksum = "3a2f1664bc69648747878bfe3430ad9b58bc8d9b50b3b1df9f3c081345e33197"
 dependencies = [
  "dissimilar",
  "once_cell",
