@@ -77,12 +77,6 @@ fn to_subtree(tt: &tt::TokenTree) -> &tt::Subtree {
     }
     unreachable!("It is not a subtree");
 }
-fn to_literal(tt: &tt::TokenTree) -> &tt::Literal {
-    if let tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) = tt {
-        return lit;
-    }
-    unreachable!("It is not a literal");
-}
 
 fn to_punct(tt: &tt::TokenTree) -> &tt::Punct {
     if let tt::TokenTree::Leaf(tt::Leaf::Punct(lit)) = tt {
@@ -105,22 +99,6 @@ fn test_attr_to_token_tree() {
         to_subtree(&expansion.token_trees[1]).delimiter_kind(),
         Some(tt::DelimiterKind::Bracket)
     );
-}
-
-#[test]
-fn test_parse_macro_def_rules() {
-    cov_mark::check!(parse_macro_def_rules);
-
-    parse_macro2(
-        r#"
-macro foo {
-    ($id:ident) => {
-        fn $id() {}
-    }
-}
-"#,
-    )
-    .assert_expand_items("foo!(bar);", "fn bar () {}");
 }
 
 #[test]
