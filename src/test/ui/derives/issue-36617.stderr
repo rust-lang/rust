@@ -6,5 +6,92 @@ LL | #![derive(Copy)]
    |
    = note: import resolution is stuck, try simplifying macro imports
 
-error: aborting due to previous error
+error: cannot determine resolution for the attribute macro `test`
+  --> $DIR/issue-36617.rs:4:4
+   |
+LL | #![test]
+   |    ^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: cannot determine resolution for the attribute macro `test_case`
+  --> $DIR/issue-36617.rs:7:4
+   |
+LL | #![test_case]
+   |    ^^^^^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: cannot determine resolution for the attribute macro `bench`
+  --> $DIR/issue-36617.rs:10:4
+   |
+LL | #![bench]
+   |    ^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: cannot determine resolution for the attribute macro `global_allocator`
+  --> $DIR/issue-36617.rs:13:4
+   |
+LL | #![global_allocator]
+   |    ^^^^^^^^^^^^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: `derive` attribute cannot be used at crate level
+  --> $DIR/issue-36617.rs:1:1
+   |
+LL | #![derive(Copy)]
+   | ^^^^^^^^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[derive(Copy)]
+   | ~~~~~~~~~~~~~~~
+
+error: `test` attribute cannot be used at crate level
+  --> $DIR/issue-36617.rs:4:1
+   |
+LL | #![test]
+   | ^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[test]
+   | ~~~~~~~
+
+error: `test_case` attribute cannot be used at crate level
+  --> $DIR/issue-36617.rs:7:1
+   |
+LL | #![test_case]
+   | ^^^^^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[test_case]
+   | ~~~~~~~~~~~~
+
+error: `bench` attribute cannot be used at crate level
+  --> $DIR/issue-36617.rs:10:1
+   |
+LL | #![bench]
+   | ^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[bench]
+   | ~~~~~~~~
+
+error: `global_allocator` attribute cannot be used at crate level
+  --> $DIR/issue-36617.rs:13:1
+   |
+LL | #![global_allocator]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[global_allocator]
+   | ~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 10 previous errors
 
