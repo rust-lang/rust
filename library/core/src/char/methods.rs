@@ -949,6 +949,8 @@ impl char {
     /// // convert into themselves.
     /// assert_eq!('山'.to_lowercase().to_string(), "山");
     /// ```
+    #[must_use = "this returns the lowercase character as a new iterator, \
+                  without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_lowercase(self) -> ToLowercase {
@@ -1039,6 +1041,8 @@ impl char {
     /// ```
     ///
     /// holds across languages.
+    #[must_use = "this returns the uppercase character as a new iterator, \
+                  without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_uppercase(self) -> ToUppercase {
@@ -1085,6 +1089,7 @@ impl char {
     ///
     /// [`make_ascii_uppercase()`]: #method.make_ascii_uppercase
     /// [`to_uppercase()`]: #method.to_uppercase
+    #[must_use = "to uppercase the value in-place, use `make_ascii_uppercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
@@ -1118,6 +1123,7 @@ impl char {
     ///
     /// [`make_ascii_lowercase()`]: #method.make_ascii_lowercase
     /// [`to_lowercase()`]: #method.to_lowercase
+    #[must_use = "to lowercase the value in-place, use `make_ascii_lowercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]

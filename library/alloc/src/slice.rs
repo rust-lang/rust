@@ -662,6 +662,8 @@ impl [u8] {
     ///
     /// [`make_ascii_uppercase`]: slice::make_ascii_uppercase
     #[cfg(not(no_global_oom_handling))]
+    #[must_use = "this returns the uppercase bytes as a new Vec, \
+                  without modifying the original"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Vec<u8> {
@@ -680,6 +682,8 @@ impl [u8] {
     ///
     /// [`make_ascii_lowercase`]: slice::make_ascii_lowercase
     #[cfg(not(no_global_oom_handling))]
+    #[must_use = "this returns the lowercase bytes as a new Vec, \
+                  without modifying the original"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Vec<u8> {
