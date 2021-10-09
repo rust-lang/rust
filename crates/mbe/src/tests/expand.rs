@@ -108,20 +108,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_two_idents() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:ident, $ j:ident) => {
-                fn foo() { let a = $ i; let b = $j; }
-            }
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
-}
-
-#[test]
 fn test_tt_to_stmts() {
     let stmts = parse_macro(
         r#"
