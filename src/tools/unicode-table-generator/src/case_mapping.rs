@@ -41,18 +41,26 @@ impl fmt::Debug for CharEscape {
     }
 }
 
-static HEADER: &str = "
+static HEADER: &str = r"
 pub fn to_lower(c: char) -> [char; 3] {
-    match bsearch_case_table(c, LOWERCASE_TABLE) {
-        None => [c, '\\0', '\\0'],
-        Some(index) => LOWERCASE_TABLE[index].1,
+    if c.is_ascii() {
+        [(c as u8).to_ascii_lowercase() as char, '\0', '\0']
+    } else {
+        match bsearch_case_table(c, LOWERCASE_TABLE) {
+            None => [c, '\0', '\0'],
+            Some(index) => LOWERCASE_TABLE[index].1,
+        }
     }
 }
 
 pub fn to_upper(c: char) -> [char; 3] {
-    match bsearch_case_table(c, UPPERCASE_TABLE) {
-        None => [c, '\\0', '\\0'],
-        Some(index) => UPPERCASE_TABLE[index].1,
+    if c.is_ascii() {
+        [(c as u8).to_ascii_uppercase() as char, '\0', '\0']
+    } else {
+        match bsearch_case_table(c, UPPERCASE_TABLE) {
+            None => [c, '\0', '\0'],
+            Some(index) => UPPERCASE_TABLE[index].1,
+        }
     }
 }
 
