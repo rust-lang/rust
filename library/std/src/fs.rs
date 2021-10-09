@@ -640,10 +640,9 @@ impl Read for File {
         io::default_read_to_end(self, buf)
     }
 
-    // Reserves space in the buffer based on the file size when available.
-    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        buf.reserve(buffer_capacity_required(self));
-        io::default_read_to_string(self, buf)
+    unsafe fn is_append_only(&self) -> bool {
+        // `io::default_read_to_end` is append-only.
+        true
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -698,10 +697,9 @@ impl Read for &File {
         io::default_read_to_end(self, buf)
     }
 
-    // Reserves space in the buffer based on the file size when available.
-    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        buf.reserve(buffer_capacity_required(self));
-        io::default_read_to_string(self, buf)
+    unsafe fn is_append_only(&self) -> bool {
+        // `io::default_read_to_end` is append-only.
+        true
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]

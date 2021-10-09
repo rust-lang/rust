@@ -45,6 +45,11 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
+    unsafe fn is_append_only(&self) -> bool {
+        (**self).is_append_only()
+    }
+
+    #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         (**self).read_exact(buf)
     }
@@ -146,6 +151,11 @@ impl<R: Read + ?Sized> Read for Box<R> {
     #[inline]
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         (**self).read_to_string(buf)
+    }
+
+    #[inline]
+    unsafe fn is_append_only(&self) -> bool {
+        (**self).is_append_only()
     }
 
     #[inline]
@@ -296,6 +306,10 @@ impl Read for &[u8] {
         let len = self.len();
         *self = &self[len..];
         Ok(len)
+    }
+
+    unsafe fn is_append_only(&self) -> bool {
+        true
     }
 }
 

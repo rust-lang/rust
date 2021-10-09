@@ -316,12 +316,11 @@ impl Drop for Guard<'_> {
     }
 }
 
-// Several `read_to_string` and `read_line` methods in the standard library will
-// append data into a `String` buffer, but we need to be pretty careful when
-// doing this. The implementation will just call `.as_mut_vec()` and then
-// delegate to a byte-oriented reading method, but we must ensure that when
-// returning we never leave `buf` in a state such that it contains invalid UTF-8
-// in its bounds.
+// A few methods below (`read_to_string`, `read_line`) will append data into a
+// `String` buffer, but we need to be pretty careful when doing this. The
+// implementation will just call `.as_mut_vec()` and then delegate to a
+// byte-oriented reading method, but we must ensure that when returning we never
+// leave `buf` in a state such that it contains invalid UTF-8 in its bounds.
 //
 // To this end, we use an RAII guard (to protect against panics) which updates
 // the length of the string when it is dropped. This guard initially truncates
@@ -335,7 +334,7 @@ impl Drop for Guard<'_> {
 // 2. We're passing a raw buffer to the function `f`, and it is expected that
 //    the function only *appends* bytes to the buffer. We'll get undefined
 //    behavior if existing bytes are overwritten to have non-UTF-8 data.
-pub(crate) unsafe fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
+unsafe fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 where
     F: FnOnce(&mut Vec<u8>) -> Result<usize>,
 {
@@ -423,22 +422,6 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
             }
         }
     }
-}
-
-pub(crate) fn default_read_to_string<R: Read + ?Sized>(
-    r: &mut R,
-    buf: &mut String,
-) -> Result<usize> {
-    // Note that we do *not* call `r.read_to_end()` here. We are passing
-    // `&mut Vec<u8>` (the raw contents of `buf`) into the `read_to_end`
-    // method to fill it up. An arbitrary implementation could overwrite the
-    // entire contents of the vector, not just append to it (which is what
-    // we are expecting).
-    //
-    // To prevent extraneously checking the UTF-8-ness of the entire buffer
-    // we pass it to our hardcoded `default_read_to_end` implementation which
-    // we know is guaranteed to only read data into the end of the buffer.
-    unsafe { append_to_string(buf, |b| default_read_to_end(r, b)) }
 }
 
 pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
@@ -774,7 +757,56 @@ pub trait Read {
     /// [`std::fs::read_to_string`]: crate::fs::read_to_string
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
-        default_read_to_string(self, buf)
+        // We want to delegate to `read_to_end` by passing it a `&mut Vec<u8>`
+        // (the raw contents of `buf`) and having it append bytes directly onto
+        // `buf`. `append_to_string` only needs to check the UTF-8-ness of the
+        // new data, not the entire buffer.
+        //
+        // This `Read`er might have an optimized `read_to_end` implementation,
+        // but it's only safe if we can be sure it's append-only. Otherwise,
+        // we'll fall back to our default implementation which we know is safe.
+        unsafe {
+            append_to_string(buf, |b| {
+                if self.is_append_only() {
+                    self.read_to_end(b)
+                } else {
+                    default_read_to_end(self, b)
+                }
+            })
+        }
+    }
+
+    /// Determines if this `Read`er will only append data in [`read_to_end`] and
+    /// [`read_to_string`] without reading or overwriting the buffer's existing
+    /// contents.
+    ///
+    /// `Read`ers are not supposed to read or overwrite existing data and callers
+    /// may want to perform unsafe optimizations that take advantage of this
+    /// restrictions. Without this method they would not be allowed to do so
+    /// since `read_to_end` and `read_to_string` are safe methods and there is no
+    /// guarantee that implementors are adhering to the contract.
+    ///
+    /// Overriding this method is unnecessary when a `Read`er uses the default
+    /// implementations of `read_to_end` and `read_to_string`, or if it delegates
+    /// to another `Read`er that uses the defaults.
+    ///
+    /// The behavior of this method must be independent of the state of the
+    /// `Read`er - the method only takes `&self` so that it can be used through
+    /// trait objects.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe because callers may rely on the result to perform
+    /// unsafe optimizations.
+    ///
+    /// A `Read`er that delegates some or all of its reading to another `Read`
+    /// type must verify that the inner `Read`er is also append-only.
+    ///
+    /// [`read_to_end`]: Read::read_to_end
+    /// [`read_to_string`]: Read::read_to_string
+    #[unstable(feature = "append_only", issue = "none")]
+    unsafe fn is_append_only(&self) -> bool {
+        false
     }
 
     /// Read the exact number of bytes required to fill `buf`.
