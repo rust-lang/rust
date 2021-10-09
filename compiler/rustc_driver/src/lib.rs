@@ -1253,12 +1253,16 @@ pub fn init_rustc_env_logger() {
 /// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to choose an env var
 /// other than `RUSTC_LOG`.
 pub fn init_env_logger(env: &str) {
-    // Don't register a dispatcher if there's no filter to print anything
-    match std::env::var(env) {
-        Err(_) => return,
-        Ok(s) if s.is_empty() => return,
-        Ok(_) => {}
-    }
+    use tracing_subscriber::{
+        filter::{self, EnvFilter, LevelFilter},
+        layer::SubscriberExt,
+    };
+
+    let filter = match std::env::var(env) {
+        Ok(env) => EnvFilter::from_env(env),
+        _ => EnvFilter::default().add_directive(filter::Directive::from(LevelFilter::WARN)),
+    };
+
     let color_logs = match std::env::var(String::from(env) + "_COLOR") {
         Ok(value) => match value.as_ref() {
             "always" => true,
@@ -1278,7 +1282,7 @@ pub fn init_env_logger(env: &str) {
             "non-Unicode log color value: expected one of always, never, or auto",
         ),
     };
-    let filter = tracing_subscriber::EnvFilter::from_env(env);
+
     let layer = tracing_tree::HierarchicalLayer::default()
         .with_writer(io::stderr)
         .with_indent_lines(true)
@@ -1288,7 +1292,6 @@ pub fn init_env_logger(env: &str) {
     #[cfg(parallel_compiler)]
     let layer = layer.with_thread_ids(true).with_thread_names(true);
 
-    use tracing_subscriber::layer::SubscriberExt;
     let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }

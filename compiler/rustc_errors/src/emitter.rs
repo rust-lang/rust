@@ -2308,7 +2308,7 @@ pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
     let found = match sm.span_to_snippet(sp) {
         Ok(snippet) => snippet,
         Err(e) => {
-            warn!("Invalid span {:?}. Err={:?}", sp, e);
+            warn!(error = ?e, "Invalid span {:?}", sp);
             return false;
         }
     };
