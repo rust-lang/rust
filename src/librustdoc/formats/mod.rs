@@ -7,14 +7,12 @@ use rustc_hir::def_id::DefId;
 crate use renderer::{run_format, FormatRenderer};
 
 use crate::clean;
-use crate::clean::types::GetDefId;
-use crate::formats::cache::Cache;
 
 /// Specifies whether rendering directly implemented trait items or ones from a certain Deref
 /// impl.
 crate enum AssocItemRender<'a> {
     All,
-    DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type, deref_mut_: bool },
+    DerefFor { trait_: &'a clean::Path, type_: &'a clean::Type, deref_mut_: bool },
 }
 
 /// For different handling of associated items from the Deref target of a type rather than the type
@@ -40,10 +38,6 @@ impl Impl {
     }
 
     crate fn trait_did(&self) -> Option<DefId> {
-        self.inner_impl().trait_.def_id()
-    }
-
-    crate fn trait_did_full(&self, cache: &Cache) -> Option<DefId> {
-        self.inner_impl().trait_.def_id_full(cache)
+        self.inner_impl().trait_.as_ref().map(|t| t.def_id())
     }
 }

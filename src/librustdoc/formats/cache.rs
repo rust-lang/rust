@@ -203,7 +203,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // masked crate then remove it completely.
         if let clean::ImplItem(ref i) = *item.kind {
             if self.cache.masked_crates.contains(&item.def_id.krate())
-                || i.trait_.def_id().map_or(false, |d| self.cache.masked_crates.contains(&d.krate))
+                || i.trait_
+                    .as_ref()
+                    .map_or(false, |t| self.cache.masked_crates.contains(&t.def_id().krate))
                 || i.for_.def_id().map_or(false, |d| self.cache.masked_crates.contains(&d.krate))
             {
                 return None;
@@ -223,11 +225,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
         // Collect all the implementors of traits.
         if let clean::ImplItem(ref i) = *item.kind {
-            if let Some(did) = i.trait_.def_id() {
+            if let Some(trait_) = &i.trait_ {
                 if i.blanket_impl.is_none() {
                     self.cache
                         .implementors
-                        .entry(did)
+                        .entry(trait_.def_id())
                         .or_default()
                         .push(Impl { impl_item: item.clone() });
                 }
@@ -402,12 +404,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     }
                     clean::DynTrait(ref bounds, _)
                     | clean::BorrowedRef { type_: box clean::DynTrait(ref bounds, _), .. } => {
-                        if let Some(did) = bounds[0].trait_.def_id() {
-                            self.cache.parent_stack.push(did);
-                            true
-                        } else {
-                            false
-                        }
+                        self.cache.parent_stack.push(bounds[0].trait_.def_id());
+                        true
                     }
                     ref t => {
                         let prim_did = t
@@ -441,9 +439,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 }
                 clean::DynTrait(ref bounds, _)
                 | clean::BorrowedRef { type_: box clean::DynTrait(ref bounds, _), .. } => {
-                    if let Some(did) = bounds[0].trait_.def_id() {
-                        dids.insert(did);
-                    }
+                    dids.insert(bounds[0].trait_.def_id());
                 }
                 ref t => {
                     let did = t

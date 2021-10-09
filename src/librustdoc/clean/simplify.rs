@@ -99,17 +99,13 @@ crate fn merge_bounds(
             clean::GenericBound::TraitBound(ref mut tr, _) => tr,
             clean::GenericBound::Outlives(..) => return false,
         };
-        let (did, path) = match trait_ref.trait_ {
-            clean::ResolvedPath { did, ref mut path, .. } => (did, path),
-            _ => return false,
-        };
         // If this QPath's trait `trait_did` is the same as, or a supertrait
         // of, the bound's trait `did` then we can keep going, otherwise
         // this is just a plain old equality bound.
-        if !trait_is_same_or_supertrait(cx, did, trait_did) {
+        if !trait_is_same_or_supertrait(cx, trait_ref.trait_.def_id(), trait_did) {
             return false;
         }
-        let last = path.segments.last_mut().expect("segments were empty");
+        let last = trait_ref.trait_.segments.last_mut().expect("segments were empty");
         match last.args {
             PP::AngleBracketed { ref mut bindings, .. } => {
                 bindings.push(clean::TypeBinding {

@@ -134,7 +134,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
                     return None;
                 }
             }
-            if let Some(did) = imp.trait_.def_id() {
+            if let Some(did) = imp.trait_.as_ref().map(|t| t.def_id()) {
                 if did.is_local() && !self.retained.contains(&did.into()) {
                     debug!("ImplStripper: impl item for stripped trait; removing");
                     return None;

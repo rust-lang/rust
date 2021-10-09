@@ -364,8 +364,11 @@ impl FromWithTcx<clean::GenericBound> for GenericBound {
         use clean::GenericBound::*;
         match bound {
             TraitBound(clean::PolyTrait { trait_, generic_params }, modifier) => {
+                // FIXME: should `trait_` be a clean::Path equivalent in JSON?
+                let trait_ =
+                    clean::ResolvedPath { did: trait_.def_id(), path: trait_ }.into_tcx(tcx);
                 GenericBound::TraitBound {
-                    trait_: trait_.into_tcx(tcx),
+                    trait_,
                     generic_params: generic_params.into_iter().map(|x| x.into_tcx(tcx)).collect(),
                     modifier: from_trait_bound_modifier(modifier),
                 }
@@ -395,15 +398,12 @@ impl FromWithTcx<clean::Type> for Type {
                 param_names: Vec::new(),
             },
             DynTrait(mut bounds, lt) => {
-                let (path, id) = match bounds.remove(0).trait_ {
-                    ResolvedPath { path, did, .. } => (path, did),
-                    _ => unreachable!(),
-                };
+                let first_trait = bounds.remove(0).trait_;
 
                 Type::ResolvedPath {
-                    name: path.whole_name(),
-                    id: from_item_id(id.into()),
-                    args: path
+                    name: first_trait.whole_name(),
+                    id: from_item_id(first_trait.def_id().into()),
+                    args: first_trait
                         .segments
                         .last()
                         .map(|args| Box::new(args.clone().args.into_tcx(tcx))),
@@ -434,11 +434,15 @@ impl FromWithTcx<clean::Type> for Type {
                 mutable: mutability == ast::Mutability::Mut,
                 type_: Box::new((*type_).into_tcx(tcx)),
             },
-            QPath { name, self_type, trait_, .. } => Type::QualifiedPath {
-                name: name.to_string(),
-                self_type: Box::new((*self_type).into_tcx(tcx)),
-                trait_: Box::new((*trait_).into_tcx(tcx)),
-            },
+            QPath { name, self_type, trait_, .. } => {
+                // FIXME: should `trait_` be a clean::Path equivalent in JSON?
+                let trait_ = ResolvedPath { did: trait_.def_id(), path: trait_ }.into_tcx(tcx);
+                Type::QualifiedPath {
+                    name: name.to_string(),
+                    self_type: Box::new((*self_type).into_tcx(tcx)),
+                    trait_: Box::new(trait_),
+                }
+            }
         }
     }
 }
@@ -507,6 +511,11 @@ impl FromWithTcx<clean::Impl> for Impl {
             blanket_impl,
             span: _span,
         } = impl_;
+        // FIXME: should `trait_` be a clean::Path equivalent in JSON?
+        let trait_ = trait_.map(|path| {
+            let did = path.def_id();
+            clean::ResolvedPath { path, did }.into_tcx(tcx)
+        });
         Impl {
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
             generics: generics.into_tcx(tcx),
@@ -514,7 +523,7 @@ impl FromWithTcx<clean::Impl> for Impl {
                 .into_iter()
                 .map(|x| x.to_string())
                 .collect(),
-            trait_: trait_.map(|x| x.into_tcx(tcx)),
+            trait_,
             for_: for_.into_tcx(tcx),
             items: ids(items),
             negative: negative_polarity,

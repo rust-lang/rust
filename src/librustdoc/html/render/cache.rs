@@ -226,16 +226,13 @@ fn get_index_type(clean_type: &clean::Type) -> RenderType {
 fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<Symbol> {
     match *clean_type {
         clean::ResolvedPath { ref path, .. } => {
-            let segments = &path.segments;
-            let path_segment = segments.iter().last().unwrap_or_else(|| {
-                panic!(
-                "get_index_type_name(clean_type: {:?}, accept_generic: {:?}) had length zero path",
-                clean_type, accept_generic
-            )
-            });
+            let path_segment = path.segments.last().unwrap();
             Some(path_segment.name)
         }
-        clean::DynTrait(ref bounds, _) => get_index_type_name(&bounds[0].trait_, accept_generic),
+        clean::DynTrait(ref bounds, _) => {
+            let path = &bounds[0].trait_;
+            Some(path.segments.last().unwrap().name)
+        }
         clean::Generic(s) if accept_generic => Some(s),
         clean::Primitive(ref p) => Some(p.as_sym()),
         clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_, accept_generic),
@@ -324,7 +321,8 @@ crate fn get_real_types<'tcx>(
         }
         if let Some(bound) = generics.params.iter().find(|g| g.is_type() && g.name == arg_s) {
             for bound in bound.get_bounds().unwrap_or(&[]) {
-                if let Some(ty) = bound.get_trait_type() {
+                if let Some(path) = bound.get_trait_path() {
+                    let ty = Type::ResolvedPath { did: path.def_id(), path };
                     let adds = get_real_types(generics, &ty, tcx, recurse + 1, res);
                     nb_added += adds;
                     if adds == 0 && !ty.is_full_generic() {
