@@ -45,26 +45,7 @@ pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str
 }
 
 fn create_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
-    let (pass_type, pass_lifetimes, pass_import, context_import) = match lint.pass {
-        "early" => ("EarlyLintPass", "", "use rustc_ast::ast::*;", "EarlyContext"),
-        "late" => ("LateLintPass", "<'_>", "use rustc_hir::*;", "LateContext"),
-        _ => {
-            unreachable!("`pass_type` should only ever be `early` or `late`!");
-        },
-    };
-
-    let camel_case_name = to_camel_case(lint.name);
-    let lint_contents = get_lint_file_contents(
-        lint.pass,
-        pass_type,
-        pass_lifetimes,
-        lint.name,
-        &camel_case_name,
-        lint.category,
-        pass_import,
-        context_import,
-        enable_msrv,
-    );
+    let lint_contents = get_lint_file_contents(lint, enable_msrv);
 
     let lint_path = format!("clippy_lints/src/{}.rs", lint.name);
     write_file(lint.project_root.join(&lint_path), lint_contents.as_bytes())
@@ -156,20 +137,21 @@ publish = false
     )
 }
 
-fn get_lint_file_contents(
-    pass_name: &str,
-    pass_type: &str,
-    pass_lifetimes: &str,
-    lint_name: &str,
-    camel_case_name: &str,
-    category: &str,
-    pass_import: &str,
-    context_import: &str,
-    enable_msrv: bool,
-) -> String {
+fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
     let mut result = String::new();
 
-    let name_camel = camel_case_name;
+    let (pass_type, pass_lifetimes, pass_import, context_import) = match lint.pass {
+        "early" => ("EarlyLintPass", "", "use rustc_ast::ast::*;", "EarlyContext"),
+        "late" => ("LateLintPass", "<'_>", "use rustc_hir::*;", "LateContext"),
+        _ => {
+            unreachable!("`pass_type` should only ever be `early` or `late`!");
+        },
+    };
+
+    let lint_name = lint.name;
+    let pass_name = lint.pass;
+    let category = lint.category;
+    let name_camel = to_camel_case(lint.name);
     let name_upper = lint_name.to_uppercase();
 
     result.push_str(&if enable_msrv {
