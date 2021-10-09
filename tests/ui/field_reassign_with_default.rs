@@ -183,3 +183,67 @@ struct WrapperMulti<T, U> {
     i: T,
     j: U,
 }
+
+mod issue6312 {
+    use std::sync::atomic::AtomicBool;
+    use std::sync::Arc;
+
+    // do not lint: type implements `Drop` but not all fields are `Copy`
+    #[derive(Clone, Default)]
+    pub struct ImplDropNotAllCopy {
+        name: String,
+        delay_data_sync: Arc<AtomicBool>,
+    }
+
+    impl Drop for ImplDropNotAllCopy {
+        fn drop(&mut self) {
+            self.close()
+        }
+    }
+
+    impl ImplDropNotAllCopy {
+        fn new(name: &str) -> Self {
+            let mut f = ImplDropNotAllCopy::default();
+            f.name = name.to_owned();
+            f
+        }
+        fn close(&self) {}
+    }
+
+    // lint: type implements `Drop` and all fields are `Copy`
+    #[derive(Clone, Default)]
+    pub struct ImplDropAllCopy {
+        name: usize,
+        delay_data_sync: bool,
+    }
+
+    impl Drop for ImplDropAllCopy {
+        fn drop(&mut self) {
+            self.close()
+        }
+    }
+
+    impl ImplDropAllCopy {
+        fn new(name: &str) -> Self {
+            let mut f = ImplDropAllCopy::default();
+            f.name = name.len();
+            f
+        }
+        fn close(&self) {}
+    }
+
+    // lint: type does not implement `Drop` though all fields are `Copy`
+    #[derive(Clone, Default)]
+    pub struct NoDropAllCopy {
+        name: usize,
+        delay_data_sync: bool,
+    }
+
+    impl NoDropAllCopy {
+        fn new(name: &str) -> Self {
+            let mut f = NoDropAllCopy::default();
+            f.name = name.len();
+            f
+        }
+    }
+}
