@@ -173,16 +173,16 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_first_last)]
+    /// #![feature(str_first_last_char)]
     /// let s = "🗻∈🌏";
-    /// assert_eq!(s.first(), Some('🗻'));
+    /// assert_eq!(s.first_char(), Some('🗻'));
     ///
     /// let s = "";
-    /// assert_eq!(s.first(), None);
+    /// assert_eq!(s.first_char(), None);
     /// ```
-    #[unstable(feature = "str_first_last", issue = "none")]
+    #[unstable(feature = "str_first_last_char", issue = "none")]
     #[inline]
-    pub fn first(&self) -> Option<char> {
+    pub fn first_char(&self) -> Option<char> {
         self.chars().next()
     }
 
@@ -190,16 +190,16 @@ impl str {
     /// [`None`] if it is empty.
     ///
     /// ```
-    /// #![feature(str_first_last)]
+    /// #![feature(str_first_last_char)]
     /// let s = "🗻∈🌏";
-    /// assert_eq!(s.split_first(), Some(('🗻', "∈🌏")));
+    /// assert_eq!(s.split_first_char(), Some(('🗻', "∈🌏")));
     ///
     /// let s = "";
-    /// assert_eq!(s.split_first(), None);
+    /// assert_eq!(s.split_first_char(), None);
     /// ```
-    #[unstable(feature = "str_first_last", issue = "none")]
+    #[unstable(feature = "str_first_last_char", issue = "none")]
     #[inline]
-    pub fn split_first(&self) -> Option<(char, &str)> {
+    pub fn split_first_char(&self) -> Option<(char, &str)> {
         let mut iter = self.chars();
         iter.next().map(|c| (c, iter.as_str()))
     }
@@ -210,16 +210,16 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_first_last)]
+    /// #![feature(str_first_last_char)]
     /// let s = "🗻∈🌏";
-    /// assert_eq!(s.last(), Some('🌏'));
+    /// assert_eq!(s.last_char(), Some('🌏'));
     ///
     /// let s = "";
-    /// assert_eq!(s.last(), None);
+    /// assert_eq!(s.last_char(), None);
     /// ```
-    #[unstable(feature = "str_first_last", issue = "none")]
+    #[unstable(feature = "str_first_last_char", issue = "none")]
     #[inline]
-    pub fn last(&self) -> Option<char> {
+    pub fn last_char(&self) -> Option<char> {
         self.chars().next_back()
     }
 
@@ -227,16 +227,16 @@ impl str {
     /// [`None`] if it is empty.
     ///
     /// ```
-    /// #![feature(str_first_last)]
+    /// #![feature(str_first_last_char)]
     /// let s = "🗻∈🌏";
-    /// assert_eq!(s.split_last(), Some(('🌏', "🗻∈")));
+    /// assert_eq!(s.split_last_char(), Some(('🌏', "🗻∈")));
     ///
     /// let s = "";
-    /// assert_eq!(s.split_last(), None);
+    /// assert_eq!(s.split_last_char(), None);
     /// ```
-    #[unstable(feature = "str_first_last", issue = "none")]
+    #[unstable(feature = "str_first_last_char", issue = "none")]
     #[inline]
-    pub fn split_last(&self) -> Option<(char, &str)> {
+    pub fn split_last_char(&self) -> Option<(char, &str)> {
         let mut iter = self.chars();
         iter.next_back().map(|c| (c, iter.as_str()))
     }
