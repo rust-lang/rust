@@ -2067,9 +2067,9 @@ impl<'test> TestCx<'test> {
 
     fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
         if self.config.verbose {
-            println!("------{}------------------------------", "stdout");
+            println!("------stdout------------------------------");
             println!("{}", out);
-            println!("------{}------------------------------", "stderr");
+            println!("------stderr------------------------------");
             println!("{}", err);
             println!("------------------------------------------");
         }
