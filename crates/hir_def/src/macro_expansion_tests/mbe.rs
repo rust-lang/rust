@@ -383,3 +383,235 @@ fn baz() -> bool {
 "#]],
     );
 }
+
+#[test]
+fn test_match_group_zero_match() {
+    check(
+        r#"
+macro_rules! m { ( $($i:ident)* ) => (); }
+m!();
+"#,
+        expect![[r#"
+macro_rules! m { ( $($i:ident)* ) => (); }
+
+"#]],
+    );
+}
+
+#[test]
+fn test_match_group_in_group() {
+    check(
+        r#"
+macro_rules! m {
+    [ $( ( $($i:ident)* ) )* ] => [ x![$( ( $($i)* ) )*]; ]
+}
+m! ( (a b) );
+"#,
+        expect![[r#"
+macro_rules! m {
+    [ $( ( $($i:ident)* ) )* ] => [ x![$( ( $($i)* ) )*]; ]
+}
+x![(a b)];
+"#]],
+    )
+}
+
+#[test]
+fn test_expand_to_item_list() {
+    check(
+        r#"
+macro_rules! structs {
+    ($($i:ident),*) => { $(struct $i { field: u32 } )* }
+}
+
+// +tree
+structs!(Foo, Bar);
+            "#,
+        expect![[r#"
+macro_rules! structs {
+    ($($i:ident),*) => { $(struct $i { field: u32 } )* }
+}
+
+struct Foo {
+    field:u32
+}
+struct Bar {
+    field:u32
+}
+// MACRO_ITEMS@0..40
+//   STRUCT@0..20
+//     STRUCT_KW@0..6 "struct"
+//     NAME@6..9
+//       IDENT@6..9 "Foo"
+//     RECORD_FIELD_LIST@9..20
+//       L_CURLY@9..10 "{"
+//       RECORD_FIELD@10..19
+//         NAME@10..15
+//           IDENT@10..15 "field"
+//         COLON@15..16 ":"
+//         PATH_TYPE@16..19
+//           PATH@16..19
+//             PATH_SEGMENT@16..19
+//               NAME_REF@16..19
+//                 IDENT@16..19 "u32"
+//       R_CURLY@19..20 "}"
+//   STRUCT@20..40
+//     STRUCT_KW@20..26 "struct"
+//     NAME@26..29
+//       IDENT@26..29 "Bar"
+//     RECORD_FIELD_LIST@29..40
+//       L_CURLY@29..30 "{"
+//       RECORD_FIELD@30..39
+//         NAME@30..35
+//           IDENT@30..35 "field"
+//         COLON@35..36 ":"
+//         PATH_TYPE@36..39
+//           PATH@36..39
+//             PATH_SEGMENT@36..39
+//               NAME_REF@36..39
+//                 IDENT@36..39 "u32"
+//       R_CURLY@39..40 "}"
+
+            "#]],
+    );
+}
+
+#[test]
+fn test_two_idents() {
+    check(
+        r#"
+macro_rules! m {
+    ($i:ident, $j:ident) => { fn foo() { let a = $i; let b = $j; } }
+}
+m! { foo, bar }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($i:ident, $j:ident) => { fn foo() { let a = $i; let b = $j; } }
+}
+fn foo() {
+    let a = foo;
+    let b = bar;
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_tt_to_stmts() {
+    check(
+        r#"
+macro_rules! m {
+    () => {
+        let a = 0;
+        a = 10 + 1;
+        a
+    }
+}
+
+fn f() -> i32 {
+    // +tree
+    m!{}
+}
+"#,
+        expect![[r#"
+macro_rules! m {
+    () => {
+        let a = 0;
+        a = 10 + 1;
+        a
+    }
+}
+
+fn f() -> i32 {
+    let a = 0;
+    a = 10+1;
+    a
+// MACRO_STMTS@0..15
+//   LET_STMT@0..7
+//     LET_KW@0..3 "let"
+//     IDENT_PAT@3..4
+//       NAME@3..4
+//         IDENT@3..4 "a"
+//     EQ@4..5 "="
+//     LITERAL@5..6
+//       INT_NUMBER@5..6 "0"
+//     SEMICOLON@6..7 ";"
+//   EXPR_STMT@7..14
+//     BIN_EXPR@7..13
+//       PATH_EXPR@7..8
+//         PATH@7..8
+//           PATH_SEGMENT@7..8
+//             NAME_REF@7..8
+//               IDENT@7..8 "a"
+//       EQ@8..9 "="
+//       BIN_EXPR@9..13
+//         LITERAL@9..11
+//           INT_NUMBER@9..11 "10"
+//         PLUS@11..12 "+"
+//         LITERAL@12..13
+//           INT_NUMBER@12..13 "1"
+//     SEMICOLON@13..14 ";"
+//   PATH_EXPR@14..15
+//     PATH@14..15
+//       PATH_SEGMENT@14..15
+//         NAME_REF@14..15
+//           IDENT@14..15 "a"
+
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_match_literal() {
+    check(
+        r#"
+macro_rules! m {
+    ('(') => { fn l_paren() {} }
+}
+m!['('];
+"#,
+        expect![[r#"
+macro_rules! m {
+    ('(') => { fn l_paren() {} }
+}
+fn l_paren() {}
+"#]],
+    );
+}
+
+#[test]
+fn test_parse_macro_def_simple() {
+    cov_mark::check!(parse_macro_def_simple);
+    check(
+        r#"
+macro m($id:ident) { fn $id() {} }
+m!(bar);
+"#,
+        expect![[r#"
+macro m($id:ident) { fn $id() {} }
+fn bar() {}
+"#]],
+    );
+}
+
+#[test]
+fn test_parse_macro_def_rules() {
+    cov_mark::check!(parse_macro_def_rules);
+
+    check(
+        r#"
+macro m {
+    ($id:ident) => { fn $id() {} }
+}
+m!(bar);
+"#,
+        expect![[r#"
+macro m {
+    ($id:ident) => { fn $id() {} }
+}
+fn bar() {}
+"#]],
+    );
+}

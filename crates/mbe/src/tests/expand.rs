@@ -71,91 +71,11 @@ macro_rules! foobar {
     assert_eq!(get_text(tt::TokenId(13), T!['{']), "{");
 }
 
-#[test]
-fn test_match_group_zero_match() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ( $($i:ident)* ) => ();
-        }"#,
-    )
-    .assert_expand_items("foo! ();", "");
-}
-
-#[test]
-fn test_match_group_in_group() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            { $( ( $($i:ident)* ) )* } => ( $( ( $($i)* ) )* );
-        }"#,
-    )
-    .assert_expand_items("foo! ( (a b) );", "(a b)");
-}
-
-#[test]
-fn test_expand_to_item_list() {
-    let tree = parse_macro(
-        "
-            macro_rules! structs {
-                ($($i:ident),*) => {
-                    $(struct $i { field: u32 } )*
-                }
-            }
-            ",
-    )
-    .expand_items("structs!(Foo, Bar);");
-    assert_eq!(
-        format!("{:#?}", tree).trim(),
-        r#"
-MACRO_ITEMS@0..40
-  STRUCT@0..20
-    STRUCT_KW@0..6 "struct"
-    NAME@6..9
-      IDENT@6..9 "Foo"
-    RECORD_FIELD_LIST@9..20
-      L_CURLY@9..10 "{"
-      RECORD_FIELD@10..19
-        NAME@10..15
-          IDENT@10..15 "field"
-        COLON@15..16 ":"
-        PATH_TYPE@16..19
-          PATH@16..19
-            PATH_SEGMENT@16..19
-              NAME_REF@16..19
-                IDENT@16..19 "u32"
-      R_CURLY@19..20 "}"
-  STRUCT@20..40
-    STRUCT_KW@20..26 "struct"
-    NAME@26..29
-      IDENT@26..29 "Bar"
-    RECORD_FIELD_LIST@29..40
-      L_CURLY@29..30 "{"
-      RECORD_FIELD@30..39
-        NAME@30..35
-          IDENT@30..35 "field"
-        COLON@35..36 ":"
-        PATH_TYPE@36..39
-          PATH@36..39
-            PATH_SEGMENT@36..39
-              NAME_REF@36..39
-                IDENT@36..39 "u32"
-      R_CURLY@39..40 "}""#
-            .trim()
-    );
-}
-
 fn to_subtree(tt: &tt::TokenTree) -> &tt::Subtree {
     if let tt::TokenTree::Subtree(subtree) = tt {
         return subtree;
     }
     unreachable!("It is not a subtree");
-}
-fn to_literal(tt: &tt::TokenTree) -> &tt::Literal {
-    if let tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) = tt {
-        return lit;
-    }
-    unreachable!("It is not a literal");
 }
 
 fn to_punct(tt: &tt::TokenTree) -> &tt::Punct {
@@ -163,35 +83,6 @@ fn to_punct(tt: &tt::TokenTree) -> &tt::Punct {
         return lit;
     }
     unreachable!("It is not a Punct");
-}
-
-#[test]
-fn test_expand_literals_to_token_tree() {
-    let expansion = parse_macro(
-        r#"
-            macro_rules! literals {
-                ($i:ident) => {
-                    {
-                        let a = 'c';
-                        let c = 1000;
-                        let f = 12E+99_f64;
-                        let s = "rust1";
-                    }
-                }
-            }
-            "#,
-    )
-    .expand_tt("literals!(foo);");
-    let stm_tokens = &to_subtree(&expansion.token_trees[0]).token_trees;
-
-    // [let] [a] [=] ['c'] [;]
-    assert_eq!(to_literal(&stm_tokens[3]).text, "'c'");
-    // [let] [c] [=] [1000] [;]
-    assert_eq!(to_literal(&stm_tokens[5 + 3]).text, "1000");
-    // [let] [f] [=] [12E+99_f64] [;]
-    assert_eq!(to_literal(&stm_tokens[10 + 3]).text, "12E+99_f64");
-    // [let] [s] [=] ["rust1"] [;]
-    assert_eq!(to_literal(&stm_tokens[15 + 3]).text, "\"rust1\"");
 }
 
 #[test]
@@ -208,114 +99,6 @@ fn test_attr_to_token_tree() {
         to_subtree(&expansion.token_trees[1]).delimiter_kind(),
         Some(tt::DelimiterKind::Bracket)
     );
-}
-
-#[test]
-fn test_two_idents() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:ident, $ j:ident) => {
-                fn foo() { let a = $ i; let b = $j; }
-            }
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
-}
-
-#[test]
-fn test_tt_to_stmts() {
-    let stmts = parse_macro(
-        r#"
-        macro_rules! foo {
-            () => {
-                 let a = 0;
-                 a = 10 + 1;
-                 a
-            }
-        }
-"#,
-    )
-    .expand_statements("foo!{}");
-
-    assert_eq!(
-        format!("{:#?}", stmts).trim(),
-        r#"MACRO_STMTS@0..15
-  LET_STMT@0..7
-    LET_KW@0..3 "let"
-    IDENT_PAT@3..4
-      NAME@3..4
-        IDENT@3..4 "a"
-    EQ@4..5 "="
-    LITERAL@5..6
-      INT_NUMBER@5..6 "0"
-    SEMICOLON@6..7 ";"
-  EXPR_STMT@7..14
-    BIN_EXPR@7..13
-      PATH_EXPR@7..8
-        PATH@7..8
-          PATH_SEGMENT@7..8
-            NAME_REF@7..8
-              IDENT@7..8 "a"
-      EQ@8..9 "="
-      BIN_EXPR@9..13
-        LITERAL@9..11
-          INT_NUMBER@9..11 "10"
-        PLUS@11..12 "+"
-        LITERAL@12..13
-          INT_NUMBER@12..13 "1"
-    SEMICOLON@13..14 ";"
-  PATH_EXPR@14..15
-    PATH@14..15
-      PATH_SEGMENT@14..15
-        NAME_REF@14..15
-          IDENT@14..15 "a""#,
-    );
-}
-
-#[test]
-fn test_match_literal() {
-    parse_macro(
-        r#"
-    macro_rules! foo {
-        ('(') => {
-            fn foo() {}
-        }
-    }
-"#,
-    )
-    .assert_expand_items("foo! ['('];", "fn foo () {}");
-}
-
-#[test]
-fn test_parse_macro_def_simple() {
-    cov_mark::check!(parse_macro_def_simple);
-
-    parse_macro2(
-        r#"
-macro foo($id:ident) {
-    fn $id() {}
-}
-"#,
-    )
-    .assert_expand_items("foo!(bar);", "fn bar () {}");
-}
-
-#[test]
-fn test_parse_macro_def_rules() {
-    cov_mark::check!(parse_macro_def_rules);
-
-    parse_macro2(
-        r#"
-macro foo {
-    ($id:ident) => {
-        fn $id() {}
-    }
-}
-"#,
-    )
-    .assert_expand_items("foo!(bar);", "fn bar () {}");
 }
 
 #[test]
