@@ -76,7 +76,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::readv(
                 self.as_raw_fd(),
-                bufs.as_ptr() as *const libc::iovec,
+                bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
                 cmp::min(bufs.len(), max_iov()) as c_int,
             )
         })?;
@@ -132,7 +132,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::preadv(
                 self.as_raw_fd(),
-                bufs.as_ptr() as *const libc::iovec,
+                bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
                 cmp::min(bufs.len(), max_iov()) as c_int,
                 offset as _,
             )
