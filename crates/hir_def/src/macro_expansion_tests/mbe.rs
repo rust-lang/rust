@@ -562,3 +562,36 @@ fn f() -> i32 {
 "#]],
     );
 }
+
+#[test]
+fn test_match_literal() {
+    check(
+        r#"
+macro_rules! m {
+    ('(') => { fn l_paren() {} }
+}
+m!['('];
+"#,
+        expect![[r#"
+macro_rules! m {
+    ('(') => { fn l_paren() {} }
+}
+fn l_paren() {}
+"#]],
+    );
+}
+
+#[test]
+fn test_parse_macro_def_simple() {
+    cov_mark::check!(parse_macro_def_simple);
+    check(
+        r#"
+macro m($id:ident) { fn $id() {} }
+m!(bar);
+"#,
+        expect![[r#"
+macro m($id:ident) { fn $id() {} }
+fn bar() {}
+"#]],
+    );
+}

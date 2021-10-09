@@ -108,34 +108,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_match_literal() {
-    parse_macro(
-        r#"
-    macro_rules! foo {
-        ('(') => {
-            fn foo() {}
-        }
-    }
-"#,
-    )
-    .assert_expand_items("foo! ['('];", "fn foo () {}");
-}
-
-#[test]
-fn test_parse_macro_def_simple() {
-    cov_mark::check!(parse_macro_def_simple);
-
-    parse_macro2(
-        r#"
-macro foo($id:ident) {
-    fn $id() {}
-}
-"#,
-    )
-    .assert_expand_items("foo!(bar);", "fn bar () {}");
-}
-
-#[test]
 fn test_parse_macro_def_rules() {
     cov_mark::check!(parse_macro_def_rules);
 
