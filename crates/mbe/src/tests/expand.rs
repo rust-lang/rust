@@ -102,21 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_macro_2_0_panic_2015() {
-    parse_macro2(
-        r#"
-macro panic_2015 {
-    () => (
-    ),
-    (bar) => (
-    ),
-}
-"#,
-    )
-    .assert_expand_items("panic_2015!(bar);", "");
-}
-
-#[test]
 fn test_path() {
     parse_macro(
         r#"
