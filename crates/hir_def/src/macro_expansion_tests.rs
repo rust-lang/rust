@@ -103,7 +103,7 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
             _ if prev_kind.is_trivia() || curr_kind.is_trivia() => "",
             (T![=], _) | (_, T![=]) => " ",
             (_, T!['{']) => " ",
-            (T![;], _) => "\n",
+            (T![;] | T!['}'], _) => "\n",
             (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
             (IDENT, _) if curr_kind.is_keyword() => " ",
             (_, IDENT) if prev_kind.is_keyword() => " ",

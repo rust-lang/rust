@@ -210,29 +210,6 @@ fn test_expr_order() {
 }
 
 #[test]
-fn test_match_group_pattern_by_separator_token() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ ($ i:ident),*) => ($ (
-                mod $ i {}
-            )*);
-            ($ ($ i:ident)#*) => ($ (
-                fn $ i() {}
-            )*);
-            ($ i:ident ,# $ j:ident) => (
-                struct $ i;
-                struct $ j;
-            )
-        }
-"#,
-    )
-    .assert_expand_items("foo! { foo, bar }", "mod foo {} mod bar {}")
-    .assert_expand_items("foo! { foo# bar }", "fn foo () {} fn bar () {}")
-    .assert_expand_items("foo! { Foo,# Bar }", "struct Foo ; struct Bar ;");
-}
-
-#[test]
 fn test_match_group_pattern_with_multiple_defs() {
     parse_macro(
         r#"
