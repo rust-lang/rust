@@ -653,7 +653,7 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        let clippy = builder
+        builder
             .ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() })
             .expect("in-tree tool");
         let mut cargo = tool::prepare_tool_cargo(
@@ -672,14 +672,7 @@ impl Step for Clippy {
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
         let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
-        let target_libs = builder
-            .stage_out(compiler, Mode::ToolRustc)
-            .join(&self.host.triple)
-            .join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
-        cargo.env("TARGET_LIBS", target_libs);
-        // clippy tests need to find the driver
-        cargo.env("CLIPPY_DRIVER_PATH", clippy);
 
         cargo.arg("--").args(builder.config.cmd.test_args());
 
