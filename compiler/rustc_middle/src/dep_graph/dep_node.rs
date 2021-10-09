@@ -63,6 +63,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::HirId;
+use rustc_query_system::dep_graph::FingerprintStyle;
 use rustc_span::symbol::Symbol;
 use std::hash::Hash;
 
@@ -89,9 +90,9 @@ pub struct DepKindStruct {
 
     /// Whether the query key can be recovered from the hashed fingerprint.
     /// See [DepNodeParams] trait for the behaviour of each key type.
-    // FIXME: Make this a simple boolean once DepNodeParams::can_reconstruct_query_key
+    // FIXME: Make this a simple boolean once DepNodeParams::fingerprint_style
     // can be made a specialized associated const.
-    can_reconstruct_query_key: fn() -> bool,
+    fingerprint_style: fn() -> FingerprintStyle,
 }
 
 impl std::ops::Deref for DepKind {
@@ -103,14 +104,14 @@ impl std::ops::Deref for DepKind {
 
 impl DepKind {
     #[inline(always)]
-    pub fn can_reconstruct_query_key(&self) -> bool {
+    pub fn fingerprint_style(&self) -> FingerprintStyle {
         // Only fetch the DepKindStruct once.
         let data: &DepKindStruct = &**self;
         if data.is_anon {
-            return false;
+            return FingerprintStyle::Opaque;
         }
 
-        (data.can_reconstruct_query_key)()
+        (data.fingerprint_style)()
     }
 }
 
@@ -151,6 +152,7 @@ macro_rules! contains_eval_always_attr {
 pub mod dep_kind {
     use super::*;
     use crate::ty::query::query_keys;
+    use rustc_query_system::dep_graph::FingerprintStyle;
 
     // We use this for most things when incr. comp. is turned off.
     pub const Null: DepKindStruct = DepKindStruct {
@@ -158,7 +160,7 @@ pub mod dep_kind {
         is_anon: false,
         is_eval_always: false,
 
-        can_reconstruct_query_key: || true,
+        fingerprint_style: || FingerprintStyle::Unit,
     };
 
     pub const TraitSelect: DepKindStruct = DepKindStruct {
@@ -166,7 +168,7 @@ pub mod dep_kind {
         is_anon: true,
         is_eval_always: false,
 
-        can_reconstruct_query_key: || true,
+        fingerprint_style: || FingerprintStyle::Unit,
     };
 
     pub const CompileCodegenUnit: DepKindStruct = DepKindStruct {
@@ -174,7 +176,7 @@ pub mod dep_kind {
         is_anon: false,
         is_eval_always: false,
 
-        can_reconstruct_query_key: || false,
+        fingerprint_style: || FingerprintStyle::Opaque,
     };
 
     pub const CompileMonoItem: DepKindStruct = DepKindStruct {
@@ -182,7 +184,7 @@ pub mod dep_kind {
         is_anon: false,
         is_eval_always: false,
 
-        can_reconstruct_query_key: || false,
+        fingerprint_style: || FingerprintStyle::Opaque,
     };
 
     macro_rules! define_query_dep_kinds {
@@ -196,16 +198,16 @@ pub mod dep_kind {
                 const is_eval_always: bool = contains_eval_always_attr!($($attrs)*);
 
                 #[inline(always)]
-                fn can_reconstruct_query_key() -> bool {
+                fn fingerprint_style() -> rustc_query_system::dep_graph::FingerprintStyle {
                     <query_keys::$variant<'_> as DepNodeParams<TyCtxt<'_>>>
-                        ::can_reconstruct_query_key()
+                        ::fingerprint_style()
                 }
 
                 DepKindStruct {
                     has_params,
                     is_anon,
                     is_eval_always,
-                    can_reconstruct_query_key,
+                    fingerprint_style,
                 }
             };)*
         );
@@ -320,7 +322,7 @@ impl DepNodeExt for DepNode {
     /// method will assert that the given DepKind actually requires a
     /// single DefId/DefPathHash parameter.
     fn from_def_path_hash(def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
-        debug_assert!(kind.can_reconstruct_query_key() && kind.has_params);
+        debug_assert!(kind.fingerprint_style() == FingerprintStyle::DefPathHash);
         DepNode { kind, hash: def_path_hash.0.into() }
     }
 
@@ -335,7 +337,7 @@ impl DepNodeExt for DepNode {
     /// refers to something from the previous compilation session that
     /// has been removed.
     fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
-        if self.kind.can_reconstruct_query_key() {
+        if self.kind.fingerprint_style() == FingerprintStyle::DefPathHash {
             Some(
                 tcx.on_disk_cache
                     .as_ref()?
@@ -350,14 +352,16 @@ impl DepNodeExt for DepNode {
     fn from_label_string(label: &str, def_path_hash: DefPathHash) -> Result<DepNode, ()> {
         let kind = dep_kind_from_label_string(label)?;
 
-        if !kind.can_reconstruct_query_key() {
-            return Err(());
-        }
-
-        if kind.has_params {
-            Ok(DepNode::from_def_path_hash(def_path_hash, kind))
-        } else {
-            Ok(DepNode::new_no_params(kind))
+        match kind.fingerprint_style() {
+            FingerprintStyle::Opaque => Err(()),
+            FingerprintStyle::Unit => {
+                if !kind.has_params {
+                    Ok(DepNode::new_no_params(kind))
+                } else {
+                    Err(())
+                }
+            }
+            FingerprintStyle::DefPathHash => Ok(DepNode::from_def_path_hash(def_path_hash, kind)),
         }
     }
 
@@ -369,8 +373,8 @@ impl DepNodeExt for DepNode {
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for () {
     #[inline(always)]
-    fn can_reconstruct_query_key() -> bool {
-        true
+    fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::Unit
     }
 
     fn to_fingerprint(&self, _: TyCtxt<'tcx>) -> Fingerprint {
@@ -384,8 +388,8 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for () {
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
     #[inline(always)]
-    fn can_reconstruct_query_key() -> bool {
-        true
+    fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::DefPathHash
     }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
@@ -403,8 +407,8 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
     #[inline(always)]
-    fn can_reconstruct_query_key() -> bool {
-        true
+    fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::DefPathHash
     }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
@@ -422,8 +426,8 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
     #[inline(always)]
-    fn can_reconstruct_query_key() -> bool {
-        true
+    fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::DefPathHash
     }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
@@ -442,8 +446,8 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
     #[inline(always)]
-    fn can_reconstruct_query_key() -> bool {
-        false
+    fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::Opaque
     }
 
     // We actually would not need to specialize the implementation of this
@@ -467,8 +471,8 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
     #[inline(always)]
-    fn can_reconstruct_query_key() -> bool {
-        false
+    fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::Opaque
     }
 
     // We actually would not need to specialize the implementation of this
