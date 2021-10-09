@@ -92,35 +92,6 @@ fn to_punct(tt: &tt::TokenTree) -> &tt::Punct {
 }
 
 #[test]
-fn test_expand_literals_to_token_tree() {
-    let expansion = parse_macro(
-        r#"
-            macro_rules! literals {
-                ($i:ident) => {
-                    {
-                        let a = 'c';
-                        let c = 1000;
-                        let f = 12E+99_f64;
-                        let s = "rust1";
-                    }
-                }
-            }
-            "#,
-    )
-    .expand_tt("literals!(foo);");
-    let stm_tokens = &to_subtree(&expansion.token_trees[0]).token_trees;
-
-    // [let] [a] [=] ['c'] [;]
-    assert_eq!(to_literal(&stm_tokens[3]).text, "'c'");
-    // [let] [c] [=] [1000] [;]
-    assert_eq!(to_literal(&stm_tokens[5 + 3]).text, "1000");
-    // [let] [f] [=] [12E+99_f64] [;]
-    assert_eq!(to_literal(&stm_tokens[10 + 3]).text, "12E+99_f64");
-    // [let] [s] [=] ["rust1"] [;]
-    assert_eq!(to_literal(&stm_tokens[15 + 3]).text, "\"rust1\"");
-}
-
-#[test]
 fn test_attr_to_token_tree() {
     let expansion = parse_to_token_tree_by_syntax(
         r#"
