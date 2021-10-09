@@ -1,4 +1,5 @@
 use crate::clippy_project_root;
+use indoc::indoc;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, ErrorKind};
@@ -105,12 +106,13 @@ fn to_camel_case(name: &str) -> String {
 
 fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {
     let mut contents = format!(
-        "#![warn(clippy::{})]
+        indoc! {"
+            #![warn(clippy::{})]
 
-fn main() {{
-    // test code goes here
-}}
-",
+            fn main() {{
+                // test code goes here
+            }}
+        "},
         lint_name
     );
 
@@ -123,16 +125,16 @@ fn main() {{
 
 fn get_manifest_contents(lint_name: &str, hint: &str) -> String {
     format!(
-        r#"
-# {}
+        indoc! {r#"
+            # {}
 
-[package]
-name = "{}"
-version = "0.1.0"
-publish = false
+            [package]
+            name = "{}"
+            version = "0.1.0"
+            publish = false
 
-[workspace]
-"#,
+            [workspace]
+        "#},
         hint, lint_name
     )
 }
@@ -156,24 +158,26 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 
     result.push_str(&if enable_msrv {
         format!(
-            "use clippy_utils::msrvs;
-{pass_import}
-use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
-use rustc_semver::RustcVersion;
-use rustc_session::{{declare_tool_lint, impl_lint_pass}};
+            indoc! {"
+                use clippy_utils::msrvs;
+                {pass_import}
+                use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
+                use rustc_semver::RustcVersion;
+                use rustc_session::{{declare_tool_lint, impl_lint_pass}};
 
-",
+            "},
             pass_type = pass_type,
             pass_import = pass_import,
             context_import = context_import,
         )
     } else {
         format!(
-            "{pass_import}
-use rustc_lint::{{{context_import}, {pass_type}}};
-use rustc_session::{{declare_lint_pass, declare_tool_lint}};
+            indoc! {"
+                {pass_import}
+                use rustc_lint::{{{context_import}, {pass_type}}};
+                use rustc_session::{{declare_lint_pass, declare_tool_lint}};
 
-",
+            "},
             pass_import = pass_import,
             pass_type = pass_type,
             context_import = context_import
@@ -181,53 +185,55 @@ use rustc_session::{{declare_lint_pass, declare_tool_lint}};
     });
 
     result.push_str(&format!(
-        "declare_clippy_lint! {{
-    /// ### What it does
-    ///
-    /// ### Why is this bad?
-    ///
-    /// ### Example
-    /// ```rust
-    /// // example code where clippy issues a warning
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// // example code which does not raise clippy warning
-    /// ```
-    pub {name_upper},
-    {category},
-    \"default lint description\"
-}}",
+        indoc! {"
+            declare_clippy_lint! {{
+                /// ### What it does
+                ///
+                /// ### Why is this bad?
+                ///
+                /// ### Example
+                /// ```rust
+                /// // example code where clippy issues a warning
+                /// ```
+                /// Use instead:
+                /// ```rust
+                /// // example code which does not raise clippy warning
+                /// ```
+                pub {name_upper},
+                {category},
+                \"default lint description\"
+            }}
+        "},
         name_upper = name_upper,
         category = category,
     ));
 
     result.push_str(&if enable_msrv {
         format!(
-            "
-pub struct {name_camel} {{
-    msrv: Option<RustcVersion>,
-}}
+            indoc! {"
+                pub struct {name_camel} {{
+                    msrv: Option<RustcVersion>,
+                }}
 
-impl {name_camel} {{
-    #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {{
-        Self {{ msrv }}
-    }}
-}}
+                impl {name_camel} {{
+                    #[must_use]
+                    pub fn new(msrv: Option<RustcVersion>) -> Self {{
+                        Self {{ msrv }}
+                    }}
+                }}
 
-impl_lint_pass!({name_camel} => [{name_upper}]);
+                impl_lint_pass!({name_camel} => [{name_upper}]);
 
-impl {pass_type}{pass_lifetimes} for {name_camel} {{
-    extract_msrv_attr!({context_import});
-}}
+                impl {pass_type}{pass_lifetimes} for {name_camel} {{
+                    extract_msrv_attr!({context_import});
+                }}
 
-// TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
-//       e.g. store.register_{pass_name}_pass(move || Box::new({module_name}::{name_camel}::new(msrv)));
-// TODO: Add MSRV level to `clippy_utils/src/msrvs.rs` if needed.
-// TODO: Add MSRV test to `tests/ui/min_rust_version_attr.rs`.
-// TODO: Update msrv config comment in `clippy_lints/src/utils/conf.rs`
-",
+                // TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
+                //       e.g. store.register_{pass_name}_pass(move || Box::new({module_name}::{name_camel}::new(msrv)));
+                // TODO: Add MSRV level to `clippy_utils/src/msrvs.rs` if needed.
+                // TODO: Add MSRV test to `tests/ui/min_rust_version_attr.rs`.
+                // TODO: Update msrv config comment in `clippy_lints/src/utils/conf.rs`
+            "},
             pass_type = pass_type,
             pass_lifetimes = pass_lifetimes,
             pass_name = pass_name,
@@ -238,14 +244,14 @@ impl {pass_type}{pass_lifetimes} for {name_camel} {{
         )
     } else {
         format!(
-            "
-declare_lint_pass!({name_camel} => [{name_upper}]);
+            indoc! {"
+                declare_lint_pass!({name_camel} => [{name_upper}]);
 
-impl {pass_type}{pass_lifetimes} for {name_camel} {{}}
-//
-// TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
-//       e.g. store.register_{pass_name}_pass(|| Box::new({module_name}::{name_camel}));
-",
+                impl {pass_type}{pass_lifetimes} for {name_camel} {{}}
+                //
+                // TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
+                //       e.g. store.register_{pass_name}_pass(|| Box::new({module_name}::{name_camel}));
+            "},
             pass_type = pass_type,
             pass_lifetimes = pass_lifetimes,
             pass_name = pass_name,
