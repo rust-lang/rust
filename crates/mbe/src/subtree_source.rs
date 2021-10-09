@@ -18,17 +18,6 @@ pub(crate) struct SubtreeTokenSource {
 }
 
 impl<'a> SubtreeTokenSource {
-    // Helper function used in test
-    #[cfg(test)]
-    pub(crate) fn text(&self) -> SmolStr {
-        match self.cached.get(self.curr.1) {
-            Some(tt) => tt.text.clone(),
-            _ => SmolStr::new(""),
-        }
-    }
-}
-
-impl<'a> SubtreeTokenSource {
     pub(crate) fn new(buffer: &TokenBuffer) -> SubtreeTokenSource {
         let mut current = buffer.begin();
         let mut cached = Vec::with_capacity(100);

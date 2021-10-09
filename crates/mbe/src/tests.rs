@@ -1,5 +1,4 @@
 mod expand;
-mod rule;
 
 use std::{fmt::Write, iter};
 

@@ -1,5 +1,6 @@
 mod tt_conversion;
 mod matching;
+mod meta_syntax;
 
 use expect_test::expect;
 

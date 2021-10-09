@@ -30,12 +30,23 @@ use crate::{
 pub use ::parser::ParserEntryPoint;
 pub use tt::{Delimiter, DelimiterKind, Punct};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ParseError {
     UnexpectedToken(String),
     Expected(String),
     InvalidRepeat,
     RepetitionEmptyTokenTree,
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParseError::UnexpectedToken(it) => f.write_str(it),
+            ParseError::Expected(it) => f.write_str(it),
+            ParseError::InvalidRepeat => f.write_str("invalid repeat"),
+            ParseError::RepetitionEmptyTokenTree => f.write_str("empty token tree in repetition"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
