@@ -28,7 +28,7 @@ use crate::{
     db::DefDatabase, nameres::ModuleSource, resolver::HasResolver, test_db::TestDB, AsMacroCall,
 };
 
-fn check(ra_fixture: &str, expect: Expect) {
+fn check(ra_fixture: &str, mut expect: Expect) {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.crate_graph().iter().next().unwrap();
     let def_map = db.crate_def_map(krate);
@@ -75,6 +75,7 @@ fn check(ra_fixture: &str, expect: Expect) {
         expanded_text.replace_range(range, &expn_text)
     }
 
+    expect.indent(false);
     expect.assert_eq(&expanded_text);
 }
 
