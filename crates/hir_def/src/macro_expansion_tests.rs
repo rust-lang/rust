@@ -69,7 +69,7 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[test]
-fn test_expand_rule() {
+fn wrong_nesting_level() {
     check(
         r#"
 macro_rules! m {
@@ -84,4 +84,24 @@ macro_rules! m {
 /* error: expected simple binding, found nested binding `i` */
 "#]],
     );
+}
+
+#[test]
+fn expansion_does_not_parse_as_expression() {
+    check(
+        r#"
+macro_rules! stmts {
+    () => { let _ = 0; }
+}
+
+fn f() { let _ = stmts!(); }
+"#,
+        expect![[r#"
+macro_rules! stmts {
+    () => { let _ = 0; }
+}
+
+fn f() { let _ = /* error: could not convert tokens */; }
+"#]],
+    )
 }

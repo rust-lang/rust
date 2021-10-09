@@ -798,24 +798,6 @@ mod tests {
     }
 
     #[test]
-    fn stmts_token_trees_to_expr_is_err() {
-        let expansion = parse_macro(
-            r#"
-            macro_rules! stmts {
-                () => {
-                    let a = 0;
-                    let b = 0;
-                    let c = 0;
-                    let d = 0;
-                }
-            }
-            "#,
-        )
-        .expand_tt("stmts!();");
-        assert!(token_tree_to_syntax_node(&expansion, ParserEntryPoint::Expr).is_err());
-    }
-
-    #[test]
     fn test_token_tree_last_child_is_white_space() {
         let source_file = ast::SourceFile::parse("f!{}").ok().unwrap();
         let macro_call = source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
