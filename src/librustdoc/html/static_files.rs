@@ -71,6 +71,7 @@ crate static RUST_FAVICON_PNG_16: &[u8] = include_bytes!("static/images/favicon-
 crate static RUST_FAVICON_PNG_32: &[u8] = include_bytes!("static/images/favicon-32x32.png");
 
 crate static PAGE: &str = include_str!("templates/page.html");
+crate static PRINT_ITEM: &str = include_str!("templates/print_item.html");
 
 /// The built-in themes given to every documentation site.
 crate mod themes {
