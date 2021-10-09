@@ -1353,6 +1353,9 @@ impl str {
     ///
     /// let v: Vec<&str> = "A..B..".split_terminator(".").collect();
     /// assert_eq!(v, ["A", "", "B", ""]);
+    ///
+    /// let v: Vec<&str> = "A.B:C.D".split_terminator(&['.', ':'][..]).collect();
+    /// assert_eq!(v, ["A", "B", "C", "D"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1396,6 +1399,9 @@ impl str {
     ///
     /// let v: Vec<&str> = "A..B..".rsplit_terminator(".").collect();
     /// assert_eq!(v, ["", "B", "", "A"]);
+    ///
+    /// let v: Vec<&str> = "A.B:C.D".rsplit_terminator(&['.', ':'][..]).collect();
+    /// assert_eq!(v, ["D", "C", "B", "A"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
