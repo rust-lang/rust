@@ -123,6 +123,9 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
             (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
             (IDENT, _) if curr_kind.is_keyword() => " ",
             (_, IDENT) if prev_kind.is_keyword() => " ",
+            (T![>], IDENT) => " ",
+            (T![>], _) if curr_kind.is_keyword() => " ",
+            (T![->], _) | (_, T![->]) => " ",
             _ => "",
         };
 
@@ -133,8 +136,9 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
         }
 
         res.push_str(space);
-        if space == "\n" && curr_kind != T!['}'] {
-            res.push_str(&"    ".repeat(indent_level));
+        if space == "\n" {
+            let level = if curr_kind == T!['}'] { indent_level - 1 } else { indent_level };
+            res.push_str(&"    ".repeat(level));
         }
         prev_kind = curr_kind;
         format_to!(res, "{}", token)
