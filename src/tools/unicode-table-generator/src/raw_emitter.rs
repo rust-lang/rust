@@ -23,7 +23,7 @@ impl RawEmitter {
         writeln!(&mut self.file).unwrap();
     }
 
-    fn emit_bitset(&mut self, ranges: &[Range<u32>]) {
+    fn emit_bitset(&mut self, ranges: &[Range<u32>]) -> Result<(), String> {
         let last_code_point = ranges.last().unwrap().end;
         // bitset for every bit in the codepoint range
         //
@@ -44,7 +44,7 @@ impl RawEmitter {
         let unique_words =
             words.iter().cloned().collect::<BTreeSet<_>>().into_iter().collect::<Vec<_>>();
         if unique_words.len() > u8::MAX as usize {
-            panic!("cannot pack {} into 8 bits", unique_words.len());
+            return Err(format!("cannot pack {} into 8 bits", unique_words.len()));
         }
         // needed for the chunk mapping to work
         assert_eq!(unique_words[0], 0, "has a zero word");
@@ -105,6 +105,8 @@ impl RawEmitter {
         writeln!(&mut self.file, "        &BITSET_MAPPING,").unwrap();
         writeln!(&mut self.file, "    )").unwrap();
         writeln!(&mut self.file, "}}").unwrap();
+
+        Ok(())
     }
 
     fn emit_chunk_map(&mut self, zero_at: u8, compressed_words: &[u8], chunk_length: usize) {
@@ -154,12 +156,12 @@ pub fn emit_codepoints(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
     emitter.blank_line();
 
     let mut bitset = emitter.clone();
-    bitset.emit_bitset(&ranges);
+    let bitset_ok = bitset.emit_bitset(&ranges).is_ok();
 
     let mut skiplist = emitter.clone();
     skiplist.emit_skiplist(&ranges);
 
-    if bitset.bytes_used <= skiplist.bytes_used {
+    if bitset_ok && bitset.bytes_used <= skiplist.bytes_used {
         *emitter = bitset;
         emitter.desc = String::from("bitset");
     } else {
