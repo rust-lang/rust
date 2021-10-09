@@ -107,7 +107,7 @@ index fa96b7a..2854f9c 100644
      inner::monotonize(raw)
  }
  
--#[cfg(all(target_has_atomic = "64", not(target_has_atomic = "128")))]
+-#[cfg(any(all(target_has_atomic = "64", not(target_has_atomic = "128")), target_arch = "aarch64"))]
 +#[cfg(target_has_atomic = "64")]
  pub mod inner {
      use crate::sync::atomic::AtomicU64;
@@ -117,7 +117,7 @@ index fa96b7a..2854f9c 100644
  }
  
 +/*
- #[cfg(target_has_atomic = "128")]
+ #[cfg(all(target_has_atomic = "128", not(target_arch = "aarch64")))]
  pub mod inner {
      use crate::sync::atomic::AtomicU128;
 @@ -94,8 +95,9 @@ pub mod inner {
