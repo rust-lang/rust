@@ -464,6 +464,7 @@ impl Stdin {
     ///     println!("got a line: {}", line.unwrap());
     /// }
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[unstable(feature = "stdin_forwarders", issue = "87096")]
     pub fn lines(self) -> Lines<StdinLock<'static>> {
         self.into_locked().lines()

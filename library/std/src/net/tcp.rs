@@ -883,6 +883,7 @@ impl TcpListener {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
     pub fn into_incoming(self) -> IntoIncoming {
         IntoIncoming { listener: self }

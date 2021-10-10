@@ -101,6 +101,7 @@ impl<T: ?Sized> Unique<T> {
     }
 
     /// Acquires the underlying `*mut` pointer.
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub const fn as_ptr(self) -> *mut T {
         self.pointer as *mut T
@@ -131,6 +132,7 @@ impl<T: ?Sized> Unique<T> {
     }
 
     /// Casts to a pointer of another type.
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub const fn cast<U>(self) -> Unique<U> {
         // SAFETY: Unique::new_unchecked() creates a new unique and needs

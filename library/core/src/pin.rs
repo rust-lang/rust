@@ -715,6 +715,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
 impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[inline(always)]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn into_ref(self) -> Pin<&'a T> {
@@ -731,6 +732,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// the `Pin` itself. This method allows turning the `Pin` into a reference
     /// with the same lifetime as the original `Pin`.
     #[inline(always)]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     pub const fn get_mut(self) -> &'a mut T
@@ -751,6 +753,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// If the underlying data is `Unpin`, `Pin::get_mut` should be used
     /// instead.
     #[inline(always)]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     pub const unsafe fn get_unchecked_mut(self) -> &'a mut T {
@@ -772,6 +775,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// not move out of the argument you receive to the interior function.
     ///
     /// [`pin` module]: self#projections-and-structural-pinning
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked_mut<U, F>(self, func: F) -> Pin<&'a mut U>
     where
@@ -811,6 +815,7 @@ impl<'a, P: DerefMut> Pin<&'a mut Pin<P>> {
     /// implementations of `P::DerefMut` are likewise ruled out by the contract of
     /// `Pin::new_unchecked`.
     #[unstable(feature = "pin_deref_mut", issue = "86918")]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[inline(always)]
     pub fn as_deref_mut(self) -> Pin<&'a mut P::Target> {
         // SAFETY: What we're asserting here is that going from
