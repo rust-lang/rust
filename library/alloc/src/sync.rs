@@ -252,7 +252,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
-    fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
+    unsafe fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
         Self { ptr, phantom: PhantomData }
     }
 
@@ -348,7 +348,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data,
         };
-        Self::from_inner(Box::leak(x).into())
+        unsafe { Self::from_inner(Box::leak(x).into()) }
     }
 
     /// Constructs a new `Arc<T>` using a weak reference to itself. Attempting
@@ -397,7 +397,7 @@ impl<T> Arc<T> {
 
         // Now we can properly initialize the inner value and turn our weak
         // reference into a strong reference.
-        unsafe {
+        let strong = unsafe {
             let inner = init_ptr.as_ptr();
             ptr::write(ptr::addr_of_mut!((*inner).data), data);
 
@@ -415,9 +415,9 @@ impl<T> Arc<T> {
             // possible with safe code alone.
             let prev_value = (*inner).strong.fetch_add(1, Release);
             debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
-        }
 
-        let strong = Arc::from_inner(init_ptr);
+            Arc::from_inner(init_ptr)
+        };
 
         // Strong references should collectively own a shared weak reference,
         // so don't run the destructor for our old weak reference.
@@ -526,7 +526,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data,
         })?;
-        Ok(Self::from_inner(Box::leak(x).into()))
+        unsafe { Ok(Self::from_inner(Box::leak(x).into())) }
     }
 
     /// Constructs a new `Arc` with uninitialized contents, returning an error
@@ -737,7 +737,7 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<T> {
-        Arc::from_inner(mem::ManuallyDrop::new(self).ptr.cast())
+        unsafe { Arc::from_inner(mem::ManuallyDrop::new(self).ptr.cast()) }
     }
 }
 
@@ -1327,7 +1327,7 @@ impl<T: ?Sized> Clone for Arc<T> {
             abort();
         }
 
-        Self::from_inner(self.ptr)
+        unsafe { Self::from_inner(self.ptr) }
     }
 }
 
@@ -1654,9 +1654,11 @@ impl Arc<dyn Any + Send + Sync> {
         T: Any + Send + Sync + 'static,
     {
         if (*self).is::<T>() {
-            let ptr = self.ptr.cast::<ArcInner<T>>();
-            mem::forget(self);
-            Ok(Arc::from_inner(ptr))
+            unsafe {
+                let ptr = self.ptr.cast::<ArcInner<T>>();
+                mem::forget(self);
+                Ok(Arc::from_inner(ptr))
+            }
         } else {
             Err(self)
         }
@@ -1880,7 +1882,7 @@ impl<T: ?Sized> Weak<T> {
             // value can be initialized after `Weak` references have already been created. In that case, we
             // expect to observe the fully initialized value.
             match inner.strong.compare_exchange_weak(n, n + 1, Acquire, Relaxed) {
-                Ok(_) => return Some(Arc::from_inner(self.ptr)), // null checked above
+                Ok(_) => return Some(unsafe { Arc::from_inner(self.ptr) }), // null checked above
                 Err(old) => n = old,
             }
         }
