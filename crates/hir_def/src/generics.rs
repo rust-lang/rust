@@ -392,7 +392,7 @@ impl HasChildSource<LocalTypeParamId> for GenericDefId {
 
         // For traits the first type index is `Self`, we need to add it before the other params.
         if let GenericDefId::TraitId(id) = *self {
-            let trait_ref = id.lookup(db).source(db).value.clone();
+            let trait_ref = id.lookup(db).source(db).value;
             let idx = idx_iter.next().unwrap();
             params.insert(idx, Either::Right(trait_ref))
         }

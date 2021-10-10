@@ -53,7 +53,7 @@ impl<'a> EnumRender<'a> {
             }
             None => (
                 hir::ModPath::from_segments(hir::PathKind::Plain, iter::once(name.clone())),
-                hir::ModPath::from_segments(hir::PathKind::Plain, iter::once(name.clone())),
+                hir::ModPath::from_segments(hir::PathKind::Plain, iter::once(name)),
             ),
         };
 

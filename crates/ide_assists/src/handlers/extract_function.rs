@@ -169,7 +169,7 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
     let expr = ast::Expr::cast(node.clone())?;
     // A node got selected fully
     if node.text_range() == selection_range {
-        return FunctionBody::from_expr(expr.clone());
+        return FunctionBody::from_expr(expr);
     }
 
     node.ancestors().find_map(ast::Expr::cast).and_then(FunctionBody::from_expr)
