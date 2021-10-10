@@ -99,26 +99,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_int_base() {
-    parse_macro(
-        r#"
-macro_rules! int_base {
-    ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::$Trait for $T {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                $Radix.fmt_int(*self as $U, f)
-            }
-        }
-    }
-}
-"#,
-    ).assert_expand_items(r#" int_base!{Binary for isize as usize -> Binary}"#,
-        "# [stable (feature = \"rust1\" , since = \"1.0.0\")] impl fmt ::Binary for isize {fn fmt (& self , f : & mut fmt :: Formatter < \'_ >) -> fmt :: Result {Binary . fmt_int (* self as usize , f)}}"
-    );
-}
-
-#[test]
 fn test_generate_pattern_iterators() {
     // from https://github.com/rust-lang/rust/blob/316a391dcb7d66dc25f1f9a4ec9d368ef7615005/src/libcore/str/mod.rs
     parse_macro(

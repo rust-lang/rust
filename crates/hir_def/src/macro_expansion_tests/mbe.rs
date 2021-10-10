@@ -1558,3 +1558,39 @@ impl Clone for D3DCONTENTPROTECTIONCAPS {
 "##]],
     );
 }
+
+#[test]
+fn test_int_base() {
+    check(
+        r#"
+macro_rules! int_base {
+    ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::$Trait for $T {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                $Radix.fmt_int(*self as $U, f)
+            }
+        }
+    }
+}
+int_base!{Binary for isize as usize -> Binary}
+"#,
+        expect![[r##"
+macro_rules! int_base {
+    ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::$Trait for $T {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                $Radix.fmt_int(*self as $U, f)
+            }
+        }
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")] impl fmt::Binary for isize {
+    fn fmt(&self , f: &mut fmt::Formatter< '_>) -> fmt::Result {
+        Binary.fmt_int(*self as usize, f)
+    }
+}
+"##]],
+    );
+}
