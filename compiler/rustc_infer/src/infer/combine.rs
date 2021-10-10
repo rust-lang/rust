@@ -72,6 +72,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     {
         let a_is_expected = relation.a_is_expected();
 
+        debug!("super_combine_tys: {:?} | {:?}", a.kind(), b.kind());
         match (a.kind(), b.kind()) {
             // Relate integral variables to other types
             (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {

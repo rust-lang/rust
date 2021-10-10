@@ -199,6 +199,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::Uint(..)
             | ty::Float(..)
             | ty::Adt(..)
+            | ty::Variant(..) 
             | ty::Str
             | ty::Error(_)
             | ty::Array(..)

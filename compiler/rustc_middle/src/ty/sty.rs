@@ -195,6 +195,9 @@ pub enum TyKind<'tcx> {
     /// A type variable used during type checking.
     Infer(InferTy),
 
+    /// An enum (TyKind::Adt) and its variant
+    Variant(Ty<'tcx>, VariantIdx),
+
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
     Error(DelaySpanBugEmitted),
@@ -2011,6 +2014,12 @@ impl<'tcx> TyS<'tcx> {
             TyKind::Adt(adt, _) if adt.is_enum() => {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
             }
+            TyKind::Variant(ty, _) => match ty.kind() {
+                ty::Adt(adt, _) if adt.is_enum() => {
+                    Some(adt.discriminant_for_variant(tcx, variant_index))
+                }
+                _ => bug!("unexpected type: {:?}", ty.kind()),
+            },
             TyKind::Generator(def_id, substs, _) => {
                 Some(substs.as_generator().discriminant_for_variant(*def_id, tcx, variant_index))
             }
@@ -2022,6 +2031,10 @@ impl<'tcx> TyS<'tcx> {
     pub fn discriminant_ty(&'tcx self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             ty::Adt(adt, _) if adt.is_enum() => adt.repr.discr_type().to_ty(tcx),
+            ty::Variant(ty, _) => match ty.kind() {
+                ty::Adt(adt, _) if adt.is_enum() => adt.repr.discr_type().to_ty(tcx),
+                _ => bug!("unexpected type: {:?}", ty.kind()),
+            },
             ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
 
             ty::Param(_) | ty::Projection(_) | ty::Opaque(..) | ty::Infer(ty::TyVar(_)) => {
@@ -2083,6 +2096,7 @@ impl<'tcx> TyS<'tcx> {
             | ty::Closure(..)
             | ty::Never
             | ty::Error(_)
+            | ty::Variant(..)
             | ty::Foreign(..)
             // If returned by `struct_tail_without_normalization` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
@@ -2174,6 +2188,10 @@ impl<'tcx> TyS<'tcx> {
             ty::Tuple(tys) => tys.iter().all(|ty| ty.expect_ty().is_trivially_sized(tcx)),
 
             ty::Adt(def, _substs) => def.sized_constraint(tcx).is_empty(),
+            ty::Variant(ty, _) => match ty.kind() {
+                ty::Adt(def, _) => def.sized_constraint(tcx).is_empty(),
+                _ => bug!("unxepcted type: {:?}", ty.kind()),
+            },
 
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => false,
 

@@ -28,7 +28,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
@@ -44,6 +44,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -208,10 +209,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_diverges = self.diverges.replace(Diverges::Maybe);
         let old_has_errors = self.has_errors.replace(false);
 
+        fn expecting_enum_variant(expected: &Expectation<'tcx>) -> Option<&'tcx ty::AdtDef> {
+            if let ExpectHasType(expected_ty) = expected {
+                if let ty::Variant(ty, _) = expected_ty.kind() {
+                    if let ty::Adt(adt_def, _) = ty.kind() {
+                        return Some(*adt_def);
+                    }
+                }
+            }
+            None
+        }
+
+        fn variant_index_from_qpath(
+            adt_def: &ty::AdtDef,
+            qpath: &QPath<'hir>,
+        ) -> Option<VariantIdx> {
+            match qpath {
+                QPath::Resolved(_, path) => match path.res {
+                    Res::Def(
+                        DefKind::Ctor(CtorOf::Variant, CtorKind::Const | CtorKind::Fn),
+                        ctor_def_id,
+                    ) => Some(adt_def.variant_index_with_ctor_id(ctor_def_id)),
+                    _ => None,
+                },
+                _ => None,
+            }
+        }
+
         let ty = ensure_sufficient_stack(|| match &expr.kind {
             hir::ExprKind::Path(
                 qpath @ hir::QPath::Resolved(..) | qpath @ hir::QPath::TypeRelative(..),
-            ) => self.check_expr_path(qpath, expr, args),
+            ) => {
+                let path_ty = self.check_expr_path(qpath, expr, args);
+                if let Some(adt_def) = expecting_enum_variant(&expected) {
+                    variant_index_from_qpath(adt_def, qpath)
+                        .and_then(|index| Some(self.tcx().mk_ty(ty::Variant(path_ty, index))))
+                        .or(Some(path_ty))
+                        .unwrap()
+                } else {
+                    path_ty
+                }
+            }
             _ => self.check_expr_kind(expr, expected),
         });
 
@@ -261,6 +299,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         trace!("expr={:#?}", expr);
 
+        fn expecting_enum_variant(expected: &Expectation<'tcx>) -> Option<&'tcx ty::AdtDef> {
+            if let ExpectHasType(expected_ty) = expected {
+                if let ty::Variant(ty, _) = expected_ty.kind() {
+                    if let ty::Adt(adt_def, _) = ty.kind() {
+                        return Some(*adt_def);
+                    }
+                }
+            }
+            None
+        }
+
+        fn variant_index_from_qpath(
+            adt_def: &ty::AdtDef,
+            qpath: &QPath<'hir>,
+        ) -> Option<VariantIdx> {
+            match qpath {
+                QPath::Resolved(_, path) => match path.res {
+                    Res::Def(
+                        DefKind::Ctor(CtorOf::Variant, CtorKind::Const | CtorKind::Fn),
+                        ctor_def_id,
+                    ) => Some(adt_def.variant_index_with_ctor_id(ctor_def_id)),
+                    _ => None,
+                },
+                _ => None,
+            }
+        }
+
         let tcx = self.tcx;
         match expr.kind {
             ExprKind::Box(subexpr) => self.check_expr_box(subexpr, expected),
@@ -308,7 +373,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
             }
             ExprKind::Block(body, _) => self.check_block_with_expected(&body, expected),
-            ExprKind::Call(callee, args) => self.check_call(expr, &callee, args, expected),
+            ExprKind::Call(callee, args) => {
+                let call_ty = self.check_call(expr, &callee, args, expected);
+                let adt_def = expecting_enum_variant(&expected);
+                match &callee.kind {
+                    ExprKind::Path(qpath) if adt_def.is_some() => {
+                        if let Some(index) = variant_index_from_qpath(adt_def.unwrap(), &qpath) {
+                            self.tcx().mk_ty(ty::Variant(call_ty, index))
+                        } else {
+                            call_ty
+                        }
+                    }
+                    _ => call_ty,
+                }
+            }
             ExprKind::MethodCall(segment, span, args, _) => {
                 self.check_method_call(expr, segment, span, args, expected)
             }
@@ -329,6 +407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Tup(elts) => self.check_expr_tuple(elts, expected, expr),
             ExprKind::Struct(qpath, fields, ref base_expr) => {
+                // TODO(zhamlin): handle enum structs
                 self.check_expr_struct(expr, expected, qpath, fields, base_expr)
             }
             ExprKind::Field(base, field) => self.check_field(expr, &base, field),
@@ -1685,6 +1764,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         while let Some((base_t, _)) = autoderef.next() {
             debug!("base_t: {:?}", base_t);
             match base_t.kind() {
+                ty::Variant(ty, idx) => match ty.kind() {
+                    ty::Adt(base_def, substs) if base_def.is_enum() => {
+                        let variant = base_def.variants.get(*idx).expect("variant doesn't exist");
+                        let (adjusted_ident, def_scope) =
+                            self.tcx.adjust_ident_and_get_scope(field, base_def.did, self.body_id);
+                        let fstr = field.as_str();
+                        // handle tuple like enum variant
+                        if let Ok(index) = fstr.parse::<usize>() {
+                            if fstr == index.to_string() {
+                                if let Some(field_index) = variant.fields.iter().position(|f| {
+                                    f.ident.normalize_to_macros_2_0() == adjusted_ident
+                                }) {
+                                    let field = &variant.fields[field_index];
+                                    debug!("zhamlin: trying for field: {:?}", field.ident);
+                                    let field_ty = self.field_ty(expr.span, field, substs);
+                                    // Save the index of all fields regardless of their visibility in case
+                                    // of error recovery.
+                                    self.write_field_index(expr.hir_id, field_index);
+                                    if field.vis.is_accessible_from(variant.def_id, self.tcx) {
+                                        debug!("zhamlin: is_accessible_from");
+                                        let adjustments = self.adjust_steps(&autoderef);
+                                        self.apply_adjustments(base, adjustments);
+                                        self.register_predicates(autoderef.into_obligations());
+
+                                        self.tcx.check_stability(
+                                            field.did,
+                                            Some(expr.hir_id),
+                                            expr.span,
+                                            None,
+                                        );
+                                        return field_ty;
+                                    }
+                                    private_candidate = Some((base_def.did, field_ty));
+                                }
+                            }
+                        }
+                    }
+                    _ => bug!("unexpected type: {:?}", ty.kind()),
+                },
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
                     debug!("struct named {:?}", base_t);
                     let (ident, def_scope) =

@@ -768,6 +768,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
+            // TODO: zhamlin handle candidates here?
+
             // `(.., T)` -> `(.., U)`
             (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
                 if tys_a.len() == tys_b.len() {
@@ -922,6 +924,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                     debug!("not returning");
                 }
+                ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
             }
             debug!(?stack, "assemble_const_drop_candidates - in loop");
         }

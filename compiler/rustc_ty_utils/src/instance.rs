@@ -178,6 +178,7 @@ fn inner_resolve_instance<'tcx>(
                         | ty::Generator(..)
                         | ty::Tuple(..)
                         | ty::Adt(..)
+                        | ty::Variant(..)
                         | ty::Dynamic(..)
                         | ty::Array(..)
                         | ty::Slice(..) => {}

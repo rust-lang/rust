@@ -744,6 +744,22 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         PlaceTy { ty: base_ty, variant_index: Some(index) }
                     }
                 }
+                ty::Variant(ty, _) => match ty.kind() {
+                    ty::Adt(adt_def, _substs) if adt_def.is_enum() => {
+                        if index.as_usize() >= adt_def.variants.len() {
+                            PlaceTy::from_ty(span_mirbug_and_err!(
+                                self,
+                                place,
+                                "cast to variant #{:?} but enum only has {:?}",
+                                index,
+                                adt_def.variants.len()
+                            ))
+                        } else {
+                            PlaceTy { ty: *ty, variant_index: Some(index) }
+                        }
+                    }
+                    _ => bug!("unexpected type: {:?}", ty.kind()),
+                },
                 // We do not need to handle generators here, because this runs
                 // before the generator transform stage.
                 _ => {
@@ -812,6 +828,12 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let (variant, substs) = match base_ty {
             PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
                 ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
+                ty::Variant(ty, _) => match ty.kind() {
+                    ty::Adt(adt_def, substs) => {
+                        (adt_def.variants.get(variant_index).expect(""), *substs)
+                    }
+                    _ => bug!("unexpected type: {:?}", ty.kind()),
+                },
                 ty::Generator(def_id, substs, _) => {
                     let mut variants = substs.as_generator().state_tys(def_id, tcx);
                     let mut variant = match variants.nth(variant_index.into()) {
@@ -833,6 +855,12 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 ty::Adt(adt_def, substs) if !adt_def.is_enum() => {
                     (&adt_def.variants[VariantIdx::new(0)], substs)
                 }
+                ty::Variant(ty, _) => match ty.kind() {
+                    ty::Adt(adt_def, substs) if adt_def.is_enum() => {
+                        (&adt_def.variants[VariantIdx::new(0)], *substs)
+                    }
+                    _ => bug!("unexpected type: {:?}", ty.kind()),
+                },
                 ty::Closure(_, substs) => {
                     return match substs
                         .as_closure()

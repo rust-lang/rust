@@ -687,6 +687,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::Adt(adt, _) => {
                         adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
+                    ty::Variant(ty, _) => match ty.kind() {
+                        ty::Adt(adt, _) => adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits),
+                        _ => bug!("unexpected type: {:?}", ty.kind()),
+                    }
                     ty::Generator(def_id, substs, _) => {
                         let substs = substs.as_generator();
                         substs

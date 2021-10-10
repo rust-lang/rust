@@ -545,6 +545,14 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     self.out.extend(obligations);
                 }
 
+                ty::Variant(ty, _) => match ty.kind() {
+                    ty::Adt(def, substs) => {
+                        let obligations = self.nominal_obligations(def.did, substs);
+                        self.out.extend(obligations);
+                    },
+                    _ => bug!("unexpected type: {:?}", ty.kind()),
+                }
+
                 ty::FnDef(did, substs) => {
                     let obligations = self.nominal_obligations(did, substs);
                     self.out.extend(obligations);

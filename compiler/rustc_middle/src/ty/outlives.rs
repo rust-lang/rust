@@ -166,6 +166,7 @@ fn compute_components(
             ty::Float(..) |       // OutlivesScalar
             ty::Never |           // ...
             ty::Adt(..) |         // OutlivesNominalType
+            ty::Variant(..) |     // OutlivesNominalType
             ty::Opaque(..) |      // OutlivesNominalType (ish)
             ty::Foreign(..) |     // OutlivesNominalType
             ty::Str |             // OutlivesScalar (ish)

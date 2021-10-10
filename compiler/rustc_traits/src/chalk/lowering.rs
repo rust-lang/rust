@@ -330,6 +330,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             }
             ty::Infer(_infer) => unimplemented!(),
             ty::Error(_) => chalk_ir::TyKind::Error,
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
         .intern(interner)
     }

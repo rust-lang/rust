@@ -1402,6 +1402,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     | ty::Placeholder(..)
                     | ty::Infer(..)
                     | ty::Error(_) => false,
+                    ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
+
                 }
             }
             super::ImplSource::Pointee(..) => {
@@ -1447,6 +1449,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     | ty::Placeholder(..)
                     | ty::Infer(..)
                     | ty::Error(_) => false,
+                    ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
                 }
             }
             super::ImplSource::Param(..) => {

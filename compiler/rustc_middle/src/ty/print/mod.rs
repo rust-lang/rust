@@ -315,6 +315,7 @@ fn characteristic_def_id_of_type_cached<'a>(
         | ty::GeneratorWitness(..)
         | ty::Never
         | ty::Float(_) => None,
+        ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
     }
 }
 pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {

@@ -883,6 +883,17 @@ where
                     self.open_drop_for_adt(def, substs)
                 }
             }
+
+            ty::Variant(ty, _) => match ty.kind() {
+                ty::Adt(def, substs) => {
+                    if def.is_box() {
+                        self.open_drop_for_box(def, substs)
+                    } else {
+                        self.open_drop_for_adt(def, substs)
+                    }
+                },
+                _ => bug!("unexpected type `{:?}`", ty.kind()),
+            }
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_eval_usize(self.tcx(), self.elaborator.param_env());

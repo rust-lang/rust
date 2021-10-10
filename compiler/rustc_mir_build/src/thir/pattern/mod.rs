@@ -392,6 +392,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if adt_def.is_enum() {
                     let substs = match ty.kind() {
                         ty::Adt(_, substs) | ty::FnDef(_, substs) => substs,
+                        ty::Variant(ty, _) => match ty.kind() {
+                            ty::Adt(_, substs) => substs,
+                            _ => bug!("unexpected type `{:?}`", ty.kind())
+                        }
                         ty::Error(_) => {
                             // Avoid ICE (#50585)
                             return PatKind::Wild;

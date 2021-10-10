@@ -934,6 +934,17 @@ impl<'tcx> Cx<'tcx> {
                         fields: Box::new([]),
                         base: None,
                     })),
+                    ty::Variant(ty, _) => match ty.kind() {
+                        ty::Adt(adt_def, substs) => ExprKind::Adt(Box::new(Adt {
+                            adt_def,
+                            variant_index: adt_def.variant_index_with_ctor_id(def_id),
+                            substs,
+                            user_ty: user_provided_type,
+                            fields: Box::new([]),
+                            base: None,
+                        })),
+                        _ => bug!("unexpected ty: {:?}", ty),
+                    },
                     _ => bug!("unexpected ty: {:?}", ty),
                 }
             }

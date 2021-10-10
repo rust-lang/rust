@@ -314,6 +314,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ref fields,
                 ref base,
             }) => {
+                debug!("zhamlin: adt expr into");
                 // See the notes for `ExprKind::Array` in `as_rvalue` and for
                 // `ExprKind::Borrow` above.
                 let is_union = adt_def.is_union();
@@ -376,6 +377,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         inferred_ty,
                     })
                 });
+                debug!("zhamlin: adt user type: {:?}", user_ty);
                 let adt = Box::new(AggregateKind::Adt(
                     adt_def,
                     variant_index,

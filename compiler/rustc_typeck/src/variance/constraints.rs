@@ -285,6 +285,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_substs(current, def.did, substs, variance);
             }
 
+            ty::Variant(ty, _) => match ty.kind() {
+                ty::Adt(def, substs) => self.add_constraints_from_substs(current, def.did, substs, variance),
+                _ => bug!("unexpected type: {:?}", ty.kind()),
+            }
+
             ty::Projection(ref data) => {
                 self.add_constraints_from_invariant_substs(current, data.substs, variance);
             }

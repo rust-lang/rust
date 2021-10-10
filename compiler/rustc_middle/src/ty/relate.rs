@@ -402,6 +402,36 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             Ok(tcx.mk_adt(a_def, substs))
         }
 
+        // TODO(zhamlin): handle this somewhere else?
+        // Enum <- Enum Variant
+        (&ty::Adt(a_def, a_substs), &ty::Variant(b_ty, _)) if relation.a_is_expected() => match b_ty.kind() {
+            ty::Adt(b_def, b_substs) if a_def == *b_def => {
+                let substs = relation.relate_item_substs(a_def.did, a_substs, b_substs)?;
+                Ok(tcx.mk_adt(a_def, substs))
+            },
+            _ => Err(TypeError::Sorts(expected_found(relation, a, b))),
+        }
+
+        (&ty::Variant(a_ty, _), &ty::Adt(b_def, b_substs)) => match a_ty.kind() {
+            ty::Adt(a_def, a_substs) if *a_def == b_def => {
+                let substs = relation.relate_item_substs(a_def.did, a_substs, b_substs)?;
+                Ok(tcx.mk_adt(a_def, substs))
+            }
+            _ => Err(TypeError::Sorts(expected_found(relation, a, b))),
+        }
+
+        (&ty::Variant(a_ty, a_idx), &ty::Variant(b_ty, b_idx)) => match a_ty.kind() {
+            ty::Adt(a_def, a_substs) => match b_ty.kind() {
+                ty::Adt(b_def, b_substs) if a_def == b_def && a_idx == b_idx => {
+                    let substs = relation.relate_item_substs(a_def.did, a_substs, b_substs)?;
+                    let adt = tcx.mk_adt(a_def, substs);
+                    Ok(tcx.mk_ty(ty::Variant(adt, a_idx)))
+                }
+                _ => Err(TypeError::Sorts(expected_found(relation, a, b))),
+            },
+            _ => Err(TypeError::Sorts(expected_found(relation, a, b))),
+        }
+
         (&ty::Foreign(a_id), &ty::Foreign(b_id)) if a_id == b_id => Ok(tcx.mk_foreign(a_id)),
 
         (&ty::Dynamic(a_obj, a_region), &ty::Dynamic(b_obj, b_region)) => {

@@ -307,7 +307,7 @@ macro_rules! impl_decodable_via_ref {
         })*
     }
 }
-
+// TODO(zhamlin): enum variant here?
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::AdtDef {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let def_id = <DefId as Decodable<D>>::decode(decoder)?;

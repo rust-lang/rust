@@ -1233,7 +1233,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // segment belong to, let's sort out the parameters that the user
         // provided (if any) into their appropriate spaces. We'll also report
         // errors if type parameters are provided in an inappropriate place.
-
         let generic_segs: FxHashSet<_> = path_segs.iter().map(|PathSeg(_, index)| index).collect();
         let generics_has_err = <dyn AstConv<'_>>::prohibit_generics(
             self,

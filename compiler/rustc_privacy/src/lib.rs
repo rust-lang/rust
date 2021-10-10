@@ -213,6 +213,20 @@ where
                     }
                 }
             }
+            ty::Variant(ty, _) => match ty.kind() {
+                ty::Adt(&ty::AdtDef { did: def_id, .. }, _) => {
+                    self.def_id_visitor.visit_def_id(def_id, "type", &ty)?;
+                    if self.def_id_visitor.shallow() {
+                        return ControlFlow::CONTINUE;
+                    }
+                    if let Some(assoc_item) = tcx.opt_associated_item(def_id) {
+                        if let ty::ImplContainer(impl_def_id) = assoc_item.container {
+                            tcx.type_of(impl_def_id).visit_with(self)?;
+                        }
+                    }
+                }
+                _ => bug!("unexpected type: {:?}", ty.kind()),
+            }
             ty::Projection(proj) => {
                 if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to

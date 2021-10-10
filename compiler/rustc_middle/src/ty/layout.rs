@@ -526,6 +526,581 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         })
     }
 
+    fn layout_of_uncached_adt(&self, ty: Ty<'tcx>) -> Result<&'tcx Layout, LayoutError<'tcx>> {
+        if let ty::Adt(def, substs) = ty.kind() {
+            let tcx = self.tcx;
+            let dl = self.data_layout();
+            let scalar_unit = |value: Primitive| {
+                let size = value.size(dl);
+                assert!(size.bits() <= 128);
+                Scalar {
+                    value,
+                    valid_range: WrappingRange { start: 0, end: size.unsigned_int_max() },
+                }
+            };
+
+            // Cache the field layouts.
+            let variants = def
+                .variants
+                .iter()
+                .map(|v| {
+                    v.fields
+                        .iter()
+                        .map(|field| self.layout_of(field.ty(tcx, substs)))
+                        .collect::<Result<Vec<_>, _>>()
+                })
+                .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+
+            if def.is_union() {
+                if def.repr.pack.is_some() && def.repr.align.is_some() {
+                    self.tcx.sess.delay_span_bug(
+                        tcx.def_span(def.did),
+                        "union cannot be packed and aligned",
+                    );
+                    return Err(LayoutError::Unknown(ty));
+                }
+
+                let mut align =
+                    if def.repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
+
+                if let Some(repr_align) = def.repr.align {
+                    align = align.max(AbiAndPrefAlign::new(repr_align));
+                }
+
+                let optimize = !def.repr.inhibit_union_abi_opt();
+                let mut size = Size::ZERO;
+                let mut abi = Abi::Aggregate { sized: true };
+                let index = VariantIdx::new(0);
+                for field in &variants[index] {
+                    assert!(!field.is_unsized());
+                    align = align.max(field.align);
+
+                    // If all non-ZST fields have the same ABI, forward this ABI
+                    if optimize && !field.is_zst() {
+                        // Normalize scalar_unit to the maximal valid range
+                        let field_abi = match field.abi {
+                            Abi::Scalar(x) => Abi::Scalar(scalar_unit(x.value)),
+                            Abi::ScalarPair(x, y) => {
+                                Abi::ScalarPair(scalar_unit(x.value), scalar_unit(y.value))
+                            }
+                            Abi::Vector { element: x, count } => {
+                                Abi::Vector { element: scalar_unit(x.value), count }
+                            }
+                            Abi::Uninhabited | Abi::Aggregate { .. } => {
+                                Abi::Aggregate { sized: true }
+                            }
+                        };
+
+                        if size == Size::ZERO {
+                            // first non ZST: initialize 'abi'
+                            abi = field_abi;
+                        } else if abi != field_abi {
+                            // different fields have different ABI: reset to Aggregate
+                            abi = Abi::Aggregate { sized: true };
+                        }
+                    }
+
+                    size = cmp::max(size, field.size);
+                }
+
+                if let Some(pack) = def.repr.pack {
+                    align = align.min(AbiAndPrefAlign::new(pack));
+                }
+
+                return Ok(tcx.intern_layout(Layout {
+                    variants: Variants::Single { index },
+                    fields: FieldsShape::Union(
+                        NonZeroUsize::new(variants[index].len()).ok_or(LayoutError::Unknown(ty))?,
+                    ),
+                    abi,
+                    largest_niche: None,
+                    align,
+                    size: size.align_to(align.abi),
+                }));
+            }
+
+            // A variant is absent if it's uninhabited and only has ZST fields.
+            // Present uninhabited variants only require space for their fields,
+            // but *not* an encoding of the discriminant (e.g., a tag value).
+            // See issue #49298 for more details on the need to leave space
+            // for non-ZST uninhabited data (mostly partial initialization).
+            let absent = |fields: &[TyAndLayout<'_>]| {
+                let uninhabited = fields.iter().any(|f| f.abi.is_uninhabited());
+                let is_zst = fields.iter().all(|f| f.is_zst());
+                uninhabited && is_zst
+            };
+            let (present_first, present_second) = {
+                let mut present_variants = variants
+                    .iter_enumerated()
+                    .filter_map(|(i, v)| if absent(v) { None } else { Some(i) });
+                (present_variants.next(), present_variants.next())
+            };
+            let present_first = match present_first {
+                Some(present_first) => present_first,
+                // Uninhabited because it has no variants, or only absent ones.
+                None if def.is_enum() => {
+                    return Ok(tcx.layout_of(self.param_env.and(tcx.types.never))?.layout);
+                }
+                // If it's a struct, still compute a layout so that we can still compute the
+                // field offsets.
+                None => VariantIdx::new(0),
+            };
+
+            let is_struct = !def.is_enum() ||
+                    // Only one variant is present.
+                    (present_second.is_none() &&
+                    // Representation optimizations are allowed.
+                    !def.repr.inhibit_enum_layout_opt());
+            if is_struct {
+                // Struct, or univariant enum equivalent to a struct.
+                // (Typechecking will reject discriminant-sizing attrs.)
+
+                let v = present_first;
+                let kind = if def.is_enum() || variants[v].is_empty() {
+                    StructKind::AlwaysSized
+                } else {
+                    let param_env = tcx.param_env(def.did);
+                    let last_field = def.variants[v].fields.last().unwrap();
+                    let always_sized =
+                        tcx.type_of(last_field.did).is_sized(tcx.at(DUMMY_SP), param_env);
+                    if !always_sized { StructKind::MaybeUnsized } else { StructKind::AlwaysSized }
+                };
+
+                let mut st = self.univariant_uninterned(ty, &variants[v], &def.repr, kind)?;
+                st.variants = Variants::Single { index: v };
+                let (start, end) = self.tcx.layout_scalar_valid_range(def.did);
+                match st.abi {
+                    Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
+                        // the asserts ensure that we are not using the
+                        // `#[rustc_layout_scalar_valid_range(n)]`
+                        // attribute to widen the range of anything as that would probably
+                        // result in UB somewhere
+                        // FIXME(eddyb) the asserts are probably not needed,
+                        // as larger validity ranges would result in missed
+                        // optimizations, *not* wrongly assuming the inner
+                        // value is valid. e.g. unions enlarge validity ranges,
+                        // because the values may be uninitialized.
+                        if let Bound::Included(start) = start {
+                            // FIXME(eddyb) this might be incorrect - it doesn't
+                            // account for wrap-around (end < start) ranges.
+                            assert!(scalar.valid_range.start <= start);
+                            scalar.valid_range.start = start;
+                        }
+                        if let Bound::Included(end) = end {
+                            // FIXME(eddyb) this might be incorrect - it doesn't
+                            // account for wrap-around (end < start) ranges.
+                            assert!(scalar.valid_range.end >= end);
+                            scalar.valid_range.end = end;
+                        }
+
+                        // Update `largest_niche` if we have introduced a larger niche.
+                        let niche = if def.repr.hide_niche() {
+                            None
+                        } else {
+                            Niche::from_scalar(dl, Size::ZERO, *scalar)
+                        };
+                        if let Some(niche) = niche {
+                            match st.largest_niche {
+                                Some(largest_niche) => {
+                                    // Replace the existing niche even if they're equal,
+                                    // because this one is at a lower offset.
+                                    if largest_niche.available(dl) <= niche.available(dl) {
+                                        st.largest_niche = Some(niche);
+                                    }
+                                }
+                                None => st.largest_niche = Some(niche),
+                            }
+                        }
+                    }
+                    _ => assert!(
+                        start == Bound::Unbounded && end == Bound::Unbounded,
+                        "nonscalar layout for layout_scalar_valid_range type {:?}: {:#?}",
+                        def,
+                        st,
+                    ),
+                }
+
+                return Ok(tcx.intern_layout(st));
+            }
+
+            // At this point, we have handled all unions and
+            // structs. (We have also handled univariant enums
+            // that allow representation optimization.)
+            assert!(def.is_enum());
+
+            // The current code for niche-filling relies on variant indices
+            // instead of actual discriminants, so dataful enums with
+            // explicit discriminants (RFC #2363) would misbehave.
+            let no_explicit_discriminants = def
+                .variants
+                .iter_enumerated()
+                .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
+
+            let mut niche_filling_layout = None;
+
+            // Niche-filling enum optimization.
+            if !def.repr.inhibit_enum_layout_opt() && no_explicit_discriminants {
+                let mut dataful_variant = None;
+                let mut niche_variants = VariantIdx::MAX..=VariantIdx::new(0);
+
+                // Find one non-ZST variant.
+                'variants: for (v, fields) in variants.iter_enumerated() {
+                    if absent(fields) {
+                        continue 'variants;
+                    }
+                    for f in fields {
+                        if !f.is_zst() {
+                            if dataful_variant.is_none() {
+                                dataful_variant = Some(v);
+                                continue 'variants;
+                            } else {
+                                dataful_variant = None;
+                                break 'variants;
+                            }
+                        }
+                    }
+                    niche_variants = *niche_variants.start().min(&v)..=v;
+                }
+
+                if niche_variants.start() > niche_variants.end() {
+                    dataful_variant = None;
+                }
+
+                if let Some(i) = dataful_variant {
+                    let count = (niche_variants.end().as_u32() - niche_variants.start().as_u32()
+                        + 1) as u128;
+
+                    // Find the field with the largest niche
+                    let niche_candidate = variants[i]
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(j, field)| Some((j, field.largest_niche?)))
+                        .max_by_key(|(_, niche)| niche.available(dl));
+
+                    if let Some((field_index, niche, (niche_start, niche_scalar))) = niche_candidate
+                        .and_then(|(field_index, niche)| {
+                            Some((field_index, niche, niche.reserve(self, count)?))
+                        })
+                    {
+                        let mut align = dl.aggregate_align;
+                        let st = variants
+                            .iter_enumerated()
+                            .map(|(j, v)| {
+                                let mut st = self.univariant_uninterned(
+                                    ty,
+                                    v,
+                                    &def.repr,
+                                    StructKind::AlwaysSized,
+                                )?;
+                                st.variants = Variants::Single { index: j };
+
+                                align = align.max(st.align);
+
+                                Ok(st)
+                            })
+                            .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+
+                        let offset = st[i].fields.offset(field_index) + niche.offset;
+                        let size = st[i].size;
+
+                        let abi = if st.iter().all(|v| v.abi.is_uninhabited()) {
+                            Abi::Uninhabited
+                        } else {
+                            match st[i].abi {
+                                Abi::Scalar(_) => Abi::Scalar(niche_scalar),
+                                Abi::ScalarPair(first, second) => {
+                                    // We need to use scalar_unit to reset the
+                                    // valid range to the maximal one for that
+                                    // primitive, because only the niche is
+                                    // guaranteed to be initialised, not the
+                                    // other primitive.
+                                    if offset.bytes() == 0 {
+                                        Abi::ScalarPair(niche_scalar, scalar_unit(second.value))
+                                    } else {
+                                        Abi::ScalarPair(scalar_unit(first.value), niche_scalar)
+                                    }
+                                }
+                                _ => Abi::Aggregate { sized: true },
+                            }
+                        };
+
+                        let largest_niche = Niche::from_scalar(dl, offset, niche_scalar);
+
+                        niche_filling_layout = Some(Layout {
+                            variants: Variants::Multiple {
+                                tag: niche_scalar,
+                                tag_encoding: TagEncoding::Niche {
+                                    dataful_variant: i,
+                                    niche_variants,
+                                    niche_start,
+                                },
+                                tag_field: 0,
+                                variants: st,
+                            },
+                            fields: FieldsShape::Arbitrary {
+                                offsets: vec![offset],
+                                memory_index: vec![0],
+                            },
+                            abi,
+                            largest_niche,
+                            size,
+                            align,
+                        });
+                    }
+                }
+            }
+
+            let (mut min, mut max) = (i128::MAX, i128::MIN);
+            let discr_type = def.repr.discr_type();
+            let bits = Integer::from_attr(self, discr_type).size().bits();
+            for (i, discr) in def.discriminants(tcx) {
+                if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
+                    continue;
+                }
+                let mut x = discr.val as i128;
+                if discr_type.is_signed() {
+                    // sign extend the raw representation to be an i128
+                    x = (x << (128 - bits)) >> (128 - bits);
+                }
+                if x < min {
+                    min = x;
+                }
+                if x > max {
+                    max = x;
+                }
+            }
+            // We might have no inhabited variants, so pretend there's at least one.
+            if (min, max) == (i128::MAX, i128::MIN) {
+                min = 0;
+                max = 0;
+            }
+            assert!(min <= max, "discriminant range is {}...{}", min, max);
+            let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
+
+            let mut align = dl.aggregate_align;
+            let mut size = Size::ZERO;
+
+            // We're interested in the smallest alignment, so start large.
+            let mut start_align = Align::from_bytes(256).unwrap();
+            assert_eq!(Integer::for_align(dl, start_align), None);
+
+            // repr(C) on an enum tells us to make a (tag, union) layout,
+            // so we need to grow the prefix alignment to be at least
+            // the alignment of the union. (This value is used both for
+            // determining the alignment of the overall enum, and the
+            // determining the alignment of the payload after the tag.)
+            let mut prefix_align = min_ity.align(dl).abi;
+            if def.repr.c() {
+                for fields in &variants {
+                    for field in fields {
+                        prefix_align = prefix_align.max(field.align.abi);
+                    }
+                }
+            }
+
+            // Create the set of structs that represent each variant.
+            let mut layout_variants = variants
+                .iter_enumerated()
+                .map(|(i, field_layouts)| {
+                    let mut st = self.univariant_uninterned(
+                        ty,
+                        &field_layouts,
+                        &def.repr,
+                        StructKind::Prefixed(min_ity.size(), prefix_align),
+                    )?;
+                    st.variants = Variants::Single { index: i };
+                    // Find the first field we can't move later
+                    // to make room for a larger discriminant.
+                    for field in st.fields.index_by_increasing_offset().map(|j| field_layouts[j]) {
+                        if !field.is_zst() || field.align.abi.bytes() != 1 {
+                            start_align = start_align.min(field.align.abi);
+                            break;
+                        }
+                    }
+                    size = cmp::max(size, st.size);
+                    align = align.max(st.align);
+                    Ok(st)
+                })
+                .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+
+            // Align the maximum variant size to the largest alignment.
+            size = size.align_to(align.abi);
+
+            if size.bytes() >= dl.obj_size_bound() {
+                return Err(LayoutError::SizeOverflow(ty));
+            }
+
+            let typeck_ity = Integer::from_attr(dl, def.repr.discr_type());
+            if typeck_ity < min_ity {
+                // It is a bug if Layout decided on a greater discriminant size than typeck for
+                // some reason at this point (based on values discriminant can take on). Mostly
+                // because this discriminant will be loaded, and then stored into variable of
+                // type calculated by typeck. Consider such case (a bug): typeck decided on
+                // byte-sized discriminant, but layout thinks we need a 16-bit to store all
+                // discriminant values. That would be a bug, because then, in codegen, in order
+                // to store this 16-bit discriminant into 8-bit sized temporary some of the
+                // space necessary to represent would have to be discarded (or layout is wrong
+                // on thinking it needs 16 bits)
+                bug!(
+                    "layout decided on a larger discriminant type ({:?}) than typeck ({:?})",
+                    min_ity,
+                    typeck_ity
+                );
+                // However, it is fine to make discr type however large (as an optimisation)
+                // after this point – we’ll just truncate the value we load in codegen.
+            }
+
+            // Check to see if we should use a different type for the
+            // discriminant. We can safely use a type with the same size
+            // as the alignment of the first field of each variant.
+            // We increase the size of the discriminant to avoid LLVM copying
+            // padding when it doesn't need to. This normally causes unaligned
+            // load/stores and excessive memcpy/memset operations. By using a
+            // bigger integer size, LLVM can be sure about its contents and
+            // won't be so conservative.
+
+            // Use the initial field alignment
+            let mut ity = if def.repr.c() || def.repr.int.is_some() {
+                min_ity
+            } else {
+                Integer::for_align(dl, start_align).unwrap_or(min_ity)
+            };
+
+            // If the alignment is not larger than the chosen discriminant size,
+            // don't use the alignment as the final size.
+            if ity <= min_ity {
+                ity = min_ity;
+            } else {
+                // Patch up the variants' first few fields.
+                let old_ity_size = min_ity.size();
+                let new_ity_size = ity.size();
+                for variant in &mut layout_variants {
+                    match variant.fields {
+                        FieldsShape::Arbitrary { ref mut offsets, .. } => {
+                            for i in offsets {
+                                if *i <= old_ity_size {
+                                    assert_eq!(*i, old_ity_size);
+                                    *i = new_ity_size;
+                                }
+                            }
+                            // We might be making the struct larger.
+                            if variant.size <= old_ity_size {
+                                variant.size = new_ity_size;
+                            }
+                        }
+                        _ => bug!(),
+                    }
+                }
+            }
+
+            let tag_mask = ity.size().unsigned_int_max();
+            let tag = Scalar {
+                value: Int(ity, signed),
+                valid_range: WrappingRange {
+                    start: (min as u128 & tag_mask),
+                    end: (max as u128 & tag_mask),
+                },
+            };
+            let mut abi = Abi::Aggregate { sized: true };
+            if tag.value.size(dl) == size {
+                abi = Abi::Scalar(tag);
+            } else {
+                // Try to use a ScalarPair for all tagged enums.
+                let mut common_prim = None;
+                for (field_layouts, layout_variant) in iter::zip(&variants, &layout_variants) {
+                    let offsets = match layout_variant.fields {
+                        FieldsShape::Arbitrary { ref offsets, .. } => offsets,
+                        _ => bug!(),
+                    };
+                    let mut fields = iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
+                    let (field, offset) = match (fields.next(), fields.next()) {
+                        (None, None) => continue,
+                        (Some(pair), None) => pair,
+                        _ => {
+                            common_prim = None;
+                            break;
+                        }
+                    };
+                    let prim = match field.abi {
+                        Abi::Scalar(scalar) => scalar.value,
+                        _ => {
+                            common_prim = None;
+                            break;
+                        }
+                    };
+                    if let Some(pair) = common_prim {
+                        // This is pretty conservative. We could go fancier
+                        // by conflating things like i32 and u32, or even
+                        // realising that (u8, u8) could just cohabit with
+                        // u16 or even u32.
+                        if pair != (prim, offset) {
+                            common_prim = None;
+                            break;
+                        }
+                    } else {
+                        common_prim = Some((prim, offset));
+                    }
+                }
+                if let Some((prim, offset)) = common_prim {
+                    let pair = self.scalar_pair(tag, scalar_unit(prim));
+                    let pair_offsets = match pair.fields {
+                        FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
+                            assert_eq!(memory_index, &[0, 1]);
+                            offsets
+                        }
+                        _ => bug!(),
+                    };
+                    if pair_offsets[0] == Size::ZERO
+                        && pair_offsets[1] == *offset
+                        && align == pair.align
+                        && size == pair.size
+                    {
+                        // We can use `ScalarPair` only when it matches our
+                        // already computed layout (including `#[repr(C)]`).
+                        abi = pair.abi;
+                    }
+                }
+            }
+
+            if layout_variants.iter().all(|v| v.abi.is_uninhabited()) {
+                abi = Abi::Uninhabited;
+            }
+
+            let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
+
+            let tagged_layout = Layout {
+                variants: Variants::Multiple {
+                    tag,
+                    tag_encoding: TagEncoding::Direct,
+                    tag_field: 0,
+                    variants: layout_variants,
+                },
+                fields: FieldsShape::Arbitrary { offsets: vec![Size::ZERO], memory_index: vec![0] },
+                largest_niche,
+                abi,
+                align,
+                size,
+            };
+
+            let best_layout = match (tagged_layout, niche_filling_layout) {
+                (tagged_layout, Some(niche_filling_layout)) => {
+                    // Pick the smaller layout; otherwise,
+                    // pick the layout with the larger niche; otherwise,
+                    // pick tagged as it has simpler codegen.
+                    cmp::min_by_key(tagged_layout, niche_filling_layout, |layout| {
+                        let niche_size = layout.largest_niche.map_or(0, |n| n.available(dl));
+                        (layout.size, cmp::Reverse(niche_size))
+                    })
+                }
+                (tagged_layout, None) => tagged_layout,
+            };
+
+            Ok(tcx.intern_layout(best_layout))
+        } else {
+            bug!("unexpected type: {:?}", ty.kind())
+        }
+    }
+
     fn layout_of_uncached(&self, ty: Ty<'tcx>) -> Result<&'tcx Layout, LayoutError<'tcx>> {
         let tcx = self.tcx;
         let param_env = self.param_env;
@@ -822,577 +1397,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
 
             // ADTs.
-            ty::Adt(def, substs) => {
-                // Cache the field layouts.
-                let variants = def
-                    .variants
-                    .iter()
-                    .map(|v| {
-                        v.fields
-                            .iter()
-                            .map(|field| self.layout_of(field.ty(tcx, substs)))
-                            .collect::<Result<Vec<_>, _>>()
-                    })
-                    .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+            ty::Adt(..) => self.layout_of_uncached_adt(ty)?,
 
-                if def.is_union() {
-                    if def.repr.pack.is_some() && def.repr.align.is_some() {
-                        self.tcx.sess.delay_span_bug(
-                            tcx.def_span(def.did),
-                            "union cannot be packed and aligned",
-                        );
-                        return Err(LayoutError::Unknown(ty));
-                    }
-
-                    let mut align =
-                        if def.repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
-
-                    if let Some(repr_align) = def.repr.align {
-                        align = align.max(AbiAndPrefAlign::new(repr_align));
-                    }
-
-                    let optimize = !def.repr.inhibit_union_abi_opt();
-                    let mut size = Size::ZERO;
-                    let mut abi = Abi::Aggregate { sized: true };
-                    let index = VariantIdx::new(0);
-                    for field in &variants[index] {
-                        assert!(!field.is_unsized());
-                        align = align.max(field.align);
-
-                        // If all non-ZST fields have the same ABI, forward this ABI
-                        if optimize && !field.is_zst() {
-                            // Normalize scalar_unit to the maximal valid range
-                            let field_abi = match field.abi {
-                                Abi::Scalar(x) => Abi::Scalar(scalar_unit(x.value)),
-                                Abi::ScalarPair(x, y) => {
-                                    Abi::ScalarPair(scalar_unit(x.value), scalar_unit(y.value))
-                                }
-                                Abi::Vector { element: x, count } => {
-                                    Abi::Vector { element: scalar_unit(x.value), count }
-                                }
-                                Abi::Uninhabited | Abi::Aggregate { .. } => {
-                                    Abi::Aggregate { sized: true }
-                                }
-                            };
-
-                            if size == Size::ZERO {
-                                // first non ZST: initialize 'abi'
-                                abi = field_abi;
-                            } else if abi != field_abi {
-                                // different fields have different ABI: reset to Aggregate
-                                abi = Abi::Aggregate { sized: true };
-                            }
-                        }
-
-                        size = cmp::max(size, field.size);
-                    }
-
-                    if let Some(pack) = def.repr.pack {
-                        align = align.min(AbiAndPrefAlign::new(pack));
-                    }
-
-                    return Ok(tcx.intern_layout(Layout {
-                        variants: Variants::Single { index },
-                        fields: FieldsShape::Union(
-                            NonZeroUsize::new(variants[index].len())
-                                .ok_or(LayoutError::Unknown(ty))?,
-                        ),
-                        abi,
-                        largest_niche: None,
-                        align,
-                        size: size.align_to(align.abi),
-                    }));
-                }
-
-                // A variant is absent if it's uninhabited and only has ZST fields.
-                // Present uninhabited variants only require space for their fields,
-                // but *not* an encoding of the discriminant (e.g., a tag value).
-                // See issue #49298 for more details on the need to leave space
-                // for non-ZST uninhabited data (mostly partial initialization).
-                let absent = |fields: &[TyAndLayout<'_>]| {
-                    let uninhabited = fields.iter().any(|f| f.abi.is_uninhabited());
-                    let is_zst = fields.iter().all(|f| f.is_zst());
-                    uninhabited && is_zst
-                };
-                let (present_first, present_second) = {
-                    let mut present_variants = variants
-                        .iter_enumerated()
-                        .filter_map(|(i, v)| if absent(v) { None } else { Some(i) });
-                    (present_variants.next(), present_variants.next())
-                };
-                let present_first = match present_first {
-                    Some(present_first) => present_first,
-                    // Uninhabited because it has no variants, or only absent ones.
-                    None if def.is_enum() => {
-                        return Ok(tcx.layout_of(param_env.and(tcx.types.never))?.layout);
-                    }
-                    // If it's a struct, still compute a layout so that we can still compute the
-                    // field offsets.
-                    None => VariantIdx::new(0),
-                };
-
-                let is_struct = !def.is_enum() ||
-                    // Only one variant is present.
-                    (present_second.is_none() &&
-                    // Representation optimizations are allowed.
-                    !def.repr.inhibit_enum_layout_opt());
-                if is_struct {
-                    // Struct, or univariant enum equivalent to a struct.
-                    // (Typechecking will reject discriminant-sizing attrs.)
-
-                    let v = present_first;
-                    let kind = if def.is_enum() || variants[v].is_empty() {
-                        StructKind::AlwaysSized
-                    } else {
-                        let param_env = tcx.param_env(def.did);
-                        let last_field = def.variants[v].fields.last().unwrap();
-                        let always_sized =
-                            tcx.type_of(last_field.did).is_sized(tcx.at(DUMMY_SP), param_env);
-                        if !always_sized {
-                            StructKind::MaybeUnsized
-                        } else {
-                            StructKind::AlwaysSized
-                        }
-                    };
-
-                    let mut st = self.univariant_uninterned(ty, &variants[v], &def.repr, kind)?;
-                    st.variants = Variants::Single { index: v };
-                    let (start, end) = self.tcx.layout_scalar_valid_range(def.did);
-                    match st.abi {
-                        Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
-                            // the asserts ensure that we are not using the
-                            // `#[rustc_layout_scalar_valid_range(n)]`
-                            // attribute to widen the range of anything as that would probably
-                            // result in UB somewhere
-                            // FIXME(eddyb) the asserts are probably not needed,
-                            // as larger validity ranges would result in missed
-                            // optimizations, *not* wrongly assuming the inner
-                            // value is valid. e.g. unions enlarge validity ranges,
-                            // because the values may be uninitialized.
-                            if let Bound::Included(start) = start {
-                                // FIXME(eddyb) this might be incorrect - it doesn't
-                                // account for wrap-around (end < start) ranges.
-                                assert!(scalar.valid_range.start <= start);
-                                scalar.valid_range.start = start;
-                            }
-                            if let Bound::Included(end) = end {
-                                // FIXME(eddyb) this might be incorrect - it doesn't
-                                // account for wrap-around (end < start) ranges.
-                                assert!(scalar.valid_range.end >= end);
-                                scalar.valid_range.end = end;
-                            }
-
-                            // Update `largest_niche` if we have introduced a larger niche.
-                            let niche = if def.repr.hide_niche() {
-                                None
-                            } else {
-                                Niche::from_scalar(dl, Size::ZERO, *scalar)
-                            };
-                            if let Some(niche) = niche {
-                                match st.largest_niche {
-                                    Some(largest_niche) => {
-                                        // Replace the existing niche even if they're equal,
-                                        // because this one is at a lower offset.
-                                        if largest_niche.available(dl) <= niche.available(dl) {
-                                            st.largest_niche = Some(niche);
-                                        }
-                                    }
-                                    None => st.largest_niche = Some(niche),
-                                }
-                            }
-                        }
-                        _ => assert!(
-                            start == Bound::Unbounded && end == Bound::Unbounded,
-                            "nonscalar layout for layout_scalar_valid_range type {:?}: {:#?}",
-                            def,
-                            st,
-                        ),
-                    }
-
-                    return Ok(tcx.intern_layout(st));
-                }
-
-                // At this point, we have handled all unions and
-                // structs. (We have also handled univariant enums
-                // that allow representation optimization.)
-                assert!(def.is_enum());
-
-                // The current code for niche-filling relies on variant indices
-                // instead of actual discriminants, so dataful enums with
-                // explicit discriminants (RFC #2363) would misbehave.
-                let no_explicit_discriminants = def
-                    .variants
-                    .iter_enumerated()
-                    .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
-
-                let mut niche_filling_layout = None;
-
-                // Niche-filling enum optimization.
-                if !def.repr.inhibit_enum_layout_opt() && no_explicit_discriminants {
-                    let mut dataful_variant = None;
-                    let mut niche_variants = VariantIdx::MAX..=VariantIdx::new(0);
-
-                    // Find one non-ZST variant.
-                    'variants: for (v, fields) in variants.iter_enumerated() {
-                        if absent(fields) {
-                            continue 'variants;
-                        }
-                        for f in fields {
-                            if !f.is_zst() {
-                                if dataful_variant.is_none() {
-                                    dataful_variant = Some(v);
-                                    continue 'variants;
-                                } else {
-                                    dataful_variant = None;
-                                    break 'variants;
-                                }
-                            }
-                        }
-                        niche_variants = *niche_variants.start().min(&v)..=v;
-                    }
-
-                    if niche_variants.start() > niche_variants.end() {
-                        dataful_variant = None;
-                    }
-
-                    if let Some(i) = dataful_variant {
-                        let count = (niche_variants.end().as_u32()
-                            - niche_variants.start().as_u32()
-                            + 1) as u128;
-
-                        // Find the field with the largest niche
-                        let niche_candidate = variants[i]
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(j, field)| Some((j, field.largest_niche?)))
-                            .max_by_key(|(_, niche)| niche.available(dl));
-
-                        if let Some((field_index, niche, (niche_start, niche_scalar))) =
-                            niche_candidate.and_then(|(field_index, niche)| {
-                                Some((field_index, niche, niche.reserve(self, count)?))
-                            })
-                        {
-                            let mut align = dl.aggregate_align;
-                            let st = variants
-                                .iter_enumerated()
-                                .map(|(j, v)| {
-                                    let mut st = self.univariant_uninterned(
-                                        ty,
-                                        v,
-                                        &def.repr,
-                                        StructKind::AlwaysSized,
-                                    )?;
-                                    st.variants = Variants::Single { index: j };
-
-                                    align = align.max(st.align);
-
-                                    Ok(st)
-                                })
-                                .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
-
-                            let offset = st[i].fields.offset(field_index) + niche.offset;
-                            let size = st[i].size;
-
-                            let abi = if st.iter().all(|v| v.abi.is_uninhabited()) {
-                                Abi::Uninhabited
-                            } else {
-                                match st[i].abi {
-                                    Abi::Scalar(_) => Abi::Scalar(niche_scalar),
-                                    Abi::ScalarPair(first, second) => {
-                                        // We need to use scalar_unit to reset the
-                                        // valid range to the maximal one for that
-                                        // primitive, because only the niche is
-                                        // guaranteed to be initialised, not the
-                                        // other primitive.
-                                        if offset.bytes() == 0 {
-                                            Abi::ScalarPair(niche_scalar, scalar_unit(second.value))
-                                        } else {
-                                            Abi::ScalarPair(scalar_unit(first.value), niche_scalar)
-                                        }
-                                    }
-                                    _ => Abi::Aggregate { sized: true },
-                                }
-                            };
-
-                            let largest_niche = Niche::from_scalar(dl, offset, niche_scalar);
-
-                            niche_filling_layout = Some(Layout {
-                                variants: Variants::Multiple {
-                                    tag: niche_scalar,
-                                    tag_encoding: TagEncoding::Niche {
-                                        dataful_variant: i,
-                                        niche_variants,
-                                        niche_start,
-                                    },
-                                    tag_field: 0,
-                                    variants: st,
-                                },
-                                fields: FieldsShape::Arbitrary {
-                                    offsets: vec![offset],
-                                    memory_index: vec![0],
-                                },
-                                abi,
-                                largest_niche,
-                                size,
-                                align,
-                            });
-                        }
-                    }
-                }
-
-                let (mut min, mut max) = (i128::MAX, i128::MIN);
-                let discr_type = def.repr.discr_type();
-                let bits = Integer::from_attr(self, discr_type).size().bits();
-                for (i, discr) in def.discriminants(tcx) {
-                    if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
-                        continue;
-                    }
-                    let mut x = discr.val as i128;
-                    if discr_type.is_signed() {
-                        // sign extend the raw representation to be an i128
-                        x = (x << (128 - bits)) >> (128 - bits);
-                    }
-                    if x < min {
-                        min = x;
-                    }
-                    if x > max {
-                        max = x;
-                    }
-                }
-                // We might have no inhabited variants, so pretend there's at least one.
-                if (min, max) == (i128::MAX, i128::MIN) {
-                    min = 0;
-                    max = 0;
-                }
-                assert!(min <= max, "discriminant range is {}...{}", min, max);
-                let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
-
-                let mut align = dl.aggregate_align;
-                let mut size = Size::ZERO;
-
-                // We're interested in the smallest alignment, so start large.
-                let mut start_align = Align::from_bytes(256).unwrap();
-                assert_eq!(Integer::for_align(dl, start_align), None);
-
-                // repr(C) on an enum tells us to make a (tag, union) layout,
-                // so we need to grow the prefix alignment to be at least
-                // the alignment of the union. (This value is used both for
-                // determining the alignment of the overall enum, and the
-                // determining the alignment of the payload after the tag.)
-                let mut prefix_align = min_ity.align(dl).abi;
-                if def.repr.c() {
-                    for fields in &variants {
-                        for field in fields {
-                            prefix_align = prefix_align.max(field.align.abi);
-                        }
-                    }
-                }
-
-                // Create the set of structs that represent each variant.
-                let mut layout_variants = variants
-                    .iter_enumerated()
-                    .map(|(i, field_layouts)| {
-                        let mut st = self.univariant_uninterned(
-                            ty,
-                            &field_layouts,
-                            &def.repr,
-                            StructKind::Prefixed(min_ity.size(), prefix_align),
-                        )?;
-                        st.variants = Variants::Single { index: i };
-                        // Find the first field we can't move later
-                        // to make room for a larger discriminant.
-                        for field in
-                            st.fields.index_by_increasing_offset().map(|j| field_layouts[j])
-                        {
-                            if !field.is_zst() || field.align.abi.bytes() != 1 {
-                                start_align = start_align.min(field.align.abi);
-                                break;
-                            }
-                        }
-                        size = cmp::max(size, st.size);
-                        align = align.max(st.align);
-                        Ok(st)
-                    })
-                    .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
-
-                // Align the maximum variant size to the largest alignment.
-                size = size.align_to(align.abi);
-
-                if size.bytes() >= dl.obj_size_bound() {
-                    return Err(LayoutError::SizeOverflow(ty));
-                }
-
-                let typeck_ity = Integer::from_attr(dl, def.repr.discr_type());
-                if typeck_ity < min_ity {
-                    // It is a bug if Layout decided on a greater discriminant size than typeck for
-                    // some reason at this point (based on values discriminant can take on). Mostly
-                    // because this discriminant will be loaded, and then stored into variable of
-                    // type calculated by typeck. Consider such case (a bug): typeck decided on
-                    // byte-sized discriminant, but layout thinks we need a 16-bit to store all
-                    // discriminant values. That would be a bug, because then, in codegen, in order
-                    // to store this 16-bit discriminant into 8-bit sized temporary some of the
-                    // space necessary to represent would have to be discarded (or layout is wrong
-                    // on thinking it needs 16 bits)
-                    bug!(
-                        "layout decided on a larger discriminant type ({:?}) than typeck ({:?})",
-                        min_ity,
-                        typeck_ity
-                    );
-                    // However, it is fine to make discr type however large (as an optimisation)
-                    // after this point – we’ll just truncate the value we load in codegen.
-                }
-
-                // Check to see if we should use a different type for the
-                // discriminant. We can safely use a type with the same size
-                // as the alignment of the first field of each variant.
-                // We increase the size of the discriminant to avoid LLVM copying
-                // padding when it doesn't need to. This normally causes unaligned
-                // load/stores and excessive memcpy/memset operations. By using a
-                // bigger integer size, LLVM can be sure about its contents and
-                // won't be so conservative.
-
-                // Use the initial field alignment
-                let mut ity = if def.repr.c() || def.repr.int.is_some() {
-                    min_ity
-                } else {
-                    Integer::for_align(dl, start_align).unwrap_or(min_ity)
-                };
-
-                // If the alignment is not larger than the chosen discriminant size,
-                // don't use the alignment as the final size.
-                if ity <= min_ity {
-                    ity = min_ity;
-                } else {
-                    // Patch up the variants' first few fields.
-                    let old_ity_size = min_ity.size();
-                    let new_ity_size = ity.size();
-                    for variant in &mut layout_variants {
-                        match variant.fields {
-                            FieldsShape::Arbitrary { ref mut offsets, .. } => {
-                                for i in offsets {
-                                    if *i <= old_ity_size {
-                                        assert_eq!(*i, old_ity_size);
-                                        *i = new_ity_size;
-                                    }
-                                }
-                                // We might be making the struct larger.
-                                if variant.size <= old_ity_size {
-                                    variant.size = new_ity_size;
-                                }
-                            }
-                            _ => bug!(),
-                        }
-                    }
-                }
-
-                let tag_mask = ity.size().unsigned_int_max();
-                let tag = Scalar {
-                    value: Int(ity, signed),
-                    valid_range: WrappingRange {
-                        start: (min as u128 & tag_mask),
-                        end: (max as u128 & tag_mask),
-                    },
-                };
-                let mut abi = Abi::Aggregate { sized: true };
-                if tag.value.size(dl) == size {
-                    abi = Abi::Scalar(tag);
-                } else {
-                    // Try to use a ScalarPair for all tagged enums.
-                    let mut common_prim = None;
-                    for (field_layouts, layout_variant) in iter::zip(&variants, &layout_variants) {
-                        let offsets = match layout_variant.fields {
-                            FieldsShape::Arbitrary { ref offsets, .. } => offsets,
-                            _ => bug!(),
-                        };
-                        let mut fields =
-                            iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
-                        let (field, offset) = match (fields.next(), fields.next()) {
-                            (None, None) => continue,
-                            (Some(pair), None) => pair,
-                            _ => {
-                                common_prim = None;
-                                break;
-                            }
-                        };
-                        let prim = match field.abi {
-                            Abi::Scalar(scalar) => scalar.value,
-                            _ => {
-                                common_prim = None;
-                                break;
-                            }
-                        };
-                        if let Some(pair) = common_prim {
-                            // This is pretty conservative. We could go fancier
-                            // by conflating things like i32 and u32, or even
-                            // realising that (u8, u8) could just cohabit with
-                            // u16 or even u32.
-                            if pair != (prim, offset) {
-                                common_prim = None;
-                                break;
-                            }
-                        } else {
-                            common_prim = Some((prim, offset));
-                        }
-                    }
-                    if let Some((prim, offset)) = common_prim {
-                        let pair = self.scalar_pair(tag, scalar_unit(prim));
-                        let pair_offsets = match pair.fields {
-                            FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
-                                assert_eq!(memory_index, &[0, 1]);
-                                offsets
-                            }
-                            _ => bug!(),
-                        };
-                        if pair_offsets[0] == Size::ZERO
-                            && pair_offsets[1] == *offset
-                            && align == pair.align
-                            && size == pair.size
-                        {
-                            // We can use `ScalarPair` only when it matches our
-                            // already computed layout (including `#[repr(C)]`).
-                            abi = pair.abi;
-                        }
-                    }
-                }
-
-                if layout_variants.iter().all(|v| v.abi.is_uninhabited()) {
-                    abi = Abi::Uninhabited;
-                }
-
-                let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
-
-                let tagged_layout = Layout {
-                    variants: Variants::Multiple {
-                        tag,
-                        tag_encoding: TagEncoding::Direct,
-                        tag_field: 0,
-                        variants: layout_variants,
-                    },
-                    fields: FieldsShape::Arbitrary {
-                        offsets: vec![Size::ZERO],
-                        memory_index: vec![0],
-                    },
-                    largest_niche,
-                    abi,
-                    align,
-                    size,
-                };
-
-                let best_layout = match (tagged_layout, niche_filling_layout) {
-                    (tagged_layout, Some(niche_filling_layout)) => {
-                        // Pick the smaller layout; otherwise,
-                        // pick the layout with the larger niche; otherwise,
-                        // pick tagged as it has simpler codegen.
-                        cmp::min_by_key(tagged_layout, niche_filling_layout, |layout| {
-                            let niche_size = layout.largest_niche.map_or(0, |n| n.available(dl));
-                            (layout.size, cmp::Reverse(niche_size))
-                        })
-                    }
-                    (tagged_layout, None) => tagged_layout,
-                };
-
-                tcx.intern_layout(best_layout)
-            }
+            ty::Variant(ty, _) => self.layout_of_uncached_adt(ty)?,
 
             // Types with no meaningful known layout.
             ty::Projection(_) | ty::Opaque(..) => {
@@ -2385,6 +2392,24 @@ where
                         }
                     }
                 }
+
+                ty::Variant(ty, _) => match ty.kind() {
+                    ty::Adt(def, substs) => match this.variants {
+                        Variants::Single { index } => {
+                            return TyMaybeWithLayout::Ty(
+                                def.variants[index].fields[i].ty(tcx, substs),
+                            );
+                        }
+
+                        // Discriminant field for enums (where applicable).
+                        Variants::Multiple { tag, .. } => {
+                            // TODO(zhamlin): make this work
+                            assert_eq!(i, 0);
+                            return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                        }
+                    },
+                    _ => bug!("unexpected type: {:?}", ty.kind()),
+                },
 
                 ty::Projection(_)
                 | ty::Bound(..)

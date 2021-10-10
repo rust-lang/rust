@@ -126,6 +126,15 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 let index = self.tcx.field_index(hir_id, self.typeck_results());
                 self.insert_def_id(def.non_enum_variant().fields[index].did);
             }
+            ty::Variant(ty, idx) => match ty.kind() {
+                ty::Adt(def, _) => {
+                    let index = self.tcx.field_index(hir_id, self.typeck_results());
+                    self.insert_def_id(
+                        def.variants.get(*idx).expect("invalid variant").fields[index].did,
+                    );
+                }
+                _ => bug!("unexpected type: {:?}", ty.kind()),
+            },
             ty::Tuple(..) => {}
             _ => span_bug!(lhs.span, "named field access on non-ADT"),
         }

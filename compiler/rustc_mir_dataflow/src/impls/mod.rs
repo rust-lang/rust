@@ -691,7 +691,10 @@ fn switch_on_enum_discriminant(
         {
             match &discriminated.ty(body, tcx).ty.kind() {
                 ty::Adt(def, _) => Some((*discriminated, def)),
-
+                ty::Variant(ty, _) => match ty.kind() {
+                    ty::Adt(def, _) => Some((*discriminated, def)),
+                    _ => bug!("unexpected type: {:?}", ty.kind()),
+                }
                 // `Rvalue::Discriminant` is also used to get the active yield point for a
                 // generator, but we do not need edge-specific effects in that case. This may
                 // change in the future.

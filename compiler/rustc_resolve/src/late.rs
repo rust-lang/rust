@@ -286,6 +286,7 @@ impl<'a> PathSource<'a> {
                         | DefKind::AssocTy
                         | DefKind::TyParam
                         | DefKind::OpaqueTy
+                        | DefKind::Variant
                         | DefKind::ForeignTy,
                     _,
                 ) | Res::PrimTy(..)

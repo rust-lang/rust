@@ -597,6 +597,14 @@ pub trait PrettyPrinter<'tcx>:
             ty::Adt(def, substs) => {
                 p!(print_def_path(def.did, substs));
             }
+
+            ty::Variant(ty, idx) => match ty.kind() {
+                ty::Adt(def, substs) => {
+                    p!(print_def_path(def.did, substs));
+                    p!(write("::{}", def.variants.get(idx).unwrap().ident.name));
+                }
+                _ => bug!("unexpected type: {:?}", ty.kind()),
+            },
             ty::Dynamic(data, r) => {
                 let print_r = self.region_should_not_be_omitted(r);
                 if print_r {

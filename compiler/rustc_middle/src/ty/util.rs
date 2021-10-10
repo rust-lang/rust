@@ -144,6 +144,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
+        // TODO(zhamlin): enum variant here?
         if let ty::Adt(def, substs) = *ty.kind() {
             for field in def.all_fields() {
                 let field_ty = field.ty(self, substs);
@@ -203,6 +204,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 );
             }
             match *ty.kind() {
+                // TODO(zhamlin): enum variant here?
                 ty::Adt(def, substs) => {
                     if !def.is_struct() {
                         break;
@@ -711,6 +713,7 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Opaque(..)
             | ty::Param(_)
             | ty::Placeholder(_)
+            | ty::Variant(..)
             | ty::Projection(_) => false,
         }
     }
@@ -751,6 +754,7 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Opaque(..)
             | ty::Param(_)
             | ty::Placeholder(_)
+            | ty::Variant(..)
             | ty::Projection(_) => false,
         }
     }
@@ -846,6 +850,7 @@ impl<'tcx> ty::TyS<'tcx> {
         match self.kind() {
             // Look for an impl of both `PartialStructuralEq` and `StructuralEq`.
             Adt(..) => tcx.has_structural_eq_impls(self),
+            Variant(..) => tcx.has_structural_eq_impls(self),
 
             // Primitive types that satisfy `Eq`.
             Bool | Char | Int(_) | Uint(_) | Str | Never => true,
@@ -878,6 +883,7 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 
     pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+        // TODO(zhamlin): enum variant here?
         match (&a.kind(), &b.kind()) {
             (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {
                 if did_a != did_b {
@@ -957,6 +963,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
             ty::Ref(region, ty, mutbl) if is_self_ty(ty) => ByReference(region, mutbl),
             ty::RawPtr(ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => ByRawPointer(mutbl),
             ty::Adt(def, _) if def.is_box() && is_self_ty(self_arg_ty.boxed_ty()) => ByBox,
+            // TODO(zhamlin): enum variant here?
             _ => Other,
         }
     }
@@ -1021,6 +1028,7 @@ pub fn needs_drop_components(
         | ty::Opaque(..)
         | ty::Infer(_)
         | ty::Closure(..)
+        | ty::Variant(..)
         | ty::Generator(..) => Ok(smallvec![ty]),
     }
 }

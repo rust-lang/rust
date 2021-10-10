@@ -219,6 +219,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if tag_field == field {
                     return match layout.ty.kind() {
                         ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
+                        ty::Variant(ty, ..) => match ty.kind() {
+                            ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
+                            _ => bug!("non-variant type {:?}", layout.ty),
+                        },
                         ty::Generator(..) => PathElem::GeneratorTag,
                         _ => bug!("non-variant type {:?}", layout.ty),
                     };
@@ -271,6 +275,20 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     Variants::Multiple { .. } => bug!("we handled variants above"),
                 }
             }
+
+            ty::Variant(ty, ..) => match ty.kind() {
+                ty::Adt(def, ..) if def.is_enum() => {
+                    // we might be projecting *to* a variant, or to a field *in* a variant.
+                    match layout.variants {
+                        Variants::Single { index } => {
+                            // Inside a variant
+                            PathElem::Field(def.variants[index].fields[field].ident.name)
+                        }
+                        Variants::Multiple { .. } => bug!("we handled variants above"),
+                    }
+                }
+                _ => bug!("unexpected type: {:?}", ty.kind()),
+            },
 
             // other ADTs
             ty::Adt(def, _) => PathElem::Field(def.non_enum_variant().fields[field].ident.name),
@@ -567,6 +585,17 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 self.check_safe_pointer(value, "box")?;
                 Ok(true)
             }
+            ty::Variant(ty, _) => match ty.kind() {
+                ty::Adt(def, _) => {
+                    if def.is_box() {
+                        self.check_safe_pointer(value, "box")?;
+                        Ok(true)
+                    } else {
+                        Ok(false)
+                    }
+                }
+                _ => bug!("unexpected type: {:?}", ty.kind()),
+            },
             ty::FnPtr(_sig) => {
                 let value = try_validation!(
                     self.ecx.read_immediate(value),
@@ -729,6 +758,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx> {
         let name = match old_op.layout.ty.kind() {
             ty::Adt(adt, _) => PathElem::Variant(adt.variants[variant_id].ident.name),
+            ty::Variant(ty, ..) => match ty.kind() {
+                ty::Adt(adt, ..) => PathElem::Variant(adt.variants[variant_id].ident.name),
+                _ => bug!("unexpected type {:?}", ty.kind()),
+            },
             // Generators also have variants
             ty::Generator(..) => PathElem::GeneratorState(variant_id),
             _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),

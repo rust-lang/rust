@@ -1919,6 +1919,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     fmt,
                     self.0,
                     Adt,
+                    Variant,
                     Array,
                     Slice,
                     RawPtr,

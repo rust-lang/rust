@@ -2094,7 +2094,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let last = segments.len() - 1;
 
         let mut path_segs = vec![];
-
         match kind {
             // Case 1. Reference to a struct constructor.
             DefKind::Ctor(CtorOf::Struct, ..) => {
@@ -2215,6 +2214,37 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 let PathSeg(def_id, index) = path_segs.last().unwrap();
                 self.ast_path_to_ty(span, *def_id, &path.segments[*index])
+            }
+            Res::Def(kind @ DefKind::Variant, def_id) => {
+                // Convert to the "variant type" as if it were a real type.
+                // The resulting `Ty` is the variant type.
+                assert_eq!(opt_self_ty, None);
+
+                let path_segs =
+                    self.def_ids_for_value_path_segments(&path.segments, None, kind, def_id);
+                let generic_segs: FxHashSet<_> =
+                    path_segs.iter().map(|PathSeg(_, index)| index).collect();
+                self.prohibit_generics(path.segments.iter().enumerate().filter_map(
+                    |(index, seg)| {
+                        if !generic_segs.contains(&index) { Some(seg) } else { None }
+                    },
+                ));
+
+                let PathSeg(def_id, index) = path_segs.last().unwrap();
+                let ty = self.ast_path_to_ty(span, *def_id, &path.segments[*index]);
+
+                if let Some(segment) = path.segments.last() {
+                    let enum_adt = self.tcx().adt_def(*def_id);
+                    let index = enum_adt
+                        .variants
+                        .iter_enumerated()
+                        .find(|(_, v)| segment.ident.eq(&v.ident))
+                        .expect("unknown variant")
+                        .0;
+                    self.tcx().mk_ty(ty::Variant(ty, index))
+                } else {
+                    ty
+                }
             }
             Res::Def(DefKind::TyParam, def_id) => {
                 assert_eq!(opt_self_ty, None);

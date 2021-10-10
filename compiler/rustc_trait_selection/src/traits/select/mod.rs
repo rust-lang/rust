@@ -1761,6 +1761,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }),
                 )
             }
+            ty::Variant(ty, _) => match ty.kind() {
+                ty::Adt(def, substs) => {
+                    let sized_crit = def.sized_constraint(self.tcx());
+                    // (*) binder moved here
+                    Where(obligation.predicate.rebind({
+                        sized_crit.iter().map(|ty| ty.subst(self.tcx(), substs)).collect()
+                    }))
+                },
+                _ => bug!("unexpected type:  {:?}", ty.kind()),
+            }
 
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => None,
             ty::Infer(ty::TyVar(_)) => Ambiguous,
@@ -1830,7 +1840,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::Adt(..) | ty::Projection(..) | ty::Param(..) | ty::Opaque(..) => {
+            ty::Adt(..) | ty::Variant(..) | ty::Projection(..) | ty::Param(..) | ty::Opaque(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
             }
@@ -1920,6 +1930,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Adt(def, substs) => {
                 t.rebind(def.all_fields().map(|f| f.ty(self.tcx(), substs)).collect())
+            }
+            ty::Variant(ty, _) => match ty.kind() {
+                ty::Adt(def, substs) => {
+                    if def.is_phantom_data() {
+                        t.rebind(substs.types().collect())
+                    } else {
+                        t.rebind(def.all_fields().map(|f| f.ty(self.tcx(), substs)).collect())
+                    }
+                },
+                _ => bug!("unexpected type: {:?}", ty.kind()),
             }
 
             ty::Opaque(def_id, substs) => {

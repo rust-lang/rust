@@ -467,6 +467,7 @@ impl Printer<'tcx> for &mut SymbolMangler<'tcx> {
             }
 
             ty::GeneratorWitness(_) => bug!("symbol_names: unexpected `GeneratorWitness`"),
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
 
         // Only cache types that do not refer to an enclosing
