@@ -1310,3 +1310,120 @@ fn foo() {}
 "#]],
     );
 }
+
+#[test]
+fn test_inner_macro_rules() {
+    check(
+        r#"
+macro_rules! m {
+    ($a:ident, $b:ident, $c:tt) => {
+        macro_rules! inner {
+            ($bi:ident) => { fn $bi() -> u8 { $c } }
+        }
+
+        inner!($a);
+        fn $b() -> u8 { $c }
+    }
+}
+m!(x, y, 1);
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($a:ident, $b:ident, $c:tt) => {
+        macro_rules! inner {
+            ($bi:ident) => { fn $bi() -> u8 { $c } }
+        }
+
+        inner!($a);
+        fn $b() -> u8 { $c }
+    }
+}
+macro_rules !inner {
+    ($bi: ident) = > {
+        fn $bi()-> u8 {
+            1
+        }
+    }
+}
+inner!(x);
+fn y() -> u8 {
+    1
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_expr_after_path_colons() {
+    check(
+        r#"
+macro_rules! m {
+    ($k:expr) => { fn f() { K::$k; } }
+}
+// +tree +errors
+m!(C("0"));
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($k:expr) => { fn f() { K::$k; } }
+}
+/* parse error: expected identifier */
+/* parse error: expected SEMICOLON */
+fn f() {
+    K::C("0");
+}
+// MACRO_ITEMS@0..17
+//   FN@0..17
+//     FN_KW@0..2 "fn"
+//     NAME@2..3
+//       IDENT@2..3 "f"
+//     PARAM_LIST@3..5
+//       L_PAREN@3..4 "("
+//       R_PAREN@4..5 ")"
+//     BLOCK_EXPR@5..17
+//       STMT_LIST@5..17
+//         L_CURLY@5..6 "{"
+//         EXPR_STMT@6..9
+//           PATH_EXPR@6..9
+//             PATH@6..9
+//               PATH@6..7
+//                 PATH_SEGMENT@6..7
+//                   NAME_REF@6..7
+//                     IDENT@6..7 "K"
+//               COLON2@7..9 "::"
+//         EXPR_STMT@9..16
+//           CALL_EXPR@9..15
+//             PATH_EXPR@9..10
+//               PATH@9..10
+//                 PATH_SEGMENT@9..10
+//                   NAME_REF@9..10
+//                     IDENT@9..10 "C"
+//             ARG_LIST@10..15
+//               L_PAREN@10..11 "("
+//               LITERAL@11..14
+//                 STRING@11..14 "\"0\""
+//               R_PAREN@14..15 ")"
+//           SEMICOLON@15..16 ";"
+//         R_CURLY@16..17 "}"
+
+"#]],
+    );
+}
+
+#[test]
+fn test_match_is_not_greedy() {
+    check(
+        r#"
+macro_rules! foo {
+    ($($i:ident $(,)*),*) => {};
+}
+foo!(a,b);
+"#,
+        expect![[r#"
+macro_rules! foo {
+    ($($i:ident $(,)*),*) => {};
+}
+
+"#]],
+    );
+}

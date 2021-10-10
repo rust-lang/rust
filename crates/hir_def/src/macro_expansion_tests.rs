@@ -20,7 +20,7 @@ use stdx::format_to;
 use syntax::{
     ast::{self, edit::IndentLevel},
     AstNode,
-    SyntaxKind::{EOF, IDENT, LIFETIME_IDENT},
+    SyntaxKind::{COMMENT, EOF, IDENT, LIFETIME_IDENT},
     SyntaxNode, T,
 };
 
@@ -60,21 +60,36 @@ fn check(ra_fixture: &str, mut expect: Expect) {
 
     let mut expanded_text = source_file.to_string();
     for (call, exp) in expansions.into_iter().rev() {
+        let mut tree = false;
+        let mut expect_errors = false;
+        for comment in call.syntax().children_with_tokens().filter(|it| it.kind() == COMMENT) {
+            tree |= comment.to_string().contains("+tree");
+            expect_errors |= comment.to_string().contains("+errors");
+        }
+
         let mut expn_text = String::new();
         if let Some(err) = exp.err {
             format_to!(expn_text, "/* error: {} */", err);
         }
         if let Some((parse, _token_map)) = exp.value {
-            assert!(
-                parse.errors().is_empty(),
-                "parse errors in expansion: \n{:#?}",
-                parse.errors()
-            );
+            if expect_errors {
+                assert!(!parse.errors().is_empty(), "no parse errors in expansion");
+                for e in parse.errors() {
+                    format_to!(expn_text, "/* parse error: {} */\n", e);
+                }
+            } else {
+                assert!(
+                    parse.errors().is_empty(),
+                    "parse errors in expansion: \n{:#?}",
+                    parse.errors()
+                );
+            }
             let pp = pretty_print_macro_expansion(parse.syntax_node());
             let indent = IndentLevel::from_node(call.syntax());
             let pp = reindent(indent, pp);
             format_to!(expn_text, "{}", pp);
-            if call.to_string().contains("// +tree") {
+
+            if tree {
                 let tree = format!("{:#?}", parse.syntax_node())
                     .split_inclusive("\n")
                     .map(|line| format!("// {}", line))

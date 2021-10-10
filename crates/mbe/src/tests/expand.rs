@@ -1,8 +1,5 @@
 use ::parser::ParserEntryPoint;
-use syntax::{
-    SyntaxKind::{ERROR, IDENT},
-    T,
-};
+use syntax::{SyntaxKind::IDENT, T};
 use test_utils::assert_eq_text;
 
 use super::*;
@@ -99,59 +96,6 @@ fn test_attr_to_token_tree() {
         to_subtree(&expansion.token_trees[1]).delimiter_kind(),
         Some(tt::DelimiterKind::Bracket)
     );
-}
-
-#[test]
-fn test_inner_macro_rules() {
-    parse_macro(
-        r#"
-macro_rules! foo {
-    ($a:ident, $b:ident, $c:tt) => {
-
-        macro_rules! bar {
-            ($bi:ident) => {
-                fn $bi() -> u8 {$c}
-            }
-        }
-
-        bar!($a);
-        fn $b() -> u8 {$c}
-    }
-}
-"#,
-    ).
-    assert_expand_items(
-        r#"foo!(x,y, 1);"#,
-        r#"macro_rules ! bar {($ bi : ident) => {fn $ bi () -> u8 {1}}} bar ! (x) ; fn y () -> u8 {1}"#,
-    );
-}
-
-#[test]
-fn test_expr_after_path_colons() {
-    assert!(parse_macro(
-        r#"
-macro_rules! m {
-    ($k:expr) => {
-            f(K::$k);
-       }
-}
-"#,
-    )
-    .expand_statements(r#"m!(C("0"))"#)
-    .descendants()
-    .any(|token| token.kind() == ERROR));
-}
-
-#[test]
-fn test_match_is_not_greedy() {
-    parse_macro(
-        r#"
-macro_rules! foo {
-    ($($i:ident $(,)*),*) => {};
-}
-"#,
-    )
-    .assert_expand_items(r#"foo!(a,b);"#, r#""#);
 }
 
 // The following tests are based on real world situations
