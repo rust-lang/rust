@@ -102,47 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_pat_() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:pat) => { fn foo() { let $ i; } }
-        }
-"#,
-    )
-    .assert_expand_items("foo! { (a, b) }", "fn foo () {let (a , b) ;}");
-}
-
-#[test]
-fn test_stmt() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:stmt) => (
-                fn bar() { $ i; }
-            )
-        }
-"#,
-    )
-    .assert_expand_items("foo! { 2 }", "fn bar () {2 ;}")
-    .assert_expand_items("foo! { let a = 0 }", "fn bar () {let a = 0 ;}");
-}
-
-#[test]
-fn test_single_item() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:item) => (
-                $ i
-            )
-        }
-"#,
-    )
-    .assert_expand_items("foo! {mod c {}}", "mod c {}");
-}
-
-#[test]
 fn test_all_items() {
     parse_macro(
         r#"

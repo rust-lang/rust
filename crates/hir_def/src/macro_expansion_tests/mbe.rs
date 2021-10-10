@@ -783,13 +783,13 @@ x!();
 fn test_ty() {
     check(
         r#"
-macro_rules! foo {
+macro_rules! m {
     ($t:ty) => ( fn bar() -> $t {} )
 }
-foo! { Baz<u8> }
+m! { Baz<u8> }
 "#,
         expect![[r#"
-macro_rules! foo {
+macro_rules! m {
     ($t:ty) => ( fn bar() -> $t {} )
 }
 fn bar() -> Baz<u8> {}
@@ -801,16 +801,16 @@ fn bar() -> Baz<u8> {}
 fn test_ty_with_complex_type() {
     check(
         r#"
-macro_rules! foo {
+macro_rules! m {
     ($t:ty) => ( fn bar() -> $ t {} )
 }
 
-foo! { &'a Baz<u8> }
+m! { &'a Baz<u8> }
 
-foo! { extern "Rust" fn() -> Ret }
+m! { extern "Rust" fn() -> Ret }
 "#,
         expect![[r#"
-macro_rules! foo {
+macro_rules! m {
     ($t:ty) => ( fn bar() -> $ t {} )
 }
 
@@ -819,4 +819,62 @@ fn bar() -> & 'a Baz<u8> {}
 fn bar() -> extern"Rust"fn() -> Ret {}
 "#]],
     );
+}
+
+#[test]
+fn test_pat_() {
+    check(
+        r#"
+macro_rules! m {
+    ($p:pat) => { fn foo() { let $p; } }
+}
+m! { (a, b) }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($p:pat) => { fn foo() { let $p; } }
+}
+fn foo() {
+    let(a,b);
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_stmt() {
+    check(
+        r#"
+macro_rules! m {
+    ($s:stmt) => ( fn bar() { $s; } )
+}
+m! { 2 }
+m! { let a = 0 }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($s:stmt) => ( fn bar() { $s; } )
+}
+fn bar() {
+    2;
+}
+fn bar() {
+    let a = 0;
+}
+"#]],
+    )
+}
+
+#[test]
+fn test_single_item() {
+    check(
+        r#"
+macro_rules! m { ($i:item) => ( $i ) }
+m! { mod c {} }
+"#,
+        expect![[r#"
+macro_rules! m { ($i:item) => ( $i ) }
+mod c {}
+"#]],
+    )
 }
