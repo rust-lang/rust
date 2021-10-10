@@ -99,54 +99,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_empty_repeat_vars_in_empty_repeat_vars() {
-    parse_macro(
-        r#"
-macro_rules! delegate_impl {
-    ([$self_type:ident, $self_wrap:ty, $self_map:ident]
-     pub trait $name:ident $(: $sup:ident)* $(+ $more_sup:ident)* {
-
-        $(
-        @escape [type $assoc_name_ext:ident]
-        )*
-        $(
-        @section type
-        $(
-            $(#[$_assoc_attr:meta])*
-            type $assoc_name:ident $(: $assoc_bound:ty)*;
-        )+
-        )*
-        $(
-        @section self
-        $(
-            $(#[$_method_attr:meta])*
-            fn $method_name:ident(self $(: $self_selftype:ty)* $(,$marg:ident : $marg_ty:ty)*) -> $mret:ty;
-        )+
-        )*
-        $(
-        @section nodelegate
-        $($tail:tt)*
-        )*
-    }) => {
-        impl<> $name for $self_wrap where $self_type: $name {
-            $(
-            $(
-                fn $method_name(self $(: $self_selftype)* $(,$marg: $marg_ty)*) -> $mret {
-                    $self_map!(self).$method_name($($marg),*)
-                }
-            )*
-            )*
-        }
-    }
-}
-"#,
-    ).assert_expand_items(
-        r#"delegate_impl ! {[G , & 'a mut G , deref] pub trait Data : GraphBase {@ section type type NodeWeight ;}}"#,
-        "impl <> Data for & \'a mut G where G : Data {}",
-    );
-}
-
-#[test]
 fn expr_interpolation() {
     let expanded = parse_macro(
         r#"
