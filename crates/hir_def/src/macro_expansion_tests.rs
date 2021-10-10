@@ -130,6 +130,7 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
             (T![&&], _) | (_, T![&&]) => " ",
             (T![,], _) => " ",
             (T![fn], T!['(']) => "",
+            (T![']'], _) if curr_kind.is_keyword() => " ",
             _ if prev_kind.is_keyword() => " ",
             _ => "",
         };

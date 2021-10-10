@@ -102,25 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_meta() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:meta) => (
-                #[$ i]
-                fn bar() {}
-            )
-        }
-"#,
-    )
-    .assert_expand_items(
-        r#"foo! { cfg(target_os = "windows") }"#,
-        r#"# [cfg (target_os = "windows")] fn bar () {}"#,
-    )
-    .assert_expand_items(r#"foo! { hello::world }"#, r#"# [hello :: world] fn bar () {}"#);
-}
-
-#[test]
 fn test_meta_doc_comments() {
     parse_macro(
         r#"
