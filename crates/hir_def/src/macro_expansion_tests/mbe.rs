@@ -403,15 +403,15 @@ fn test_match_group_in_group() {
     check(
         r#"
 macro_rules! m {
-    [ $( ( $($i:ident)* ) )* ] => [ x![$( ( $($i)* ) )*]; ]
+    [ $( ( $($i:ident)* ) )* ] => [ ok![$( ( $($i)* ) )*]; ]
 }
 m! ( (a b) );
 "#,
         expect![[r#"
 macro_rules! m {
-    [ $( ( $($i:ident)* ) )* ] => [ x![$( ( $($i)* ) )*]; ]
+    [ $( ( $($i:ident)* ) )* ] => [ ok![$( ( $($i)* ) )*]; ]
 }
-x![(a b)];
+ok![(a b)];
 "#]],
     )
 }
@@ -769,12 +769,353 @@ fn f() {
 fn test_expr_with_attr() {
     check(
         r#"
-macro_rules! m { ($a:expr) => { x!(); } }
+macro_rules! m { ($a:expr) => { ok!(); } }
 m!(#[allow(a)]());
 "#,
         expect![[r#"
-macro_rules! m { ($a:expr) => { x!(); } }
-x!();
+macro_rules! m { ($a:expr) => { ok!(); } }
+ok!();
 "#]],
     )
+}
+
+#[test]
+fn test_ty() {
+    check(
+        r#"
+macro_rules! m {
+    ($t:ty) => ( fn bar() -> $t {} )
+}
+m! { Baz<u8> }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($t:ty) => ( fn bar() -> $t {} )
+}
+fn bar() -> Baz<u8> {}
+"#]],
+    )
+}
+
+#[test]
+fn test_ty_with_complex_type() {
+    check(
+        r#"
+macro_rules! m {
+    ($t:ty) => ( fn bar() -> $ t {} )
+}
+
+m! { &'a Baz<u8> }
+
+m! { extern "Rust" fn() -> Ret }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($t:ty) => ( fn bar() -> $ t {} )
+}
+
+fn bar() -> & 'a Baz<u8> {}
+
+fn bar() -> extern "Rust"fn() -> Ret {}
+"#]],
+    );
+}
+
+#[test]
+fn test_pat_() {
+    check(
+        r#"
+macro_rules! m {
+    ($p:pat) => { fn foo() { let $p; } }
+}
+m! { (a, b) }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($p:pat) => { fn foo() { let $p; } }
+}
+fn foo() {
+    let (a, b);
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_stmt() {
+    check(
+        r#"
+macro_rules! m {
+    ($s:stmt) => ( fn bar() { $s; } )
+}
+m! { 2 }
+m! { let a = 0 }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($s:stmt) => ( fn bar() { $s; } )
+}
+fn bar() {
+    2;
+}
+fn bar() {
+    let a = 0;
+}
+"#]],
+    )
+}
+
+#[test]
+fn test_single_item() {
+    check(
+        r#"
+macro_rules! m { ($i:item) => ( $i ) }
+m! { mod c {} }
+"#,
+        expect![[r#"
+macro_rules! m { ($i:item) => ( $i ) }
+mod c {}
+"#]],
+    )
+}
+
+#[test]
+fn test_all_items() {
+    check(
+        r#"
+macro_rules! m { ($($i:item)*) => ($($i )*) }
+m! {
+    extern crate a;
+    mod b;
+    mod c {}
+    use d;
+    const E: i32 = 0;
+    static F: i32 = 0;
+    impl G {}
+    struct H;
+    enum I { Foo }
+    trait J {}
+    fn h() {}
+    extern {}
+    type T = u8;
+}
+"#,
+        expect![[r#"
+macro_rules! m { ($($i:item)*) => ($($i )*) }
+extern crate a;
+mod b;
+mod c {}
+use d;
+const E:i32 = 0;
+static F:i32 = 0;
+impl G {}
+struct H;
+enum I {
+    Foo
+}
+trait J {}
+fn h() {}
+extern {}
+type T = u8;
+"#]],
+    );
+}
+
+#[test]
+fn test_block() {
+    check(
+        r#"
+macro_rules! m { ($b:block) => { fn foo() $b } }
+m! { { 1; } }
+"#,
+        expect![[r#"
+macro_rules! m { ($b:block) => { fn foo() $b } }
+fn foo() {
+    1;
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_meta() {
+    check(
+        r#"
+macro_rules! m {
+    ($m:meta) => ( #[$m] fn bar() {} )
+}
+m! { cfg(target_os = "windows") }
+m! { hello::world }
+"#,
+        expect![[r##"
+macro_rules! m {
+    ($m:meta) => ( #[$m] fn bar() {} )
+}
+#[cfg(target_os = "windows")] fn bar() {}
+#[hello::world] fn bar() {}
+"##]],
+    );
+}
+
+#[test]
+fn test_meta_doc_comments() {
+    cov_mark::check!(test_meta_doc_comments);
+    check(
+        r#"
+macro_rules! m {
+    ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+m! {
+    /// Single Line Doc 1
+    /**
+        MultiLines Doc
+    */
+}
+"#,
+        expect![[r##"
+macro_rules! m {
+    ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+#[doc = " Single Line Doc 1"]
+#[doc = "\n        MultiLines Doc\n    "] fn bar() {}
+"##]],
+    );
+}
+
+#[test]
+fn test_meta_extended_key_value_attributes() {
+    check(
+        r#"
+macro_rules! m {
+    (#[$m:meta]) => ( #[$m] fn bar() {} )
+}
+m! { #[doc = concat!("The `", "bla", "` lang item.")] }
+"#,
+        expect![[r##"
+macro_rules! m {
+    (#[$m:meta]) => ( #[$m] fn bar() {} )
+}
+#[doc = concat!("The `", "bla", "` lang item.")] fn bar() {}
+"##]],
+    );
+}
+
+#[test]
+fn test_meta_doc_comments_non_latin() {
+    check(
+        r#"
+macro_rules! m {
+    ($(#[$ m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+m! {
+    /// 錦瑟無端五十弦，一弦一柱思華年。
+    /**
+        莊生曉夢迷蝴蝶，望帝春心託杜鵑。
+    */
+}
+"#,
+        expect![[r##"
+macro_rules! m {
+    ($(#[$ m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+#[doc = " 錦瑟無端五十弦，一弦一柱思華年。"]
+#[doc = "\n        莊生曉夢迷蝴蝶，望帝春心託杜鵑。\n    "] fn bar() {}
+"##]],
+    );
+}
+
+#[test]
+fn test_meta_doc_comments_escaped_characters() {
+    check(
+        r#"
+macro_rules! m {
+    ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+m! {
+    /// \ " '
+}
+"#,
+        expect![[r##"
+macro_rules! m {
+    ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+#[doc = " \\ \" \'"] fn bar() {}
+"##]],
+    );
+}
+
+#[test]
+fn test_tt_block() {
+    check(
+        r#"
+macro_rules! m { ($tt:tt) => { fn foo() $tt } }
+m! { { 1; } }
+"#,
+        expect![[r#"
+macro_rules! m { ($tt:tt) => { fn foo() $tt } }
+fn foo() {
+    1;
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_tt_group() {
+    check(
+        r#"
+macro_rules! m { ($($tt:tt)*) => { $($tt)* } }
+m! { fn foo() {} }"
+"#,
+        expect![[r#"
+macro_rules! m { ($($tt:tt)*) => { $($tt)* } }
+fn foo() {}"
+"#]],
+    );
+}
+
+#[test]
+fn test_tt_composite() {
+    check(
+        r#"
+macro_rules! m { ($tt:tt) => { ok!(); } }
+m! { => }
+m! { = > }
+"#,
+        expect![[r#"
+macro_rules! m { ($tt:tt) => { ok!(); } }
+ok!();
+/* error: leftover tokens */ok!();
+"#]],
+    );
+}
+
+#[test]
+fn test_tt_composite2() {
+    check(
+        r#"
+macro_rules! m { ($($tt:tt)*) => { abs!(=> $($tt)*); } }
+m! {#}
+"#,
+        expect![[r##"
+macro_rules! m { ($($tt:tt)*) => { abs!(=> $($tt)*); } }
+abs!( = > #);
+"##]],
+    );
+}
+
+#[test]
+fn test_tt_with_composite_without_space() {
+    // Test macro input without any spaces
+    // See https://github.com/rust-analyzer/rust-analyzer/issues/6692
+    check(
+        r#"
+macro_rules! m { ($ op:tt, $j:path) => ( ok!(); ) }
+m!(==,Foo::Bool)
+"#,
+        expect![[r#"
+macro_rules! m { ($ op:tt, $j:path) => ( ok!(); ) }
+ok!();
+"#]],
+    );
 }

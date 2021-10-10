@@ -20,7 +20,7 @@ use stdx::format_to;
 use syntax::{
     ast::{self, edit::IndentLevel},
     AstNode,
-    SyntaxKind::{self, IDENT, LIFETIME_IDENT},
+    SyntaxKind::{EOF, IDENT, LIFETIME_IDENT},
     SyntaxNode, T,
 };
 
@@ -109,7 +109,7 @@ fn reindent(indent: IndentLevel, pp: String) -> String {
 
 fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
     let mut res = String::new();
-    let mut prev_kind = SyntaxKind::EOF;
+    let mut prev_kind = EOF;
     let mut indent_level = 0;
     for token in iter::successors(expn.first_token(), |t| t.next_token()) {
         let curr_kind = token.kind();
@@ -128,6 +128,11 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
             (T![>], _) if curr_kind.is_keyword() => " ",
             (T![->], _) | (_, T![->]) => " ",
             (T![&&], _) | (_, T![&&]) => " ",
+            (T![,], _) => " ",
+            (T![fn], T!['(']) => "",
+            (T![']'], _) if curr_kind.is_keyword() => " ",
+            (T![']'], T![#]) => "\n",
+            _ if prev_kind.is_keyword() => " ",
             _ => "",
         };
 
