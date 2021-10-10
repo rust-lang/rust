@@ -23,7 +23,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     pub(super) fn try_report_static_impl_trait(&self) -> Option<ErrorReported> {
         debug!("try_report_static_impl_trait(error={:?})", self.error);
         let tcx = self.tcx();
-        let (var_origin, sub_origin, sub_r, sup_origin, sup_r) = match self.error.as_ref()? {
+        let (var_origin, sub_origin, sub_r, sup_origin, sup_r, spans) = match self.error.as_ref()? {
             RegionResolutionError::SubSupConflict(
                 _,
                 var_origin,
@@ -31,8 +31,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 sub_r,
                 sup_origin,
                 sup_r,
+                spans,
             ) if **sub_r == RegionKind::ReStatic => {
-                (var_origin, sub_origin, sub_r, sup_origin, sup_r)
+                (var_origin, sub_origin, sub_r, sup_origin, sup_r, spans)
             }
             RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(box TypeTrace { cause, .. }),
@@ -123,15 +124,31 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             param_name,
             lifetime,
         );
-        err.span_label(param.param_ty_span, &format!("this data with {}...", lifetime));
+
+        let (mention_capture, capture_point) = if sup_origin.span().overlaps(param.param_ty_span) {
+            // Account for `async fn` like in `async-await/issues/issue-62097.rs`.
+            // The desugaring of `async `fn`s causes `sup_origin` and `param` to point at the same
+            // place (but with different `ctxt`, hence `overlaps` instead of `==` above).
+            //
+            // This avoids the following:
+            //
+            // LL |     pub async fn run_dummy_fn(&self) {
+            //    |                               ^^^^^
+            //    |                               |
+            //    |                               this data with an anonymous lifetime `'_`...
+            //    |                               ...is captured here...
+            (false, sup_origin.span())
+        } else {
+            (true, param.param_ty_span)
+        };
+        err.span_label(capture_point, &format!("this data with {}...", lifetime));
+
         debug!("try_report_static_impl_trait: param_info={:?}", param);
 
         // We try to make the output have fewer overlapping spans if possible.
         if (sp == sup_origin.span() || !return_sp.overlaps(sup_origin.span()))
             && sup_origin.span() != return_sp
         {
-            // FIXME: account for `async fn` like in `async-await/issues/issue-62097.rs`
-
             // Customize the spans and labels depending on their relative order so
             // that split sentences flow correctly.
             if sup_origin.span().overlaps(return_sp) && sp == sup_origin.span() {
@@ -152,11 +169,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 //    |           ----                               ^
                 err.span_label(
                     sup_origin.span(),
-                    "...is captured here, requiring it to live as long as `'static`",
+                    &format!(
+                        "...is captured here, requiring it to live as long as `'static`{}",
+                        if spans.is_empty() { "" } else { "..." },
+                    ),
                 );
             } else {
-                err.span_label(sup_origin.span(), "...is captured here...");
-                if return_sp < sup_origin.span() {
+                if return_sp < sup_origin.span() && mention_capture {
+                    err.span_label(sup_origin.span(), "...is captured here...");
                     err.span_note(
                         return_sp,
                         "...and is required to live as long as `'static` here",
@@ -164,15 +184,44 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 } else {
                     err.span_label(
                         return_sp,
-                        "...and is required to live as long as `'static` here",
+                        &format!(
+                            "...is required to live as long as `'static` here{}",
+                            if spans.is_empty() { "" } else { "..." },
+                        ),
                     );
+                    if mention_capture {
+                        let span = sup_origin.span();
+                        let msg = if spans.iter().any(|sp| *sp > span) {
+                            "...is captured here..."
+                        } else {
+                            "...and is captured here"
+                        };
+                        err.span_label(span, msg);
+                    }
                 }
             }
         } else {
             err.span_label(
                 return_sp,
-                "...is captured and required to live as long as `'static` here",
+                &format!(
+                    "...is captured and required to live as long as `'static` here{}",
+                    if spans.is_empty() { "" } else { "..." },
+                ),
             );
+        }
+
+        for span in spans {
+            let msg =
+                format!("...and is captured here{}", if mention_capture { " too" } else { "" });
+            if span.overlaps(return_sp) {
+                err.span_note(*span, &msg);
+            } else {
+                err.span_label(*span, &msg);
+            }
+        }
+
+        if let SubregionOrigin::RelateParamBound(_, _, Some(bound)) = sub_origin {
+            err.span_note(*bound, "`'static` lifetime requirement introduced by this trait bound");
         }
 
         let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);

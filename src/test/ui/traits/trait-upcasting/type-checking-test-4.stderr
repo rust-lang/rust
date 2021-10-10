@@ -39,9 +39,53 @@ LL |     let y = x as &dyn Bar<'_, '_>;
    |             ...is captured here...
 LL |
 LL |     y.get_b() // ERROR
-   |     --------- ...and is required to live as long as `'static` here
+   |     --------- ...is required to live as long as `'static` here...
+   |
+note: ...and is captured here too
+  --> $DIR/type-checking-test-4.rs:29:5
+   |
+LL |     y.get_b() // ERROR
+   |     ^
 
-error: aborting due to 3 previous errors
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/type-checking-test-4.rs:33:5
+   |
+LL | fn test_wrong4<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                       ------------ this data with lifetime `'a`...
+LL |     <_ as Bar>::get_b(x) // ERROR
+   |     ^^^^^^^^^^^^^^^^^ ...is captured here, requiring it to live as long as `'static`
+
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/type-checking-test-4.rs:38:15
+   |
+LL | fn test_wrong5<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                       ------------ this data with lifetime `'a`...
+LL |     <_ as Bar<'_, '_>>::get_b(x) // ERROR
+   |     ----------^^---------------- ...is captured and required to live as long as `'static` here
+
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/type-checking-test-4.rs:43:27
+   |
+LL | fn test_wrong6<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                       ------------ this data with lifetime `'a`...
+LL |     let y = x as &dyn Bar<'_, '_>;
+   |             -             ^^
+   |             |
+   |             ...is captured here...
+LL |
+LL |     y.get_b(); // ERROR
+   |     - ...and is captured here too
+LL |     let z = y;
+LL |     z.get_b() // ERROR
+   |     --------- ...is required to live as long as `'static` here...
+   |
+note: ...and is captured here too
+  --> $DIR/type-checking-test-4.rs:47:5
+   |
+LL |     z.get_b() // ERROR
+   |     ^
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0308, E0759.
 For more information about an error, try `rustc --explain E0308`.
