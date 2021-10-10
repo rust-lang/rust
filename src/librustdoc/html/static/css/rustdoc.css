@@ -773,8 +773,6 @@ h2.small-section-header > .anchor {
 
 .item-table {
 	display: table-row;
-	/* align content left */
-	justify-items: start;
 }
 .item-row {
 	display: table-row;
