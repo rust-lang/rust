@@ -364,6 +364,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn new() -> BinaryHeap<T> {
         BinaryHeap { data: vec![] }
     }
@@ -383,6 +384,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {
         BinaryHeap { data: Vec::with_capacity(capacity) }
     }

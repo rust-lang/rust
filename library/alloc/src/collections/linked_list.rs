@@ -417,6 +417,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[rustc_const_stable(feature = "const_linked_list_new", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub const fn new() -> Self {
         LinkedList { head: None, tail: None, len: 0, marker: PhantomData }
     }
