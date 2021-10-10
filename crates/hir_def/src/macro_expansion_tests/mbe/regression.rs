@@ -728,3 +728,154 @@ impl <> Data for & 'amut G where G: Data {}
 "##]],
     );
 }
+
+#[test]
+fn test_issue_2520() {
+    check(
+        r#"
+macro_rules! my_macro {
+    {
+        ( $(
+            $( [] $sname:ident : $stype:ty  )?
+            $( [$expr:expr] $nname:ident : $ntype:ty  )?
+        ),* )
+    } => {ok!(
+        Test {
+            $(
+                $( $sname, )?
+            )*
+        }
+    );};
+}
+
+my_macro! {
+    ([] p1: u32, [|_| S0K0] s: S0K0, [] k0: i32)
+}
+    "#,
+        expect![[r#"
+macro_rules! my_macro {
+    {
+        ( $(
+            $( [] $sname:ident : $stype:ty  )?
+            $( [$expr:expr] $nname:ident : $ntype:ty  )?
+        ),* )
+    } => {ok!(
+        Test {
+            $(
+                $( $sname, )?
+            )*
+        }
+    );};
+}
+
+ok!(Test {
+    p1, k0,
+}
+);
+    "#]],
+    );
+}
+
+#[test]
+fn test_repeat_bad_var() {
+    // FIXME: the second rule of the macro should be removed and an error about
+    // `$( $c )+` raised
+    check(
+        r#"
+macro_rules! foo {
+    ($( $b:ident )+) => { ok!($( $c )+); };
+    ($( $b:ident )+) => { ok!($( $b )+); }
+}
+
+foo!(b0 b1);
+"#,
+        expect![[r#"
+macro_rules! foo {
+    ($( $b:ident )+) => { ok!($( $c )+); };
+    ($( $b:ident )+) => { ok!($( $b )+); }
+}
+
+ok!(b0 b1);
+"#]],
+    );
+}
+
+#[test]
+fn test_issue_3861() {
+    // This is should (and does) produce a parse error. It used to infinite loop
+    // instead.
+    check(
+        r#"
+macro_rules! rgb_color {
+    ($p:expr, $t:ty) => {
+        pub fn new() {
+            let _ = 0 as $t << $p;
+        }
+    };
+}
+// +tree +errors
+rgb_color!(8 + 8, u32);
+"#,
+        expect![[r#"
+macro_rules! rgb_color {
+    ($p:expr, $t:ty) => {
+        pub fn new() {
+            let _ = 0 as $t << $p;
+        }
+    };
+}
+/* parse error: expected type */
+/* parse error: expected R_ANGLE */
+/* parse error: expected COMMA */
+/* parse error: expected R_ANGLE */
+/* parse error: expected SEMICOLON */
+pub fn new() {
+    let _ = 0as u32<<8+8;
+}
+// MACRO_ITEMS@0..29
+//   FN@0..29
+//     VISIBILITY@0..3
+//       PUB_KW@0..3 "pub"
+//     FN_KW@3..5 "fn"
+//     NAME@5..8
+//       IDENT@5..8 "new"
+//     PARAM_LIST@8..10
+//       L_PAREN@8..9 "("
+//       R_PAREN@9..10 ")"
+//     BLOCK_EXPR@10..29
+//       STMT_LIST@10..29
+//         L_CURLY@10..11 "{"
+//         LET_STMT@11..24
+//           LET_KW@11..14 "let"
+//           WILDCARD_PAT@14..15
+//             UNDERSCORE@14..15 "_"
+//           EQ@15..16 "="
+//           CAST_EXPR@16..24
+//             LITERAL@16..17
+//               INT_NUMBER@16..17 "0"
+//             AS_KW@17..19 "as"
+//             PATH_TYPE@19..24
+//               PATH@19..24
+//                 PATH_SEGMENT@19..24
+//                   NAME_REF@19..22
+//                     IDENT@19..22 "u32"
+//                   GENERIC_ARG_LIST@22..24
+//                     L_ANGLE@22..23 "<"
+//                     TYPE_ARG@23..24
+//                       PATH_TYPE@23..24
+//                         PATH@23..24
+//                           PATH_SEGMENT@23..24
+//                             L_ANGLE@23..24 "<"
+//         EXPR_STMT@24..28
+//           BIN_EXPR@24..27
+//             LITERAL@24..25
+//               INT_NUMBER@24..25 "8"
+//             PLUS@25..26 "+"
+//             LITERAL@26..27
+//               INT_NUMBER@26..27 "8"
+//           SEMICOLON@27..28 ";"
+//         R_CURLY@28..29 "}"
+
+"#]],
+    );
+}
