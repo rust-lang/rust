@@ -176,6 +176,7 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: MacroCallId) -> tt::TokenTree {
     let tt = if cg[krate].dependencies.iter().any(|dep| &*dep.name == "core") {
         quote! { core }
     } else {
+        cov_mark::hit!(test_copy_expand_in_core);
         quote! { crate }
     };
 

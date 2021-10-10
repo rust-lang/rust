@@ -21,6 +21,26 @@ impl < > core::marker::Copy for Foo< > {}"##]],
 }
 
 #[test]
+fn test_copy_expand_in_core() {
+    cov_mark::check!(test_copy_expand_in_core);
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro Copy {}
+#[derive(Copy)]
+struct Foo;
+"#,
+        expect![[r##"
+#[rustc_builtin_macro]
+macro Copy {}
+#[derive(Copy)]
+struct Foo;
+
+impl < > crate ::marker::Copy for Foo< > {}"##]],
+    );
+}
+
+#[test]
 fn test_copy_expand_with_type_params() {
     check(
         r#"
