@@ -956,3 +956,90 @@ macro_rules! m {
 "##]],
     );
 }
+
+#[test]
+fn test_meta_doc_comments() {
+    cov_mark::check!(test_meta_doc_comments);
+    check(
+        r#"
+macro_rules! m {
+    ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+m! {
+    /// Single Line Doc 1
+    /**
+        MultiLines Doc
+    */
+}
+"#,
+        expect![[r##"
+macro_rules! m {
+    ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+#[doc = " Single Line Doc 1"]
+#[doc = "\n        MultiLines Doc\n    "] fn bar() {}
+"##]],
+    );
+}
+
+#[test]
+fn test_meta_extended_key_value_attributes() {
+    check(
+        r#"
+macro_rules! m {
+    (#[$m:meta]) => ( #[$m] fn bar() {} )
+}
+m! { #[doc = concat!("The `", "bla", "` lang item.")] }
+"#,
+        expect![[r##"
+macro_rules! m {
+    (#[$m:meta]) => ( #[$m] fn bar() {} )
+}
+#[doc = concat!("The `", "bla", "` lang item.")] fn bar() {}
+"##]],
+    );
+}
+
+#[test]
+fn test_meta_doc_comments_non_latin() {
+    check(
+        r#"
+macro_rules! m {
+    ($(#[$ m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+m! {
+    /// 錦瑟無端五十弦，一弦一柱思華年。
+    /**
+        莊生曉夢迷蝴蝶，望帝春心託杜鵑。
+    */
+}
+"#,
+        expect![[r##"
+macro_rules! m {
+    ($(#[$ m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+#[doc = " 錦瑟無端五十弦，一弦一柱思華年。"]
+#[doc = "\n        莊生曉夢迷蝴蝶，望帝春心託杜鵑。\n    "] fn bar() {}
+"##]],
+    );
+}
+
+#[test]
+fn test_meta_doc_comments_escaped_characters() {
+    check(
+        r#"
+macro_rules! m {
+    ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+m! {
+    /// \ " '
+}
+"#,
+        expect![[r##"
+macro_rules! m {
+    ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
+}
+#[doc = " \\ \" \'"] fn bar() {}
+"##]],
+    );
+}

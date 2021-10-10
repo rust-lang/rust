@@ -307,6 +307,7 @@ fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
 }
 
 fn convert_doc_comment(token: &syntax::SyntaxToken) -> Option<Vec<tt::TokenTree>> {
+    cov_mark::hit!(test_meta_doc_comments);
     let comment = ast::Comment::cast(token.clone())?;
     let doc = comment.kind().doc?;
 
