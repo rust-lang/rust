@@ -102,43 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_vertical_bar_with_pat() {
-    parse_macro(
-        r#"
-            macro_rules! foo {
-                 (| $pat:pat | ) => { 0 }
-            }
-    "#,
-    )
-    .assert_expand_items(r#"foo! { | x | }"#, r#"0"#);
-}
-
-#[test]
-fn test_dollar_crate_lhs_is_not_meta() {
-    parse_macro(
-        r#"
-macro_rules! foo {
-    ($crate) => {};
-    () => {0};
-}
-    "#,
-    )
-    .assert_expand_items(r#"foo!{}"#, r#"0"#);
-}
-
-#[test]
-fn test_lifetime() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-              ($ lt:lifetime) => { struct Ref<$ lt>{ s: &$ lt str } }
-        }
-"#,
-    )
-    .assert_expand_items(r#"foo!{'a}"#, r#"struct Ref <'a > {s : &'a str}"#);
-}
-
-#[test]
 fn test_literal() {
     parse_macro(
         r#"

@@ -1185,3 +1185,57 @@ ok!();
 "#]],
     );
 }
+
+#[test]
+fn test_vertical_bar_with_pat() {
+    check(
+        r#"
+macro_rules! m { (|$pat:pat| ) => { ok!(); } }
+m! { |x| }
+ "#,
+        expect![[r#"
+macro_rules! m { (|$pat:pat| ) => { ok!(); } }
+ok!();
+ "#]],
+    );
+}
+
+#[test]
+fn test_dollar_crate_lhs_is_not_meta() {
+    check(
+        r#"
+macro_rules! m {
+    ($crate) => { err!(); };
+    () => { ok!(); };
+}
+m!{}
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($crate) => { err!(); };
+    () => { ok!(); };
+}
+ok!();
+"#]],
+    );
+}
+
+#[test]
+fn test_lifetime() {
+    check(
+        r#"
+macro_rules! m {
+    ($lt:lifetime) => { struct Ref<$lt>{ s: &$ lt str } }
+}
+m! {'a}
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($lt:lifetime) => { struct Ref<$lt>{ s: &$ lt str } }
+}
+struct Ref<'a> {
+    s: &'a str
+}
+"#]],
+    );
+}
