@@ -1,4 +1,4 @@
-//! Tests for builtin macros (see `builtin_macro.rs` in `hir_expand`).
+//! Tests for `builtin_fn_macro.rs` from `hir_expand`.
 
 use expect_test::expect;
 

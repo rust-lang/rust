@@ -11,6 +11,7 @@
 
 mod mbe;
 mod builtin_fn_macro;
+mod builtin_derive_macro;
 
 use std::{iter, ops::Range};
 
@@ -26,7 +27,8 @@ use syntax::{
 };
 
 use crate::{
-    db::DefDatabase, nameres::ModuleSource, resolver::HasResolver, test_db::TestDB, AsMacroCall,
+    db::DefDatabase, nameres::ModuleSource, resolver::HasResolver, src::HasSource, test_db::TestDB,
+    AsMacroCall, Lookup,
 };
 
 #[track_caller]
@@ -42,6 +44,21 @@ fn check(ra_fixture: &str, mut expect: Expect) {
         ModuleSource::SourceFile(it) => it,
         ModuleSource::Module(_) | ModuleSource::BlockExpr(_) => panic!(),
     };
+
+    // What we want to do is to replace all macros (fn-like, derive, attr) with
+    // their expansions. Turns out, we don't actually store enough information
+    // to do this precisely though! Specifically, if a macro expands to nothing,
+    // it leaves zero traces in def-map, so we can't get its expansion after the
+    // fact.
+    //
+    // This is the usual
+    // <https://github.com/rust-analyzer/rust-analyzer/issues/3407>
+    // resolve/record tension!
+    //
+    // So here we try to do a resolve, which is necessary a heuristic. For macro
+    // calls, we use `as_call_id_with_errors`. For derives, we look at the impls
+    // in the module and assume that, if impls's source is a different
+    // `HirFileId`, than it came from macro expansion.
 
     let mut expansions = Vec::new();
     for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
@@ -63,6 +80,7 @@ fn check(ra_fixture: &str, mut expect: Expect) {
     }
 
     let mut expanded_text = source_file.to_string();
+
     for (call, exp) in expansions.into_iter().rev() {
         let mut tree = false;
         let mut expect_errors = false;
@@ -104,6 +122,14 @@ fn check(ra_fixture: &str, mut expect: Expect) {
         let range = call.syntax().text_range();
         let range: Range<usize> = range.into();
         expanded_text.replace_range(range, &expn_text)
+    }
+
+    for impl_id in def_map[local_id].scope.impls() {
+        let src = impl_id.lookup(&db).source(&db);
+        if src.file_id.is_builtin_derive(&db).is_some() {
+            let pp = pretty_print_macro_expansion(src.value.syntax().clone());
+            format_to!(expanded_text, "\n{}", pp)
+        }
     }
 
     expect.indent(false);
