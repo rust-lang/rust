@@ -1119,3 +1119,69 @@ ok!();
 "#]],
     );
 }
+
+#[test]
+fn test_underscore() {
+    check(
+        r#"
+macro_rules! m { ($_:tt) => { ok!(); } }
+m! { => }
+"#,
+        expect![[r#"
+macro_rules! m { ($_:tt) => { ok!(); } }
+ok!();
+"#]],
+    );
+}
+
+#[test]
+fn test_underscore_not_greedily() {
+    check(
+        r#"
+// `_` overlaps with `$a:ident` but rustc matches it under the `_` token.
+macro_rules! m1 {
+    ($($a:ident)* _) => { ok!(); }
+}
+m1![a b c d _];
+
+// `_ => ou` overlaps with `$a:expr => $b:ident` but rustc matches it under `_ => $c:expr`.
+macro_rules! m2 {
+    ($($a:expr => $b:ident)* _ => $c:expr) => { ok!(); }
+}
+m2![a => b c => d _ => ou]
+"#,
+        expect![[r#"
+// `_` overlaps with `$a:ident` but rustc matches it under the `_` token.
+macro_rules! m1 {
+    ($($a:ident)* _) => { ok!(); }
+}
+ok!();
+
+// `_ => ou` overlaps with `$a:expr => $b:ident` but rustc matches it under `_ => $c:expr`.
+macro_rules! m2 {
+    ($($a:expr => $b:ident)* _ => $c:expr) => { ok!(); }
+}
+ok!();
+"#]],
+    );
+}
+
+#[test]
+fn test_underscore_flavors() {
+    check(
+        r#"
+macro_rules! m1 { ($a:ty) => { ok!(); } }
+m1![_];
+
+macro_rules! m2 { ($a:lifetime) => { ok!(); } }
+m2!['_];
+"#,
+        expect![[r#"
+macro_rules! m1 { ($a:ty) => { ok!(); } }
+ok!();
+
+macro_rules! m2 { ($a:lifetime) => { ok!(); } }
+ok!();
+"#]],
+    );
+}
