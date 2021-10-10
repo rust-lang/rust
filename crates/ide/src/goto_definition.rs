@@ -47,7 +47,7 @@ pub(crate) fn goto_definition(
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
-            if let Some(tt) = ast::TokenTree::cast(parent.clone()) {
+            if let Some(tt) = ast::TokenTree::cast(parent) {
                 if let x @ Some(_) =
                     try_lookup_include_path(&sema, tt, token.clone(), position.file_id)
                 {
@@ -77,7 +77,7 @@ fn try_lookup_include_path(
     token: SyntaxToken,
     file_id: FileId,
 ) -> Option<Vec<NavigationTarget>> {
-    let token = ast::String::cast(token.clone())?;
+    let token = ast::String::cast(token)?;
     let path = token.value()?.into_owned();
     let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
     let name = macro_call.path()?.segment()?.name_ref()?;

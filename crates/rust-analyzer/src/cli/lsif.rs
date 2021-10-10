@@ -100,7 +100,7 @@ impl LsifManager<'_> {
         let doc_id = self.get_file_id(file_id);
         let line_index = self.db.line_index(file_id);
         let line_index = LineIndex {
-            index: line_index.clone(),
+            index: line_index,
             encoding: OffsetEncoding::Utf16,
             endings: LineEndings::Unix,
         };
@@ -191,7 +191,7 @@ impl LsifManager<'_> {
         let text = self.analysis.file_text(file_id).unwrap();
         let line_index = self.db.line_index(file_id);
         let line_index = LineIndex {
-            index: line_index.clone(),
+            index: line_index,
             encoding: OffsetEncoding::Utf16,
             endings: LineEndings::Unix,
         };

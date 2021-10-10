@@ -58,7 +58,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     let mut locals = FxHashMap::default();
     ctx.sema.scope(field_list_parent.syntax()).process_all_names(&mut |name, def| {
         if let hir::ScopeDef::Local(local) = def {
-            locals.insert(name.clone(), local);
+            locals.insert(name, local);
         }
     });
     let missing_fields = ctx.sema.record_literal_missing_fields(&field_list_parent);
