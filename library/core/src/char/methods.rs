@@ -377,6 +377,8 @@ impl char {
     /// ```
     /// assert_eq!('❤'.escape_unicode().to_string(), "\\u{2764}");
     /// ```
+    #[must_use = "this returns the escaped char as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn escape_unicode(self) -> EscapeUnicode {
@@ -453,6 +455,8 @@ impl char {
     /// ```
     /// assert_eq!('\n'.escape_debug().to_string(), "\\n");
     /// ```
+    #[must_use = "this returns the escaped char as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "char_escape_debug", since = "1.20.0")]
     #[inline]
     pub fn escape_debug(self) -> EscapeDebug {
@@ -507,6 +511,8 @@ impl char {
     /// ```
     /// assert_eq!('"'.escape_default().to_string(), "\\\"");
     /// ```
+    #[must_use = "this returns the escaped char as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn escape_default(self) -> EscapeDefault {
