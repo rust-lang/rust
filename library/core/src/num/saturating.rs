@@ -474,6 +474,8 @@ macro_rules! saturating_int_impl {
             #[inline]
             #[doc(alias = "popcount")]
             #[doc(alias = "popcnt")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
             pub const fn count_ones(self) -> u32 {
                 self.0.count_ones()
@@ -492,6 +494,8 @@ macro_rules! saturating_int_impl {
             #[doc = concat!("assert_eq!(Saturating(!0", stringify!($t), ").count_zeros(), 0);")]
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
             pub const fn count_zeros(self) -> u32 {
                 self.0.count_zeros()
@@ -512,6 +516,8 @@ macro_rules! saturating_int_impl {
             /// assert_eq!(n.trailing_zeros(), 3);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
             pub const fn trailing_zeros(self) -> u32 {
                 self.0.trailing_zeros()
@@ -538,6 +544,8 @@ macro_rules! saturating_int_impl {
             /// assert_eq!(n.rotate_left(32), m);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
             pub const fn rotate_left(self, n: u32) -> Self {
                 Saturating(self.0.rotate_left(n))
@@ -564,6 +572,8 @@ macro_rules! saturating_int_impl {
             /// assert_eq!(n.rotate_right(4), m);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
             pub const fn rotate_right(self, n: u32) -> Self {
                 Saturating(self.0.rotate_right(n))
@@ -588,6 +598,8 @@ macro_rules! saturating_int_impl {
             /// assert_eq!(m, Saturating(21760));
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
             pub const fn swap_bytes(self) -> Self {
                 Saturating(self.0.swap_bytes())
@@ -614,10 +626,11 @@ macro_rules! saturating_int_impl {
             /// assert_eq!(m.0 as u16, 0b10101010_00000000);
             /// assert_eq!(m, Saturating(-22016));
             /// ```
+            #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
             #[rustc_const_stable(feature = "const_reverse_bits", since = "1.37.0")]
-            #[inline]
-            #[must_use]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub const fn reverse_bits(self) -> Self {
                 Saturating(self.0.reverse_bits())
             }
@@ -699,6 +712,8 @@ macro_rules! saturating_int_impl {
             /// ```
             #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub const fn to_be(self) -> Self {
                 Saturating(self.0.to_be())
             }
@@ -726,6 +741,8 @@ macro_rules! saturating_int_impl {
             /// ```
             #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub const fn to_le(self) -> Self {
                 Saturating(self.0.to_le())
             }
@@ -754,6 +771,8 @@ macro_rules! saturating_int_impl {
             /// ```
             #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub fn pow(self, exp: u32) -> Self {
                 Saturating(self.0.saturating_pow(exp))
             }
@@ -782,6 +801,8 @@ macro_rules! saturating_int_impl_signed {
             /// ```
             #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub const fn leading_zeros(self) -> u32 {
                 self.0.leading_zeros()
             }
@@ -805,6 +826,8 @@ macro_rules! saturating_int_impl_signed {
             /// ```
             #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub fn abs(self) -> Saturating<$t> {
                 Saturating(self.0.saturating_abs())
             }
@@ -829,6 +852,8 @@ macro_rules! saturating_int_impl_signed {
             /// ```
             #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub fn signum(self) -> Saturating<$t> {
                 Saturating(self.0.signum())
             }
@@ -910,6 +935,8 @@ macro_rules! saturating_int_impl_unsigned {
             /// ```
             #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub const fn leading_zeros(self) -> u32 {
                 self.0.leading_zeros()
             }

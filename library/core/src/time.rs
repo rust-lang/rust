@@ -465,6 +465,8 @@ impl Duration {
     /// assert_eq!(Duration::new(1, 0).checked_add(Duration::new(u64::MAX, 0)), None);
     /// ```
     #[stable(feature = "duration_checked_ops", since = "1.16.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn checked_add(self, rhs: Duration) -> Option<Duration> {
@@ -498,6 +500,8 @@ impl Duration {
     /// assert_eq!(Duration::new(1, 0).saturating_add(Duration::new(u64::MAX, 0)), Duration::MAX);
     /// ```
     #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_add(self, rhs: Duration) -> Duration {
@@ -521,6 +525,8 @@ impl Duration {
     /// assert_eq!(Duration::new(0, 0).checked_sub(Duration::new(0, 1)), None);
     /// ```
     #[stable(feature = "duration_checked_ops", since = "1.16.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn checked_sub(self, rhs: Duration) -> Option<Duration> {
@@ -552,6 +558,8 @@ impl Duration {
     /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::ZERO);
     /// ```
     #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_sub(self, rhs: Duration) -> Duration {
@@ -575,6 +583,8 @@ impl Duration {
     /// assert_eq!(Duration::new(u64::MAX - 1, 0).checked_mul(2), None);
     /// ```
     #[stable(feature = "duration_checked_ops", since = "1.16.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn checked_mul(self, rhs: u32) -> Option<Duration> {
@@ -604,6 +614,8 @@ impl Duration {
     /// assert_eq!(Duration::new(u64::MAX - 1, 0).saturating_mul(2), Duration::MAX);
     /// ```
     #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_mul(self, rhs: u32) -> Duration {
@@ -628,6 +640,8 @@ impl Duration {
     /// assert_eq!(Duration::new(2, 0).checked_div(0), None);
     /// ```
     #[stable(feature = "duration_checked_ops", since = "1.16.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn checked_div(self, rhs: u32) -> Option<Duration> {
@@ -815,6 +829,8 @@ impl Duration {
     /// assert_eq!(dur.mul_f64(3.14e5), Duration::new(847_800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn mul_f64(self, rhs: f64) -> Duration {
@@ -837,6 +853,8 @@ impl Duration {
     /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847799, 969_120_256));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn mul_f32(self, rhs: f32) -> Duration {
@@ -858,6 +876,8 @@ impl Duration {
     /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_598));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn div_f64(self, rhs: f64) -> Duration {
@@ -881,6 +901,8 @@ impl Duration {
     /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_598));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn div_f32(self, rhs: f32) -> Duration {
@@ -899,6 +921,8 @@ impl Duration {
     /// assert_eq!(dur1.div_duration_f64(dur2), 0.5);
     /// ```
     #[unstable(feature = "div_duration", issue = "63139")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn div_duration_f64(self, rhs: Duration) -> f64 {
@@ -917,6 +941,8 @@ impl Duration {
     /// assert_eq!(dur1.div_duration_f32(dur2), 0.5);
     /// ```
     #[unstable(feature = "div_duration", issue = "63139")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn div_duration_f32(self, rhs: Duration) -> f32 {
