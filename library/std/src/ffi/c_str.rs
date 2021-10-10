@@ -425,6 +425,7 @@ impl CString {
     ///     let c_string = CString::from_vec_unchecked(raw);
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
         v.reserve_exact(1);
@@ -476,6 +477,7 @@ impl CString {
     ///     let c_string = CString::from_raw(raw);
     /// }
     /// ```
+    #[must_use = "call `drop(from_raw(ptr))` if you intend to drop the `CString`"]
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
         // SAFETY: This is called with a pointer that was obtained from a call
@@ -701,6 +703,7 @@ impl CString {
     ///     unsafe { CString::from_vec_unchecked(b"abc".to_vec()) }
     /// );
     /// ```
+    #[must_use]
     #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
     pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u8>) -> Self {
         Self { inner: v.into_boxed_slice() }
@@ -1162,6 +1165,7 @@ impl CStr {
     /// }
     /// # }
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         // SAFETY: The caller has provided a pointer that points to a valid C
@@ -1244,6 +1248,7 @@ impl CStr {
     /// }
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     #[rustc_const_unstable(feature = "const_cstr_unchecked", issue = "none")]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {

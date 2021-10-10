@@ -595,6 +595,7 @@ impl str {
 /// assert_eq!("☺", &*smile);
 /// ```
 #[stable(feature = "str_box_extras", since = "1.20.0")]
+#[must_use]
 #[inline]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }

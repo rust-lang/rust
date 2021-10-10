@@ -282,6 +282,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_conversions", since = "1.32.0")]
+        #[must_use]
         #[inline]
         pub const fn from_be(x: Self) -> Self {
             #[cfg(target_endian = "big")]
@@ -313,6 +314,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_conversions", since = "1.32.0")]
+        #[must_use]
         #[inline]
         pub const fn from_le(x: Self) -> Self {
             #[cfg(target_endian = "little")]
@@ -2620,6 +2622,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[must_use]
         #[inline]
         pub const fn from_be_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
             Self::from_be(Self::from_ne_bytes(bytes))
@@ -2650,6 +2653,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[must_use]
         #[inline]
         pub const fn from_le_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
             Self::from_le(Self::from_ne_bytes(bytes))
@@ -2691,6 +2695,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[must_use]
         // SAFETY: const sound because integers are plain old datatypes so we can always
         // transmute to them
         #[inline]

@@ -638,6 +638,7 @@ macro_rules! wrapping_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn from_be(x: Self) -> Self {
                 Wrapping(<$t>::from_be(x.0))
@@ -665,6 +666,7 @@ macro_rules! wrapping_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn from_le(x: Self) -> Self {
                 Wrapping(<$t>::from_le(x.0))

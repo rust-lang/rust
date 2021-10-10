@@ -761,6 +761,7 @@ impl String {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {
         String { vec: bytes }

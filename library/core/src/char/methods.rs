@@ -136,6 +136,7 @@ impl char {
     /// assert_eq!(None, c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
+    #[must_use]
     #[inline]
     pub fn from_u32(i: u32) -> Option<char> {
         super::convert::from_u32(i)
@@ -177,6 +178,7 @@ impl char {
     /// assert_eq!('❤', c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
+    #[must_use]
     #[inline]
     pub unsafe fn from_u32_unchecked(i: u32) -> char {
         // SAFETY: the safety contract must be upheld by the caller.
@@ -230,9 +232,10 @@ impl char {
     /// use std::char;
     ///
     /// // this panics
-    /// char::from_digit(1, 37);
+    /// let _c = char::from_digit(1, 37);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
+    #[must_use]
     #[inline]
     pub fn from_digit(num: u32, radix: u32) -> Option<char> {
         super::convert::from_digit(num, radix)
