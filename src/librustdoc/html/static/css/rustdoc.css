@@ -334,7 +334,7 @@ nav.sub {
 }
 
 .source .sidebar {
-	width: unset;
+	width: 0px;
 	min-width: 0px;
 	max-width: 300px;
 	flex-grow: 0;
