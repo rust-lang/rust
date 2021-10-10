@@ -311,7 +311,6 @@ li {
 }
 
 .source .content {
-	margin-top: 50px;
 	max-width: none;
 	overflow: visible;
 	margin-left: 0px;
@@ -335,7 +334,15 @@ nav.sub {
 }
 
 .source .sidebar {
-	display: none;
+	width: unset;
+	min-width: 0px;
+	max-width: 300px;
+	flex-grow: 0;
+	flex-shrink: 0;
+	flex-basis: auto;
+	border-right: 1px solid;
+	transition: width .5s;
+	overflow-x: hidden;
 }
 
 /* Improve the scrollbar display on firefox */
@@ -365,18 +372,6 @@ nav.sub {
 
 .hidden {
 	display: none !important;
-}
-
-.logo-source {
-	display: none;
-}
-
-.source .logo-source {
-	display: block;
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 200px;
 }
 
 .logo-container {
@@ -742,7 +737,7 @@ nav:not(.sidebar) {
 	margin-bottom: 25px;
 }
 .source nav:not(.sidebar).sub {
-	margin-left: 230px;
+	margin-left: 32px;
 }
 nav.main {
 	padding: 20px 0;
@@ -1367,15 +1362,9 @@ pre.rust {
 	border-left: 0;
 }
 #source-sidebar {
-	position: fixed;
-	top: 0;
-	bottom: 0;
-	left: 0;
 	width: 300px;
 	z-index: 1;
 	overflow: auto;
-	transition: left .5s;
-	border-right: 1px solid;
 }
 #source-sidebar > .title {
 	font-size: 1.5em;
@@ -1696,7 +1685,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		flex-direction: column;
 	}
 
-	.rustdoc > .sidebar {
+	.rustdoc:not(.source) > .sidebar {
 		width: 100%;
 		height: 45px;
 		min-height: 40px;
@@ -1704,6 +1693,14 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		margin: 0;
 		padding: 0 15px;
 		position: static;
+		z-index: 11;
+	}
+
+	.rustdoc.source > .sidebar {
+		position: fixed;
+		top: 0;
+		left: 0;
+		margin: 0;
 		z-index: 11;
 	}
 
@@ -1722,13 +1719,19 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		padding: 0;
 	}
 
-	.sidebar .logo-container {
+	.rustdoc.source .sidebar .logo-container {
+		width: 100%;
+		height: 45px;
+		margin: 0 auto;
+	}
+
+	.rustdoc:not(.source) .sidebar .logo-container {
 		width: 35px;
-		height: 35px;
-		margin-top: 5px;
-		margin-bottom: 5px;
-		float: left;
-		margin-left: 50px;
+	    height: 35px;
+	    margin-top: 5px;
+	    margin-bottom: 5px;
+	    float: left;
+	    margin-left: 50px;
 	}
 
 	.sidebar .logo-container > img {
@@ -1943,10 +1946,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 	.search-results div.desc, .search-results .result-description, .item-right {
 		padding-left: 2em;
-	}
-
-	.source .logo-source {
-		display: none;
 	}
 }
 
