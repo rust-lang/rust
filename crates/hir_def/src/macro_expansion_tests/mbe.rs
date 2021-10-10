@@ -615,3 +615,166 @@ fn bar() {}
 "#]],
     );
 }
+
+#[test]
+fn test_macro_2_0_panic_2015() {
+    check(
+        r#"
+macro panic_2015 {
+    () => (),
+    (bar) => (),
+}
+panic_2015!(bar);
+"#,
+        expect![[r#"
+macro panic_2015 {
+    () => (),
+    (bar) => (),
+}
+
+"#]],
+    );
+}
+
+#[test]
+fn test_path() {
+    check(
+        r#"
+macro_rules! m {
+    ($p:path) => { fn foo() { let a = $p; } }
+}
+
+m! { foo }
+
+m! { bar::<u8>::baz::<u8> }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($p:path) => { fn foo() { let a = $p; } }
+}
+
+fn foo() {
+    let a = foo;
+}
+
+fn foo() {
+    let a = bar::<u8>::baz::<u8> ;
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_two_paths() {
+    check(
+        r#"
+macro_rules! m {
+    ($i:path, $j:path) => { fn foo() { let a = $ i; let b = $j; } }
+}
+m! { foo, bar }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($i:path, $j:path) => { fn foo() { let a = $ i; let b = $j; } }
+}
+fn foo() {
+    let a = foo;
+    let b = bar;
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_path_with_path() {
+    check(
+        r#"
+macro_rules! m {
+    ($p:path) => { fn foo() { let a = $p::bar; } }
+}
+m! { foo }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($p:path) => { fn foo() { let a = $p::bar; } }
+}
+fn foo() {
+    let a = foo::bar;
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_expr() {
+    check(
+        r#"
+macro_rules! m {
+    ($e:expr) => { fn bar() { $e; } }
+}
+
+m! { 2 + 2 * baz(3).quux() }
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($e:expr) => { fn bar() { $e; } }
+}
+
+fn bar() {
+    2+2*baz(3).quux();
+}
+"#]],
+    )
+}
+
+#[test]
+fn test_last_expr() {
+    check(
+        r#"
+macro_rules! vec {
+    ($($item:expr),*) => {{
+            let mut v = Vec::new();
+            $( v.push($item); )*
+            v
+    }};
+}
+
+fn f() {
+    vec![1,2,3];
+}
+"#,
+        expect![[r#"
+macro_rules! vec {
+    ($($item:expr),*) => {{
+            let mut v = Vec::new();
+            $( v.push($item); )*
+            v
+    }};
+}
+
+fn f() {
+     {
+        let mut v = Vec::new();
+        v.push(1);
+        v.push(2);
+        v.push(3);
+        v
+    };
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_expr_with_attr() {
+    check(
+        r#"
+macro_rules! m { ($a:expr) => { x!(); } }
+m!(#[allow(a)]());
+"#,
+        expect![[r#"
+macro_rules! m { ($a:expr) => { x!(); } }
+x!();
+"#]],
+    )
+}

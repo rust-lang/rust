@@ -80,6 +80,7 @@ macro_rules! impl_fixture {
                 test_utils::assert_eq_text!(&expected.trim(), &actual.trim());
             }
 
+            #[allow(unused)]
             fn assert_expand_items(&self, invocation: &str, expected: &str) -> &$name {
                 self.assert_expansion(ParserEntryPoint::Items, invocation, expected);
                 self
@@ -140,12 +141,6 @@ pub(crate) fn parse_macro(ra_fixture: &str) -> MacroFixture {
     MacroFixture { rules }
 }
 
-pub(crate) fn parse_macro2(ra_fixture: &str) -> MacroFixture2 {
-    let definition_tt = parse_macro_def_to_tt(ra_fixture);
-    let rules = MacroDef::parse(&definition_tt).unwrap();
-    MacroFixture2 { rules }
-}
-
 pub(crate) fn parse_macro_error(ra_fixture: &str) -> ParseError {
     let definition_tt = parse_macro_rules_to_tt(ra_fixture);
 
@@ -178,22 +173,6 @@ fn parse_macro_rules_to_tt(ra_fixture: &str) -> tt::Subtree {
     )
     .unwrap()
     .0;
-    assert_eq!(definition_tt, parsed);
-
-    definition_tt
-}
-
-fn parse_macro_def_to_tt(ra_fixture: &str) -> tt::Subtree {
-    let source_file = ast::SourceFile::parse(ra_fixture).ok().unwrap();
-    let macro_definition =
-        source_file.syntax().descendants().find_map(ast::MacroDef::cast).unwrap();
-
-    let (definition_tt, _) = syntax_node_to_token_tree(macro_definition.body().unwrap().syntax());
-
-    let parsed =
-        parse_to_token_tree(&ra_fixture[macro_definition.body().unwrap().syntax().text_range()])
-            .unwrap()
-            .0;
     assert_eq!(definition_tt, parsed);
 
     definition_tt
