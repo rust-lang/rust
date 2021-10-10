@@ -83,15 +83,7 @@ pub use crate::{
 /// `tt::TokenTree`, but there's a crucial difference: in macro rules, `$ident`
 /// and `$()*` have special meaning (see `Var` and `Repeat` data structures)
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MacroRules {
-    rules: Vec<Rule>,
-    /// Highest id of the token we have in TokenMap
-    shift: Shift,
-}
-
-/// For Macro 2.0
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MacroDef {
+pub struct DeclarativeMacro {
     rules: Vec<Rule>,
     /// Highest id of the token we have in TokenMap
     shift: Shift,
@@ -176,8 +168,9 @@ pub enum Origin {
     Call,
 }
 
-impl MacroRules {
-    pub fn parse(tt: &tt::Subtree) -> Result<MacroRules, ParseError> {
+impl DeclarativeMacro {
+    /// The old, `macro_rules! m {}` flavor.
+    pub fn parse_macro_rules(tt: &tt::Subtree) -> Result<DeclarativeMacro, ParseError> {
         // Note: this parsing can be implemented using mbe machinery itself, by
         // matching against `$($lhs:tt => $rhs:tt);*` pattern, but implementing
         // manually seems easier.
@@ -198,30 +191,11 @@ impl MacroRules {
             validate(&rule.lhs)?;
         }
 
-        Ok(MacroRules { rules, shift: Shift::new(tt) })
+        Ok(DeclarativeMacro { rules, shift: Shift::new(tt) })
     }
 
-    pub fn expand(&self, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
-        // apply shift
-        let mut tt = tt.clone();
-        self.shift.shift_all(&mut tt);
-        expander::expand_rules(&self.rules, &tt)
-    }
-
-    pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
-        self.shift.shift(id)
-    }
-
-    pub fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, Origin) {
-        match self.shift.unshift(id) {
-            Some(id) => (id, Origin::Call),
-            None => (id, Origin::Def),
-        }
-    }
-}
-
-impl MacroDef {
-    pub fn parse(tt: &tt::Subtree) -> Result<MacroDef, ParseError> {
+    /// The new, unstable `macro m {}` flavor.
+    pub fn parse_macro2(tt: &tt::Subtree) -> Result<DeclarativeMacro, ParseError> {
         let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
 
@@ -251,7 +225,7 @@ impl MacroDef {
             validate(&rule.lhs)?;
         }
 
-        Ok(MacroDef { rules, shift: Shift::new(tt) })
+        Ok(DeclarativeMacro { rules, shift: Shift::new(tt) })
     }
 
     pub fn expand(&self, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {

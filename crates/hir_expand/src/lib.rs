@@ -468,11 +468,9 @@ impl ExpansionInfo {
             _ => match origin {
                 mbe::Origin::Call => (&self.macro_arg.1, self.arg.clone()),
                 mbe::Origin::Def => match (&*self.macro_def, &self.attr_input_or_mac_def) {
-                    (
-                        TokenExpander::MacroRules { def_site_token_map, .. }
-                        | TokenExpander::MacroDef { def_site_token_map, .. },
-                        Some(tt),
-                    ) => (def_site_token_map, tt.syntax().cloned()),
+                    (TokenExpander::DeclarativeMacro { def_site_token_map, .. }, Some(tt)) => {
+                        (def_site_token_map, tt.syntax().cloned())
+                    }
                     _ => panic!("`Origin::Def` used with non-`macro_rules!` macro"),
                 },
             },

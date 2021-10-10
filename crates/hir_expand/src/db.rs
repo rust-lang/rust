@@ -28,10 +28,8 @@ static TOKEN_LIMIT: Limit = Limit::new(524_288);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
-    /// Old-style `macro_rules`.
-    MacroRules { mac: mbe::MacroRules, def_site_token_map: mbe::TokenMap },
-    /// AKA macros 2.0.
-    MacroDef { mac: mbe::MacroDef, def_site_token_map: mbe::TokenMap },
+    /// Old-style `macro_rules` or the new macros 2.0
+    DeclarativeMacro { mac: mbe::DeclarativeMacro, def_site_token_map: mbe::TokenMap },
     /// Stuff like `line!` and `file!`.
     Builtin(BuiltinFnLikeExpander),
     /// `global_allocator` and such.
@@ -50,8 +48,7 @@ impl TokenExpander {
         tt: &tt::Subtree,
     ) -> mbe::ExpandResult<tt::Subtree> {
         match self {
-            TokenExpander::MacroRules { mac, .. } => mac.expand(tt),
-            TokenExpander::MacroDef { mac, .. } => mac.expand(tt),
+            TokenExpander::DeclarativeMacro { mac, .. } => mac.expand(tt),
             TokenExpander::Builtin(it) => it.expand(db, id, tt),
             TokenExpander::BuiltinAttr(it) => it.expand(db, id, tt),
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt),
@@ -66,8 +63,7 @@ impl TokenExpander {
 
     pub(crate) fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
         match self {
-            TokenExpander::MacroRules { mac, .. } => mac.map_id_down(id),
-            TokenExpander::MacroDef { mac, .. } => mac.map_id_down(id),
+            TokenExpander::DeclarativeMacro { mac, .. } => mac.map_id_down(id),
             TokenExpander::Builtin(..)
             | TokenExpander::BuiltinAttr(..)
             | TokenExpander::BuiltinDerive(..)
@@ -77,8 +73,7 @@ impl TokenExpander {
 
     pub(crate) fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, mbe::Origin) {
         match self {
-            TokenExpander::MacroRules { mac, .. } => mac.map_id_up(id),
-            TokenExpander::MacroDef { mac, .. } => mac.map_id_up(id),
+            TokenExpander::DeclarativeMacro { mac, .. } => mac.map_id_up(id),
             TokenExpander::Builtin(..)
             | TokenExpander::BuiltinAttr(..)
             | TokenExpander::BuiltinDerive(..)
@@ -368,24 +363,27 @@ fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
 
 fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Result<Arc<TokenExpander>, mbe::ParseError> {
     match id.kind {
-        MacroDefKind::Declarative(ast_id) => match ast_id.to_node(db) {
-            ast::Macro::MacroRules(macro_rules) => {
-                let arg = macro_rules
-                    .token_tree()
-                    .ok_or_else(|| mbe::ParseError::Expected("expected a token tree".into()))?;
-                let (tt, def_site_token_map) = mbe::syntax_node_to_token_tree(arg.syntax());
-                let mac = mbe::MacroRules::parse(&tt)?;
-                Ok(Arc::new(TokenExpander::MacroRules { mac, def_site_token_map }))
-            }
-            ast::Macro::MacroDef(macro_def) => {
-                let arg = macro_def
-                    .body()
-                    .ok_or_else(|| mbe::ParseError::Expected("expected a token tree".into()))?;
-                let (tt, def_site_token_map) = mbe::syntax_node_to_token_tree(arg.syntax());
-                let mac = mbe::MacroDef::parse(&tt)?;
-                Ok(Arc::new(TokenExpander::MacroDef { mac, def_site_token_map }))
-            }
-        },
+        MacroDefKind::Declarative(ast_id) => {
+            let (mac, def_site_token_map) = match ast_id.to_node(db) {
+                ast::Macro::MacroRules(macro_rules) => {
+                    let arg = macro_rules
+                        .token_tree()
+                        .ok_or_else(|| mbe::ParseError::Expected("expected a token tree".into()))?;
+                    let (tt, def_site_token_map) = mbe::syntax_node_to_token_tree(arg.syntax());
+                    let mac = mbe::DeclarativeMacro::parse_macro_rules(&tt)?;
+                    (mac, def_site_token_map)
+                }
+                ast::Macro::MacroDef(macro_def) => {
+                    let arg = macro_def
+                        .body()
+                        .ok_or_else(|| mbe::ParseError::Expected("expected a token tree".into()))?;
+                    let (tt, def_site_token_map) = mbe::syntax_node_to_token_tree(arg.syntax());
+                    let mac = mbe::DeclarativeMacro::parse_macro2(&tt)?;
+                    (mac, def_site_token_map)
+                }
+            };
+            Ok(Arc::new(TokenExpander::DeclarativeMacro { mac, def_site_token_map }))
+        }
         MacroDefKind::BuiltIn(expander, _) => Ok(Arc::new(TokenExpander::Builtin(expander))),
         MacroDefKind::BuiltInAttr(expander, _) => {
             Ok(Arc::new(TokenExpander::BuiltinAttr(expander)))
