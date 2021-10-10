@@ -1,5 +1,5 @@
 error: unconstrained generic constant
-  --> $DIR/simd-array-trait.rs:23:23
+  --> $DIR/array-trait.rs:23:23
    |
 LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
    |                       ^^^^^^^^^^^^^^^^^^

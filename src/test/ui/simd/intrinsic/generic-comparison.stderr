@@ -1,107 +1,107 @@
 error[E0511]: invalid monomorphization of `simd_eq` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:28:9
+  --> $DIR/generic-comparison.rs:28:9
    |
 LL |         simd_eq::<i32, i32>(0, 0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_ne` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:30:9
+  --> $DIR/generic-comparison.rs:30:9
    |
 LL |         simd_ne::<i32, i32>(0, 0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_lt` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:32:9
+  --> $DIR/generic-comparison.rs:32:9
    |
 LL |         simd_lt::<i32, i32>(0, 0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_le` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:34:9
+  --> $DIR/generic-comparison.rs:34:9
    |
 LL |         simd_le::<i32, i32>(0, 0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_gt` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:36:9
+  --> $DIR/generic-comparison.rs:36:9
    |
 LL |         simd_gt::<i32, i32>(0, 0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_ge` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:38:9
+  --> $DIR/generic-comparison.rs:38:9
    |
 LL |         simd_ge::<i32, i32>(0, 0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_eq` intrinsic: expected SIMD return type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:41:9
+  --> $DIR/generic-comparison.rs:41:9
    |
 LL |         simd_eq::<_, i32>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_ne` intrinsic: expected SIMD return type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:43:9
+  --> $DIR/generic-comparison.rs:43:9
    |
 LL |         simd_ne::<_, i32>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_lt` intrinsic: expected SIMD return type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:45:9
+  --> $DIR/generic-comparison.rs:45:9
    |
 LL |         simd_lt::<_, i32>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_le` intrinsic: expected SIMD return type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:47:9
+  --> $DIR/generic-comparison.rs:47:9
    |
 LL |         simd_le::<_, i32>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_gt` intrinsic: expected SIMD return type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:49:9
+  --> $DIR/generic-comparison.rs:49:9
    |
 LL |         simd_gt::<_, i32>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_ge` intrinsic: expected SIMD return type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-comparison.rs:51:9
+  --> $DIR/generic-comparison.rs:51:9
    |
 LL |         simd_ge::<_, i32>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_eq` intrinsic: expected return type with length 4 (same as input type `i32x4`), found `i16x8` with length 8
-  --> $DIR/simd-intrinsic-generic-comparison.rs:54:9
+  --> $DIR/generic-comparison.rs:54:9
    |
 LL |         simd_eq::<_, i16x8>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_ne` intrinsic: expected return type with length 4 (same as input type `i32x4`), found `i16x8` with length 8
-  --> $DIR/simd-intrinsic-generic-comparison.rs:56:9
+  --> $DIR/generic-comparison.rs:56:9
    |
 LL |         simd_ne::<_, i16x8>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_lt` intrinsic: expected return type with length 4 (same as input type `i32x4`), found `i16x8` with length 8
-  --> $DIR/simd-intrinsic-generic-comparison.rs:58:9
+  --> $DIR/generic-comparison.rs:58:9
    |
 LL |         simd_lt::<_, i16x8>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_le` intrinsic: expected return type with length 4 (same as input type `i32x4`), found `i16x8` with length 8
-  --> $DIR/simd-intrinsic-generic-comparison.rs:60:9
+  --> $DIR/generic-comparison.rs:60:9
    |
 LL |         simd_le::<_, i16x8>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_gt` intrinsic: expected return type with length 4 (same as input type `i32x4`), found `i16x8` with length 8
-  --> $DIR/simd-intrinsic-generic-comparison.rs:62:9
+  --> $DIR/generic-comparison.rs:62:9
    |
 LL |         simd_gt::<_, i16x8>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_ge` intrinsic: expected return type with length 4 (same as input type `i32x4`), found `i16x8` with length 8
-  --> $DIR/simd-intrinsic-generic-comparison.rs:64:9
+  --> $DIR/generic-comparison.rs:64:9
    |
 LL |         simd_ge::<_, i16x8>(x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^

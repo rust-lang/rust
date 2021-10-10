@@ -1,47 +1,47 @@
 error[E0511]: invalid monomorphization of `simd_select` intrinsic: mismatched lengths: mask length `8` != other vector length `4`
-  --> $DIR/simd-intrinsic-generic-select.rs:40:9
+  --> $DIR/generic-select.rs:40:9
    |
 LL |         simd_select(m8, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select` intrinsic: mask element type is `u32`, expected `i_`
-  --> $DIR/simd-intrinsic-generic-select.rs:43:9
+  --> $DIR/generic-select.rs:43:9
    |
 LL |         simd_select(x, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select` intrinsic: mask element type is `f32`, expected `i_`
-  --> $DIR/simd-intrinsic-generic-select.rs:46:9
+  --> $DIR/generic-select.rs:46:9
    |
 LL |         simd_select(z, z, z);
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select` intrinsic: expected SIMD argument type, found non-SIMD `u32`
-  --> $DIR/simd-intrinsic-generic-select.rs:49:9
+  --> $DIR/generic-select.rs:49:9
    |
 LL |         simd_select(m4, 0u32, 1u32);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: mismatched lengths: mask length `16` != other vector length `4`
-  --> $DIR/simd-intrinsic-generic-select.rs:52:9
+  --> $DIR/generic-select.rs:52:9
    |
 LL |         simd_select_bitmask(0u16, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: expected SIMD argument type, found non-SIMD `u32`
-  --> $DIR/simd-intrinsic-generic-select.rs:55:9
+  --> $DIR/generic-select.rs:55:9
    |
 LL |         simd_select_bitmask(0u8, 1u32, 2u32);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: `f32` is not an integral type
-  --> $DIR/simd-intrinsic-generic-select.rs:58:9
+  --> $DIR/generic-select.rs:58:9
    |
 LL |         simd_select_bitmask(0.0f32, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: `&str` is not an integral type
-  --> $DIR/simd-intrinsic-generic-select.rs:61:9
+  --> $DIR/generic-select.rs:61:9
    |
 LL |         simd_select_bitmask("x", x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

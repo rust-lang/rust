@@ -1,35 +1,35 @@
 error[E0075]: SIMD vector cannot be empty
-  --> $DIR/simd-type.rs:6:1
+  --> $DIR/type-len.rs:6:1
    |
 LL | struct empty;
    | ^^^^^^^^^^^^^
 
 error[E0075]: SIMD vector cannot be empty
-  --> $DIR/simd-type.rs:9:1
+  --> $DIR/type-len.rs:9:1
    |
 LL | struct empty2([f32; 0]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0076]: SIMD vector should be homogeneous
-  --> $DIR/simd-type.rs:15:1
+  --> $DIR/type-len.rs:15:1
    |
 LL | struct i64f64(i64, f64);
    | ^^^^^^^^^^^^^^^^^^^^^^^^ SIMD elements must have the same type
 
 error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
-  --> $DIR/simd-type.rs:20:1
+  --> $DIR/type-len.rs:20:1
    |
 LL | struct FooV(Foo, Foo);
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
-  --> $DIR/simd-type.rs:23:1
+  --> $DIR/type-len.rs:23:1
    |
 LL | struct FooV2([Foo; 2]);
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0075]: SIMD vector cannot have more than 32768 elements
-  --> $DIR/simd-type.rs:26:1
+  --> $DIR/type-len.rs:26:1
    |
 LL | struct TooBig([f32; 65536]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

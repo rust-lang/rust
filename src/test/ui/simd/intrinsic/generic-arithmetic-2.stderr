@@ -1,89 +1,89 @@
 error[E0511]: invalid monomorphization of `simd_add` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:69:9
+  --> $DIR/generic-arithmetic-2.rs:69:9
    |
 LL |         simd_add(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_sub` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:71:9
+  --> $DIR/generic-arithmetic-2.rs:71:9
    |
 LL |         simd_sub(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_mul` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:73:9
+  --> $DIR/generic-arithmetic-2.rs:73:9
    |
 LL |         simd_mul(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_div` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:75:9
+  --> $DIR/generic-arithmetic-2.rs:75:9
    |
 LL |         simd_div(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_shl` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:77:9
+  --> $DIR/generic-arithmetic-2.rs:77:9
    |
 LL |         simd_shl(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_shr` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:79:9
+  --> $DIR/generic-arithmetic-2.rs:79:9
    |
 LL |         simd_shr(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_and` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:81:9
+  --> $DIR/generic-arithmetic-2.rs:81:9
    |
 LL |         simd_and(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_or` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:83:9
+  --> $DIR/generic-arithmetic-2.rs:83:9
    |
 LL |         simd_or(0, 0);
    |         ^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_xor` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:85:9
+  --> $DIR/generic-arithmetic-2.rs:85:9
    |
 LL |         simd_xor(0, 0);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_neg` intrinsic: expected SIMD input type, found non-SIMD `i32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:88:9
+  --> $DIR/generic-arithmetic-2.rs:88:9
    |
 LL |         simd_neg(0);
    |         ^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_shl` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:92:9
+  --> $DIR/generic-arithmetic-2.rs:92:9
    |
 LL |         simd_shl(z, z);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_shr` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:94:9
+  --> $DIR/generic-arithmetic-2.rs:94:9
    |
 LL |         simd_shr(z, z);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_and` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:96:9
+  --> $DIR/generic-arithmetic-2.rs:96:9
    |
 LL |         simd_and(z, z);
    |         ^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_or` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:98:9
+  --> $DIR/generic-arithmetic-2.rs:98:9
    |
 LL |         simd_or(z, z);
    |         ^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_xor` intrinsic: unsupported operation on `f32x4` with element `f32`
-  --> $DIR/simd-intrinsic-generic-arithmetic.rs:100:9
+  --> $DIR/generic-arithmetic-2.rs:100:9
    |
 LL |         simd_xor(z, z);
    |         ^^^^^^^^^^^^^^
