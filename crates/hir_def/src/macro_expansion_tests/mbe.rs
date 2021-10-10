@@ -35,12 +35,12 @@ macro_rules! impl_froms {
     }
 }
 impl From<Leaf> for TokenTree {
-    fn from(it:Leaf) -> TokenTree {
+    fn from(it: Leaf) -> TokenTree {
         TokenTree::Leaf(it)
     }
 }
 impl From<Subtree> for TokenTree {
-    fn from(it:Subtree) -> TokenTree {
+    fn from(it: Subtree) -> TokenTree {
         TokenTree::Subtree(it)
     }
 }
@@ -433,10 +433,10 @@ macro_rules! structs {
 }
 
 struct Foo {
-    field:u32
+    field: u32
 }
 struct Bar {
-    field:u32
+    field: u32
 }
 // MACRO_ITEMS@0..40
 //   STRUCT@0..20
@@ -906,8 +906,8 @@ extern crate a;
 mod b;
 mod c {}
 use d;
-const E:i32 = 0;
-static F:i32 = 0;
+const E: i32 = 0;
+static F: i32 = 0;
 impl G {}
 struct H;
 enum I {
@@ -1236,6 +1236,39 @@ macro_rules! m {
 struct Ref<'a> {
     s: &'a str
 }
+"#]],
+    );
+}
+
+#[test]
+fn test_literal() {
+    check(
+        r#"
+macro_rules! m {
+    ($type:ty, $lit:literal) => { const VALUE: $type = $ lit; };
+}
+m!(u8, 0);
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($type:ty, $lit:literal) => { const VALUE: $type = $ lit; };
+}
+const VALUE: u8 = 0;
+"#]],
+    );
+
+    check(
+        r#"
+macro_rules! m {
+    ($type:ty, $lit:literal) => { const VALUE: $ type = $ lit; };
+}
+m!(i32, -1);
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($type:ty, $lit:literal) => { const VALUE: $ type = $ lit; };
+}
+const VALUE: i32 = -1;
 "#]],
     );
 }

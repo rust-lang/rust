@@ -102,27 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_literal() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-              ($ type:ty , $ lit:literal) => { const VALUE: $ type = $ lit;};
-        }
-"#,
-    )
-    .assert_expand_items(r#"foo!(u8,0);"#, r#"const VALUE : u8 = 0 ;"#);
-
-    parse_macro(
-        r#"
-        macro_rules! foo {
-              ($ type:ty , $ lit:literal) => { const VALUE: $ type = $ lit;};
-        }
-"#,
-    )
-    .assert_expand_items(r#"foo!(i32,-1);"#, r#"const VALUE : i32 = - 1 ;"#);
-}
-
-#[test]
 fn test_boolean_is_ident() {
     parse_macro(
         r#"
