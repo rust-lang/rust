@@ -778,3 +778,45 @@ x!();
 "#]],
     )
 }
+
+#[test]
+fn test_ty() {
+    check(
+        r#"
+macro_rules! foo {
+    ($t:ty) => ( fn bar() -> $t {} )
+}
+foo! { Baz<u8> }
+"#,
+        expect![[r#"
+macro_rules! foo {
+    ($t:ty) => ( fn bar() -> $t {} )
+}
+fn bar() -> Baz<u8> {}
+"#]],
+    )
+}
+
+#[test]
+fn test_ty_with_complex_type() {
+    check(
+        r#"
+macro_rules! foo {
+    ($t:ty) => ( fn bar() -> $ t {} )
+}
+
+foo! { &'a Baz<u8> }
+
+foo! { extern "Rust" fn() -> Ret }
+"#,
+        expect![[r#"
+macro_rules! foo {
+    ($t:ty) => ( fn bar() -> $ t {} )
+}
+
+fn bar() -> & 'a Baz<u8> {}
+
+fn bar() -> extern"Rust"fn() -> Ret {}
+"#]],
+    );
+}

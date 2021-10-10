@@ -102,43 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_ty() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:ty) => (
-                fn bar() -> $ i { unimplemented!() }
-            )
-        }
-"#,
-    )
-    .assert_expand_items("foo! { Baz<u8> }", "fn bar () -> Baz < u8 > {unimplemented ! ()}");
-}
-
-#[test]
-fn test_ty_with_complex_type() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:ty) => (
-                fn bar() -> $ i { unimplemented!() }
-            )
-        }
-"#,
-    )
-    // Reference lifetime struct with generic type
-    .assert_expand_items(
-        "foo! { &'a Baz<u8> }",
-        "fn bar () -> & 'a Baz < u8 > {unimplemented ! ()}",
-    )
-    // extern "Rust" func type
-    .assert_expand_items(
-        r#"foo! { extern "Rust" fn() -> Ret }"#,
-        r#"fn bar () -> extern "Rust" fn () -> Ret {unimplemented ! ()}"#,
-    );
-}
-
-#[test]
 fn test_pat_() {
     parse_macro(
         r#"
