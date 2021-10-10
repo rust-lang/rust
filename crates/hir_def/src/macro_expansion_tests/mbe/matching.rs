@@ -23,3 +23,30 @@ literal!();
 "#]],
     )
 }
+
+#[test]
+fn test_expand_bad_literal() {
+    check(
+        r#"
+macro_rules! m { ($i:literal) => {}; }
+m!(&k");
+"#,
+        expect![[r#"
+macro_rules! m { ($i:literal) => {}; }
+/* error: Failed to lower macro args to token tree */"#]],
+    );
+}
+
+#[test]
+fn test_empty_comments() {
+    check(
+        r#"
+macro_rules! m{ ($fmt:expr) => (); }
+m!(/**/);
+"#,
+        expect![[r#"
+macro_rules! m{ ($fmt:expr) => (); }
+/* error: expected Expr */
+"#]],
+    );
+}

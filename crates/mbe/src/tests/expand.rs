@@ -96,26 +96,3 @@ fn test_attr_to_token_tree() {
         Some(tt::DelimiterKind::Bracket)
     );
 }
-
-#[test]
-fn test_expand_bad_literal() {
-    parse_macro(
-        r#"
-        macro_rules! foo { ($i:literal) => {}; }
-    "#,
-    )
-    .assert_expand_err(r#"foo!(&k");"#, &ExpandError::BindingError("".into()));
-}
-
-#[test]
-fn test_empty_comments() {
-    parse_macro(
-        r#"
-        macro_rules! one_arg_macro { ($fmt:expr) => (); }
-    "#,
-    )
-    .assert_expand_err(
-        r#"one_arg_macro!(/**/)"#,
-        &ExpandError::BindingError("expected Expr".into()),
-    );
-}
