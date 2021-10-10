@@ -78,7 +78,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             );
                             match infcx.evaluate_obligation(&obligation) {
                                 Ok(eval_result) if eval_result.may_apply() => {}
-                                Err(traits::OverflowError::Cannonical) => {}
+                                Err(traits::OverflowError::Canonical) => {}
                                 Err(traits::OverflowError::ErrorReporting) => {}
                                 _ => {
                                     return false;
