@@ -45,5 +45,24 @@ error: redundant pattern matching, consider using `is_none()`
 LL |     if let &None = &b {
    |     -------^^^^^----- help: try this: `if b.is_none()`
 
-error: aborting due to 4 previous errors
+error: you don't need to add `&` to all patterns
+  --> $DIR/match_ref_pats.rs:101:9
+   |
+LL | /         match foobar_variant!(0) {
+LL | |             &FooBar::Foo => println!("Foo"),
+LL | |             &FooBar::Bar => println!("Bar"),
+LL | |             &FooBar::FooBar => println!("FooBar"),
+LL | |             _ => println!("Wild"),
+LL | |         }
+   | |_________^
+   |
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+   |
+LL ~         match *foobar_variant!(0) {
+LL ~             FooBar::Foo => println!("Foo"),
+LL ~             FooBar::Bar => println!("Bar"),
+LL ~             FooBar::FooBar => println!("FooBar"),
+   |
+
+error: aborting due to 5 previous errors
 
