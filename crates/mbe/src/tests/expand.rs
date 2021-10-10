@@ -102,51 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_all_items() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ ($ i:item)*) => ($ (
-                $ i
-            )*)
-        }
-"#,
-    ).
-    assert_expand_items(
-        r#"
-        foo! {
-            extern crate a;
-            mod b;
-            mod c {}
-            use d;
-            const E: i32 = 0;
-            static F: i32 = 0;
-            impl G {}
-            struct H;
-            enum I { Foo }
-            trait J {}
-            fn h() {}
-            extern {}
-            type T = u8;
-        }
-"#,
-        r#"extern crate a ; mod b ; mod c {} use d ; const E : i32 = 0 ; static F : i32 = 0 ; impl G {} struct H ; enum I {Foo} trait J {} fn h () {} extern {} type T = u8 ;"#,
-    );
-}
-
-#[test]
-fn test_block() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-            ($ i:block) => { fn foo() $ i }
-        }
-"#,
-    )
-    .assert_expand_statements("foo! { { 1; } }", "fn foo () {1 ;}");
-}
-
-#[test]
 fn test_meta() {
     parse_macro(
         r#"
