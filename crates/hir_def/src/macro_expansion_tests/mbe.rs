@@ -835,7 +835,7 @@ macro_rules! m {
     ($p:pat) => { fn foo() { let $p; } }
 }
 fn foo() {
-    let(a,b);
+    let(a, b);
 }
 "#]],
     );
