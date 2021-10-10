@@ -898,7 +898,7 @@ impl Step for RustdocGUI {
         let out_dir = builder.test_out(self.target).join("rustdoc-gui");
 
         // We remove existing folder to be sure there won't be artifacts remaining.
-        let _ = fs::remove_dir_all(&out_dir);
+        builder.clear_if_dirty(&out_dir, &builder.rustdoc(self.compiler));
 
         let src_path = builder.build.src.join("src/test/rustdoc-gui/src");
         // We generate docs for the libraries present in the rustdoc-gui's src folder.
