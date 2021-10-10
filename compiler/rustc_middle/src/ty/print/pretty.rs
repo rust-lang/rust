@@ -360,7 +360,14 @@ pub trait PrettyPrinter<'tcx>:
                             return Ok((self.path_crate(cnum)?, true));
                         }
 
-                        return Ok((self.print_def_path(def_id, &[])?, true));
+                        // Disable `try_print_trimmed_def_path` behavior within
+                        // the `print_def_path` call, to avoid infinite recursion
+                        // in cases where the `extern crate foo` has non-trivial
+                        // parents, e.g. it's nested in `impl foo::Trait for Bar`
+                        // (see also issues #55779 and #87932).
+                        self = with_no_visible_paths(|| self.print_def_path(def_id, &[]))?;
+
+                        return Ok((self, true));
                     }
                     (ExternCrateSource::Path, LOCAL_CRATE) => {
                         return Ok((self.path_crate(cnum)?, true));
