@@ -2060,14 +2060,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     expected: exp_found.expected.print_only_trait_path(),
                     found: exp_found.found.print_only_trait_path(),
                 };
-                self.expected_found_str(pretty_exp_found)
+                match self.expected_found_str(pretty_exp_found) {
+                    Some((expected, found)) if expected == found => {
+                        self.expected_found_str(exp_found)
+                    }
+                    ret => ret,
+                }
             }
             infer::PolyTraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_only_trait_path(),
                     found: exp_found.found.print_only_trait_path(),
                 };
-                self.expected_found_str(pretty_exp_found)
+                match self.expected_found_str(pretty_exp_found) {
+                    Some((expected, found)) if expected == found => {
+                        self.expected_found_str(exp_found)
+                    }
+                    ret => ret,
+                }
             }
         }
     }

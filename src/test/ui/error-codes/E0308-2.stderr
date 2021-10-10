@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL | impl Eq for &dyn DynEq {}
    |      ^^ lifetime mismatch
    |
-   = note: expected trait `PartialEq`
-              found trait `PartialEq`
+   = note: expected trait `<&dyn DynEq as PartialEq>`
+              found trait `<&(dyn DynEq + 'static) as PartialEq>`
 note: the lifetime `'_` as defined on the impl at 9:13...
   --> $DIR/E0308-2.rs:9:13
    |
