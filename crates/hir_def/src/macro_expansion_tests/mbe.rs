@@ -1043,3 +1043,79 @@ macro_rules! m {
 "##]],
     );
 }
+
+#[test]
+fn test_tt_block() {
+    check(
+        r#"
+macro_rules! m { ($tt:tt) => { fn foo() $tt } }
+m! { { 1; } }
+"#,
+        expect![[r#"
+macro_rules! m { ($tt:tt) => { fn foo() $tt } }
+fn foo() {
+    1;
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_tt_group() {
+    check(
+        r#"
+macro_rules! m { ($($tt:tt)*) => { $($tt)* } }
+m! { fn foo() {} }"
+"#,
+        expect![[r#"
+macro_rules! m { ($($tt:tt)*) => { $($tt)* } }
+fn foo() {}"
+"#]],
+    );
+}
+
+#[test]
+fn test_tt_composite() {
+    check(
+        r#"
+macro_rules! m { ($tt:tt) => { ok!(); } }
+m! { => }
+m! { = > }
+"#,
+        expect![[r#"
+macro_rules! m { ($tt:tt) => { ok!(); } }
+ok!();
+/* error: leftover tokens */ok!();
+"#]],
+    );
+}
+
+#[test]
+fn test_tt_composite2() {
+    check(
+        r#"
+macro_rules! m { ($($tt:tt)*) => { abs!(=> $($tt)*); } }
+m! {#}
+"#,
+        expect![[r##"
+macro_rules! m { ($($tt:tt)*) => { abs!(=> $($tt)*); } }
+abs!( = > #);
+"##]],
+    );
+}
+
+#[test]
+fn test_tt_with_composite_without_space() {
+    // Test macro input without any spaces
+    // See https://github.com/rust-analyzer/rust-analyzer/issues/6692
+    check(
+        r#"
+macro_rules! m { ($ op:tt, $j:path) => ( ok!(); ) }
+m!(==,Foo::Bool)
+"#,
+        expect![[r#"
+macro_rules! m { ($ op:tt, $j:path) => ( ok!(); ) }
+ok!();
+"#]],
+    );
+}
