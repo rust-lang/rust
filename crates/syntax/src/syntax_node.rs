@@ -47,7 +47,7 @@ impl SyntaxTreeBuilder {
 
     pub fn finish(self) -> Parse<SyntaxNode> {
         let (green, errors) = self.finish_raw();
-        // NOTE Why disabling assertions.
+        // NOTE Why you're disabling assertions.
         // ref: https://github.com/rust-analyzer/rust-analyzer/pull/10357
         if cfg!(debug_assertions) && false {
             let node = SyntaxNode::new_root(green.clone());
