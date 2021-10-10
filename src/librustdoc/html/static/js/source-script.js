@@ -77,15 +77,15 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
 }
 
 function toggleSidebar() {
-    var sidebar = document.getElementById("source-sidebar");
+    var sidebar = document.querySelector("nav.sidebar");
     var child = this.children[0].children[0];
     if (child.innerText === ">") {
-        sidebar.style.left = "";
+        sidebar.style.width = "300px";
         this.style.left = "";
         child.innerText = "<";
         updateLocalStorage("rustdoc-source-sidebar-show", "true");
     } else {
-        sidebar.style.left = "-300px";
+        sidebar.style.width = "0";
         this.style.left = "0";
         child.innerText = ">";
         updateLocalStorage("rustdoc-source-sidebar-show", "false");
@@ -120,7 +120,7 @@ function createSourceSidebar() {
     if (!window.rootPath.endsWith("/")) {
         window.rootPath += "/";
     }
-    var main = document.getElementById("main");
+    var main = document.querySelector("nav.sidebar");
 
     var sidebarToggle = createSidebarToggle();
     main.insertBefore(sidebarToggle, main.firstChild);
@@ -128,7 +128,9 @@ function createSourceSidebar() {
     var sidebar = document.createElement("div");
     sidebar.id = "source-sidebar";
     if (getCurrentValue("rustdoc-source-sidebar-show") !== "true") {
-        sidebar.style.left = "-300px";
+        main.style.width = "0px";
+    } else {
+        main.style.width = "300px";
     }
 
     var currentFile = getCurrentFilePath();
@@ -144,7 +146,7 @@ function createSourceSidebar() {
                                       currentFile, hasFoundFile);
     });
 
-    main.insertBefore(sidebar, main.firstChild);
+    main.insertBefore(sidebar, document.querySelector(".sidebar-logo").nextSibling);
     // Focus on the current file in the source files sidebar.
     var selected_elem = sidebar.getElementsByClassName("selected")[0];
     if (typeof selected_elem !== "undefined") {
