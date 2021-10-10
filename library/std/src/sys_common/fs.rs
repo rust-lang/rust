@@ -30,7 +30,6 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     if filetype.is_symlink() { fs::remove_file(path) } else { remove_dir_all_recursive(path) }
 }
 
-// FIXME: this should have a unix-specific implementation using the -at version of syscalls and that has cycle detection
 fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     for child in fs::read_dir(path)? {
         let child = child?;

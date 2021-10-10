@@ -1658,19 +1658,19 @@ fn test_file_times() {
     let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(54321);
     times = times.set_accessed(accessed).set_modified(modified);
     #[cfg(any(
-    windows,
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "watchos",
-    target_os = "tvos",
+        windows,
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "tvos",
     ))]
-        let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
+    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
     #[cfg(any(
-    windows,
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "watchos",
-    target_os = "tvos",
+        windows,
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "tvos",
     ))]
     {
         times = times.set_created(created);
@@ -1678,16 +1678,16 @@ fn test_file_times() {
     match file.set_times(times) {
         // Allow unsupported errors on platforms which don't support setting times.
         #[cfg(not(any(
-        windows,
-        all(
-        unix,
-        not(any(
-        target_os = "android",
-        target_os = "redox",
-        target_os = "espidf",
-        target_os = "horizon"
-        ))
-        )
+            windows,
+            all(
+                unix,
+                not(any(
+                    target_os = "android",
+                    target_os = "redox",
+                    target_os = "espidf",
+                    target_os = "horizon"
+                ))
+            )
         )))]
         Err(e) if e.kind() == ErrorKind::Unsupported => return,
         Err(e) => panic!("error setting file times: {e:?}"),
@@ -1697,11 +1697,11 @@ fn test_file_times() {
     assert_eq!(metadata.accessed().unwrap(), accessed);
     assert_eq!(metadata.modified().unwrap(), modified);
     #[cfg(any(
-    windows,
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "watchos",
-    target_os = "tvos",
+        windows,
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "tvos",
     ))]
     {
         assert_eq!(metadata.created().unwrap(), created);

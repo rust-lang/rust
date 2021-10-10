@@ -3,7 +3,7 @@
 
 use crate::os::unix::prelude::*;
 
-use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
@@ -86,7 +86,11 @@ use libc::{
     lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
 };
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "l4re"))]
-use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
+use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, stat64};
+
+// FIXME: port this to other unices that support *at syscalls
+#[cfg(any(target_os = "linux", target_os = "android"))]
+mod dir_fd;
 
 pub use crate::sys_common::fs::try_exists;
 
@@ -269,8 +273,24 @@ pub struct ReadDir {
 }
 
 impl ReadDir {
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
     fn new(inner: InnerReadDir) -> Self {
         Self { inner: Arc::new(inner), end_of_stream: false }
+    }
+
+    #[cfg(any(target_os = "android", target_os = "linux"))]
+    fn from_dirp(ptr: *mut libc::DIR, root: PathBuf) -> ReadDir {
+        let inner = InnerReadDir { dirp: Dir(ptr), root };
+        ReadDir {
+            inner: Arc::new(inner),
+            #[cfg(not(any(
+                target_os = "solaris",
+                target_os = "illumos",
+                target_os = "fuchsia",
+                target_os = "redox",
+            )))]
+            end_of_stream: false,
+        }
     }
 }
 
@@ -1070,7 +1090,9 @@ impl File {
             use crate::io::ErrorKind;
             match result {
                 Ok(file) => Ok(file),
-                Err(e) if e.kind() == ErrorKind::InvalidFilename => open_deep(path, opts),
+                Err(e) if e.kind() == ErrorKind::InvalidFilename => {
+                    dir_fd::open_deep(None, path, opts)
+                }
                 Err(e) => Err(e),
             }
         };
@@ -1078,6 +1100,7 @@ impl File {
         result
     }
 
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
     pub fn open_c(
         dirfd: Option<BorrowedFd<'_>>,
         path: &CStr,
@@ -1095,24 +1118,7 @@ impl File {
                 // the ABI level, this still gets passed as `c_int` (aka `u32` on Unix platforms).
                 cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?
             }
-            Some(dirfd) => {
-                cfg_if::cfg_if! {
-                    if #[cfg(any(target_os = "linux", target_os = "android"))] {
-                        use libc::openat64;
-                        cvt_r(|| unsafe {
-                            openat64(
-                                dirfd.as_raw_fd(),
-                                path.as_ptr(),
-                                flags,
-                                // see previous comment why this cast is necessary
-                                opts.mode as c_int
-                            )
-                        })?
-                    } else {
-                        return super::unsupported::unsupported()
-                    }
-                }
-            }
+            Some(dirfd) => return super::unsupported::unsupported(),
         };
         Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
@@ -1555,15 +1561,14 @@ impl fmt::Debug for File {
     }
 }
 
-pub fn readdir(path: &Path) -> io::Result<ReadDir> {
-
-    fn cvt_p<T>(ptr: *mut T) -> io::Result<*mut T> {
-        if ptr.is_null() {
-            return Err(Error::last_os_error());
-        }
-        Ok(ptr)
+fn cvt_p<T>(ptr: *mut T) -> io::Result<*mut T> {
+    if ptr.is_null() {
+        return Err(Error::last_os_error());
     }
+    Ok(ptr)
+}
 
+pub fn readdir(path: &Path) -> io::Result<ReadDir> {
     let root = path.to_path_buf();
     let ptr = cvt_p(run_path_with_cstr(path, |p| unsafe { Ok(libc::opendir(p.as_ptr())) })?);
 
@@ -1734,7 +1739,12 @@ pub fn lstat(path: &Path) -> io::Result<FileAttr> {
         let result = cvt(unsafe { lstat64(p.as_ptr(), &mut stat) });
         long_filename_fallback!(path, result, |dirfd, file_name| {
             cvt(unsafe {
-                fstatat64(dirfd.as_raw_fd(), file_name.as_ptr(), &mut stat, libc::AT_SYMLINK_NOFOLLOW)
+                fstatat64(
+                    dirfd.as_raw_fd(),
+                    file_name.as_ptr(),
+                    &mut stat,
+                    libc::AT_SYMLINK_NOFOLLOW,
+                )
             })
         })?;
         Ok(FileAttr::from_stat64(stat))
@@ -1755,75 +1765,15 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     })))
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
-fn open_deep(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-    use super::path::is_sep_byte;
-    use libc::O_PATH;
-    const MAX_SLICE: usize = (libc::PATH_MAX - 1) as usize;
-
-    let mut raw_path = path.as_os_str().as_bytes();
-    let mut at_path = None;
-
-    let mut dir_flags = OpenOptions::new();
-    dir_flags.read(true);
-    dir_flags.custom_flags(O_PATH);
-
-    while raw_path.len() > MAX_SLICE {
-        let sep_idx = match raw_path.iter().take(MAX_SLICE).rposition(|&byte| is_sep_byte(byte)) {
-            Some(idx) => idx,
-            _ => return Err(io::Error::from_raw_os_error(libc::ENAMETOOLONG)),
-        };
-
-        let (left, right) = raw_path.split_at(sep_idx + 1);
-        raw_path = right;
-
-        let to_open = CString::new(left)?;
-        let dirfd = at_path.as_ref().map(AsFd::as_fd);
-
-        at_path = Some(File::open_c(dirfd, &to_open, &dir_flags)?);
-    }
-
-    let to_open = CString::new(raw_path)?;
-    let dirfd = at_path.as_ref().map(AsFd::as_fd);
-
-    File::open_c(dirfd, &to_open, opts)
-}
-
-macro long_filename_fallback {
-    ($path:expr, $result:expr, $fallback:expr) => {
-        {
-            cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "linux", target_os = "android"))] {
-                    fn deep_fallback<T>(result: io::Result<T>, path: &Path, mut fallback: impl FnMut(File, &CStr) -> io::Result<T>) -> io::Result<T> {
-                        use crate::io::ErrorKind;
-                        match result {
-                            ok @ Ok(_) => ok,
-                            Err(e) if e.kind() == ErrorKind::InvalidFilename => {
-                                if let Some(parent) = path.parent() {
-                                    let mut options = OpenOptions::new();
-                                    options.read(true);
-                                    options.custom_flags(libc::O_PATH);
-                                    let dirfd = open_deep(parent, &options)?;
-                                    let file_name = path.file_name().unwrap();
-                                    return run_path_with_cstr(file_name, |file_name| {
-                                        fallback(dirfd, file_name)
-                                    })
-                                }
-
-                                Err(e)
-                            },
-                            Err(e) => Err(e)
-                        }
-                    }
-
-                    deep_fallback($result, $path, $fallback)
-                } else {
-                    $result
-                }
-            }
+macro long_filename_fallback($path:expr, $result:expr, $fallback:expr) {{
+    cfg_if::cfg_if! {
+        if #[cfg(any(target_os = "linux", target_os = "android"))] {
+            dir_fd::long_filename_fallback($result, $path, $fallback)
+        } else {
+            $result
         }
     }
-}
+}}
 
 fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::File;
@@ -1854,7 +1804,6 @@ fn open_to_and_set_permissions(
     reader_metadata: crate::fs::Metadata,
 ) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::OpenOptions;
-    use crate::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 
     let perm = reader_metadata.permissions();
     let writer = OpenOptions::new()
@@ -2059,6 +2008,11 @@ mod remove_dir_impl {
     pub use crate::sys_common::fs::remove_dir_all;
 }
 
+#[cfg(all(not(miri), any(target_os = "linux", target_os = "android")))]
+mod remove_dir_impl {
+    pub use super::dir_fd::remove_dir_all;
+}
+
 // Modern implementation using openat(), unlinkat() and fdopendir()
 #[cfg(not(any(
     target_os = "redox",
@@ -2066,6 +2020,8 @@ mod remove_dir_impl {
     target_os = "horizon",
     target_os = "vita",
     target_os = "nto",
+    target_os = "linux",
+    target_os = "android",
     miri
 )))]
 mod remove_dir_impl {
