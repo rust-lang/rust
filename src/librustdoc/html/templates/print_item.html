@@ -1,0 +1,26 @@
+<h1 class="fqn"> {#- -#}
+    <span class="in-band"> {#- -#}
+        {{-typ-}}
+        {#- The breadcrumbs of the item path, like std::string -#}
+        {%- for component in path_components -%}
+        <a href="{{component.path | safe}}index.html">{{component.name}}</a>::<wbr>
+        {%- endfor -%}
+        <a class="{{item_type}}" href="#">{{name}}</a> {#- -#}
+        <button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"> {#- -#}
+            <img src="{{static_root_path | safe}}clipboard{{page.resource_suffix}}.svg" {# -#}
+                width="19" height="18" {# -#}
+                alt="Copy item path"> {#- -#}
+        </button> {#- -#}
+    </span> {#- -#}
+    <span class="out-of-band"> {#- -#}
+        {{- stability_since_raw | safe -}}
+        <span id="render-detail"> {#- -#}
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs"> {#- -#}
+                [<span class="inner">&#x2212;</span>] {#- -#}
+            </a> {#- -#}
+        </span> {#- -#}
+        {%- if src_href -%}
+        <a class="srclink" href="{{src_href | safe}}" title="goto source code">[src]</a>
+        {%- endif -%}
+    </span> {#- -#}
+</h1> {#- -#}

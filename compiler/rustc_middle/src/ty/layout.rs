@@ -3012,7 +3012,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         };
 
         let target = &self.tcx.sess.target;
-        let target_env_gnu_like = matches!(&target.env[..], "gnu" | "musl");
+        let target_env_gnu_like = matches!(&target.env[..], "gnu" | "musl" | "uclibc");
         let win_x64_gnu = target.os == "windows" && target.arch == "x86_64" && target.env == "gnu";
         let linux_s390x_gnu_like =
             target.os == "linux" && target.arch == "s390x" && target_env_gnu_like;
@@ -3110,7 +3110,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
                 // doesn't ignore zero-sized struct arguments.
-                // The same is true for {s390x,sparc64,powerpc}-unknown-linux-{gnu,musl}.
+                // The same is true for {s390x,sparc64,powerpc}-unknown-linux-{gnu,musl,uclibc}.
                 if is_return
                     || rust_abi
                     || (!win_x64_gnu

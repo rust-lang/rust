@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::error::Error as StdError;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -16,6 +15,7 @@ use rustc_span::symbol::sym;
 
 use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
+use super::templates;
 use super::write_shared::write_shared;
 use super::{
     collect_spans_and_sources, print_sidebar, settings, AllTypes, LinkFromSrc, NameDoc, StylePath,
@@ -33,7 +33,6 @@ use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
-use crate::html::static_files::PAGE;
 use crate::html::{layout, sources};
 
 /// Major driving force in all rustdoc rendering. This contains information
@@ -225,7 +224,7 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.layout,
                 &page,
                 |buf: &mut _| print_sidebar(self, it, buf),
-                |buf: &mut _| print_item(self, it, buf, &page),
+                |buf: &mut _| print_item(self, &self.shared.templates, it, buf, &page),
                 &self.shared.style_files,
             )
         } else {
@@ -416,12 +415,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let mut issue_tracker_base_url = None;
         let mut include_sources = true;
-
-        let mut templates = tera::Tera::default();
-        templates.add_raw_template("page.html", PAGE).map_err(|e| Error {
-            file: "page.html".into(),
-            error: format!("{}: {}", e, e.source().map(|e| e.to_string()).unwrap_or_default()),
-        })?;
+        let templates = templates::load()?;
 
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML

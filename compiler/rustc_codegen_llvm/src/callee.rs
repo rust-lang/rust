@@ -175,7 +175,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
             // should use dllimport for functions.
             if cx.use_dll_storage_attrs
                 && tcx.is_dllimport_foreign_item(instance_def_id)
-                && tcx.sess.target.env != "gnu"
+                && !matches!(tcx.sess.target.env.as_ref(), "gnu" | "uclibc")
             {
                 llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
             }

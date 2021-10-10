@@ -70,8 +70,6 @@ crate static RUST_FAVICON_SVG: &[u8] = include_bytes!("static/images/favicon.svg
 crate static RUST_FAVICON_PNG_16: &[u8] = include_bytes!("static/images/favicon-16x16.png");
 crate static RUST_FAVICON_PNG_32: &[u8] = include_bytes!("static/images/favicon-32x32.png");
 
-crate static PAGE: &str = include_str!("templates/page.html");
-
 /// The built-in themes given to every documentation site.
 crate mod themes {
     /// The "light" theme, selected by default when no setting is available. Used as the basis for
