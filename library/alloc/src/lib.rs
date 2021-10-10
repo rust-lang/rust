@@ -73,6 +73,7 @@
         not(test),
         not(any(test, bootstrap)),
         any(not(feature = "miri-test-libstd"), test, doctest),
+        no_global_oom_handling,
         target_has_atomic = "ptr"
     ))
 )]
