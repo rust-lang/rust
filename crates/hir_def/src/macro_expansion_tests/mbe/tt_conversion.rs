@@ -53,11 +53,11 @@ macro_rules! m {
     }
 }
 fn f() {
-    let_ = 'c';
-    let_ = 1000;
-    let_ = 12E+99_f64;
-    let_ = "rust1";
-    let_ = -92;
+    let _ = 'c';
+    let _ = 1000;
+    let _ = 12E+99_f64;
+    let _ = "rust1";
+    let _ = -92;
 }
 "#]],
     );

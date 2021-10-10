@@ -816,7 +816,7 @@ macro_rules! m {
 
 fn bar() -> & 'a Baz<u8> {}
 
-fn bar() -> extern"Rust"fn() -> Ret {}
+fn bar() -> extern "Rust"fn() -> Ret {}
 "#]],
     );
 }
@@ -835,7 +835,7 @@ macro_rules! m {
     ($p:pat) => { fn foo() { let $p; } }
 }
 fn foo() {
-    let(a, b);
+    let (a, b);
 }
 "#]],
     );
