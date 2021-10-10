@@ -612,7 +612,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     fn compress(&mut self, mut outcome_cb: impl FnMut(&O)) {
         let orig_nodes_len = self.nodes.len();
         let mut node_rewrites: Vec<_> = std::mem::take(&mut self.reused_node_vec);
-        debug_assert!(node_rewrites.is_empty());
+        assert!(node_rewrites.is_empty());
         node_rewrites.extend(0..orig_nodes_len);
         let mut dead_nodes = 0;
 
@@ -623,7 +623,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         //     self.nodes[0..index - dead_nodes] are the first remaining nodes
         //     self.nodes[index - dead_nodes..index] are all dead
         //     self.nodes[index..] are unchanged
-        for (index, node_rewrite) in node_rewrites[..orig_nodes_len].iter_mut().enumerate() {
+        for (index, node_rewrite) in node_rewrites.iter_mut().enumerate() {
             let node = &self.nodes[index];
             match node.state.get() {
                 NodeState::Pending | NodeState::Waiting => {
