@@ -291,6 +291,7 @@ impl Duration {
     /// assert!(!Duration::from_nanos(1).is_zero());
     /// assert!(!Duration::from_secs(1).is_zero());
     /// ```
+    #[must_use]
     #[stable(feature = "duration_zero", since = "1.53.0")]
     #[rustc_const_stable(feature = "duration_zero", since = "1.53.0")]
     #[inline]

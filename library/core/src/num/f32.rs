@@ -436,6 +436,7 @@ impl f32 {
     /// assert!(nan.is_nan());
     /// assert!(!f.is_nan());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
@@ -467,6 +468,7 @@ impl f32 {
     /// assert!(inf.is_infinite());
     /// assert!(neg_inf.is_infinite());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
@@ -488,6 +490,7 @@ impl f32 {
     /// assert!(!inf.is_finite());
     /// assert!(!neg_inf.is_finite());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
@@ -515,6 +518,7 @@ impl f32 {
     /// assert!(lower_than_min.is_subnormal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[must_use]
     #[stable(feature = "is_subnormal", since = "1.53.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
@@ -541,6 +545,7 @@ impl f32 {
     /// assert!(!lower_than_min.is_normal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
@@ -587,6 +592,7 @@ impl f32 {
     /// assert!(f.is_sign_positive());
     /// assert!(!g.is_sign_positive());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
@@ -604,6 +610,7 @@ impl f32 {
     /// assert!(!f.is_sign_negative());
     /// assert!(g.is_sign_negative());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
