@@ -270,3 +270,63 @@ unsafe {
 "##]],
     );
 }
+
+#[test]
+fn test_include_bytes_expand() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! include_bytes {
+    ($file:expr) => {{ /* compiler built-in */ }};
+    ($file:expr,) => {{ /* compiler built-in */ }};
+}
+
+fn main() { include_bytes("foo"); }
+"#,
+        expect![[r##"
+#[rustc_builtin_macro]
+macro_rules! include_bytes {
+    ($file:expr) => {{ /* compiler built-in */ }};
+    ($file:expr,) => {{ /* compiler built-in */ }};
+}
+
+fn main() { include_bytes("foo"); }
+"##]],
+    );
+}
+
+#[test]
+fn test_concat_expand() {
+    check(
+        r##"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+fn main() { concat!("foo", "r", 0, r#"bar"#, "\n", false); }
+"##,
+        expect![[r##"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+fn main() { "foor0bar\nfalse"; }
+"##]],
+    );
+}
+
+#[test]
+fn test_concat_idents_expand() {
+    check(
+        r##"
+#[rustc_builtin_macro]
+macro_rules! concat_idents {}
+
+fn main() { concat_idents!(foo, bar); }
+"##,
+        expect![[r##"
+#[rustc_builtin_macro]
+macro_rules! concat_idents {}
+
+fn main() { foobar; }
+"##]],
+    );
+}
