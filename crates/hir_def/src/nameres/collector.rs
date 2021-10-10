@@ -9,9 +9,9 @@ use base_db::{CrateId, Edition, FileId, ProcMacroId};
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{
     ast_id_map::FileAstId,
-    builtin_attr::find_builtin_attr,
-    builtin_derive::find_builtin_derive,
-    builtin_macro::find_builtin_macro,
+    builtin_attr_macro::find_builtin_attr,
+    builtin_derive_macro::find_builtin_derive,
+    builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
     proc_macro::ProcMacroExpander,
     ExpandTo, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,

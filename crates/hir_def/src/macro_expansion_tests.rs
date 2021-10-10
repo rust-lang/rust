@@ -10,7 +10,7 @@
 //! and harder to understand.
 
 mod mbe;
-mod builtin;
+mod builtin_fn_macro;
 
 use std::{iter, ops::Range};
 
