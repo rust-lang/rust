@@ -8,9 +8,9 @@ pub mod db;
 pub mod ast_id_map;
 pub mod name;
 pub mod hygiene;
-pub mod builtin_attr;
-pub mod builtin_derive;
-pub mod builtin_macro;
+pub mod builtin_attr_macro;
+pub mod builtin_derive_macro;
+pub mod builtin_fn_macro;
 pub mod proc_macro;
 pub mod quote;
 pub mod eager;
@@ -31,9 +31,9 @@ use syntax::{
 
 use crate::{
     ast_id_map::FileAstId,
-    builtin_attr::BuiltinAttrExpander,
-    builtin_derive::BuiltinDeriveExpander,
-    builtin_macro::{BuiltinFnLikeExpander, EagerExpander},
+    builtin_attr_macro::BuiltinAttrExpander,
+    builtin_derive_macro::BuiltinDeriveExpander,
+    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
     db::TokenExpander,
     proc_macro::ProcMacroExpander,
 };
