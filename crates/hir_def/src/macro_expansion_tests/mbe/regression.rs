@@ -477,3 +477,59 @@ __cfg_if_items! {
 "##]],
     );
 }
+
+#[test]
+fn test_proptest_arbitrary() {
+    // From <https://github.com/AltSysrq/proptest/blob/d1c4b049337d2f75dd6f49a095115f7c532e5129/proptest/src/arbitrary/macros.rs#L16>.
+    check(
+        r#"
+macro_rules! arbitrary {
+    ([$($bounds : tt)*] $typ: ty, $strat: ty, $params: ty;
+        $args: ident => $logic: expr) => {
+        impl<$($bounds)*> $crate::arbitrary::Arbitrary for $typ {
+            type Parameters = $params;
+            type Strategy = $strat;
+            fn arbitrary_with($args: Self::Parameters) -> Self::Strategy {
+                $logic
+            }
+        }
+    };
+}
+
+arbitrary!(
+    [A:Arbitrary]
+    Vec<A> ,
+    VecStrategy<A::Strategy>,
+    RangedParams1<A::Parameters>;
+    args =>   {
+        let product_unpack![range, a] = args;
+        vec(any_with::<A>(a), range)
+    }
+);
+"#,
+        expect![[r#"
+macro_rules! arbitrary {
+    ([$($bounds : tt)*] $typ: ty, $strat: ty, $params: ty;
+        $args: ident => $logic: expr) => {
+        impl<$($bounds)*> $crate::arbitrary::Arbitrary for $typ {
+            type Parameters = $params;
+            type Strategy = $strat;
+            fn arbitrary_with($args: Self::Parameters) -> Self::Strategy {
+                $logic
+            }
+        }
+    };
+}
+
+impl <A: Arbitrary> $crate::arbitrary::Arbitrary for Vec<A> {
+    type Parameters = RangedParams1<A::Parameters>;
+    type Strategy = VecStrategy<A::Strategy>;
+    fn arbitrary_with(args: Self::Parameters) -> Self::Strategy { {
+            let product_unpack![range, a] = args;
+            vec(any_with::<A>(a), range)
+        }
+    }
+}
+"#]],
+    );
+}
