@@ -102,36 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_boolean_is_ident() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-              ($lit0:literal, $lit1:literal) => { const VALUE: (bool,bool) = ($lit0,$lit1); };
-        }
-"#,
-    )
-    .assert_expand(
-        r#"foo!(true,false);"#,
-        r#"
-SUBTREE $
-  IDENT   const 14
-  IDENT   VALUE 15
-  PUNCH   : [alone] 16
-  SUBTREE () 17
-    IDENT   bool 18
-    PUNCH   , [alone] 19
-    IDENT   bool 20
-  PUNCH   = [alone] 21
-  SUBTREE () 22
-    IDENT   true 29
-    PUNCH   , [joint] 25
-    IDENT   false 31
-  PUNCH   ; [alone] 28
-"#,
-    );
-}
-
-#[test]
 fn test_vis() {
     parse_macro(
         r#"
