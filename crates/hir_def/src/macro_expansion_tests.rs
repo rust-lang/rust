@@ -10,6 +10,7 @@
 //! and harder to understand.
 
 mod mbe;
+mod builtin;
 
 use std::{iter, ops::Range};
 
