@@ -173,3 +173,205 @@ macro_rules! int_base {
 "##]],
     );
 }
+
+#[test]
+fn test_generate_pattern_iterators() {
+    // From <https://github.com/rust-lang/rust/blob/316a391dcb7d66dc25f1f9a4ec9d368ef7615005/src/libcore/str/mod.rs>.
+    check(
+        r#"
+macro_rules! generate_pattern_iterators {
+    { double ended; with $(#[$common_stability_attribute:meta])*,
+                        $forward_iterator:ident,
+                        $reverse_iterator:ident, $iterty:ty
+    } => { ok!(); }
+}
+generate_pattern_iterators ! ( double ended ; with # [ stable ( feature = "rust1" , since = "1.0.0" ) ] , Split , RSplit , & 'a str );
+"#,
+        expect![[r##"
+macro_rules! generate_pattern_iterators {
+    { double ended; with $(#[$common_stability_attribute:meta])*,
+                        $forward_iterator:ident,
+                        $reverse_iterator:ident, $iterty:ty
+    } => { ok!(); }
+}
+ok!();
+"##]],
+    );
+}
+
+#[test]
+fn test_impl_fn_for_zst() {
+    // From <https://github.com/rust-lang/rust/blob/5d20ff4d2718c820632b38c1e49d4de648a9810b/src/libcore/internal_macros.rs>.
+    check(
+        r#"
+macro_rules! impl_fn_for_zst  {
+    {$( $( #[$attr: meta] )*
+    struct $Name: ident impl$( <$( $lifetime : lifetime ),+> )? Fn =
+        |$( $arg: ident: $ArgTy: ty ),*| -> $ReturnTy: ty $body: block;
+    )+} => {$(
+        $( #[$attr] )*
+        struct $Name;
+
+        impl $( <$( $lifetime ),+> )? Fn<($( $ArgTy, )*)> for $Name {
+            #[inline]
+            extern "rust-call" fn call(&self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                $body
+            }
+        }
+
+        impl $( <$( $lifetime ),+> )? FnMut<($( $ArgTy, )*)> for $Name {
+            #[inline]
+            extern "rust-call" fn call_mut(
+                &mut self,
+                ($( $arg, )*): ($( $ArgTy, )*)
+            ) -> $ReturnTy {
+                Fn::call(&*self, ($( $arg, )*))
+            }
+        }
+
+        impl $( <$( $lifetime ),+> )? FnOnce<($( $ArgTy, )*)> for $Name {
+            type Output = $ReturnTy;
+
+            #[inline]
+            extern "rust-call" fn call_once(self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                Fn::call(&self, ($( $arg, )*))
+            }
+        }
+    )+}
+}
+
+impl_fn_for_zst !   {
+    #[derive(Clone)]
+    struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
+        c.escape_debug_ext(false)
+    };
+
+    #[derive(Clone)]
+    struct CharEscapeUnicode impl Fn = |c: char| -> char::EscapeUnicode {
+        c.escape_unicode()
+    };
+
+    #[derive(Clone)]
+    struct CharEscapeDefault impl Fn = |c: char| -> char::EscapeDefault {
+        c.escape_default()
+    };
+}
+
+"#,
+        expect![[r##"
+macro_rules! impl_fn_for_zst  {
+    {$( $( #[$attr: meta] )*
+    struct $Name: ident impl$( <$( $lifetime : lifetime ),+> )? Fn =
+        |$( $arg: ident: $ArgTy: ty ),*| -> $ReturnTy: ty $body: block;
+    )+} => {$(
+        $( #[$attr] )*
+        struct $Name;
+
+        impl $( <$( $lifetime ),+> )? Fn<($( $ArgTy, )*)> for $Name {
+            #[inline]
+            extern "rust-call" fn call(&self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                $body
+            }
+        }
+
+        impl $( <$( $lifetime ),+> )? FnMut<($( $ArgTy, )*)> for $Name {
+            #[inline]
+            extern "rust-call" fn call_mut(
+                &mut self,
+                ($( $arg, )*): ($( $ArgTy, )*)
+            ) -> $ReturnTy {
+                Fn::call(&*self, ($( $arg, )*))
+            }
+        }
+
+        impl $( <$( $lifetime ),+> )? FnOnce<($( $ArgTy, )*)> for $Name {
+            type Output = $ReturnTy;
+
+            #[inline]
+            extern "rust-call" fn call_once(self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                Fn::call(&self, ($( $arg, )*))
+            }
+        }
+    )+}
+}
+
+#[derive(Clone)] struct CharEscapeDebugContinue;
+impl Fn<(char, )> for CharEscapeDebugContinue {
+    #[inline] extern "rust-call"fn call(&self , (c, ): (char, )) -> char::EscapeDebug { {
+            c.escape_debug_ext(false )
+        }
+    }
+}
+impl FnMut<(char, )> for CharEscapeDebugContinue {
+    #[inline] extern "rust-call"fn call_mut(&mut self , (c, ): (char, )) -> char::EscapeDebug {
+        Fn::call(&*self , (c, ))
+    }
+}
+impl FnOnce<(char, )> for CharEscapeDebugContinue {
+    type Output = char::EscapeDebug;
+    #[inline] extern "rust-call"fn call_once(self , (c, ): (char, )) -> char::EscapeDebug {
+        Fn::call(&self , (c, ))
+    }
+}
+#[derive(Clone)] struct CharEscapeUnicode;
+impl Fn<(char, )> for CharEscapeUnicode {
+    #[inline] extern "rust-call"fn call(&self , (c, ): (char, )) -> char::EscapeUnicode { {
+            c.escape_unicode()
+        }
+    }
+}
+impl FnMut<(char, )> for CharEscapeUnicode {
+    #[inline] extern "rust-call"fn call_mut(&mut self , (c, ): (char, )) -> char::EscapeUnicode {
+        Fn::call(&*self , (c, ))
+    }
+}
+impl FnOnce<(char, )> for CharEscapeUnicode {
+    type Output = char::EscapeUnicode;
+    #[inline] extern "rust-call"fn call_once(self , (c, ): (char, )) -> char::EscapeUnicode {
+        Fn::call(&self , (c, ))
+    }
+}
+#[derive(Clone)] struct CharEscapeDefault;
+impl Fn<(char, )> for CharEscapeDefault {
+    #[inline] extern "rust-call"fn call(&self , (c, ): (char, )) -> char::EscapeDefault { {
+            c.escape_default()
+        }
+    }
+}
+impl FnMut<(char, )> for CharEscapeDefault {
+    #[inline] extern "rust-call"fn call_mut(&mut self , (c, ): (char, )) -> char::EscapeDefault {
+        Fn::call(&*self , (c, ))
+    }
+}
+impl FnOnce<(char, )> for CharEscapeDefault {
+    type Output = char::EscapeDefault;
+    #[inline] extern "rust-call"fn call_once(self , (c, ): (char, )) -> char::EscapeDefault {
+        Fn::call(&self , (c, ))
+    }
+}
+
+"##]],
+    );
+}
+
+#[test]
+fn test_impl_nonzero_fmt() {
+    // From <https://github.com/rust-lang/rust/blob/316a391dcb7d66dc25f1f9a4ec9d368ef7615005/src/libcore/num/mod.rs#L12>.
+    check(
+        r#"
+macro_rules! impl_nonzero_fmt {
+    ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => { ok!(); }
+}
+impl_nonzero_fmt! {
+    #[stable(feature= "nonzero",since="1.28.0")]
+    (Debug, Display, Binary, Octal, LowerHex, UpperHex) for NonZeroU8
+}
+"#,
+        expect![[r##"
+macro_rules! impl_nonzero_fmt {
+    ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => { ok!(); }
+}
+ok!();
+"##]],
+    );
+}

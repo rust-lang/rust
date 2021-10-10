@@ -28,6 +28,7 @@ use crate::{
     db::DefDatabase, nameres::ModuleSource, resolver::HasResolver, test_db::TestDB, AsMacroCall,
 };
 
+#[track_caller]
 fn check(ra_fixture: &str, mut expect: Expect) {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.crate_graph().iter().next().unwrap();
