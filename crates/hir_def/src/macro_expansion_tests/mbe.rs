@@ -1427,3 +1427,44 @@ macro_rules! foo {
 "#]],
     );
 }
+
+// The following tests are based on real world situations
+#[test]
+fn test_vec() {
+    check(
+        r#"
+macro_rules! vec {
+   ($($item:expr),*) => {{
+           let mut v = Vec::new();
+           $( v.push($item); )*
+           v
+    }};
+}
+fn main() {
+    vec!();
+    vec![1u32,2];
+}
+"#,
+        expect![[r#"
+macro_rules! vec {
+   ($($item:expr),*) => {{
+           let mut v = Vec::new();
+           $( v.push($item); )*
+           v
+    }};
+}
+fn main() {
+     {
+        let mut v = Vec::new();
+        v
+    };
+     {
+        let mut v = Vec::new();
+        v.push(1u32);
+        v.push(2);
+        v
+    };
+}
+"#]],
+    );
+}
