@@ -879,3 +879,24 @@ pub fn new() {
 "#]],
     );
 }
+
+#[test]
+fn test_no_space_after_semi_colon() {
+    check(
+        r#"
+macro_rules! with_std {
+    ($($i:item)*) => ($(#[cfg(feature = "std")]$i)*)
+}
+
+with_std! {mod m;mod f;}
+"#,
+        expect![[r##"
+macro_rules! with_std {
+    ($($i:item)*) => ($(#[cfg(feature = "std")]$i)*)
+}
+
+#[cfg(feature = "std")] mod m;
+#[cfg(feature = "std")] mod f;
+"##]],
+    )
+}

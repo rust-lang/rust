@@ -77,3 +77,64 @@ macro_rules! f3 { ($i:_) => () }
 "#]],
     )
 }
+
+#[test]
+fn test_rustc_issue_57597() {
+    // <https://github.com/rust-lang/rust/blob/master/src/test/ui/issues/issue-57597.rs>
+    check(
+        r#"
+macro_rules! m0 { ($($($i:ident)?)+) => {}; }
+macro_rules! m1 { ($($($i:ident)?)*) => {}; }
+macro_rules! m2 { ($($($i:ident)?)?) => {}; }
+macro_rules! m3 { ($($($($i:ident)?)?)?) => {}; }
+macro_rules! m4 { ($($($($i:ident)*)?)?) => {}; }
+macro_rules! m5 { ($($($($i:ident)?)*)?) => {}; }
+macro_rules! m6 { ($($($($i:ident)?)?)*) => {}; }
+macro_rules! m7 { ($($($($i:ident)*)*)?) => {}; }
+macro_rules! m8 { ($($($($i:ident)?)*)*) => {}; }
+macro_rules! m9 { ($($($($i:ident)?)*)+) => {}; }
+macro_rules! mA { ($($($($i:ident)+)?)*) => {}; }
+macro_rules! mB { ($($($($i:ident)+)*)?) => {}; }
+
+m0!();
+m1!();
+m2!();
+m3!();
+m4!();
+m5!();
+m6!();
+m7!();
+m8!();
+m9!();
+mA!();
+mB!();
+    "#,
+        expect![[r#"
+macro_rules! m0 { ($($($i:ident)?)+) => {}; }
+macro_rules! m1 { ($($($i:ident)?)*) => {}; }
+macro_rules! m2 { ($($($i:ident)?)?) => {}; }
+macro_rules! m3 { ($($($($i:ident)?)?)?) => {}; }
+macro_rules! m4 { ($($($($i:ident)*)?)?) => {}; }
+macro_rules! m5 { ($($($($i:ident)?)*)?) => {}; }
+macro_rules! m6 { ($($($($i:ident)?)?)*) => {}; }
+macro_rules! m7 { ($($($($i:ident)*)*)?) => {}; }
+macro_rules! m8 { ($($($($i:ident)?)*)*) => {}; }
+macro_rules! m9 { ($($($($i:ident)?)*)+) => {}; }
+macro_rules! mA { ($($($($i:ident)+)?)*) => {}; }
+macro_rules! mB { ($($($($i:ident)+)*)?) => {}; }
+
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+/* error: invalid macro definition: empty token tree in repetition */
+    "#]],
+    );
+}

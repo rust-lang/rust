@@ -141,15 +141,6 @@ pub(crate) fn parse_macro(ra_fixture: &str) -> MacroFixture {
     MacroFixture { rules }
 }
 
-pub(crate) fn parse_macro_error(ra_fixture: &str) -> ParseError {
-    let definition_tt = parse_macro_rules_to_tt(ra_fixture);
-
-    match MacroRules::parse(&definition_tt) {
-        Ok(_) => panic!("Expect error"),
-        Err(err) => err,
-    }
-}
-
 pub(crate) fn parse_to_token_tree_by_syntax(ra_fixture: &str) -> tt::Subtree {
     let source_file = ast::SourceFile::parse(ra_fixture).ok().unwrap();
     let tt = syntax_node_to_token_tree(source_file.syntax()).0;
