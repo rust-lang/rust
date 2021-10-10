@@ -270,6 +270,10 @@ fn test_proc_macros(proc_macros: &[String]) -> (Vec<ProcMacro>, String) {
 pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
+#[proc_macro_derive(derive_identity)]
+pub fn derive_identity(item: TokenStream) -> TokenStream {
+    item
+}
 #[proc_macro_attribute]
 pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
     attr
@@ -283,6 +287,11 @@ pub fn mirror(input: TokenStream) -> TokenStream {
         ProcMacro {
             name: "identity".into(),
             kind: crate::ProcMacroKind::Attr,
+            expander: Arc::new(IdentityProcMacroExpander),
+        },
+        ProcMacro {
+            name: "derive_identity".into(),
+            kind: crate::ProcMacroKind::CustomDerive,
             expander: Arc::new(IdentityProcMacroExpander),
         },
         ProcMacro {

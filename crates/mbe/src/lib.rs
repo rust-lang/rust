@@ -13,9 +13,6 @@ mod tt_iter;
 mod subtree_source;
 
 #[cfg(test)]
-mod tests;
-
-#[cfg(test)]
 mod benchmark;
 mod token_map;
 

@@ -175,6 +175,19 @@ impl HirFileId {
         }
     }
 
+    pub fn is_custom_derive(&self, db: &dyn db::AstDatabase) -> bool {
+        match self.0 {
+            HirFileIdRepr::FileId(_) => false,
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                match loc.def.kind {
+                    MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _) => true,
+                    _ => false,
+                }
+            }
+        }
+    }
+
     /// Return whether this file is an include macro
     pub fn is_include_macro(&self, db: &dyn db::AstDatabase) -> bool {
         match self.0 {

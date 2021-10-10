@@ -12,6 +12,7 @@
 mod mbe;
 mod builtin_fn_macro;
 mod builtin_derive_macro;
+mod proc_macros;
 
 use std::{iter, ops::Range};
 
@@ -28,7 +29,7 @@ use syntax::{
 
 use crate::{
     db::DefDatabase, nameres::ModuleSource, resolver::HasResolver, src::HasSource, test_db::TestDB,
-    AsMacroCall, Lookup,
+    AdtId, AsMacroCall, Lookup, ModuleDefId,
 };
 
 #[track_caller]
@@ -122,6 +123,16 @@ fn check(ra_fixture: &str, mut expect: Expect) {
         let range = call.syntax().text_range();
         let range: Range<usize> = range.into();
         expanded_text.replace_range(range, &expn_text)
+    }
+
+    for decl_id in def_map[local_id].scope.declarations() {
+        if let ModuleDefId::AdtId(AdtId::StructId(struct_id)) = decl_id {
+            let src = struct_id.lookup(&db).source(&db);
+            if src.file_id.is_attr_macro(&db) || src.file_id.is_custom_derive(&db) {
+                let pp = pretty_print_macro_expansion(src.value.syntax().clone());
+                format_to!(expanded_text, "\n{}", pp)
+            }
+        }
     }
 
     for impl_id in def_map[local_id].scope.impls() {
