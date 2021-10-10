@@ -403,15 +403,15 @@ fn test_match_group_in_group() {
     check(
         r#"
 macro_rules! m {
-    [ $( ( $($i:ident)* ) )* ] => [ x![$( ( $($i)* ) )*]; ]
+    [ $( ( $($i:ident)* ) )* ] => [ ok![$( ( $($i)* ) )*]; ]
 }
 m! ( (a b) );
 "#,
         expect![[r#"
 macro_rules! m {
-    [ $( ( $($i:ident)* ) )* ] => [ x![$( ( $($i)* ) )*]; ]
+    [ $( ( $($i:ident)* ) )* ] => [ ok![$( ( $($i)* ) )*]; ]
 }
-x![(a b)];
+ok![(a b)];
 "#]],
     )
 }
@@ -769,12 +769,12 @@ fn f() {
 fn test_expr_with_attr() {
     check(
         r#"
-macro_rules! m { ($a:expr) => { x!(); } }
+macro_rules! m { ($a:expr) => { ok!(); } }
 m!(#[allow(a)]());
 "#,
         expect![[r#"
-macro_rules! m { ($a:expr) => { x!(); } }
-x!();
+macro_rules! m { ($a:expr) => { ok!(); } }
+ok!();
 "#]],
     )
 }
