@@ -1335,6 +1335,7 @@ symbols! {
         type_alias_enum_variants,
         type_alias_impl_trait,
         type_ascription,
+        type_changing_struct_update,
         type_id,
         type_length_limit,
         type_macros,
