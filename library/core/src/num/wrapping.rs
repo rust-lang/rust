@@ -844,6 +844,7 @@ macro_rules! wrapping_int_impl_signed {
             #[doc = concat!("assert!(Wrapping(10", stringify!($t), ").is_positive());")]
             #[doc = concat!("assert!(!Wrapping(-10", stringify!($t), ").is_positive());")]
             /// ```
+            #[must_use]
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn is_positive(self) -> bool {
@@ -864,6 +865,7 @@ macro_rules! wrapping_int_impl_signed {
             #[doc = concat!("assert!(Wrapping(-10", stringify!($t), ").is_negative());")]
             #[doc = concat!("assert!(!Wrapping(10", stringify!($t), ").is_negative());")]
             /// ```
+            #[must_use]
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn is_negative(self) -> bool {
@@ -911,6 +913,7 @@ macro_rules! wrapping_int_impl_unsigned {
             #[doc = concat!("assert!(Wrapping(16", stringify!($t), ").is_power_of_two());")]
             #[doc = concat!("assert!(!Wrapping(10", stringify!($t), ").is_power_of_two());")]
             /// ```
+            #[must_use]
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub fn is_power_of_two(self) -> bool {

@@ -2502,6 +2502,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert!(10", stringify!($SelfT), ".is_positive());")]
         #[doc = concat!("assert!(!(-10", stringify!($SelfT), ").is_positive());")]
         /// ```
+        #[must_use]
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[inline(always)]
@@ -2518,6 +2519,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert!((-10", stringify!($SelfT), ").is_negative());")]
         #[doc = concat!("assert!(!10", stringify!($SelfT), ".is_negative());")]
         /// ```
+        #[must_use]
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[inline(always)]

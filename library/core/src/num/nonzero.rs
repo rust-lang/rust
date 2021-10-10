@@ -878,6 +878,7 @@ macro_rules! nonzero_unsigned_is_power_of_two {
                 #[doc = concat!("let ten = std::num::", stringify!($Ty), "::new(10).unwrap();")]
                 /// assert!(!ten.is_power_of_two());
                 /// ```
+                #[must_use]
                 #[unstable(feature = "nonzero_is_power_of_two", issue = "81106")]
                 #[inline]
                 pub const fn is_power_of_two(self) -> bool {
