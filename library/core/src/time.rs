@@ -181,6 +181,7 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    #[must_use]
     pub const fn new(secs: u64, nanos: u32) -> Duration {
         let secs = match secs.checked_add((nanos / NANOS_PER_SEC) as u64) {
             Some(secs) => secs,

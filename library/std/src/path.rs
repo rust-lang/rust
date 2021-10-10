@@ -1145,6 +1145,7 @@ impl PathBuf {
     /// let path = PathBuf::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
@@ -1169,6 +1170,7 @@ impl PathBuf {
     ///
     /// [`with_capacity`]: OsString::with_capacity
     #[stable(feature = "path_buf_capacity", since = "1.44.0")]
+    #[must_use]
     #[inline]
     pub fn with_capacity(capacity: usize) -> PathBuf {
         PathBuf { inner: OsString::with_capacity(capacity) }

@@ -39,6 +39,7 @@ impl RawWaker {
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[rustc_const_stable(feature = "futures_api", since = "1.36.0")]
+    #[must_use]
     pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
         RawWaker { data, vtable }
     }
