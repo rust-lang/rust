@@ -2086,6 +2086,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert!(16", stringify!($SelfT), ".is_power_of_two());")]
         #[doc = concat!("assert!(!10", stringify!($SelfT), ".is_power_of_two());")]
         /// ```
+        #[must_use]
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_is_power_of_two", since = "1.32.0")]
         #[inline(always)]

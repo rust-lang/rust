@@ -534,6 +534,7 @@ impl<T> BTreeSet<T> {
     /// b.insert(1);
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_disjoint(&self, other: &BTreeSet<T>) -> bool
     where
@@ -559,6 +560,7 @@ impl<T> BTreeSet<T> {
     /// set.insert(4);
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_subset(&self, other: &BTreeSet<T>) -> bool
     where
@@ -638,6 +640,7 @@ impl<T> BTreeSet<T> {
     /// set.insert(2);
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_superset(&self, other: &BTreeSet<T>) -> bool
     where

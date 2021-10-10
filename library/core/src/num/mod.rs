@@ -259,6 +259,7 @@ impl u8 {
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.43.0")]
     #[inline]
@@ -419,6 +420,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_alphabetic());
     /// assert!(!esc.is_ascii_alphabetic());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -452,6 +454,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_uppercase());
     /// assert!(!esc.is_ascii_uppercase());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -485,6 +488,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_lowercase());
     /// assert!(!esc.is_ascii_lowercase());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -521,6 +525,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_alphanumeric());
     /// assert!(!esc.is_ascii_alphanumeric());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -554,6 +559,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_digit());
     /// assert!(!esc.is_ascii_digit());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -590,6 +596,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_hexdigit());
     /// assert!(!esc.is_ascii_hexdigit());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -627,6 +634,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_punctuation());
     /// assert!(!esc.is_ascii_punctuation());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -660,6 +668,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_graphic());
     /// assert!(!esc.is_ascii_graphic());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -710,6 +719,7 @@ impl u8 {
     /// assert!(lf.is_ascii_whitespace());
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -745,6 +755,7 @@ impl u8 {
     /// assert!(lf.is_ascii_control());
     /// assert!(esc.is_ascii_control());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
