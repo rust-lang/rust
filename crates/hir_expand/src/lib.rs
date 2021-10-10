@@ -62,17 +62,86 @@ enum HirFileIdRepr {
     FileId(FileId),
     MacroFile(MacroFile),
 }
-
 impl From<FileId> for HirFileId {
     fn from(id: FileId) -> Self {
         HirFileId(HirFileIdRepr::FileId(id))
     }
 }
-
 impl From<MacroFile> for HirFileId {
     fn from(id: MacroFile) -> Self {
         HirFileId(HirFileIdRepr::MacroFile(id))
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacroFile {
+    pub macro_call_id: MacroCallId,
+}
+
+/// `MacroCallId` identifies a particular macro invocation, like
+/// `println!("Hello, {}", world)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacroCallId(salsa::InternId);
+impl_intern_key!(MacroCallId);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroCallLoc {
+    pub def: MacroDefId,
+    pub(crate) krate: CrateId,
+    eager: Option<EagerCallInfo>,
+    pub kind: MacroCallKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacroDefId {
+    pub krate: CrateId,
+    pub kind: MacroDefKind,
+    pub local_inner: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MacroDefKind {
+    Declarative(AstId<ast::Macro>),
+    BuiltIn(BuiltinFnLikeExpander, AstId<ast::Macro>),
+    // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
+    BuiltInAttr(BuiltinAttrExpander, AstId<ast::Macro>),
+    BuiltInDerive(BuiltinDeriveExpander, AstId<ast::Macro>),
+    BuiltInEager(EagerExpander, AstId<ast::Macro>),
+    ProcMacro(ProcMacroExpander, ProcMacroKind, AstId<ast::Fn>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct EagerCallInfo {
+    /// NOTE: This can be *either* the expansion result, *or* the argument to the eager macro!
+    arg_or_expansion: Arc<tt::Subtree>,
+    included_file: Option<FileId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum MacroCallKind {
+    FnLike {
+        ast_id: AstId<ast::MacroCall>,
+        expand_to: ExpandTo,
+    },
+    Derive {
+        ast_id: AstId<ast::Item>,
+        derive_name: String,
+        /// Syntactical index of the invoking `#[derive]` attribute.
+        ///
+        /// Outer attributes are counted first, then inner attributes. This does not support
+        /// out-of-line modules, which may have attributes spread across 2 files!
+        derive_attr_index: u32,
+    },
+    Attr {
+        ast_id: AstId<ast::Item>,
+        attr_name: String,
+        attr_args: (tt::Subtree, mbe::TokenMap),
+        /// Syntactical index of the invoking `#[attribute]`.
+        ///
+        /// Outer attributes are counted first, then inner attributes. This does not support
+        /// out-of-line modules, which may have attributes spread across 2 files!
+        invoc_attr_index: u32,
+    },
 }
 
 impl HirFileId {
@@ -215,25 +284,6 @@ impl HirFileId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroFile {
-    pub macro_call_id: MacroCallId,
-}
-
-/// `MacroCallId` identifies a particular macro invocation, like
-/// `println!("Hello, {}", world)`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroCallId(salsa::InternId);
-impl_intern_key!(MacroCallId);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroDefId {
-    pub krate: CrateId,
-    pub kind: MacroDefKind,
-
-    pub local_inner: bool,
-}
-
 impl MacroDefId {
     pub fn as_lazy_macro(
         self,
@@ -259,59 +309,6 @@ impl MacroDefId {
     pub fn is_proc_macro(&self) -> bool {
         matches!(self.kind, MacroDefKind::ProcMacro(..))
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MacroDefKind {
-    Declarative(AstId<ast::Macro>),
-    BuiltIn(BuiltinFnLikeExpander, AstId<ast::Macro>),
-    // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
-    BuiltInAttr(BuiltinAttrExpander, AstId<ast::Macro>),
-    BuiltInDerive(BuiltinDeriveExpander, AstId<ast::Macro>),
-    BuiltInEager(EagerExpander, AstId<ast::Macro>),
-    ProcMacro(ProcMacroExpander, ProcMacroKind, AstId<ast::Fn>),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct EagerCallInfo {
-    /// NOTE: This can be *either* the expansion result, *or* the argument to the eager macro!
-    arg_or_expansion: Arc<tt::Subtree>,
-    included_file: Option<FileId>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MacroCallLoc {
-    pub def: MacroDefId,
-    pub(crate) krate: CrateId,
-    eager: Option<EagerCallInfo>,
-    pub kind: MacroCallKind,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum MacroCallKind {
-    FnLike {
-        ast_id: AstId<ast::MacroCall>,
-        expand_to: ExpandTo,
-    },
-    Derive {
-        ast_id: AstId<ast::Item>,
-        derive_name: String,
-        /// Syntactical index of the invoking `#[derive]` attribute.
-        ///
-        /// Outer attributes are counted first, then inner attributes. This does not support
-        /// out-of-line modules, which may have attributes spread across 2 files!
-        derive_attr_index: u32,
-    },
-    Attr {
-        ast_id: AstId<ast::Item>,
-        attr_name: String,
-        attr_args: (tt::Subtree, mbe::TokenMap),
-        /// Syntactical index of the invoking `#[attribute]`.
-        ///
-        /// Outer attributes are counted first, then inner attributes. This does not support
-        /// out-of-line modules, which may have attributes spread across 2 files!
-        invoc_attr_index: u32,
-    },
 }
 
 // FIXME: attribute indices do not account for `cfg_attr`, which means that we'll strip the whole
