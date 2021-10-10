@@ -375,3 +375,105 @@ ok!();
 "##]],
     );
 }
+
+#[test]
+fn test_cfg_if_items() {
+    // From <https://github.com/rust-lang/rust/blob/33fe1131cadba69d317156847be9a402b89f11bb/src/libstd/macros.rs#L986>.
+    check(
+        r#"
+macro_rules! __cfg_if_items {
+    (($($not:meta,)*) ; ) => {};
+    (($($not:meta,)*) ; ( ($($m:meta),*) ($($it:item)*) ), $($rest:tt)*) => {
+            __cfg_if_items! { ($($not,)* $($m,)*) ; $($rest)* }
+    }
+}
+__cfg_if_items! {
+    (rustdoc,);
+    ( () (
+           #[ cfg(any(target_os = "redox", unix))]
+           #[ stable(feature = "rust1", since = "1.0.0")]
+           pub use sys::ext as unix;
+
+           #[cfg(windows)]
+           #[stable(feature = "rust1", since = "1.0.0")]
+           pub use sys::ext as windows;
+
+           #[cfg(any(target_os = "linux", target_os = "l4re"))]
+           pub mod linux;
+    )),
+}
+"#,
+        expect![[r#"
+macro_rules! __cfg_if_items {
+    (($($not:meta,)*) ; ) => {};
+    (($($not:meta,)*) ; ( ($($m:meta),*) ($($it:item)*) ), $($rest:tt)*) => {
+            __cfg_if_items! { ($($not,)* $($m,)*) ; $($rest)* }
+    }
+}
+__cfg_if_items! {
+    (rustdoc, );
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_cfg_if_main() {
+    // From <https://github.com/rust-lang/rust/blob/3d211248393686e0f73851fc7548f6605220fbe1/src/libpanic_unwind/macros.rs#L9>.
+    check(
+        r#"
+macro_rules! cfg_if {
+    ($(if #[cfg($($meta:meta),*)] { $($it:item)* } )else* else { $($it2:item)* })
+    => {
+        __cfg_if_items! {
+            () ;
+            $( ( ($($meta),*) ($($it)*) ), )*
+            ( () ($($it2)*) ),
+        }
+    };
+
+    // Internal macro to Apply a cfg attribute to a list of items
+    (@__apply $m:meta, $($it:item)*) => { $(#[$m] $it)* };
+}
+
+cfg_if! {
+    if #[cfg(target_env = "msvc")] {
+        // no extra unwinder support needed
+    } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {
+        // no unwinder on the system!
+    } else {
+        mod libunwind;
+        pub use libunwind::*;
+    }
+}
+
+cfg_if! {
+    @__apply cfg(all(not(any(not(any(target_os = "solaris", target_os = "illumos")))))),
+}
+"#,
+        expect![[r##"
+macro_rules! cfg_if {
+    ($(if #[cfg($($meta:meta),*)] { $($it:item)* } )else* else { $($it2:item)* })
+    => {
+        __cfg_if_items! {
+            () ;
+            $( ( ($($meta),*) ($($it)*) ), )*
+            ( () ($($it2)*) ),
+        }
+    };
+
+    // Internal macro to Apply a cfg attribute to a list of items
+    (@__apply $m:meta, $($it:item)*) => { $(#[$m] $it)* };
+}
+
+__cfg_if_items! {
+    ();
+    ((target_env = "msvc")()), ((all(target_arch = "wasm32", not(target_os = "emscripten")))()), (()(mod libunwind;
+    pub use libunwind::*;
+    )),
+}
+
+
+"##]],
+    );
+}

@@ -99,69 +99,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_cfg_if_items() {
-    // from https://github.com/rust-lang/rust/blob/33fe1131cadba69d317156847be9a402b89f11bb/src/libstd/macros.rs#L986
-    parse_macro(
-        r#"
-        macro_rules! __cfg_if_items {
-            (($($not:meta,)*) ; ) => {};
-            (($($not:meta,)*) ; ( ($($m:meta),*) ($($it:item)*) ), $($rest:tt)*) => {
-                 __cfg_if_items! { ($($not,)* $($m,)*) ; $($rest)* }
-            }
-        }
-"#,
-    ).assert_expand_items(
-        r#"__cfg_if_items ! { ( rustdoc , ) ; ( ( ) ( # [ cfg ( any ( target_os = "redox" , unix ) ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as unix ; # [ cfg ( windows ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as windows ; # [ cfg ( any ( target_os = "linux" , target_os = "l4re" ) ) ] pub mod linux ; ) ) , }"#,
-        "__cfg_if_items ! {(rustdoc ,) ;}",
-    );
-}
-
-#[test]
-fn test_cfg_if_main() {
-    // from https://github.com/rust-lang/rust/blob/3d211248393686e0f73851fc7548f6605220fbe1/src/libpanic_unwind/macros.rs#L9
-    parse_macro(
-        r#"
-        macro_rules! cfg_if {
-            ($(
-                if #[cfg($($meta:meta),*)] { $($it:item)* }
-            ) else * else {
-                $($it2:item)*
-            }) => {
-                __cfg_if_items! {
-                    () ;
-                    $( ( ($($meta),*) ($($it)*) ), )*
-                    ( () ($($it2)*) ),
-                }
-            };
-
-            // Internal macro to Apply a cfg attribute to a list of items
-            (@__apply $m:meta, $($it:item)*) => {
-                $(#[$m] $it)*
-            };
-        }
-"#,
-    ).assert_expand_items(r#"
-cfg_if !   {
-     if   # [ cfg ( target_env   =   "msvc" ) ]   {
-         // no extra unwinder support needed
-     }   else   if   # [ cfg ( all ( target_arch   =   "wasm32" ,   not ( target_os   =   "emscripten" ) ) ) ]   {
-         // no unwinder on the system!
-     }   else   {
-         mod   libunwind ;
-         pub   use   libunwind :: * ;
-     }
- }
-"#,
-        "__cfg_if_items ! {() ; ((target_env = \"msvc\") ()) , ((all (target_arch = \"wasm32\" , not (target_os = \"emscripten\"))) ()) , (() (mod libunwind ; pub use libunwind :: * ;)) ,}"
-    ).assert_expand_items(
-        r#"
-cfg_if ! { @ __apply cfg ( all ( not ( any ( not ( any ( target_os = "solaris" , target_os = "illumos" ) ) ) ) ) ) , }
-"#,
-        "",
-    );
-}
-
-#[test]
 fn test_proptest_arbitrary() {
     // from https://github.com/AltSysrq/proptest/blob/d1c4b049337d2f75dd6f49a095115f7c532e5129/proptest/src/arbitrary/macros.rs#L16
     parse_macro(
