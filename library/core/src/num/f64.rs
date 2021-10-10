@@ -649,6 +649,8 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_degrees(self) -> f64 {
@@ -667,6 +669,8 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_radians(self) -> f64 {
@@ -726,6 +730,8 @@ impl f64 {
     /// * Not be `NaN`
     /// * Not be infinite
     /// * Be representable in the return type `Int`, after truncating off its fractional part
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[stable(feature = "float_approx_unchecked_to", since = "1.44.0")]
     #[inline]
     pub unsafe fn to_int_unchecked<Int>(self) -> Int
@@ -754,6 +760,8 @@ impl f64 {
     /// assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
     ///
     /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
@@ -816,6 +824,8 @@ impl f64 {
     /// let bytes = 12.5f64.to_be_bytes();
     /// assert_eq!(bytes, [0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
     /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
@@ -832,6 +842,8 @@ impl f64 {
     /// let bytes = 12.5f64.to_le_bytes();
     /// assert_eq!(bytes, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]);
     /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
@@ -861,6 +873,8 @@ impl f64 {
     ///     }
     /// );
     /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
