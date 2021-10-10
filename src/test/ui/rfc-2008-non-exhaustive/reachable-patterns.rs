@@ -1,5 +1,7 @@
 // Test that the `non_exhaustive_omitted_patterns` lint is triggered correctly.
 
+#![feature(non_exhaustive_omitted_patterns_lint)]
+
 // aux-build:enums.rs
 extern crate enums;
 
