@@ -102,20 +102,6 @@ fn test_attr_to_token_tree() {
 }
 
 #[test]
-fn test_vis() {
-    parse_macro(
-        r#"
-        macro_rules! foo {
-              ($ vis:vis $ name:ident) => { $ vis fn $ name() {}};
-        }
-"#,
-    )
-    .assert_expand_items(r#"foo!(pub foo);"#, r#"pub fn foo () {}"#)
-    // test optional cases
-    .assert_expand_items(r#"foo!(foo);"#, r#"fn foo () {}"#);
-}
-
-#[test]
 fn test_inner_macro_rules() {
     parse_macro(
         r#"
