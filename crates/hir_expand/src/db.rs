@@ -319,18 +319,24 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
     (|| {
         let censor = match loc.kind {
             MacroCallKind::FnLike { .. } => return None,
-            MacroCallKind::Derive { derive_attr_index, .. } => ast::Item::cast(node.clone())?
-                .attrs()
-                .take(derive_attr_index as usize + 1)
-                .filter(|attr| attr.simple_name().as_deref() == Some("derive"))
-                .map(|it| it.syntax().clone())
-                .collect(),
-            MacroCallKind::Attr { invoc_attr_index, .. } => ast::Item::cast(node.clone())?
-                .attrs()
-                .nth(invoc_attr_index as usize)
-                .map(|attr| attr.syntax().clone())
-                .into_iter()
-                .collect(),
+            MacroCallKind::Derive { derive_attr_index, .. } => {
+                cov_mark::hit!(derive_censoring);
+                ast::Item::cast(node.clone())?
+                    .attrs()
+                    .take(derive_attr_index as usize + 1)
+                    .filter(|attr| attr.simple_name().as_deref() == Some("derive"))
+                    .map(|it| it.syntax().clone())
+                    .collect()
+            }
+            MacroCallKind::Attr { invoc_attr_index, .. } => {
+                cov_mark::hit!(attribute_macro_attr_censoring);
+                ast::Item::cast(node.clone())?
+                    .attrs()
+                    .nth(invoc_attr_index as usize)
+                    .map(|attr| attr.syntax().clone())
+                    .into_iter()
+                    .collect()
+            }
         };
         Some(censor)
     })()
