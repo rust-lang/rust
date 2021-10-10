@@ -9,7 +9,7 @@ use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{
     parser::{Op, RepeatKind, Separator},
-    syntax_node_to_token_tree, MacroRules,
+    syntax_node_to_token_tree, DeclarativeMacro,
 };
 
 #[test]
@@ -20,7 +20,7 @@ fn benchmark_parse_macro_rules() {
     let rules = macro_rules_fixtures_tt();
     let hash: usize = {
         let _pt = bench("mbe parse macro rules");
-        rules.values().map(|it| MacroRules::parse(it).unwrap().rules.len()).sum()
+        rules.values().map(|it| DeclarativeMacro::parse_macro_rules(it).unwrap().rules.len()).sum()
     };
     assert_eq!(hash, 1144);
 }
@@ -47,10 +47,10 @@ fn benchmark_expand_macro_rules() {
     assert_eq!(hash, 69413);
 }
 
-fn macro_rules_fixtures() -> FxHashMap<String, MacroRules> {
+fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
     macro_rules_fixtures_tt()
         .into_iter()
-        .map(|(id, tt)| (id, MacroRules::parse(&tt).unwrap()))
+        .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt).unwrap()))
         .collect()
 }
 
@@ -71,7 +71,7 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree> {
 }
 
 /// Generate random invocation fixtures from rules
-fn invocation_fixtures(rules: &FxHashMap<String, MacroRules>) -> Vec<(String, tt::Subtree)> {
+fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(String, tt::Subtree)> {
     let mut seed = 123456789;
     let mut res = Vec::new();
 

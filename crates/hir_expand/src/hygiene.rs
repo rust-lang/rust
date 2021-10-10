@@ -160,11 +160,9 @@ impl HygieneInfo {
                     InFile::new(loc.kind.file_id(), loc.kind.arg(db)?.text_range().start()),
                 ),
                 mbe::Origin::Def => match (&*self.macro_def, &self.attr_input_or_mac_def_start) {
-                    (
-                        TokenExpander::MacroDef { def_site_token_map, .. }
-                        | TokenExpander::MacroRules { def_site_token_map, .. },
-                        Some(tt),
-                    ) => (def_site_token_map, *tt),
+                    (TokenExpander::DeclarativeMacro { def_site_token_map, .. }, Some(tt)) => {
+                        (def_site_token_map, *tt)
+                    }
                     _ => panic!("`Origin::Def` used with non-`macro_rules!` macro"),
                 },
             },
