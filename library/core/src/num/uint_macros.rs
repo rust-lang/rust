@@ -658,7 +658,8 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Returns the logarithm of the number with respect to an arbitrary base.
+        /// Returns the logarithm of the number with respect to an arbitrary base,
+        /// rounded down.
         ///
         /// This method might not be optimized owing to implementation details;
         /// `log2` can produce results more efficiently for base 2, and `log10`
@@ -667,8 +668,7 @@ macro_rules! uint_impl {
         /// # Panics
         ///
         /// When the number is negative, zero, or if the base is not at least 2;
-        /// it panics in debug mode and the return value is wrapped to 0 in
-        /// release mode (the only situation in which the method can return 0).
+        /// it panics in debug mode and the return value is 0 in release mode.
         ///
         /// # Examples
         ///
@@ -696,13 +696,12 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Returns the base 2 logarithm of the number.
+        /// Returns the base 2 logarithm of the number, rounded down.
         ///
         /// # Panics
         ///
         /// When the number is negative or zero it panics in debug mode and
-        /// the return value is wrapped to 0 in release mode (the only situation in
-        /// which the method can return 0).
+        /// the return value is 0 in release mode.
         ///
         /// # Examples
         ///
@@ -730,13 +729,12 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Returns the base 10 logarithm of the number.
+        /// Returns the base 10 logarithm of the number, rounded down.
         ///
         /// # Panics
         ///
         /// When the number is negative or zero it panics in debug mode and the
-        /// return value is wrapped to 0 in release mode (the only situation in
-        /// which the method can return 0).
+        /// return value is 0 in release mode.
         ///
         /// # Example
         ///
@@ -764,7 +762,8 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Returns the logarithm of the number with respect to an arbitrary base.
+        /// Returns the logarithm of the number with respect to an arbitrary base,
+        /// rounded down.
         ///
         /// Returns `None` if the number is zero, or if the base is not at least 2.
         ///
@@ -804,7 +803,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Returns the base 2 logarithm of the number.
+        /// Returns the base 2 logarithm of the number, rounded down.
         ///
         /// Returns `None` if the number is zero.
         ///
@@ -828,7 +827,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Returns the base 10 logarithm of the number.
+        /// Returns the base 10 logarithm of the number, rounded down.
         ///
         /// Returns `None` if the number is zero.
         ///
@@ -2120,7 +2119,7 @@ macro_rules! uint_impl {
         /// Returns the smallest power of two greater than or equal to `self`.
         ///
         /// When return value overflows (i.e., `self > (1 << (N-1))` for type
-        /// `uN`), it panics in debug mode and return value is wrapped to 0 in
+        /// `uN`), it panics in debug mode and the return value is wrapped to 0 in
         /// release mode (the only situation in which method can return 0).
         ///
         /// # Examples
