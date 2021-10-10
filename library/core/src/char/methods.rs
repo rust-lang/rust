@@ -377,6 +377,8 @@ impl char {
     /// ```
     /// assert_eq!('❤'.escape_unicode().to_string(), "\\u{2764}");
     /// ```
+    #[must_use = "this returns the escaped char as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn escape_unicode(self) -> EscapeUnicode {
@@ -453,6 +455,8 @@ impl char {
     /// ```
     /// assert_eq!('\n'.escape_debug().to_string(), "\\n");
     /// ```
+    #[must_use = "this returns the escaped char as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "char_escape_debug", since = "1.20.0")]
     #[inline]
     pub fn escape_debug(self) -> EscapeDebug {
@@ -507,6 +511,8 @@ impl char {
     /// ```
     /// assert_eq!('"'.escape_default().to_string(), "\\\"");
     /// ```
+    #[must_use = "this returns the escaped char as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn escape_default(self) -> EscapeDefault {
@@ -692,6 +698,7 @@ impl char {
     /// // love is many things, but it is not alphabetic
     /// assert!(!c.is_alphabetic());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_alphabetic(self) -> bool {
@@ -724,6 +731,7 @@ impl char {
     /// assert!(!'中'.is_lowercase());
     /// assert!(!' '.is_lowercase());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_lowercase(self) -> bool {
@@ -756,6 +764,7 @@ impl char {
     /// assert!(!'中'.is_uppercase());
     /// assert!(!' '.is_uppercase());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_uppercase(self) -> bool {
@@ -784,6 +793,7 @@ impl char {
     ///
     /// assert!(!'越'.is_whitespace());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_whitespace(self) -> bool {
@@ -812,6 +822,7 @@ impl char {
     /// assert!('و'.is_alphanumeric());
     /// assert!('藏'.is_alphanumeric());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_alphanumeric(self) -> bool {
@@ -837,6 +848,7 @@ impl char {
     /// assert!(''.is_control());
     /// assert!(!'q'.is_control());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_control(self) -> bool {
@@ -852,6 +864,7 @@ impl char {
     /// [uax29]: https://www.unicode.org/reports/tr29/
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    #[must_use]
     #[inline]
     pub(crate) fn is_grapheme_extended(self) -> bool {
         unicode::Grapheme_Extend(self)
@@ -881,6 +894,7 @@ impl char {
     /// assert!(!'و'.is_numeric());
     /// assert!(!'藏'.is_numeric());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_numeric(self) -> bool {
@@ -1060,6 +1074,7 @@ impl char {
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.32.0")]
     #[inline]
@@ -1237,6 +1252,7 @@ impl char {
     /// assert!(!lf.is_ascii_alphabetic());
     /// assert!(!esc.is_ascii_alphabetic());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -1270,6 +1286,7 @@ impl char {
     /// assert!(!lf.is_ascii_uppercase());
     /// assert!(!esc.is_ascii_uppercase());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -1303,6 +1320,7 @@ impl char {
     /// assert!(!lf.is_ascii_lowercase());
     /// assert!(!esc.is_ascii_lowercase());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -1339,6 +1357,7 @@ impl char {
     /// assert!(!lf.is_ascii_alphanumeric());
     /// assert!(!esc.is_ascii_alphanumeric());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -1372,6 +1391,7 @@ impl char {
     /// assert!(!lf.is_ascii_digit());
     /// assert!(!esc.is_ascii_digit());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -1408,6 +1428,7 @@ impl char {
     /// assert!(!lf.is_ascii_hexdigit());
     /// assert!(!esc.is_ascii_hexdigit());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -1445,6 +1466,7 @@ impl char {
     /// assert!(!lf.is_ascii_punctuation());
     /// assert!(!esc.is_ascii_punctuation());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -1478,6 +1500,7 @@ impl char {
     /// assert!(!lf.is_ascii_graphic());
     /// assert!(!esc.is_ascii_graphic());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -1528,6 +1551,7 @@ impl char {
     /// assert!(lf.is_ascii_whitespace());
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -1563,6 +1587,7 @@ impl char {
     /// assert!(lf.is_ascii_control());
     /// assert!(esc.is_ascii_control());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]

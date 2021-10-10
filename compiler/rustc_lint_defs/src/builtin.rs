@@ -6,6 +6,7 @@
 
 use crate::{declare_lint, declare_lint_pass, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
+use rustc_span::symbol::sym;
 
 declare_lint! {
     /// The `forbidden_lint_groups` lint detects violations of
@@ -3476,6 +3477,8 @@ declare_lint! {
     /// }
     ///
     /// // in crate B
+    /// #![feature(non_exhaustive_omitted_patterns_lint)]
+    ///
     /// match Bar::A {
     ///     Bar::A => {},
     ///     #[warn(non_exhaustive_omitted_patterns)]
@@ -3512,6 +3515,7 @@ declare_lint! {
     pub NON_EXHAUSTIVE_OMITTED_PATTERNS,
     Allow,
     "detect when patterns of types marked `non_exhaustive` are missed",
+    @feature_gate = sym::non_exhaustive_omitted_patterns_lint;
 }
 
 declare_lint! {

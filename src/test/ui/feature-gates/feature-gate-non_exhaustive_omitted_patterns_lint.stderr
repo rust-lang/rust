@@ -1,0 +1,93 @@
+error[E0658]: the `non_exhaustive_omitted_patterns` lint is unstable
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:1:1
+   |
+LL | #![deny(non_exhaustive_omitted_patterns)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+error[E0658]: the `non_exhaustive_omitted_patterns` lint is unstable
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:4:1
+   |
+LL | #![allow(non_exhaustive_omitted_patterns)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+error[E0658]: the `non_exhaustive_omitted_patterns` lint is unstable
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:13:5
+   |
+LL |     #[allow(non_exhaustive_omitted_patterns)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+error[E0658]: the `non_exhaustive_omitted_patterns` lint is unstable
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:13:5
+   |
+LL |     #[allow(non_exhaustive_omitted_patterns)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+error[E0658]: the `non_exhaustive_omitted_patterns` lint is unstable
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:26:9
+   |
+LL |         #[warn(non_exhaustive_omitted_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+error[E0658]: the `non_exhaustive_omitted_patterns` lint is unstable
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:1:1
+   |
+LL | #![deny(non_exhaustive_omitted_patterns)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+error[E0658]: the `non_exhaustive_omitted_patterns` lint is unstable
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:4:1
+   |
+LL | #![allow(non_exhaustive_omitted_patterns)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+error[E0658]: the `non_exhaustive_omitted_patterns` lint is unstable
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:13:5
+   |
+LL |     #[allow(non_exhaustive_omitted_patterns)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+error[E0658]: the `non_exhaustive_omitted_patterns` lint is unstable
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:13:5
+   |
+LL |     #[allow(non_exhaustive_omitted_patterns)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+error[E0658]: the `non_exhaustive_omitted_patterns` lint is unstable
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:26:9
+   |
+LL |         #[warn(non_exhaustive_omitted_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

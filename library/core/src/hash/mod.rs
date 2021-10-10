@@ -153,9 +153,21 @@ mod sip;
 /// Thankfully, you won't need to worry about upholding this property when
 /// deriving both [`Eq`] and `Hash` with `#[derive(PartialEq, Eq, Hash)]`.
 ///
+/// ## Prefix collisions
+///
+/// Implementations of `hash` should ensure that the data they
+/// pass to the `Hasher` are prefix-free. That is,
+/// unequal values should cause two different sequences of values to be written,
+/// and neither of the two sequences should be a prefix of the other.
+///
+/// For example, the standard implementation of [`Hash` for `&str`][impl] passes an extra
+/// `0xFF` byte to the `Hasher` so that the values `("ab", "c")` and `("a",
+/// "bc")` hash differently.
+///
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html
 /// [`hash`]: Hash::hash
+/// [impl]: ../../std/primitive.str.html#impl-Hash
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Hash"]
 pub trait Hash {

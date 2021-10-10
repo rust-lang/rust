@@ -456,7 +456,7 @@ operand := reg_operand / "const" const_expr / "sym" path
 clobber_abi := "clobber_abi(" <abi> ")"
 option := "pure" / "nomem" / "readonly" / "preserves_flags" / "noreturn" / "nostack" / "att_syntax" / "raw"
 options := "options(" option *["," option] [","] ")"
-asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) ["," clobber_abi]  ["," options] [","] ")"
+asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) ["," clobber_abi] *("," options) [","] ")"
 ```
 
 Inline assembly is currently supported on the following architectures:
