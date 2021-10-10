@@ -533,3 +533,110 @@ impl <A: Arbitrary> $crate::arbitrary::Arbitrary for Vec<A> {
 "#]],
     );
 }
+
+#[test]
+fn test_old_ridl() {
+    // This is from winapi 2.8, which do not have a link from github.
+    check(
+        r#"
+#[macro_export]
+macro_rules! RIDL {
+    (interface $interface:ident ($vtbl:ident) : $pinterface:ident ($pvtbl:ident)
+        {$(
+            fn $method:ident(&mut self $(,$p:ident : $t:ty)*) -> $rtr:ty
+        ),+}
+    ) => {
+        impl $interface {
+            $(pub unsafe fn $method(&mut self) -> $rtr {
+                ((*self.lpVtbl).$method)(self $(,$p)*)
+            })+
+        }
+    };
+}
+
+RIDL!{interface ID3D11Asynchronous(ID3D11AsynchronousVtbl): ID3D11DeviceChild(ID3D11DeviceChildVtbl) {
+    fn GetDataSize(&mut self) -> UINT
+}}
+"#,
+        expect![[r##"
+#[macro_export]
+macro_rules! RIDL {
+    (interface $interface:ident ($vtbl:ident) : $pinterface:ident ($pvtbl:ident)
+        {$(
+            fn $method:ident(&mut self $(,$p:ident : $t:ty)*) -> $rtr:ty
+        ),+}
+    ) => {
+        impl $interface {
+            $(pub unsafe fn $method(&mut self) -> $rtr {
+                ((*self.lpVtbl).$method)(self $(,$p)*)
+            })+
+        }
+    };
+}
+
+impl ID3D11Asynchronous {
+    pub unsafe fn GetDataSize(&mut self ) -> UINT {
+        ((*self .lpVtbl).GetDataSize)(self )
+    }
+}
+"##]],
+    );
+}
+
+#[test]
+fn test_quick_error() {
+    check(
+        r#"
+macro_rules! quick_error {
+    (SORT [enum $name:ident $( #[$meta:meta] )*]
+        items [$($( #[$imeta:meta] )*
+                  => $iitem:ident: $imode:tt [$( $ivar:ident: $ityp:ty ),*]
+                                {$( $ifuncs:tt )*} )* ]
+        buf [ ]
+        queue [ ]
+    ) => {
+        quick_error!(ENUMINITION [enum $name $( #[$meta] )*]
+            body []
+            queue [$(
+                $( #[$imeta] )*
+                =>
+                $iitem: $imode [$( $ivar: $ityp ),*]
+            )*]
+        );
+    };
+}
+quick_error ! (
+    SORT
+    [enum Wrapped #[derive(Debug)]]
+    items [
+        => One: UNIT [] {}
+        => Two: TUPLE [s :String] {display ("two: {}" , s) from ()} ]
+    buf [ ]
+    queue [ ]
+);
+
+"#,
+        expect![[r##"
+macro_rules! quick_error {
+    (SORT [enum $name:ident $( #[$meta:meta] )*]
+        items [$($( #[$imeta:meta] )*
+                  => $iitem:ident: $imode:tt [$( $ivar:ident: $ityp:ty ),*]
+                                {$( $ifuncs:tt )*} )* ]
+        buf [ ]
+        queue [ ]
+    ) => {
+        quick_error!(ENUMINITION [enum $name $( #[$meta] )*]
+            body []
+            queue [$(
+                $( #[$imeta] )*
+                =>
+                $iitem: $imode [$( $ivar: $ityp ),*]
+            )*]
+        );
+    };
+}
+quick_error!(ENUMINITION[enum Wrapped#[derive(Debug)]]body[]queue[ = > One: UNIT[] = > Two: TUPLE[s: String]]);
+
+"##]],
+    )
+}
