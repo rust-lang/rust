@@ -4,6 +4,7 @@
 mod tt_conversion;
 mod matching;
 mod meta_syntax;
+mod regression;
 
 use expect_test::expect;
 
@@ -35,12 +36,12 @@ macro_rules! impl_froms {
     }
 }
 impl From<Leaf> for TokenTree {
-    fn from(it:Leaf) -> TokenTree {
+    fn from(it: Leaf) -> TokenTree {
         TokenTree::Leaf(it)
     }
 }
 impl From<Subtree> for TokenTree {
-    fn from(it:Subtree) -> TokenTree {
+    fn from(it: Subtree) -> TokenTree {
         TokenTree::Subtree(it)
     }
 }
@@ -433,10 +434,10 @@ macro_rules! structs {
 }
 
 struct Foo {
-    field:u32
+    field: u32
 }
 struct Bar {
-    field:u32
+    field: u32
 }
 // MACRO_ITEMS@0..40
 //   STRUCT@0..20
@@ -906,8 +907,8 @@ extern crate a;
 mod b;
 mod c {}
 use d;
-const E:i32 = 0;
-static F:i32 = 0;
+const E: i32 = 0;
+static F: i32 = 0;
 impl G {}
 struct H;
 enum I {
@@ -1118,4 +1119,330 @@ macro_rules! m { ($ op:tt, $j:path) => ( ok!(); ) }
 ok!();
 "#]],
     );
+}
+
+#[test]
+fn test_underscore() {
+    check(
+        r#"
+macro_rules! m { ($_:tt) => { ok!(); } }
+m! { => }
+"#,
+        expect![[r#"
+macro_rules! m { ($_:tt) => { ok!(); } }
+ok!();
+"#]],
+    );
+}
+
+#[test]
+fn test_underscore_not_greedily() {
+    check(
+        r#"
+// `_` overlaps with `$a:ident` but rustc matches it under the `_` token.
+macro_rules! m1 {
+    ($($a:ident)* _) => { ok!(); }
+}
+m1![a b c d _];
+
+// `_ => ou` overlaps with `$a:expr => $b:ident` but rustc matches it under `_ => $c:expr`.
+macro_rules! m2 {
+    ($($a:expr => $b:ident)* _ => $c:expr) => { ok!(); }
+}
+m2![a => b c => d _ => ou]
+"#,
+        expect![[r#"
+// `_` overlaps with `$a:ident` but rustc matches it under the `_` token.
+macro_rules! m1 {
+    ($($a:ident)* _) => { ok!(); }
+}
+ok!();
+
+// `_ => ou` overlaps with `$a:expr => $b:ident` but rustc matches it under `_ => $c:expr`.
+macro_rules! m2 {
+    ($($a:expr => $b:ident)* _ => $c:expr) => { ok!(); }
+}
+ok!();
+"#]],
+    );
+}
+
+#[test]
+fn test_underscore_flavors() {
+    check(
+        r#"
+macro_rules! m1 { ($a:ty) => { ok!(); } }
+m1![_];
+
+macro_rules! m2 { ($a:lifetime) => { ok!(); } }
+m2!['_];
+"#,
+        expect![[r#"
+macro_rules! m1 { ($a:ty) => { ok!(); } }
+ok!();
+
+macro_rules! m2 { ($a:lifetime) => { ok!(); } }
+ok!();
+"#]],
+    );
+}
+
+#[test]
+fn test_vertical_bar_with_pat() {
+    check(
+        r#"
+macro_rules! m { (|$pat:pat| ) => { ok!(); } }
+m! { |x| }
+ "#,
+        expect![[r#"
+macro_rules! m { (|$pat:pat| ) => { ok!(); } }
+ok!();
+ "#]],
+    );
+}
+
+#[test]
+fn test_dollar_crate_lhs_is_not_meta() {
+    check(
+        r#"
+macro_rules! m {
+    ($crate) => { err!(); };
+    () => { ok!(); };
+}
+m!{}
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($crate) => { err!(); };
+    () => { ok!(); };
+}
+ok!();
+"#]],
+    );
+}
+
+#[test]
+fn test_lifetime() {
+    check(
+        r#"
+macro_rules! m {
+    ($lt:lifetime) => { struct Ref<$lt>{ s: &$ lt str } }
+}
+m! {'a}
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($lt:lifetime) => { struct Ref<$lt>{ s: &$ lt str } }
+}
+struct Ref<'a> {
+    s: &'a str
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_literal() {
+    check(
+        r#"
+macro_rules! m {
+    ($type:ty, $lit:literal) => { const VALUE: $type = $ lit; };
+}
+m!(u8, 0);
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($type:ty, $lit:literal) => { const VALUE: $type = $ lit; };
+}
+const VALUE: u8 = 0;
+"#]],
+    );
+
+    check(
+        r#"
+macro_rules! m {
+    ($type:ty, $lit:literal) => { const VALUE: $ type = $ lit; };
+}
+m!(i32, -1);
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($type:ty, $lit:literal) => { const VALUE: $ type = $ lit; };
+}
+const VALUE: i32 = -1;
+"#]],
+    );
+}
+
+#[test]
+fn test_boolean_is_ident() {
+    check(
+        r#"
+macro_rules! m {
+    ($lit0:literal, $lit1:literal) => { const VALUE: (bool, bool) = ($lit0, $lit1); };
+}
+m!(true, false);
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($lit0:literal, $lit1:literal) => { const VALUE: (bool, bool) = ($lit0, $lit1); };
+}
+const VALUE: (bool, bool) = (true , false );
+"#]],
+    );
+}
+
+#[test]
+fn test_vis() {
+    check(
+        r#"
+macro_rules! m {
+    ($vis:vis $name:ident) => { $vis fn $name() {} }
+}
+m!(pub foo);
+m!(foo);
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($vis:vis $name:ident) => { $vis fn $name() {} }
+}
+pub fn foo() {}
+fn foo() {}
+"#]],
+    );
+}
+
+#[test]
+fn test_inner_macro_rules() {
+    check(
+        r#"
+macro_rules! m {
+    ($a:ident, $b:ident, $c:tt) => {
+        macro_rules! inner {
+            ($bi:ident) => { fn $bi() -> u8 { $c } }
+        }
+
+        inner!($a);
+        fn $b() -> u8 { $c }
+    }
+}
+m!(x, y, 1);
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($a:ident, $b:ident, $c:tt) => {
+        macro_rules! inner {
+            ($bi:ident) => { fn $bi() -> u8 { $c } }
+        }
+
+        inner!($a);
+        fn $b() -> u8 { $c }
+    }
+}
+macro_rules !inner {
+    ($bi: ident) = > {
+        fn $bi()-> u8 {
+            1
+        }
+    }
+}
+inner!(x);
+fn y() -> u8 {
+    1
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_expr_after_path_colons() {
+    check(
+        r#"
+macro_rules! m {
+    ($k:expr) => { fn f() { K::$k; } }
+}
+// +tree +errors
+m!(C("0"));
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($k:expr) => { fn f() { K::$k; } }
+}
+/* parse error: expected identifier */
+/* parse error: expected SEMICOLON */
+fn f() {
+    K::C("0");
+}
+// MACRO_ITEMS@0..17
+//   FN@0..17
+//     FN_KW@0..2 "fn"
+//     NAME@2..3
+//       IDENT@2..3 "f"
+//     PARAM_LIST@3..5
+//       L_PAREN@3..4 "("
+//       R_PAREN@4..5 ")"
+//     BLOCK_EXPR@5..17
+//       STMT_LIST@5..17
+//         L_CURLY@5..6 "{"
+//         EXPR_STMT@6..9
+//           PATH_EXPR@6..9
+//             PATH@6..9
+//               PATH@6..7
+//                 PATH_SEGMENT@6..7
+//                   NAME_REF@6..7
+//                     IDENT@6..7 "K"
+//               COLON2@7..9 "::"
+//         EXPR_STMT@9..16
+//           CALL_EXPR@9..15
+//             PATH_EXPR@9..10
+//               PATH@9..10
+//                 PATH_SEGMENT@9..10
+//                   NAME_REF@9..10
+//                     IDENT@9..10 "C"
+//             ARG_LIST@10..15
+//               L_PAREN@10..11 "("
+//               LITERAL@11..14
+//                 STRING@11..14 "\"0\""
+//               R_PAREN@14..15 ")"
+//           SEMICOLON@15..16 ";"
+//         R_CURLY@16..17 "}"
+
+"#]],
+    );
+}
+
+#[test]
+fn test_match_is_not_greedy() {
+    check(
+        r#"
+macro_rules! foo {
+    ($($i:ident $(,)*),*) => {};
+}
+foo!(a,b);
+"#,
+        expect![[r#"
+macro_rules! foo {
+    ($($i:ident $(,)*),*) => {};
+}
+
+"#]],
+    );
+}
+
+#[test]
+fn expr_interpolation() {
+    check(
+        r#"
+macro_rules! m { ($expr:expr) => { map($expr) } }
+fn f() {
+    let _ = m!(x + foo);
+}
+"#,
+        expect![[r#"
+macro_rules! m { ($expr:expr) => { map($expr) } }
+fn f() {
+    let _ = map(x+foo);
+}
+"#]],
+    )
 }

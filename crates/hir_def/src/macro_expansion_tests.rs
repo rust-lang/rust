@@ -10,6 +10,7 @@
 //! and harder to understand.
 
 mod mbe;
+mod builtin;
 
 use std::{iter, ops::Range};
 
@@ -20,7 +21,7 @@ use stdx::format_to;
 use syntax::{
     ast::{self, edit::IndentLevel},
     AstNode,
-    SyntaxKind::{EOF, IDENT, LIFETIME_IDENT},
+    SyntaxKind::{COMMENT, EOF, IDENT, LIFETIME_IDENT},
     SyntaxNode, T,
 };
 
@@ -28,6 +29,7 @@ use crate::{
     db::DefDatabase, nameres::ModuleSource, resolver::HasResolver, test_db::TestDB, AsMacroCall,
 };
 
+#[track_caller]
 fn check(ra_fixture: &str, mut expect: Expect) {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.crate_graph().iter().next().unwrap();
@@ -44,37 +46,54 @@ fn check(ra_fixture: &str, mut expect: Expect) {
     let mut expansions = Vec::new();
     for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
         let macro_call = InFile::new(source.file_id, &macro_call);
+        let mut error = None;
         let macro_call_id = macro_call
             .as_call_id_with_errors(
                 &db,
                 krate,
                 |path| resolver.resolve_path_as_macro(&db, &path),
-                &mut |err| panic!("{}", err),
+                &mut |err| error = Some(err),
             )
             .unwrap()
             .unwrap();
         let macro_file = MacroFile { macro_call_id };
-        let expansion_result = db.parse_macro_expansion(macro_file);
+        let mut expansion_result = db.parse_macro_expansion(macro_file);
+        expansion_result.err = expansion_result.err.or(error);
         expansions.push((macro_call.value.clone(), expansion_result));
     }
 
     let mut expanded_text = source_file.to_string();
     for (call, exp) in expansions.into_iter().rev() {
+        let mut tree = false;
+        let mut expect_errors = false;
+        for comment in call.syntax().children_with_tokens().filter(|it| it.kind() == COMMENT) {
+            tree |= comment.to_string().contains("+tree");
+            expect_errors |= comment.to_string().contains("+errors");
+        }
+
         let mut expn_text = String::new();
         if let Some(err) = exp.err {
             format_to!(expn_text, "/* error: {} */", err);
         }
         if let Some((parse, _token_map)) = exp.value {
-            assert!(
-                parse.errors().is_empty(),
-                "parse errors in expansion: \n{:#?}",
-                parse.errors()
-            );
+            if expect_errors {
+                assert!(!parse.errors().is_empty(), "no parse errors in expansion");
+                for e in parse.errors() {
+                    format_to!(expn_text, "/* parse error: {} */\n", e);
+                }
+            } else {
+                assert!(
+                    parse.errors().is_empty(),
+                    "parse errors in expansion: \n{:#?}",
+                    parse.errors()
+                );
+            }
             let pp = pretty_print_macro_expansion(parse.syntax_node());
             let indent = IndentLevel::from_node(call.syntax());
             let pp = reindent(indent, pp);
             format_to!(expn_text, "{}", pp);
-            if call.to_string().contains("// +tree") {
+
+            if tree {
                 let tree = format!("{:#?}", parse.syntax_node())
                     .split_inclusive("\n")
                     .map(|line| format!("// {}", line))
@@ -129,6 +148,8 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
             (T![->], _) | (_, T![->]) => " ",
             (T![&&], _) | (_, T![&&]) => " ",
             (T![,], _) => " ",
+            (T![:], IDENT | T!['(']) => " ",
+            (T![:], _) if curr_kind.is_keyword() => " ",
             (T![fn], T!['(']) => "",
             (T![']'], _) if curr_kind.is_keyword() => " ",
             (T![']'], T![#]) => "\n",
