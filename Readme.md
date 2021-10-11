@@ -111,6 +111,8 @@ Or add a breakpoint to `add_error` in gdb and print the line number using:
 p loc->m_line
 ```
 
+To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo build`.
+
 ### How to use a custom-build rustc
 
  * Build the stage2 compiler (`rustup toolchain link debug-current build/x86_64-unknown-linux-gnu/stage2`).

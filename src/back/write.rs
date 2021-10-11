@@ -1,4 +1,4 @@
-use std::fs;
+use std::{env, fs};
 
 use gccjit::OutputKind;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
@@ -42,17 +42,17 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, _diag_han
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
-                match &*module.name {
-                    "std_example.7rcbfp3g-cgu.15" => {
-                        println!("Dumping reproducer {}", module.name);
-                        let _ = fs::create_dir("/tmp/reproducers");
-                        // FIXME(antoyo): segfault in dump_reproducer_to_file() might be caused by
-                        // transmuting an rvalue to an lvalue.
-                        // Segfault is actually in gcc::jit::reproducer::get_identifier_as_lvalue
-                        context.dump_reproducer_to_file(&format!("/tmp/reproducers/{}.c", module.name));
-                        println!("Dumped reproducer {}", module.name);
-                    },
-                    _ => (),
+                if env::var("CG_GCCJIT_DUMP_MODULE_NAMES").as_deref() == Ok("1") {
+                    println!("Module {}", module.name);
+                }
+                if env::var("CG_GCCJIT_DUMP_MODULE").as_deref() == Ok(&module.name) {
+                    println!("Dumping reproducer {}", module.name);
+                    let _ = fs::create_dir("/tmp/reproducers");
+                    // FIXME(antoyo): segfault in dump_reproducer_to_file() might be caused by
+                    // transmuting an rvalue to an lvalue.
+                    // Segfault is actually in gcc::jit::reproducer::get_identifier_as_lvalue
+                    context.dump_reproducer_to_file(&format!("/tmp/reproducers/{}.c", module.name));
+                    println!("Dumped reproducer {}", module.name);
                 }
                 context.compile_to_file(OutputKind::ObjectFile, obj_out.to_str().expect("path to str"));
             }
