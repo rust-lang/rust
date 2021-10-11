@@ -320,6 +320,13 @@ public:
 
     Value *fn = CI->getArgOperand(0);
 
+    std::vector<DIFFE_TYPE> constants;
+    SmallVector<Value *, 2> args;
+
+    if (CI->paramHasAttr(0, Attribute::StructRet)) {
+      fn = CI->getArgOperand(1);
+    }
+
     while (auto ci = dyn_cast<CastInst>(fn)) {
       fn = ci->getOperand(0);
     }
@@ -344,14 +351,43 @@ public:
     auto FT = cast<Function>(fn)->getFunctionType();
     assert(fn);
 
-    if (EnzymePrint)
-      llvm::errs() << "prefn:\n" << *fn << "\n";
+    bool sret = CI->paramHasAttr(0, Attribute::StructRet) ||
+                cast<Function>(fn)->hasParamAttribute(0, Attribute::StructRet);
 
-    std::vector<DIFFE_TYPE> constants;
-    SmallVector<Value *, 2> args;
+    IRBuilder<> Builder(CI);
 
     unsigned truei = 0;
-    IRBuilder<> Builder(CI);
+    if (cast<Function>(fn)->hasParamAttribute(0, Attribute::StructRet)) {
+      Type *fnsrety = cast<PointerType>(FT->getParamType(0));
+
+      truei = 1;
+
+      const DataLayout &DL = CI->getParent()->getModule()->getDataLayout();
+      Type *Ty = fnsrety->getPointerElementType();
+#if LLVM_VERSION_MAJOR >= 11
+      AllocaInst *primal = new AllocaInst(Ty, DL.getAllocaAddrSpace(), nullptr,
+                                          DL.getPrefTypeAlign(Ty));
+#else
+      AllocaInst *primal = new AllocaInst(Ty, DL.getAllocaAddrSpace(), nullptr);
+#endif
+
+      primal->insertBefore(CI);
+
+      Value *shadow;
+      if (mode == DerivativeMode::ForwardMode) {
+        shadow = CI->getArgOperand(0);
+      } else {
+        shadow = CI->getArgOperand(1);
+        sret = true;
+      }
+
+      args.push_back(primal);
+      args.push_back(shadow);
+      constants.push_back(DIFFE_TYPE::DUP_ARG);
+    }
+
+    if (EnzymePrint)
+      llvm::errs() << "prefn:\n" << *fn << "\n";
 
     auto Arch =
         llvm::Triple(
@@ -371,7 +407,7 @@ public:
     llvm::Value *tape = nullptr;
     bool tapeIsPointer = false;
     int allocatedTapeSize = -1;
-    for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
+    for (unsigned i = 1 + sret; i < CI->getNumArgOperands(); ++i) {
       Value *res = CI->getArgOperand(i);
 
       if (truei >= FT->getNumParams()) {
@@ -1053,7 +1089,9 @@ public:
     }
 
     if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy() &&
-        !CI->getType()->isEmptyTy() && !CI->getType()->isVoidTy()) {
+        !CI->getType()->isEmptyTy() &&
+        (!CI->getType()->isVoidTy() ||
+         CI->paramHasAttr(0, Attribute::StructRet))) {
       if (diffret->getType() == CI->getType()) {
         CI->replaceAllUsesWith(diffret);
       } else if (mode == DerivativeMode::ReverseModePrimal) {
@@ -1070,6 +1108,16 @@ public:
         } else {
           llvm::errs() << *CI << " - " << *diffret << "\n";
           assert(0 && " what");
+        }
+      } else if (CI->paramHasAttr(0, Attribute::StructRet)) {
+        Value *sret = CI->getArgOperand(0);
+
+        if (StructType *st = cast<StructType>(diffret->getType())) {
+          for (unsigned int i = 0;
+               i < diffret->getType()->getStructNumElements(); i++) {
+            Builder.CreateStore(Builder.CreateExtractValue(diffret, {i}),
+                                Builder.CreateStructGEP(sret, i));
+          }
         }
       } else {
 
