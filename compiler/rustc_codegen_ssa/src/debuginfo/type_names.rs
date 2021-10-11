@@ -446,6 +446,62 @@ fn push_debuginfo_type_name<'tcx>(
     }
 }
 
+/// Computes a name for the global variable storing a vtable.
+///
+/// The name is of the form:
+///
+/// `<path::to::SomeType as path::to::SomeTrait>::{vtable}`
+///
+/// or, when generating C++-like names:
+///
+/// `impl$<path::to::SomeType, path::to::SomeTrait>::vtable$`
+pub fn compute_debuginfo_vtable_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    t: Ty<'tcx>,
+    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+) -> String {
+    let cpp_like_names = cpp_like_names(tcx);
+
+    let mut vtable_name = String::with_capacity(64);
+
+    if cpp_like_names {
+        vtable_name.push_str("impl$<");
+    } else {
+        vtable_name.push('<');
+    }
+
+    let mut visited = FxHashSet::default();
+    push_debuginfo_type_name(tcx, t, true, &mut vtable_name, &mut visited);
+
+    if cpp_like_names {
+        vtable_name.push_str(", ");
+    } else {
+        vtable_name.push_str(" as ");
+    }
+
+    if let Some(trait_ref) = trait_ref {
+        push_item_name(tcx, trait_ref.skip_binder().def_id, true, &mut vtable_name);
+        visited.clear();
+        push_generic_params_internal(
+            tcx,
+            trait_ref.skip_binder().substs,
+            &mut vtable_name,
+            &mut visited,
+        );
+    } else {
+        vtable_name.push_str("_");
+    }
+
+    push_close_angle_bracket(cpp_like_names, &mut vtable_name);
+
+    let suffix = if cpp_like_names { "::vtable$" } else { "::{vtable}" };
+
+    vtable_name.reserve_exact(suffix.len());
+    vtable_name.push_str(suffix);
+
+    vtable_name
+}
+
 pub fn push_item_name(tcx: TyCtxt<'tcx>, def_id: DefId, qualified: bool, output: &mut String) {
     let def_key = tcx.def_key(def_id);
     if qualified {

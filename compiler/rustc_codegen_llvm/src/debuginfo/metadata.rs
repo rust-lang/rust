@@ -2,7 +2,7 @@ use self::MemberDescriptionFactory::*;
 use self::RecursiveTypeDescription::*;
 
 use super::namespace::mangled_name_of_instance;
-use super::type_names::compute_debuginfo_type_name;
+use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
 use super::utils::{
     create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
 };
@@ -29,8 +29,9 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{self, GeneratorLayout};
 use rustc_middle::ty::layout::{self, IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::Instance;
-use rustc_middle::ty::{self, AdtKind, GeneratorSubsts, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, AdtKind, GeneratorSubsts, Instance, ParamEnv, Ty, TyCtxt, COMMON_VTABLE_ENTRIES,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_query_system::ich::NodeIdHashingMode;
 use rustc_session::config::{self, DebugInfo};
@@ -2591,11 +2592,45 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     }
 }
 
+/// Generates LLVM debuginfo for a vtable.
+fn vtable_type_metadata(
+    cx: &CodegenCx<'ll, 'tcx>,
+    ty: Ty<'tcx>,
+    poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+) -> &'ll DIType {
+    let tcx = cx.tcx;
+
+    let vtable_entries = if let Some(poly_trait_ref) = poly_trait_ref {
+        let trait_ref = poly_trait_ref.with_self_ty(tcx, ty);
+        let trait_ref = tcx.erase_regions(trait_ref);
+
+        tcx.vtable_entries(trait_ref)
+    } else {
+        COMMON_VTABLE_ENTRIES
+    };
+
+    // FIXME: We describe the vtable as an array of *const () pointers. The length of the array is
+    //        correct - but we could create a more accurate description, e.g. by describing it
+    //        as a struct where each field has a name that corresponds to the name of the method
+    //        it points to.
+    //        However, this is not entirely straightforward because there might be multiple
+    //        methods with the same name if the vtable is for multiple traits. So for now we keep
+    //        things simple instead of adding some ad-hoc disambiguation scheme.
+    let vtable_type = tcx.mk_array(tcx.mk_imm_ptr(tcx.types.unit), vtable_entries.len() as u64);
+
+    type_metadata(cx, vtable_type, rustc_span::DUMMY_SP)
+}
+
 /// Creates debug information for the given vtable, which is for the
 /// given type.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &'ll Value) {
+pub fn create_vtable_metadata(
+    cx: &CodegenCx<'ll, 'tcx>,
+    ty: Ty<'tcx>,
+    poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    vtable: &'ll Value,
+) {
     if cx.dbg_cx.is_none() {
         return;
     }
@@ -2605,42 +2640,16 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
         return;
     }
 
-    let type_metadata = type_metadata(cx, ty, rustc_span::DUMMY_SP);
+    let vtable_name = compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref);
+    let vtable_type = vtable_type_metadata(cx, ty, poly_trait_ref);
 
     unsafe {
-        // `LLVMRustDIBuilderCreateStructType()` wants an empty array. A null
-        // pointer will lead to hard to trace and debug LLVM assertions
-        // later on in `llvm/lib/IR/Value.cpp`.
-        let empty_array = create_DIArray(DIB(cx), &[]);
-        let name = "vtable";
-
-        // Create a new one each time. We don't want metadata caching
-        // here, because each vtable will refer to a unique containing
-        // type.
-        let vtable_type = llvm::LLVMRustDIBuilderCreateStructType(
-            DIB(cx),
-            NO_SCOPE_METADATA,
-            name.as_ptr().cast(),
-            name.len(),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
-            Size::ZERO.bits(),
-            cx.tcx.data_layout.pointer_align.abi.bits() as u32,
-            DIFlags::FlagArtificial,
-            None,
-            empty_array,
-            0,
-            Some(type_metadata),
-            name.as_ptr().cast(),
-            name.len(),
-        );
-
         let linkage_name = "";
         llvm::LLVMRustDIBuilderCreateStaticVariable(
             DIB(cx),
             NO_SCOPE_METADATA,
-            name.as_ptr().cast(),
-            name.len(),
+            vtable_name.as_ptr().cast(),
+            vtable_name.len(),
             linkage_name.as_ptr().cast(),
             linkage_name.len(),
             unknown_file_metadata(cx),
