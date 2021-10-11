@@ -704,7 +704,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 .filter_map(|lang_item| self.tcx.lang_items().require(*lang_item).ok())
                 .collect();
 
-        never_suggest_borrow.push(self.tcx.get_diagnostic_item(sym::Send).unwrap());
+        if let Some(def_id) = self.tcx.get_diagnostic_item(sym::Send) {
+            never_suggest_borrow.push(def_id);
+        }
 
         let param_env = obligation.param_env;
         let trait_ref = poly_trait_ref.skip_binder();
