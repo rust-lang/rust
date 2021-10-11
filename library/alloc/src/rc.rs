@@ -2087,6 +2087,7 @@ impl<T: ?Sized> Weak<T> {
     /// ```
     ///
     /// [`null`]: ptr::null
+    #[must_use]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
         let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);

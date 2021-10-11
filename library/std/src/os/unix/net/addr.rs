@@ -192,6 +192,7 @@ impl SocketAddr {
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[must_use]
     pub fn as_pathname(&self) -> Option<&Path> {
         if let AddressKind::Pathname(path) = self.address() { Some(path) } else { None }
     }
