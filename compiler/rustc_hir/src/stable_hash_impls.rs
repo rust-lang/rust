@@ -215,8 +215,9 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'tcx> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
-        let OwnerNodes { hash, node_hash: _, nodes: _, bodies: _ } = *self;
-        hash.hash_stable(hcx, hasher);
+        let OwnerNodes { hash_including_bodies, hash_without_bodies: _, nodes: _, bodies: _ } =
+            *self;
+        hash_including_bodies.hash_stable(hcx, hasher);
     }
 }
 

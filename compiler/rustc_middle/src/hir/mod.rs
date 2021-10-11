@@ -23,14 +23,14 @@ use rustc_span::DUMMY_SP;
 #[derive(Copy, Clone, Debug)]
 pub struct Owner<'tcx> {
     node: OwnerNode<'tcx>,
-    node_hash: Fingerprint,
+    hash_without_bodies: Fingerprint,
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let Owner { node: _, node_hash } = self;
-        node_hash.hash_stable(hcx, hasher)
+        let Owner { node: _, hash_without_bodies } = self;
+        hash_without_bodies.hash_stable(hcx, hasher)
     }
 }
 
@@ -67,7 +67,7 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_owner = |tcx, id| {
         let owner = tcx.hir_crate(()).owners[id].as_ref()?;
         let node = owner.node();
-        Some(Owner { node, node_hash: owner.nodes.node_hash })
+        Some(Owner { node, hash_without_bodies: owner.nodes.hash_without_bodies })
     };
     providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id].as_ref().map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {

@@ -102,7 +102,9 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     /// The items being lowered are collected here.
     owners: IndexVec<LocalDefId, Option<hir::OwnerInfo<'hir>>>,
+    /// Bodies inside the owner being lowered.
     bodies: IndexVec<hir::ItemLocalId, Option<&'hir hir::Body<'hir>>>,
+    /// Attributes inside the owner being lowered.
     attrs: BTreeMap<hir::ItemLocalId, &'hir [Attribute]>,
 
     generator_kind: Option<hir::GeneratorKind>,
@@ -418,6 +420,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(krate)
     }
 
+    /// Compute the hash for the HIR of the full crate.
+    /// This hash will then be part of the crate_hash which is stored in the metadata.
     fn compute_hir_hash(&mut self) -> Fingerprint {
         let definitions = self.resolver.definitions();
         let mut hir_body_nodes: Vec<_> = self
@@ -493,10 +497,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        let (hash, node_hash) = self.hash_body(node, &bodies);
+        let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
         let (nodes, parenting) =
             index::index_hir(self.sess, self.resolver.definitions(), node, &bodies);
-        let nodes = hir::OwnerNodes { hash, node_hash, nodes, bodies };
+        let nodes = hir::OwnerNodes { hash_including_bodies, hash_without_bodies, nodes, bodies };
         let attrs = {
             let mut hcx = self.resolver.create_stable_hashing_context();
             let mut stable_hasher = StableHasher::new();
@@ -510,7 +514,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate
     /// queries which depend on the full HIR tree and those which only depend on the item signature.
-    fn hash_body(
+    fn hash_owner(
         &mut self,
         node: hir::OwnerNode<'hir>,
         bodies: &IndexVec<hir::ItemLocalId, Option<&'hir hir::Body<'hir>>>,
@@ -520,13 +524,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hcx.with_hir_bodies(true, node.def_id(), bodies, |hcx| {
             node.hash_stable(hcx, &mut stable_hasher)
         });
-        let full_hash = stable_hasher.finish();
+        let hash_including_bodies = stable_hasher.finish();
         let mut stable_hasher = StableHasher::new();
         hcx.with_hir_bodies(false, node.def_id(), bodies, |hcx| {
             node.hash_stable(hcx, &mut stable_hasher)
         });
-        let node_hash = stable_hasher.finish();
-        (full_hash, node_hash)
+        let hash_without_bodies = stable_hasher.finish();
+        (hash_including_bodies, hash_without_bodies)
     }
 
     /// This method allocates a new `HirId` for the given `NodeId` and stores it in

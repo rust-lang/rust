@@ -692,9 +692,9 @@ impl<'tcx> AttributeMap<'tcx> {
 #[derive(Debug)]
 pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the full HIR.
-    pub hash: Fingerprint,
-    /// Pre-computed hash of the top node.
-    pub node_hash: Fingerprint,
+    pub hash_including_bodies: Fingerprint,
+    /// Pre-computed hash of the item signature, sithout recursing into the body.
+    pub hash_without_bodies: Fingerprint,
     /// Full HIR for the current owner.
     // The zeroth node's parent is trash, but is never accessed.
     pub nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
