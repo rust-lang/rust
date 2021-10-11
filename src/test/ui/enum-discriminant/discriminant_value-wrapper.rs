@@ -1,4 +1,7 @@
 // run-pass
+
+#![allow(enum_intrinsics_non_enums)]
+
 use std::mem;
 
 enum ADT {

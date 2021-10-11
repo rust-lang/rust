@@ -816,6 +816,7 @@ symbols! {
         mem_size_of,
         mem_size_of_val,
         mem_uninitialized,
+        mem_variant_count,
         mem_zeroed,
         member_constraints,
         memory,
