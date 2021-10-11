@@ -430,12 +430,14 @@ impl<'a> SocketAncillary<'a> {
     }
 
     /// Returns `true` if the ancillary data is empty.
+    #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn is_empty(&self) -> bool {
         self.length == 0
     }
 
     /// Returns the number of used bytes.
+    #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn len(&self) -> usize {
         self.length
