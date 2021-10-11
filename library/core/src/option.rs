@@ -1473,6 +1473,7 @@ impl<T: Copy> Option<&mut T> {
     /// let copied = opt_x.copied();
     /// assert_eq!(copied, Some(12));
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
     pub fn copied(self) -> Option<T> {
         self.map(|&mut t| t)
@@ -1492,6 +1493,7 @@ impl<T: Clone> Option<&T> {
     /// let cloned = opt_x.cloned();
     /// assert_eq!(cloned, Some(12));
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn cloned(self) -> Option<T> {
         self.map(|t| t.clone())

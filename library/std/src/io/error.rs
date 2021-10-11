@@ -657,6 +657,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
         match self.repr {

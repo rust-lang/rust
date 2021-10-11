@@ -676,6 +676,7 @@ impl String {
     /// let rebuilt = unsafe { String::from_raw_parts(ptr, len, cap) };
     /// assert_eq!(rebuilt, "hello");
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
     pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
         self.vec.into_raw_parts()
@@ -781,6 +782,7 @@ impl String {
     /// assert_eq!(&[104, 101, 108, 108, 111][..], &bytes[..]);
     /// ```
     #[inline]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8> {
         self.vec
@@ -1738,6 +1740,7 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "box_str", since = "1.4.0")]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub fn into_boxed_str(self) -> Box<str> {
         let slice = self.vec.into_boxed_slice();
@@ -1783,6 +1786,7 @@ impl FromUtf8Error {
     ///
     /// assert_eq!(vec![0, 159], value.unwrap_err().into_bytes());
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8> {
         self.bytes

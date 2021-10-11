@@ -848,6 +848,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// assert_eq!(heap.into_iter_sorted().take(2).collect::<Vec<_>>(), vec![5, 4]);
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
     pub fn into_iter_sorted(self) -> IntoIterSorted<T> {
         IntoIterSorted { inner: self }
@@ -1028,6 +1029,7 @@ impl<T> BinaryHeap<T> {
     ///     println!("{}", x);
     /// }
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
     pub fn into_vec(self) -> Vec<T> {
         self.into()
