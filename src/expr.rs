@@ -1528,12 +1528,12 @@ fn rewrite_struct_lit<'a>(
     let path_shape = shape.sub_width(2)?;
     let path_str = rewrite_path(context, PathContext::Expr, None, path, path_shape)?;
 
-    let has_base = match struct_rest {
+    let has_base_or_rest = match struct_rest {
         ast::StructRest::None if fields.is_empty() => return Some(format!("{} {{}}", path_str)),
         ast::StructRest::Rest(_) if fields.is_empty() => {
             return Some(format!("{} {{ .. }}", path_str));
         }
-        ast::StructRest::Base(_) => true,
+        ast::StructRest::Rest(_) | ast::StructRest::Base(_) => true,
         _ => false,
     };
 
@@ -1542,7 +1542,7 @@ fn rewrite_struct_lit<'a>(
 
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
     let body_lo = context.snippet_provider.span_after(span, "{");
-    let fields_str = if struct_lit_can_be_aligned(fields, has_base)
+    let fields_str = if struct_lit_can_be_aligned(fields, has_base_or_rest)
         && context.config.struct_field_align_threshold() > 0
     {
         rewrite_with_alignment(
@@ -1614,10 +1614,7 @@ fn rewrite_struct_lit<'a>(
             nested_shape,
             tactic,
             context,
-            force_no_trailing_comma
-                || has_base
-                || !context.use_block_indent()
-                || matches!(struct_rest, ast::StructRest::Rest(_)),
+            force_no_trailing_comma || has_base_or_rest || !context.use_block_indent(),
         );
 
         write_list(&item_vec, &fmt)?
