@@ -772,7 +772,7 @@ h2.small-section-header > .anchor {
 .block a.current.crate { font-weight: 500; }
 
 .item-table {
-	display: table-row;
+	display: table;
 }
 .item-row {
 	display: table-row;
