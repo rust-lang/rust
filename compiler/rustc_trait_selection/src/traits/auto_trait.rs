@@ -286,6 +286,8 @@ impl AutoTraitFinder<'tcx> {
                 substs: infcx.tcx.mk_substs_trait(ty, &[]),
             },
             constness: ty::BoundConstness::NotConst,
+            // Auto traits are positive
+            polarity: ty::ImplPolarity::Positive,
         }));
 
         let computed_preds = param_env.caller_bounds().iter();

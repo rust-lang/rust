@@ -915,6 +915,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         substs: self.tcx().mk_substs_trait(ty, &[]),
                     },
                     constness: ty::BoundConstness::NotConst,
+                    polarity: ty::ImplPolarity::Positive,
                 }));
             copy_obligation.recursion_depth = depth + 1;
             self.assemble_candidates_from_impls(&copy_obligation, &mut copy_candidates);

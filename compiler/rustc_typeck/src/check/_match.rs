@@ -531,6 +531,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         substs: self.infcx.tcx.mk_substs_trait(outer_ty, &[]),
                                     },
                                     constness: t.constness,
+                                    polarity: t.polarity,
                                 }));
                             let obl = Obligation::new(
                                 o.cause.clone(),

@@ -804,6 +804,7 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot(
         ty::Binder::dummy(ty::TraitPredicate {
             trait_ref,
             constness: ty::BoundConstness::NotConst,
+            polarity: ty::ImplPolarity::Positive,
         }),
     );
 

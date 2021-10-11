@@ -157,7 +157,7 @@ impl fmt::Debug for ty::TraitPredicate<'tcx> {
         if let ty::BoundConstness::ConstIfConst = self.constness {
             write!(f, "~const ")?;
         }
-        write!(f, "TraitPredicate({:?})", self.trait_ref)
+        write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
     }
 }
 
@@ -365,8 +365,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialPredicate<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     type Lifted = ty::TraitPredicate<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ty::TraitPredicate<'tcx>> {
-        tcx.lift(self.trait_ref)
-            .map(|trait_ref| ty::TraitPredicate { trait_ref, constness: self.constness })
+        tcx.lift(self.trait_ref).map(|trait_ref| ty::TraitPredicate {
+            trait_ref,
+            constness: self.constness,
+            polarity: self.polarity,
+        })
     }
 }
 
@@ -591,6 +594,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
         Some(match self {
             Mismatch => Mismatch,
             ConstnessMismatch(x) => ConstnessMismatch(x),
+            PolarityMismatch(x) => PolarityMismatch(x),
             UnsafetyMismatch(x) => UnsafetyMismatch(x),
             AbiMismatch(x) => AbiMismatch(x),
             Mutability => Mutability,
