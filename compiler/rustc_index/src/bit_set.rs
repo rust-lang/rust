@@ -990,8 +990,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     pub fn insert_all_into_row(&mut self, row: R) {
         assert!(row.index() < self.num_rows);
         let (start, end) = self.range(row);
-        let words = &mut self.words[..];
-        for word in words[start..end].iter_mut() {
+        for word in self.words[start..end].iter_mut() {
             *word = !0;
         }
         self.clear_excess_bits(row);
