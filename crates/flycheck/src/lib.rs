@@ -250,7 +250,6 @@ impl FlycheckActor {
 }
 
 struct CargoHandle {
-    #[allow(unused)]
     thread: jod_thread::JoinHandle<io::Result<()>>,
     receiver: Receiver<CargoMessage>,
 }
