@@ -264,14 +264,14 @@ impl EvaluationResult {
 /// Indicates that trait evaluation caused overflow and in which pass.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable)]
 pub enum OverflowError {
-    Cannonical,
+    Canonical,
     ErrorReporting,
 }
 
 impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
     fn from(overflow_error: OverflowError) -> SelectionError<'tcx> {
         match overflow_error {
-            OverflowError::Cannonical => SelectionError::Overflow,
+            OverflowError::Canonical => SelectionError::Overflow,
             OverflowError::ErrorReporting => SelectionError::ErrorReporting,
         }
     }

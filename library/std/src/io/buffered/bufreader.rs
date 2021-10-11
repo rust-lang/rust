@@ -242,14 +242,13 @@ impl<R: Seek> BufReader<R> {
                 self.pos = new_pos as usize;
                 return Ok(());
             }
-        } else {
-            if let Some(new_pos) = pos.checked_add(offset as u64) {
-                if new_pos <= self.cap as u64 {
-                    self.pos = new_pos as usize;
-                    return Ok(());
-                }
+        } else if let Some(new_pos) = pos.checked_add(offset as u64) {
+            if new_pos <= self.cap as u64 {
+                self.pos = new_pos as usize;
+                return Ok(());
             }
         }
+
         self.seek(SeekFrom::Current(offset)).map(drop)
     }
 }
