@@ -312,6 +312,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
+    #[must_use]
     #[inline(always)]
     #[rustc_diagnostic_item = "maybe_uninit_uninit"]
     pub const fn uninit() -> MaybeUninit<T> {
@@ -349,6 +350,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[unstable(feature = "maybe_uninit_uninit_array", issue = "none")]
     #[rustc_const_unstable(feature = "maybe_uninit_uninit_array", issue = "none")]
+    #[must_use]
     #[inline(always)]
     pub const fn uninit_array<const LEN: usize>() -> [Self; LEN] {
         // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
@@ -391,6 +393,7 @@ impl<T> MaybeUninit<T> {
     /// // This is undefined behavior. ⚠️
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[must_use]
     #[inline]
     #[rustc_diagnostic_item = "maybe_uninit_zeroed"]
     pub fn zeroed() -> MaybeUninit<T> {

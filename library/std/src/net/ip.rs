@@ -442,6 +442,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         // `s_addr` is stored as BE on all machine and the array is in BE order.
@@ -1192,6 +1193,7 @@ impl Ipv6Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr {
         let addr16 = [
