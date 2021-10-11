@@ -1,6 +1,8 @@
 //! User (postfix)-snippet definitions.
 //!
-//! Actual logic is implemented in [`crate::completions::postfix`] and [`crate::completions::snippet`].
+//! Actual logic is implemented in [`crate::completions::postfix`] and [`crate::completions::snippet`] respectively.
+
+use std::ops::Deref;
 
 // Feature: User Snippet Completions
 //
@@ -58,6 +60,8 @@ use syntax::ast;
 
 use crate::{context::CompletionContext, ImportEdit};
 
+/// A snippet scope describing where a snippet may apply to.
+/// These may differ slightly in meaning depending on the snippet trigger.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SnippetScope {
     Item,
@@ -65,14 +69,15 @@ pub enum SnippetScope {
     Type,
 }
 
+/// A user supplied snippet.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Snippet {
-    pub postfix_triggers: Box<[String]>,
-    pub prefix_triggers: Box<[String]>,
+    pub postfix_triggers: Box<[Box<str>]>,
+    pub prefix_triggers: Box<[Box<str>]>,
     pub scope: SnippetScope,
     snippet: String,
-    pub description: Option<String>,
-    pub requires: Box<[String]>,
+    pub description: Option<Box<str>>,
+    pub requires: Box<[Box<str>]>,
 }
 
 impl Snippet {
@@ -84,19 +89,22 @@ impl Snippet {
         requires: &[String],
         scope: SnippetScope,
     ) -> Option<Self> {
+        if prefix_triggers.is_empty() && postfix_triggers.is_empty() {
+            return None;
+        }
         let (snippet, description) = validate_snippet(snippet, description, requires)?;
         Some(Snippet {
             // Box::into doesn't work as that has a Copy bound 😒
-            postfix_triggers: postfix_triggers.iter().cloned().collect(),
-            prefix_triggers: prefix_triggers.iter().cloned().collect(),
+            postfix_triggers: postfix_triggers.iter().map(Deref::deref).map(Into::into).collect(),
+            prefix_triggers: prefix_triggers.iter().map(Deref::deref).map(Into::into).collect(),
             scope,
             snippet,
             description,
-            requires: requires.iter().cloned().collect(),
+            requires: requires.iter().map(Deref::deref).map(Into::into).collect(),
         })
     }
 
-    /// Returns None if the required items do not resolve.
+    /// Returns [`None`] if the required items do not resolve.
     pub(crate) fn imports(
         &self,
         ctx: &CompletionContext,
@@ -112,20 +120,12 @@ impl Snippet {
     pub fn postfix_snippet(&self, receiver: &str) -> String {
         self.snippet.replace("${receiver}", receiver)
     }
-
-    pub fn is_item(&self) -> bool {
-        self.scope == SnippetScope::Item
-    }
-
-    pub fn is_expr(&self) -> bool {
-        self.scope == SnippetScope::Expr
-    }
 }
 
 fn import_edits(
     ctx: &CompletionContext,
     import_scope: &ImportScope,
-    requires: &[String],
+    requires: &[Box<str>],
 ) -> Option<Vec<ImportEdit>> {
     let resolve = |import| {
         let path = ast::Path::parse(import).ok()?;
@@ -158,7 +158,7 @@ fn validate_snippet(
     snippet: &[String],
     description: &str,
     requires: &[String],
-) -> Option<(String, Option<String>)> {
+) -> Option<(String, Option<Box<str>>)> {
     // validate that these are indeed simple paths
     // we can't save the paths unfortunately due to them not being Send+Sync
     if requires.iter().any(|path| match ast::Path::parse(path) {
@@ -171,6 +171,6 @@ fn validate_snippet(
         return None;
     }
     let snippet = snippet.iter().join("\n");
-    let description = if description.is_empty() { None } else { Some(description.to_owned()) };
+    let description = if description.is_empty() { None } else { Some(description.into()) };
     Some((snippet, description))
 }

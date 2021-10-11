@@ -28,6 +28,9 @@ pub(crate) enum ImmediatePrevSibling {
 }
 
 /// Direct parent "thing" of what we are currently completing.
+///
+/// This may contain nodes of the fake file as well as the original, comments on the variants specify
+/// from which file the nodes are.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediateLocation {
     Use,
@@ -42,32 +45,35 @@ pub(crate) enum ImmediateLocation {
     StmtList,
     ItemList,
     TypeBound,
-    // Fake file ast node
+    /// Fake file ast node
     Attribute(ast::Attr),
-    // Fake file ast node
+    /// Fake file ast node
     ModDeclaration(ast::Module),
     Visibility(ast::Visibility),
-    // Original file ast node
+    /// Original file ast node
     MethodCall {
         receiver: Option<ast::Expr>,
         has_parens: bool,
     },
-    // Original file ast node
+    /// Original file ast node
     FieldAccess {
         receiver: Option<ast::Expr>,
         receiver_is_ambiguous_float_literal: bool,
     },
-    // Original file ast node
     // Only set from a type arg
+    /// Original file ast node
     GenericArgList(ast::GenericArgList),
-    // Original file ast node
     /// The record expr of the field name we are completing
+    ///
+    /// Original file ast node
     RecordExpr(ast::RecordExpr),
-    // Original file ast node
     /// The record expr of the functional update syntax we are completing
+    ///
+    /// Original file ast node
     RecordExprUpdate(ast::RecordExpr),
-    // Original file ast node
     /// The record pat of the field name we are completing
+    ///
+    /// Original file ast node
     RecordPat(ast::RecordPat),
 }
 
@@ -268,17 +274,20 @@ pub(crate) fn determine_location(
     Some(res)
 }
 
+/// Maximize a nameref to its enclosing path if its the last segment of said path.
+/// That is, when completing a [`NameRef`] we actually handle it as the path it is part of when determining
+/// its location.
 fn maximize_name_ref(name_ref: &ast::NameRef) -> SyntaxNode {
-    // Maximize a nameref to its enclosing path if its the last segment of said path
     if let Some(segment) = name_ref.syntax().parent().and_then(ast::PathSegment::cast) {
         let p = segment.parent_path();
         if p.parent_path().is_none() {
-            if let Some(it) = p
+            // Get rid of PathExpr, PathType, etc...
+            let path = p
                 .syntax()
                 .ancestors()
                 .take_while(|it| it.text_range() == p.syntax().text_range())
-                .last()
-            {
+                .last();
+            if let Some(it) = path {
                 return it;
             }
         }

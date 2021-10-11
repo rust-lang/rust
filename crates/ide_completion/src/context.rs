@@ -85,6 +85,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
     pub(super) token: SyntaxToken,
+    /// The crate of the current file.
     pub(super) krate: Option<hir::Crate>,
     pub(super) expected_name: Option<NameOrNameRef>,
     pub(super) expected_type: Option<Type>,
@@ -135,11 +136,11 @@ impl<'a> CompletionContext<'a> {
         let fake_ident_token =
             file_with_fake_ident.syntax().token_at_offset(position.offset).right_biased().unwrap();
 
-        let krate = sema.to_module_def(position.file_id).map(|m| m.krate());
         let original_token =
             original_file.syntax().token_at_offset(position.offset).left_biased()?;
         let token = sema.descend_into_macros(original_token.clone());
         let scope = sema.scope_at_offset(&token, position.offset);
+        let krate = scope.krate();
         let mut locals = vec![];
         scope.process_all_names(&mut |name, scope| {
             if let ScopeDef::Local(local) = scope {
@@ -182,6 +183,8 @@ impl<'a> CompletionContext<'a> {
         Some(ctx)
     }
 
+    /// Do the attribute expansion at the current cursor position for both original file and fake file
+    /// as long as possible. As soon as one of the two expansions fail we stop to stay in sync.
     fn expand_and_fill(
         &mut self,
         mut original_file: SyntaxNode,
@@ -428,6 +431,7 @@ impl<'a> CompletionContext<'a> {
         false
     }
 
+    /// Check if an item is `#[doc(hidden)]`.
     pub(crate) fn is_item_hidden(&self, item: &hir::ItemInNs) -> bool {
         let attrs = item.attrs(self.db);
         let krate = item.krate(self.db);
@@ -474,11 +478,11 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
-        let module = match self.scope.module() {
+        let krate = match self.krate {
             Some(it) => it,
             None => return true,
         };
-        if module.krate() != defining_crate && attrs.has_doc_hidden() {
+        if krate != defining_crate && attrs.has_doc_hidden() {
             // `doc(hidden)` items are only completed within the defining crate.
             return true;
         }
