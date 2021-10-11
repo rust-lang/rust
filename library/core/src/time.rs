@@ -204,6 +204,7 @@ impl Duration {
     /// assert_eq!(0, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
+    #[must_use]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_secs(secs: u64) -> Duration {
@@ -223,6 +224,7 @@ impl Duration {
     /// assert_eq!(569_000_000, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
+    #[must_use]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_millis(millis: u64) -> Duration {
@@ -245,6 +247,7 @@ impl Duration {
     /// assert_eq!(2000, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration_from_micros", since = "1.27.0")]
+    #[must_use]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_micros(micros: u64) -> Duration {
@@ -267,6 +270,7 @@ impl Duration {
     /// assert_eq!(123, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
+    #[must_use]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_nanos(nanos: u64) -> Duration {
@@ -708,6 +712,7 @@ impl Duration {
     /// assert_eq!(dur, Duration::new(2, 700_000_000));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn from_secs_f64(secs: f64) -> Duration {
@@ -769,6 +774,7 @@ impl Duration {
     /// assert_eq!(dur, Duration::new(2, 700_000_000));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn from_secs_f32(secs: f32) -> Duration {

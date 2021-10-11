@@ -817,6 +817,7 @@ impl f64 {
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[must_use]
     #[inline]
     pub const fn from_bits(v: u64) -> Self {
         // SAFETY: `u64` is a plain old datatype so we can always transmute from it
@@ -901,6 +902,7 @@ impl f64 {
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[must_use]
     #[inline]
     pub const fn from_be_bytes(bytes: [u8; 8]) -> Self {
         Self::from_bits(u64::from_be_bytes(bytes))
@@ -916,6 +918,7 @@ impl f64 {
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[must_use]
     #[inline]
     pub const fn from_le_bytes(bytes: [u8; 8]) -> Self {
         Self::from_bits(u64::from_le_bytes(bytes))
@@ -942,6 +945,7 @@ impl f64 {
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[must_use]
     #[inline]
     pub const fn from_ne_bytes(bytes: [u8; 8]) -> Self {
         Self::from_bits(u64::from_ne_bytes(bytes))
