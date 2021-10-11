@@ -137,6 +137,7 @@ impl OsString {
     /// assert_eq!(os_string.as_os_str(), os_str);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub fn as_os_str(&self) -> &OsStr {
         self

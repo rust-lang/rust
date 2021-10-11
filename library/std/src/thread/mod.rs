@@ -1031,6 +1031,7 @@ impl ThreadId {
     /// value is entirely opaque -- only equality testing is stable. Note that
     /// it is not guaranteed which values new threads will return, and this may
     /// change across Rust versions.
+    #[must_use]
     #[unstable(feature = "thread_id_value", issue = "67939")]
     pub fn as_u64(&self) -> NonZeroU64 {
         self.0

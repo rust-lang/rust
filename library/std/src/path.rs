@@ -427,6 +427,7 @@ impl<'a> PrefixComponent<'a> {
 
     /// Returns the raw [`OsStr`] slice for this prefix.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub fn as_os_str(&self) -> &'a OsStr {
         self.raw
@@ -676,6 +677,7 @@ impl<'a> Components<'a> {
     ///
     /// assert_eq!(Path::new("foo/bar.txt"), components.as_path());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
         let mut comps = self.clone();
@@ -821,6 +823,7 @@ impl<'a> Iter<'a> {
     /// assert_eq!(Path::new("foo/bar.txt"), iter.as_path());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub fn as_path(&self) -> &'a Path {
         self.inner.as_path()
@@ -1188,6 +1191,7 @@ impl PathBuf {
     /// assert_eq!(Path::new("/test"), p.as_path());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub fn as_path(&self) -> &Path {
         self
@@ -1923,6 +1927,7 @@ impl Path {
     /// assert_eq!(os_str, std::ffi::OsStr::new("foo.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub fn as_os_str(&self) -> &OsStr {
         &self.inner
