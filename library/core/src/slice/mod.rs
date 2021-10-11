@@ -560,8 +560,9 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn swap(&mut self, a: usize, b: usize) {
-        assert!(a < self.len());
-        assert!(b < self.len());
+        assert_in_bounds(self.len(), a);
+        assert_in_bounds(self.len(), b);
+
         // SAFETY: we just checked that both `a` and `b` are in bounds
         unsafe { self.swap_unchecked(a, b) }
     }
@@ -595,8 +596,12 @@ impl<T> [T] {
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
     pub unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
-        debug_assert!(a < self.len());
-        debug_assert!(b < self.len());
+        #[cfg(debug_assertions)]
+        {
+            assert_in_bounds(self.len(), a);
+            assert_in_bounds(self.len(), b);
+        }
+
         let ptr = self.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
@@ -3494,6 +3499,12 @@ impl<T> [T] {
         P: FnMut(&T) -> bool,
     {
         self.binary_search_by(|x| if pred(x) { Less } else { Greater }).unwrap_or_else(|i| i)
+    }
+}
+
+fn assert_in_bounds(len: usize, idx: usize) {
+    if idx >= len {
+        panic!("index out of bounds: the len is {} but the index is {}", len, idx);
     }
 }
 
