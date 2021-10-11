@@ -50,6 +50,7 @@ macro_rules! nonzero_integers {
                 /// The value must not be zero.
                 #[$stability]
                 #[$const_new_unchecked_stability]
+                #[must_use]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     // SAFETY: this is guaranteed to be safe by the caller.
@@ -59,6 +60,7 @@ macro_rules! nonzero_integers {
                 /// Creates a non-zero if the given value is not zero.
                 #[$stability]
                 #[rustc_const_stable(feature = "const_nonzero_int_methods", since = "1.47.0")]
+                #[must_use]
                 #[inline]
                 pub const fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
