@@ -2,7 +2,7 @@ use gccjit::RValue;
 use rustc_codegen_ssa::mir::debuginfo::{FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoMethods};
 use rustc_middle::mir;
-use rustc_middle::ty::{Instance, Ty};
+use rustc_middle::ty::{Instance, PolyExistentialTraitRef, Ty};
 use rustc_span::{SourceFile, Span, Symbol};
 use rustc_target::abi::Size;
 use rustc_target::abi::call::FnAbi;
@@ -31,7 +31,7 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
-    fn create_vtable_metadata(&self, _ty: Ty<'tcx>, _vtable: Self::Value) {
+    fn create_vtable_metadata(&self, _ty: Ty<'tcx>, _trait_ref: Option<PolyExistentialTraitRef<'tcx>>, _vtable: Self::Value) {
         // TODO(antoyo)
     }
 
