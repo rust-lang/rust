@@ -374,9 +374,7 @@ where
     OnHit: FnOnce(&C::Stored) -> R,
 {
     cache.cache.lookup(cache, &key, |value, index| {
-        if unlikely!(tcx.profiler().enabled()) {
-            tcx.profiler().query_cache_hit(index.into());
-        }
+        tcx.profiler().query_cache_hit(index.into());
         #[cfg(debug_assertions)]
         {
             cache.cache_hits.fetch_add(1, Ordering::Relaxed);
@@ -426,9 +424,7 @@ where
                 .lookup(cache, &key, |value, index| (value.clone(), index))
                 .unwrap_or_else(|_| panic!("value must be in cache after waiting"));
 
-            if unlikely!(tcx.dep_context().profiler().enabled()) {
-                tcx.dep_context().profiler().query_cache_hit(index.into());
-            }
+            tcx.dep_context().profiler().query_cache_hit(index.into());
             #[cfg(debug_assertions)]
             {
                 cache.cache_hits.fetch_add(1, Ordering::Relaxed);
@@ -702,9 +698,7 @@ where
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
     let cached = cache.cache.lookup(cache, &key, |_, index| {
-        if unlikely!(tcx.dep_context().profiler().enabled()) {
-            tcx.dep_context().profiler().query_cache_hit(index.into());
-        }
+        tcx.dep_context().profiler().query_cache_hit(index.into());
         #[cfg(debug_assertions)]
         {
             cache.cache_hits.fetch_add(1, Ordering::Relaxed);
