@@ -67,7 +67,7 @@ Example PRs look like:
 ## Feature updates
 
 > Note that this information is as of the time of this writing <!-- date:
-2021-04 --> (April 2021). The process for updating LLVM changes with
+2021-10 --> (October 2021). The process for updating LLVM changes with
 practically all LLVM updates, so this may be out of date!
 
 Unlike bugfixes, updating to pick up a new feature of LLVM typically requires a
