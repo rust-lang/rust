@@ -738,6 +738,12 @@ impl<I: Idx, T> IndexVec<I, Option<T>> {
         self.ensure_contains_elem(index, || None);
         self[index].get_or_insert_with(value)
     }
+
+    #[inline]
+    pub fn remove(&mut self, index: I) -> Option<T> {
+        self.ensure_contains_elem(index, || None);
+        self[index].take()
+    }
 }
 
 impl<I: Idx, T: Clone> IndexVec<I, T> {

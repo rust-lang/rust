@@ -63,6 +63,7 @@ This API is completely unstable and subject to change.
 #![feature(in_band_lifetimes)]
 #![feature(is_sorted)]
 #![feature(iter_zip)]
+#![feature(min_specialization)]
 #![feature(nll)]
 #![feature(try_blocks)]
 #![feature(never_type)]
