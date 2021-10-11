@@ -121,7 +121,7 @@ impl<T> Poll<T> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "poll_ready", issue = "none")]
+    #[unstable(feature = "poll_ready", issue = "89780")]
     pub fn ready(self) -> Ready<T> {
         Ready(self)
     }

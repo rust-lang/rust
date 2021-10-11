@@ -67,10 +67,10 @@ pub macro ready($e:expr) {
 /// Extracts the successful type of a [`Poll<T>`].
 ///
 /// See [`Poll::ready`] for details.
-#[unstable(feature = "poll_ready", issue = "none")]
+#[unstable(feature = "poll_ready", issue = "89780")]
 pub struct Ready<T>(pub(crate) Poll<T>);
 
-#[unstable(feature = "poll_ready", issue = "none")]
+#[unstable(feature = "poll_ready", issue = "89780")]
 impl<T> Try for Ready<T> {
     type Output = T;
     type Residual = Ready<convert::Infallible>;
@@ -89,7 +89,7 @@ impl<T> Try for Ready<T> {
     }
 }
 
-#[unstable(feature = "poll_ready", issue = "none")]
+#[unstable(feature = "poll_ready", issue = "89780")]
 impl<T> FromResidual for Ready<T> {
     #[inline]
     fn from_residual(residual: Ready<convert::Infallible>) -> Self {
@@ -99,7 +99,7 @@ impl<T> FromResidual for Ready<T> {
     }
 }
 
-#[unstable(feature = "poll_ready", issue = "none")]
+#[unstable(feature = "poll_ready", issue = "89780")]
 impl<T> FromResidual<Ready<convert::Infallible>> for Poll<T> {
     #[inline]
     fn from_residual(residual: Ready<convert::Infallible>) -> Self {
@@ -109,7 +109,7 @@ impl<T> FromResidual<Ready<convert::Infallible>> for Poll<T> {
     }
 }
 
-#[unstable(feature = "poll_ready", issue = "none")]
+#[unstable(feature = "poll_ready", issue = "89780")]
 impl<T> fmt::Debug for Ready<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Ready").finish()
