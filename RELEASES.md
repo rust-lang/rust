@@ -64,7 +64,6 @@ Stabilised APIs
 - [`VecDeque::shrink_to`]
 - [`HashMap::shrink_to`]
 - [`HashSet::shrink_to`]
-- [`task::ready!`]
 
 These APIs are now usable in const contexts:
 
@@ -128,7 +127,6 @@ and related tools.
 [`VecDeque::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.shrink_to
 [`HashMap::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/hash_map/struct.HashMap.html#method.shrink_to
 [`HashSet::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/hash_set/struct.HashSet.html#method.shrink_to
-[`task::ready!`]: https://doc.rust-lang.org/stable/std/task/macro.ready.html
 [`std::mem::transmute`]: https://doc.rust-lang.org/stable/std/mem/fn.transmute.html
 [`slice::first`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.first
 [`slice::split_first`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.split_first
