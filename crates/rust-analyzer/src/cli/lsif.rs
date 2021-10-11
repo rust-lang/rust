@@ -254,7 +254,11 @@ impl flags::Lsif {
             version: String::from("0.5.0"),
             project_root: lsp_types::Url::from_file_path(path).unwrap(),
             position_encoding: lsif::Encoding::Utf16,
-            tool_info: None,
+            tool_info: Some(lsp_types::lsif::ToolInfo {
+                name: "rust-analyzer".to_string(),
+                args: vec![],
+                version: Some(env!("REV").to_string()),
+            }),
         }));
         for file in si.files {
             lsif.add_file(file);
