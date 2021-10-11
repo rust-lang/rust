@@ -5,27 +5,27 @@
 
 fn main() {
     // Test clippy::cast_lossless with casts to integer types
-    i16::from(1i8);
-    i32::from(1i8);
-    i64::from(1i8);
-    i16::from(1u8);
-    i32::from(1u8);
-    i64::from(1u8);
-    u16::from(1u8);
-    u32::from(1u8);
-    u64::from(1u8);
-    i32::from(1i16);
-    i64::from(1i16);
-    i32::from(1u16);
-    i64::from(1u16);
-    u32::from(1u16);
-    u64::from(1u16);
-    i64::from(1i32);
-    i64::from(1u32);
-    u64::from(1u32);
+    let _ = i16::from(1i8);
+    let _ = i32::from(1i8);
+    let _ = i64::from(1i8);
+    let _ = i16::from(1u8);
+    let _ = i32::from(1u8);
+    let _ = i64::from(1u8);
+    let _ = u16::from(1u8);
+    let _ = u32::from(1u8);
+    let _ = u64::from(1u8);
+    let _ = i32::from(1i16);
+    let _ = i64::from(1i16);
+    let _ = i32::from(1u16);
+    let _ = i64::from(1u16);
+    let _ = u32::from(1u16);
+    let _ = u64::from(1u16);
+    let _ = i64::from(1i32);
+    let _ = i64::from(1u32);
+    let _ = u64::from(1u32);
 
     // Test with an expression wrapped in parens
-    u16::from(1u8 + 1u8);
+    let _ = u16::from(1u8 + 1u8);
 }
 
 // The lint would suggest using `f64::from(input)` here but the `XX::from` function is not const,
