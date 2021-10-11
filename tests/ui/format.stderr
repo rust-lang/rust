@@ -34,64 +34,70 @@ LL ~ " bar"##.to_string();
    |
 
 error: useless use of `format!`
-  --> $DIR/format.rs:21:5
+  --> $DIR/format.rs:21:13
+   |
+LL |     let _ = format!("");
+   |             ^^^^^^^^^^^ help: consider using `String::new()`: `String::new()`
+
+error: useless use of `format!`
+  --> $DIR/format.rs:23:5
    |
 LL |     format!("{}", "foo");
    |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"foo".to_string()`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:25:5
+  --> $DIR/format.rs:27:5
    |
 LL |     format!("{:+}", "foo"); // Warn when the format makes no difference.
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"foo".to_string()`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:26:5
+  --> $DIR/format.rs:28:5
    |
 LL |     format!("{:<}", "foo"); // Warn when the format makes no difference.
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"foo".to_string()`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:31:5
+  --> $DIR/format.rs:33:5
    |
 LL |     format!("{}", arg);
    |     ^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `arg.to_string()`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:35:5
+  --> $DIR/format.rs:37:5
    |
 LL |     format!("{:+}", arg); // Warn when the format makes no difference.
    |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `arg.to_string()`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:36:5
+  --> $DIR/format.rs:38:5
    |
 LL |     format!("{:<}", arg); // Warn when the format makes no difference.
    |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `arg.to_string()`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:63:5
+  --> $DIR/format.rs:65:5
    |
 LL |     format!("{}", 42.to_string());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `42.to_string()`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:65:5
+  --> $DIR/format.rs:67:5
    |
 LL |     format!("{}", x.display().to_string());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `x.display().to_string()`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:69:18
+  --> $DIR/format.rs:71:18
    |
 LL |     let _ = Some(format!("{}", a + "bar"));
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `a + "bar"`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:73:22
+  --> $DIR/format.rs:75:22
    |
 LL |     let _s: String = format!("{}", &*v.join("/n"));
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `(&*v.join("/n")).to_string()`
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 
