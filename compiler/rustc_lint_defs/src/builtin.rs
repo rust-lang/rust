@@ -322,6 +322,7 @@ declare_lint! {
     ///
     /// ```rust
     /// #![feature(must_not_suspend)]
+    /// #![warn(must_not_suspend)]
     ///
     /// #[must_not_suspend]
     /// struct SyncThing {}
