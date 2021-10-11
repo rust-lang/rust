@@ -390,7 +390,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             .map(|(index, _node)| Error { error: error.clone(), backtrace: self.error_at(index) })
             .collect();
 
-        self.compress(|_| assert!(false));
+        self.compress(|_| unreachable!());
         errors
     }
 
@@ -612,7 +612,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     fn compress(&mut self, mut outcome_cb: impl FnMut(&O)) {
         let orig_nodes_len = self.nodes.len();
         let mut node_rewrites: Vec<_> = std::mem::take(&mut self.reused_node_vec);
-        debug_assert!(node_rewrites.is_empty());
+        assert!(node_rewrites.is_empty());
         node_rewrites.extend(0..orig_nodes_len);
         let mut dead_nodes = 0;
 
@@ -623,13 +623,13 @@ impl<O: ForestObligation> ObligationForest<O> {
         //     self.nodes[0..index - dead_nodes] are the first remaining nodes
         //     self.nodes[index - dead_nodes..index] are all dead
         //     self.nodes[index..] are unchanged
-        for index in 0..orig_nodes_len {
+        for (index, node_rewrite) in node_rewrites.iter_mut().enumerate() {
             let node = &self.nodes[index];
             match node.state.get() {
                 NodeState::Pending | NodeState::Waiting => {
                     if dead_nodes > 0 {
                         self.nodes.swap(index, index - dead_nodes);
-                        node_rewrites[index] -= dead_nodes;
+                        *node_rewrite -= dead_nodes;
                     }
                 }
                 NodeState::Done => {
@@ -646,7 +646,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     }
                     // Extract the success stories.
                     outcome_cb(&node.obligation);
-                    node_rewrites[index] = orig_nodes_len;
+                    *node_rewrite = orig_nodes_len;
                     dead_nodes += 1;
                 }
                 NodeState::Error => {
@@ -655,7 +655,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     // check against.
                     self.active_cache.remove(&node.obligation.as_cache_key());
                     self.insert_into_error_cache(index);
-                    node_rewrites[index] = orig_nodes_len;
+                    *node_rewrite = orig_nodes_len;
                     dead_nodes += 1;
                 }
                 NodeState::Success => unreachable!(),
