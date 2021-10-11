@@ -399,7 +399,7 @@ pub(crate) fn signature_help(
     };
     lsp_types::SignatureHelp {
         signatures: vec![signature],
-        active_signature: None,
+        active_signature: Some(0),
         active_parameter,
     }
 }
