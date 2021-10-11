@@ -528,7 +528,7 @@ impl Step for Rustc {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc")
+        run.never()
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1023,9 +1023,16 @@ pub struct Assemble {
 
 impl Step for Assemble {
     type Output = Compiler;
+    const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
+        run.path("compiler/rustc")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Assemble {
+            target_compiler: run.builder.compiler(run.builder.top_stage + 1, run.target),
+        });
     }
 
     /// Prepare a new compiler from the artifacts in `stage`
