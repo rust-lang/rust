@@ -71,10 +71,6 @@ fn variant_discriminants<'tcx>(
 
 impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if body.source.promoted.is_some() {
-            return;
-        }
-
         trace!("UninhabitedEnumBranching starting for {:?}", body.source);
 
         let basic_block_count = body.basic_blocks().len();
