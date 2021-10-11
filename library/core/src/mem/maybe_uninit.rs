@@ -291,6 +291,7 @@ impl<T> MaybeUninit<T> {
     /// [`assume_init`]: MaybeUninit::assume_init
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
+    #[must_use = "use `ManuallyDrop` or `forget` to avoid running drop code"]
     #[inline(always)]
     pub const fn new(val: T) -> MaybeUninit<T> {
         MaybeUninit { value: ManuallyDrop::new(val) }
