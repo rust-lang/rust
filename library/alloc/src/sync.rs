@@ -1663,21 +1663,24 @@ impl Arc<dyn Any + Send + Sync> {
     }
 }
 
-impl<Args, F: FnOnce<Args> + ?Sized + Copy> FnOnce<Args> for Arc<F> {
+#[stable(feature = "arc_fn_impls", since = "1.57.0")]
+impl<Args, F: Fn<Args> + ?Sized> FnOnce<Args> for Arc<F> {
     type Output = <F as FnOnce<Args>>::Output;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
-        <F as FnOnce<Args>>::call_once(*self, args)
+        <F as Fn<Args>>::call(&self, args)
     }
 }
 
-impl<Args, F: FnMut<Args> + ?Sized + Copy> FnMut<Args> for Arc<F> {
+#[stable(feature = "arc_fn_impls", since = "1.57.0")]
+impl<Args, F: Fn<Args> + ?Sized> FnMut<Args> for Arc<F> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
-        <F as FnMut<Args>>::call_mut(self, args)
+        <F as Fn<Args>>::call(self, args)
     }
 }
 
-impl<Args, F: Fn<Args> + ?Sized + Copy> Fn<Args> for Arc<F> {
+#[stable(feature = "arc_fn_impls", since = "1.57.0")]
+impl<Args, F: Fn<Args> + ?Sized> Fn<Args> for Arc<F> {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output {
         <F as Fn<Args>>::call(self, args)
     }
