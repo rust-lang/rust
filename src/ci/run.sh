@@ -89,6 +89,11 @@ else
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
   fi
 
+  # Same for overflow checks
+  if [ "$NO_OVERFLOW_CHECKS" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-overflow-checks"
+  fi
+
   # In general we always want to run tests with LLVM assertions enabled, but not
   # all platforms currently support that, so we have an option to disable.
   if [ "$NO_LLVM_ASSERTIONS" = "" ]; then
