@@ -55,7 +55,10 @@ fn variant_discriminants<'tcx>(
     match &layout.variants {
         Variants::Single { index } => {
             let mut res = FxHashSet::default();
-            res.insert(index.as_u32() as u128);
+            res.insert(
+                ty.discriminant_for_variant(tcx, *index)
+                    .map_or(index.as_u32() as u128, |discr| discr.val),
+            );
             res
         }
         Variants::Multiple { variants, .. } => variants
