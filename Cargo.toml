@@ -89,6 +89,15 @@ gimli.debug = 0
 miniz_oxide.debug = 0
 object.debug = 0
 
+# The only package that ever uses debug builds is bootstrap.
+# We care a lot about bootstrap's compile times, so don't include debug info for
+# dependencies, only bootstrap itself.
+[profile.dev]
+debug = 0
+[profile.dev.package]
+# Only use debuginfo=1 to further reduce compile times.
+bootstrap.debug = 1
+
 # We want the RLS to use the version of Cargo that we've got vendored in this
 # repository to ensure that the same exact version of Cargo is used by both the
 # RLS and the Cargo binary itself. The RLS depends on Cargo as a git repository
