@@ -348,7 +348,7 @@ declare_lint! {
     /// `MutexGuard`'s)
     ///
     pub MUST_NOT_SUSPEND,
-    Warn,
+    Allow,
     "use of a `#[must_not_suspend]` value across a yield point",
 }
 
