@@ -218,6 +218,7 @@ impl CompletionRelevance {
     }
 }
 
+/// The type of the completion item.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompletionItemKind {
     SymbolKind(SymbolKind),
@@ -269,6 +270,8 @@ impl CompletionItemKind {
     }
 }
 
+// FIXME remove this?
+/// Like [`CompletionItemKind`] but solely used for filtering test results.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) enum CompletionKind {
     /// Parser-based keyword completion.
@@ -477,9 +480,10 @@ impl Builder {
     }
     pub(crate) fn insert_snippet(
         &mut self,
-        _cap: SnippetCap,
+        cap: SnippetCap,
         snippet: impl Into<String>,
     ) -> &mut Builder {
+        let _ = cap;
         self.is_snippet = true;
         self.insert_text(snippet)
     }

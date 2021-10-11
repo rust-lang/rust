@@ -19,7 +19,7 @@ use crate::{
     context::CompletionContext,
     item::{Builder, CompletionKind},
     patterns::ImmediateLocation,
-    CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
+    CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
 };
 
 pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
@@ -231,7 +231,7 @@ fn add_custom_postfix_completions(
 ) -> Option<()> {
     let import_scope =
         ImportScope::find_insert_use_container_with_macros(&ctx.token.parent()?, &ctx.sema)?;
-    ctx.config.postfix_snippets().filter(|(_, snip)| snip.is_expr()).for_each(
+    ctx.config.postfix_snippets().filter(|(_, snip)| snip.scope == SnippetScope::Expr).for_each(
         |(trigger, snippet)| {
             let imports = match snippet.imports(ctx, &import_scope) {
                 Some(imports) => imports,

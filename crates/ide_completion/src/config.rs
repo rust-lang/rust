@@ -22,13 +22,14 @@ pub struct CompletionConfig {
 
 impl CompletionConfig {
     pub fn postfix_snippets(&self) -> impl Iterator<Item = (&str, &Snippet)> {
-        self.snippets.iter().flat_map(|snip| {
-            snip.postfix_triggers.iter().map(move |trigger| (trigger.as_str(), snip))
-        })
+        self.snippets
+            .iter()
+            .flat_map(|snip| snip.postfix_triggers.iter().map(move |trigger| (&**trigger, snip)))
     }
+
     pub fn prefix_snippets(&self) -> impl Iterator<Item = (&str, &Snippet)> {
-        self.snippets.iter().flat_map(|snip| {
-            snip.prefix_triggers.iter().map(move |trigger| (trigger.as_str(), snip))
-        })
+        self.snippets
+            .iter()
+            .flat_map(|snip| snip.prefix_triggers.iter().map(move |trigger| (&**trigger, snip)))
     }
 }
