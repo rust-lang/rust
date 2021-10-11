@@ -80,7 +80,7 @@ error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'sta
   --> $DIR/must_outlive_least_region_or_bound.rs:24:65
    |
 LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
-   |               ---- this data with an anonymous lifetime `'_`... ^ ...is captured here, requiring it to live as long as `'static`
+   |               ---- this data with an anonymous lifetime `'_`... ^ ...is captured and required to live as long as `'static` here
    |
 help: to declare that the trait object captures data from argument `x`, you can add an explicit `'_` lifetime bound
    |
@@ -136,7 +136,7 @@ error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'sta
   --> $DIR/must_outlive_least_region_or_bound.rs:16:50
    |
 LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
-   |               ----                               ^ ...is captured here, requiring it to live as long as `'static`
+   |               ----                               ^ ...is captured and required to live as long as `'static` here
    |               |
    |               this data with an anonymous lifetime `'_`...
    |
@@ -149,7 +149,7 @@ error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:18:59
    |
 LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
-   |                     -------                               ^ ...is captured here, requiring it to live as long as `'static`
+   |                     -------                               ^ ...is captured and required to live as long as `'static` here
    |                     |
    |                     this data with lifetime `'a`...
    |
@@ -162,7 +162,7 @@ error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'sta
   --> $DIR/must_outlive_least_region_or_bound.rs:20:60
    |
 LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
-   |               ----                                         ^ ...is captured here, requiring it to live as long as `'static`
+   |               ----                                         ^ ...is captured and required to live as long as `'static` here
    |               |
    |               this data with an anonymous lifetime `'_`...
    |
@@ -179,7 +179,7 @@ error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:22:69
    |
 LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
-   |                     ------- this data with lifetime `'a`...         ^ ...is captured here, requiring it to live as long as `'static`
+   |                     ------- this data with lifetime `'a`...         ^ ...is captured and required to live as long as `'static` here
    |
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `x`
    |

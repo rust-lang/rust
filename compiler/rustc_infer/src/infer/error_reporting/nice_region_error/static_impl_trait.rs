@@ -139,89 +139,39 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             //    |                               ...is captured here...
             (false, sup_origin.span())
         } else {
-            (true, param.param_ty_span)
+            (!sup_origin.span().overlaps(return_sp), param.param_ty_span)
         };
         err.span_label(capture_point, &format!("this data with {}...", lifetime));
 
         debug!("try_report_static_impl_trait: param_info={:?}", param);
 
+        let mut spans = spans.clone();
+
+        if mention_capture {
+            spans.push(sup_origin.span());
+        }
+        spans.sort();
+        spans.dedup();
+
         // We try to make the output have fewer overlapping spans if possible.
-        if (sp == sup_origin.span() || !return_sp.overlaps(sup_origin.span()))
-            && sup_origin.span() != return_sp
-        {
-            // Customize the spans and labels depending on their relative order so
-            // that split sentences flow correctly.
-            if sup_origin.span().overlaps(return_sp) && sp == sup_origin.span() {
-                // Avoid the following:
-                //
-                // error: cannot infer an appropriate lifetime
-                //   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
-                //    |
-                // LL | fn foo(x: &i32) -> Box<dyn Debug> { Box::new(x) }
-                //    |           ----                      ---------^-
-                //
-                // and instead show:
-                //
-                // error: cannot infer an appropriate lifetime
-                //   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
-                //    |
-                // LL | fn foo(x: &i32) -> Box<dyn Debug> { Box::new(x) }
-                //    |           ----                               ^
-                err.span_label(
-                    sup_origin.span(),
-                    &format!(
-                        "...is captured here, requiring it to live as long as `'static`{}",
-                        if spans.is_empty() { "" } else { "..." },
-                    ),
-                );
-            } else {
-                if return_sp < sup_origin.span() && mention_capture {
-                    err.span_label(sup_origin.span(), "...is captured here...");
-                    err.span_note(
-                        return_sp,
-                        "...and is required to live as long as `'static` here",
-                    );
-                } else {
-                    err.span_label(
-                        return_sp,
-                        &format!(
-                            "...is required to live as long as `'static` here{}",
-                            if spans.is_empty() { "" } else { "..." },
-                        ),
-                    );
-                    if mention_capture {
-                        let span = sup_origin.span();
-                        let msg = if spans.iter().any(|sp| *sp > span) {
-                            "...is captured here..."
-                        } else {
-                            "...and is captured here"
-                        };
-                        err.span_label(span, msg);
-                    }
-                }
-            }
+        let (require_msg, require_span) = if sup_origin.span().overlaps(return_sp) {
+            ("...is captured and required to live as long as `'static` here", sup_origin.span())
         } else {
-            err.span_label(
-                return_sp,
-                &format!(
-                    "...is captured and required to live as long as `'static` here{}",
-                    if spans.is_empty() { "" } else { "..." },
-                ),
-            );
+            ("...and is required to live as long as `'static` here", return_sp)
+        };
+
+        for span in &spans {
+            err.span_label(*span, "...is captured here...");
         }
 
-        for span in spans {
-            let msg =
-                format!("...and is captured here{}", if mention_capture { " too" } else { "" });
-            if span.overlaps(return_sp) {
-                err.span_note(*span, &msg);
-            } else {
-                err.span_label(*span, &msg);
-            }
+        if spans.iter().any(|sp| sp.overlaps(return_sp) || *sp > return_sp) {
+            err.span_note(require_span, require_msg);
+        } else {
+            err.span_label(require_span, require_msg);
         }
 
         if let SubregionOrigin::RelateParamBound(_, _, Some(bound)) = sub_origin {
-            err.span_note(*bound, "`'static` lifetime requirement introduced by this trait bound");
+            err.span_note(*bound, "`'static` lifetime requirement introduced by this bound");
         }
 
         let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
