@@ -36,7 +36,6 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(loops::ITER_NEXT_LOOP),
     LintId::of(loops::NEVER_LOOP),
     LintId::of(loops::WHILE_IMMUTABLE_CONDITION),
-    LintId::of(mem_discriminant::MEM_DISCRIMINANT_NON_ENUM),
     LintId::of(mem_replace::MEM_REPLACE_WITH_UNINIT),
     LintId::of(methods::CLONE_DOUBLE_REF),
     LintId::of(methods::ITERATOR_STEP_BY_ZERO),

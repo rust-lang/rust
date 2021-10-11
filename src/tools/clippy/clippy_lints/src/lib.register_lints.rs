@@ -241,7 +241,6 @@ store.register_lints(&[
     matches::SINGLE_MATCH_ELSE,
     matches::WILDCARD_ENUM_MATCH_ARM,
     matches::WILDCARD_IN_OR_PATTERNS,
-    mem_discriminant::MEM_DISCRIMINANT_NON_ENUM,
     mem_forget::MEM_FORGET,
     mem_replace::MEM_REPLACE_OPTION_WITH_NONE,
     mem_replace::MEM_REPLACE_WITH_DEFAULT,
