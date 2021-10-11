@@ -6,23 +6,29 @@ LL | #![warn(clippy::cyclomatic_complexity)]
    |
    = note: `-D renamed-and-removed-lints` implied by `-D warnings`
 
+error: lint `clippy::mem_discriminant_non_enum` has been renamed to `enum_intrinsics_non_enums`
+  --> $DIR/rename.rs:11:9
+   |
+LL | #![warn(clippy::mem_discriminant_non_enum)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `enum_intrinsics_non_enums`
+
 error: lint `clippy::stutter` has been renamed to `clippy::module_name_repetitions`
-  --> $DIR/rename.rs:12:8
+  --> $DIR/rename.rs:13:8
    |
 LL | #[warn(clippy::stutter)]
    |        ^^^^^^^^^^^^^^^ help: use the new name: `clippy::module_name_repetitions`
 
 error: lint `clippy::new_without_default_derive` has been renamed to `clippy::new_without_default`
-  --> $DIR/rename.rs:15:8
+  --> $DIR/rename.rs:16:8
    |
 LL | #[warn(clippy::new_without_default_derive)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::new_without_default`
 
 error: lint `clippy::const_static_lifetime` has been renamed to `clippy::redundant_static_lifetimes`
-  --> $DIR/rename.rs:18:8
+  --> $DIR/rename.rs:19:8
    |
 LL | #[warn(clippy::const_static_lifetime)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::redundant_static_lifetimes`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

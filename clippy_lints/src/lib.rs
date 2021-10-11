@@ -266,7 +266,6 @@ mod map_unit_fn;
 mod match_on_vec_items;
 mod match_result_ok;
 mod matches;
-mod mem_discriminant;
 mod mem_forget;
 mod mem_replace;
 mod methods;
@@ -600,7 +599,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let doc_valid_idents = conf.doc_valid_idents.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || Box::new(doc::DocMarkdown::new(doc_valid_idents.clone())));
     store.register_late_pass(|| Box::new(neg_multiply::NegMultiply));
-    store.register_late_pass(|| Box::new(mem_discriminant::MemDiscriminant));
     store.register_late_pass(|| Box::new(mem_forget::MemForget));
     store.register_late_pass(|| Box::new(arithmetic::Arithmetic::default()));
     store.register_late_pass(|| Box::new(assign_ops::AssignOps));
@@ -850,6 +848,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::panic_params", "non_fmt_panics");
     ls.register_renamed("clippy::unknown_clippy_lints", "unknown_lints");
     ls.register_renamed("clippy::invalid_atomic_ordering", "invalid_atomic_ordering");
+    ls.register_renamed("clippy::mem_discriminant_non_enum", "enum_intrinsics_non_enums");
 }
 
 // only exists to let the dogfood integration test works.
