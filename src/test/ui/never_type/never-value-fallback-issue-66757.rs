@@ -22,6 +22,7 @@ impl From<!> for E {
 
 #[allow(unreachable_code)]
 #[allow(dead_code)]
+#[allow(unused_must_use)]
 fn foo(never: !) {
     <E as From<!>>::from(never);  // Ok
     <E as From<_>>::from(never);  //[nofallback]~ ERROR trait bound `E: From<()>` is not satisfied
