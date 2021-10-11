@@ -48,15 +48,15 @@ declare_clippy_lint! {
 }
 #[derive(Clone, Debug)]
 pub struct DisallowedType {
-    disallowed: Vec<conf::DisallowedType>,
+    conf_disallowed: Vec<conf::DisallowedType>,
     def_ids: FxHashMap<DefId, Option<String>>,
     prim_tys: FxHashMap<PrimTy, Option<String>>,
 }
 
 impl DisallowedType {
-    pub fn new(disallowed: Vec<conf::DisallowedType>) -> Self {
+    pub fn new(conf_disallowed: Vec<conf::DisallowedType>) -> Self {
         Self {
-            disallowed,
+            conf_disallowed,
             def_ids: FxHashMap::default(),
             prim_tys: FxHashMap::default(),
         }
@@ -83,7 +83,7 @@ impl_lint_pass!(DisallowedType => [DISALLOWED_TYPE]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedType {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
-        for conf in &self.disallowed {
+        for conf in &self.conf_disallowed {
             let (path, reason) = match conf {
                 conf::DisallowedType::Simple(path) => (path, None),
                 conf::DisallowedType::WithReason { path, reason } => (
