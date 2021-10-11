@@ -1,5 +1,5 @@
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:4:11
+  --> $DIR/mut_mut.rs:9:11
    |
 LL | fn fun(x: &mut &mut u32) -> bool {
    |           ^^^^^^^^^^^^^
@@ -7,13 +7,13 @@ LL | fn fun(x: &mut &mut u32) -> bool {
    = note: `-D clippy::mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:20:17
+  --> $DIR/mut_mut.rs:25:17
    |
 LL |     let mut x = &mut &mut 1u32;
    |                 ^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:14:9
+  --> $DIR/mut_mut.rs:19:9
    |
 LL |         &mut $p
    |         ^^^^^^^
@@ -24,37 +24,37 @@ LL |     let mut z = mut_ptr!(&mut 3u32);
    = note: this error originates in the macro `mut_ptr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this expression mutably borrows a mutable reference. Consider reborrowing
-  --> $DIR/mut_mut.rs:22:21
+  --> $DIR/mut_mut.rs:27:21
    |
 LL |         let mut y = &mut x;
    |                     ^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:26:32
+  --> $DIR/mut_mut.rs:31:32
    |
 LL |         let y: &mut &mut u32 = &mut &mut 2;
    |                                ^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:26:16
+  --> $DIR/mut_mut.rs:31:16
    |
 LL |         let y: &mut &mut u32 = &mut &mut 2;
    |                ^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:31:37
+  --> $DIR/mut_mut.rs:36:37
    |
 LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
    |                                     ^^^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:31:16
+  --> $DIR/mut_mut.rs:36:16
    |
 LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
    |                ^^^^^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:31:21
+  --> $DIR/mut_mut.rs:36:21
    |
 LL |         let y: &mut &mut &mut u32 = &mut &mut &mut 2;
    |                     ^^^^^^^^^^^^^

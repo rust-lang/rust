@@ -1,5 +1,10 @@
+// aux-build:macro_rules.rs
+
 #![allow(unused, clippy::no_effect, clippy::unnecessary_operation)]
 #![warn(clippy::mut_mut)]
+
+#[macro_use]
+extern crate macro_rules;
 
 fn fun(x: &mut &mut u32) -> bool {
     **x > 0
@@ -46,4 +51,9 @@ fn issue939() {
     for arg in args {
         println!(":{}", arg);
     }
+}
+
+fn issue6922() {
+    // do not lint from an external macro
+    mut_mut!();
 }
