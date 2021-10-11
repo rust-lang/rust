@@ -76,7 +76,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::readv(
                 self.as_raw_fd(),
-                bufs.as_ptr() as *const libc::iovec,
+                bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
                 cmp::min(bufs.len(), max_iov()) as c_int,
             )
         })?;
@@ -85,7 +85,7 @@ impl FileDesc {
 
     #[cfg(target_os = "espidf")]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        return crate::io::default_read_vectored(|b| self.read(b), bufs);
+        io::default_read_vectored(|b| self.read(b), bufs)
     }
 
     #[inline]
@@ -127,6 +127,24 @@ impl FileDesc {
         }
     }
 
+    #[cfg(not(target_os = "espidf"))]
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::preadv(
+                self.as_raw_fd(),
+                bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
+                cmp::min(bufs.len(), max_iov()) as c_int,
+                offset as _,
+            )
+        })?;
+        Ok(ret as usize)
+    }
+
+    #[cfg(target_os = "espidf")]
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        io::default_read_vectored(|b| self.read_at(b, offset), bufs)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::write(
@@ -152,7 +170,7 @@ impl FileDesc {
 
     #[cfg(target_os = "espidf")]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        return crate::io::default_write_vectored(|b| self.write(b), bufs);
+        io::default_write_vectored(|b| self.write(b), bufs)
     }
 
     #[inline]
@@ -187,6 +205,24 @@ impl FileDesc {
             )
             .map(|n| n as usize)
         }
+    }
+
+    #[cfg(not(target_os = "espidf"))]
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::pwritev(
+                self.as_raw_fd(),
+                bufs.as_ptr() as *const libc::iovec,
+                cmp::min(bufs.len(), max_iov()) as c_int,
+                offset as _,
+            )
+        })?;
+        Ok(ret as usize)
+    }
+
+    #[cfg(target_os = "espidf")]
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        io::default_write_vectored(|b| self.write_at(b, offset), bufs)
     }
 
     #[cfg(target_os = "linux")]
