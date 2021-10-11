@@ -1,4 +1,5 @@
 #![feature(const_trait_impl)]
+#![feature(const_fn_trait_bound)]
 
 trait Tr {
     fn req(&self);
@@ -17,11 +18,6 @@ struct S;
 impl const Tr for S {
     fn req(&self) {}
 } //~^^ ERROR const trait implementations may not use non-const default functions
-
-impl const Tr for u8 {
-    fn req(&self) {}
-    fn prov(&self) {}
-}
 
 impl const Tr for u16 {
     fn prov(&self) {}
