@@ -618,3 +618,18 @@ fn test_arc_cyclic_two_refs() {
     assert_eq!(Arc::strong_count(&two_refs), 3);
     assert_eq!(Arc::weak_count(&two_refs), 2);
 }
+
+#[test]
+fn test_arc_fn() {
+    let f = || String::from("hello");
+    let f: Arc<dyn Fn() -> String> = Arc::new(f);
+
+    assert_eq!(quox(&f), "hello");
+}
+
+fn quox<F>(f: &F) -> String
+where
+    F: Fn() -> String,
+{
+    f()
+}
