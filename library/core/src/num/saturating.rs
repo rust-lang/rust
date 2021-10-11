@@ -657,6 +657,7 @@ macro_rules! saturating_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
             pub const fn from_be(x: Self) -> Self {
                 Saturating(<$t>::from_be(x.0))
@@ -684,6 +685,7 @@ macro_rules! saturating_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
             pub const fn from_le(x: Self) -> Self {
                 Saturating(<$t>::from_le(x.0))

@@ -744,6 +744,7 @@ impl OpenOptions {
     /// let file = options.read(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn new() -> Self {
         OpenOptions(fs_imp::OpenOptions::new())
     }
@@ -2184,6 +2185,7 @@ impl DirBuilder {
     /// let builder = DirBuilder::new();
     /// ```
     #[stable(feature = "dir_builder", since = "1.6.0")]
+    #[must_use]
     pub fn new() -> DirBuilder {
         DirBuilder { inner: fs_imp::DirBuilder::new(), recursive: false }
     }

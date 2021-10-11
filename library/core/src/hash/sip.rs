@@ -157,6 +157,7 @@ impl SipHasher {
         since = "1.13.0",
         reason = "use `std::collections::hash_map::DefaultHasher` instead"
     )]
+    #[must_use]
     pub fn new() -> SipHasher {
         SipHasher::new_with_keys(0, 0)
     }
@@ -168,6 +169,7 @@ impl SipHasher {
         since = "1.13.0",
         reason = "use `std::collections::hash_map::DefaultHasher` instead"
     )]
+    #[must_use]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
         SipHasher(SipHasher24 { hasher: Hasher::new_with_keys(key0, key1) })
     }
