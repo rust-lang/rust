@@ -1663,6 +1663,26 @@ impl Arc<dyn Any + Send + Sync> {
     }
 }
 
+impl<Args, F: FnOnce<Args> + ?Sized> FnOnce<Args> for Arc<F> {
+    type Output = <F as FnOnce<Args>>::Output;
+
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
+        <F as FnOnce<Args>>::call_once(*self, args)
+    }
+}
+
+impl<Args, F: FnMut<Args> + ?Sized> FnMut<Args> for Arc<F> {
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
+        <F as FnMut<Args>>::call_mut(self, args)
+    }
+}
+
+impl<Args, F: Fn<Args> + ?Sized> Fn<Args> for Arc<F> {
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output {
+        <F as Fn<Args>>::call(self, args)
+    }
+}
+
 impl<T> Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating any memory.
     /// Calling [`upgrade`] on the return value always gives [`None`].
