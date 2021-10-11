@@ -21,7 +21,15 @@ declare_clippy_lint! {
     /// An example clippy.toml configuration:
     /// ```toml
     /// # clippy.toml
-    /// disallowed-types = ["std::collections::BTreeMap"]
+    /// disallowed-types = [
+    ///     # Can use a string as the path of the disallowed type.
+    ///     "std::collections::BTreeMap",
+    ///     # Can also use an inline table with a `path` key.
+    ///     { path = "std::net::TcpListener" },
+    ///     # When using an inline table, can add a `reason` for why the type
+    ///     # is disallowed.
+    ///     { path = "std::net::Ipv4Addr", reason = "no IPv4 allowed" },
+    /// ]
     /// ```
     ///
     /// ```rust,ignore
