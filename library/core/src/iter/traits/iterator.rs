@@ -3460,6 +3460,7 @@ pub trait Iterator {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized> Iterator for &mut I {
     type Item = I::Item;
+    #[inline]
     fn next(&mut self) -> Option<I::Item> {
         (**self).next()
     }
