@@ -55,15 +55,17 @@
      transform="translate(-48.088531,-60.285631)">
     <g
        aria-label="r."
-       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.5px;paint-order:stroke"
        id="text3715">
       <path
-         d="m 50.762218,69.231544 v -1.121833 h 0.740833 v -3.386666 h -0.740833 v -1.11125 h 2.016125 l 0.306916,1.264708 q 0.301625,-0.724958 0.767292,-1.0795 0.470958,-0.354542 1.148292,-0.354542 0.28575,0 0.508,0.04762 0.22225,0.04233 0.418041,0.121709 l -0.508,1.381125 q -0.153458,-0.04233 -0.306916,-0.0635 -0.153459,-0.02117 -0.338667,-0.02117 -0.550333,0 -0.968375,0.449792 -0.41275,0.449791 -0.629708,1.143 v 1.608666 h 1.11125 v 1.121833 z m 3.804708,-3.270249 v -1.640417 l 0.248708,-0.709083 h 1.11125 l -0.312208,2.3495 z"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Fira Code';-inkscape-font-specification:'Fira Code Bold';stroke-width:0.26458332"
+         d="m 55.00077,63.442544 c -0.588718,-0.01704 -1.180779,0.251078 -1.524352,0.735633 -0.163942,0.198364 -0.296316,0.49938 -0.394953,0.683311 -0.101099,-0.416482 -0.202199,-0.832964 -0.303298,-1.249445 -0.671966,0 -1.343932,0 -2.015897,0 0,0.370348 0,0.740695 0,1.111043 0.246841,0 0.493682,0 0.740523,0 0,1.128958 0,2.257916 0,3.386874 -0.246841,0 -0.493682,0 -0.740523,0 0,0.373792 0,0.747585 0,1.121378 1.174777,0 2.349555,0 3.524332,0 0,-0.373793 0,-0.747586 0,-1.121378 -0.37052,0 -0.74104,0 -1.11156,0 0,-0.53623 0,-1.072458 0,-1.608688 0.190282,-0.586609 0.512347,-1.195617 1.085749,-1.482555 0.177384,-0.100666 0.369603,-0.139942 0.305897,0.108125 0,0.278138 0,0.556274 0,0.834412 0.349333,0 0.698666,0 1.047998,0 0.104042,-0.783071 0.208084,-1.566141 0.312126,-2.349211 -0.293304,-0.117433 -0.610556,-0.17161 -0.926042,-0.169499 z"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Fira Code';-inkscape-font-specification:'Fira Code Bold'"
          id="path817" />
-      <path
-         d="m 58.31341,68.23142 q 0,-0.322792 0.15875,-0.587375 0.15875,-0.269875 0.428625,-0.428625 0.269875,-0.164042 0.592666,-0.164042 0.328084,0 0.592667,0.164042 0.269875,0.15875 0.428625,0.428625 0.15875,0.264583 0.15875,0.587375 0,0.3175 -0.15875,0.587375 -0.15875,0.269874 -0.428625,0.428624 -0.264583,0.164042 -0.592667,0.164042 -0.322791,0 -0.592666,-0.164042 Q 58.63091,69.088669 58.47216,68.818795 58.31341,68.54892 58.31341,68.23142 Z"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Fira Code';-inkscape-font-specification:'Fira Code Bold';stroke-width:0.26458332"
+      <circle
+         cx="59.49345"
+         cy="68.231422"
+         r="1.1800417"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Fira Code';-inkscape-font-specification:'Fira Code Bold'"
          id="path819" />
     </g>
     <rect
