@@ -233,7 +233,7 @@ fn find_related_tests(
             // create flattened vec of tokens
             let tokens = refs.iter().flat_map(|(range, _)| {
                 match file.token_at_offset(range.start()).next() {
-                    Some(token) => sema.descend_into_macros_many(token),
+                    Some(token) => sema.descend_into_macros(token),
                     None => Default::default(),
                 }
             });

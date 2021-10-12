@@ -19,7 +19,7 @@ pub(crate) fn goto_declaration(
     let original_token = file
         .token_at_offset(position.offset)
         .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate]))?;
-    let token = sema.descend_into_macros(original_token.clone());
+    let token = sema.descend_into_macros_single(original_token.clone());
     let parent = token.parent()?;
     let def = match_ast! {
         match parent {

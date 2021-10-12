@@ -623,7 +623,7 @@ impl FunctionBody {
                         .children_with_tokens()
                         .flat_map(SyntaxElement::into_token)
                         .filter(|it| it.kind() == SyntaxKind::IDENT)
-                        .flat_map(|t| sema.descend_into_macros_many(t))
+                        .flat_map(|t| sema.descend_into_macros(t))
                         .for_each(|t| cb(t.parent().and_then(ast::NameRef::cast)));
                 }
             }

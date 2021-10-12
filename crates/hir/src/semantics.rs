@@ -175,13 +175,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.speculative_expand_attr(actual_macro_call, speculative_args, token_to_map)
     }
 
-    // FIXME: Rename to descend_into_macros_single
-    pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
+    pub fn descend_into_macros_single(&self, token: SyntaxToken) -> SyntaxToken {
         self.imp.descend_into_macros(token).pop().unwrap()
     }
 
-    // FIXME: Rename to descend_into_macros
-    pub fn descend_into_macros_many(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
+    pub fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         self.imp.descend_into_macros(token)
     }
 

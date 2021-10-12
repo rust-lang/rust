@@ -52,7 +52,7 @@ pub fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> 
         // if the cursor is sandwiched between two space tokens and the call is unclosed
         // this prevents us from leaving the CallExpression
         .and_then(|tok| algo::skip_trivia_token(tok, Direction::Prev))?;
-    let token = sema.descend_into_macros(token);
+    let token = sema.descend_into_macros_single(token);
 
     let (callable, active_parameter) = call_info_impl(&sema, token)?;
 
