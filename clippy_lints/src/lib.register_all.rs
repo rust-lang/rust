@@ -118,6 +118,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(map_unit_fn::OPTION_MAP_UNIT_FN),
     LintId::of(map_unit_fn::RESULT_MAP_UNIT_FN),
     LintId::of(match_result_ok::MATCH_RESULT_OK),
+    LintId::of(match_str_case_mismatch::MATCH_STR_CASE_MISMATCH),
     LintId::of(matches::INFALLIBLE_DESTRUCTURING_MATCH),
     LintId::of(matches::MATCH_AS_REF),
     LintId::of(matches::MATCH_LIKE_MATCHES_MACRO),

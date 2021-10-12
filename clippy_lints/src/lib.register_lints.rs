@@ -226,6 +226,7 @@ store.register_lints(&[
     map_unit_fn::RESULT_MAP_UNIT_FN,
     match_on_vec_items::MATCH_ON_VEC_ITEMS,
     match_result_ok::MATCH_RESULT_OK,
+    match_str_case_mismatch::MATCH_STR_CASE_MISMATCH,
     matches::INFALLIBLE_DESTRUCTURING_MATCH,
     matches::MATCH_AS_REF,
     matches::MATCH_BOOL,
