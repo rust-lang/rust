@@ -156,11 +156,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         spans.dedup_by_key(|span| (span.lo(), span.hi()));
 
         // We try to make the output have fewer overlapping spans if possible.
-        let (require_msg, require_span) = if sup_origin.span().overlaps(return_sp) {
-            ("...is captured and required to live as long as `'static` here", sup_origin.span())
+        let require_msg = if spans.is_empty() {
+            "...is captured and required to live as long as `'static` here"
         } else {
-            ("...and is required to live as long as `'static` here", return_sp)
+            "...and is required to live as long as `'static` here"
         };
+        let require_span =
+            if sup_origin.span().overlaps(return_sp) { sup_origin.span() } else { return_sp };
 
         for span in &spans {
             err.span_label(*span, "...is captured here...");
