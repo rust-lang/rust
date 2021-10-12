@@ -339,7 +339,10 @@ Otherwise, have a great day =^.^=
                             <span class="label label-default label-applicability">{{lint.applicability.applicability}}</span>
                             <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.Applicability.html#variants">(?)</a>
                         </div>
-                        <!-- TODO xFrednet 2021-05-19: Somehow collect and show the version See rust-clippy#6492 -->
+                        <!-- Clippy version -->
+                        <div class="lint-additional-info-item">
+                            Rust version: <span class="label label-default label-applicability">{{lint.version}}</span>
+                        </div>
                         <!-- Open related issues -->
                         <div class="lint-additional-info-item">
                             <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{{lint.id}}">Related Issues</a>

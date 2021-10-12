@@ -18,6 +18,7 @@ static DEC_CLIPPY_LINT_RE: SyncLazy<Regex> = SyncLazy::new(|| {
         r#"(?x)
     declare_clippy_lint!\s*[\{(]
     (?:\s+///.*)*
+    (?:\s*\#\[clippy::version\s*=\s*"[^"]*"\])?
     \s+pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
     (?P<cat>[a-z_]+)\s*,\s*
     "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]

@@ -146,7 +146,7 @@ declare_clippy_lint! {
     ///     "docs": " ### What it does\nCollects metadata about clippy lints for the website. [...] "
     /// }
     /// ```
-    #[clippy::version = "0.1.56"]
+    #[clippy::version = "1.56.0"]
     pub INTERNAL_METADATA_COLLECTOR,
     internal_warn,
     "A busy bee collection metadata about lints"
