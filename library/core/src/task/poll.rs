@@ -97,7 +97,7 @@ impl<T> Poll<T> {
     /// Extracts the successful type of a [`Poll<T>`].
     ///
     /// When combined with the `?` operator, this function will
-    /// propogate any [`Poll::Pending`] values to the caller, and
+    /// propagate any [`Poll::Pending`] values to the caller, and
     /// extract the `T` from [`Poll::Ready`].
     ///
     /// # Examples
