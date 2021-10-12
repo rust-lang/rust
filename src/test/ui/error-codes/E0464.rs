@@ -4,7 +4,7 @@
 
 // normalize-stderr-test: "\.nll/" -> "/"
 // normalize-stderr-test: "\\\?\\" -> ""
-// normalize-stderr-test: "libcrateresolve1-([123])\.[a-z]+" -> "libcrateresolve1-$1.somelib"
+// normalize-stderr-test: "(lib)?crateresolve1-([123])\.[a-z]+" -> "libcrateresolve1-$2.somelib"
 
 // NOTE: This test is duplicated from `src/test/ui/crate-loading/crateresolve1.rs`.
 
