@@ -659,11 +659,13 @@ dependencies = [
  "profile",
  "rayon",
  "rustc-hash",
+ "sourcegen",
  "stdx",
  "syntax",
  "test_utils",
  "text_edit",
  "tracing",
+ "xshell",
 ]
 
 [[package]]
