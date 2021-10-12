@@ -16,7 +16,7 @@ fn main() {
     let bad = unsafe { transmute::<i32, *const u8>(-x) };
 
     // Force it through the Memory::write_primval code.
-    Box::new(bad);
+    drop(Box::new(bad));
 }
 
 #[cfg(not(target_pointer_width = "32"))]
