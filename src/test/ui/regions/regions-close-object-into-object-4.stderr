@@ -6,6 +6,13 @@ LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
 LL |     Box::new(B(&*v)) as Box<dyn X>
    |                ^^^ ...is captured and required to live as long as `'static` here
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/regions-close-object-into-object-4.rs:8:40
+   |
+LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
+   |                                        ^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ------------------------------ because of this returned expression
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
    |
 LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'a> {

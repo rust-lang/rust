@@ -140,6 +140,13 @@ LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
    |               |
    |               this data with an anonymous lifetime `'_`...
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/must_outlive_least_region_or_bound.rs:14:24
+   |
+LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
+   |                        ^^^^^^^^^^^^^^   ----------- because of this returned expression
+   |                        |
+   |                        requirement introduced by this return type
 help: to declare that the trait object captures data from argument `x`, you can add an explicit `'_` lifetime bound
    |
 LL | fn elided3(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
@@ -153,6 +160,13 @@ LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
    |                     |
    |                     this data with lifetime `'a`...
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/must_outlive_least_region_or_bound.rs:16:33
+   |
+LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
+   |                                 ^^^^^^^^^^^^^^   ----------- because of this returned expression
+   |                                 |
+   |                                 requirement introduced by this return type
 help: to declare that the trait object captures data from argument `x`, you can add an explicit `'a` lifetime bound
    |
 LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug + 'a> { Box::new(x) }
@@ -166,6 +180,13 @@ LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |               |
    |               this data with an anonymous lifetime `'_`...
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/must_outlive_least_region_or_bound.rs:18:24
+   |
+LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^   ----------- because of this returned expression
+   |                        |
+   |                        requirement introduced by this return type
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `x`
    |
 LL | fn elided4(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
@@ -181,6 +202,13 @@ error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime
 LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |                     ------- this data with lifetime `'a`...         ^ ...is captured and required to live as long as `'static` here
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/must_outlive_least_region_or_bound.rs:20:33
+   |
+LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^   ----------- because of this returned expression
+   |                                 |
+   |                                 requirement introduced by this return type
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `x`
    |
 LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'a> { Box::new(x) }

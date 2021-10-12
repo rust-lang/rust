@@ -181,6 +181,26 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         if let SubregionOrigin::RelateParamBound(_, _, Some(bound)) = sub_origin {
             err.span_note(*bound, "`'static` lifetime requirement introduced by this bound");
         }
+        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = sub_origin {
+            if let ObligationCauseCode::BlockTailExpression(hir_id) = &cause.code {
+                let parent_id = tcx.hir().get_parent_item(*hir_id);
+                if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(parent_id) {
+                    let mut span: MultiSpan = fn_decl.output.span().into();
+                    span.push_span_label(
+                        fn_decl.output.span(),
+                        "requirement introduced by this return type".to_string(),
+                    );
+                    span.push_span_label(
+                        cause.span,
+                        "because of this returned expression".to_string(),
+                    );
+                    err.span_note(
+                        span,
+                        "`'static` lifetime requirement introduced by the return type",
+                    );
+                }
+            }
+        }
 
         let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
 

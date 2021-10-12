@@ -6,6 +6,15 @@ LL | fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
 ...
 LL |     bar(foo, x)
    |         ^^^  - ...is captured and required to live as long as `'static` here
+   |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/project-fn-ret-invariant.rs:45:32
+   |
+LL | fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
+   |                                ^^^^^^^^^^^^^ requirement introduced by this return type
+...
+LL |     bar(foo, x)
+   |     ----------- because of this returned expression
 
 error: aborting due to previous error
 

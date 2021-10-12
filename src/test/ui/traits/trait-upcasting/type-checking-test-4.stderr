@@ -46,6 +46,14 @@ note: ...and is required to live as long as `'static` here
    |
 LL |     y.get_b() // ERROR
    |     ^^^^^^^^^
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/type-checking-test-4.rs:26:40
+   |
+LL | fn test_wrong3<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                                        ^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+...
+LL |     y.get_b() // ERROR
+   |     --------- because of this returned expression
 
 error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/type-checking-test-4.rs:33:5
@@ -54,6 +62,14 @@ LL | fn test_wrong4<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
    |                       ------------ this data with lifetime `'a`...
 LL |     <_ as Bar>::get_b(x) // ERROR
    |     ^^^^^^^^^^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/type-checking-test-4.rs:32:40
+   |
+LL | fn test_wrong4<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                                        ^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+LL |     <_ as Bar>::get_b(x) // ERROR
+   |     -------------------- because of this returned expression
 
 error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/type-checking-test-4.rs:38:15
@@ -62,6 +78,14 @@ LL | fn test_wrong5<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
    |                       ------------ this data with lifetime `'a`...
 LL |     <_ as Bar<'_, '_>>::get_b(x) // ERROR
    |     ----------^^------------- ...is captured and required to live as long as `'static` here
+   |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/type-checking-test-4.rs:37:40
+   |
+LL | fn test_wrong5<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                                        ^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+LL |     <_ as Bar<'_, '_>>::get_b(x) // ERROR
+   |     ---------------------------- because of this returned expression
 
 error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/type-checking-test-4.rs:43:27
@@ -84,6 +108,14 @@ note: ...and is required to live as long as `'static` here
    |
 LL |     z.get_b() // ERROR
    |     ^^^^^^^^^
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/type-checking-test-4.rs:42:40
+   |
+LL | fn test_wrong6<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                                        ^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+...
+LL |     z.get_b() // ERROR
+   |     --------- because of this returned expression
 
 error: aborting due to 6 previous errors
 

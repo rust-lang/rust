@@ -23,6 +23,13 @@ LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
 LL |     Box::new(v)
    |              ^ ...is captured and required to live as long as `'static` here
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/region-object-lifetime-in-coercion.rs:12:19
+   |
+LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+LL |     Box::new(v)
+   |     ----------- because of this returned expression
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
    |
 LL | fn b(v: &[u8]) -> Box<dyn Foo + '_> {
@@ -41,6 +48,14 @@ LL | fn c(v: &[u8]) -> Box<dyn Foo> {
 LL |     Box::new(v)
    |              ^ ...is captured and required to live as long as `'static` here
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/region-object-lifetime-in-coercion.rs:16:19
+   |
+LL | fn c(v: &[u8]) -> Box<dyn Foo> {
+   |                   ^^^^^^^^^^^^ requirement introduced by this return type
+...
+LL |     Box::new(v)
+   |     ----------- because of this returned expression
 help: to declare that the trait object captures data from argument `v`, you can add an explicit `'_` lifetime bound
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo + '_> {

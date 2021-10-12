@@ -7,6 +7,14 @@ LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
 LL |     ss.r
    |     ^^^^ ...is captured and required to live as long as `'static` here
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/object-lifetime-default-from-box-error.rs:14:33
+   |
+LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
+   |                                 ^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+...
+LL |     ss.r
+   |     ---- because of this returned expression
 help: to declare that the trait object captures data from argument `ss`, you can add an explicit `'_` lifetime bound
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait + '_> {
