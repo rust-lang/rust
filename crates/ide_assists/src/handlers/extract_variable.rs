@@ -31,6 +31,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
     if ctx.frange.range.is_empty() {
         return None;
     }
+
     let node = match ctx.covering_element() {
         NodeOrToken::Node(it) => it,
         NodeOrToken::Token(it) if it.kind() == COMMENT => {
@@ -238,7 +239,7 @@ fn foo() {
             extract_variable,
             r#"
 fn foo() {
-    $01 + 1$0;
+  $0  1 + 1$0;
 }"#,
             r#"
 fn foo() {
@@ -247,12 +248,12 @@ fn foo() {
         );
         check_assist(
             extract_variable,
-            "
+            r"
 fn foo() {
     $0{ let x = 0; x }$0
     something_else();
 }",
-            "
+            r"
 fn foo() {
     let $0var_name = { let x = 0; x };
     something_else();
@@ -264,11 +265,11 @@ fn foo() {
     fn test_extract_var_part_of_expr_stmt() {
         check_assist(
             extract_variable,
-            "
+            r"
 fn foo() {
     $01$0 + 1;
 }",
-            "
+            r"
 fn foo() {
     let $0var_name = 1;
     var_name + 1;

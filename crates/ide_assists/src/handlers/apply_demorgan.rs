@@ -33,7 +33,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         _ => return None,
     };
 
-    let cursor_in_range = op_range.contains_range(ctx.frange.range);
+    let cursor_in_range = op_range.contains_range(ctx.selection_trimmed());
     if !cursor_in_range {
         return None;
     }

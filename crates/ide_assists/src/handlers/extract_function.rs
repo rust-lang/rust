@@ -56,7 +56,7 @@ type FxIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<FxHasher>>;
 // }
 // ```
 pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let range = ctx.frange.range;
+    let range = ctx.selection_trimmed();
     if range.is_empty() {
         return None;
     }
