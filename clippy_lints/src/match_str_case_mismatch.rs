@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// The arm is unreachable, which is likely a mistake
     ///
     /// ### Example
-    /// ```rust
+    /// ```rust,no_run
     /// match &*text.to_ascii_lowercase() {
     ///     "foo" => {},
     ///     "Bar" => {},
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```rust,no_run
     /// match &*text.to_ascii_lowercase() {
     ///     "foo" => {},
     ///     "bar" => {},
