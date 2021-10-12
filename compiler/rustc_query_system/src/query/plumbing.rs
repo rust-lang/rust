@@ -26,24 +26,15 @@ use std::hash::{Hash, Hasher};
 use std::mem;
 use std::num::NonZeroU32;
 use std::ptr;
-#[cfg(debug_assertions)]
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct QueryCacheStore<C: QueryCache> {
     cache: C,
     shards: Sharded<C::Sharded>,
-    #[cfg(debug_assertions)]
-    pub cache_hits: AtomicUsize,
 }
 
 impl<C: QueryCache + Default> Default for QueryCacheStore<C> {
     fn default() -> Self {
-        Self {
-            cache: C::default(),
-            shards: Default::default(),
-            #[cfg(debug_assertions)]
-            cache_hits: AtomicUsize::new(0),
-        }
+        Self { cache: C::default(), shards: Default::default() }
     }
 }
 
@@ -377,10 +368,6 @@ where
         if unlikely!(tcx.profiler().enabled()) {
             tcx.profiler().query_cache_hit(index.into());
         }
-        #[cfg(debug_assertions)]
-        {
-            cache.cache_hits.fetch_add(1, Ordering::Relaxed);
-        }
         tcx.dep_graph().read_index(index);
         on_hit(value)
     })
@@ -428,10 +415,6 @@ where
 
             if unlikely!(tcx.dep_context().profiler().enabled()) {
                 tcx.dep_context().profiler().query_cache_hit(index.into());
-            }
-            #[cfg(debug_assertions)]
-            {
-                cache.cache_hits.fetch_add(1, Ordering::Relaxed);
             }
             query_blocked_prof_timer.finish_with_query_invocation_id(index.into());
 
@@ -540,7 +523,7 @@ where
         // We always expect to find a cached result for things that
         // can be forced from `DepNode`.
         debug_assert!(
-            !dep_node.kind.can_reconstruct_query_key() || result.is_some(),
+            !dep_node.kind.fingerprint_style().reconstructible() || result.is_some(),
             "missing on-disk cache entry for {:?}",
             dep_node
         );
@@ -705,10 +688,6 @@ where
         if unlikely!(tcx.dep_context().profiler().enabled()) {
             tcx.dep_context().profiler().query_cache_hit(index.into());
         }
-        #[cfg(debug_assertions)]
-        {
-            cache.cache_hits.fetch_add(1, Ordering::Relaxed);
-        }
     });
 
     let lookup = match cached {
@@ -778,7 +757,7 @@ where
         return false;
     }
 
-    if !<Q::Key as DepNodeParams<CTX::DepContext>>::can_reconstruct_query_key() {
+    if !<Q::Key as DepNodeParams<CTX::DepContext>>::fingerprint_style().reconstructible() {
         return false;
     }
 

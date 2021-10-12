@@ -161,7 +161,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     Ok(Some(EvaluatedCandidate { candidate: c, evaluation: eval }))
                 }
                 Ok(_) => Ok(None),
-                Err(OverflowError::Cannonical) => Err(Overflow),
+                Err(OverflowError::Canonical) => Err(Overflow),
                 Err(OverflowError::ErrorReporting) => Err(ErrorReporting),
             })
             .flat_map(Result::transpose)

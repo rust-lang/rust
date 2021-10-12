@@ -550,8 +550,13 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMRustDIBuilderCreateDebugLocation(line, col, scope, inlined_at) }
     }
 
-    fn create_vtable_metadata(&self, ty: Ty<'tcx>, vtable: Self::Value) {
-        metadata::create_vtable_metadata(self, ty, vtable)
+    fn create_vtable_metadata(
+        &self,
+        ty: Ty<'tcx>,
+        trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        vtable: Self::Value,
+    ) {
+        metadata::create_vtable_metadata(self, ty, trait_ref, vtable)
     }
 
     fn extend_scope_to_file(

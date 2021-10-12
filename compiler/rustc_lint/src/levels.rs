@@ -1,7 +1,6 @@
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
 use rustc_ast as ast;
-use rustc_ast::unwrap_or;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
@@ -233,7 +232,10 @@ impl<'s> LintLevelsBuilder<'s> {
                 Some(lvl) => lvl,
             };
 
-            let mut metas = unwrap_or!(attr.meta_item_list(), continue);
+            let mut metas = match attr.meta_item_list() {
+                Some(x) => x,
+                None => continue,
+            };
 
             if metas.is_empty() {
                 // FIXME (#55112): issue unused-attributes lint for `#[level()]`

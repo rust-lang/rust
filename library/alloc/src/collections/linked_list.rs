@@ -417,6 +417,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[rustc_const_stable(feature = "const_linked_list_new", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub const fn new() -> Self {
         LinkedList { head: None, tail: None, len: 0, marker: PhantomData }
     }
@@ -1384,6 +1385,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// The lifetime of the returned `Cursor` is bound to that of the
     /// `CursorMut`, which means it cannot outlive the `CursorMut` and that the
     /// `CursorMut` is frozen for the lifetime of the `Cursor`.
+    #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn as_cursor(&self) -> Cursor<'_, T> {
         Cursor { list: self.list, current: self.current, index: self.index }

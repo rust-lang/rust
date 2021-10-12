@@ -469,6 +469,8 @@ macro_rules! wrapping_int_impl {
             #[inline]
             #[doc(alias = "popcount")]
             #[doc(alias = "popcnt")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn count_ones(self) -> u32 {
                 self.0.count_ones()
@@ -487,6 +489,8 @@ macro_rules! wrapping_int_impl {
             #[doc = concat!("assert_eq!(Wrapping(!0", stringify!($t), ").count_zeros(), 0);")]
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn count_zeros(self) -> u32 {
                 self.0.count_zeros()
@@ -507,6 +511,8 @@ macro_rules! wrapping_int_impl {
             /// assert_eq!(n.trailing_zeros(), 3);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn trailing_zeros(self) -> u32 {
                 self.0.trailing_zeros()
@@ -533,6 +539,8 @@ macro_rules! wrapping_int_impl {
             /// assert_eq!(n.rotate_left(32), m);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn rotate_left(self, n: u32) -> Self {
                 Wrapping(self.0.rotate_left(n))
@@ -559,6 +567,8 @@ macro_rules! wrapping_int_impl {
             /// assert_eq!(n.rotate_right(4), m);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn rotate_right(self, n: u32) -> Self {
                 Wrapping(self.0.rotate_right(n))
@@ -583,6 +593,8 @@ macro_rules! wrapping_int_impl {
             /// assert_eq!(m, Wrapping(21760));
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn swap_bytes(self) -> Self {
                 Wrapping(self.0.swap_bytes())
@@ -610,8 +622,9 @@ macro_rules! wrapping_int_impl {
             /// ```
             #[stable(feature = "reverse_bits", since = "1.37.0")]
             #[rustc_const_stable(feature = "const_reverse_bits", since = "1.37.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
-            #[must_use]
             pub const fn reverse_bits(self) -> Self {
                 Wrapping(self.0.reverse_bits())
             }
@@ -638,6 +651,7 @@ macro_rules! wrapping_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn from_be(x: Self) -> Self {
                 Wrapping(<$t>::from_be(x.0))
@@ -665,6 +679,7 @@ macro_rules! wrapping_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn from_le(x: Self) -> Self {
                 Wrapping(<$t>::from_le(x.0))
@@ -692,6 +707,8 @@ macro_rules! wrapping_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn to_be(self) -> Self {
                 Wrapping(self.0.to_be())
@@ -719,6 +736,8 @@ macro_rules! wrapping_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn to_le(self) -> Self {
                 Wrapping(self.0.to_le())
@@ -747,6 +766,8 @@ macro_rules! wrapping_int_impl {
             /// assert_eq!(Wrapping(3i8).pow(6), Wrapping(-39));
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub fn pow(self, exp: u32) -> Self {
                 Wrapping(self.0.wrapping_pow(exp))
@@ -775,6 +796,8 @@ macro_rules! wrapping_int_impl_signed {
             /// assert_eq!(n.leading_zeros(), 3);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn leading_zeros(self) -> u32 {
                 self.0.leading_zeros()
@@ -801,6 +824,8 @@ macro_rules! wrapping_int_impl_signed {
             /// assert_eq!(Wrapping(-128i8).abs().0 as u8, 128u8);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub fn abs(self) -> Wrapping<$t> {
                 Wrapping(self.0.wrapping_abs())
@@ -825,6 +850,8 @@ macro_rules! wrapping_int_impl_signed {
             #[doc = concat!("assert_eq!(Wrapping(-10", stringify!($t), ").signum(), Wrapping(-1));")]
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub fn signum(self) -> Wrapping<$t> {
                 Wrapping(self.0.signum())
@@ -844,6 +871,7 @@ macro_rules! wrapping_int_impl_signed {
             #[doc = concat!("assert!(Wrapping(10", stringify!($t), ").is_positive());")]
             #[doc = concat!("assert!(!Wrapping(-10", stringify!($t), ").is_positive());")]
             /// ```
+            #[must_use]
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn is_positive(self) -> bool {
@@ -864,6 +892,7 @@ macro_rules! wrapping_int_impl_signed {
             #[doc = concat!("assert!(Wrapping(-10", stringify!($t), ").is_negative());")]
             #[doc = concat!("assert!(!Wrapping(10", stringify!($t), ").is_negative());")]
             /// ```
+            #[must_use]
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn is_negative(self) -> bool {
@@ -893,6 +922,8 @@ macro_rules! wrapping_int_impl_unsigned {
             /// assert_eq!(n.leading_zeros(), 2);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn leading_zeros(self) -> u32 {
                 self.0.leading_zeros()
@@ -911,6 +942,7 @@ macro_rules! wrapping_int_impl_unsigned {
             #[doc = concat!("assert!(Wrapping(16", stringify!($t), ").is_power_of_two());")]
             #[doc = concat!("assert!(!Wrapping(10", stringify!($t), ").is_power_of_two());")]
             /// ```
+            #[must_use]
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub fn is_power_of_two(self) -> bool {
@@ -935,6 +967,8 @@ macro_rules! wrapping_int_impl_unsigned {
             #[doc = concat!("assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));")]
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
                        reason = "needs decision on wrapping behaviour")]
             pub fn next_power_of_two(self) -> Self {

@@ -2,7 +2,7 @@ use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
     inline, Clean, Crate, ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item,
-    ItemKind, Lifetime, Path, PathSegment, PolyTrait, Primitive, PrimitiveType, ResolvedPath, Type,
+    ItemKind, Lifetime, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type,
     TypeBinding, Visibility,
 };
 use crate::core::DocContext;
@@ -147,7 +147,6 @@ pub(super) fn external_path(
     let def_kind = cx.tcx.def_kind(did);
     let name = cx.tcx.item_name(did);
     Path {
-        global: false,
         res: Res::Def(def_kind, did),
         segments: vec![PathSegment {
             name,
@@ -156,39 +155,8 @@ pub(super) fn external_path(
     }
 }
 
-crate fn strip_type(ty: Type) -> Type {
-    match ty {
-        Type::ResolvedPath { path, did } => Type::ResolvedPath { path: strip_path(&path), did },
-        Type::DynTrait(mut bounds, lt) => {
-            let first = bounds.remove(0);
-            let stripped_trait = strip_type(first.trait_);
-
-            bounds.insert(
-                0,
-                PolyTrait { trait_: stripped_trait, generic_params: first.generic_params },
-            );
-            Type::DynTrait(bounds, lt)
-        }
-        Type::Tuple(inner_tys) => {
-            Type::Tuple(inner_tys.iter().map(|t| strip_type(t.clone())).collect())
-        }
-        Type::Slice(inner_ty) => Type::Slice(Box::new(strip_type(*inner_ty))),
-        Type::Array(inner_ty, s) => Type::Array(Box::new(strip_type(*inner_ty)), s),
-        Type::RawPointer(m, inner_ty) => Type::RawPointer(m, Box::new(strip_type(*inner_ty))),
-        Type::BorrowedRef { lifetime, mutability, type_ } => {
-            Type::BorrowedRef { lifetime, mutability, type_: Box::new(strip_type(*type_)) }
-        }
-        Type::QPath { name, self_type, trait_, self_def_id } => Type::QPath {
-            name,
-            self_def_id,
-            self_type: Box::new(strip_type(*self_type)),
-            trait_: Box::new(strip_type(*trait_)),
-        },
-        _ => ty,
-    }
-}
-
-crate fn strip_path(path: &Path) -> Path {
+/// Remove the generic arguments from a path.
+crate fn strip_path_generics(path: Path) -> Path {
     let segments = path
         .segments
         .iter()
@@ -198,7 +166,7 @@ crate fn strip_path(path: &Path) -> Path {
         })
         .collect();
 
-    Path { global: path.global, res: path.res, segments }
+    Path { res: path.res, segments }
 }
 
 crate fn qpath_to_string(p: &hir::QPath<'_>) -> String {

@@ -259,6 +259,7 @@ impl u8 {
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.43.0")]
     #[inline]
@@ -282,6 +283,7 @@ impl u8 {
     /// ```
     ///
     /// [`make_ascii_uppercase`]: Self::make_ascii_uppercase
+    #[must_use = "to uppercase the value in-place, use `make_ascii_uppercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
@@ -306,6 +308,7 @@ impl u8 {
     /// ```
     ///
     /// [`make_ascii_lowercase`]: Self::make_ascii_lowercase
+    #[must_use = "to lowercase the value in-place, use `make_ascii_lowercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
@@ -417,6 +420,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_alphabetic());
     /// assert!(!esc.is_ascii_alphabetic());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -450,6 +454,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_uppercase());
     /// assert!(!esc.is_ascii_uppercase());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -483,6 +488,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_lowercase());
     /// assert!(!esc.is_ascii_lowercase());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -519,6 +525,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_alphanumeric());
     /// assert!(!esc.is_ascii_alphanumeric());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -552,6 +559,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_digit());
     /// assert!(!esc.is_ascii_digit());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -588,6 +596,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_hexdigit());
     /// assert!(!esc.is_ascii_hexdigit());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -625,6 +634,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_punctuation());
     /// assert!(!esc.is_ascii_punctuation());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -658,6 +668,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_graphic());
     /// assert!(!esc.is_ascii_graphic());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -708,6 +719,7 @@ impl u8 {
     /// assert!(lf.is_ascii_whitespace());
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -743,6 +755,7 @@ impl u8 {
     /// assert!(lf.is_ascii_control());
     /// assert!(esc.is_ascii_control());
     /// ```
+    #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
@@ -769,6 +782,8 @@ impl u8 {
     /// assert_eq!("\\\\", b'\\'.escape_ascii().to_string());
     /// assert_eq!("\\x9d", b'\x9d'.escape_ascii().to_string());
     /// ```
+    #[must_use = "this returns the escaped byte as an iterator, \
+                  without modifying the original"]
     #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
     #[inline]
     pub fn escape_ascii(&self) -> ascii::EscapeDefault {

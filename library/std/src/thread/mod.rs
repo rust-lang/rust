@@ -412,9 +412,9 @@ impl Builder {
     ///
     /// # Safety
     ///
-    /// The caller has to ensure that no references in the supplied thread closure
-    /// or its return type can outlive the spawned thread's lifetime. This can be
-    /// guaranteed in two ways:
+    /// The caller has to ensure that the spawned thread does not outlive any
+    /// references in the supplied thread closure and its return type.
+    /// This can be guaranteed in two ways:
     ///
     /// - ensure that [`join`][`JoinHandle::join`] is called before any referenced
     /// data is dropped
@@ -1031,6 +1031,7 @@ impl ThreadId {
     /// value is entirely opaque -- only equality testing is stable. Note that
     /// it is not guaranteed which values new threads will return, and this may
     /// change across Rust versions.
+    #[must_use]
     #[unstable(feature = "thread_id_value", issue = "67939")]
     pub fn as_u64(&self) -> NonZeroU64 {
         self.0

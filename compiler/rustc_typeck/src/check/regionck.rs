@@ -413,7 +413,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
             }
 
             hir::ExprKind::Match(ref discr, arms, _) => {
-                self.link_match(discr, &arms[..]);
+                self.link_match(discr, arms);
 
                 intravisit::walk_expr(self, expr);
             }

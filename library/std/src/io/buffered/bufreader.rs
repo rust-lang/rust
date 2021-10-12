@@ -242,14 +242,13 @@ impl<R: Seek> BufReader<R> {
                 self.pos = new_pos as usize;
                 return Ok(());
             }
-        } else {
-            if let Some(new_pos) = pos.checked_add(offset as u64) {
-                if new_pos <= self.cap as u64 {
-                    self.pos = new_pos as usize;
-                    return Ok(());
-                }
+        } else if let Some(new_pos) = pos.checked_add(offset as u64) {
+            if new_pos <= self.cap as u64 {
+                self.pos = new_pos as usize;
+                return Ok(());
             }
         }
+
         self.seek(SeekFrom::Current(offset)).map(drop)
     }
 }
@@ -307,6 +306,51 @@ impl<R: Read> Read for BufReader<R> {
     // we can't skip unconditionally because of the large buffer case in read.
     unsafe fn initializer(&self) -> Initializer {
         self.inner.initializer()
+    }
+
+    // The inner reader might have an optimized `read_to_end`. Drain our buffer and then
+    // delegate to the inner implementation.
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let nread = self.cap - self.pos;
+        buf.extend_from_slice(&self.buf[self.pos..self.cap]);
+        self.discard_buffer();
+        Ok(nread + self.inner.read_to_end(buf)?)
+    }
+
+    // The inner reader might have an optimized `read_to_end`. Drain our buffer and then
+    // delegate to the inner implementation.
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        // In the general `else` case below we must read bytes into a side buffer, check
+        // that they are valid UTF-8, and then append them to `buf`. This requires a
+        // potentially large memcpy.
+        //
+        // If `buf` is empty--the most common case--we can leverage `append_to_string`
+        // to read directly into `buf`'s internal byte buffer, saving an allocation and
+        // a memcpy.
+        if buf.is_empty() {
+            // `append_to_string`'s safety relies on the buffer only being appended to since
+            // it only checks the UTF-8 validity of new data. If there were existing content in
+            // `buf` then an untrustworthy reader (i.e. `self.inner`) could not only append
+            // bytes but also modify existing bytes and render them invalid. On the other hand,
+            // if `buf` is empty then by definition any writes must be appends and
+            // `append_to_string` will validate all of the new bytes.
+            unsafe { crate::io::append_to_string(buf, |b| self.read_to_end(b)) }
+        } else {
+            // We cannot append our byte buffer directly onto the `buf` String as there could
+            // be an incomplete UTF-8 sequence that has only been partially read. We must read
+            // everything into a side buffer first and then call `from_utf8` on the complete
+            // buffer.
+            let mut bytes = Vec::new();
+            self.read_to_end(&mut bytes)?;
+            let string = crate::str::from_utf8(&bytes).map_err(|_| {
+                io::Error::new_const(
+                    io::ErrorKind::InvalidData,
+                    &"stream did not contain valid UTF-8",
+                )
+            })?;
+            *buf += string;
+            Ok(string.len())
+        }
     }
 }
 

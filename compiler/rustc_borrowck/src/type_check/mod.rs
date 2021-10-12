@@ -1153,28 +1153,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         .convert_all(data);
     }
 
-    /// Convenient wrapper around `relate_tys::relate_types` -- see
-    /// that fn for docs.
-    fn relate_types(
-        &mut self,
-        a: Ty<'tcx>,
-        v: ty::Variance,
-        b: Ty<'tcx>,
-        locations: Locations,
-        category: ConstraintCategory,
-    ) -> Fallible<()> {
-        relate_tys::relate_types(
-            self.infcx,
-            self.param_env,
-            a,
-            v,
-            b,
-            locations,
-            category,
-            self.borrowck_context,
-        )
-    }
-
     /// Try to relate `sub <: sup`
     fn sub_types(
         &mut self,

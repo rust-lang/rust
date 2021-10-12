@@ -634,18 +634,15 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn drain<'a, R: RangeBounds<usize>>(
-        &'a mut self,
-        range: R,
-    ) -> impl Iterator<Item = T> + 'a {
+    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = T> + '_ {
         self.raw.drain(range)
     }
 
     #[inline]
-    pub fn drain_enumerated<'a, R: RangeBounds<usize>>(
-        &'a mut self,
+    pub fn drain_enumerated<R: RangeBounds<usize>>(
+        &mut self,
         range: R,
-    ) -> impl Iterator<Item = (I, T)> + 'a {
+    ) -> impl Iterator<Item = (I, T)> + '_ {
         self.raw.drain(range).enumerate().map(|(n, t)| (I::new(n), t))
     }
 
@@ -740,6 +737,12 @@ impl<I: Idx, T> IndexVec<I, Option<T>> {
     pub fn get_or_insert_with(&mut self, index: I, value: impl FnOnce() -> T) -> &mut T {
         self.ensure_contains_elem(index, || None);
         self[index].get_or_insert_with(value)
+    }
+
+    #[inline]
+    pub fn remove(&mut self, index: I) -> Option<T> {
+        self.ensure_contains_elem(index, || None);
+        self[index].take()
     }
 }
 

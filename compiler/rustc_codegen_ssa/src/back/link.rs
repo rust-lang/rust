@@ -843,19 +843,18 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         let msg_bus = "clang: error: unable to execute command: Bus error: 10";
         if out.contains(msg_segv) || out.contains(msg_bus) {
             warn!(
+                ?cmd, %out,
                 "looks like the linker segfaulted when we tried to call it, \
-                 automatically retrying again. cmd = {:?}, out = {}.",
-                cmd, out,
+                 automatically retrying again",
             );
             continue;
         }
 
         if is_illegal_instruction(&output.status) {
             warn!(
+                ?cmd, %out, status = %output.status,
                 "looks like the linker hit an illegal instruction when we \
-                 tried to call it, automatically retrying again. cmd = {:?}, ]\
-                 out = {}, status = {}.",
-                cmd, out, output.status,
+                 tried to call it, automatically retrying again.",
             );
             continue;
         }

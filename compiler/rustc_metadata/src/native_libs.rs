@@ -363,7 +363,7 @@ impl Collector<'tcx> {
                 .collect::<Vec<_>>();
             if existing.is_empty() {
                 // Add if not found
-                let new_name = passed_lib.new_name.as_ref().map(|s| &**s); // &Option<String> -> Option<&str>
+                let new_name: Option<&str> = passed_lib.new_name.as_deref();
                 let lib = NativeLib {
                     name: Some(Symbol::intern(new_name.unwrap_or(&passed_lib.name))),
                     kind: passed_lib.kind,

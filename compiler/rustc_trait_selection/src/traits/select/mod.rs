@@ -900,7 +900,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Ok(None) => Ok(EvaluatedToAmbig),
-            Err(Overflow) => Err(OverflowError::Cannonical),
+            Err(Overflow) => Err(OverflowError::Canonical),
             Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
             Err(..) => Ok(EvaluatedToErr),
         }
@@ -1064,7 +1064,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.infcx.report_overflow_error(error_obligation, true);
                 }
                 TraitQueryMode::Canonical => {
-                    return Err(OverflowError::Cannonical);
+                    return Err(OverflowError::Canonical);
                 }
             }
         }

@@ -2,6 +2,6 @@
 
 fn main() {
     enum Void {}
-    std::rc::Weak::<Void>::new();
-    std::sync::Weak::<Void>::new();
+    let _ = std::rc::Weak::<Void>::new();
+    let _ = std::sync::Weak::<Void>::new();
 }

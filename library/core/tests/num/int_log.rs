@@ -96,6 +96,9 @@ fn checked_log10() {
     for i in 1..=u16::MAX {
         assert_eq!(i.checked_log10(), Some((i as f32).log10() as u32));
     }
+    for i in 1..=100_000u32 {
+        assert_eq!(i.checked_log10(), Some((i as f32).log10() as u32));
+    }
 }
 
 macro_rules! log10_loop {

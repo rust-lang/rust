@@ -772,9 +772,7 @@ h2.small-section-header > .anchor {
 .block a.current.crate { font-weight: 500; }
 
 .item-table {
-	display: table-row;
-	/* align content left */
-	justify-items: start;
+	display: table;
 }
 .item-row {
 	display: table-row;
@@ -1968,5 +1966,9 @@ details.undocumented[open] > summary::before {
 
 	.docblock {
 		margin-left: 12px;
+	}
+
+	.docblock code {
+		overflow-wrap: anywhere;
 	}
 }

@@ -126,6 +126,7 @@ impl<T> HashSet<T, RandomState> {
     /// let set: HashSet<i32> = HashSet::new();
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> HashSet<T, RandomState> {
         Default::default()
@@ -144,6 +145,7 @@ impl<T> HashSet<T, RandomState> {
     /// assert!(set.capacity() >= 10);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> HashSet<T, RandomState> {
         HashSet { base: base::HashSet::with_capacity_and_hasher(capacity, Default::default()) }

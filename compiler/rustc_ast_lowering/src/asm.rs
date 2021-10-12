@@ -202,39 +202,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let mut used_input_regs = FxHashMap::default();
         let mut used_output_regs = FxHashMap::default();
-        let mut required_features: Vec<&str> = vec![];
+
         for (idx, &(ref op, op_sp)) in operands.iter().enumerate() {
             if let Some(reg) = op.reg() {
-                // Make sure we don't accidentally carry features from the
-                // previous iteration.
-                required_features.clear();
-
                 let reg_class = reg.reg_class();
                 if reg_class == asm::InlineAsmRegClass::Err {
                     continue;
                 }
-
-                // We ignore target feature requirements for clobbers: if the
-                // feature is disabled then the compiler doesn't care what we
-                // do with the registers.
-                //
-                // Note that this is only possible for explicit register
-                // operands, which cannot be used in the asm string.
-                let is_clobber = matches!(
-                    op,
-                    hir::InlineAsmOperand::Out {
-                        reg: asm::InlineAsmRegOrRegClass::Reg(_),
-                        late: _,
-                        expr: None
-                    }
-                );
 
                 // Some register classes can only be used as clobbers. This
                 // means that we disallow passing a value in/out of the asm and
                 // require that the operand name an explicit register, not a
                 // register class.
                 if reg_class.is_clobber_only(asm_arch.unwrap())
-                    && !(is_clobber && matches!(reg, asm::InlineAsmRegOrRegClass::Reg(_)))
+                    && !(op.is_clobber() && matches!(reg, asm::InlineAsmRegOrRegClass::Reg(_)))
                 {
                     let msg = format!(
                         "register class `{}` can only be used as a clobber, \
@@ -243,47 +224,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     );
                     sess.struct_span_err(op_sp, &msg).emit();
                     continue;
-                }
-
-                if !is_clobber {
-                    // Validate register classes against currently enabled target
-                    // features. We check that at least one type is available for
-                    // the current target.
-                    for &(_, feature) in reg_class.supported_types(asm_arch.unwrap()) {
-                        if let Some(feature) = feature {
-                            if self.sess.target_features.contains(&Symbol::intern(feature)) {
-                                required_features.clear();
-                                break;
-                            } else {
-                                required_features.push(feature);
-                            }
-                        } else {
-                            required_features.clear();
-                            break;
-                        }
-                    }
-                    // We are sorting primitive strs here and can use unstable sort here
-                    required_features.sort_unstable();
-                    required_features.dedup();
-                    match &required_features[..] {
-                        [] => {}
-                        [feature] => {
-                            let msg = format!(
-                                "register class `{}` requires the `{}` target feature",
-                                reg_class.name(),
-                                feature
-                            );
-                            sess.struct_span_err(op_sp, &msg).emit();
-                        }
-                        features => {
-                            let msg = format!(
-                                "register class `{}` requires at least one target feature: {}",
-                                reg_class.name(),
-                                features.join(", ")
-                            );
-                            sess.struct_span_err(op_sp, &msg).emit();
-                        }
-                    }
                 }
 
                 // Check for conflicts between explicit register operands.

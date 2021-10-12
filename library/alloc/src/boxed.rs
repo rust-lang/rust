@@ -187,6 +187,7 @@ impl<T> Box<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn new(x: T) -> Self {
         box x
     }
@@ -211,6 +212,7 @@ impl<T> Box<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
+    #[must_use]
     #[inline]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         Self::new_uninit_in(Global)
@@ -237,6 +239,7 @@ impl<T> Box<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
+    #[must_use]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
         Self::new_zeroed_in(Global)
     }
@@ -245,6 +248,7 @@ impl<T> Box<T> {
     /// `x` will be pinned in memory and unable to be moved.
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
+    #[must_use]
     #[inline(always)]
     pub fn pin(x: T) -> Pin<Box<T>> {
         (box x).into()
@@ -339,6 +343,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
     #[inline]
     pub fn new_in(x: T, alloc: A) -> Self {
         let mut boxed = Self::new_uninit_in(alloc);
@@ -395,6 +400,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[cfg(not(no_global_oom_handling))]
+    #[must_use]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
@@ -459,6 +465,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[cfg(not(no_global_oom_handling))]
     // #[unstable(feature = "new_uninit", issue = "63291")]
+    #[must_use]
     pub fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
@@ -503,6 +510,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// `x` will be pinned in memory and unable to be moved.
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
     #[inline(always)]
     pub fn pin_in(x: T, alloc: A) -> Pin<Self>
     where
@@ -561,6 +569,7 @@ impl<T> Box<[T]> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
+    #[must_use]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         unsafe { RawVec::with_capacity(len).into_box(len) }
     }
@@ -585,6 +594,7 @@ impl<T> Box<[T]> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
+    #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
     }
@@ -681,6 +691,7 @@ impl<T, A: Allocator> Box<[T], A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
+    #[must_use]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
         unsafe { RawVec::with_capacity_in(len, alloc).into_box(len) }
     }
@@ -708,6 +719,7 @@ impl<T, A: Allocator> Box<[T], A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
+    #[must_use]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
         unsafe { RawVec::with_capacity_zeroed_in(len, alloc).into_box(len) }
     }
@@ -1277,6 +1289,7 @@ impl<T> From<T> for Box<T> {
     /// from the stack into it.
     ///
     /// # Examples
+    ///
     /// ```rust
     /// let x = 5;
     /// let boxed = Box::new(5);
@@ -1330,6 +1343,12 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_cow", since = "1.45.0")]
 impl<T: Copy> From<Cow<'_, [T]>> for Box<[T]> {
+    /// Converts a `Cow<'_, [T]>` into a `Box<[T]>`
+    ///
+    /// When `cow` is the `Cow::Borrowed` variant, this
+    /// conversion allocates on the heap and copies the
+    /// underlying slice. Otherwise, it will try to reuse the owned
+    /// `Vec`'s allocation.
     #[inline]
     fn from(cow: Cow<'_, [T]>) -> Box<[T]> {
         match cow {
@@ -1348,6 +1367,7 @@ impl From<&str> for Box<str> {
     /// and performs a copy of `s`.
     ///
     /// # Examples
+    ///
     /// ```rust
     /// let boxed: Box<str> = Box::from("hello");
     /// println!("{}", boxed);
@@ -1361,6 +1381,29 @@ impl From<&str> for Box<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_cow", since = "1.45.0")]
 impl From<Cow<'_, str>> for Box<str> {
+    /// Converts a `Cow<'_, str>` into a `Box<str>`
+    ///
+    /// When `cow` is the `Cow::Borrowed` variant, this
+    /// conversion allocates on the heap and copies the
+    /// underlying `str`. Otherwise, it will try to reuse the owned
+    /// `String`'s allocation.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::borrow::Cow;
+    ///
+    /// let unboxed = Cow::Borrowed("hello");
+    /// let boxed: Box<str> = Box::from(unboxed);
+    /// println!("{}", boxed);
+    /// ```
+    ///
+    /// ```rust
+    /// # use std::borrow::Cow;
+    /// let unboxed = Cow::Owned("hello".to_string());
+    /// let boxed: Box<str> = Box::from(unboxed);
+    /// println!("{}", boxed);
+    /// ```
     #[inline]
     fn from(cow: Cow<'_, str>) -> Box<str> {
         match cow {
@@ -1403,6 +1446,7 @@ impl<T, const N: usize> From<[T; N]> for Box<[T]> {
     /// This conversion moves the array to newly heap-allocated memory.
     ///
     /// # Examples
+    ///
     /// ```rust
     /// let boxed: Box<[u8]> = Box::from([4, 2]);
     /// println!("{:?}", boxed);
@@ -1416,6 +1460,15 @@ impl<T, const N: usize> From<[T; N]> for Box<[T]> {
 impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     type Error = Box<[T]>;
 
+    /// Attempts to convert a `Box<[T]>` into a `Box<[T; N]>`.
+    ///
+    /// The conversion occurs in-place and does not require a
+    /// new memory allocation.
+    ///
+    /// # Errors
+    ///
+    /// Returns the old `Box<[T]>` in the `Err` variant if
+    /// `boxed_slice.len()` does not equal `N`.
     fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
             Ok(unsafe { Box::from_raw(Box::into_raw(boxed_slice) as *mut [T; N]) })

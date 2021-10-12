@@ -31,6 +31,7 @@ mod tests;
 mod context;
 mod print_item;
 mod span_map;
+mod templates;
 mod write_shared;
 
 crate use context::*;
@@ -716,18 +717,12 @@ fn short_item_info(
 
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
-fn render_impls(
-    cx: &Context<'_>,
-    w: &mut Buffer,
-    traits: &[&&Impl],
-    containing_item: &clean::Item,
-) {
-    let cache = cx.cache();
+fn render_impls(cx: &Context<'_>, w: &mut Buffer, impls: &[&&Impl], containing_item: &clean::Item) {
     let tcx = cx.tcx();
-    let mut impls = traits
+    let mut rendered_impls = impls
         .iter()
         .map(|i| {
-            let did = i.trait_did_full(cache).unwrap();
+            let did = i.trait_did().unwrap();
             let provided_trait_methods = i.inner_impl().provided_trait_methods(tcx);
             let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_trait_methods);
             let mut buffer = if w.is_for_html() { Buffer::html() } else { Buffer::new() };
@@ -751,8 +746,8 @@ fn render_impls(
             buffer.into_inner()
         })
         .collect::<Vec<_>>();
-    impls.sort();
-    w.write_str(&impls.join(""));
+    rendered_impls.sort();
+    w.write_str(&rendered_impls.join(""));
 }
 
 fn naive_assoc_href(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>) -> String {
@@ -1097,13 +1092,11 @@ fn render_assoc_items(
         return;
     }
     if !traits.is_empty() {
-        let deref_impl = traits.iter().find(|t| {
-            t.inner_impl().trait_.def_id_full(cache) == cx.tcx().lang_items().deref_trait()
-        });
+        let deref_impl =
+            traits.iter().find(|t| t.trait_did() == cx.tcx().lang_items().deref_trait());
         if let Some(impl_) = deref_impl {
-            let has_deref_mut = traits.iter().any(|t| {
-                t.inner_impl().trait_.def_id_full(cache) == cx.tcx().lang_items().deref_mut_trait()
-            });
+            let has_deref_mut =
+                traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut);
         }
         let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) =
@@ -1221,45 +1214,39 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
 
 fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
     let mut out = Buffer::html();
-    let mut trait_ = String::new();
 
     if let Some(did) = decl.output.def_id_full(cx.cache()) {
         if let Some(impls) = cx.cache().impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
-                if impl_.trait_.def_id().map_or(false, |d| {
-                    cx.cache().traits.get(&d).map(|t| t.is_notable).unwrap_or(false)
-                }) {
-                    if out.is_empty() {
+                if let Some(trait_) = &impl_.trait_ {
+                    let trait_did = trait_.def_id();
+
+                    if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable) {
+                        if out.is_empty() {
+                            write!(
+                                &mut out,
+                                "<div class=\"notable\">Notable traits for {}</div>\
+                             <code class=\"content\">",
+                                impl_.for_.print(cx)
+                            );
+                        }
+
+                        //use the "where" class here to make it small
                         write!(
                             &mut out,
-                            "<div class=\"notable\">Notable traits for {}</div>\
-                             <code class=\"content\">",
-                            impl_.for_.print(cx)
+                            "<span class=\"where fmt-newline\">{}</span>",
+                            impl_.print(false, cx)
                         );
-                        trait_.push_str(&impl_.for_.print(cx).to_string());
-                    }
-
-                    //use the "where" class here to make it small
-                    write!(
-                        &mut out,
-                        "<span class=\"where fmt-newline\">{}</span>",
-                        impl_.print(false, cx)
-                    );
-                    let t_did = impl_.trait_.def_id_full(cx.cache()).unwrap();
-                    for it in &impl_.items {
-                        if let clean::TypedefItem(ref tydef, _) = *it.kind {
-                            out.push_str("<span class=\"where fmt-newline\">    ");
-                            assoc_type(
-                                &mut out,
-                                it,
-                                &[],
-                                Some(&tydef.type_),
-                                AssocItemLink::GotoSource(t_did.into(), &FxHashSet::default()),
-                                "",
-                                cx,
-                            );
-                            out.push_str(";</span>");
+                        for it in &impl_.items {
+                            if let clean::TypedefItem(ref tydef, _) = *it.kind {
+                                out.push_str("<span class=\"where fmt-newline\">    ");
+                                let empty_set = FxHashSet::default();
+                                let src_link =
+                                    AssocItemLink::GotoSource(trait_did.into(), &empty_set);
+                                assoc_type(&mut out, it, &[], Some(&tydef.type_), src_link, "", cx);
+                                out.push_str(";</span>");
+                            }
                         }
                     }
                 }
@@ -1302,7 +1289,7 @@ fn render_impl(
 ) {
     let cache = cx.cache();
     let traits = &cache.traits;
-    let trait_ = i.trait_did_full(cache).map(|did| &traits[&did]);
+    let trait_ = i.trait_did().map(|did| &traits[&did]);
     let mut close_tags = String::new();
 
     // For trait implementations, the `interesting` output contains all methods that have doc
@@ -1532,7 +1519,7 @@ fn render_impl(
             if i.items.iter().any(|m| m.name == n) {
                 continue;
             }
-            let did = i.trait_.as_ref().unwrap().def_id_full(cx.cache()).unwrap();
+            let did = i.trait_.as_ref().unwrap().def_id();
             let provided_methods = i.provided_trait_methods(cx.tcx());
             let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_methods);
 
@@ -1917,9 +1904,9 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
         }
 
         if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
-            if let Some(impl_) = v.iter().filter(|i| i.inner_impl().trait_.is_some()).find(|i| {
-                i.inner_impl().trait_.def_id_full(cache) == cx.tcx().lang_items().deref_trait()
-            }) {
+            if let Some(impl_) =
+                v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
+            {
                 sidebar_deref_methods(cx, out, impl_, v);
             }
 
@@ -2017,9 +2004,7 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &V
                 }
             }
         }
-        let deref_mut = v.iter().filter(|i| i.inner_impl().trait_.is_some()).any(|i| {
-            i.inner_impl().trait_.def_id_full(c) == cx.tcx().lang_items().deref_mut_trait()
-        });
+        let deref_mut = v.iter().any(|i| i.trait_did() == cx.tcx().lang_items().deref_mut_trait());
         let inner_impl = target
             .def_id_full(c)
             .or_else(|| {
@@ -2086,10 +2071,10 @@ fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clea
 
 fn get_id_for_impl_on_foreign_type(
     for_: &clean::Type,
-    trait_: &clean::Type,
+    trait_: &clean::Path,
     cx: &Context<'_>,
 ) -> String {
-    small_url_encode(format!("impl-{:#}-for-{:#}", trait_.print(cx), for_.print(cx),))
+    small_url_encode(format!("impl-{:#}-for-{:#}", trait_.print(cx), for_.print(cx)))
 }
 
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
@@ -2400,6 +2385,15 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
     let mut visited = FxHashSet::default();
     let mut work = VecDeque::new();
 
+    let mut process_path = |did: DefId| {
+        let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
+        let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
+
+        if let Some(path) = fqp {
+            out.push(path.join("::"));
+        }
+    };
+
     work.push_back(first_ty);
 
     while let Some(ty) = work.pop_front() {
@@ -2408,14 +2402,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
         }
 
         match ty {
-            clean::Type::ResolvedPath { did, .. } => {
-                let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
-                let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
-
-                if let Some(path) = fqp {
-                    out.push(path.join("::"));
-                }
-            }
+            clean::Type::ResolvedPath { did, .. } => process_path(did),
             clean::Type::Tuple(tys) => {
                 work.extend(tys.into_iter());
             }
@@ -2433,7 +2420,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
             }
             clean::Type::QPath { self_type, trait_, .. } => {
                 work.push_back(*self_type);
-                work.push_back(*trait_);
+                process_path(trait_.def_id());
             }
             _ => {}
         }

@@ -1887,7 +1887,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
         let expr_snippet =
             self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap_or(String::new());
-        let is_wrapped = expr_snippet.starts_with("(") && expr_snippet.ends_with(")");
+        let is_wrapped = expr_snippet.starts_with('(') && expr_snippet.ends_with(')');
         let after_open = expr.span.lo() + rustc_span::BytePos(1);
         let before_close = expr.span.hi() - rustc_span::BytePos(1);
 

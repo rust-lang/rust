@@ -8,6 +8,7 @@
 #![allow(clippy::redundant_static_lifetimes)]
 // warn for the old lint name here, to test if the renaming worked
 #![warn(clippy::cognitive_complexity)]
+#![warn(enum_intrinsics_non_enums)]
 
 #[warn(clippy::module_name_repetitions)]
 fn main() {}

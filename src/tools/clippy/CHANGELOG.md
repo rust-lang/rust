@@ -1873,10 +1873,10 @@ Released 2019-01-17
 
 [2e26fdc2...b2601be](https://github.com/rust-lang/rust-clippy/compare/2e26fdc2...b2601be)
 
-* New lints: [`slow_vector_initialization`], [`mem_discriminant_non_enum`],
+* New lints: [`slow_vector_initialization`], `mem_discriminant_non_enum`,
   [`redundant_clone`], [`wildcard_dependencies`],
   [`into_iter_on_ref`], `into_iter_on_array`, [`deprecated_cfg_attr`],
-  [`mem_discriminant_non_enum`], [`cargo_common_metadata`]
+  [`cargo_common_metadata`]
 * Add support for `u128` and `i128` to integer related lints
 * Add float support to `mistyped_literal_suffixes`
 * Fix false positives in `use_self`
@@ -2839,7 +2839,6 @@ Released 2018-09-13
 [`match_wild_err_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_wild_err_arm
 [`match_wildcard_for_single_variants`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_wildcard_for_single_variants
 [`maybe_infinite_iter`]: https://rust-lang.github.io/rust-clippy/master/index.html#maybe_infinite_iter
-[`mem_discriminant_non_enum`]: https://rust-lang.github.io/rust-clippy/master/index.html#mem_discriminant_non_enum
 [`mem_forget`]: https://rust-lang.github.io/rust-clippy/master/index.html#mem_forget
 [`mem_replace_option_with_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#mem_replace_option_with_none
 [`mem_replace_with_default`]: https://rust-lang.github.io/rust-clippy/master/index.html#mem_replace_with_default

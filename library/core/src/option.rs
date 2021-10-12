@@ -657,6 +657,7 @@ impl<T> Option<T> {
     ///
     /// [&]: reference "shared reference"
     #[inline]
+    #[must_use]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
         // SAFETY: `x` is guaranteed to be pinned because it comes from `self`
@@ -668,6 +669,7 @@ impl<T> Option<T> {
     ///
     /// [&mut]: reference "mutable reference"
     #[inline]
+    #[must_use]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
         // SAFETY: `get_unchecked_mut` is never used to move the `Option` inside `self`.
@@ -1473,6 +1475,7 @@ impl<T: Copy> Option<&mut T> {
     /// let copied = opt_x.copied();
     /// assert_eq!(copied, Some(12));
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
     pub fn copied(self) -> Option<T> {
         self.map(|&mut t| t)
@@ -1492,6 +1495,7 @@ impl<T: Clone> Option<&T> {
     /// let cloned = opt_x.cloned();
     /// assert_eq!(cloned, Some(12));
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn cloned(self) -> Option<T> {
         self.map(|t| t.clone())

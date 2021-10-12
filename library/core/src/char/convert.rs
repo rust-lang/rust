@@ -48,6 +48,7 @@ use super::MAX;
 /// assert_eq!(None, c);
 /// ```
 #[doc(alias = "chr")]
+#[must_use]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_u32(i: u32) -> Option<char> {
@@ -88,6 +89,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// assert_eq!('❤', c);
 /// ```
 #[inline]
+#[must_use]
 #[stable(feature = "char_from_unchecked", since = "1.5.0")]
 pub unsafe fn from_u32_unchecked(i: u32) -> char {
     // SAFETY: the caller must guarantee that `i` is a valid char value.
@@ -319,6 +321,7 @@ impl fmt::Display for CharTryFromError {
 /// let c = char::from_digit(1, 37);
 /// ```
 #[inline]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_digit(num: u32, radix: u32) -> Option<char> {
     if radix > 36 {

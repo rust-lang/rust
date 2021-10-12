@@ -101,6 +101,7 @@ impl<T: ?Sized> Unique<T> {
     }
 
     /// Acquires the underlying `*mut` pointer.
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub const fn as_ptr(self) -> *mut T {
         self.pointer as *mut T
@@ -111,6 +112,7 @@ impl<T: ?Sized> Unique<T> {
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
     /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
+    #[must_use]
     #[inline]
     pub unsafe fn as_ref(&self) -> &T {
         // SAFETY: the caller must guarantee that `self` meets all the
@@ -123,6 +125,7 @@ impl<T: ?Sized> Unique<T> {
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
     /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
+    #[must_use]
     #[inline]
     pub unsafe fn as_mut(&mut self) -> &mut T {
         // SAFETY: the caller must guarantee that `self` meets all the
@@ -131,6 +134,7 @@ impl<T: ?Sized> Unique<T> {
     }
 
     /// Casts to a pointer of another type.
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub const fn cast<U>(self) -> Unique<U> {
         // SAFETY: Unique::new_unchecked() creates a new unique and needs

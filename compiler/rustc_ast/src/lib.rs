@@ -20,16 +20,6 @@
 #[macro_use]
 extern crate rustc_macros;
 
-#[macro_export]
-macro_rules! unwrap_or {
-    ($opt:expr, $default:expr) => {
-        match $opt {
-            Some(x) => x,
-            None => $default,
-        }
-    };
-}
-
 pub mod util {
     pub mod classify;
     pub mod comments;

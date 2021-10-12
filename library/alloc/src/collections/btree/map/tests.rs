@@ -1755,20 +1755,20 @@ fn test_send() {
 #[test]
 fn test_ord_absence() {
     fn map<K>(mut map: BTreeMap<K, ()>) {
-        map.is_empty();
-        map.len();
+        let _ = map.is_empty();
+        let _ = map.len();
         map.clear();
-        map.iter();
-        map.iter_mut();
-        map.keys();
-        map.values();
-        map.values_mut();
+        let _ = map.iter();
+        let _ = map.iter_mut();
+        let _ = map.keys();
+        let _ = map.values();
+        let _ = map.values_mut();
         if true {
-            map.into_values();
+            let _ = map.into_values();
         } else if true {
-            map.into_iter();
+            let _ = map.into_iter();
         } else {
-            map.into_keys();
+            let _ = map.into_keys();
         }
     }
 

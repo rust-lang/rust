@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `E: From<()>` is not satisfied
-  --> $DIR/never-value-fallback-issue-66757.rs:27:5
+  --> $DIR/never-value-fallback-issue-66757.rs:28:5
    |
 LL |     <E as From<_>>::from(never);
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `From<()>` is not implemented for `E`

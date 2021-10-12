@@ -52,6 +52,7 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     /// let _ = drain.next().unwrap();
     /// assert_eq!(drain.as_slice(), &['b', 'c']);
     /// ```
+    #[must_use]
     #[stable(feature = "vec_drain_as_slice", since = "1.46.0")]
     pub fn as_slice(&self) -> &[T] {
         self.iter.as_slice()

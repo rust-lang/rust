@@ -188,6 +188,7 @@ impl str {
     /// // third byte of `老`
     /// assert!(!s.is_char_boundary(8));
     /// ```
+    #[must_use]
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
     #[inline]
     pub fn is_char_boundary(&self, index: usize) -> bool {
@@ -229,6 +230,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "str_as_bytes", since = "1.39.0")]
+    #[must_use]
     #[inline(always)]
     #[allow(unused_attributes)]
     pub const fn as_bytes(&self) -> &[u8] {
@@ -273,6 +275,7 @@ impl str {
     /// assert_eq!("🍔∈🌏", s);
     /// ```
     #[stable(feature = "str_mut_extras", since = "1.20.0")]
+    #[must_use]
     #[inline(always)]
     pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
         // SAFETY: the cast from `&str` to `&[u8]` is safe since `str`
@@ -303,6 +306,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "rustc_str_as_ptr", since = "1.32.0")]
+    #[must_use]
     #[inline]
     pub const fn as_ptr(&self) -> *const u8 {
         self as *const str as *const u8
@@ -317,6 +321,7 @@ impl str {
     /// It is your responsibility to make sure that the string slice only gets
     /// modified in a way that it remains valid UTF-8.
     #[stable(feature = "str_as_mut_ptr", since = "1.36.0")]
+    #[must_use]
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
         self as *mut str as *mut u8
@@ -798,6 +803,8 @@ impl str {
     ///
     /// assert_eq!(None, iter.next());
     /// ```
+    #[must_use = "this returns the split string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "split_whitespace", since = "1.1.0")]
     #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace<'_> {
@@ -839,6 +846,8 @@ impl str {
     ///
     /// assert_eq!(None, iter.next());
     /// ```
+    #[must_use = "this returns the split string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
     #[inline]
     pub fn split_ascii_whitespace(&self) -> SplitAsciiWhitespace<'_> {
@@ -914,6 +923,8 @@ impl str {
     ///
     /// assert!(utf16_len <= utf8_len);
     /// ```
+    #[must_use = "this returns the encoded string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "encode_utf16", since = "1.8.0")]
     pub fn encode_utf16(&self) -> EncodeUtf16<'_> {
         EncodeUtf16 { chars: self.chars(), extra: 0 }
@@ -1353,6 +1364,9 @@ impl str {
     ///
     /// let v: Vec<&str> = "A..B..".split_terminator(".").collect();
     /// assert_eq!(v, ["A", "", "B", ""]);
+    ///
+    /// let v: Vec<&str> = "A.B:C.D".split_terminator(&['.', ':'][..]).collect();
+    /// assert_eq!(v, ["A", "B", "C", "D"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1396,6 +1410,9 @@ impl str {
     ///
     /// let v: Vec<&str> = "A..B..".rsplit_terminator(".").collect();
     /// assert_eq!(v, ["", "B", "", "A"]);
+    ///
+    /// let v: Vec<&str> = "A.B:C.D".rsplit_terminator(&['.', ':'][..]).collect();
+    /// assert_eq!(v, ["D", "C", "B", "A"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1524,7 +1541,8 @@ impl str {
     #[inline]
     pub fn split_once<'a, P: Pattern<'a>>(&'a self, delimiter: P) -> Option<(&'a str, &'a str)> {
         let (start, end) = delimiter.into_searcher(self).next_match()?;
-        Some((&self[..start], &self[end..]))
+        // SAFETY: `Searcher` is known to return valid indices.
+        unsafe { Some((self.get_unchecked(..start), self.get_unchecked(end..))) }
     }
 
     /// Splits the string on the last occurrence of the specified delimiter and
@@ -1544,7 +1562,8 @@ impl str {
         P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
     {
         let (start, end) = delimiter.into_searcher(self).next_match_back()?;
-        Some((&self[..start], &self[end..]))
+        // SAFETY: `Searcher` is known to return valid indices.
+        unsafe { Some((self.get_unchecked(..start), self.get_unchecked(end..))) }
     }
 
     /// An iterator over the disjoint matches of a pattern within the given string
@@ -1840,6 +1859,8 @@ impl str {
     /// let s = "  עברית";
     /// assert!(Some('ע') == s.trim_left().chars().next());
     /// ```
+    #[must_use = "this returns the trimmed string as a new slice, \
+                  without modifying the original"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(
@@ -1882,6 +1903,8 @@ impl str {
     /// let s = "עברית  ";
     /// assert!(Some('ת') == s.trim_right().chars().rev().next());
     /// ```
+    #[must_use = "this returns the trimmed string as a new slice, \
+                  without modifying the original"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(
@@ -2346,6 +2369,8 @@ impl str {
     /// ```
     /// assert_eq!("❤\n!".escape_debug().to_string(), "❤\\n!");
     /// ```
+    #[must_use = "this returns the escaped string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_debug(&self) -> EscapeDebug<'_> {
         let mut chars = self.chars();
@@ -2390,6 +2415,8 @@ impl str {
     /// ```
     /// assert_eq!("❤\n!".escape_default().to_string(), "\\u{2764}\\n!");
     /// ```
+    #[must_use = "this returns the escaped string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_default(&self) -> EscapeDefault<'_> {
         EscapeDefault { inner: self.chars().flat_map(CharEscapeDefault) }
@@ -2426,6 +2453,8 @@ impl str {
     /// ```
     /// assert_eq!("❤\n!".escape_unicode().to_string(), "\\u{2764}\\u{a}\\u{21}");
     /// ```
+    #[must_use = "this returns the escaped string as an iterator, \
+                  without modifying the original"]
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_unicode(&self) -> EscapeUnicode<'_> {
         EscapeUnicode { inner: self.chars().flat_map(CharEscapeUnicode) }

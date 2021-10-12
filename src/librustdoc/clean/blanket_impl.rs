@@ -78,7 +78,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             );
                             match infcx.evaluate_obligation(&obligation) {
                                 Ok(eval_result) if eval_result.may_apply() => {}
-                                Err(traits::OverflowError::Cannonical) => {}
+                                Err(traits::OverflowError::Canonical) => {}
                                 Err(traits::OverflowError::ErrorReporting) => {}
                                 _ => {
                                     return false;
@@ -115,7 +115,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .clean(self.cx),
                         // FIXME(eddyb) compute both `trait_` and `for_` from
                         // the post-inference `trait_ref`, as it's more accurate.
-                        trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
+                        trait_: Some(trait_ref.clean(self.cx)),
                         for_: ty.clean(self.cx),
                         items: self
                             .cx

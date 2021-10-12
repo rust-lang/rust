@@ -83,6 +83,7 @@ impl<T> From<T> for OnceCell<T> {
 impl<T> OnceCell<T> {
     /// Creates a new empty cell.
     #[unstable(feature = "once_cell", issue = "74465")]
+    #[must_use]
     pub const fn new() -> OnceCell<T> {
         OnceCell { inner: UnsafeCell::new(None) }
     }

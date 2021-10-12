@@ -1,0 +1,10 @@
+error: unconstrained generic constant
+  --> $DIR/array-trait.rs:23:23
+   |
+LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
+   |                       ^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); S::SIZE]:`
+
+error: aborting due to previous error
+

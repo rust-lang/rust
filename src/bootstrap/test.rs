@@ -653,7 +653,7 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        let clippy = builder
+        builder
             .ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() })
             .expect("in-tree tool");
         let mut cargo = tool::prepare_tool_cargo(
@@ -672,14 +672,7 @@ impl Step for Clippy {
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
         let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
-        let target_libs = builder
-            .stage_out(compiler, Mode::ToolRustc)
-            .join(&self.host.triple)
-            .join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
-        cargo.env("TARGET_LIBS", target_libs);
-        // clippy tests need to find the driver
-        cargo.env("CLIPPY_DRIVER_PATH", clippy);
 
         cargo.arg("--").args(builder.config.cmd.test_args());
 
@@ -905,7 +898,7 @@ impl Step for RustdocGUI {
         let out_dir = builder.test_out(self.target).join("rustdoc-gui");
 
         // We remove existing folder to be sure there won't be artifacts remaining.
-        let _ = fs::remove_dir_all(&out_dir);
+        builder.clear_if_dirty(&out_dir, &builder.rustdoc(self.compiler));
 
         let src_path = builder.build.src.join("src/test/rustdoc-gui/src");
         // We generate docs for the libraries present in the rustdoc-gui's src folder.

@@ -460,7 +460,7 @@ class RustBuild(object):
             # LLVM more often than necessary.
             #
             # This git command finds that commit SHA, looking for bors-authored
-            # merges that modified src/llvm-project or other relevant version
+            # commits that modified src/llvm-project or other relevant version
             # stamp files.
             #
             # This works even in a repository that has not yet initialized
@@ -470,7 +470,7 @@ class RustBuild(object):
             ]).decode(sys.getdefaultencoding()).strip()
             llvm_sha = subprocess.check_output([
                 "git", "rev-list", "--author=bors@rust-lang.org", "-n1",
-                "--merges", "--first-parent", "HEAD",
+                "--first-parent", "HEAD",
                 "--",
                 "{}/src/llvm-project".format(top_level),
                 "{}/src/bootstrap/download-ci-llvm-stamp".format(top_level),
@@ -540,6 +540,12 @@ class RustBuild(object):
         unpack(tarball, tarball_suffix, self.bin_root(stage0), match=pattern, verbose=self.verbose)
 
     def _download_ci_llvm(self, llvm_sha, llvm_assertions):
+        if not llvm_sha:
+            print("error: could not find commit hash for downloading LLVM")
+            print("help: maybe your repository history is too shallow?")
+            print("help: consider disabling `download-ci-llvm`")
+            print("help: or fetch enough history to include one upstream commit")
+            exit(1)
         cache_prefix = "llvm-{}-{}".format(llvm_sha, llvm_assertions)
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, cache_prefix)
@@ -685,9 +691,15 @@ class RustBuild(object):
         # Only commits merged by bors will have CI artifacts.
         merge_base = [
             "git", "rev-list", "--author=bors@rust-lang.org", "-n1",
-            "--merges", "--first-parent", "HEAD"
+            "--first-parent", "HEAD"
         ]
         commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
+        if not commit:
+            print("error: could not find commit hash for downloading rustc")
+            print("help: maybe your repository history is too shallow?")
+            print("help: consider disabling `download-rustc`")
+            print("help: or fetch enough history to include one upstream commit")
+            exit(1)
 
         # Warn if there were changes to the compiler or standard library since the ancestor commit.
         status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler, library])
@@ -921,10 +933,9 @@ class RustBuild(object):
         env["LIBRARY_PATH"] = os.path.join(self.bin_root(True), "lib") + \
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
+
         # preserve existing RUSTFLAGS
         env.setdefault("RUSTFLAGS", "")
-        env["RUSTFLAGS"] += " -Cdebuginfo=2"
-
         build_section = "target.{}".format(self.build)
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":

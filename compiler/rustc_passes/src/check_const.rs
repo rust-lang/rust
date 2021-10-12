@@ -8,7 +8,6 @@
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
 use rustc_attr as attr;
-use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -83,30 +82,39 @@ impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for CheckConstTraitVisitor<
         let _: Option<_> = try {
             if let hir::ItemKind::Impl(ref imp) = item.kind {
                 if let hir::Constness::Const = imp.constness {
-                    let did = imp.of_trait.as_ref()?.trait_def_id()?;
-                    let mut to_implement = FxHashSet::default();
+                    let trait_def_id = imp.of_trait.as_ref()?.trait_def_id()?;
+                    let ancestors = self
+                        .tcx
+                        .trait_def(trait_def_id)
+                        .ancestors(self.tcx, item.def_id.to_def_id())
+                        .ok()?;
+                    let mut to_implement = Vec::new();
 
-                    for did in self.tcx.associated_item_def_ids(did) {
+                    for trait_item in self.tcx.associated_items(trait_def_id).in_definition_order()
+                    {
                         if let ty::AssocItem {
                             kind: ty::AssocKind::Fn, ident, defaultness, ..
-                        } = self.tcx.associated_item(*did)
+                        } = trait_item
                         {
                             // we can ignore functions that do not have default bodies:
                             // if those are unimplemented it will be catched by typeck.
-                            if defaultness.has_value()
-                                && !self.tcx.has_attr(*did, sym::default_method_body_is_const)
+                            if !defaultness.has_value()
+                                || self
+                                    .tcx
+                                    .has_attr(trait_item.def_id, sym::default_method_body_is_const)
                             {
-                                to_implement.insert(ident);
+                                continue;
+                            }
+
+                            let is_implemented = ancestors
+                                .leaf_def(self.tcx, trait_item.ident, trait_item.kind)
+                                .map(|node_item| !node_item.defining_node.is_from_trait())
+                                .unwrap_or(false);
+
+                            if !is_implemented {
+                                to_implement.push(ident.to_string());
                             }
                         }
-                    }
-
-                    for it in imp
-                        .items
-                        .iter()
-                        .filter(|it| matches!(it.kind, hir::AssocItemKind::Fn { .. }))
-                    {
-                        to_implement.remove(&it.ident);
                     }
 
                     // all nonconst trait functions (not marked with #[default_method_body_is_const])
@@ -118,7 +126,7 @@ impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for CheckConstTraitVisitor<
                                 item.span,
                                 "const trait implementations may not use non-const default functions",
                             )
-                            .note(&format!("`{}` not implemented", to_implement.into_iter().map(|id| id.to_string()).collect::<Vec<_>>().join("`, `")))
+                            .note(&format!("`{}` not implemented", to_implement.join("`, `")))
                             .emit();
                     }
                 }

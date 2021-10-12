@@ -428,6 +428,7 @@ macro_rules! define_queries {
             use rustc_middle::ty::query::query_keys;
             use rustc_query_system::dep_graph::DepNodeParams;
             use rustc_query_system::query::{force_query, QueryDescription};
+            use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
             pub const Null: QueryStruct = QueryStruct {
@@ -454,9 +455,9 @@ macro_rules! define_queries {
                 const is_anon: bool = is_anon!([$($modifiers)*]);
 
                 #[inline(always)]
-                fn can_reconstruct_query_key() -> bool {
+                fn fingerprint_style() -> FingerprintStyle {
                     <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>
-                        ::can_reconstruct_query_key()
+                        ::fingerprint_style()
                 }
 
                 fn recover<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<query_keys::$name<'tcx>> {
@@ -472,7 +473,7 @@ macro_rules! define_queries {
                         return
                     }
 
-                    if !can_reconstruct_query_key() {
+                    if !fingerprint_style().reconstructible() {
                         return
                     }
 

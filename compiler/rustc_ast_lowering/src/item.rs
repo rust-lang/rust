@@ -1345,8 +1345,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         generics
                             .params
                             .iter()
-                            .find(|p| def_id == self.resolver.local_def_id(p.id).to_def_id())
-                            .is_some()
+                            .any(|p| def_id == self.resolver.local_def_id(p.id).to_def_id())
                     }
                     // Either the `bounded_ty` is not a plain type parameter, or
                     // it's not found in the generic type parameters list.

@@ -290,6 +290,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_atomic_new", since = "1.24.0")]
+    #[must_use]
     pub const fn new(v: bool) -> AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
@@ -1392,6 +1393,7 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable]
             #[$const_stable]
+            #[must_use]
             pub const fn new(v: $int_type) -> Self {
                 Self {v: UnsafeCell::new(v)}
             }

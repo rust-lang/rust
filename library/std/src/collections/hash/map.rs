@@ -223,6 +223,7 @@ impl<K, V> HashMap<K, V, RandomState> {
     /// let mut map: HashMap<&str, i32> = HashMap::new();
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> HashMap<K, V, RandomState> {
         Default::default()
@@ -240,6 +241,7 @@ impl<K, V> HashMap<K, V, RandomState> {
     /// let mut map: HashMap<&str, i32> = HashMap::with_capacity(10);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> HashMap<K, V, RandomState> {
         HashMap::with_capacity_and_hasher(capacity, Default::default())
@@ -1720,6 +1722,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
     /// Converts the entry into a mutable reference to the key in the entry
     /// with a lifetime bound to the map itself.
     #[inline]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn into_key(self) -> &'a mut K {
         self.base.into_key()
@@ -1735,6 +1738,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
     /// Converts the `OccupiedEntry` into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
     #[inline]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn into_mut(self) -> &'a mut V {
         self.base.into_mut()
@@ -1764,6 +1768,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
     /// Converts the `OccupiedEntry` into a mutable reference to the key and value in the entry
     /// with a lifetime bound to the map itself.
     #[inline]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn into_key_value(self) -> (&'a mut K, &'a mut V) {
         self.base.into_key_value()
@@ -2891,6 +2896,7 @@ impl RandomState {
     #[inline]
     #[allow(deprecated)]
     // rand
+    #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn new() -> RandomState {
         // Historically this function did not cache keys from the OS and instead
@@ -2943,6 +2949,7 @@ impl DefaultHasher {
     /// instances created through `new` or `default`.
     #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
     #[allow(deprecated)]
+    #[must_use]
     pub fn new() -> DefaultHasher {
         DefaultHasher(SipHasher13::new_with_keys(0, 0))
     }

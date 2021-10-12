@@ -94,6 +94,7 @@ impl Layout {
     /// [`Layout::from_size_align`].
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "alloc_layout", since = "1.36.0")]
+    #[must_use]
     #[inline]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         // SAFETY: the caller must ensure that `align` is greater than zero.
@@ -111,6 +112,8 @@ impl Layout {
     /// The minimum byte alignment for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout", since = "1.50.0")]
+    #[must_use = "this returns the minimum alignment, \
+                  without modifying the layout"]
     #[inline]
     pub const fn align(&self) -> usize {
         self.align_.get()
@@ -119,6 +122,7 @@ impl Layout {
     /// Constructs a `Layout` suitable for holding a value of type `T`.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "alloc_layout_const_new", since = "1.42.0")]
+    #[must_use]
     #[inline]
     pub const fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
@@ -227,6 +231,8 @@ impl Layout {
     /// satisfy this constraint is to ensure `align <= self.align()`.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
+    #[must_use = "this returns the padding needed, \
+                  without modifying the `Layout`"]
     #[inline]
     pub const fn padding_needed_for(&self, align: usize) -> usize {
         let len = self.size();
@@ -260,6 +266,8 @@ impl Layout {
     /// This is equivalent to adding the result of `padding_needed_for`
     /// to the layout's current size.
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
+    #[must_use = "this returns a new `Layout`, \
+                  without modifying the original"]
     #[inline]
     pub fn pad_to_align(&self) -> Layout {
         let pad = self.padding_needed_for(self.align());

@@ -80,6 +80,7 @@ impl Barrier {
     /// let barrier = Barrier::new(10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn new(n: usize) -> Barrier {
         Barrier {
             lock: Mutex::new(BarrierState { count: 0, generation_id: 0 }),
@@ -166,6 +167,7 @@ impl BarrierWaitResult {
     /// println!("{:?}", barrier_wait_result.is_leader());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn is_leader(&self) -> bool {
         self.0
     }

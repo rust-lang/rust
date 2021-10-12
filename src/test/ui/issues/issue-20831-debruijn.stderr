@@ -19,8 +19,8 @@ note: ...so that the types are compatible
    |
 LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
    |        ^^^^^^^^^
-   = note: expected `Publisher<'_>`
-              found `Publisher<'_>`
+   = note: expected `<MyStruct<'a> as Publisher<'_>>`
+              found `<MyStruct<'_> as Publisher<'_>>`
 
 error: aborting due to previous error
 

@@ -3,6 +3,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_index::vec::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
@@ -158,14 +159,18 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                     // This is advantageous to running the algorithm over the
                     // entire graph when there are many connected regions.
 
+                    rustc_index::newtype_index! {
+                        pub struct RegionId {
+                            ENCODABLE = custom
+                        }
+                    }
                     struct ConnectedRegion {
                         idents: SmallVec<[Symbol; 8]>,
                         impl_blocks: FxHashSet<usize>,
                     }
-                    // Highest connected region id
-                    let mut highest_region_id = 0;
+                    let mut connected_regions: IndexVec<RegionId, _> = Default::default();
+                    // Reverse map from the Symbol to the connected region id.
                     let mut connected_region_ids = FxHashMap::default();
-                    let mut connected_regions = FxHashMap::default();
 
                     for (i, &(&_impl_def_id, impl_items)) in impls_items.iter().enumerate() {
                         if impl_items.len() == 0 {
@@ -173,7 +178,7 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                         }
                         // First obtain a list of existing connected region ids
                         let mut idents_to_add = SmallVec::<[Symbol; 8]>::new();
-                        let ids = impl_items
+                        let mut ids = impl_items
                             .in_definition_order()
                             .filter_map(|item| {
                                 let entry = connected_region_ids.entry(item.ident.name);
@@ -184,62 +189,64 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                                     None
                                 }
                             })
-                            .collect::<FxHashSet<usize>>();
-                        match ids.len() {
-                            0 | 1 => {
-                                let id_to_set = if ids.is_empty() {
-                                    // Create a new connected region
-                                    let region = ConnectedRegion {
+                            .collect::<SmallVec<[RegionId; 8]>>();
+                        // Sort the id list so that the algorithm is deterministic
+                        ids.sort_unstable();
+                        let ids = ids;
+                        match &ids[..] {
+                            // Create a new connected region
+                            [] => {
+                                let id_to_set = connected_regions.next_index();
+                                // Update the connected region ids
+                                for ident in &idents_to_add {
+                                    connected_region_ids.insert(*ident, id_to_set);
+                                }
+                                connected_regions.insert(
+                                    id_to_set,
+                                    ConnectedRegion {
                                         idents: idents_to_add,
                                         impl_blocks: std::iter::once(i).collect(),
-                                    };
-                                    connected_regions.insert(highest_region_id, region);
-                                    (highest_region_id, highest_region_id += 1).0
-                                } else {
-                                    // Take the only id inside the list
-                                    let id_to_set = *ids.iter().next().unwrap();
-                                    let region = connected_regions.get_mut(&id_to_set).unwrap();
-                                    region.impl_blocks.insert(i);
-                                    region.idents.extend_from_slice(&idents_to_add);
-                                    id_to_set
-                                };
-                                let (_id, region) = connected_regions.iter().next().unwrap();
+                                    },
+                                );
+                            }
+                            // Take the only id inside the list
+                            &[id_to_set] => {
+                                let region = connected_regions[id_to_set].as_mut().unwrap();
+                                region.impl_blocks.insert(i);
+                                region.idents.extend_from_slice(&idents_to_add);
                                 // Update the connected region ids
-                                for ident in region.idents.iter() {
+                                for ident in &idents_to_add {
                                     connected_region_ids.insert(*ident, id_to_set);
                                 }
                             }
-                            _ => {
-                                // We have multiple connected regions to merge.
-                                // In the worst case this might add impl blocks
-                                // one by one and can thus be O(n^2) in the size
-                                // of the resulting final connected region, but
-                                // this is no issue as the final step to check
-                                // for overlaps runs in O(n^2) as well.
-
-                                // Take the smallest id from the list
-                                let id_to_set = *ids.iter().min().unwrap();
-
-                                // Sort the id list so that the algorithm is deterministic
-                                let mut ids = ids.into_iter().collect::<SmallVec<[usize; 8]>>();
-                                ids.sort_unstable();
-
-                                let mut region = connected_regions.remove(&id_to_set).unwrap();
-                                region.idents.extend_from_slice(&idents_to_add);
+                            // We have multiple connected regions to merge.
+                            // In the worst case this might add impl blocks
+                            // one by one and can thus be O(n^2) in the size
+                            // of the resulting final connected region, but
+                            // this is no issue as the final step to check
+                            // for overlaps runs in O(n^2) as well.
+                            &[id_to_set, ..] => {
+                                let mut region = connected_regions.remove(id_to_set).unwrap();
                                 region.impl_blocks.insert(i);
+                                region.idents.extend_from_slice(&idents_to_add);
+                                // Update the connected region ids
+                                for ident in &idents_to_add {
+                                    connected_region_ids.insert(*ident, id_to_set);
+                                }
 
+                                // Remove other regions from ids.
                                 for &id in ids.iter() {
                                     if id == id_to_set {
                                         continue;
                                     }
-                                    let r = connected_regions.remove(&id).unwrap();
-                                    // Update the connected region ids
+                                    let r = connected_regions.remove(id).unwrap();
                                     for ident in r.idents.iter() {
                                         connected_region_ids.insert(*ident, id_to_set);
                                     }
                                     region.idents.extend_from_slice(&r.idents);
                                     region.impl_blocks.extend(r.impl_blocks);
                                 }
+
                                 connected_regions.insert(id_to_set, region);
                             }
                         }
@@ -254,16 +261,22 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                             let avg = impls.len() / connected_regions.len();
                             let s = connected_regions
                                 .iter()
-                                .map(|r| r.1.impl_blocks.len() as isize - avg as isize)
+                                .flatten()
+                                .map(|r| r.impl_blocks.len() as isize - avg as isize)
                                 .map(|v| v.abs() as usize)
                                 .sum::<usize>();
                             s / connected_regions.len()
                         },
-                        connected_regions.iter().map(|r| r.1.impl_blocks.len()).max().unwrap()
+                        connected_regions
+                            .iter()
+                            .flatten()
+                            .map(|r| r.impl_blocks.len())
+                            .max()
+                            .unwrap()
                     );
                     // List of connected regions is built. Now, run the overlap check
                     // for each pair of impl blocks in the same connected region.
-                    for (_id, region) in connected_regions.into_iter() {
+                    for region in connected_regions.into_iter().flatten() {
                         let mut impl_blocks =
                             region.impl_blocks.into_iter().collect::<SmallVec<[usize; 8]>>();
                         impl_blocks.sort_unstable();

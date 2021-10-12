@@ -72,6 +72,8 @@ impl [u8] {
     /// let escaped = s.escape_ascii().to_string();
     /// assert_eq!(escaped, "0\\t\\r\\n\\'\\\"\\\\\\x9d");
     /// ```
+    #[must_use = "this returns the escaped bytes as an iterator, \
+                  without modifying the original"]
     #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
         EscapeAscii { inner: self.iter().flat_map(EscapeByte) }

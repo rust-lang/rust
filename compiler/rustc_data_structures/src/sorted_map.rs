@@ -205,10 +205,10 @@ impl<K: Ord, V> SortedMap<K, V> {
         R: RangeBounds<K>,
     {
         let start = match range.start_bound() {
-            Bound::Included(ref k) => match self.lookup_index_for(k) {
+            Bound::Included(k) => match self.lookup_index_for(k) {
                 Ok(index) | Err(index) => index,
             },
-            Bound::Excluded(ref k) => match self.lookup_index_for(k) {
+            Bound::Excluded(k) => match self.lookup_index_for(k) {
                 Ok(index) => index + 1,
                 Err(index) => index,
             },
@@ -216,11 +216,11 @@ impl<K: Ord, V> SortedMap<K, V> {
         };
 
         let end = match range.end_bound() {
-            Bound::Included(ref k) => match self.lookup_index_for(k) {
+            Bound::Included(k) => match self.lookup_index_for(k) {
                 Ok(index) => index + 1,
                 Err(index) => index,
             },
-            Bound::Excluded(ref k) => match self.lookup_index_for(k) {
+            Bound::Excluded(k) => match self.lookup_index_for(k) {
                 Ok(index) | Err(index) => index,
             },
             Bound::Unbounded => self.data.len(),
