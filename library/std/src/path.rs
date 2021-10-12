@@ -2511,6 +2511,8 @@ impl Path {
     /// println!("{}", path.display());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "this does not display the path, \
+                  it returns an object that can be displayed"]
     #[inline]
     pub fn display(&self) -> Display<'_> {
         Display { path: self }
