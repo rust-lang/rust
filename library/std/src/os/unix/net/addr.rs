@@ -156,6 +156,7 @@ impl SocketAddr {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn is_unnamed(&self) -> bool {
         if let AddressKind::Unnamed = self.address() { true } else { false }
