@@ -323,6 +323,7 @@ declare_lint! {
     ///
     /// ```rust
     /// #![feature(must_not_suspend)]
+    /// #![warn(must_not_suspend)]
     ///
     /// #[must_not_suspend]
     /// struct SyncThing {}
@@ -349,8 +350,9 @@ declare_lint! {
     /// `MutexGuard`'s)
     ///
     pub MUST_NOT_SUSPEND,
-    Warn,
+    Allow,
     "use of a `#[must_not_suspend]` value across a yield point",
+    @feature_gate = rustc_span::symbol::sym::must_not_suspend;
 }
 
 declare_lint! {

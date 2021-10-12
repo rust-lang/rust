@@ -1,4 +1,6 @@
 // edition:2018
+#![feature(must_not_suspend)]
+#![allow(must_not_suspend)]
 
 use std::future::Future;
 use std::sync::Mutex;
