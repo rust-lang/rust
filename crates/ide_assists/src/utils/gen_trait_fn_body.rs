@@ -635,7 +635,7 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let lhs = make::expr_call(make_discriminant()?, make::arg_list(Some(lhs_name.clone())));
             let rhs_name = make::expr_path(make::ext::ident_path("other"));
             let rhs = make::expr_call(make_discriminant()?, make::arg_list(Some(rhs_name.clone())));
-            let eq_check = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+            let ord_check = gen_partial_cmp_call(lhs, rhs);
 
             let mut case_count = 0;
             let mut arms = vec![];
@@ -705,11 +705,11 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             }
 
             let expr = match arms.len() {
-                0 => eq_check,
+                0 => ord_check,
                 _ => {
                     if case_count > arms.len() {
                         let lhs = make::wildcard_pat().into();
-                        arms.push(make::match_arm(Some(lhs), None, eq_check));
+                        arms.push(make::match_arm(Some(lhs), None, ord_check));
                     }
 
                     let match_target = make::expr_tuple(vec![lhs_name, rhs_name]);

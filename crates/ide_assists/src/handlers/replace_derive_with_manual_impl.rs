@@ -713,6 +713,35 @@ impl PartialOrd for Foo {
     }
 
     #[test]
+    fn add_custom_impl_partial_ord_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: ord
+#[derive(Partial$0Ord)]
+enum Foo {
+    Bin,
+    Bar,
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bin,
+    Bar,
+    Baz,
+}
+
+impl PartialOrd for Foo {
+    $0fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        core::mem::discriminant(self).partial_cmp(core::mem::discriminant(other))
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn add_custom_impl_partial_ord_tuple_struct() {
         check_assist(
             replace_derive_with_manual_impl,
