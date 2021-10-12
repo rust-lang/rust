@@ -13,14 +13,16 @@ use rustc_span::{sym, Span};
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for `set_len()` call that creates `Vec` with uninitialized elements.
-    /// This is commonly caused by calling `set_len()` right after after calling
-    /// `with_capacity()` or `reserve()`.
+    /// This is commonly caused by calling `set_len()` right after allocating or
+    /// reserving a buffer with `new()`, `default()`, `with_capacity()`, or `reserve()`.
     ///
     /// ### Why is this bad?
     /// It creates a `Vec` with uninitialized data, which leads to
-    /// undefined behavior with most safe operations.
+    /// undefined behavior with most safe operations. Notably, uninitialized
+    /// `Vec<u8>` must not be used with generic `Read`.
     ///
-    /// Notably, uninitialized `Vec<u8>` must not be used with generic `Read`.
+    /// Moreover, calling `set_len()` on a `Vec` created with `new()` or `default()`
+    /// creates out-of-bound values that lead to heap memory corruption when used.
     ///
     /// ### Known Problems
     /// This lint only checks directly adjacent statements.
