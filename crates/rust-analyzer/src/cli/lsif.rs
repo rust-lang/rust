@@ -186,7 +186,7 @@ impl LsifManager<'_> {
     }
 
     fn add_file(&mut self, file: StaticIndexedFile) {
-        let StaticIndexedFile { file_id, tokens, folds } = file;
+        let StaticIndexedFile { file_id, tokens, folds, .. } = file;
         let doc_id = self.get_file_id(file_id);
         let text = self.analysis.file_text(file_id).unwrap();
         let line_index = self.db.line_index(file_id);
@@ -247,7 +247,7 @@ impl flags::Lsif {
         let db = host.raw_database();
         let analysis = host.analysis();
 
-        let si = StaticIndex::compute(db, &analysis);
+        let si = StaticIndex::compute(&analysis);
 
         let mut lsif = LsifManager::new(&analysis, db, &vfs);
         lsif.add_vertex(lsif::Vertex::MetaData(lsif::MetaData {

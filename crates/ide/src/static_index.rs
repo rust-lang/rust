@@ -14,11 +14,14 @@ use syntax::{SyntaxToken, TextRange};
 
 use crate::display::TryToNav;
 use crate::hover::hover_for_definition;
-use crate::{Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult};
+use crate::{
+    Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult, InlayHint, InlayHintsConfig,
+};
 
 /// A static representation of fully analyzed source code.
 ///
 /// The intended use-case is powering read-only code browsers and emitting LSIF
+#[derive(Debug)]
 pub struct StaticIndex<'a> {
     pub files: Vec<StaticIndexedFile>,
     pub tokens: TokenStore,
@@ -27,21 +30,29 @@ pub struct StaticIndex<'a> {
     def_map: HashMap<Definition, TokenId>,
 }
 
+#[derive(Debug)]
 pub struct ReferenceData {
     pub range: FileRange,
     pub is_definition: bool,
 }
 
+#[derive(Debug)]
 pub struct TokenStaticData {
     pub hover: Option<HoverResult>,
     pub definition: Option<FileRange>,
     pub references: Vec<ReferenceData>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TokenId(usize);
 
-#[derive(Default)]
+impl TokenId {
+    pub fn raw(self) -> usize {
+        self.0
+    }
+}
+
+#[derive(Default, Debug)]
 pub struct TokenStore(Vec<TokenStaticData>);
 
 impl TokenStore {
@@ -64,9 +75,11 @@ impl TokenStore {
     }
 }
 
+#[derive(Debug)]
 pub struct StaticIndexedFile {
     pub file_id: FileId,
     pub folds: Vec<Fold>,
+    pub inlay_hints: Vec<InlayHint>,
     pub tokens: Vec<(TextRange, TokenId)>,
 }
 
@@ -86,6 +99,18 @@ fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
 impl StaticIndex<'_> {
     fn add_file(&mut self, file_id: FileId) {
         let folds = self.analysis.folding_ranges(file_id).unwrap();
+        let inlay_hints = self
+            .analysis
+            .inlay_hints(
+                &InlayHintsConfig {
+                    type_hints: true,
+                    parameter_hints: true,
+                    chaining_hints: true,
+                    max_length: Some(25),
+                },
+                file_id,
+            )
+            .unwrap();
         // hovers
         let sema = hir::Semantics::new(self.db);
         let tokens_or_nodes = sema.parse(file_id).syntax().clone();
@@ -99,7 +124,7 @@ impl StaticIndex<'_> {
             IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => true,
             _ => false,
         });
-        let mut result = StaticIndexedFile { file_id, folds, tokens: vec![] };
+        let mut result = StaticIndexedFile { file_id, inlay_hints, folds, tokens: vec![] };
         for token in tokens {
             let range = token.text_range();
             let node = token.parent().unwrap();
@@ -133,7 +158,8 @@ impl StaticIndex<'_> {
         self.files.push(result);
     }
 
-    pub fn compute<'a>(db: &'a RootDatabase, analysis: &'a Analysis) -> StaticIndex<'a> {
+    pub fn compute<'a>(analysis: &'a Analysis) -> StaticIndex<'a> {
+        let db = &*analysis.db;
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source(db).file_id.original_file(db);
             let source_root = db.file_source_root(file_id);
@@ -181,7 +207,7 @@ mod tests {
 
     fn check_all_ranges(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
-        let s = StaticIndex::compute(&*analysis.db, &analysis);
+        let s = StaticIndex::compute(&analysis);
         let mut range_set: HashSet<_> = ranges.iter().map(|x| x.0).collect();
         for f in s.files {
             for (range, _) in f.tokens {
@@ -199,7 +225,7 @@ mod tests {
 
     fn check_definitions(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
-        let s = StaticIndex::compute(&*analysis.db, &analysis);
+        let s = StaticIndex::compute(&analysis);
         let mut range_set: HashSet<_> = ranges.iter().map(|x| x.0).collect();
         for (_, t) in s.tokens.iter() {
             if let Some(x) = t.definition {
