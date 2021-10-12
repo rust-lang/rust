@@ -589,6 +589,13 @@ impl<'a> crate::Encoder for Encoder<'a> {
         }
     }
 
+    fn emit_fieldless_enum_variant<const ID: usize>(
+        &mut self,
+        name: &str,
+    ) -> Result<(), Self::Error> {
+        escape_str(self.writer, name)
+    }
+
     fn emit_enum_variant_arg<F>(&mut self, first: bool, f: F) -> EncodeResult
     where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
@@ -883,6 +890,13 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
             write!(self.writer, "}}")?;
             Ok(())
         }
+    }
+
+    fn emit_fieldless_enum_variant<const ID: usize>(
+        &mut self,
+        name: &str,
+    ) -> Result<(), Self::Error> {
+        escape_str(self.writer, name)
     }
 
     fn emit_enum_variant_arg<F>(&mut self, first: bool, f: F) -> EncodeResult
