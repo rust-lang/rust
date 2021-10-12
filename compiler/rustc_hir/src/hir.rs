@@ -696,7 +696,9 @@ pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the item signature, sithout recursing into the body.
     pub hash_without_bodies: Fingerprint,
     /// Full HIR for the current owner.
-    // The zeroth node's parent is trash, but is never accessed.
+    // The zeroth node's parent should never be accessed: the owner's parent is computed by the
+    // hir_owner_parent query.  It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
+    // used.
     pub nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
     /// Content of local bodies.
     pub bodies: IndexVec<ItemLocalId, Option<&'tcx Body<'tcx>>>,
