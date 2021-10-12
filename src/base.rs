@@ -203,7 +203,6 @@ pub(crate) fn verify_func(
                 tcx.sess.err(&format!("{:?}", err));
                 let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
                     &func,
-                    None,
                     Some(Box::new(writer)),
                     err,
                 );

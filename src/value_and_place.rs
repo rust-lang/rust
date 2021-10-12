@@ -329,7 +329,6 @@ impl<'tcx> CPlace<'tcx> {
             // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
             // specify stack slot alignment.
             size: (u32::try_from(layout.size.bytes()).unwrap() + 15) / 16 * 16,
-            offset: None,
         });
         CPlace { inner: CPlaceInner::Addr(Pointer::stack_slot(stack_slot), None), layout }
     }
@@ -472,7 +471,6 @@ impl<'tcx> CPlace<'tcx> {
                         // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
                         // specify stack slot alignment.
                         size: (src_ty.bytes() + 15) / 16 * 16,
-                        offset: None,
                     });
                     let ptr = Pointer::stack_slot(stack_slot);
                     ptr.store(fx, data, MemFlags::trusted());

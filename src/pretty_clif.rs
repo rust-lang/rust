@@ -57,7 +57,7 @@ use std::io::Write;
 
 use cranelift_codegen::{
     entity::SecondaryMap,
-    ir::{entities::AnyEntity, function::DisplayFunctionAnnotations},
+    ir::entities::AnyEntity,
     write::{FuncWriter, PlainWriter},
 };
 
@@ -129,7 +129,6 @@ impl FuncWriter for &'_ CommentWriter {
         &mut self,
         w: &mut dyn fmt::Write,
         func: &Function,
-        reg_info: Option<&isa::RegInfo>,
     ) -> Result<bool, fmt::Error> {
         for comment in &self.global_comments {
             if !comment.is_empty() {
@@ -142,7 +141,7 @@ impl FuncWriter for &'_ CommentWriter {
             writeln!(w)?;
         }
 
-        self.super_preamble(w, func, reg_info)
+        self.super_preamble(w, func)
     }
 
     fn write_entity_definition(
@@ -165,11 +164,10 @@ impl FuncWriter for &'_ CommentWriter {
         &mut self,
         w: &mut dyn fmt::Write,
         func: &Function,
-        isa: Option<&dyn isa::TargetIsa>,
         block: Block,
         indent: usize,
     ) -> fmt::Result {
-        PlainWriter.write_block_header(w, func, isa, block, indent)
+        PlainWriter.write_block_header(w, func, block, indent)
     }
 
     fn write_instruction(
@@ -177,11 +175,10 @@ impl FuncWriter for &'_ CommentWriter {
         w: &mut dyn fmt::Write,
         func: &Function,
         aliases: &SecondaryMap<Value, Vec<Value>>,
-        isa: Option<&dyn isa::TargetIsa>,
         inst: Inst,
         indent: usize,
     ) -> fmt::Result {
-        PlainWriter.write_instruction(w, func, aliases, isa, inst, indent)?;
+        PlainWriter.write_instruction(w, func, aliases, inst, indent)?;
         if let Some(comment) = self.entity_comments.get(&inst.into()) {
             writeln!(w, "; {}", comment.replace('\n', "\n; "))?;
         }
@@ -249,7 +246,6 @@ pub(crate) fn write_clif_file<'tcx>(
                 &mut clif_comments,
                 &mut clif,
                 &context.func,
-                &DisplayFunctionAnnotations { isa: Some(isa), value_ranges: None },
             )
             .unwrap();
 
@@ -278,7 +274,6 @@ impl fmt::Debug for FunctionCx<'_, '_, '_> {
             &mut &self.clif_comments,
             &mut clif,
             &self.bcx.func,
-            &DisplayFunctionAnnotations::default(),
         )
         .unwrap();
         writeln!(f, "\n{}", clif)
