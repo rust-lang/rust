@@ -684,6 +684,31 @@ impl Clone for Foo {
 #[derive(Partial$0Ord)]
 struct Foo {
     bin: usize,
+}
+"#,
+            r#"
+struct Foo {
+    bin: usize,
+}
+
+impl PartialOrd for Foo {
+    $0fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        self.bin.partial_cmp(other.bin)
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_partial_ord_record_struct_multi_field() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: ord
+#[derive(Partial$0Ord)]
+struct Foo {
+    bin: usize,
     bar: usize,
     baz: usize,
 }
@@ -697,15 +722,7 @@ struct Foo {
 
 impl PartialOrd for Foo {
     $0fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        match self.bin.partial_cmp(other.bin) {
-            Some(core::cmp::Ordering::Eq) => {}
-            ord => return ord,
-        }
-        match self.bar.partial_cmp(other.bar) {
-            Some(core::cmp::Ordering::Eq) => {}
-            ord => return ord,
-        }
-        self.baz.partial_cmp(other.baz)
+        (self.bin, self.bar, self.baz).partial_cmp((other.bin, other.bar, other.baz))
     }
 }
 "#,
@@ -726,15 +743,7 @@ struct Foo(usize, usize, usize);
 
 impl PartialOrd for Foo {
     $0fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        match self.0.partial_cmp(other.0) {
-            Some(core::cmp::Ordering::Eq) => {}
-            ord => return ord,
-        }
-        match self.1.partial_cmp(other.1) {
-            Some(core::cmp::Ordering::Eq) => {}
-            ord => return ord,
-        }
-        self.2.partial_cmp(other.2)
+        (self.0, self.1, self.2).partial_cmp((other.0, other.1, other.2))
     }
 }
 "#,
@@ -807,11 +816,7 @@ impl PartialOrd for Foo {
         match (self, other) {
             (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin.partial_cmp(r_bin),
             (Self::Baz { qux: l_qux, fez: l_fez }, Self::Baz { qux: r_qux, fez: r_fez }) => {
-                match l_qux.partial_cmp(r_qux) {
-                    Some(core::cmp::Ordering::Eq) => {}
-                    ord => return ord,
-                }
-                l_fez.partial_cmp(r_fez)
+                (l_qux, l_fez).partial_cmp((r_qux, r_fez))
             }
             _ => core::mem::discriminant(self).partial_cmp(core::mem::discriminant(other)),
         }
@@ -848,11 +853,7 @@ impl PartialOrd for Foo {
         match (self, other) {
             (Self::Bar(l0), Self::Bar(r0)) => l0.partial_cmp(r0),
             (Self::Baz(l0, l1), Self::Baz(r0, r1)) => {
-                match l0.partial_cmp(r0) {
-                    Some(core::cmp::Ordering::Eq) => {}
-                    ord => return ord,
-                }
-                l1.partial_cmp(r1)
+                (l0, l1).partial_cmp((r0, r1))
             }
             _ => core::mem::discriminant(self).partial_cmp(core::mem::discriminant(other)),
         }
