@@ -265,6 +265,7 @@ mod map_err_ignore;
 mod map_unit_fn;
 mod match_on_vec_items;
 mod match_result_ok;
+mod match_str_case_mismatch;
 mod matches;
 mod mem_discriminant;
 mod mem_forget;
@@ -771,6 +772,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let enable_raw_pointer_heuristic_for_send = conf.enable_raw_pointer_heuristic_for_send;
     store.register_late_pass(move || Box::new(non_send_fields_in_send_ty::NonSendFieldInSendTy::new(enable_raw_pointer_heuristic_for_send)));
     store.register_late_pass(move || Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::default()));
+    store.register_late_pass(|| Box::new(match_str_case_mismatch::MatchStrCaseMismatch));
 }
 
 #[rustfmt::skip]
