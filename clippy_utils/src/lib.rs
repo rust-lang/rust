@@ -69,11 +69,13 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{self, walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
-    ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Mutability, Node, Param, Pat,
-    PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
+    def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, ForeignItem, GenericArgs,
+    HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Mutability, Node,
+    Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
+    UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -2064,16 +2066,72 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     false
 }
 
-/// Checks whether item either has `test` attribute applied, or
-/// is a module with `test` in its name.
-pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
-    if let Some(def_id) = tcx.hir().opt_local_def_id(item.hir_id()) {
-        if tcx.has_attr(def_id.to_def_id(), sym::test) {
-            return true;
+struct VisitConstTestStruct<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    names: Vec<Symbol>,
+    found: bool,
+}
+impl<'hir> ItemLikeVisitor<'hir> for VisitConstTestStruct<'hir> {
+    fn visit_item(&mut self, item: &Item<'_>) {
+        if let ItemKind::Const(ty, _body) = item.kind {
+            if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
+                // We could also check for the type name `test::TestDescAndFn`
+                // and the `#[rustc_test_marker]` attribute?
+                if let Res::Def(DefKind::Struct, _) = path.res {
+                    let has_test_marker = self
+                        .tcx
+                        .hir()
+                        .attrs(item.hir_id())
+                        .iter()
+                        .any(|a| a.has_name(sym::rustc_test_marker));
+                    if has_test_marker && self.names.contains(&item.ident.name) {
+                        self.found = true;
+                    }
+                }
+            }
         }
     }
+    fn visit_trait_item(&mut self, _: &TraitItem<'_>) {}
+    fn visit_impl_item(&mut self, _: &ImplItem<'_>) {}
+    fn visit_foreign_item(&mut self, _: &ForeignItem<'_>) {}
+}
 
-    matches!(item.kind, ItemKind::Mod(..)) && item.ident.name.as_str().split('_').any(|a| a == "test" || a == "tests")
+/// Checks if the function containing the given `HirId` is a `#[test]` function
+///
+/// Note: If you use this function, please add a `#[test]` case in `tests/ui_test`.
+pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
+    let names: Vec<_> = tcx
+        .hir()
+        .parent_iter(id)
+        // Since you can nest functions we need to collect all until we leave
+        // function scope
+        .filter_map(|(_id, node)| {
+            if let Node::Item(item) = node {
+                if let ItemKind::Fn(_, _, _) = item.kind {
+                    return Some(item.ident.name);
+                }
+            }
+            None
+        })
+        .collect();
+    let parent_mod = tcx.parent_module(id);
+    let mut vis = VisitConstTestStruct {
+        tcx,
+        names,
+        found: false,
+    };
+    tcx.hir().visit_item_likes_in_module(parent_mod, &mut vis);
+    vis.found
+}
+
+/// Checks whether item either has `test` attribute appelied, or
+/// is a module with `test` in its name.
+///
+/// Note: If you use this function, please add a `#[test]` case in `tests/ui_test`.
+pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
+    is_in_test_function(tcx, item.hir_id())
+        || matches!(item.kind, ItemKind::Mod(..))
+            && item.ident.name.as_str().split('_').any(|a| a == "test" || a == "tests")
 }
 
 macro_rules! op_utils {
