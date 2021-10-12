@@ -594,7 +594,6 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             None,
             make::expr_return(Some(make::expr_path(make::ext::ident_path("ord")))),
         ));
-        // let rhs = make::expr_path(make::ext::ident_path("other"));
         let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
         Some(make::expr_stmt(make::expr_match(match_target, list)).into())
     }
@@ -742,17 +741,22 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             }
 
             Some(ast::FieldList::TupleFieldList(field_list)) => {
-                let mut expr = None;
+                let mut exprs = vec![];
                 for (i, _) in field_list.fields().enumerate() {
                     let idx = format!("{}", i);
                     let lhs = make::expr_path(make::ext::ident_path("self"));
                     let lhs = make::expr_field(lhs, &idx);
                     let rhs = make::expr_path(make::ext::ident_path("other"));
                     let rhs = make::expr_field(rhs, &idx);
-                    let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
-                    expr = gen_eq_chain(expr, cmp);
+                    let ord = gen_partial_cmp_call(lhs, rhs);
+                    exprs.push(ord);
                 }
-                make::block_expr(None, expr).indent(ast::edit::IndentLevel(1))
+                let tail = exprs.pop();
+                let stmts = exprs
+                    .into_iter()
+                    .map(gen_partial_eq_match)
+                    .collect::<Option<Vec<ast::Stmt>>>()?;
+                make::block_expr(stmts.into_iter(), tail).indent(ast::edit::IndentLevel(1))
             }
 
             // No fields in the body means there's nothing to hash.
