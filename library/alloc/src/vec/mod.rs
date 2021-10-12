@@ -1952,10 +1952,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// `'a`. If the type has only static references, or none at all, then this
     /// may be chosen to be `'static`.
     ///
-    /// This method does not reallocate or shrink the `Vec`, so the leaked
-    /// allocation may include unused capacity that is not part of the returned
-    /// slice.  Unsafe code that later reconstructs or deallocates the `Vec`
-    /// (for example, by calling [`Vec::from_raw_parts`]) must keep track of the
+    /// As of Rust 1.57, this method does not reallocate or shrink the `Vec`,
+    /// so the leaked allocation may include unused capacity that is not part
+    /// of the returned slice.
+    /// Unsafe code that later reconstructs or deallocates the `Vec` (for
+    /// example, by calling [`Vec::from_raw_parts`]) must keep track of the
     /// original capacity.
     ///
     /// This function is mainly useful for data that lives for the remainder of
