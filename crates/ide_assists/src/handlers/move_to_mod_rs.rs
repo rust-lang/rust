@@ -27,7 +27,7 @@ pub(crate) fn move_to_mod_rs(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let source_file = ctx.find_node_at_offset::<ast::SourceFile>()?;
     let module = ctx.sema.to_module_def(ctx.frange.file_id)?;
     // Enable this assist if the user select all "meaningful" content in the source file
-    let trimmed_selected_range = trimmed_text_range(&source_file, ctx.frange.range);
+    let trimmed_selected_range = trimmed_text_range(&source_file, ctx.selection_trimmed());
     let trimmed_file_range = trimmed_text_range(&source_file, source_file.syntax().text_range());
     if module.is_mod_rs(ctx.db()) {
         cov_mark::hit!(already_mod_rs);

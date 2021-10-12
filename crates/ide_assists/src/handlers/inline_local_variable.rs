@@ -1,7 +1,7 @@
 use either::Either;
 use hir::{PathResolution, Semantics};
 use ide_db::{
-    base_db::{FileId, FileRange},
+    base_db::FileId,
     defs::Definition,
     search::{FileReference, UsageSearchResult},
     RootDatabase,
@@ -33,7 +33,8 @@ use crate::{
 // }
 // ```
 pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let FileRange { file_id, range } = ctx.frange;
+    let file_id = ctx.frange.file_id;
+    let range = ctx.selection_trimmed();
     let InlineData { let_stmt, delete_let, references, target } =
         if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
             inline_let(&ctx.sema, let_stmt, range, file_id)

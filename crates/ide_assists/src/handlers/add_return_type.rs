@@ -107,11 +107,11 @@ fn extract_tail(ctx: &AssistContext) -> Option<(FnType, ast::Expr, InsertOrRepla
             let ret_range = TextRange::new(rparen_pos, ret_range_end);
             (FnType::Function, tail_expr, ret_range, action)
         };
-    let frange = ctx.frange.range;
-    if return_type_range.contains_range(frange) {
+    let range = ctx.selection_trimmed();
+    if return_type_range.contains_range(range) {
         cov_mark::hit!(cursor_in_ret_position);
         cov_mark::hit!(cursor_in_ret_position_closure);
-    } else if tail_expr.syntax().text_range().contains_range(frange) {
+    } else if tail_expr.syntax().text_range().contains_range(range) {
         cov_mark::hit!(cursor_on_tail);
         cov_mark::hit!(cursor_on_tail_closure);
     } else {

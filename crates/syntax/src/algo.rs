@@ -53,6 +53,16 @@ pub fn skip_trivia_token(mut token: SyntaxToken, direction: Direction) -> Option
     }
     Some(token)
 }
+/// Skip to next non `whitespace` token
+pub fn skip_whitespace_token(mut token: SyntaxToken, direction: Direction) -> Option<SyntaxToken> {
+    while token.kind() == SyntaxKind::WHITESPACE {
+        token = match direction {
+            Direction::Next => token.next_token()?,
+            Direction::Prev => token.prev_token()?,
+        }
+    }
+    Some(token)
+}
 
 /// Finds the first sibling in the given direction which is not `trivia`
 pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Option<SyntaxElement> {

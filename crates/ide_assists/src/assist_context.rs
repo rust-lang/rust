@@ -14,7 +14,7 @@ use ide_db::{
 };
 use syntax::{
     algo::{self, find_node_at_offset, find_node_at_range},
-    AstNode, AstToken, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxNodePtr,
+    AstNode, AstToken, Direction, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxNodePtr,
     SyntaxToken, TextRange, TextSize, TokenAtOffset,
 };
 use text_edit::{TextEdit, TextEditBuilder};
@@ -57,6 +57,7 @@ pub(crate) struct AssistContext<'a> {
     pub(crate) config: &'a AssistConfig,
     pub(crate) sema: Semantics<'a, RootDatabase>,
     pub(crate) frange: FileRange,
+    trimmed_range: TextRange,
     source_file: SourceFile,
 }
 
@@ -67,7 +68,20 @@ impl<'a> AssistContext<'a> {
         frange: FileRange,
     ) -> AssistContext<'a> {
         let source_file = sema.parse(frange.file_id);
-        AssistContext { config, sema, frange, source_file }
+
+        let start = frange.range.start();
+        let end = frange.range.end();
+        let left = source_file.syntax().token_at_offset(start);
+        let right = source_file.syntax().token_at_offset(end);
+        let left =
+            left.right_biased().and_then(|t| algo::skip_whitespace_token(t, Direction::Next));
+        let right =
+            right.left_biased().and_then(|t| algo::skip_whitespace_token(t, Direction::Prev));
+        let left = left.map(|t| t.text_range().start()).unwrap_or(start).clamp(start, end);
+        let right = right.map(|t| t.text_range().end()).unwrap_or(end).clamp(start, end);
+        let trimmed_range = TextRange::new(left, right);
+
+        AssistContext { config, sema, frange, source_file, trimmed_range }
     }
 
     pub(crate) fn db(&self) -> &RootDatabase {
@@ -77,6 +91,12 @@ impl<'a> AssistContext<'a> {
     // NB, this ignores active selection.
     pub(crate) fn offset(&self) -> TextSize {
         self.frange.range.start()
+    }
+
+    /// Returns the selected range trimmed for whitespace tokens, that is the range will be snapped
+    /// to the nearest enclosed token.
+    pub(crate) fn selection_trimmed(&self) -> TextRange {
+        self.trimmed_range
     }
 
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
@@ -92,13 +112,15 @@ impl<'a> AssistContext<'a> {
         find_node_at_offset(self.source_file.syntax(), self.offset())
     }
     pub(crate) fn find_node_at_range<N: AstNode>(&self) -> Option<N> {
-        find_node_at_range(self.source_file.syntax(), self.frange.range)
+        find_node_at_range(self.source_file.syntax(), self.trimmed_range)
     }
     pub(crate) fn find_node_at_offset_with_descend<N: AstNode>(&self) -> Option<N> {
         self.sema.find_node_at_offset_with_descend(self.source_file.syntax(), self.offset())
     }
+    /// Returns the element covered by the selection range, this excludes trailing whitespace in the selection.
     pub(crate) fn covering_element(&self) -> SyntaxElement {
-        self.source_file.syntax().covering_element(self.frange.range)
+        self.source_file.syntax().covering_element(self.selection_trimmed())
+        // self.source_file.syntax().covering_element(self.frange.range)
     }
 }
 
