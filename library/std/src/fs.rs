@@ -1078,6 +1078,7 @@ impl Metadata {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> u64 {
         self.0.size()

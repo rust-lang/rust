@@ -140,6 +140,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_len", since = "1.39.0")]
+    #[must_use]
     #[inline]
     pub const fn len(&self) -> usize {
         self.as_bytes().len()
@@ -158,9 +159,10 @@ impl str {
     /// let s = "not empty";
     /// assert!(!s.is_empty());
     /// ```
-    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_is_empty", since = "1.39.0")]
+    #[must_use]
+    #[inline]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
