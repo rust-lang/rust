@@ -982,7 +982,8 @@ impl Config {
         config.rust_debug_assertions_std =
             debug_assertions_std.unwrap_or(config.rust_debug_assertions);
         config.rust_overflow_checks = overflow_checks.unwrap_or(default);
-        config.rust_overflow_checks_std = overflow_checks_std.unwrap_or(default);
+        config.rust_overflow_checks_std =
+            overflow_checks_std.unwrap_or(config.rust_overflow_checks);
 
         config.rust_debug_logging = debug_logging.unwrap_or(config.rust_debug_assertions);
 
