@@ -18,11 +18,6 @@ LL | impl Test<u32> for u64 {
 ...
 LL | impl Test<u64> for u64 {
    | ^^^^^^^^^^^^^^^^^^^^^^
-note: required by `Test::test`
-  --> $DIR/issue-69455.rs:8:5
-   |
-LL |     fn test(self, rhs: Rhs) -> Self::Output;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider specifying the type argument in the method call
    |
 LL |     println!("{}", 23u64.test(xs.iter().sum::<S>()));

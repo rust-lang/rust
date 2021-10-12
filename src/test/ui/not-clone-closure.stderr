@@ -11,11 +11,6 @@ LL |       let hello = hello.clone();
    |                         ^^^^^ within `[closure@$DIR/not-clone-closure.rs:7:17: 9:6]`, the trait `Clone` is not implemented for `S`
    |
    = note: required because it appears within the type `[closure@$DIR/not-clone-closure.rs:7:17: 9:6]`
-note: required by `clone`
-  --> $SRC_DIR/core/src/clone.rs:LL:COL
-   |
-LL |     fn clone(&self) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

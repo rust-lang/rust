@@ -27,12 +27,6 @@ LL |     Foo::test(&4i32);
    |     --------- ^^^^^ the trait `Foo` is not implemented for `i32`
    |     |
    |     required by a bound introduced by this call
-   |
-note: required by `Foo::test`
-  --> $DIR/trivial-bounds-leak.rs:5:5
-   |
-LL |     fn test(&self);
-   |     ^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/trivial-bounds-leak.rs:26:22

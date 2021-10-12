@@ -25,11 +25,6 @@ LL | |     }.hi() {
    |
    = help: the trait `Iterator` is not implemented for `bool`
    = note: required because of the requirements on the impl of `IntoIterator` for `bool`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -34,11 +34,6 @@ LL |     opts.get(opt.as_ref());
            - impl AsRef<Path> for String;
            - impl AsRef<[u8]> for String;
            - impl AsRef<str> for String;
-note: required by `as_ref`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn as_ref(&self) -> &T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 help: use the fully qualified path for the potential candidates
    |
 LL |     opts.get(<String as AsRef<OsStr>>::as_ref(opt));
@@ -64,11 +59,6 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect(
            - impl From<bool> for u32;
            - impl From<char> for u32;
            and 3 more
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed for `Box<T>`
   --> $DIR/issue-77982.rs:36:16
@@ -85,11 +75,6 @@ LL | impl Foo<'static, u32> for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL | impl<'a> Foo<'a, i16> for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required by `Foo::foo`
-  --> $DIR/issue-77982.rs:18:5
-   |
-LL |     fn foo(&self) -> Box<T> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed for `Box<T>`
   --> $DIR/issue-77982.rs:40:19
@@ -106,11 +91,6 @@ LL | impl<'a> Bar<'static, u32> for &'a () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL | impl<'a> Bar<'a, i16> for &'a () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required by `Bar::bar`
-  --> $DIR/issue-77982.rs:24:5
-   |
-LL |     fn bar(&self) -> Box<T> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

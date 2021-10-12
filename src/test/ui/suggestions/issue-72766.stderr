@@ -5,11 +5,6 @@ LL |     SadGirl {}.call()?;
    |     ^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `impl Future<Output = Result<(), ()>>`
    |
    = help: the trait `Try` is not implemented for `impl Future<Output = Result<(), ()>>`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |     SadGirl {}.call().await?;

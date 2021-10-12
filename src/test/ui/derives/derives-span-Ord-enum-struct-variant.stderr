@@ -7,11 +7,6 @@ LL | #[derive(Ord,Eq,PartialOrd,PartialEq)]
 LL |      x: Error
    |      ^^^^^^^^ the trait `Ord` is not implemented for `Error`
    |
-note: required by `std::cmp::Ord::cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn cmp(&self, other: &Self) -> Ordering;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

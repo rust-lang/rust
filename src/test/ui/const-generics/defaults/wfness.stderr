@@ -12,11 +12,6 @@ LL | struct WhereClause<const N: u8 = 2> where (): Trait<N>;
    |
    = help: the following implementations were found:
              <() as Trait<3_u8>>
-note: required by `WhereClause`
-  --> $DIR/wfness.rs:8:1
-   |
-LL | struct WhereClause<const N: u8 = 2> where (): Trait<N>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `(): Trait<1_u8>` is not satisfied
   --> $DIR/wfness.rs:16:13
