@@ -309,13 +309,13 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     span: Span,
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
-    destination: Option<(Place<'tcx>, BasicBlock)>,
+    mir_dest: Option<(Place<'tcx>, BasicBlock)>,
 ) {
     let fn_ty = fx.monomorphize(func.ty(fx.mir, fx.tcx));
     let fn_sig =
         fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), fn_ty.fn_sig(fx.tcx));
 
-    let destination = destination.map(|(place, bb)| (codegen_place(fx, place), bb));
+    let destination = mir_dest.map(|(place, bb)| (codegen_place(fx, place), bb));
 
     // Handle special calls like instrinsics and empty drop glue.
     let instance = if let ty::FnDef(def_id, substs) = *fn_ty.kind() {
