@@ -1,6 +1,7 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::LitKind;
+use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -8,6 +9,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::SymbolStr;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
@@ -18,7 +20,9 @@ declare_clippy_lint! {
     /// The arm is unreachable, which is likely a mistake
     ///
     /// ### Example
-    /// ```rust,no_run
+    /// ```rust
+    /// # let text = "Foo";
+    ///
     /// match &*text.to_ascii_lowercase() {
     ///     "foo" => {},
     ///     "Bar" => {},
@@ -26,7 +30,9 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust,no_run
+    /// ```rust
+    /// # let text = "Foo";
+    ///
     /// match &*text.to_ascii_lowercase() {
     ///     "foo" => {},
     ///     "bar" => {},
@@ -64,8 +70,8 @@ impl LateLintPass<'_> for MatchStrCaseMismatch {
                 visitor.visit_expr(match_expr);
 
                 if let Some(case_method) = visitor.case_method {
-                    if let Some(bad_case) = verify_case(&case_method, arms) {
-                        lint(cx, expr.span, &case_method, bad_case);
+                    if let Some((bad_case_span, bad_case_str)) = verify_case(&case_method, arms) {
+                        lint(cx, &case_method, bad_case_span, &bad_case_str);
                     }
                 }
             }
@@ -119,9 +125,7 @@ fn get_case_method(segment_ident_str: &str) -> Option<CaseMethod> {
     }
 }
 
-fn verify_case(case_method: &CaseMethod, arms: &'_ [Arm<'_>]) -> Option<Span> {
-    let mut bad_case = None;
-
+fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(Span, SymbolStr)> {
     let case_check = match case_method {
         CaseMethod::LowerCase => |input: &str| -> bool { input.chars().all(char::is_lowercase) },
         CaseMethod::AsciiLowerCase => |input: &str| -> bool { input.chars().all(|c| matches!(c, 'a'..='z')) },
@@ -136,31 +140,32 @@ fn verify_case(case_method: &CaseMethod, arms: &'_ [Arm<'_>]) -> Option<Span> {
                                 ..
                             }) = arm.pat.kind;
             if let LitKind::Str(symbol, _) = lit.node;
-            if !case_check(&symbol.as_str());
+            let input = symbol.as_str();
+            if !case_check(&input);
             then {
-                bad_case = Some(lit.span);
-                break;
+                return Some((lit.span, input));
             }
         }
     }
 
-    bad_case
+    None
 }
 
-fn lint(cx: &LateContext<'_>, expr_span: Span, case_method: &CaseMethod, bad_case_span: Span) {
-    let method_str = match case_method {
-        CaseMethod::LowerCase => "to_lower_case",
-        CaseMethod::AsciiLowerCase => "to_ascii_lowercase",
-        CaseMethod::UpperCase => "to_uppercase",
-        CaseMethod::AsciiUppercase => "to_ascii_uppercase",
+fn lint(cx: &LateContext<'_>, case_method: &CaseMethod, bad_case_span: Span, bad_case_str: &str) {
+    let (method_str, suggestion) = match case_method {
+        CaseMethod::LowerCase => ("to_lower_case", bad_case_str.to_lowercase()),
+        CaseMethod::AsciiLowerCase => ("to_ascii_lowercase", bad_case_str.to_ascii_lowercase()),
+        CaseMethod::UpperCase => ("to_uppercase", bad_case_str.to_uppercase()),
+        CaseMethod::AsciiUppercase => ("to_ascii_uppercase", bad_case_str.to_ascii_uppercase()),
     };
 
-    span_lint_and_help(
+    span_lint_and_sugg(
         cx,
         MATCH_STR_CASE_MISMATCH,
-        expr_span,
-        "this `match` expression alters case, but has non-compliant arms",
-        Some(bad_case_span),
+        bad_case_span,
+        "this `match` arm has a differing case than its expression",
         &*format!("consider changing the case of this arm to respect `{}`", method_str),
+        format!("\"{}\"", suggestion),
+        Applicability::MachineApplicable,
     );
 }
