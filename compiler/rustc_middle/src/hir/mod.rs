@@ -71,6 +71,7 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id].as_ref().map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
+        // Accessing the def_key is ok since its value is hashed as part of `id`'s DefPathHash.
         let parent = tcx.untracked_resolutions.definitions.def_key(id).parent;
         let parent = parent.map_or(CRATE_HIR_ID, |local_def_index| {
             let def_id = LocalDefId { local_def_index };
