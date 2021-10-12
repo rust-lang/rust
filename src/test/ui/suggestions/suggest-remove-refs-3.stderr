@@ -13,11 +13,6 @@ LL | |          .enumerate() {
    |
    = help: the trait `Iterator` is not implemented for `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>`
    = note: required because of the requirements on the impl of `IntoIterator` for `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

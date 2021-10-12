@@ -5,11 +5,6 @@ LL |     let cont: u32 = Generator::create();
    |                     ^^^^^^^^^^^^^^^^^ cannot infer type
    |
    = note: cannot satisfy `_: Generator`
-note: required by `Generator::create`
-  --> $DIR/E0283.rs:2:5
-   |
-LL |     fn create() -> u32;
-   |     ^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/E0283.rs:35:24
@@ -29,11 +24,6 @@ LL | impl Into<u32> for Impl {
    = note: and another `impl` found in the `core` crate:
            - impl<T, U> Into<U> for T
              where U: From<T>;
-note: required by `into`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn into(self) -> T;
-   |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

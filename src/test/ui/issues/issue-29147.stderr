@@ -11,11 +11,6 @@ LL | impl Foo for S5<u32> { fn xxx(&self) {} }
    | ^^^^^^^^^^^^^^^^^^^^
 LL | impl Foo for S5<u64> { fn xxx(&self) {} }
    | ^^^^^^^^^^^^^^^^^^^^
-note: required by `Foo::xxx`
-  --> $DIR/issue-29147.rs:10:13
-   |
-LL | trait Foo { fn xxx(&self); }
-   |             ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

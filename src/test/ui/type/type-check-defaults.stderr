@@ -29,36 +29,18 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
    |
 LL | struct Bounds<T:Copy=String>(T);
    |                 ^^^^ the trait `Copy` is not implemented for `String`
-   |
-note: required by `Bounds`
-  --> $DIR/type-check-defaults.rs:11:1
-   |
-LL | struct Bounds<T:Copy=String>(T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/type-check-defaults.rs:14:42
    |
 LL | struct WhereClause<T=String>(T) where T: Copy;
    |                                          ^^^^ the trait `Copy` is not implemented for `String`
-   |
-note: required by `WhereClause`
-  --> $DIR/type-check-defaults.rs:14:1
-   |
-LL | struct WhereClause<T=String>(T) where T: Copy;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/type-check-defaults.rs:17:20
    |
 LL | trait TraitBound<T:Copy=String> {}
    |                    ^^^^ the trait `Copy` is not implemented for `String`
-   |
-note: required by `TraitBound`
-  --> $DIR/type-check-defaults.rs:17:1
-   |
-LL | trait TraitBound<T:Copy=String> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/type-check-defaults.rs:21:25
@@ -83,11 +65,6 @@ LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
    |                                                                  ^^^^^^^ no implementation for `i32 + u8`
    |
    = help: the trait `Add<u8>` is not implemented for `i32`
-note: required by `ProjectionPred`
-  --> $DIR/type-check-defaults.rs:24:1
-   |
-LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

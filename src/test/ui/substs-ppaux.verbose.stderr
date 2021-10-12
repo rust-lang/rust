@@ -82,11 +82,6 @@ note: required because of the requirements on the impl of `Foo<'_#0r, '_#1r, u8>
    |
 LL | impl<'a,'b,T,S> Foo<'a, 'b, S> for T {}
    |                 ^^^^^^^^^^^^^^     ^
-note: required by `Foo::bar`
-  --> $DIR/substs-ppaux.rs:7:5
-   |
-LL |     fn bar<'a, T>() where T: 'a {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

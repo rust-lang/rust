@@ -7,11 +7,6 @@ LL |     f1.foo(1usize);
    = help: the following implementations were found:
              <Bar as Foo<i32>>
              <Bar as Foo<u8>>
-note: required by `Foo::foo`
-  --> $DIR/issue-21659-show-relevant-trait-impls-1.rs:2:5
-   |
-LL |     fn foo(&self, a: A) -> A {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

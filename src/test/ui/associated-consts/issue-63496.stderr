@@ -9,11 +9,6 @@ LL |     fn f() -> ([u8; A::C], [u8; A::C]);
    |
    = note: cannot satisfy `_: A`
    = note: associated constants cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
-note: required by `A::C`
-  --> $DIR/issue-63496.rs:2:5
-   |
-LL |     const C: usize;
-   |     ^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-63496.rs:4:33
@@ -26,11 +21,6 @@ LL |     fn f() -> ([u8; A::C], [u8; A::C]);
    |
    = note: cannot satisfy `_: A`
    = note: associated constants cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
-note: required by `A::C`
-  --> $DIR/issue-63496.rs:2:5
-   |
-LL |     const C: usize;
-   |     ^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -7,11 +7,6 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl<> From<&String> for String;
            - impl<> From<&str> for String;
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:7:22
@@ -27,11 +22,6 @@ LL |     String::from("x".as_ref());
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-note: required by `as_ref`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn as_ref(&self) -> &T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0282]: type annotations needed
   --> $DIR/issue-72690.rs:12:6
@@ -48,11 +38,6 @@ LL |     |x| String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl<> From<&String> for String;
            - impl<> From<&str> for String;
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:12:26
@@ -68,11 +53,6 @@ LL |     |x| String::from("x".as_ref());
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-note: required by `as_ref`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn as_ref(&self) -> &T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed for `&T`
   --> $DIR/issue-72690.rs:18:17
@@ -87,11 +67,6 @@ LL |     let _ = "x".as_ref();
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-note: required by `as_ref`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn as_ref(&self) -> &T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:22:5
@@ -102,11 +77,6 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl<> From<&String> for String;
            - impl<> From<&str> for String;
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:22:22
@@ -122,11 +92,6 @@ LL |     String::from("x".as_ref());
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-note: required by `as_ref`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn as_ref(&self) -> &T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:29:5
@@ -137,11 +102,6 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl<> From<&String> for String;
            - impl<> From<&str> for String;
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:29:22
@@ -157,11 +117,6 @@ LL |     String::from("x".as_ref());
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-note: required by `as_ref`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn as_ref(&self) -> &T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:38:5
@@ -172,11 +127,6 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl<> From<&String> for String;
            - impl<> From<&str> for String;
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:38:22
@@ -192,11 +142,6 @@ LL |     String::from("x".as_ref());
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-note: required by `as_ref`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn as_ref(&self) -> &T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:47:5
@@ -207,11 +152,6 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl<> From<&String> for String;
            - impl<> From<&str> for String;
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:47:22
@@ -227,11 +167,6 @@ LL |     String::from("x".as_ref());
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-note: required by `as_ref`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn as_ref(&self) -> &T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:54:5
@@ -242,11 +177,6 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl<> From<&String> for String;
            - impl<> From<&str> for String;
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:54:22
@@ -262,11 +192,6 @@ LL |     String::from("x".as_ref());
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-note: required by `as_ref`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn as_ref(&self) -> &T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:63:5
@@ -277,11 +202,6 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl<> From<&String> for String;
            - impl<> From<&str> for String;
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:63:22
@@ -297,11 +217,6 @@ LL |     String::from("x".as_ref());
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-note: required by `as_ref`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn as_ref(&self) -> &T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 18 previous errors
 

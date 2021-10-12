@@ -6,11 +6,6 @@ LL |     <[(); 0] as Foo>::foo()
    |
    = help: the following implementations were found:
              <[(); 1] as Foo>
-note: required by `Foo::foo`
-  --> $DIR/unevaluated_fixed_size_array_len.rs:4:5
-   |
-LL |     fn foo();
-   |     ^^^^^^^^^
 
 error: aborting due to previous error
 

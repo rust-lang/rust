@@ -24,11 +24,6 @@ note: required because of the requirements on the impl of `ToA<T>` for `U`
    |
 LL | impl<T, U> ToA<U> for T
    |            ^^^^^^     ^
-note: required by `ToA::to`
-  --> $DIR/issue-39448.rs:31:5
-   |
-LL |     fn to(self) -> T;
-   |     ^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 
