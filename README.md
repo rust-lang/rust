@@ -63,8 +63,6 @@ in your program, and cannot run all programs:
   emulated and spin loops (without syscalls) just loop forever. There is no
   threading support on Windows.
 
-Consider looking into GitHub isues for more information about the limitations.
-
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
