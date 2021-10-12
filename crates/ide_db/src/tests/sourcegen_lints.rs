@@ -15,13 +15,15 @@ fn sourcegen_lint_completions() {
         cmd!("git clone --depth=1 https://github.com/rust-lang/rust {rust_repo}").run().unwrap();
     }
 
-    let mut contents = r"
+    let mut contents = String::from(
+        r"
 pub struct Lint {
     pub label: &'static str,
     pub description: &'static str,
 }
-"
-    .to_string();
+",
+    );
+
     generate_lint_descriptor(&mut contents);
     contents.push('\n');
 
@@ -34,8 +36,7 @@ pub struct Lint {
         .unwrap();
     generate_descriptor_clippy(&mut contents, &lints_json);
 
-    let contents =
-        sourcegen::add_preamble("sourcegen_lint_completions", sourcegen::reformat(contents));
+    let contents = sourcegen::add_preamble("sourcegen_lints", sourcegen::reformat(contents));
 
     let destination = project_root().join("crates/ide_db/src/helpers/generated_lints.rs");
     sourcegen::ensure_file_contents(destination.as_path(), &contents);
@@ -117,29 +118,23 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
     let mut clippy_lints: Vec<ClippyLint> = Vec::new();
 
     for line in file_content.lines().map(|line| line.trim()) {
-        if line.starts_with(r#""id":"#) {
+        if let Some(line) = line.strip_prefix(r#""id": ""#) {
             let clippy_lint = ClippyLint {
-                id: line
-                    .strip_prefix(r#""id": ""#)
-                    .expect("should be prefixed by id")
-                    .strip_suffix(r#"","#)
-                    .expect("should be suffixed by comma")
-                    .into(),
+                id: line.strip_suffix(r#"","#).expect("should be suffixed by comma").into(),
                 help: String::new(),
             };
             clippy_lints.push(clippy_lint)
-        } else if line.starts_with(r#""What it does":"#) {
-            // Typical line to strip: "What is doest": "Here is my useful content",
-            let prefix_to_strip = r#""What it does": ""#;
-            let suffix_to_strip = r#"","#;
+        } else if let Some(line) = line.strip_prefix(r#""docs": ""#) {
+            let prefix_to_strip = r#" ### What it does"#;
+            // FIXME: replace unwrap_or with expect again, currently there is one lint that uses a different format in the json...
+            let line = line.strip_prefix(prefix_to_strip).unwrap_or(line);
+            // Only take the description, any more than this is a lot of additional data we would embed into the exe
+            // which seems unnecessary
+            let up_to = line.find(r#"###"#).expect("no second section found?");
+            let line = &line[..up_to];
 
             let clippy_lint = clippy_lints.last_mut().expect("clippy lint must already exist");
-            clippy_lint.help = line
-                .strip_prefix(prefix_to_strip)
-                .expect("should be prefixed by what it does")
-                .strip_suffix(suffix_to_strip)
-                .map(unescape)
-                .expect("should be suffixed by comma");
+            clippy_lint.help = unescape(line).trim().to_string();
         }
     }
     clippy_lints.sort_by(|lint, lint2| lint.id.cmp(&lint2.id));

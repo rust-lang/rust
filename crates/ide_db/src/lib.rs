@@ -165,5 +165,5 @@ pub enum SymbolKind {
 
 #[cfg(test)]
 mod tests {
-    mod sourcegen_lint_completions;
+    mod sourcegen_lints;
 }
