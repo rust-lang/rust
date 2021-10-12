@@ -822,6 +822,47 @@ impl PartialOrd for Foo {
     }
 
     #[test]
+    fn add_custom_impl_partial_ord_tuple_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: ord
+#[derive(Partial$0Ord)]
+enum Foo {
+    Bar(String),
+    Baz(String, String),
+    Qux(),
+    Bin,
+}
+"#,
+            r#"
+enum Foo {
+    Bar(String),
+    Baz(String, String),
+    Qux(),
+    Bin,
+}
+
+impl PartialOrd for Foo {
+    $0fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        match (self, other) {
+            (Self::Bar(l0), Self::Bar(r0)) => l0.partial_cmp(r0),
+            (Self::Baz(l0, l1), Self::Baz(r0, r1)) => {
+                match l0.partial_cmp(r0) {
+                    Some(core::cmp::Ordering::Eq) => {}
+                    ord => return ord,
+                }
+                l1.partial_cmp(r1)
+            }
+            _ => core::mem::discriminant(self).partial_cmp(core::mem::discriminant(other)),
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn add_custom_impl_partial_eq_record_struct() {
         check_assist(
             replace_derive_with_manual_impl,
