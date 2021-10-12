@@ -146,8 +146,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let graph = self.construct_graph();
         self.expand_givens(&graph);
         self.expansion(&mut var_data);
-        let captures = self.collect_errors(&mut var_data, errors);
-        self.collect_var_errors(&var_data, &graph, errors, captures);
+        self.collect_errors(&mut var_data, errors);
+        self.collect_var_errors(&var_data, &graph, errors);
         var_data
     }
 
@@ -445,16 +445,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         &self,
         var_data: &mut LexicalRegionResolutions<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
-    ) -> Vec<Span> {
-        let mut captures = vec![];
-
+    ) {
         for (constraint, origin) in &self.data.constraints {
             debug!(?constraint, ?origin);
-            if let (Constraint::VarSubVar(_, _), SubregionOrigin::DataBorrowed(_, sp)) =
-                (constraint, origin)
-            {
-                captures.push(*sp);
-            }
             match *constraint {
                 Constraint::RegSubVar(..) | Constraint::VarSubVar(..) => {
                     // Expansion will ensure that these constraints hold. Ignore.
@@ -524,7 +517,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 sub,
             ));
         }
-        captures
     }
 
     /// Go over the variables that were declared to be error variables
@@ -534,7 +526,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         var_data: &LexicalRegionResolutions<'tcx>,
         graph: &RegionGraph<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
-        captures: Vec<Span>,
     ) {
         debug!("collect_var_errors, var_data = {:#?}", var_data.values);
 
@@ -578,12 +569,27 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // if this rule starts to create problems we'll
                     // have to revisit this portion of the code and
                     // think hard about it. =) -- nikomatsakis
+
+                    // Obtain the spans for all the capture points for
+                    // richer diagnostics in `static_impl_trait`.
+                    let captures: Vec<Span> = self
+                        .data
+                        .constraints
+                        .iter()
+                        .filter_map(|(constraint, origin)| match (constraint, origin) {
+                            (Constraint::VarSubVar(_, _), SubregionOrigin::DataBorrowed(_, sp)) => {
+                                Some(*sp)
+                            }
+                            _ => None,
+                        })
+                        .collect();
+
                     self.collect_error_for_expanding_node(
                         graph,
                         &mut dup_vec,
                         node_vid,
                         errors,
-                        &captures,
+                        captures,
                     );
                 }
             }
@@ -638,7 +644,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         dup_vec: &mut IndexVec<RegionVid, Option<RegionVid>>,
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
-        captures: &[Span],
+        captures: Vec<Span>,
     ) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
@@ -686,10 +692,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         origin, node_idx, lower_bound.region, upper_bound.region
                     );
 
-                    let mut capture_spans: Vec<Span> = captures.iter().cloned().collect();
-                    // Below, one span expects `&Span` and the other `&mut Span`, hence the dupes.
-                    capture_spans.sort_by_key(|span| (span.lo(), span.hi()));
-                    capture_spans.dedup_by_key(|span| (span.lo(), span.hi()));
                     errors.push(RegionResolutionError::SubSupConflict(
                         node_idx,
                         origin,
@@ -697,7 +699,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         lower_bound.region,
                         upper_bound.origin.clone(),
                         upper_bound.region,
-                        capture_spans,
+                        captures,
                     ));
                     return;
                 }

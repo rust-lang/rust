@@ -150,8 +150,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         if mention_capture {
             spans.push(sup_origin.span());
         }
-        spans.sort();
-        spans.dedup();
+        // We sort the spans *ignoring* expansion context. Below, the closure logic is repeated
+        // because one method expects a closure taking `&Span` and the other `&mut Span`.
+        spans.sort_by_key(|span| (span.lo(), span.hi()));
+        spans.dedup_by_key(|span| (span.lo(), span.hi()));
 
         // We try to make the output have fewer overlapping spans if possible.
         let (require_msg, require_span) = if sup_origin.span().overlaps(return_sp) {
@@ -165,8 +167,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         if spans.iter().any(|sp| sp.overlaps(return_sp) || *sp > return_sp) {
+            // If any of the "captured here" labels appears on the same line or after
+            // `require_span`, we put it on a note to ensure the text flows by appearing
+            // always at the end.
             err.span_note(require_span, require_msg);
         } else {
+            // We don't need a note, it's already at the end, it can be shown as a `span_label`.
             err.span_label(require_span, require_msg);
         }
 
