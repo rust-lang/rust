@@ -56,7 +56,7 @@ use std::ops::Deref;
 // It does not act as a tabstop.
 use ide_db::helpers::{import_assets::LocatedImport, insert_use::ImportScope};
 use itertools::Itertools;
-use syntax::ast;
+use syntax::{ast, AstNode, GreenNode, SyntaxNode};
 
 use crate::{context::CompletionContext, ImportEdit};
 
@@ -75,9 +75,12 @@ pub struct Snippet {
     pub postfix_triggers: Box<[Box<str>]>,
     pub prefix_triggers: Box<[Box<str>]>,
     pub scope: SnippetScope,
-    snippet: String,
     pub description: Option<Box<str>>,
-    pub requires: Box<[Box<str>]>,
+    snippet: String,
+    // These are `ast::Path`'s but due to SyntaxNodes not being Send we store these
+    // and reconstruct them on demand instead. This is cheaper than reparsing them
+    // from strings
+    requires: Box<[GreenNode]>,
 }
 
 impl Snippet {
@@ -92,7 +95,7 @@ impl Snippet {
         if prefix_triggers.is_empty() && postfix_triggers.is_empty() {
             return None;
         }
-        let (snippet, description) = validate_snippet(snippet, description, requires)?;
+        let (requires, snippet, description) = validate_snippet(snippet, description, requires)?;
         Some(Snippet {
             // Box::into doesn't work as that has a Copy bound 😒
             postfix_triggers: postfix_triggers.iter().map(Deref::deref).map(Into::into).collect(),
@@ -100,7 +103,7 @@ impl Snippet {
             scope,
             snippet,
             description,
-            requires: requires.iter().map(Deref::deref).map(Into::into).collect(),
+            requires,
         })
     }
 
@@ -125,10 +128,10 @@ impl Snippet {
 fn import_edits(
     ctx: &CompletionContext,
     import_scope: &ImportScope,
-    requires: &[Box<str>],
+    requires: &[GreenNode],
 ) -> Option<Vec<ImportEdit>> {
-    let resolve = |import| {
-        let path = ast::Path::parse(import).ok()?;
+    let resolve = |import: &GreenNode| {
+        let path = ast::Path::cast(SyntaxNode::new_root(import.clone()))?;
         let item = match ctx.scope.speculative_resolve(&path)? {
             hir::PathResolution::Macro(mac) => mac.into(),
             hir::PathResolution::Def(def) => def.into(),
@@ -158,19 +161,21 @@ fn validate_snippet(
     snippet: &[String],
     description: &str,
     requires: &[String],
-) -> Option<(String, Option<Box<str>>)> {
-    // validate that these are indeed simple paths
-    // we can't save the paths unfortunately due to them not being Send+Sync
-    if requires.iter().any(|path| match ast::Path::parse(path) {
-        Ok(path) => path.segments().any(|seg| {
-            !matches!(seg.kind(), Some(ast::PathSegmentKind::Name(_)))
-                || seg.generic_arg_list().is_some()
-        }),
-        Err(_) => true,
-    }) {
-        return None;
+) -> Option<(Box<[GreenNode]>, String, Option<Box<str>>)> {
+    let mut imports = Vec::with_capacity(requires.len());
+    for path in requires.iter() {
+        let path = ast::Path::parse(path).ok()?;
+        let valid_use_path = path.segments().all(|seg| {
+            matches!(seg.kind(), Some(ast::PathSegmentKind::Name(_)))
+                || seg.generic_arg_list().is_none()
+        });
+        if !valid_use_path {
+            return None;
+        }
+        let green = path.syntax().green().into_owned();
+        imports.push(green);
     }
     let snippet = snippet.iter().join("\n");
     let description = if description.is_empty() { None } else { Some(description.into()) };
-    Some((snippet, description))
+    Some((imports.into_boxed_slice(), snippet, description))
 }
