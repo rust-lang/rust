@@ -973,12 +973,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::Tuple(_) => stack.extend(ty.tuple_fields().map(|t| (t, depth + 1))),
 
                 ty::Closure(_, substs) => {
-                    stack.extend(substs.as_closure().upvar_tys().map(|t| (t, depth + 1)))
+                    let substs = substs.as_closure();
+                    let ty = self.infcx.shallow_resolve(substs.tupled_upvars_ty());
+                    stack.push((ty, depth + 1));
                 }
 
                 ty::Generator(_, substs, _) => {
                     let substs = substs.as_generator();
-                    stack.extend(substs.upvar_tys().map(|t| (t, depth + 1)));
+                    let ty = self.infcx.shallow_resolve(substs.tupled_upvars_ty());
+
+                    stack.push((ty, depth + 1));
                     stack.push((substs.witness(), depth + 1));
                 }
 

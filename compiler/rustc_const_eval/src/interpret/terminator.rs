@@ -231,7 +231,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.
-    fn eval_fn_call(
+    pub(crate) fn eval_fn_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
         caller_abi: Abi,

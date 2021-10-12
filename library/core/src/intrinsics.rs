@@ -2221,3 +2221,72 @@ pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe { write_bytes(dst, val, count) }
 }
+
+/// Selects which function to call depending on the context.
+///
+/// If this function is evaluated at compile-time, then a call to this
+/// intrinsic will be replaced with a call to `called_in_const`. It gets
+/// replaced with a call to `called_at_rt` otherwise.
+///
+/// # Type Requirements
+///
+/// The two functions must be both function items. They cannot be function
+/// pointers or closures.
+///
+/// `arg` will be the arguments that will be passed to either one of the
+/// two functions, therefore, both functions must accept the same type of
+/// arguments. Both functions must return RET.
+///
+/// # Safety
+///
+/// This intrinsic allows breaking [referential transparency] in `const fn`
+/// and is therefore `unsafe`.
+///
+/// Code that uses this intrinsic must be extremely careful to ensure that
+/// `const fn`s remain referentially-transparent independently of when they
+/// are evaluated.
+///
+/// The Rust compiler assumes that it is sound to replace a call to a `const
+/// fn` with the result produced by evaluating it at compile-time. If
+/// evaluating the function at run-time were to produce a different result,
+/// or have any other observable side-effects, the behavior is undefined.
+///
+/// [referential transparency]: https://en.wikipedia.org/wiki/Referential_transparency
+#[cfg(not(bootstrap))]
+#[unstable(
+    feature = "const_eval_select",
+    issue = "none",
+    reason = "const_eval_select will never be stable"
+)]
+#[lang = "const_eval_select"]
+#[rustc_do_not_const_check]
+pub const unsafe fn const_eval_select<ARG, F, G, RET>(
+    arg: ARG,
+    _called_in_const: F,
+    called_at_rt: G,
+) -> RET
+where
+    F: ~const FnOnce(ARG) -> RET,
+    G: FnOnce(ARG) -> RET + ~const Drop,
+{
+    called_at_rt(arg)
+}
+
+#[cfg(not(bootstrap))]
+#[unstable(
+    feature = "const_eval_select",
+    issue = "none",
+    reason = "const_eval_select will never be stable"
+)]
+#[lang = "const_eval_select_ct"]
+pub const unsafe fn const_eval_select_ct<ARG, F, G, RET>(
+    arg: ARG,
+    called_in_const: F,
+    _called_at_rt: G,
+) -> RET
+where
+    F: ~const FnOnce(ARG) -> RET,
+    G: FnOnce(ARG) -> RET + ~const Drop,
+{
+    called_in_const(arg)
+}

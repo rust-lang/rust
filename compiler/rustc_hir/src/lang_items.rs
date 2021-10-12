@@ -299,6 +299,8 @@ language_item_table! {
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);
     Oom,                     sym::oom,                 oom,                        Target::Fn,             GenericRequirement::None;
     AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;
+    ConstEvalSelect,         sym::const_eval_select,   const_eval_select,          Target::Fn,             GenericRequirement::Exact(4);
+    ConstConstEvalSelect,    sym::const_eval_select_ct,const_eval_select_ct,       Target::Fn,             GenericRequirement::Exact(4);
 
     Start,                   sym::start,               start_fn,                   Target::Fn,             GenericRequirement::Exact(1);
 

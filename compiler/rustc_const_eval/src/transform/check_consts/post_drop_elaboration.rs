@@ -1,7 +1,7 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
+use rustc_span::{symbol::sym, Span};
 
 use super::check::Qualifs;
 use super::ops::{self, NonConstOp};
@@ -27,6 +27,10 @@ pub fn check_live_drops(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
     let const_kind = tcx.hir().body_const_context(def_id);
     if const_kind.is_none() {
+        return;
+    }
+
+    if tcx.has_attr(def_id.to_def_id(), sym::rustc_do_not_const_check) {
         return;
     }
 

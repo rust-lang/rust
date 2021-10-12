@@ -407,10 +407,8 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
     span: Span,
 ) {
-    let def_id = instance.def_id();
+    let intrinsic = fx.tcx.item_name(instance.def_id());
     let substs = instance.substs;
-
-    let intrinsic = fx.tcx.item_name(def_id);
 
     let ret = match destination {
         Some((place, _)) => place,

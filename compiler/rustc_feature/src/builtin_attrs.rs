@@ -467,6 +467,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(rustc_promotable, Normal, template!(Word), IMPL_DETAIL),
     rustc_attr!(rustc_legacy_const_generics, Normal, template!(List: "N"), INTERNAL_UNSTABLE),
+    // Do not const-check this function's body. It will always get replaced during CTFE.
+    rustc_attr!(rustc_do_not_const_check, Normal, template!(Word), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Layout related:
