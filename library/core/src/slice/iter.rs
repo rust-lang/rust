@@ -124,6 +124,7 @@ impl<'a, T> Iter<'a, T> {
     /// // Now `as_slice` returns "[2, 3]":
     /// println!("{:?}", iter.as_slice());
     /// ```
+    #[must_use]
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn as_slice(&self) -> &'a [T] {
         self.make_slice()
@@ -298,6 +299,7 @@ impl<'a, T> IterMut<'a, T> {
     /// // Now `as_slice` returns "[2, 3]":
     /// assert_eq!(iter.as_slice(), &[2, 3]);
     /// ```
+    #[must_use]
     #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
     pub fn as_slice(&self) -> &[T] {
         self.make_slice()

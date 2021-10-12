@@ -491,6 +491,7 @@ impl<'a> Arguments<'a> {
     /// ```
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
     #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "none")]
+    #[must_use]
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
         match (self.pieces, self.args) {
