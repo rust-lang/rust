@@ -1701,6 +1701,13 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     })
 }
 
+// On linux this is the default behavior for lstat and stat but it has to be set explicitly for fstatat
+#[cfg(any(target_os = "linux", target_os = "android"))]
+const DEFAULT_STATAT_FLAGS: c_int = libc::AT_NO_AUTOMOUNT;
+
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+const DEFAULT_STATAT_FLAGS: c_int = 0;
+
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
     run_path_with_cstr(path, |p| {
         cfg_has_statx! {
@@ -1716,7 +1723,12 @@ pub fn stat(path: &Path) -> io::Result<FileAttr> {
         }
 
         let mut stat: stat64 = unsafe { mem::zeroed() };
-        cvt(unsafe { stat64(p.as_ptr(), &mut stat) })?;
+        let result = cvt(unsafe { stat64(p.as_ptr(), &mut stat) });
+        long_filename_fallback!(path, result, |dirfd, file_name| {
+            cvt(unsafe {
+                fstatat64(dirfd.as_raw_fd(), file_name.as_ptr(), &mut stat, DEFAULT_STATAT_FLAGS)
+            })
+        })?;
         Ok(FileAttr::from_stat64(stat))
     })
 }
@@ -1743,7 +1755,7 @@ pub fn lstat(path: &Path) -> io::Result<FileAttr> {
                     dirfd.as_raw_fd(),
                     file_name.as_ptr(),
                     &mut stat,
-                    libc::AT_SYMLINK_NOFOLLOW,
+                    DEFAULT_STATAT_FLAGS | libc::AT_SYMLINK_NOFOLLOW,
                 )
             })
         })?;
