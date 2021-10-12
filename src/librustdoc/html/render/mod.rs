@@ -1837,6 +1837,20 @@ fn get_methods(
         .collect::<Vec<_>>()
 }
 
+fn get_associated_constants(i: &clean::Impl, used_links: &mut FxHashSet<String>) -> Vec<String> {
+    i.items
+        .iter()
+        .filter_map(|item| match item.name {
+            Some(ref name) if !name.is_empty() && item.is_associated_const() => Some(format!(
+                "<a href=\"#{}\">{}</a>",
+                get_next_url(used_links, format!("associatedconstant.{}", name)),
+                name
+            )),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+}
+
 // The point is to url encode any potential character from a type with genericity.
 fn small_url_encode(s: String) -> String {
     let mut st = String::new();
@@ -1881,22 +1895,39 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
 
         {
             let used_links_bor = &mut used_links;
-            let mut ret = v
+            let mut assoc_consts = v
+                .iter()
+                .flat_map(|i| get_associated_constants(i.inner_impl(), used_links_bor))
+                .collect::<Vec<_>>();
+            if !assoc_consts.is_empty() {
+                // We want links' order to be reproducible so we don't use unstable sort.
+                assoc_consts.sort();
+
+                out.push_str(
+                    "<h3 class=\"sidebar-title\">\
+                        <a href=\"#implementations\">Associated Constants</a>\
+                     </h3>\
+                     <div class=\"sidebar-links\">",
+                );
+                for line in assoc_consts {
+                    out.push_str(&line);
+                }
+                out.push_str("</div>");
+            }
+            let mut methods = v
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())
-                .flat_map(move |i| {
-                    get_methods(i.inner_impl(), false, used_links_bor, false, cx.tcx())
-                })
+                .flat_map(|i| get_methods(i.inner_impl(), false, used_links_bor, false, cx.tcx()))
                 .collect::<Vec<_>>();
-            if !ret.is_empty() {
+            if !methods.is_empty() {
                 // We want links' order to be reproducible so we don't use unstable sort.
-                ret.sort();
+                methods.sort();
 
                 out.push_str(
                     "<h3 class=\"sidebar-title\"><a href=\"#implementations\">Methods</a></h3>\
                      <div class=\"sidebar-links\">",
                 );
-                for line in ret {
+                for line in methods {
                     out.push_str(&line);
                 }
                 out.push_str("</div>");
