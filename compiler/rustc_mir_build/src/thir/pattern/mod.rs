@@ -390,12 +390,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
-                    let substs = match ty.kind() {
+                    let substs = match ty.strip_variant_type().kind() {
                         ty::Adt(_, substs) | ty::FnDef(_, substs) => substs,
-                        ty::Variant(ty, _) => match ty.kind() {
-                            ty::Adt(_, substs) => substs,
-                            _ => bug!("unexpected type `{:?}`", ty.kind())
-                        }
                         ty::Error(_) => {
                             // Avoid ICE (#50585)
                             return PatKind::Wild;

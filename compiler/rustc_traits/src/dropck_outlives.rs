@@ -283,18 +283,7 @@ fn dtorck_constraint_for_ty<'tcx>(
             constraints.overflows.extend(overflows.subst(tcx, substs));
         }
 
-        ty::Variant(ty, _) => match ty.kind() {
-            ty::Adt(def, substs) => {
-                let DtorckConstraint { dtorck_types, outlives, overflows } =
-                    tcx.at(span).adt_dtorck_constraint(def.did)?;
-                // FIXME: we can try to recursively `dtorck_constraint_on_ty`
-                // there, but that needs some way to handle cycles.
-                constraints.dtorck_types.extend(dtorck_types.subst(tcx, substs));
-                constraints.outlives.extend(outlives.subst(tcx, substs));
-                constraints.overflows.extend(overflows.subst(tcx, substs));
-            },
-            _ => bug!("unexpected type: {:?}", ty.kind()),
-        }
+        ty::Variant(ty, _) => dtorck_constraint_for_ty(tcx, span, for_ty, depth, ty, constraints)?,
 
         // Objects must be alive in order for their destructor
         // to be called.

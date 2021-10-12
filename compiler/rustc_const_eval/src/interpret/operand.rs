@@ -683,13 +683,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let discr_val = self.cast_from_scalar(tag_bits, tag_layout, discr_layout.ty);
                 let discr_bits = discr_val.assert_bits(discr_layout.size);
                 // Convert discriminant to variant index, and catch invalid discriminants.
-                let index = match *op.layout.ty.kind() {
+                let index = match *op.layout.ty.strip_variant_type().kind() {
                     ty::Adt(adt, _) => {
                         adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
-                    }
-                    ty::Variant(ty, _) => match ty.kind() {
-                        ty::Adt(adt, _) => adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits),
-                        _ => bug!("unexpected type: {:?}", ty.kind()),
                     }
                     ty::Generator(def_id, substs, _) => {
                         let substs = substs.as_generator();
@@ -697,6 +693,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             .discriminants(def_id, *self.tcx)
                             .find(|(_, var)| var.val == discr_bits)
                     }
+                    ty::Variant(..) => unreachable!(),
                     _ => span_bug!(self.cur_span(), "tagged layout for non-adt non-generator"),
                 }
                 .ok_or_else(|| err_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size))))?;

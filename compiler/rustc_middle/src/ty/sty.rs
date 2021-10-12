@@ -195,7 +195,7 @@ pub enum TyKind<'tcx> {
     /// A type variable used during type checking.
     Infer(InferTy),
 
-    /// An enum (TyKind::Adt) and its variant
+    /// Type of a variant of an enum
     Variant(Ty<'tcx>, VariantIdx),
 
     /// A placeholder for a type which could not be computed; this is
@@ -2014,12 +2014,10 @@ impl<'tcx> TyS<'tcx> {
             TyKind::Adt(adt, _) if adt.is_enum() => {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
             }
-            TyKind::Variant(ty, _) => match ty.kind() {
-                ty::Adt(adt, _) if adt.is_enum() => {
-                    Some(adt.discriminant_for_variant(tcx, variant_index))
-                }
-                _ => bug!("unexpected type: {:?}", ty.kind()),
-            },
+            TyKind::Variant(ty, idx) => {
+                assert_eq!(*idx, variant_index);
+                ty.discriminant_for_variant(tcx, variant_index)
+            }
             TyKind::Generator(def_id, substs, _) => {
                 Some(substs.as_generator().discriminant_for_variant(*def_id, tcx, variant_index))
             }
@@ -2031,10 +2029,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn discriminant_ty(&'tcx self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             ty::Adt(adt, _) if adt.is_enum() => adt.repr.discr_type().to_ty(tcx),
-            ty::Variant(ty, _) => match ty.kind() {
-                ty::Adt(adt, _) if adt.is_enum() => adt.repr.discr_type().to_ty(tcx),
-                _ => bug!("unexpected type: {:?}", ty.kind()),
-            },
+            ty::Variant(ty, _) => ty.discriminant_ty(tcx),
             ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
 
             ty::Param(_) | ty::Projection(_) | ty::Opaque(..) | ty::Infer(ty::TyVar(_)) => {
@@ -2188,10 +2183,8 @@ impl<'tcx> TyS<'tcx> {
             ty::Tuple(tys) => tys.iter().all(|ty| ty.expect_ty().is_trivially_sized(tcx)),
 
             ty::Adt(def, _substs) => def.sized_constraint(tcx).is_empty(),
-            ty::Variant(ty, _) => match ty.kind() {
-                ty::Adt(def, _) => def.sized_constraint(tcx).is_empty(),
-                _ => bug!("unxepcted type: {:?}", ty.kind()),
-            },
+
+            ty::Variant(ty, _) => ty.is_trivially_sized(tcx),
 
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => false,
 
@@ -2202,6 +2195,13 @@ impl<'tcx> TyS<'tcx> {
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
             }
+        }
+    }
+
+    pub fn strip_variant_type(&self) -> &Self {
+        match self.kind() {
+            ty::Variant(ty, ..) => *ty,
+            _ => self,
         }
     }
 }

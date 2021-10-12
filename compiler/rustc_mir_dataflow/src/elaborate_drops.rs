@@ -857,7 +857,7 @@ where
     /// ADT, both in the success case or if one of the destructors fail.
     fn open_drop(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
-        match ty.kind() {
+        match ty.strip_variant_type().kind() {
             ty::Closure(_, substs) => {
                 let tys: Vec<_> = substs.as_closure().upvar_tys().collect();
                 self.open_drop_for_tuple(&tys)
@@ -883,17 +883,6 @@ where
                     self.open_drop_for_adt(def, substs)
                 }
             }
-
-            ty::Variant(ty, _) => match ty.kind() {
-                ty::Adt(def, substs) => {
-                    if def.is_box() {
-                        self.open_drop_for_box(def, substs)
-                    } else {
-                        self.open_drop_for_adt(def, substs)
-                    }
-                },
-                _ => bug!("unexpected type `{:?}`", ty.kind()),
-            }
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_eval_usize(self.tcx(), self.elaborator.param_env());
@@ -901,6 +890,7 @@ where
             }
             ty::Slice(ety) => self.open_drop_for_array(ety, None),
 
+            ty::Variant(..) => unreachable!(),
             _ => bug!("open drop from non-ADT `{:?}`", ty),
         }
     }

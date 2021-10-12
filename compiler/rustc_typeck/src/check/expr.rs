@@ -1767,7 +1767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Variant(ty, idx) => match ty.kind() {
                     ty::Adt(base_def, substs) if base_def.is_enum() => {
                         let variant = base_def.variants.get(*idx).expect("variant doesn't exist");
-                        let (adjusted_ident, def_scope) =
+                        let (adjusted_ident, _) =
                             self.tcx.adjust_ident_and_get_scope(field, base_def.did, self.body_id);
                         let fstr = field.as_str();
                         // handle tuple like enum variant

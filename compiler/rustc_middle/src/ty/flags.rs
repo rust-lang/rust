@@ -161,10 +161,7 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::Variant(ty, _) => match ty.kind() {
-                ty::Adt(_, substs) => self.add_substs(substs),
-                _ => bug!("unexpected type: {:?}", ty.kind()),
-            }
+            &ty::Variant(ty, _) => self.add_kind(ty.kind()),
 
             &ty::Projection(data) => {
                 self.add_flags(TypeFlags::HAS_TY_PROJECTION);

@@ -66,10 +66,7 @@ pub fn simplify_type(
         ty::Uint(uint_type) => Some(UintSimplifiedType(uint_type)),
         ty::Float(float_type) => Some(FloatSimplifiedType(float_type)),
         ty::Adt(def, _) => Some(AdtSimplifiedType(def.did)),
-        ty::Variant(ref ty, _) => match ty.kind() {
-            ty::Adt(def, _) => Some(AdtSimplifiedType(def.did)),
-            _ => bug!("unexpected type: {:?}", ty.kind()),
-        }
+        ty::Variant(ty, _) => simplify_type(tcx, ty, can_simplify_params),
         ty::Str => Some(StrSimplifiedType),
         ty::Array(..) | ty::Slice(_) => Some(ArraySimplifiedType),
         ty::RawPtr(_) => Some(PtrSimplifiedType),

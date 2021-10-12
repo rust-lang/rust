@@ -850,7 +850,8 @@ impl<'tcx> ty::TyS<'tcx> {
         match self.kind() {
             // Look for an impl of both `PartialStructuralEq` and `StructuralEq`.
             Adt(..) => tcx.has_structural_eq_impls(self),
-            Variant(..) => tcx.has_structural_eq_impls(self),
+
+            Variant(ty, _) => ty.is_structural_eq_shallow(tcx),
 
             // Primitive types that satisfy `Eq`.
             Bool | Char | Int(_) | Uint(_) | Str | Never => true,

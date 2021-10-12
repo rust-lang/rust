@@ -1723,7 +1723,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // NOTE: binder moved to (*)
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
 
-        match self_ty.kind() {
+        match self_ty.strip_variant_type().kind() {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
             | ty::Int(_)
@@ -1761,16 +1761,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }),
                 )
             }
-            ty::Variant(ty, _) => match ty.kind() {
-                ty::Adt(def, substs) => {
-                    let sized_crit = def.sized_constraint(self.tcx());
-                    // (*) binder moved here
-                    Where(obligation.predicate.rebind({
-                        sized_crit.iter().map(|ty| ty.subst(self.tcx(), substs)).collect()
-                    }))
-                },
-                _ => bug!("unexpected type:  {:?}", ty.kind()),
-            }
 
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => None,
             ty::Infer(ty::TyVar(_)) => Ambiguous,
@@ -1780,6 +1770,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
+
+            ty::Variant(..) => unreachable!(),
         }
     }
 
@@ -1875,7 +1867,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &self,
         t: ty::Binder<'tcx, Ty<'tcx>>,
     ) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
-        match *t.skip_binder().kind() {
+        match *t.skip_binder().strip_variant_type().kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -1931,16 +1923,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Adt(def, substs) => {
                 t.rebind(def.all_fields().map(|f| f.ty(self.tcx(), substs)).collect())
             }
-            ty::Variant(ty, _) => match ty.kind() {
-                ty::Adt(def, substs) => {
-                    if def.is_phantom_data() {
-                        t.rebind(substs.types().collect())
-                    } else {
-                        t.rebind(def.all_fields().map(|f| f.ty(self.tcx(), substs)).collect())
-                    }
-                },
-                _ => bug!("unexpected type: {:?}", ty.kind()),
-            }
+
+            ty::Variant(..) => unreachable!(),
 
             ty::Opaque(def_id, substs) => {
                 // We can resolve the `impl Trait` to its concrete type,

@@ -126,21 +126,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
             }
         }
 
-        ty::Variant(ty, _) => match ty.kind() {
-            ty::Adt(def, _) => {
-                if Some(def.did) == tcx.lang_items().manually_drop() {
-                    // `ManuallyDrop` never has a dtor.
-                    true
-                } else {
-                    // Other types might. Moreover, PhantomData doesn't
-                    // have a dtor, but it is considered to own its
-                    // content, so it is non-trivial. Unions can have `impl Drop`,
-                    // and hence are non-trivial as well.
-                    false
-                }
-            },
-            _ => bug!("unexpected type: {:?}", ty.kind()),
-        }
+        ty::Variant(ty, _) => trivial_dropck_outlives(tcx, ty),
 
         // The following *might* require a destructor: needs deeper inspection.
         ty::Dynamic(..)

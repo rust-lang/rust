@@ -217,12 +217,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         match layout.variants {
             Variants::Multiple { tag_field, .. } => {
                 if tag_field == field {
-                    return match layout.ty.kind() {
+                    return match layout.ty.strip_variant_type().kind() {
                         ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
-                        ty::Variant(ty, ..) => match ty.kind() {
-                            ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
-                            _ => bug!("non-variant type {:?}", layout.ty),
-                        },
                         ty::Generator(..) => PathElem::GeneratorTag,
                         _ => bug!("non-variant type {:?}", layout.ty),
                     };
@@ -232,7 +228,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         }
 
         // Now we know we are projecting to a field, so figure out which one.
-        match layout.ty.kind() {
+        match layout.ty.strip_variant_type().kind() {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 let mut name = None;
@@ -275,20 +271,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     Variants::Multiple { .. } => bug!("we handled variants above"),
                 }
             }
-
-            ty::Variant(ty, ..) => match ty.kind() {
-                ty::Adt(def, ..) if def.is_enum() => {
-                    // we might be projecting *to* a variant, or to a field *in* a variant.
-                    match layout.variants {
-                        Variants::Single { index } => {
-                            // Inside a variant
-                            PathElem::Field(def.variants[index].fields[field].ident.name)
-                        }
-                        Variants::Multiple { .. } => bug!("we handled variants above"),
-                    }
-                }
-                _ => bug!("unexpected type: {:?}", ty.kind()),
-            },
 
             // other ADTs
             ty::Adt(def, _) => PathElem::Field(def.non_enum_variant().fields[field].ident.name),
@@ -513,7 +495,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     ) -> InterpResult<'tcx, bool> {
         // Go over all the primitive types
         let ty = value.layout.ty;
-        match ty.kind() {
+        match ty.strip_variant_type().kind() {
             ty::Bool => {
                 let value = self.read_scalar(value)?;
                 try_validation!(
@@ -585,17 +567,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 self.check_safe_pointer(value, "box")?;
                 Ok(true)
             }
-            ty::Variant(ty, _) => match ty.kind() {
-                ty::Adt(def, _) => {
-                    if def.is_box() {
-                        self.check_safe_pointer(value, "box")?;
-                        Ok(true)
-                    } else {
-                        Ok(false)
-                    }
-                }
-                _ => bug!("unexpected type: {:?}", ty.kind()),
-            },
             ty::FnPtr(_sig) => {
                 let value = try_validation!(
                     self.ecx.read_immediate(value),
@@ -641,6 +612,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Opaque(..)
             | ty::Projection(..)
             | ty::GeneratorWitness(..) => bug!("Encountered invalid type {:?}", ty),
+
+            ty::Variant(..) => unreachable!(),
         }
     }
 
@@ -756,15 +729,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         variant_id: VariantIdx,
         new_op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let name = match old_op.layout.ty.kind() {
+        let ty = old_op.layout.ty.strip_variant_type();
+        let name = match ty.kind() {
             ty::Adt(adt, _) => PathElem::Variant(adt.variants[variant_id].ident.name),
-            ty::Variant(ty, ..) => match ty.kind() {
-                ty::Adt(adt, ..) => PathElem::Variant(adt.variants[variant_id].ident.name),
-                _ => bug!("unexpected type {:?}", ty.kind()),
-            },
             // Generators also have variants
             ty::Generator(..) => PathElem::GeneratorState(variant_id),
-            _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),
+            _ => bug!("Unexpected type with variant: {:?}", ty),
         };
         self.with_elem(name, move |this| this.visit_value(new_op))
     }

@@ -135,7 +135,7 @@ fn push_inner<'tcx>(
     parent: GenericArg<'tcx>,
 ) {
     match parent.unpack() {
-        GenericArgKind::Type(parent_ty) => match *parent_ty.kind() {
+        GenericArgKind::Type(parent_ty) => match *parent_ty.strip_variant_type().kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -191,10 +191,6 @@ fn push_inner<'tcx>(
             | ty::FnDef(_, substs) => {
                 stack.extend(substs.iter().rev());
             }
-            ty::Variant(ty, _) => match ty.kind() {
-                ty::Adt(_, substs) => stack.extend(substs.iter().rev()),
-                _ => bug!("unexpected type: {:?}", ty.kind()),
-            },
             ty::GeneratorWitness(ts) => {
                 stack.extend(ts.skip_binder().iter().rev().map(|ty| ty.into()));
             }
@@ -202,6 +198,7 @@ fn push_inner<'tcx>(
                 stack.push(sig.skip_binder().output().into());
                 stack.extend(sig.skip_binder().inputs().iter().copied().rev().map(|ty| ty.into()));
             }
+            ty::Variant(..) => unreachable!(),
         },
         GenericArgKind::Lifetime(_) => {}
         GenericArgKind::Const(parent_ct) => {

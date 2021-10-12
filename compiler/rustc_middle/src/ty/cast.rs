@@ -59,16 +59,7 @@ impl<'tcx> CastTy<'tcx> {
             ty::Uint(u) => Some(CastTy::Int(IntTy::U(u))),
             ty::Float(_) => Some(CastTy::Float),
             ty::Adt(d, _) if d.is_enum() && d.is_payloadfree() => Some(CastTy::Int(IntTy::CEnum)),
-            ty::Variant(ty, _) => match ty.kind() {
-                ty::Adt(d, _) => {
-                    if d.is_enum() && d.is_payloadfree() {
-                        Some(CastTy::Int(IntTy::CEnum))
-                    } else {
-                        None
-                    }
-                }
-                _ => bug!("unexpected type: {:?}", ty.kind()),
-            }
+            ty::Variant(ty, _) => Self::from_ty(ty),
             ty::RawPtr(mt) => Some(CastTy::Ptr(mt)),
             ty::FnPtr(..) => Some(CastTy::FnPtr),
             _ => None,
