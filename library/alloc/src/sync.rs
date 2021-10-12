@@ -146,7 +146,7 @@ macro_rules! acquire {
 /// use std::sync::Arc;
 ///
 /// let my_arc = Arc::new(());
-/// Arc::downgrade(&my_arc);
+/// let my_weak = Arc::downgrade(&my_arc);
 /// ```
 ///
 /// `Arc<T>`'s implementations of traits like `Clone` may also be called using
@@ -898,6 +898,8 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// let weak_five = Arc::downgrade(&five);
     /// ```
+    #[must_use = "this returns a new `Weak` pointer, \
+                  without modifying the original `Arc`"]
     #[stable(feature = "arc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T> {
         // This Relaxed is OK because we're checking the value in the CAS
@@ -1863,6 +1865,8 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// assert!(weak_five.upgrade().is_none());
     /// ```
+    #[must_use = "this returns a new `Arc`, \
+                  without modifying the original weak pointer"]
     #[stable(feature = "arc_weak", since = "1.4.0")]
     pub fn upgrade(&self) -> Option<Arc<T>> {
         // We use a CAS loop to increment the strong count instead of a
