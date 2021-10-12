@@ -223,6 +223,33 @@ pub enum RealPredicate {
     RealPredicateTrue = 15,
 }
 
+impl RealPredicate {
+    pub fn from_generic(realp: rustc_codegen_ssa::common::RealPredicate) -> Self {
+        match realp {
+            rustc_codegen_ssa::common::RealPredicate::RealPredicateFalse => {
+                RealPredicate::RealPredicateFalse
+            }
+            rustc_codegen_ssa::common::RealPredicate::RealOEQ => RealPredicate::RealOEQ,
+            rustc_codegen_ssa::common::RealPredicate::RealOGT => RealPredicate::RealOGT,
+            rustc_codegen_ssa::common::RealPredicate::RealOGE => RealPredicate::RealOGE,
+            rustc_codegen_ssa::common::RealPredicate::RealOLT => RealPredicate::RealOLT,
+            rustc_codegen_ssa::common::RealPredicate::RealOLE => RealPredicate::RealOLE,
+            rustc_codegen_ssa::common::RealPredicate::RealONE => RealPredicate::RealONE,
+            rustc_codegen_ssa::common::RealPredicate::RealORD => RealPredicate::RealORD,
+            rustc_codegen_ssa::common::RealPredicate::RealUNO => RealPredicate::RealUNO,
+            rustc_codegen_ssa::common::RealPredicate::RealUEQ => RealPredicate::RealUEQ,
+            rustc_codegen_ssa::common::RealPredicate::RealUGT => RealPredicate::RealUGT,
+            rustc_codegen_ssa::common::RealPredicate::RealUGE => RealPredicate::RealUGE,
+            rustc_codegen_ssa::common::RealPredicate::RealULT => RealPredicate::RealULT,
+            rustc_codegen_ssa::common::RealPredicate::RealULE => RealPredicate::RealULE,
+            rustc_codegen_ssa::common::RealPredicate::RealUNE => RealPredicate::RealUNE,
+            rustc_codegen_ssa::common::RealPredicate::RealPredicateTrue => {
+                RealPredicate::RealPredicateTrue
+            }
+        }
+    }
+}
+
 /// LLVMTypeKind
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
