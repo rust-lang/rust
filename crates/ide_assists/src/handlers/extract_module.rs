@@ -73,63 +73,69 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
 
     let old_item_indent = module.body_items[0].indent_level();
 
+    //This takes place in three steps:
+    //
+    //- Firstly, we will update the references(usages) e.g. converting a
+    //  function call bar() to modname::bar(), and similarly for other items
+    //
+    //- Secondly, changing the visibility of each item inside the newly selected module
+    //  i.e. making a fn a() {} to pub(crate) fn a() {}
+    //
+    //- Thirdly, resolving all the imports this includes removing paths from imports
+    //  outside the module, shifting/cloning them inside new module, or shifting the imports, or making
+    //  new import statemnts
+
+    //We are getting item usages and record_fields together, record_fields
+    //for change_visibility and usages for first point mentioned above in the process
+    let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
+
+    let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, &ctx);
+    module.body_items = module.change_visibility(record_fields)?;
+    if module.body_items.len() == 0 {
+        return None;
+    }
+
     acc.add(
         AssistId("extract_module", AssistKind::RefactorExtract),
         "Extract Module",
         module.text_range,
         |builder| {
-            //This takes place in three steps:
-            //
-            //- Firstly, we will update the references(usages) e.g. converting a
-            //  function call bar() to modname::bar(), and similarly for other items
-            //
-            //- Secondly, changing the visibility of each item inside the newly selected module
-            //  i.e. making a fn a() {} to pub(crate) fn a() {}
-            //
-            //- Thirdly, resolving all the imports this includes removing paths from imports
-            //  outside the module, shifting/cloning them inside new module, or shifting the imports, or making
-            //  new import statemnts
-
-            //We are getting item usages and record_fields together, record_fields
-            //for change_visibility and usages for first point mentioned above in the process
-            let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
-
-            let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, &ctx);
-
-            if let Some(block_items) = module.change_visibility(record_fields) {
-                module.body_items = block_items;
-                if module.body_items.len() == 0 {
-                    return;
-                }
-
-                let mut body_items = Vec::new();
-                let new_item_indent = old_item_indent + 1;
-                for item in module.body_items {
-                    let item = item.indent(IndentLevel(1));
-                    let mut indented_item = String::new();
-                    format_to!(indented_item, "{}{}", new_item_indent, item.to_string());
-                    body_items.push(indented_item);
-                }
-
-                let body = body_items.join("\n\n");
-
-                let mut module_def = String::new();
-
-                format_to!(module_def, "mod {} {{\n{}\n{}}}", module.name, body, old_item_indent);
-
-                for usages_to_be_updated_for_file in usages_to_be_processed {
-                    builder.edit_file(usages_to_be_updated_for_file.0);
-                    for usage_to_be_processed in usages_to_be_updated_for_file.1 {
-                        builder.replace(usage_to_be_processed.0, usage_to_be_processed.1)
-                    }
-                }
-
-                builder.edit_file(ctx.frange.file_id);
-                for import_path_text_range in import_paths_to_be_removed {
-                    builder.delete(import_path_text_range);
-                }
-                builder.replace(module.text_range, module_def)
+            let mut body_items = Vec::new();
+            let new_item_indent = old_item_indent + 1;
+            for item in module.body_items {
+                let item = item.indent(IndentLevel(1));
+                let mut indented_item = String::new();
+                format_to!(indented_item, "{}{}", new_item_indent, item.to_string());
+                body_items.push(indented_item);
             }
+
+            let body = body_items.join("\n\n");
+
+            let mut module_def = String::new();
+
+            format_to!(module_def, "mod {} {{\n{}\n{}}}", module.name, body, old_item_indent);
+
+            let mut usages_to_be_updated_for_curr_file = vec![];
+            for usages_to_be_updated_for_file in usages_to_be_processed {
+                if usages_to_be_updated_for_file.0 == ctx.frange.file_id {
+                    usages_to_be_updated_for_curr_file = usages_to_be_updated_for_file.1;
+                    continue;
+                }
+                builder.edit_file(usages_to_be_updated_for_file.0);
+                for usage_to_be_processed in usages_to_be_updated_for_file.1 {
+                    builder.replace(usage_to_be_processed.0, usage_to_be_processed.1)
+                }
+            }
+
+            builder.edit_file(ctx.frange.file_id);
+            for usage_to_be_processed in usages_to_be_updated_for_curr_file {
+                builder.replace(usage_to_be_processed.0, usage_to_be_processed.1)
+            }
+
+            for import_path_text_range in import_paths_to_be_removed {
+                builder.delete(import_path_text_range);
+            }
+            builder.replace(module.text_range, module_def)
         },
     )
 }
