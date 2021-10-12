@@ -34,7 +34,7 @@ Current beta, release 2021-12-02
   [#7610](https://github.com/rust-lang/rust-clippy/pull/7610)
 * [`same_name_method`]
   [#7653](https://github.com/rust-lang/rust-clippy/pull/7653)
-* [`if_then_panic`] [#7669](https://github.com/rust-lang/rust-clippy/pull/7669)
+* [`manual_assert`] [#7669](https://github.com/rust-lang/rust-clippy/pull/7669)
 * [`non_send_fields_in_send_ty`]
   [#7709](https://github.com/rust-lang/rust-clippy/pull/7709)
 * [`equatable_if_let`]
@@ -139,7 +139,7 @@ Current beta, release 2021-12-02
   `rsplitn` is used [#7663](https://github.com/rust-lang/rust-clippy/pull/7663)
 * [`while_let_on_iterator`]: Produce correct suggestion when using `&mut`
   [#7690](https://github.com/rust-lang/rust-clippy/pull/7690)
-* [`if_then_panic`]: No better handles complex conditions
+* [`manual_assert`]: No better handles complex conditions
   [#7741](https://github.com/rust-lang/rust-clippy/pull/7741)
 * Correctly handle signs in exponents in numeric literals lints
   [#7747](https://github.com/rust-lang/rust-clippy/pull/7747)
@@ -2895,7 +2895,6 @@ Released 2018-09-13
 [`if_let_redundant_pattern_matching`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_let_redundant_pattern_matching
 [`if_not_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_not_else
 [`if_same_then_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_same_then_else
-[`if_then_panic`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_then_panic
 [`if_then_some_else_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_then_some_else_none
 [`ifs_same_cond`]: https://rust-lang.github.io/rust-clippy/master/index.html#ifs_same_cond
 [`implicit_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#implicit_clone
@@ -2953,6 +2952,7 @@ Released 2018-09-13
 [`lossy_float_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#lossy_float_literal
 [`macro_use_imports`]: https://rust-lang.github.io/rust-clippy/master/index.html#macro_use_imports
 [`main_recursion`]: https://rust-lang.github.io/rust-clippy/master/index.html#main_recursion
+[`manual_assert`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_assert
 [`manual_async_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_async_fn
 [`manual_filter_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_filter_map
 [`manual_find_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_find_map
