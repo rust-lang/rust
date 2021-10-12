@@ -471,6 +471,7 @@ store.register_lints(&[
     unicode::INVISIBLE_CHARACTERS,
     unicode::NON_ASCII_LITERAL,
     unicode::UNICODE_NOT_NFC,
+    uninit_vec::UNINIT_VEC,
     unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD,
     unit_types::LET_UNIT_VALUE,
     unit_types::UNIT_ARG,

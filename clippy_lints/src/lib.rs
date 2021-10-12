@@ -362,6 +362,7 @@ mod types;
 mod undocumented_unsafe_blocks;
 mod undropped_manually_drops;
 mod unicode;
+mod uninit_vec;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnamed_address;
@@ -519,6 +520,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(blocks_in_if_conditions::BlocksInIfConditions));
     store.register_late_pass(|| Box::new(collapsible_match::CollapsibleMatch));
     store.register_late_pass(|| Box::new(unicode::Unicode));
+    store.register_late_pass(|| Box::new(uninit_vec::UninitVec));
     store.register_late_pass(|| Box::new(unit_return_expecting_ord::UnitReturnExpectingOrd));
     store.register_late_pass(|| Box::new(strings::StringAdd));
     store.register_late_pass(|| Box::new(implicit_return::ImplicitReturn));

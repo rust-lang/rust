@@ -64,6 +64,7 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(transmuting_null::TRANSMUTING_NULL),
     LintId::of(undropped_manually_drops::UNDROPPED_MANUALLY_DROPS),
     LintId::of(unicode::INVISIBLE_CHARACTERS),
+    LintId::of(uninit_vec::UNINIT_VEC),
     LintId::of(unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
     LintId::of(unit_types::UNIT_CMP),
     LintId::of(unnamed_address::FN_ADDRESS_COMPARISONS),

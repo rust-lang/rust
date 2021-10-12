@@ -2,13 +2,16 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
+use crate::ty::is_type_diagnostic_item;
 use crate::{is_expn_of, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitKind};
 use rustc_hir as hir;
-use rustc_hir::{Arm, Block, BorrowKind, Expr, ExprKind, LoopSource, MatchSource, Node, Pat, StmtKind, UnOp};
+use rustc_hir::{
+    Arm, Block, BorrowKind, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StmtKind, UnOp,
+};
 use rustc_lint::LateContext;
-use rustc_span::{sym, ExpnKind, Span, Symbol};
+use rustc_span::{sym, symbol, ExpnKind, Span, Symbol};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Return `(pat, arg, body, span)`.
@@ -631,4 +634,52 @@ impl PanicExpn<'tcx> {
             }
         }
     }
+}
+
+/// A parsed `Vec` initialization expression
+#[derive(Clone, Copy)]
+pub enum VecInitKind {
+    /// `Vec::new()`
+    New,
+    /// `Vec::default()` or `Default::default()`
+    Default,
+    /// `Vec::with_capacity(123)`
+    WithLiteralCapacity(u64),
+    /// `Vec::with_capacity(slice.len())`
+    WithExprCapacity(HirId),
+}
+
+/// Checks if given expression is an initialization of `Vec` and returns its kind.
+pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<VecInitKind> {
+    if let ExprKind::Call(func, args) = expr.kind {
+        match func.kind {
+            ExprKind::Path(QPath::TypeRelative(ty, name))
+                if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::Vec) =>
+            {
+                if name.ident.name == sym::new {
+                    return Some(VecInitKind::New);
+                } else if name.ident.name == symbol::kw::Default {
+                    return Some(VecInitKind::Default);
+                } else if name.ident.name.as_str() == "with_capacity" {
+                    let arg = args.get(0)?;
+                    if_chain! {
+                        if let ExprKind::Lit(lit) = &arg.kind;
+                        if let LitKind::Int(num, _) = lit.node;
+                        then {
+                            return Some(VecInitKind::WithLiteralCapacity(num.try_into().ok()?))
+                        }
+                    }
+                    return Some(VecInitKind::WithExprCapacity(arg.hir_id));
+                }
+            }
+            ExprKind::Path(QPath::Resolved(_, path))
+                if match_def_path(cx, path.res.opt_def_id()?, &paths::DEFAULT_TRAIT_METHOD)
+                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Vec) =>
+            {
+                return Some(VecInitKind::Default);
+            }
+            _ => (),
+        }
+    }
+    None
 }
