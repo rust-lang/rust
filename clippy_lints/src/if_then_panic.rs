@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// assert!(sad_people.is_empty(), "there are sad people: {:?}", sad_people);
     /// ```
     pub IF_THEN_PANIC,
-    style,
+    pedantic,
     "`panic!` and only a `panic!` in `if`-then statement"
 }
 

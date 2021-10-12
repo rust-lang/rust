@@ -34,6 +34,7 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(functions::MUST_USE_CANDIDATE),
     LintId::of(functions::TOO_MANY_LINES),
     LintId::of(if_not_else::IF_NOT_ELSE),
+    LintId::of(if_then_panic::IF_THEN_PANIC),
     LintId::of(implicit_hasher::IMPLICIT_HASHER),
     LintId::of(implicit_saturating_sub::IMPLICIT_SATURATING_SUB),
     LintId::of(inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR),
