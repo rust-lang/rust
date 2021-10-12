@@ -823,6 +823,7 @@ impl OsStr {
     /// assert!(!non_ascii.is_ascii());
     /// ```
     #[stable(feature = "osstring_ascii", since = "1.53.0")]
+    #[must_use]
     #[inline]
     pub fn is_ascii(&self) -> bool {
         self.inner.is_ascii()
