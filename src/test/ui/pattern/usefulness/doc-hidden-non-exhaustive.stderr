@@ -1,0 +1,54 @@
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/doc-hidden-non-exhaustive.rs:8:11
+   |
+LL |     match Foo::A {
+   |           ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Foo`
+
+error[E0004]: non-exhaustive patterns: `B` not covered
+  --> $DIR/doc-hidden-non-exhaustive.rs:14:11
+   |
+LL |     match Foo::A {
+   |           ^^^^^^ pattern `B` not covered
+   |
+  ::: $DIR/auxiliary/hidden.rs:3:5
+   |
+LL |     B,
+   |     - not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Foo`
+
+error[E0004]: non-exhaustive patterns: `B` and `_` not covered
+  --> $DIR/doc-hidden-non-exhaustive.rs:20:11
+   |
+LL |     match Foo::A {
+   |           ^^^^^^ patterns `B` and `_` not covered
+   |
+  ::: $DIR/auxiliary/hidden.rs:3:5
+   |
+LL |     B,
+   |     - not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Foo`
+
+error[E0004]: non-exhaustive patterns: `Some(B)` and `Some(_)` not covered
+  --> $DIR/doc-hidden-non-exhaustive.rs:25:11
+   |
+LL |     match None {
+   |           ^^^^ patterns `Some(B)` and `Some(_)` not covered
+   |
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ---- not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Option<Foo>`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

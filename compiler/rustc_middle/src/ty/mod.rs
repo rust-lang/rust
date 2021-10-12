@@ -38,7 +38,7 @@ use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use rustc_target::abi::Align;
 
 use std::cmp::Ordering;
@@ -1898,6 +1898,14 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Determines whether an item is annotated with an attribute.
     pub fn has_attr(self, did: DefId, attr: Symbol) -> bool {
         self.sess.contains_name(&self.get_attrs(did), attr)
+    }
+
+    /// Determines whether an item is annotated with `doc(hidden)`.
+    pub fn is_doc_hidden(self, did: DefId) -> bool {
+        self.get_attrs(did)
+            .iter()
+            .filter_map(|attr| if attr.has_name(sym::doc) { attr.meta_item_list() } else { None })
+            .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
     }
 
     /// Returns `true` if this is an `auto trait`.

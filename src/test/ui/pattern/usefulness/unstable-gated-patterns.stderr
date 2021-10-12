@@ -1,0 +1,17 @@
+error[E0004]: non-exhaustive patterns: `Unstable` not covered
+  --> $DIR/unstable-gated-patterns.rs:10:11
+   |
+LL |     match Foo::Stable {
+   |           ^^^^^^^^^^^ pattern `Unstable` not covered
+   |
+  ::: $DIR/auxiliary/unstable.rs:11:5
+   |
+LL |     Unstable,
+   |     -------- not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

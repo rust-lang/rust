@@ -585,15 +585,33 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                     } else {
                         let mut split_wildcard = SplitWildcard::new(pcx);
                         split_wildcard.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
+
+                        // This lets us know if we skipped any variants because they are marked
+                        // `doc(hidden)` or they are unstable feature gate (only stdlib types).
+                        let mut hide_variant_show_wild = false;
                         // Construct for each missing constructor a "wild" version of this
                         // constructor, that matches everything that can be built with
                         // it. For example, if `ctor` is a `Constructor::Variant` for
                         // `Option::Some`, we get the pattern `Some(_)`.
-                        split_wildcard
+                        let mut new: Vec<DeconstructedPat<'_, '_>> = split_wildcard
                             .iter_missing(pcx)
-                            .cloned()
-                            .map(|missing_ctor| DeconstructedPat::wild_from_ctor(pcx, missing_ctor))
-                            .collect()
+                            .filter_map(|missing_ctor| {
+                                // Check if this variant is marked `doc(hidden)`
+                                if missing_ctor.is_doc_hidden_variant(pcx)
+                                    || missing_ctor.is_unstable_variant(pcx)
+                                {
+                                    hide_variant_show_wild = true;
+                                    return None;
+                                }
+                                Some(DeconstructedPat::wild_from_ctor(pcx, missing_ctor.clone()))
+                            })
+                            .collect();
+
+                        if hide_variant_show_wild {
+                            new.push(DeconstructedPat::wildcard(pcx.ty));
+                        }
+
+                        new
                     };
 
                     witnesses
@@ -851,8 +869,10 @@ fn is_useful<'p, 'tcx>(
                     split_wildcard
                         .iter_missing(pcx)
                         // Filter out the `NonExhaustive` because we want to list only real
-                        // variants.
-                        .filter(|c| !c.is_non_exhaustive())
+                        // variants. Also remove any unstable feature gated variants.
+                        // Because of how we computed `nonexhaustive_enum_missing_real_variants`,
+                        // this will not return an empty `Vec`.
+                        .filter(|c| !(c.is_non_exhaustive() || c.is_unstable_variant(pcx)))
                         .cloned()
                         .map(|missing_ctor| DeconstructedPat::wild_from_ctor(pcx, missing_ctor))
                         .collect::<Vec<_>>()
