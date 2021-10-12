@@ -10,7 +10,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, ErasedMap, NestedVisitorMap, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
 use rustc_middle::ty::{
-    self, AssocItemContainer, RegionKind, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+    self, AssocItemContainer, RegionKind, StaticLifetimeVisitor, Ty, TyCtxt, TypeFoldable,
+    TypeVisitor,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{MultiSpan, Span};
@@ -186,10 +187,27 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 let parent_id = tcx.hir().get_parent_item(*hir_id);
                 if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(parent_id) {
                     let mut span: MultiSpan = fn_decl.output.span().into();
-                    span.push_span_label(
-                        fn_decl.output.span(),
-                        "requirement introduced by this return type".to_string(),
-                    );
+                    let mut add_label = true;
+                    if let hir::FnRetTy::Return(ty) = fn_decl.output {
+                        let mut v = StaticLifetimeVisitor(vec![], tcx.hir());
+                        v.visit_ty(ty);
+                        if !v.0.is_empty() {
+                            span = v.0.clone().into();
+                            for sp in v.0 {
+                                span.push_span_label(
+                                    sp,
+                                    "`'static` requirement introduced here".to_string(),
+                                );
+                            }
+                            add_label = false;
+                        }
+                    }
+                    if add_label {
+                        span.push_span_label(
+                            fn_decl.output.span(),
+                            "requirement introduced by this return type".to_string(),
+                        );
+                    }
                     span.push_span_label(
                         cause.span,
                         "because of this returned expression".to_string(),

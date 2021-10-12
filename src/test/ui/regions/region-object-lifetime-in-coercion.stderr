@@ -24,10 +24,10 @@ LL |     Box::new(v)
    |              ^ ...is captured and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/region-object-lifetime-in-coercion.rs:12:19
+  --> $DIR/region-object-lifetime-in-coercion.rs:12:33
    |
 LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+   |                                 ^^^^^^^ `'static` requirement introduced here
 LL |     Box::new(v)
    |     ----------- because of this returned expression
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
@@ -49,10 +49,10 @@ LL |     Box::new(v)
    |              ^ ...is captured and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/region-object-lifetime-in-coercion.rs:16:19
+  --> $DIR/region-object-lifetime-in-coercion.rs:16:23
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo> {
-   |                   ^^^^^^^^^^^^ requirement introduced by this return type
+   |                       ^^^^^^^ `'static` requirement introduced here
 ...
 LL |     Box::new(v)
    |     ----------- because of this returned expression

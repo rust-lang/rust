@@ -8,10 +8,10 @@ LL |     ss.r
    |     ^^^^ ...is captured and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/object-lifetime-default-from-box-error.rs:14:33
+  --> $DIR/object-lifetime-default-from-box-error.rs:14:37
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
-   |                                 ^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+   |                                     ^^^^^^^^^^^^^ `'static` requirement introduced here
 ...
 LL |     ss.r
    |     ---- because of this returned expression

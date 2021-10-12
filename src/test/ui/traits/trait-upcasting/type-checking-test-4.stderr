@@ -47,10 +47,10 @@ note: ...and is required to live as long as `'static` here
 LL |     y.get_b() // ERROR
    |     ^^^^^^^^^
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/type-checking-test-4.rs:26:40
+  --> $DIR/type-checking-test-4.rs:26:48
    |
 LL | fn test_wrong3<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                                        ^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+   |                                                ^^^^^^^ `'static` requirement introduced here
 ...
 LL |     y.get_b() // ERROR
    |     --------- because of this returned expression
@@ -64,10 +64,10 @@ LL |     <_ as Bar>::get_b(x) // ERROR
    |     ^^^^^^^^^^^^^^^^^ ...is captured and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/type-checking-test-4.rs:32:40
+  --> $DIR/type-checking-test-4.rs:32:48
    |
 LL | fn test_wrong4<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                                        ^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+   |                                                ^^^^^^^ `'static` requirement introduced here
 LL |     <_ as Bar>::get_b(x) // ERROR
    |     -------------------- because of this returned expression
 
@@ -80,10 +80,10 @@ LL |     <_ as Bar<'_, '_>>::get_b(x) // ERROR
    |     ----------^^------------- ...is captured and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/type-checking-test-4.rs:37:40
+  --> $DIR/type-checking-test-4.rs:37:48
    |
 LL | fn test_wrong5<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                                        ^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+   |                                                ^^^^^^^ `'static` requirement introduced here
 LL |     <_ as Bar<'_, '_>>::get_b(x) // ERROR
    |     ---------------------------- because of this returned expression
 
@@ -109,10 +109,10 @@ note: ...and is required to live as long as `'static` here
 LL |     z.get_b() // ERROR
    |     ^^^^^^^^^
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/type-checking-test-4.rs:42:40
+  --> $DIR/type-checking-test-4.rs:42:48
    |
 LL | fn test_wrong6<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                                        ^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+   |                                                ^^^^^^^ `'static` requirement introduced here
 ...
 LL |     z.get_b() // ERROR
    |     --------- because of this returned expression

@@ -10,10 +10,10 @@ LL |     Box::new(items.iter())
    |              ...is captured and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/dyn-trait-underscore.rs:6:25
+  --> $DIR/dyn-trait-underscore.rs:6:29
    |
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+   |                             ^^^^^^^^^^^^^^^^^^^^^ `'static` requirement introduced here
 LL |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
 LL |     Box::new(items.iter())
    |     ---------------------- because of this returned expression
