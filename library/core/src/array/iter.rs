@@ -135,19 +135,12 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         let data = &mut self.data;
-        // FIXME: This uses try_fold(&mut iter) instead of fold(iter) because the latter
-        //  would go through the blanket `impl Iterator for &mut I` implementation
-        //  which lacks inline annotations on its methods and adding those would be a larger
-        //  perturbation than using try_fold here.
-        //  Whether it would be beneficial to add those annotations should be investigated separately.
-        (&mut self.alive)
-            .try_fold::<_, _, Result<_, !>>(init, |acc, idx| {
-                // SAFETY: idx is obtained by folding over the `alive` range, which implies the
-                // value is currently considered alive but as the range is being consumed each value
-                // we read here will only be read once and then considered dead.
-                Ok(fold(acc, unsafe { data.get_unchecked(idx).assume_init_read() }))
-            })
-            .unwrap()
+        self.alive.by_ref().fold(init, |acc, idx| {
+            // SAFETY: idx is obtained by folding over the `alive` range, which implies the
+            // value is currently considered alive but as the range is being consumed each value
+            // we read here will only be read once and then considered dead.
+            fold(acc, unsafe { data.get_unchecked(idx).assume_init_read() })
+        })
     }
 
     fn count(self) -> usize {
