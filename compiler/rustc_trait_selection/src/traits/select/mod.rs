@@ -1107,10 +1107,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // const impl
                 ImplCandidate(def_id) if tcx.impl_constness(def_id) == hir::Constness::Const => {}
                 // const param
-                ParamCandidate(ty::ConstnessAnd {
-                    constness: ty::BoundConstness::ConstIfConst,
-                    ..
-                }) => {}
+                ParamCandidate((
+                    ty::ConstnessAnd { constness: ty::BoundConstness::ConstIfConst, .. },
+                    _,
+                )) => {}
                 // auto trait impl
                 AutoImplCandidate(..) => {}
                 // generator, this will raise error in other places
@@ -1219,14 +1219,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.can_use_global_caches(param_env) {
             if let Some(res) = tcx
                 .selection_cache
-                .get(&param_env.and(trait_ref).with_constness(pred.constness), tcx)
+                .get(&(param_env.and(trait_ref).with_constness(pred.constness), pred.polarity), tcx)
             {
                 return Some(res);
             }
         }
         self.infcx
             .selection_cache
-            .get(&param_env.and(trait_ref).with_constness(pred.constness), tcx)
+            .get(&(param_env.and(trait_ref).with_constness(pred.constness), pred.polarity), tcx)
     }
 
     /// Determines whether can we safely cache the result
@@ -1286,7 +1286,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     debug!(?trait_ref, ?candidate, "insert_candidate_cache global");
                     // This may overwrite the cache with the same value.
                     tcx.selection_cache.insert(
-                        param_env.and(trait_ref).with_constness(pred.constness),
+                        (param_env.and(trait_ref).with_constness(pred.constness), pred.polarity),
                         dep_node,
                         candidate,
                     );
@@ -1297,7 +1297,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?trait_ref, ?candidate, "insert_candidate_cache local");
         self.infcx.selection_cache.insert(
-            param_env.and(trait_ref).with_constness(pred.constness),
+            (param_env.and(trait_ref).with_constness(pred.constness), pred.polarity),
             dep_node,
             candidate,
         );
@@ -1523,10 +1523,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ConstDropCandidate,
             ) => false,
 
-            (ParamCandidate(other), ParamCandidate(victim)) => {
+            (
+                ParamCandidate((other, other_polarity)),
+                ParamCandidate((victim, victim_polarity)),
+            ) => {
                 let same_except_bound_vars = other.value.skip_binder()
                     == victim.value.skip_binder()
                     && other.constness == victim.constness
+                    && other_polarity == victim_polarity
                     && !other.value.skip_binder().has_escaping_bound_vars();
                 if same_except_bound_vars {
                     // See issue #84398. In short, we can generate multiple ParamCandidates which are
@@ -1537,6 +1541,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     other.value.bound_vars().len() <= victim.value.bound_vars().len()
                 } else if other.value == victim.value
                     && victim.constness == ty::BoundConstness::NotConst
+                    && other_polarity == victim_polarity
                 {
                     // Drop otherwise equivalent non-const candidates in favor of const candidates.
                     true
@@ -1566,11 +1571,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | TraitAliasCandidate(..)
                 | ObjectCandidate(_)
                 | ProjectionCandidate(_),
-            ) => !is_global(&cand.value),
+            ) => !is_global(&cand.0.value),
             (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref cand)) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                is_global(&cand.value)
+                is_global(&cand.0.value)
             }
             (
                 ImplCandidate(_)
@@ -1586,7 +1591,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                is_global(&cand.value) && other.evaluation.must_apply_modulo_regions()
+                is_global(&cand.0.value) && other.evaluation.must_apply_modulo_regions()
             }
 
             (ProjectionCandidate(i), ProjectionCandidate(j))

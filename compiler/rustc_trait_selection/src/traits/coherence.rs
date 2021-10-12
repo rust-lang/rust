@@ -5,6 +5,7 @@
 //! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 use crate::infer::{CombinedSnapshot, InferOk, TyCtxtInferExt};
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionContext};
@@ -186,6 +187,7 @@ fn overlap_within_probe(
 
     // Are any of the obligations unsatisfiable? If so, no overlap.
     let infcx = selcx.infcx();
+    let tcx = infcx.tcx;
     let opt_failing_obligation = a_impl_header
         .predicates
         .iter()
@@ -199,7 +201,13 @@ fn overlap_within_probe(
             predicate: p,
         })
         .chain(obligations)
-        .find(|o| !selcx.predicate_may_hold_fatal(o));
+        .find(|o| {
+            !selcx.predicate_may_hold_fatal(o)
+                || o.flip_polarity(tcx)
+                    .as_ref()
+                    .map(|o| selcx.infcx().predicate_must_hold_considering_regions(o))
+                    .unwrap_or(false)
+        });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
     // the new system supports intercrate mode (which coherence needs).

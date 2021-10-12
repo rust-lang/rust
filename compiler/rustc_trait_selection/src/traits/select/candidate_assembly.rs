@@ -376,7 +376,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for bound in matching_bounds {
             let wc = self.evaluate_where_clause(stack, bound.value)?;
             if wc.may_apply() {
-                candidates.vec.push(ParamCandidate(bound));
+                candidates.vec.push(ParamCandidate((
+                    bound,
+                    stack.obligation.predicate.skip_binder().polarity,
+                )));
             }
         }
 
