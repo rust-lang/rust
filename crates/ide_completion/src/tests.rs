@@ -17,7 +17,6 @@ mod pattern;
 mod predicate;
 mod proc_macros;
 mod record;
-mod sourcegen;
 mod type_pos;
 mod use_tree;
 mod visibility;

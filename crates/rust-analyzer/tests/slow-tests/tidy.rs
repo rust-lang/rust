@@ -342,7 +342,7 @@ fn check_test_attrs(path: &Path, text: &str) {
         // :(
         "hir_def/src/nameres/collector.rs",
         // Long sourcegen test to generate lint completions.
-        "ide_completion/src/tests/sourcegen.rs",
+        "ide_db/src/tests/sourcegen_lints.rs",
         // Obviously needs ignore.
         "ide_assists/src/handlers/toggle_ignore.rs",
         // See above.
