@@ -232,6 +232,7 @@ impl SocketAddr {
     /// assert_eq!(socket.is_ipv4(), true);
     /// assert_eq!(socket.is_ipv6(), false);
     /// ```
+    #[must_use]
     #[stable(feature = "sockaddr_checker", since = "1.16.0")]
     #[rustc_const_unstable(feature = "const_socketaddr", issue = "82485")]
     pub const fn is_ipv4(&self) -> bool {
@@ -253,6 +254,7 @@ impl SocketAddr {
     /// assert_eq!(socket.is_ipv4(), false);
     /// assert_eq!(socket.is_ipv6(), true);
     /// ```
+    #[must_use]
     #[stable(feature = "sockaddr_checker", since = "1.16.0")]
     #[rustc_const_unstable(feature = "const_socketaddr", issue = "82485")]
     pub const fn is_ipv6(&self) -> bool {

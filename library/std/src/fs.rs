@@ -1005,6 +1005,7 @@ impl Metadata {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_dir(&self) -> bool {
         self.file_type().is_dir()
@@ -1033,6 +1034,7 @@ impl Metadata {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_file(&self) -> bool {
         self.file_type().is_file()
@@ -1059,6 +1061,7 @@ impl Metadata {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[unstable(feature = "is_symlink", issue = "85748")]
     pub fn is_symlink(&self) -> bool {
         self.file_type().is_symlink()
@@ -1307,6 +1310,7 @@ impl FileType {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_dir(&self) -> bool {
         self.0.is_dir()
@@ -1339,6 +1343,7 @@ impl FileType {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_file(&self) -> bool {
         self.0.is_file()
@@ -1374,6 +1379,7 @@ impl FileType {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_symlink(&self) -> bool {
         self.0.is_symlink()
