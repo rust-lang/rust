@@ -1,5 +1,6 @@
 mod unchecked {
     // 0 < val <= u8::MAX
+    #[inline]
     pub const fn u8(val: u8) -> u32 {
         let val = val as u32;
 
@@ -20,6 +21,7 @@ mod unchecked {
     }
 
     // 0 < val < 100_000
+    #[inline]
     const fn less_than_5(val: u32) -> u32 {
         // Similar to u8, when adding one of these constants to val,
         // we get two possible bit patterns above the low 17 bits,
@@ -40,11 +42,13 @@ mod unchecked {
     }
 
     // 0 < val <= u16::MAX
+    #[inline]
     pub const fn u16(val: u16) -> u32 {
         less_than_5(val as u32)
     }
 
     // 0 < val <= u32::MAX
+    #[inline]
     pub const fn u32(mut val: u32) -> u32 {
         let mut log = 0;
         if val >= 100_000 {
@@ -55,6 +59,7 @@ mod unchecked {
     }
 
     // 0 < val <= u64::MAX
+    #[inline]
     pub const fn u64(mut val: u64) -> u32 {
         let mut log = 0;
         if val >= 10_000_000_000 {
@@ -69,6 +74,7 @@ mod unchecked {
     }
 
     // 0 < val <= u128::MAX
+    #[inline]
     pub const fn u128(mut val: u128) -> u32 {
         let mut log = 0;
         if val >= 100_000_000_000_000_000_000_000_000_000_000 {
@@ -84,26 +90,31 @@ mod unchecked {
     }
 
     // 0 < val <= i8::MAX
+    #[inline]
     pub const fn i8(val: i8) -> u32 {
         u8(val as u8)
     }
 
     // 0 < val <= i16::MAX
+    #[inline]
     pub const fn i16(val: i16) -> u32 {
         u16(val as u16)
     }
 
     // 0 < val <= i32::MAX
+    #[inline]
     pub const fn i32(val: i32) -> u32 {
         u32(val as u32)
     }
 
     // 0 < val <= i64::MAX
+    #[inline]
     pub const fn i64(val: i64) -> u32 {
         u64(val as u64)
     }
 
     // 0 < val <= i128::MAX
+    #[inline]
     pub const fn i128(val: i128) -> u32 {
         u128(val as u128)
     }
@@ -111,6 +122,7 @@ mod unchecked {
 
 macro_rules! impl_checked {
     ($T:ident) => {
+        #[inline]
         pub const fn $T(val: $T) -> Option<u32> {
             if val > 0 { Some(unchecked::$T(val)) } else { None }
         }
