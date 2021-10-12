@@ -100,6 +100,8 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         "Extract Module",
         module.text_range,
         |builder| {
+            let _ = &module;
+
             let mut body_items = Vec::new();
             let new_item_indent = old_item_indent + 1;
             for item in module.body_items {
@@ -148,7 +150,7 @@ struct Module {
 }
 
 fn extract_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Module> {
-    let body_items: Vec<ast::Item> = node
+    let mut body_items: Vec<ast::Item> = node
         .children()
         .filter_map(|child| {
             if let Some(item) = ast::Item::cast(child.clone()) {
@@ -161,6 +163,10 @@ fn extract_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Modul
         })
         .collect();
 
+    if let Some(node_item) = ast::Item::cast(node.clone()) {
+        body_items.push(node_item);
+    }
+
     Some(Module { text_range: selection_range, name: "modname".to_string(), body_items })
 }
 
@@ -169,7 +175,7 @@ impl Module {
         &self,
         ctx: &AssistContext,
     ) -> (HashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>) {
-        let mut record_fields = Vec::new();
+        let mut adt_fields = Vec::new();
         let mut refs: HashMap<FileId, Vec<(TextRange, String)>> = HashMap::new();
 
         //Here impl is not included as each item inside impl will be tied to the parent of
@@ -183,18 +189,31 @@ impl Module {
                             let node_def = Definition::ModuleDef(nod.into());
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
 
-                            let mut get_record_fields = |it: ast::Adt| {
-                                for desc in it.syntax().descendants() {
-                                    if let Some(record_field) = ast::RecordField::cast(desc) {
-                                        record_fields.push(record_field.syntax().clone());
-                                    }
-                                }
-                            };
-
                             //Enum Fields are not allowed to explicitly specify pub, it is implied
                             match it {
-                                ast::Adt::Struct(_) => get_record_fields(it),
-                                ast::Adt::Union(_) => get_record_fields(it),
+                                ast::Adt::Struct(x) => {
+                                    if let Some(field_list) = x.field_list() {
+                                        match field_list {
+                                            ast::FieldList::RecordFieldList(record_field_list) => {
+                                                record_field_list.fields().for_each(|record_field| {
+                                                    adt_fields.push(record_field.syntax().clone());
+                                                });
+                                            },
+                                            ast::FieldList::TupleFieldList(tuple_field_list) => {
+                                                tuple_field_list.fields().for_each(|tuple_field| {
+                                                    adt_fields.push(tuple_field.syntax().clone());
+                                                });
+                                            },
+                                        }
+                                    }
+                                },
+                                ast::Adt::Union(x) => {
+                                        if let Some(record_field_list) = x.record_field_list() {
+                                            record_field_list.fields().for_each(|record_field| {
+                                                    adt_fields.push(record_field.syntax().clone());
+                                            });
+                                        }
+                                },
                                 ast::Adt::Enum(_) => {},
                             }
                         }
@@ -228,7 +247,7 @@ impl Module {
             }
         });
 
-        return (refs, record_fields);
+        return (refs, adt_fields);
     }
 
     fn expand_and_group_usages_file_wise(
@@ -881,9 +900,9 @@ mod tests {
         check_assist_not_applicable(
             extract_module,
             r"
-                $0pub struct PublicStruct {
-                    field: i32,
-                }
+$0pub struct PublicStruct {
+    field: i32,
+}
             ",
         )
     }
@@ -920,25 +939,25 @@ mod tests {
                     let _a = bar();
                 }
 
-                $0
-                struct PrivateStruct {
-                    inner: SomeType,
-                }
+$0
+struct PrivateStruct {
+    inner: SomeType,
+}
 
-                pub struct PrivateStruct1 {
-                    pub inner: i32,
-                }
+pub struct PrivateStruct1 {
+    pub inner: i32,
+}
 
-                impl PrivateStruct {
-                    fn new() -> Self {
-                         PrivateStruct { inner: SomeType }
-                    }
-                }
+impl PrivateStruct {
+    fn new() -> Self {
+         PrivateStruct { inner: SomeType }
+    }
+}
 
-                fn bar() -> i32 {
-                    2
-                }
-                $0
+fn bar() -> i32 {
+    2
+}
+$0
             }
             ",
             r"
@@ -969,27 +988,27 @@ mod tests {
                     let _a = modname::bar();
                 }
 
-                mod modname {
-                    use crate::thirdpartycrate::nest::SomeType;
+mod modname {
+    use crate::thirdpartycrate::nest::SomeType;
 
-                    pub(crate) struct PrivateStruct {
-                        pub(crate) inner: SomeType,
-                    }
+    pub(crate) struct PrivateStruct {
+        pub(crate) inner: SomeType,
+    }
 
-                    pub(crate) struct PrivateStruct1 {
-                        pub(crate) inner: i32,
-                    }
+    pub(crate) struct PrivateStruct1 {
+        pub(crate) inner: i32,
+    }
 
-                    impl PrivateStruct {
-                        pub(crate) fn new() -> Self {
-                             PrivateStruct { inner: SomeType }
-                        }
-                    }
+    impl PrivateStruct {
+        pub(crate) fn new() -> Self {
+             PrivateStruct { inner: SomeType }
+        }
+    }
 
-                    pub(crate) fn bar() -> i32 {
-                        2
-                    }
-                }
+    pub(crate) fn bar() -> i32 {
+        2
+    }
+}
             }
             ",
         );
@@ -1000,22 +1019,22 @@ mod tests {
         check_assist(
             extract_module,
             r"
-                $0
-                fn foo(name: i32) -> i32 {
-                    name + 1
-                }
-                $0
+$0
+fn foo(name: i32) -> i32 {
+    name + 1
+}
+$0
 
                 fn bar(name: i32) -> i32 {
                     name + 2
                 }
             ",
             r"
-                mod modname {
-                    pub(crate) fn foo(name: i32) -> i32 {
-                        name + 1
-                    }
-                }
+mod modname {
+    pub(crate) fn foo(name: i32) -> i32 {
+        name + 1
+    }
+}
 
                 fn bar(name: i32) -> i32 {
                     name + 2
@@ -1030,15 +1049,15 @@ mod tests {
             extract_module,
             r"
             mod impl_play {
-                $0
-                struct A {}
+$0
+struct A {}
 
-                impl A {
-                    pub fn new_a() -> i32 {
-                        2
-                    }
-                }
-                $0
+impl A {
+    pub fn new_a() -> i32 {
+        2
+    }
+}
+$0
 
                 fn a() {
                     let _a = A::new_a();
@@ -1047,15 +1066,15 @@ mod tests {
             ",
             r"
             mod impl_play {
-                mod modname {
-                    pub(crate) struct A {}
+mod modname {
+    pub(crate) struct A {}
 
-                    impl A {
-                        pub(crate) fn new_a() -> i32 {
-                            2
-                        }
-                    }
-                }
+    impl A {
+        pub(crate) fn new_a() -> i32 {
+            2
+        }
+    }
+}
 
                 fn a() {
                     let _a = modname::A::new_a();
@@ -1078,11 +1097,11 @@ mod tests {
             mod bar {
                 use super::foo::{PrivateStruct, PrivateStruct1};
 
-                $0
-                struct Strukt {
-                    field: PrivateStruct,
-                }
-                $0
+$0
+struct Strukt {
+    field: PrivateStruct,
+}
+$0
 
                 struct Strukt1 {
                     field: PrivateStruct1,
@@ -1098,13 +1117,13 @@ mod tests {
             mod bar {
                 use super::foo::{PrivateStruct1};
 
-                mod modname {
-                    use super::super::foo::PrivateStruct;
+mod modname {
+    use super::super::foo::PrivateStruct;
 
-                    pub(crate) struct Strukt {
-                        pub(crate) field: PrivateStruct,
-                    }
-                }
+    pub(crate) struct Strukt {
+        pub(crate) field: PrivateStruct,
+    }
+}
 
                 struct Strukt1 {
                     field: PrivateStruct1,
@@ -1126,11 +1145,11 @@ mod tests {
             mod bar {
                 use super::foo::PrivateStruct;
 
-                $0
-                struct Strukt {
-                    field: PrivateStruct,
-                }
-                $0
+$0
+struct Strukt {
+    field: PrivateStruct,
+}
+$0
 
                 struct Strukt1 {
                     field: PrivateStruct,
@@ -1145,13 +1164,13 @@ mod tests {
             mod bar {
                 use super::foo::PrivateStruct;
 
-                mod modname {
-                    use super::super::foo::PrivateStruct;
+mod modname {
+    use super::super::foo::PrivateStruct;
 
-                    pub(crate) struct Strukt {
-                        pub(crate) field: PrivateStruct,
-                    }
-                }
+    pub(crate) struct Strukt {
+        pub(crate) field: PrivateStruct,
+    }
+}
 
                 struct Strukt1 {
                     field: PrivateStruct,
@@ -1169,11 +1188,11 @@ mod tests {
             mod bar {
                 pub struct PrivateStruct;
 
-                $0
-                struct Strukt {
-                    field: PrivateStruct,
-                }
-                $0
+$0
+struct Strukt {
+    field: PrivateStruct,
+}
+$0
 
                 struct Strukt1 {
                     field: PrivateStruct,
@@ -1184,13 +1203,13 @@ mod tests {
             mod bar {
                 pub struct PrivateStruct;
 
-                mod modname {
-                    use super::PrivateStruct;
+mod modname {
+    use super::PrivateStruct;
 
-                    pub(crate) struct Strukt {
-                        pub(crate) field: PrivateStruct,
-                    }
-                }
+    pub(crate) struct Strukt {
+        pub(crate) field: PrivateStruct,
+    }
+}
 
                 struct Strukt1 {
                     field: PrivateStruct,
@@ -1208,13 +1227,13 @@ mod tests {
             mod impl_play {
                 struct A {}
 
-                $0
-                impl A {
-                    pub fn new_a() -> i32 {
-                        2
-                    }
-                }
-                $0
+$0
+impl A {
+    pub fn new_a() -> i32 {
+        2
+    }
+}
+$0
 
                 fn a() {
                     let _a = A::new_a();
@@ -1225,15 +1244,15 @@ mod tests {
             mod impl_play {
                 struct A {}
 
-                mod modname {
-                    use super::A;
+mod modname {
+    use super::A;
 
-                    impl A {
-                        pub(crate) fn new_a() -> i32 {
-                            2
-                        }
-                    }
-                }
+    impl A {
+        pub(crate) fn new_a() -> i32 {
+            2
+        }
+    }
+}
 
                 fn a() {
                     let _a = A::new_a();
@@ -1255,13 +1274,13 @@ mod tests {
             mod impl_play {
                 use super::foo::A;
 
-                $0
-                impl A {
-                    pub fn new_a() -> i32 {
-                        2
-                    }
-                }
-                $0
+$0
+impl A {
+    pub fn new_a() -> i32 {
+        2
+    }
+}
+$0
 
                 fn a() {
                     let _a = A::new_a();
@@ -1275,15 +1294,15 @@ mod tests {
             mod impl_play {
                 use super::foo::A;
 
-                mod modname {
-                    use super::super::foo::A;
+mod modname {
+    use super::super::foo::A;
 
-                    impl A {
-                        pub(crate) fn new_a() -> i32 {
-                            2
-                        }
-                    }
-                }
+    impl A {
+        pub(crate) fn new_a() -> i32 {
+            2
+        }
+    }
+}
 
                 fn a() {
                     let _a = A::new_a();
@@ -1301,42 +1320,42 @@ mod tests {
             mod impl_play2 {
                 trait JustATrait {}
 
-                $0
-                struct A {}
+$0
+struct A {}
 
-                fn foo<T: JustATrait>(arg: T) -> T {
-                    arg
-                }
+fn foo<T: JustATrait>(arg: T) -> T {
+    arg
+}
 
-                impl JustATrait for A {}
+impl JustATrait for A {}
 
-                fn bar() {
-                    let a = A {};
-                    foo(a);
-                }
-                $0
+fn bar() {
+    let a = A {};
+    foo(a);
+}
+$0
             }
             ",
             r"
             mod impl_play2 {
                 trait JustATrait {}
 
-                mod modname {
-                    use super::JustATrait;
+mod modname {
+    use super::JustATrait;
 
-                    pub(crate) struct A {}
+    pub(crate) struct A {}
 
-                    pub(crate) fn foo<T: JustATrait>(arg: T) -> T {
-                        arg
-                    }
+    pub(crate) fn foo<T: JustATrait>(arg: T) -> T {
+        arg
+    }
 
-                    impl JustATrait for A {}
+    impl JustATrait for A {}
 
-                    pub(crate) fn bar() {
-                        let a = A {};
-                        foo(a);
-                    }
-                }
+    pub(crate) fn bar() {
+        let a = A {};
+        foo(a);
+    }
+}
             }
             ",
         )
@@ -1348,20 +1367,20 @@ mod tests {
             extract_module,
             r"
             mod impl_play2 {
-                $0
-                mod impl_play {
-                    pub struct A {}
-                }
-                $0
+$0
+mod impl_play {
+    pub struct A {}
+}
+$0
             }
             ",
             r"
             mod impl_play2 {
-                mod modname {
-                    pub(crate) mod impl_play {
-                        pub struct A {}
-                    }
-                }
+mod modname {
+    pub(crate) mod impl_play {
+        pub struct A {}
+    }
+}
             }
             ",
         )
