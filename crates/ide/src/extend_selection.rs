@@ -142,8 +142,8 @@ fn extend_tokens_from_range(
 
     // compute original mapped token range
     let extended = {
-        let fst_expanded = sema.descend_into_macros(first_token.clone());
-        let lst_expanded = sema.descend_into_macros(last_token.clone());
+        let fst_expanded = sema.descend_into_macros_single(first_token.clone());
+        let lst_expanded = sema.descend_into_macros_single(last_token.clone());
         let mut lca =
             algo::least_common_ancestor(&fst_expanded.parent()?, &lst_expanded.parent()?)?;
         lca = shallowest_node(&lca);
@@ -155,7 +155,7 @@ fn extend_tokens_from_range(
 
     // Compute parent node range
     let validate = |token: &SyntaxToken| -> bool {
-        let expanded = sema.descend_into_macros(token.clone());
+        let expanded = sema.descend_into_macros_single(token.clone());
         let parent = match expanded.parent() {
             Some(it) => it,
             None => return false,

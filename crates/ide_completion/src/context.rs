@@ -138,7 +138,7 @@ impl<'a> CompletionContext<'a> {
 
         let original_token =
             original_file.syntax().token_at_offset(position.offset).left_biased()?;
-        let token = sema.descend_into_macros(original_token.clone());
+        let token = sema.descend_into_macros_single(original_token.clone());
         let scope = sema.scope_at_offset(&token, position.offset);
         let krate = scope.krate();
         let mut locals = vec![];

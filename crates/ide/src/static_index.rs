@@ -162,7 +162,7 @@ impl StaticIndex<'_> {
 }
 
 fn get_definition(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Definition> {
-    for token in sema.descend_into_macros_many(token) {
+    for token in sema.descend_into_macros(token) {
         let def = Definition::from_token(&sema, &token);
         if let [x] = def.as_slice() {
             return Some(*x);

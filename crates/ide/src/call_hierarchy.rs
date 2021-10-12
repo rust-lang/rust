@@ -90,7 +90,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
     })?;
     let mut calls = CallLocations::default();
 
-    sema.descend_into_macros_many(token)
+    sema.descend_into_macros(token)
         .into_iter()
         .filter_map(|it| it.ancestors().nth(1).and_then(ast::Item::cast))
         .filter_map(|item| match item {

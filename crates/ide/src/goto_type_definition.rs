@@ -27,7 +27,7 @@ pub(crate) fn goto_type_definition(
             kind if kind.is_trivia() => 0,
             _ => 1,
         })?;
-    let token: SyntaxToken = sema.descend_into_macros(token);
+    let token: SyntaxToken = sema.descend_into_macros_single(token);
 
     let (ty, node) = sema.token_ancestors_with_macros(token).find_map(|node| {
         let ty = match_ast! {

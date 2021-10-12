@@ -32,7 +32,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         _ => 0,
     })?;
 
-    let descended = sema.descend_into_macros(tok.clone());
+    let descended = sema.descend_into_macros_single(tok.clone());
     if let Some(attr) = descended.ancestors().find_map(ast::Attr::cast) {
         if let Some((path, tt)) = attr.as_simple_call() {
             if path == "derive" {

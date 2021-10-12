@@ -303,7 +303,7 @@ fn traverse(
                 Some(it) => it,
                 _ => continue,
             };
-            let token = sema.descend_into_macros(token);
+            let token = sema.descend_into_macros_single(token);
             match token.parent() {
                 Some(parent) => {
                     // We only care Name and Name_ref

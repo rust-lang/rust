@@ -35,7 +35,7 @@ pub(crate) fn goto_implementation(
         })?;
     let range = original_token.text_range();
     let navs =
-        sema.descend_into_macros_many(original_token)
+        sema.descend_into_macros(original_token)
             .into_iter()
             .filter_map(|token| token.parent().and_then(ast::NameLike::cast))
             .filter_map(|node| {

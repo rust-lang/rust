@@ -116,7 +116,7 @@ pub(crate) fn hover(
         });
     }
 
-    let descended = sema.descend_into_macros_many(original_token.clone());
+    let descended = sema.descend_into_macros(original_token.clone());
 
     // FIXME: Definition should include known lints and the like instead of having this special case here
     if let Some(res) = descended.iter().find_map(|token| {
