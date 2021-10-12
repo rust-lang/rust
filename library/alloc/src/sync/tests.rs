@@ -633,3 +633,25 @@ where
 {
     f()
 }
+
+#[test]
+fn test_arc_fn2() {
+    fn apply_fn_once<T>(v: T, f: impl FnOnce(T)) {
+        f(v)
+    }
+    fn apply_fn_mut<T>(v: T, mut f: impl FnMut(T)) {
+        f(v)
+    }
+    fn apply_fn<T>(v: T, f: impl Fn(T)) {
+        f(v)
+    }
+
+    let x = Mutex::new(0);
+    let f = Arc::new(|v: i32| *x.lock().unwrap() += v);
+
+    apply_fn_once(1, f.clone());
+    apply_fn_mut(2, f.clone());
+    apply_fn(4, f.clone());
+
+    assert_eq!(*x.lock().unwrap(), 7);
+}
