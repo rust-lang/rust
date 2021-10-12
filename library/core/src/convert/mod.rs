@@ -273,6 +273,7 @@ pub trait AsMut<T: ?Sized> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Performs the conversion.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into(self) -> T;
 }
@@ -367,6 +368,7 @@ pub trait Into<T>: Sized {
 pub trait From<T>: Sized {
     /// Performs the conversion.
     #[lang = "from"]
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from(_: T) -> Self;
 }
