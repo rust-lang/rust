@@ -605,22 +605,17 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn and(&mut self, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
-        // FIXME(antoyo): hack by putting the result in a variable to workaround this bug:
-        // https://gcc.gnu.org/bugzilla//show_bug.cgi?id=95498
         if a.get_type() != b.get_type() {
             b = self.context.new_cast(None, b, a.get_type());
         }
-        let res = self.current_func().new_local(None, b.get_type(), "andResult");
-        self.llbb().add_assignment(None, res, a & b);
-        res.to_rvalue()
+        a & b
     }
 
-    fn or(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // FIXME(antoyo): hack by putting the result in a variable to workaround this bug:
-        // https://gcc.gnu.org/bugzilla//show_bug.cgi?id=95498
-        let res = self.current_func().new_local(None, b.get_type(), "orResult");
-        self.llbb().add_assignment(None, res, a | b);
-        res.to_rvalue()
+    fn or(&mut self, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
+        if a.get_type() != b.get_type() {
+            b = self.context.new_cast(None, b, a.get_type());
+        }
+        a | b
     }
 
     fn xor(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
