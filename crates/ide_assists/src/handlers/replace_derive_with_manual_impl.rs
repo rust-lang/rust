@@ -713,6 +713,35 @@ impl PartialOrd for Foo {
     }
 
     #[test]
+    fn add_custom_impl_partial_ord_tuple_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: ord
+#[derive(Partial$0Ord)]
+struct Foo(usize, usize, usize);
+"#,
+            r#"
+struct Foo(usize, usize, usize);
+
+impl PartialOrd for Foo {
+    $0fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        match self.0.partial_cmp(other.0) {
+            Some(core::cmp::Ordering::Eq) => {}
+            ord => return ord,
+        }
+        match self.1.partial_cmp(other.1) {
+            Some(core::cmp::Ordering::Eq) => {}
+            ord => return ord,
+        }
+        self.2.partial_cmp(other.2)
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn add_custom_impl_partial_ord_enum() {
         check_assist(
             replace_derive_with_manual_impl,
@@ -742,28 +771,50 @@ impl PartialOrd for Foo {
     }
 
     #[test]
-    fn add_custom_impl_partial_ord_tuple_struct() {
+    fn add_custom_impl_partial_ord_record_enum() {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
 //- minicore: ord
 #[derive(Partial$0Ord)]
-struct Foo(usize, usize, usize);
+enum Foo {
+    Bar {
+        bin: String,
+    },
+    Baz {
+        qux: String,
+        fez: String,
+    },
+    Qux {},
+    Bin,
+}
 "#,
             r#"
-struct Foo(usize, usize, usize);
+enum Foo {
+    Bar {
+        bin: String,
+    },
+    Baz {
+        qux: String,
+        fez: String,
+    },
+    Qux {},
+    Bin,
+}
 
 impl PartialOrd for Foo {
     $0fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        match self.0.partial_cmp(other.0) {
-            Some(core::cmp::Ordering::Eq) => {}
-            ord => return ord,
+        match (self, other) {
+            (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin.partial_cmp(r_bin),
+            (Self::Baz { qux: l_qux, fez: l_fez }, Self::Baz { qux: r_qux, fez: r_fez }) => {
+                match l_qux.partial_cmp(r_qux) {
+                    Some(core::cmp::Ordering::Eq) => {}
+                    ord => return ord,
+                }
+                l_fez.partial_cmp(r_fez)
+            }
+            _ => core::mem::discriminant(self).partial_cmp(core::mem::discriminant(other)),
         }
-        match self.1.partial_cmp(other.1) {
-            Some(core::cmp::Ordering::Eq) => {}
-            ord => return ord,
-        }
-        self.2.partial_cmp(other.2)
     }
 }
 "#,

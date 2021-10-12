@@ -644,7 +644,7 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 match variant.field_list() {
                     // => (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin == r_bin,
                     Some(ast::FieldList::RecordFieldList(list)) => {
-                        let mut expr = None;
+                        let mut exprs = vec![];
                         let mut l_fields = vec![];
                         let mut r_fields = vec![];
 
@@ -659,16 +659,26 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
                             let lhs = make::expr_path(make::ext::ident_path(l_name));
                             let rhs = make::expr_path(make::ext::ident_path(r_name));
-                            let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
-                            expr = gen_eq_chain(expr, cmp);
+                            let ord = gen_partial_cmp_call(lhs, rhs);
+                            exprs.push(ord);
                         }
 
                         let left = gen_record_pat(gen_variant_path(&variant)?, l_fields);
                         let right = gen_record_pat(gen_variant_path(&variant)?, r_fields);
                         let tuple = make::tuple_pat(vec![left.into(), right.into()]);
 
-                        if let Some(expr) = expr {
-                            arms.push(make::match_arm(Some(tuple.into()), None, expr));
+                        if let Some(tail) = exprs.pop() {
+                            let stmts = exprs
+                                .into_iter()
+                                .map(gen_partial_eq_match)
+                                .collect::<Option<Vec<ast::Stmt>>>()?;
+                            let expr = match stmts.len() {
+                                0 => tail,
+                                _ => make::block_expr(stmts.into_iter(), Some(tail))
+                                    .indent(ast::edit::IndentLevel(1))
+                                    .into(),
+                            };
+                            arms.push(make::match_arm(Some(tuple.into()), None, expr.into()));
                         }
                     }
 
