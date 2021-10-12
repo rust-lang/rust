@@ -59,8 +59,8 @@ in your program, and cannot run all programs:
   has no access to most platform-specific APIs or FFI. A few APIs have been
   implemented (such as printing to stdout) but most have not: for example, Miri
   currently does not support SIMD or networking.
-* Threading support is not finished yet. E.g. weak memory effects are not
-  emulated and spin loops (without syscalls) just loop forever. There's no
+* Threading support is not finished yet. E.g., weak memory effects are not
+  emulated and spin loops (without syscalls) just loop forever. There is no
   threading support on Windows.
 
 Consider looking into GitHub isues for more information about the limitations.
