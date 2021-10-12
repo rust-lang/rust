@@ -1,5 +1,5 @@
 error: const trait implementations may not use non-const default functions
-  --> $DIR/impl-with-default-fn.rs:17:1
+  --> $DIR/impl-with-default-fn-fail.rs:18:1
    |
 LL | / impl const Tr for S {
 LL | |     fn req(&self) {}
@@ -9,7 +9,7 @@ LL | | }
    = note: `prov` not implemented
 
 error: const trait implementations may not use non-const default functions
-  --> $DIR/impl-with-default-fn.rs:32:1
+  --> $DIR/impl-with-default-fn-fail.rs:28:1
    |
 LL | / impl const Tr for u32 {
 LL | |     fn req(&self) {}
@@ -20,7 +20,7 @@ LL | | }
    = note: `prov` not implemented
 
 error[E0046]: not all trait items implemented, missing: `req`
-  --> $DIR/impl-with-default-fn.rs:26:1
+  --> $DIR/impl-with-default-fn-fail.rs:22:1
    |
 LL |     fn req(&self);
    |     -------------- `req` from trait

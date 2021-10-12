@@ -1342,12 +1342,6 @@ impl<'a> Builder<'a> {
                 rustdocflags.arg("-Dwarnings");
             }
 
-            // FIXME(#58633) hide "unused attribute" errors in incremental
-            // builds of the standard library, as the underlying checks are
-            // not yet properly integrated with incremental recompilation.
-            if mode == Mode::Std && compiler.stage == 0 && self.config.incremental {
-                lint_flags.push("-Aunused-attributes");
-            }
             // This does not use RUSTFLAGS due to caching issues with Cargo.
             // Clippy is treated as an "in tree" tool, but shares the same
             // cache as other "submodule" tools. With these options set in

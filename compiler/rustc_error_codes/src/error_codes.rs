@@ -242,6 +242,7 @@ E0468: include_str!("./error_codes/E0468.md"),
 E0469: include_str!("./error_codes/E0469.md"),
 E0477: include_str!("./error_codes/E0477.md"),
 E0478: include_str!("./error_codes/E0478.md"),
+E0482: include_str!("./error_codes/E0482.md"),
 E0491: include_str!("./error_codes/E0491.md"),
 E0492: include_str!("./error_codes/E0492.md"),
 E0493: include_str!("./error_codes/E0493.md"),
@@ -599,7 +600,6 @@ E0785: include_str!("./error_codes/E0785.md"),
 //  E0479, // the type `..` (provided as the value of a type parameter) is...
 //  E0480, // lifetime of method receiver does not outlive the method call
 //  E0481, // lifetime of function argument does not outlive the function call
-    E0482, // lifetime of return value does not outlive the function call
 //  E0483, // lifetime of operand does not outlive the operation
 //  E0484, // reference is not valid at the time of borrow
 //  E0485, // automatically reference is not valid at the time of borrow
