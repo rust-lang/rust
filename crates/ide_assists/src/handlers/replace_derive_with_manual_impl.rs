@@ -676,6 +676,43 @@ impl Clone for Foo {
     }
 
     #[test]
+    fn add_custom_impl_partial_ord_record_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: ord
+#[derive(Partial$0Ord)]
+struct Foo {
+    bin: usize,
+    bar: usize,
+    baz: usize,
+}
+"#,
+            r#"
+struct Foo {
+    bin: usize,
+    bar: usize,
+    baz: usize,
+}
+
+impl PartialOrd for Foo {
+    $0fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        match self.bin.partial_cmp(other.bin) {
+            Some(core::cmp::Ordering::Eq) => {}
+            ord => return ord,
+        }
+        match self.bar.partial_cmp(other.bar) {
+            Some(core::cmp::Ordering::Eq) => {}
+            ord => return ord,
+        }
+        self.baz.partial_cmp(other.baz)
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn add_custom_impl_partial_eq_record_struct() {
         check_assist(
             replace_derive_with_manual_impl,
