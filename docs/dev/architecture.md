@@ -156,7 +156,7 @@ Files are represented with opaque `FileId`, there's no operation to get an `std:
 These crates are the *brain* of rust-analyzer.
 This is the compiler part of the IDE.
 
-`hir_xxx` crates have a strong ECS flavor, in that they work with raw ids and directly query the database.
+`hir_xxx` crates have a strong [ECS](https://en.wikipedia.org/wiki/Entity_component_system) flavor, in that they work with raw ids and directly query the database.
 There's little abstraction here.
 These crates integrate deeply with salsa and chalk.
 
