@@ -334,6 +334,7 @@ impl Duration {
     /// [`subsec_nanos`]: Duration::subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
     #[rustc_const_stable(feature = "duration", since = "1.32.0")]
+    #[must_use]
     #[inline]
     pub const fn as_secs(&self) -> u64 {
         self.secs
@@ -417,6 +418,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[must_use]
     #[inline]
     pub const fn as_millis(&self) -> u128 {
         self.secs as u128 * MILLIS_PER_SEC as u128 + (self.nanos / NANOS_PER_MILLI) as u128
@@ -434,6 +436,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[must_use]
     #[inline]
     pub const fn as_micros(&self) -> u128 {
         self.secs as u128 * MICROS_PER_SEC as u128 + (self.nanos / NANOS_PER_MICRO) as u128
@@ -451,6 +454,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[must_use]
     #[inline]
     pub const fn as_nanos(&self) -> u128 {
         self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos as u128
@@ -674,6 +678,7 @@ impl Duration {
     /// assert_eq!(dur.as_secs_f64(), 2.7);
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn as_secs_f64(&self) -> f64 {
@@ -692,6 +697,7 @@ impl Duration {
     /// assert_eq!(dur.as_secs_f32(), 2.7);
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn as_secs_f32(&self) -> f32 {
