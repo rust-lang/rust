@@ -116,6 +116,8 @@ const DEPRECATED_LINT_TYPE: [&str; 3] = ["clippy_lints", "deprecated_lints", "Cl
 const APPLICABILITY_NAME_INDEX: usize = 2;
 /// This applicability will be set for unresolved applicability values.
 const APPLICABILITY_UNRESOLVED_STR: &str = "Unresolved";
+/// The version that will be displayed if none has been defined
+const VERION_DEFAULT_STR: &str = "Unknown";
 
 declare_clippy_lint! {
     /// ### What it does
@@ -144,6 +146,7 @@ declare_clippy_lint! {
     ///     "docs": " ### What it does\nCollects metadata about clippy lints for the website. [...] "
     /// }
     /// ```
+    #[clippy::version = "0.1.56"]
     pub INTERNAL_METADATA_COLLECTOR,
     internal_warn,
     "A busy bee collection metadata about lints"
@@ -215,18 +218,27 @@ struct LintMetadata {
     group: String,
     level: String,
     docs: String,
+    version: String,
     /// This field is only used in the output and will only be
     /// mapped shortly before the actual output.
     applicability: Option<ApplicabilityInfo>,
 }
 
 impl LintMetadata {
-    fn new(id: String, id_span: SerializableSpan, group: String, level: &'static str, docs: String) -> Self {
+    fn new(
+        id: String,
+        id_span: SerializableSpan,
+        group: String,
+        level: &'static str,
+        version: String,
+        docs: String,
+    ) -> Self {
         Self {
             id,
             id_span,
             group,
             level: level.to_string(),
+            version,
             docs,
             applicability: None,
         }
@@ -410,12 +422,14 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                     if let Some(configuration_section) = self.get_lint_configs(&lint_name) {
                         docs.push_str(&configuration_section);
                     }
+                    let version = get_lint_version(cx, item);
 
                     self.lints.push(LintMetadata::new(
                         lint_name,
                         SerializableSpan::from_item(cx, item),
                         group,
                         level,
+                        version,
                         docs,
                     ));
                 }
@@ -429,11 +443,14 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 // Metadata the little we can get from a deprecated lint
                 if let Some(docs) = extract_attr_docs_or_lint(cx, item);
                 then {
+                    let version = get_lint_version(cx, item);
+
                     self.lints.push(LintMetadata::new(
                         lint_name,
                         SerializableSpan::from_item(cx, item),
                         DEPRECATED_LINT_GROUP_STR.to_string(),
                         DEPRECATED_LINT_LEVEL,
+                        version,
                         docs,
                     ));
                 }
@@ -552,6 +569,28 @@ fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
     Some(docs)
 }
 
+fn get_lint_version(cx: &LateContext<'_>, item: &Item<'_>) -> String {
+    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    attrs
+        .iter()
+        .find_map(|attr| {
+            if_chain! {
+                // Identify attribute
+                if let ast::AttrKind::Normal(ref attr_kind, _) = &attr.kind;
+                if let [tool_name, attr_name] = &attr_kind.path.segments[..];
+                if tool_name.ident.name == sym::clippy;
+                if attr_name.ident.name == sym::version;
+                if let Some(version) = attr.value_str();
+                then {
+                    Some(version.as_str().to_string())
+                } else {
+                    None
+                }
+            }
+        })
+        .unwrap_or_else(|| VERION_DEFAULT_STR.to_string())
+}
+
 fn get_lint_group_and_level_or_lint(
     cx: &LateContext<'_>,
     lint_name: &str,
@@ -663,7 +702,6 @@ fn extract_emission_info<'hir>(
             applicability = resolve_applicability(cx, arg);
         } else if arg_ty.is_closure() {
             multi_part |= check_is_multi_part(cx, arg);
-            // TODO xFrednet 2021-03-01: don't use or_else but rather a comparison
             applicability = applicability.or_else(|| resolve_applicability(cx, arg));
         }
     }
