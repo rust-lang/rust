@@ -450,6 +450,7 @@ store.register_lints(&[
     transmute::TRANSMUTE_INT_TO_BOOL,
     transmute::TRANSMUTE_INT_TO_CHAR,
     transmute::TRANSMUTE_INT_TO_FLOAT,
+    transmute::TRANSMUTE_NUM_TO_BYTES,
     transmute::TRANSMUTE_PTR_TO_PTR,
     transmute::TRANSMUTE_PTR_TO_REF,
     transmute::UNSOUND_COLLECTION_TRANSMUTE,

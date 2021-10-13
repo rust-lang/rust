@@ -82,6 +82,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(transmute::TRANSMUTE_INT_TO_BOOL),
     LintId::of(transmute::TRANSMUTE_INT_TO_CHAR),
     LintId::of(transmute::TRANSMUTE_INT_TO_FLOAT),
+    LintId::of(transmute::TRANSMUTE_NUM_TO_BYTES),
     LintId::of(transmute::TRANSMUTE_PTR_TO_REF),
     LintId::of(types::BORROWED_BOX),
     LintId::of(types::TYPE_COMPLEXITY),
