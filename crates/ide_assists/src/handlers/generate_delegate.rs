@@ -1,9 +1,8 @@
 use hir::{self, HasCrate, HirDisplay};
-use stdx::format_to;
 use syntax::ast::{self, make, AstNode, HasName, HasVisibility};
 
 use crate::{
-    utils::{find_impl_block_end, find_struct_impl, generate_impl_text, render_snippet, Cursor},
+    utils::{find_struct_impl, render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
 
@@ -31,9 +30,9 @@ use crate::{
 // ```
 pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
-    let field = ctx.find_node_at_offset::<ast::RecordField>()?;
+    let strukt_name = strukt.name()?;
 
-    let field_name = field.name()?;
+    let field = ctx.find_node_at_offset::<ast::RecordField>()?;
     let field_ty = field.ty()?;
 
     let sema_field_ty = ctx.sema.resolve_type(&field_ty)?;
@@ -61,23 +60,6 @@ pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Optio
             format!("Generate a delegate method for '{}'", method.name(ctx.db())),
             target,
             |builder| {
-                let mut buf = String::with_capacity(512);
-
-                let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
-                let return_type = method.ret_type(ctx.db());
-                let return_type = if return_type.is_unit() || return_type.is_unknown() {
-                    String::new()
-                } else {
-                    let module = match ctx.sema.scope(strukt.syntax()).module() {
-                        Some(m) => m,
-                        None => return,
-                    };
-                    match return_type.display_source_code(ctx.db(), module.into()) {
-                        Ok(rt) => format!("-> {}", rt),
-                        Err(_) => return,
-                    }
-                };
-
                 // make function
                 let vis = strukt.visibility();
                 let name = make::name(&method.name(ctx.db()).to_string());
@@ -89,21 +71,28 @@ pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Optio
                 let is_async = false;
                 let f = make::fn_(vis, name, type_params, params, body, ret_type, is_async);
 
-                let start_offset = impl_def
-                    .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
-                    .unwrap_or_else(|| {
-                        buf = generate_impl_text(&ast::Adt::Struct(strukt.clone()), &buf);
-                        strukt.syntax().text_range().end()
-                    });
-
-                let cap = ctx.config.snippet_cap.unwrap(); // FIXME.
                 let cursor = Cursor::Before(f.syntax());
+                let cap = ctx.config.snippet_cap.unwrap(); // FIXME.
 
-                builder.insert_snippet(
-                    cap,
-                    start_offset,
-                    format!("\n\n{}", render_snippet(cap, f.syntax(), cursor)),
-                );
+                match impl_def {
+                    Some(impl_def) => {
+                        let impl_def = impl_def.clone_for_update();
+                        let old_range = impl_def.syntax().text_range();
+                        let assoc_items = impl_def.get_or_create_assoc_item_list();
+                        assoc_items.add_item(f.clone().into());
+                        let snippet = render_snippet(cap, impl_def.syntax(), cursor);
+                        builder.replace_snippet(cap, old_range, snippet);
+                    }
+                    None => {
+                        let name = &strukt_name.to_string();
+                        let impl_def = make::impl_(make::ext::ident_path(name));
+                        let assoc_items = impl_def.get_or_create_assoc_item_list();
+                        assoc_items.add_item(f.clone().into());
+                        let start_offset = strukt.syntax().text_range().end();
+                        let snippet = render_snippet(cap, impl_def.syntax(), cursor);
+                        builder.insert_snippet(cap, start_offset, snippet);
+                    }
+                }
             },
         )?;
     }
@@ -132,11 +121,13 @@ impl Age {
 struct Person {
     ag$0e: Age,
 }
+
+impl Person {}
 "#,
             r#"
 struct Age(u8);
 impl Age {
-    fn age(&self) -> u8 {
+    $0fn age(&self) -> u8 {
         self.0
     }
 }
