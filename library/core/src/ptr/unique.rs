@@ -178,6 +178,9 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 impl<T: ?Sized> const From<&mut T> for Unique<T> {
+    /// Converts a `&mut T` to a `Unique<T>`.
+    ///
+    /// This conversion is infallible since references cannot be null.
     #[inline]
     fn from(reference: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null

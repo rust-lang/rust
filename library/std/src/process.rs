@@ -1289,7 +1289,7 @@ impl fmt::Debug for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStdin> for Stdio {
-    /// Converts a `ChildStdin` into a `Stdio`
+    /// Converts a [`ChildStdin`] into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1318,7 +1318,7 @@ impl From<ChildStdin> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStdout> for Stdio {
-    /// Converts a `ChildStdout` into a `Stdio`
+    /// Converts a [`ChildStdout`] into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1347,7 +1347,7 @@ impl From<ChildStdout> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStderr> for Stdio {
-    /// Converts a `ChildStderr` into a `Stdio`
+    /// Converts a [`ChildStderr`] into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1378,7 +1378,7 @@ impl From<ChildStderr> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<fs::File> for Stdio {
-    /// Converts a `File` into a `Stdio`
+    /// Converts a [`File`](fs::File) into a [`Stdio`].
     ///
     /// # Examples
     ///

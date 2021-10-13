@@ -1581,7 +1581,7 @@ impl From<Cow<'_, Path>> for Box<Path> {
 
 #[stable(feature = "path_buf_from_box", since = "1.18.0")]
 impl From<Box<Path>> for PathBuf {
-    /// Converts a `Box<Path>` into a `PathBuf`
+    /// Converts a <code>[Box]&lt;[Path]&gt;</code> into a [`PathBuf`].
     ///
     /// This conversion does not allocate or copy memory.
     #[inline]
@@ -1592,7 +1592,7 @@ impl From<Box<Path>> for PathBuf {
 
 #[stable(feature = "box_from_path_buf", since = "1.20.0")]
 impl From<PathBuf> for Box<Path> {
-    /// Converts a `PathBuf` into a `Box<Path>`
+    /// Converts a [`PathBuf`] into a <code>[Box]&lt;[Path]&gt;</code>.
     ///
     /// This conversion currently should not allocate memory,
     /// but this behavior is not guaranteed on all platforms or in all future versions.
@@ -1612,7 +1612,7 @@ impl Clone for Box<Path> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + AsRef<OsStr>> From<&T> for PathBuf {
-    /// Converts a borrowed `OsStr` to a `PathBuf`.
+    /// Converts a borrowed [`OsStr`] to a [`PathBuf`].
     ///
     /// Allocates a [`PathBuf`] and copies the data into it.
     #[inline]

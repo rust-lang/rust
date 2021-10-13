@@ -538,6 +538,10 @@ impl<T, U> Into<U> for T
 where
     U: From<T>,
 {
+    /// Calls `U::from(self)`.
+    ///
+    /// That is, this conversion is whatever the implementation of
+    /// <code>[From]&lt;T&gt; for U</code> chooses to do.
     fn into(self) -> U {
         U::from(self)
     }
@@ -547,6 +551,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for T {
+    /// Returns the argument unchanged.
     fn from(t: T) -> T {
         t
     }

@@ -1294,6 +1294,7 @@ impl const From<bool> for AtomicBool {
 #[stable(feature = "atomic_from", since = "1.23.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<*mut T> for AtomicPtr<T> {
+    /// Converts a `*mut T` into an `AtomicPtr<T>`.
     #[inline]
     fn from(p: *mut T) -> Self {
         Self::new(p)

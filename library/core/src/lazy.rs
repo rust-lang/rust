@@ -75,6 +75,7 @@ impl<T: Eq> Eq for OnceCell<T> {}
 
 #[unstable(feature = "once_cell", issue = "74465")]
 impl<T> const From<T> for OnceCell<T> {
+    /// Creates a new `OnceCell<T>` which already contains the given `value`.
     fn from(value: T) -> Self {
         OnceCell { inner: UnsafeCell::new(Some(value)) }
     }

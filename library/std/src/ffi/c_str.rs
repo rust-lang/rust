@@ -848,6 +848,8 @@ impl Borrow<CStr> for CString {
 
 #[stable(feature = "cstring_from_cow_cstr", since = "1.28.0")]
 impl<'a> From<Cow<'a, CStr>> for CString {
+    /// Converts a `Cow<'a, CStr>` into a `CString`, by copying the contents if they are
+    /// borrowed.
     #[inline]
     fn from(s: Cow<'a, CStr>) -> Self {
         s.into_owned()
@@ -856,6 +858,8 @@ impl<'a> From<Cow<'a, CStr>> for CString {
 
 #[stable(feature = "box_from_c_str", since = "1.17.0")]
 impl From<&CStr> for Box<CStr> {
+    /// Converts a `&CStr` into a `Box<CStr>`,
+    /// by copying the contents into a newly allocated [`Box`].
     fn from(s: &CStr) -> Box<CStr> {
         let boxed: Box<[u8]> = Box::from(s.to_bytes_with_nul());
         unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
@@ -864,6 +868,8 @@ impl From<&CStr> for Box<CStr> {
 
 #[stable(feature = "box_from_cow", since = "1.45.0")]
 impl From<Cow<'_, CStr>> for Box<CStr> {
+    /// Converts a `Cow<'a, CStr>` into a `Box<CStr>`,
+    /// by copying the contents if they are borrowed.
     #[inline]
     fn from(cow: Cow<'_, CStr>) -> Box<CStr> {
         match cow {
@@ -960,6 +966,8 @@ impl From<CString> for Arc<CStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&CStr> for Arc<CStr> {
+    /// Converts a `&CStr` into a `Arc<CStr>`,
+    /// by copying the contents into a newly allocated [`Arc`].
     #[inline]
     fn from(s: &CStr) -> Arc<CStr> {
         let arc: Arc<[u8]> = Arc::from(s.to_bytes_with_nul());
@@ -979,6 +987,8 @@ impl From<CString> for Rc<CStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&CStr> for Rc<CStr> {
+    /// Converts a `&CStr` into a `Rc<CStr>`,
+    /// by copying the contents into a newly allocated [`Rc`].
     #[inline]
     fn from(s: &CStr) -> Rc<CStr> {
         let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
@@ -1504,6 +1514,7 @@ impl ToOwned for CStr {
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
 impl From<&CStr> for CString {
+    /// Copies the contents of the `&CStr` into a newly allocated `CString`.
     fn from(s: &CStr) -> CString {
         s.to_owned()
     }
