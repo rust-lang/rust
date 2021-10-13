@@ -5,6 +5,7 @@ use either::Either;
 use hir::{HirDisplay, InFile, Local, Semantics, TypeInfo};
 use ide_db::{
     defs::{Definition, NameRefClass},
+    helpers::insert_use::{insert_use, ImportScope},
     helpers::node_ext::{preorder_expr, walk_expr, walk_pat, walk_patterns_in_expr},
     search::{FileReference, ReferenceCategory, SearchScope},
     RootDatabase,
@@ -86,6 +87,8 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
     let target_range = body.text_range();
 
+    let scope = ImportScope::find_insert_use_container_with_macros(&node, &ctx.sema)?;
+
     acc.add(
         AssistId("extract_function", crate::AssistKind::RefactorExtract),
         "Extract into function",
@@ -118,10 +121,25 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             let fn_def = format_function(ctx, module, &fun, old_indent, new_indent);
             let insert_offset = insert_after.text_range().end();
+
+            if fn_def.contains("ControlFlow") {
+                let scope = match scope {
+                    ImportScope::File(it) => ImportScope::File(builder.make_mut(it)),
+                    ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
+                    ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
+                };
+
+                insert_use(
+                    &scope,
+                    make::path_from_text("std::ops::ControlFlow"),
+                    &ctx.config.insert_use,
+                );
+            }
+
             match ctx.config.snippet_cap {
                 Some(cap) => builder.insert_snippet(cap, insert_offset, fn_def),
                 None => builder.insert(insert_offset, fn_def),
-            }
+            };
         },
     )
 }
@@ -3297,6 +3315,8 @@ fn foo() {
 }
 "#,
             r#"
+use std::ops::ControlFlow;
+
 fn foo() {
     loop {
         let mut n = 1;
@@ -3334,6 +3354,8 @@ fn foo() {
 }
 "#,
             r#"
+use std::ops::ControlFlow;
+
 fn foo() {
     loop {
         let mut n = 1;
