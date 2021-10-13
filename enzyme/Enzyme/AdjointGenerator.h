@@ -1166,45 +1166,76 @@ public:
     eraseIfUnused(IEI);
     if (gutils->isConstantInstruction(&IEI))
       return;
-    if (Mode == DerivativeMode::ReverseModePrimal)
+
+    switch (Mode) {
+    case DerivativeMode::ForwardMode: {
+      IRBuilder<> Builder2(&IEI);
+      getForwardBuilder(Builder2);
+
+      Value *orig_vector = IEI.getOperand(0);
+      Value *orig_inserted = IEI.getOperand(1);
+      Value *orig_index = IEI.getOperand(2);
+
+      Value *diff_inserted = gutils->isConstantValue(orig_inserted)
+                                 ? ConstantFP::get(orig_inserted->getType(), 0)
+                                 : diffe(orig_inserted, Builder2);
+
+      Value *prediff =
+          gutils->isConstantValue(orig_vector)
+              ? diffe(orig_vector, Builder2)
+              : ConstantVector::getNullValue(orig_vector->getType());
+      auto dindex = Builder2.CreateInsertElement(
+          prediff, diff_inserted, gutils->getNewFromOriginal(orig_index));
+      setDiffe(&IEI, dindex, Builder2);
+
       return;
+    }
+    case DerivativeMode::ReverseModeGradient:
+    case DerivativeMode::ReverseModeCombined: {
+      IRBuilder<> Builder2(IEI.getParent());
+      getReverseBuilder(Builder2);
 
-    IRBuilder<> Builder2(IEI.getParent());
-    getReverseBuilder(Builder2);
+      Value *dif1 = diffe(&IEI, Builder2);
 
-    Value *dif1 = diffe(&IEI, Builder2);
+      Value *orig_op0 = IEI.getOperand(0);
+      Value *orig_op1 = IEI.getOperand(1);
+      Value *op1 = gutils->getNewFromOriginal(orig_op1);
+      Value *op2 = gutils->getNewFromOriginal(IEI.getOperand(2));
 
-    Value *orig_op0 = IEI.getOperand(0);
-    Value *orig_op1 = IEI.getOperand(1);
-    Value *op1 = gutils->getNewFromOriginal(orig_op1);
-    Value *op2 = gutils->getNewFromOriginal(IEI.getOperand(2));
+      size_t size0 = 1;
+      if (orig_op0->getType()->isSized())
+        size0 =
+            (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
+                 orig_op0->getType()) +
+             7) /
+            8;
+      size_t size1 = 1;
+      if (orig_op1->getType()->isSized())
+        size1 =
+            (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
+                 orig_op1->getType()) +
+             7) /
+            8;
 
-    size_t size0 = 1;
-    if (orig_op0->getType()->isSized())
-      size0 = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-                   orig_op0->getType()) +
-               7) /
-              8;
-    size_t size1 = 1;
-    if (orig_op1->getType()->isSized())
-      size1 = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-                   orig_op1->getType()) +
-               7) /
-              8;
+      if (!gutils->isConstantValue(orig_op0))
+        addToDiffe(orig_op0,
+                   Builder2.CreateInsertElement(
+                       dif1, Constant::getNullValue(op1->getType()),
+                       lookup(op2, Builder2)),
+                   Builder2, TR.addingType(size0, orig_op0));
 
-    if (!gutils->isConstantValue(orig_op0))
-      addToDiffe(orig_op0,
-                 Builder2.CreateInsertElement(
-                     dif1, Constant::getNullValue(op1->getType()),
-                     lookup(op2, Builder2)),
-                 Builder2, TR.addingType(size0, orig_op0));
+      if (!gutils->isConstantValue(orig_op1))
+        addToDiffe(orig_op1,
+                   Builder2.CreateExtractElement(dif1, lookup(op2, Builder2)),
+                   Builder2, TR.addingType(size1, orig_op1));
 
-    if (!gutils->isConstantValue(orig_op1))
-      addToDiffe(orig_op1,
-                 Builder2.CreateExtractElement(dif1, lookup(op2, Builder2)),
-                 Builder2, TR.addingType(size1, orig_op1));
-
-    setDiffe(&IEI, Constant::getNullValue(IEI.getType()), Builder2);
+      setDiffe(&IEI, Constant::getNullValue(IEI.getType()), Builder2);
+      return;
+    }
+    case DerivativeMode::ReverseModePrimal: {
+      return;
+    }
+    }
   }
 
   void visitShuffleVectorInst(llvm::ShuffleVectorInst &SVI) {
