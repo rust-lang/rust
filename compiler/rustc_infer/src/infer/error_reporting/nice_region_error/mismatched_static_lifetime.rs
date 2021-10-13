@@ -31,7 +31,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // about the original obligation only.
         let code = match cause.code() {
             ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => &*parent_code,
-            _ => cause.code(),
+            code => code,
         };
         let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
             return None;

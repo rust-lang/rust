@@ -1087,8 +1087,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut result_code = code.clone();
                 loop {
                     let parent = match &*code {
+                        ObligationCauseCode::ImplDerivedObligation(c) => {
+                            c.derived.parent_code.clone()
+                        }
                         ObligationCauseCode::BuiltinDerivedObligation(c)
-                        | ObligationCauseCode::ImplDerivedObligation(c)
                         | ObligationCauseCode::DerivedObligation(c) => c.parent_code.clone(),
                         _ => break,
                     };
@@ -1098,9 +1100,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             let self_: ty::subst::GenericArg<'_> = match &*unpeel_to_top(error.obligation.cause.clone_code()) {
                 ObligationCauseCode::BuiltinDerivedObligation(code) |
-                ObligationCauseCode::ImplDerivedObligation(code) |
                 ObligationCauseCode::DerivedObligation(code) => {
                     code.parent_trait_pred.self_ty().skip_binder().into()
+                }
+                ObligationCauseCode::ImplDerivedObligation(code) => {
+                    code.derived.parent_trait_pred.self_ty().skip_binder().into()
                 }
                 _ if let ty::PredicateKind::Trait(predicate) =
                     error.obligation.predicate.kind().skip_binder() => {

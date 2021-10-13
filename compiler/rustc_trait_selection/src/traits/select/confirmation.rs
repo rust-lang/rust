@@ -18,24 +18,17 @@ use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::select::TraitObligationExt;
-use crate::traits::util;
-use crate::traits::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
-use crate::traits::ImplSource;
-use crate::traits::Normalized;
-use crate::traits::OutputTypeParameterMismatch;
-use crate::traits::Selection;
-use crate::traits::TraitNotObjectSafe;
-use crate::traits::VtblSegment;
-use crate::traits::{BuiltinDerivedObligation, ImplDerivedObligation};
+use crate::traits::util::{self, closure_trait_ref_and_return_type, predicate_for_trait_def};
 use crate::traits::{
-    ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
-    ImplSourceConstDestructData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
-    ImplSourceGeneratorData, ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
-    ImplSourceTraitUpcastingData, ImplSourceUserDefinedData,
+    BuiltinDerivedObligation, DerivedObligationCause, ImplDerivedObligation,
+    ImplDerivedObligationCause, ImplSource, ImplSourceAutoImplData, ImplSourceBuiltinData,
+    ImplSourceClosureData, ImplSourceConstDestructData, ImplSourceDiscriminantKindData,
+    ImplSourceFnPointerData, ImplSourceGeneratorData, ImplSourceObjectData, ImplSourcePointeeData,
+    ImplSourceTraitAliasData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized,
+    ObjectCastObligation, Obligation, ObligationCause, OutputTypeParameterMismatch,
+    PredicateObligation, Selection, SelectionError, TraitNotObjectSafe, TraitObligation,
+    Unimplemented, VtblSegment,
 };
-use crate::traits::{ObjectCastObligation, PredicateObligation, TraitObligation};
-use crate::traits::{Obligation, ObligationCause};
-use crate::traits::{SelectionError, Unimplemented};
 
 use super::BuiltinImplConditions;
 use super::SelectionCandidate::{self, *};
@@ -321,6 +314,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?nested, "vtable_auto_impl");
         ensure_sufficient_stack(|| {
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
+
+            let trait_obligations: Vec<PredicateObligation<'_>> =
+                self.infcx.commit_unconditionally(|_| {
+                    let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
+                    let trait_ref = self.infcx.replace_bound_vars_with_placeholders(poly_trait_ref);
+                    self.impl_or_trait_obligations(
+                        &cause,
+                        obligation.recursion_depth + 1,
+                        obligation.param_env,
+                        trait_def_id,
+                        &trait_ref.substs,
+                        obligation.predicate,
+                    )
+                });
+
             let mut obligations = self.collect_predicates_for_types(
                 obligation.param_env,
                 cause,
@@ -328,20 +336,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 trait_def_id,
                 nested,
             );
-
-            let trait_obligations: Vec<PredicateObligation<'_>> =
-                self.infcx.commit_unconditionally(|_| {
-                    let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-                    let trait_ref = self.infcx.replace_bound_vars_with_placeholders(poly_trait_ref);
-                    let cause = obligation.derived_cause(ImplDerivedObligation);
-                    self.impl_or_trait_obligations(
-                        cause,
-                        obligation.recursion_depth + 1,
-                        obligation.param_env,
-                        trait_def_id,
-                        &trait_ref.substs,
-                    )
-                });
 
             // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
             // predicate as usual.  It won't have any effect since auto traits are coinductive.
@@ -365,14 +359,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.commit_unconditionally(|_| {
             let substs = self.rematch_impl(impl_def_id, obligation);
             debug!(?substs, "impl substs");
-            let cause = obligation.derived_cause(ImplDerivedObligation);
             ensure_sufficient_stack(|| {
                 self.vtable_impl(
                     impl_def_id,
                     substs,
-                    cause,
+                    &obligation.cause,
                     obligation.recursion_depth + 1,
                     obligation.param_env,
+                    obligation.predicate,
                 )
             })
         })
@@ -382,9 +376,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         impl_def_id: DefId,
         substs: Normalized<'tcx, SubstsRef<'tcx>>,
-        cause: ObligationCause<'tcx>,
+        cause: &ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
+        parent_trait_pred: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
     ) -> ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>> {
         debug!(?impl_def_id, ?substs, ?recursion_depth, "vtable_impl");
 
@@ -394,6 +389,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             param_env,
             impl_def_id,
             &substs.value,
+            parent_trait_pred,
         );
 
         debug!(?impl_obligations, "vtable_impl");
@@ -566,11 +562,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let substs = trait_ref.substs;
 
             let trait_obligations = self.impl_or_trait_obligations(
-                obligation.cause.clone(),
+                &obligation.cause,
                 obligation.recursion_depth,
                 obligation.param_env,
                 trait_def_id,
                 &substs,
+                obligation.predicate,
             );
 
             debug!(?trait_def_id, ?trait_obligations, "trait alias obligations");
@@ -1073,14 +1070,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 });
                 let substs = self.rematch_impl(impl_def_id, &new_obligation);
                 debug!(?substs, "impl substs");
-                let cause = obligation.derived_cause(ImplDerivedObligation);
+
+                let derived = DerivedObligationCause {
+                    parent_trait_pred: obligation.predicate,
+                    parent_code: obligation.cause.clone_code(),
+                };
+                let derived_code = ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
+                    derived,
+                    impl_def_id,
+                    span: obligation.cause.span,
+                }));
+
+                let cause = ObligationCause::new(
+                    obligation.cause.span,
+                    obligation.cause.body_id,
+                    derived_code,
+                );
                 ensure_sufficient_stack(|| {
                     self.vtable_impl(
                         impl_def_id,
                         substs,
-                        cause,
+                        &cause,
                         new_obligation.recursion_depth + 1,
                         new_obligation.param_env,
+                        obligation.predicate,
                     )
                 })
             });
