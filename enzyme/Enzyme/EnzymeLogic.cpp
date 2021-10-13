@@ -2314,8 +2314,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   return AugmentedCachedFunctions.find(tup)->second;
 }
 
-void createTerminator(DiffeGradientUtils *gutils, BasicBlock *oBB,
-                      DIFFE_TYPE retType, ReturnType retVal) {
+void createTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
+                      BasicBlock *oBB, DIFFE_TYPE retType, ReturnType retVal) {
 
   BasicBlock *nBB = cast<BasicBlock>(gutils->getNewFromOriginal(oBB));
   assert(nBB);
@@ -2341,8 +2341,14 @@ void createTerminator(DiffeGradientUtils *gutils, BasicBlock *oBB,
 
       toret =
           nBuilder.CreateInsertValue(toret, gutils->getNewFromOriginal(ret), 0);
-      toret =
-          nBuilder.CreateInsertValue(toret, gutils->diffe(ret, nBuilder), 1);
+
+      if (TR.getReturnAnalysis().Inner0().isPossiblePointer()) {
+        toret = nBuilder.CreateInsertValue(
+            toret, gutils->invertPointerM(ret, nBuilder), 1);
+      } else {
+        toret =
+            nBuilder.CreateInsertValue(toret, gutils->diffe(ret, nBuilder), 1);
+      }
       break;
     }
     case ReturnType::Void: {
@@ -3662,8 +3668,7 @@ Function *EnzymeLogic::CreateForwardDiff(
   }
 
   auto TRo = TA.analyzeFunction(oldTypeInfo);
-  bool retActive = TRo.getReturnAnalysis().Inner0().isPossibleFloat() &&
-                   !todiff->getReturnType()->isVoidTy();
+  bool retActive = retType != DIFFE_TYPE::CONSTANT;
 
   ReturnType retVal =
       returnValue ? (retActive ? ReturnType::TwoReturns : ReturnType::Return)
@@ -3847,7 +3852,7 @@ Function *EnzymeLogic::CreateForwardDiff(
       maker->visit(&*it);
     }
 
-    createTerminator(gutils, &oBB, retType, retVal);
+    createTerminator(TR, gutils, &oBB, retType, retVal);
   }
 
   gutils->eraseFictiousPHIs();

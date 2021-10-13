@@ -7757,10 +7757,19 @@ public:
         } else {
           diffe = diffes;
         }
-        gutils->replaceAWithB(newcall, diffe);
-        gutils->erase(newcall);
-        if (!gutils->isConstantValue(&call))
-          setDiffe(&call, diffe, Builder2);
+
+        auto ifound = gutils->invertedPointers.find(orig);
+        if (ifound != gutils->invertedPointers.end()) {
+          auto placeholder = cast<PHINode>(&*ifound->second);
+          gutils->replaceAWithB(placeholder, diffe);
+          gutils->erase(placeholder);
+        } else {
+          gutils->replaceAWithB(newcall, diffe);
+          gutils->erase(newcall);
+          if (!gutils->isConstantValue(&call)) {
+            setDiffe(&call, diffe, Builder2);
+          }
+        }
       } else {
         eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       }
