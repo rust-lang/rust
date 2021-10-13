@@ -31,4 +31,23 @@ repeat::repeat_with_idents!(impl Bar<A> { fn IDENT() {} });
 impl Bar<A> { fn foo() {} }
 impl Bar<B> { fn foo() {} }
 
+// Regression test for issue #89820:
+
+impl Bar<u8> {
+    pub fn a() {}
+    pub fn aa() {}
+}
+
+impl Bar<u16> {
+    pub fn b() {}
+    pub fn bb() {}
+}
+
+impl Bar<u32> {
+    pub fn a() {}
+    pub fn aa() {}
+    pub fn bb() {}
+    pub fn b() {}
+}
+
 fn main() {}
