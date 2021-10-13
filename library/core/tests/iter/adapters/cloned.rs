@@ -31,7 +31,7 @@ fn test_cloned_side_effects() {
             .zip(&[1]);
         for _ in iter {}
     }
-    assert_eq!(count, 2);
+    assert_eq!(count, 1);
 }
 
 #[test]

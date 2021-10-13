@@ -13,10 +13,6 @@ use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
 pub struct Zip<A, B> {
     a: A,
     b: B,
-    // index, len and a_len are only used by the specialized version of zip
-    index: usize,
-    len: usize,
-    a_len: usize,
 }
 impl<A: Iterator, B: Iterator> Zip<A, B> {
     pub(in crate::iter) fn new(a: A, b: B) -> Zip<A, B> {
@@ -88,14 +84,21 @@ where
     }
 
     #[inline]
-    #[doc(hidden)]
-    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
-    where
-        Self: TrustedRandomAccessNoCoerce,
-    {
-        // SAFETY: `ZipImpl::__iterator_get_unchecked` has same safety
-        // requirements as `Iterator::__iterator_get_unchecked`.
-        unsafe { ZipImpl::get_unchecked(self, idx) }
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let ((lower_a, _), (lower_b, _)) = (self.a.size_hint(), self.b.size_hint());
+        let lower = n.min(lower_a).min(lower_b);
+        let batched = match (self.b.advance_by(lower), self.a.advance_by(lower)) {
+            (Ok(()), Ok(())) => lower,
+            _ => panic!("size_hint contract violation"),
+        };
+
+        for i in batched..n {
+            if let (_, None) | (None, _) = (self.b.next(), self.a.next()) {
+                return Err(i);
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -123,10 +126,6 @@ trait ZipImpl<A, B> {
     where
         A: DoubleEndedIterator + ExactSizeIterator,
         B: DoubleEndedIterator + ExactSizeIterator;
-    // This has the same safety requirements as `Iterator::__iterator_get_unchecked`
-    unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
-    where
-        Self: Iterator + TrustedRandomAccessNoCoerce;
 }
 
 // Work around limitations of specialization, requiring `default` impls to be repeated
@@ -134,19 +133,13 @@ trait ZipImpl<A, B> {
 macro_rules! zip_impl_general_defaults {
     () => {
         default fn new(a: A, b: B) -> Self {
-            Zip {
-                a,
-                b,
-                index: 0, // unused
-                len: 0,   // unused
-                a_len: 0, // unused
-            }
+            Zip { a, b }
         }
 
         #[inline]
         default fn next(&mut self) -> Option<(A::Item, B::Item)> {
-            let x = self.a.next()?;
             let y = self.b.next()?;
+            let x = self.a.next()?;
             Some((x, y))
         }
 
@@ -179,8 +172,8 @@ macro_rules! zip_impl_general_defaults {
                     }
                 }
             }
-            match (self.a.next_back(), self.b.next_back()) {
-                (Some(x), Some(y)) => Some((x, y)),
+            match (self.b.next_back(), self.a.next_back()) {
+                (Some(y), Some(x)) => Some((x, y)),
                 (None, None) => None,
                 _ => unreachable!(),
             }
@@ -215,157 +208,6 @@ where
 
         (lower, upper)
     }
-
-    default unsafe fn get_unchecked(&mut self, _idx: usize) -> <Self as Iterator>::Item
-    where
-        Self: TrustedRandomAccessNoCoerce,
-    {
-        unreachable!("Always specialized");
-    }
-}
-
-#[doc(hidden)]
-impl<A, B> ZipImpl<A, B> for Zip<A, B>
-where
-    A: TrustedRandomAccessNoCoerce + Iterator,
-    B: TrustedRandomAccessNoCoerce + Iterator,
-{
-    zip_impl_general_defaults! {}
-
-    #[inline]
-    default fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = cmp::min(self.a.size(), self.b.size());
-        (size, Some(size))
-    }
-
-    #[inline]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item {
-        let idx = self.index + idx;
-        // SAFETY: the caller must uphold the contract for
-        // `Iterator::__iterator_get_unchecked`.
-        unsafe { (self.a.__iterator_get_unchecked(idx), self.b.__iterator_get_unchecked(idx)) }
-    }
-}
-
-#[doc(hidden)]
-impl<A, B> ZipImpl<A, B> for Zip<A, B>
-where
-    A: TrustedRandomAccess + Iterator,
-    B: TrustedRandomAccess + Iterator,
-{
-    fn new(a: A, b: B) -> Self {
-        let a_len = a.size();
-        let len = cmp::min(a_len, b.size());
-        Zip { a, b, index: 0, len, a_len }
-    }
-
-    #[inline]
-    fn next(&mut self) -> Option<(A::Item, B::Item)> {
-        if self.index < self.len {
-            let i = self.index;
-            // since get_unchecked executes code which can panic we increment the counters beforehand
-            // so that the same index won't be accessed twice, as required by TrustedRandomAccess
-            self.index += 1;
-            // SAFETY: `i` is smaller than `self.len`, thus smaller than `self.a.len()` and `self.b.len()`
-            unsafe {
-                Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
-            }
-        } else if A::MAY_HAVE_SIDE_EFFECT && self.index < self.a_len {
-            let i = self.index;
-            // as above, increment before executing code that may panic
-            self.index += 1;
-            self.len += 1;
-            // match the base implementation's potential side effects
-            // SAFETY: we just checked that `i` < `self.a.len()`
-            unsafe {
-                self.a.__iterator_get_unchecked(i);
-            }
-            None
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.len - self.index;
-        (len, Some(len))
-    }
-
-    #[inline]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let delta = cmp::min(n, self.len - self.index);
-        let end = self.index + delta;
-        while self.index < end {
-            let i = self.index;
-            // since get_unchecked executes code which can panic we increment the counters beforehand
-            // so that the same index won't be accessed twice, as required by TrustedRandomAccess
-            self.index += 1;
-            if A::MAY_HAVE_SIDE_EFFECT {
-                // SAFETY: the usage of `cmp::min` to calculate `delta`
-                // ensures that `end` is smaller than or equal to `self.len`,
-                // so `i` is also smaller than `self.len`.
-                unsafe {
-                    self.a.__iterator_get_unchecked(i);
-                }
-            }
-            if B::MAY_HAVE_SIDE_EFFECT {
-                // SAFETY: same as above.
-                unsafe {
-                    self.b.__iterator_get_unchecked(i);
-                }
-            }
-        }
-
-        self.super_nth(n - delta)
-    }
-
-    #[inline]
-    fn next_back(&mut self) -> Option<(A::Item, B::Item)>
-    where
-        A: DoubleEndedIterator + ExactSizeIterator,
-        B: DoubleEndedIterator + ExactSizeIterator,
-    {
-        if A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT {
-            let sz_a = self.a.size();
-            let sz_b = self.b.size();
-            // Adjust a, b to equal length, make sure that only the first call
-            // of `next_back` does this, otherwise we will break the restriction
-            // on calls to `self.next_back()` after calling `get_unchecked()`.
-            if sz_a != sz_b {
-                let sz_a = self.a.size();
-                if A::MAY_HAVE_SIDE_EFFECT && sz_a > self.len {
-                    for _ in 0..sz_a - self.len {
-                        // since next_back() may panic we increment the counters beforehand
-                        // to keep Zip's state in sync with the underlying iterator source
-                        self.a_len -= 1;
-                        self.a.next_back();
-                    }
-                    debug_assert_eq!(self.a_len, self.len);
-                }
-                let sz_b = self.b.size();
-                if B::MAY_HAVE_SIDE_EFFECT && sz_b > self.len {
-                    for _ in 0..sz_b - self.len {
-                        self.b.next_back();
-                    }
-                }
-            }
-        }
-        if self.index < self.len {
-            // since get_unchecked executes code which can panic we increment the counters beforehand
-            // so that the same index won't be accessed twice, as required by TrustedRandomAccess
-            self.len -= 1;
-            self.a_len -= 1;
-            let i = self.len;
-            // SAFETY: `i` is smaller than the previous value of `self.len`,
-            // which is also smaller than or equal to `self.a.len()` and `self.b.len()`
-            unsafe {
-                Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
-            }
-        } else {
-            None
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -374,25 +216,6 @@ where
     A: ExactSizeIterator,
     B: ExactSizeIterator,
 {
-}
-
-#[doc(hidden)]
-#[unstable(feature = "trusted_random_access", issue = "none")]
-unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
-where
-    A: TrustedRandomAccess,
-    B: TrustedRandomAccess,
-{
-}
-
-#[doc(hidden)]
-#[unstable(feature = "trusted_random_access", issue = "none")]
-unsafe impl<A, B> TrustedRandomAccessNoCoerce for Zip<A, B>
-where
-    A: TrustedRandomAccessNoCoerce,
-    B: TrustedRandomAccessNoCoerce,
-{
-    const MAY_HAVE_SIDE_EFFECT: bool = A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT;
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -445,16 +268,6 @@ trait ZipFmt<A, B> {
 impl<A: Debug, B: Debug> ZipFmt<A, B> for Zip<A, B> {
     default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Zip").field("a", &self.a).field("b", &self.b).finish()
-    }
-}
-
-impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoerce> ZipFmt<A, B>
-    for Zip<A, B>
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // It's *not safe* to call fmt on the contained iterators, since once
-        // we start iterating they're in strange, potentially unsafe, states.
-        f.debug_struct("Zip").finish()
     }
 }
 
