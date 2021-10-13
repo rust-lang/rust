@@ -55,7 +55,7 @@ macro_rules! static_tls_addr {
                 // Add the top 12 bits of the symbol's offset
                 "add {out}, {out}, :tprel_hi12:{sym}",
                 // And the bottom 12 bits
-                "add {out}, {out}, :tprel_lo12:{sym}",
+                "add {out}, {out}, :tprel_lo12_nc:{sym}",
                 out = out(reg) result,
                 sym = sym $s
             );
