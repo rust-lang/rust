@@ -704,27 +704,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let (ty::Param(_), ty::PredicateKind::Trait(p)) =
                                 (self_ty.kind(), parent_pred.kind().skip_binder())
                             {
-                                if let ty::Adt(def, _) = p.trait_ref.self_ty().kind() {
-                                    let node = def.did.as_local().map(|def_id| {
+                                let node = match p.trait_ref.self_ty().kind() {
+                                    ty::Param(_) => {
+                                        // Account for `fn` items like in `issue-35677.rs` to
+                                        // suggest restricting its type params.
+                                        let did = self.tcx.hir().body_owner_def_id(hir::BodyId {
+                                            hir_id: self.body_id,
+                                        });
+                                        Some(
+                                            self.tcx
+                                                .hir()
+                                                .get(self.tcx.hir().local_def_id_to_hir_id(did)),
+                                        )
+                                    }
+                                    ty::Adt(def, _) => def.did.as_local().map(|def_id| {
                                         self.tcx
                                             .hir()
                                             .get(self.tcx.hir().local_def_id_to_hir_id(def_id))
-                                    });
-                                    if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
-                                        if let Some(g) = kind.generics() {
-                                            let key = match g.where_clause.predicates {
-                                                [.., pred] => (pred.span().shrink_to_hi(), false),
-                                                [] => (
-                                                    g.where_clause
-                                                        .span_for_predicates_or_empty_place(),
-                                                    true,
-                                                ),
-                                            };
-                                            type_params
-                                                .entry(key)
-                                                .or_insert_with(FxHashSet::default)
-                                                .insert(obligation.to_owned());
-                                        }
+                                    }),
+                                    _ => None,
+                                };
+                                if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
+                                    if let Some(g) = kind.generics() {
+                                        let key = match g.where_clause.predicates {
+                                            [.., pred] => (pred.span().shrink_to_hi(), false),
+                                            [] => (
+                                                g.where_clause.span_for_predicates_or_empty_place(),
+                                                true,
+                                            ),
+                                        };
+                                        type_params
+                                            .entry(key)
+                                            .or_insert_with(FxHashSet::default)
+                                            .insert(obligation.to_owned());
                                     }
                                 }
                             }
@@ -875,19 +887,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter()
                         .filter(|(pred, _, _parent_pred)| !skip_list.contains(&pred))
                         .filter_map(|(pred, parent_pred, _cause)| {
-                            format_pred(*pred).map(|(p, self_ty)| match parent_pred {
-                                None => format!("`{}`", &p),
-                                Some(parent_pred) => match format_pred(*parent_pred) {
+                            format_pred(*pred).map(|(p, self_ty)| {
+                                collect_type_param_suggestions(self_ty, pred, &p);
+                                match parent_pred {
                                     None => format!("`{}`", &p),
-                                    Some((parent_p, _)) => {
-                                        collect_type_param_suggestions(self_ty, parent_pred, &p);
-                                        format!("`{}`\nwhich is required by `{}`", p, parent_p)
-                                    }
-                                },
+                                    Some(parent_pred) => match format_pred(*parent_pred) {
+                                        None => format!("`{}`", &p),
+                                        Some((parent_p, _)) => {
+                                            collect_type_param_suggestions(
+                                                self_ty,
+                                                parent_pred,
+                                                &p,
+                                            );
+                                            format!("`{}`\nwhich is required by `{}`", p, parent_p)
+                                        }
+                                    },
+                                }
                             })
                         })
                         .enumerate()
                         .collect::<Vec<(usize, String)>>();
+
                     for ((span, empty_where), obligations) in type_params.into_iter() {
                         restrict_type_params = true;
                         // #74886: Sort here so that the output is always the same.
