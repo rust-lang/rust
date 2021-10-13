@@ -1091,6 +1091,10 @@ impl<T, const N: usize> From<[T; N]> for HashSet<T, RandomState>
 where
     T: Eq + Hash,
 {
+    /// Converts a `[T; N]` into a `HashSet<T>`.
+    ///
+    /// If the array contains any equal values, all but the last instance of each are discarded.
+    ///
     /// # Examples
     ///
     /// ```
