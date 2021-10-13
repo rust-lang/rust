@@ -2,11 +2,17 @@ use std::{hash::BuildHasherDefault, iter};
 
 use ast::make;
 use either::Either;
-use hir::{HirDisplay, InFile, Local, Semantics, TypeInfo};
+use hir::{HirDisplay, InFile, Local, ModuleDef, Semantics, TypeInfo};
 use ide_db::{
     defs::{Definition, NameRefClass},
-    helpers::insert_use::{insert_use, ImportScope},
-    helpers::node_ext::{preorder_expr, walk_expr, walk_pat, walk_patterns_in_expr},
+    helpers::{
+        insert_use::{insert_use, ImportScope},
+        FamousDefs,
+    },
+    helpers::{
+        mod_path_to_ast,
+        node_ext::{preorder_expr, walk_expr, walk_pat, walk_patterns_in_expr},
+    },
     search::{FileReference, ReferenceCategory, SearchScope},
     RootDatabase,
 };
@@ -129,11 +135,20 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
                     ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
                 };
 
-                insert_use(
-                    &scope,
-                    make::path_from_text("std::ops::ControlFlow"),
-                    &ctx.config.insert_use,
-                );
+                let control_flow_enum =
+                    FamousDefs(&ctx.sema, Some(module.krate())).core_ops_ControlFlow();
+
+                if let Some(control_flow_enum) = control_flow_enum {
+                    let mod_path = module.find_use_path_prefixed(
+                        ctx.sema.db,
+                        ModuleDef::from(control_flow_enum),
+                        ctx.config.insert_use.prefix_kind,
+                    );
+
+                    if let Some(mod_path) = mod_path {
+                        insert_use(&scope, mod_path_to_ast(&mod_path), &ctx.config.insert_use);
+                    }
+                }
             }
 
             match ctx.config.snippet_cap {
@@ -3304,6 +3319,7 @@ fn foo() {
         check_assist(
             extract_function,
             r#"
+//- minicore: try
 fn foo() {
     loop {
         let mut n = 1;
@@ -3315,7 +3331,7 @@ fn foo() {
 }
 "#,
             r#"
-use std::ops::ControlFlow;
+use core::ops::ControlFlow;
 
 fn foo() {
     loop {
@@ -3342,6 +3358,7 @@ fn $0fun_name(n: &mut i32) -> ControlFlow<()> {
         check_assist(
             extract_function,
             r#"
+//- minicore: try
 fn foo() {
     loop {
         let mut n = 1;
@@ -3354,7 +3371,7 @@ fn foo() {
 }
 "#,
             r#"
-use std::ops::ControlFlow;
+use core::ops::ControlFlow;
 
 fn foo() {
     loop {
