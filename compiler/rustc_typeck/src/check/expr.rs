@@ -300,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
-            ExprKind::Let(pat, let_expr, _) => self.check_expr_let(let_expr, pat),
+            ExprKind::Let(let_expr) => self.check_expr_let(let_expr),
             ExprKind::Loop(body, _, source, _) => {
                 self.check_expr_loop(body, source, expected, expr)
             }
@@ -1048,10 +1048,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_let(&self, expr: &'tcx hir::Expr<'tcx>, pat: &'tcx hir::Pat<'tcx>) -> Ty<'tcx> {
-        self.warn_if_unreachable(expr.hir_id, expr.span, "block in `let` expression");
-        let expr_ty = self.demand_scrutinee_type(expr, pat.contains_explicit_ref_binding(), false);
-        self.check_pat_top(pat, expr_ty, Some(expr.span), true);
+    fn check_expr_let(&self, let_expr: &'tcx hir::Let<'tcx>) -> Ty<'tcx> {
+        // for let statements, this is done in check_stmt
+        let init = let_expr.init;
+        self.warn_if_unreachable(init.hir_id, init.span, "block in `let` expression");
+        // otherwise check exactly as a let statement
+        self.check_decl(let_expr.into());
+        // but return a bool, for this is a boolean expression
         self.tcx.types.bool
     }
 

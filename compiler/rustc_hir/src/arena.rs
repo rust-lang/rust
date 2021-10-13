@@ -20,6 +20,7 @@ macro_rules! arena_types {
             [] generic_bound: rustc_hir::GenericBound<'tcx>,
             [] generic_param: rustc_hir::GenericParam<'tcx>,
             [] expr: rustc_hir::Expr<'tcx>,
+            [] let_expr: rustc_hir::Let<'tcx>,
             [] expr_field: rustc_hir::ExprField<'tcx>,
             [] pat_field: rustc_hir::PatField<'tcx>,
             [] fn_decl: rustc_hir::FnDecl<'tcx>,

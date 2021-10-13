@@ -64,7 +64,9 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
         intravisit::walk_expr(self, ex);
         match &ex.kind {
             hir::ExprKind::Match(scrut, arms, source) => self.check_match(scrut, arms, *source),
-            hir::ExprKind::Let(pat, scrut, span) => self.check_let(pat, scrut, *span),
+            hir::ExprKind::Let(hir::Let { pat, init, span, .. }) => {
+                self.check_let(pat, init, *span)
+            }
             _ => {}
         }
     }
@@ -148,9 +150,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         }
     }
 
-    fn check_let(&mut self, pat: &'tcx hir::Pat<'tcx>, expr: &hir::Expr<'_>, span: Span) {
+    fn check_let(&mut self, pat: &'tcx hir::Pat<'tcx>, scrutinee: &hir::Expr<'_>, span: Span) {
         self.check_patterns(pat, Refutable);
-        let mut cx = self.new_cx(expr.hir_id);
+        let mut cx = self.new_cx(scrutinee.hir_id);
         let tpat = self.lower_pattern(&mut cx, pat, &mut false);
         check_let_reachability(&mut cx, pat.hir_id, tpat, span);
     }

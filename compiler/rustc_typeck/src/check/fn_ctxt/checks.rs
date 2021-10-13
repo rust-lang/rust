@@ -1,5 +1,6 @@
 use crate::astconv::AstConv;
 use crate::check::coercion::CoerceMany;
+use crate::check::gather_locals::Declaration;
 use crate::check::method::MethodCallee;
 use crate::check::Expectation::*;
 use crate::check::TupleArgumentsFlag::*;
@@ -538,16 +539,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_decl_initializer(
         &self,
-        local: &'tcx hir::Local<'tcx>,
+        hir_id: hir::HirId,
+        pat: &'tcx hir::Pat<'tcx>,
         init: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         // FIXME(tschottdorf): `contains_explicit_ref_binding()` must be removed
         // for #42640 (default match binding modes).
         //
         // See #44848.
-        let ref_bindings = local.pat.contains_explicit_ref_binding();
+        let ref_bindings = pat.contains_explicit_ref_binding();
 
-        let local_ty = self.local_ty(init.span, local.hir_id).revealed_ty;
+        let local_ty = self.local_ty(init.span, hir_id).revealed_ty;
         if let Some(m) = ref_bindings {
             // Somewhat subtle: if we have a `ref` binding in the pattern,
             // we want to avoid introducing coercions for the RHS. This is
@@ -565,29 +567,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Type check a `let` statement.
-    pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
+    pub(in super::super) fn check_decl(&self, decl: Declaration<'tcx>) {
         // Determine and write the type which we'll check the pattern against.
-        let ty = self.local_ty(local.span, local.hir_id).decl_ty;
-        self.write_ty(local.hir_id, ty);
+        let decl_ty = self.local_ty(decl.span, decl.hir_id).decl_ty;
+        self.write_ty(decl.hir_id, decl_ty);
 
         // Type check the initializer.
-        if let Some(ref init) = local.init {
-            let init_ty = self.check_decl_initializer(local, &init);
-            self.overwrite_local_ty_if_err(local, ty, init_ty);
+        if let Some(ref init) = decl.init {
+            let init_ty = self.check_decl_initializer(decl.hir_id, decl.pat, &init);
+            self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, decl_ty, init_ty);
         }
 
         // Does the expected pattern type originate from an expression and what is the span?
-        let (origin_expr, ty_span) = match (local.ty, local.init) {
+        let (origin_expr, ty_span) = match (decl.ty, decl.init) {
             (Some(ty), _) => (false, Some(ty.span)), // Bias towards the explicit user type.
             (_, Some(init)) => (true, Some(init.span)), // No explicit type; so use the scrutinee.
             _ => (false, None), // We have `let $pat;`, so the expected type is unconstrained.
         };
 
         // Type check the pattern. Override if necessary to avoid knock-on errors.
-        self.check_pat_top(&local.pat, ty, ty_span, origin_expr);
-        let pat_ty = self.node_ty(local.pat.hir_id);
-        self.overwrite_local_ty_if_err(local, ty, pat_ty);
+        self.check_pat_top(&decl.pat, decl_ty, ty_span, origin_expr);
+        let pat_ty = self.node_ty(decl.pat.hir_id);
+        self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, decl_ty, pat_ty);
+    }
+
+    /// Type check a `let` statement.
+    pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
+        self.check_decl(local.into());
     }
 
     pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>, is_last: bool) {
@@ -891,17 +897,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn overwrite_local_ty_if_err(
         &self,
-        local: &'tcx hir::Local<'tcx>,
+        hir_id: hir::HirId,
+        pat: &'tcx hir::Pat<'tcx>,
         decl_ty: Ty<'tcx>,
         ty: Ty<'tcx>,
     ) {
         if ty.references_error() {
             // Override the types everywhere with `err()` to avoid knock on errors.
-            self.write_ty(local.hir_id, ty);
-            self.write_ty(local.pat.hir_id, ty);
+            self.write_ty(hir_id, ty);
+            self.write_ty(pat.hir_id, ty);
             let local_ty = LocalTy { decl_ty, revealed_ty: ty };
-            self.locals.borrow_mut().insert(local.hir_id, local_ty);
-            self.locals.borrow_mut().insert(local.pat.hir_id, local_ty);
+            self.locals.borrow_mut().insert(hir_id, local_ty);
+            self.locals.borrow_mut().insert(pat.hir_id, local_ty);
         }
     }
 

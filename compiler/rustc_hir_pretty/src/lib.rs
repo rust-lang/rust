@@ -1101,13 +1101,17 @@ impl<'a> State<'a> {
     }
 
     /// Print a `let pat = expr` expression.
-    fn print_let(&mut self, pat: &hir::Pat<'_>, expr: &hir::Expr<'_>) {
-        self.word("let ");
+    fn print_let(&mut self, pat: &hir::Pat<'_>, ty: Option<&hir::Ty<'_>>, init: &hir::Expr<'_>) {
+        self.word_space("let");
         self.print_pat(pat);
+        if let Some(ty) = ty {
+            self.word_space(":");
+            self.print_type(ty);
+        }
         self.space();
         self.word_space("=");
-        let npals = || parser::needs_par_as_let_scrutinee(expr.precedence().order());
-        self.print_expr_cond_paren(expr, Self::cond_needs_par(expr) || npals())
+        let npals = || parser::needs_par_as_let_scrutinee(init.precedence().order());
+        self.print_expr_cond_paren(init, Self::cond_needs_par(init) || npals())
     }
 
     // Does `expr` need parentheses when printed in a condition position?
@@ -1462,8 +1466,8 @@ impl<'a> State<'a> {
                 // Print `}`:
                 self.bclose_maybe_open(expr.span, true);
             }
-            hir::ExprKind::Let(ref pat, ref scrutinee, _) => {
-                self.print_let(pat, scrutinee);
+            hir::ExprKind::Let(hir::Let { pat, ty, init, .. }) => {
+                self.print_let(pat, *ty, init);
             }
             hir::ExprKind::If(ref test, ref blk, ref elseopt) => {
                 self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e));

@@ -429,8 +429,8 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprKind::Let(ref pat, ..) => {
-                self.add_from_pat(pat);
+            hir::ExprKind::Let(let_expr) => {
+                self.add_from_pat(let_expr.pat);
                 intravisit::walk_expr(self, expr);
             }
 
@@ -856,9 +856,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 })
             }
 
-            hir::ExprKind::Let(ref pat, ref scrutinee, _) => {
-                let succ = self.propagate_through_expr(scrutinee, succ);
-                self.define_bindings_in_pat(pat, succ)
+            hir::ExprKind::Let(let_expr) => {
+                let succ = self.propagate_through_expr(let_expr.init, succ);
+                self.define_bindings_in_pat(let_expr.pat, succ)
             }
 
             // Note that labels have been resolved, so we don't need to look
@@ -1401,8 +1401,8 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
             }
         }
 
-        hir::ExprKind::Let(ref pat, ..) => {
-            this.check_unused_vars_in_pat(pat, None, |_, _, _, _| {});
+        hir::ExprKind::Let(let_expr) => {
+            this.check_unused_vars_in_pat(let_expr.pat, None, |_, _, _, _| {});
         }
 
         // no correctness conditions related to liveness

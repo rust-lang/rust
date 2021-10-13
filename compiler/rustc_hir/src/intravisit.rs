@@ -389,6 +389,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_expr(&mut self, ex: &'v Expr<'v>) {
         walk_expr(self, ex)
     }
+    fn visit_let_expr(&mut self, lex: &'v Let<'v>) {
+        walk_let_expr(self, lex)
+    }
     fn visit_ty(&mut self, t: &'v Ty<'v>) {
         walk_ty(self, t)
     }
@@ -1126,6 +1129,14 @@ pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonCo
     visitor.visit_nested_body(constant.body);
 }
 
+pub fn walk_let_expr<'v, V: Visitor<'v>>(visitor: &mut V, let_expr: &'v Let<'v>) {
+    // match the visit order in walk_local
+    visitor.visit_expr(let_expr.init);
+    visitor.visit_id(let_expr.hir_id);
+    visitor.visit_pat(let_expr.pat);
+    walk_list!(visitor, visit_ty, let_expr.ty);
+}
+
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) {
     visitor.visit_id(expression.hir_id);
     match expression.kind {
@@ -1172,10 +1183,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::DropTemps(ref subexpression) => {
             visitor.visit_expr(subexpression);
         }
-        ExprKind::Let(ref pat, ref expr, _) => {
-            visitor.visit_expr(expr);
-            visitor.visit_pat(pat);
-        }
+        ExprKind::Let(ref let_expr) => visitor.visit_let_expr(let_expr),
         ExprKind::If(ref cond, ref then, ref else_opt) => {
             visitor.visit_expr(cond);
             visitor.visit_expr(then);
