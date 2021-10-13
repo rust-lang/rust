@@ -5,7 +5,7 @@
 extern crate issue_69725;
 use issue_69725::Struct;
 
-fn crash<A>() {
+fn crash<A>() where A: Clone {
     let _ = Struct::<A>::new().clone();
     //~^ ERROR: the method
 }
