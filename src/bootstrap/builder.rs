@@ -370,7 +370,7 @@ impl<'a> Builder<'a> {
         match kind {
             Kind::Build => describe!(
                 compile::Std,
-                compile::Rustc,
+                compile::Assemble,
                 compile::CodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
