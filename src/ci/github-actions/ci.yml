@@ -153,10 +153,6 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/install-sccache.sh
         <<: *step
 
-      - name: select Xcode
-        run: src/ci/scripts/select-xcode.sh
-        <<: *step
-
       - name: install clang
         run: src/ci/scripts/install-clang.sh
         <<: *step
@@ -498,7 +494,6 @@ jobs:
                 --set rust.jemalloc
                 --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              SELECT_XCODE: /Applications/Xcode_12.2.app
               USE_XCODE_CLANG: 1
               MACOSX_DEPLOYMENT_TARGET: 11.0
               MACOSX_STD_DEPLOYMENT_TARGET: 11.0
