@@ -859,9 +859,9 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                     self.sub_regions(
                         infer::ReborrowUpvar(span, upvar_id),
                         borrow_region,
-                        upvar_borrow.region,
+                        captured_place.region.unwrap(),
                     );
-                    if let ty::ImmBorrow = upvar_borrow.kind {
+                    if let ty::ImmBorrow = upvar_borrow {
                         debug!("link_upvar_region: capture by shared ref");
                     } else {
                         all_captures_are_imm_borrow = false;

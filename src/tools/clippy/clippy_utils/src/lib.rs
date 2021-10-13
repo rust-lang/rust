@@ -970,7 +970,7 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
                         if !self.locals.contains(&local_id) {
                             let capture = match capture.info.capture_kind {
                                 UpvarCapture::ByValue => CaptureKind::Value,
-                                UpvarCapture::ByRef(borrow) => match borrow.kind {
+                                UpvarCapture::ByRef(kind) => match kind {
                                     BorrowKind::ImmBorrow => CaptureKind::Ref(Mutability::Not),
                                     BorrowKind::UniqueImmBorrow | BorrowKind::MutBorrow => {
                                         CaptureKind::Ref(Mutability::Mut)

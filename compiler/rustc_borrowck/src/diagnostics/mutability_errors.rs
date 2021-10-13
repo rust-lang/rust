@@ -706,10 +706,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         &origin_projection,
                     ) {
                         match captured_place.info.capture_kind {
-                            ty::UpvarCapture::ByRef(ty::UpvarBorrow {
-                                kind: ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
-                                ..
-                            }) => {
+                            ty::UpvarCapture::ByRef(
+                                ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
+                            ) => {
                                 capture_reason = format!("mutable borrow of `{}`", upvar);
                             }
                             ty::UpvarCapture::ByValue => {

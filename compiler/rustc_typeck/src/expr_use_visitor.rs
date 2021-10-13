@@ -803,7 +803,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             self.delegate.borrow(
                                 &place_with_id,
                                 place_with_id.hir_id,
-                                upvar_borrow.kind,
+                                upvar_borrow,
                             );
                         }
                     }
