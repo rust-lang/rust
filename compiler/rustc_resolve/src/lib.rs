@@ -2555,7 +2555,22 @@ impl<'a> Resolver<'a> {
 
                             (format!("use of undeclared type `{}`", ident), suggestion)
                         } else {
-                            (format!("use of undeclared crate or module `{}`", ident), None)
+                            (
+                                format!("use of undeclared crate or module `{}`", ident),
+                                self.find_similarly_named_module_or_crate(
+                                    ident.name,
+                                    &parent_scope.module,
+                                )
+                                .map(|sugg| {
+                                    (
+                                        vec![(ident.span, sugg.to_string())],
+                                        String::from(
+                                            "there is a crate or module with a similar name",
+                                        ),
+                                        Applicability::MaybeIncorrect,
+                                    )
+                                }),
+                            )
                         }
                     } else {
                         let parent = path[i - 1].ident.name;

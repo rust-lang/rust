@@ -1277,6 +1277,34 @@ impl<'a> Resolver<'a> {
 
         err.emit();
     }
+
+    crate fn find_similarly_named_module_or_crate(
+        &mut self,
+        ident: Symbol,
+        current_module: &Module<'a>,
+    ) -> Option<Symbol> {
+        let mut candidates = self
+            .extern_prelude
+            .iter()
+            .map(|(ident, _)| ident.name)
+            .chain(
+                self.module_map
+                    .iter()
+                    .filter(|(_, module)| {
+                        current_module.is_ancestor_of(module) && !ptr::eq(current_module, *module)
+                    })
+                    .map(|(_, module)| module.kind.name())
+                    .flatten(),
+            )
+            .filter(|c| !c.to_string().is_empty())
+            .collect::<Vec<_>>();
+        candidates.sort();
+        candidates.dedup();
+        match find_best_match_for_name(&candidates, ident, None) {
+            Some(sugg) if sugg == ident => None,
+            sugg => sugg,
+        }
+    }
 }
 
 impl<'a, 'b> ImportResolver<'a, 'b> {

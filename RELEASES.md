@@ -1,4 +1,4 @@
-Rust 1.56.0 (2021-10-21)
+Version 1.56.0 (2021-10-21)
 ========================
 
 Language
@@ -22,6 +22,7 @@ Compiler
   This feature is primarily intended for usage by `cargo fix`, rather than end users.
 - [Promote `aarch64-apple-ios-sim` to Tier 2\*.][rust#87760]
 - [Add `powerpc-unknown-freebsd` at Tier 3\*.][rust#87370]
+- [Add `riscv32imc-esp-espidf` at Tier 3\*.][rust#87666]
 
 \* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
@@ -180,6 +181,7 @@ and related tools.
 [rust#87619]: https://github.com/rust-lang/rust/pull/87619
 [rust#81825]: https://github.com/rust-lang/rust/pull/81825#issuecomment-808406918
 [rust#88019]: https://github.com/rust-lang/rust/pull/88019
+[rust#87666]: https://github.com/rust-lang/rust/pull/87666
 
 Version 1.55.0 (2021-09-09)
 ============================
