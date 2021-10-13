@@ -33,7 +33,7 @@ use crate::{
 // }
 // ```
 pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let file_id = ctx.frange.file_id;
+    let file_id = ctx.file_id();
     let range = ctx.selection_trimmed();
     let InlineData { let_stmt, delete_let, references, target } =
         if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {

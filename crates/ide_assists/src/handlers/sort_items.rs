@@ -82,7 +82,7 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn sort_items(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    if ctx.frange.range.is_empty() {
+    if ctx.has_empty_selection() {
         cov_mark::hit!(not_applicable_if_no_selection);
         return None;
     }

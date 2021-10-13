@@ -364,7 +364,7 @@ fn get_fn_target(
     target_module: &Option<Module>,
     call: CallExpr,
 ) -> Option<(GeneratedFunctionTarget, FileId, TextSize)> {
-    let mut file = ctx.frange.file_id;
+    let mut file = ctx.file_id();
     let target = match target_module {
         Some(target_module) => {
             let module_source = target_module.definition_source(ctx.db());

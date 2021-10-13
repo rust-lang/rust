@@ -25,7 +25,7 @@ use crate::{
 // ```
 pub(crate) fn move_to_mod_rs(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let source_file = ctx.find_node_at_offset::<ast::SourceFile>()?;
-    let module = ctx.sema.to_module_def(ctx.frange.file_id)?;
+    let module = ctx.sema.to_module_def(ctx.file_id())?;
     // Enable this assist if the user select all "meaningful" content in the source file
     let trimmed_selected_range = trimmed_text_range(&source_file, ctx.selection_trimmed());
     let trimmed_file_range = trimmed_text_range(&source_file, source_file.syntax().text_range());
@@ -41,13 +41,13 @@ pub(crate) fn move_to_mod_rs(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let target = source_file.syntax().text_range();
     let module_name = module.name(ctx.db())?.to_string();
     let path = format!("./{}/mod.rs", module_name);
-    let dst = AnchoredPathBuf { anchor: ctx.frange.file_id, path };
+    let dst = AnchoredPathBuf { anchor: ctx.file_id(), path };
     acc.add(
         AssistId("move_to_mod_rs", AssistKind::Refactor),
         format!("Convert {}.rs to {}/mod.rs", module_name, module_name),
         target,
         |builder| {
-            builder.move_file(ctx.frange.file_id, dst);
+            builder.move_file(ctx.file_id(), dst);
         },
     )
 }

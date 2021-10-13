@@ -92,7 +92,7 @@ fn edit_struct_def(
     let record_fields = ast::make::record_field_list(record_fields);
     let tuple_fields_text_range = tuple_fields.syntax().text_range();
 
-    edit.edit_file(ctx.frange.file_id);
+    edit.edit_file(ctx.file_id());
 
     if let Either::Left(strukt) = strukt {
         if let Some(w) = strukt.where_clause() {

@@ -86,7 +86,7 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Opt
                 buf,
             );
 
-            let dst = AnchoredPathBuf { anchor: ctx.frange.file_id, path };
+            let dst = AnchoredPathBuf { anchor: ctx.file_id(), path };
             builder.create_file(dst, contents);
         },
     )

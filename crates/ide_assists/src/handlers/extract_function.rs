@@ -309,7 +309,7 @@ impl LocalUsages {
         Self(
             Definition::Local(var)
                 .usages(&ctx.sema)
-                .in_scope(SearchScope::single_file(ctx.frange.file_id))
+                .in_scope(SearchScope::single_file(ctx.file_id()))
                 .all(),
         )
     }
@@ -1039,7 +1039,7 @@ fn is_defined_outside_of_body(
     body: &FunctionBody,
     src: &hir::InFile<Either<ast::IdentPat, ast::SelfParam>>,
 ) -> bool {
-    src.file_id.original_file(ctx.db()) == ctx.frange.file_id
+    src.file_id.original_file(ctx.db()) == ctx.file_id()
         && !body.contains_node(either_syntax(&src.value))
 }
 

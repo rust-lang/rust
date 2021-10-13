@@ -56,7 +56,7 @@ use crate::{
 pub(crate) struct AssistContext<'a> {
     pub(crate) config: &'a AssistConfig,
     pub(crate) sema: Semantics<'a, RootDatabase>,
-    pub(crate) frange: FileRange,
+    frange: FileRange,
     trimmed_range: TextRange,
     source_file: SourceFile,
 }
@@ -98,6 +98,14 @@ impl<'a> AssistContext<'a> {
         self.frange.range.start()
     }
 
+    pub(crate) fn file_id(&self) -> FileId {
+        self.frange.file_id
+    }
+
+    pub(crate) fn has_empty_selection(&self) -> bool {
+        self.trimmed_range.is_empty()
+    }
+
     /// Returns the selected range trimmed for whitespace tokens, that is the range will be snapped
     /// to the nearest enclosed token.
     pub(crate) fn selection_trimmed(&self) -> TextRange {
@@ -125,7 +133,6 @@ impl<'a> AssistContext<'a> {
     /// Returns the element covered by the selection range, this excludes trailing whitespace in the selection.
     pub(crate) fn covering_element(&self) -> SyntaxElement {
         self.source_file.syntax().covering_element(self.selection_trimmed())
-        // self.source_file.syntax().covering_element(self.frange.range)
     }
 }
 
