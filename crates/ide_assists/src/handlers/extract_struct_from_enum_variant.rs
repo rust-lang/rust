@@ -72,7 +72,7 @@ pub(crate) fn extract_struct_from_enum_variant(
             // record file references of the file the def resides in, we only want to swap to the edited file in the builder once
             let mut def_file_references = None;
             for (file_id, references) in usages {
-                if file_id == ctx.frange.file_id {
+                if file_id == ctx.file_id() {
                     def_file_references = Some(references);
                     continue;
                 }
@@ -89,7 +89,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     apply_references(ctx.config.insert_use, path, node, import)
                 });
             }
-            builder.edit_file(ctx.frange.file_id);
+            builder.edit_file(ctx.file_id());
 
             let variant = builder.make_mut(variant.clone());
             if let Some(references) = def_file_references {

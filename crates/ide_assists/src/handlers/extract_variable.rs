@@ -28,7 +28,7 @@ use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    if ctx.frange.range.is_empty() {
+    if ctx.has_empty_selection() {
         return None;
     }
 
@@ -43,7 +43,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
     let node = node.ancestors().take_while(|anc| anc.text_range() == node.text_range()).last()?;
     let to_extract = node
         .descendants()
-        .take_while(|it| ctx.frange.range.contains_range(it.text_range()))
+        .take_while(|it| ctx.selection_trimmed().contains_range(it.text_range()))
         .find_map(valid_target_expr)?;
 
     if let Some(ty_info) = ctx.sema.type_of_expr(&to_extract) {

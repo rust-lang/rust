@@ -115,7 +115,7 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext) -> Option<TupleData> {
     let usages = ctx.sema.to_def(&ident_pat).map(|def| {
         Definition::Local(def)
             .usages(&ctx.sema)
-            .in_scope(SearchScope::single_file(ctx.frange.file_id))
+            .in_scope(SearchScope::single_file(ctx.file_id()))
             .all()
     });
 

@@ -59,7 +59,7 @@ use crate::{
 // }
 // ```
 pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let def_file = ctx.frange.file_id;
+    let def_file = ctx.file_id();
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let ast_func = name.syntax().parent().and_then(ast::Fn::cast)?;
     let func_body = ast_func.body()?;
@@ -199,7 +199,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     let param_list = fn_source.value.param_list()?;
 
     let FileRange { file_id, range } = fn_source.syntax().original_file_range(ctx.sema.db);
-    if file_id == ctx.frange.file_id && range.contains(ctx.offset()) {
+    if file_id == ctx.file_id() && range.contains(ctx.offset()) {
         cov_mark::hit!(inline_call_recursive);
         return None;
     }
