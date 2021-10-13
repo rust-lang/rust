@@ -1,345 +1,345 @@
 error: layout_of(E) = Layout {
-    fields: Arbitrary {
-        offsets: [
-            Size {
-                raw: 0,
-            },
-        ],
-        memory_index: [
-            0,
-        ],
-    },
-    variants: Multiple {
-        tag: Scalar {
-            value: Int(
-                I32,
-                false,
-            ),
-            valid_range: 0..=0,
-        },
-        tag_encoding: Direct,
-        tag_field: 0,
-        variants: [
-            Layout {
-                fields: Arbitrary {
-                    offsets: [],
-                    memory_index: [],
-                },
-                variants: Single {
-                    index: 0,
-                },
-                abi: Aggregate {
-                    sized: true,
-                },
-                largest_niche: None,
-                align: AbiAndPrefAlign {
-                    abi: Align {
-                        pow2: 0,
-                    },
-                    pref: $PREF_ALIGN,
-                },
-                size: Size {
-                    raw: 4,
-                },
-            },
-            Layout {
-                fields: Arbitrary {
-                    offsets: [
-                        Size {
-                            raw: 4,
-                        },
-                        Size {
-                            raw: 4,
-                        },
-                        Size {
-                            raw: 8,
-                        },
-                    ],
-                    memory_index: [
-                        0,
-                        1,
-                        2,
-                    ],
-                },
-                variants: Single {
-                    index: 1,
-                },
-                abi: Uninhabited,
-                largest_niche: None,
-                align: AbiAndPrefAlign {
-                    abi: Align {
-                        pow2: 2,
-                    },
-                    pref: $PREF_ALIGN,
-                },
-                size: Size {
-                    raw: 12,
-                },
-            },
-        ],
-    },
-    abi: Aggregate {
-        sized: true,
-    },
-    largest_niche: Some(
-        Niche {
-            offset: Size {
-                raw: 0,
-            },
-            scalar: Scalar {
-                value: Int(
-                    I32,
-                    false,
-                ),
-                valid_range: 0..=0,
-            },
-        },
-    ),
-    align: AbiAndPrefAlign {
-        abi: Align {
-            pow2: 2,
-        },
-        pref: $PREF_ALIGN,
-    },
-    size: Size {
-        raw: 12,
-    },
-}
+           fields: Arbitrary {
+               offsets: [
+                   Size {
+                       raw: 0,
+                   },
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           variants: Multiple {
+               tag: Scalar {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       variants: Single {
+                           index: 0,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align {
+                               pow2: 0,
+                           },
+                           pref: $PREF_ALIGN,
+                       },
+                       size: Size {
+                           raw: 4,
+                       },
+                   },
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [
+                               Size {
+                                   raw: 4,
+                               },
+                               Size {
+                                   raw: 4,
+                               },
+                               Size {
+                                   raw: 8,
+                               },
+                           ],
+                           memory_index: [
+                               0,
+                               1,
+                               2,
+                           ],
+                       },
+                       variants: Single {
+                           index: 1,
+                       },
+                       abi: Uninhabited,
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align {
+                               pow2: 2,
+                           },
+                           pref: $PREF_ALIGN,
+                       },
+                       size: Size {
+                           raw: 12,
+                       },
+                   },
+               ],
+           },
+           abi: Aggregate {
+               sized: true,
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size {
+                       raw: 0,
+                   },
+                   scalar: Scalar {
+                       value: Int(
+                           I32,
+                           false,
+                       ),
+                       valid_range: 0..=0,
+                   },
+               },
+           ),
+           align: AbiAndPrefAlign {
+               abi: Align {
+                   pow2: 2,
+               },
+               pref: $PREF_ALIGN,
+           },
+           size: Size {
+               raw: 12,
+           },
+       }
   --> $DIR/debug.rs:6:1
    |
 LL | enum E { Foo, Bar(!, i32, i32) }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(S) = Layout {
-    fields: Arbitrary {
-        offsets: [
-            Size {
-                raw: 0,
-            },
-            Size {
-                raw: 0,
-            },
-            Size {
-                raw: 4,
-            },
-        ],
-        memory_index: [
-            1,
-            0,
-            2,
-        ],
-    },
-    variants: Single {
-        index: 0,
-    },
-    abi: ScalarPair(
-        Scalar {
-            value: Int(
-                I32,
-                true,
-            ),
-            valid_range: 0..=4294967295,
-        },
-        Scalar {
-            value: Int(
-                I32,
-                true,
-            ),
-            valid_range: 0..=4294967295,
-        },
-    ),
-    largest_niche: None,
-    align: AbiAndPrefAlign {
-        abi: Align {
-            pow2: 2,
-        },
-        pref: $PREF_ALIGN,
-    },
-    size: Size {
-        raw: 8,
-    },
-}
+           fields: Arbitrary {
+               offsets: [
+                   Size {
+                       raw: 0,
+                   },
+                   Size {
+                       raw: 0,
+                   },
+                   Size {
+                       raw: 4,
+                   },
+               ],
+               memory_index: [
+                   1,
+                   0,
+                   2,
+               ],
+           },
+           variants: Single {
+               index: 0,
+           },
+           abi: ScalarPair(
+               Scalar {
+                   value: Int(
+                       I32,
+                       true,
+                   ),
+                   valid_range: 0..=4294967295,
+               },
+               Scalar {
+                   value: Int(
+                       I32,
+                       true,
+                   ),
+                   valid_range: 0..=4294967295,
+               },
+           ),
+           largest_niche: None,
+           align: AbiAndPrefAlign {
+               abi: Align {
+                   pow2: 2,
+               },
+               pref: $PREF_ALIGN,
+           },
+           size: Size {
+               raw: 8,
+           },
+       }
   --> $DIR/debug.rs:9:1
    |
 LL | struct S { f1: i32, f2: (), f3: i32 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(U) = Layout {
-    fields: Union(
-        2,
-    ),
-    variants: Single {
-        index: 0,
-    },
-    abi: Aggregate {
-        sized: true,
-    },
-    largest_niche: None,
-    align: AbiAndPrefAlign {
-        abi: Align {
-            pow2: 2,
-        },
-        pref: $PREF_ALIGN,
-    },
-    size: Size {
-        raw: 8,
-    },
-}
+           fields: Union(
+               2,
+           ),
+           variants: Single {
+               index: 0,
+           },
+           abi: Aggregate {
+               sized: true,
+           },
+           largest_niche: None,
+           align: AbiAndPrefAlign {
+               abi: Align {
+                   pow2: 2,
+               },
+               pref: $PREF_ALIGN,
+           },
+           size: Size {
+               raw: 8,
+           },
+       }
   --> $DIR/debug.rs:12:1
    |
 LL | union U { f1: (i32, i32), f3: i32 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(std::result::Result<i32, i32>) = Layout {
-    fields: Arbitrary {
-        offsets: [
-            Size {
-                raw: 0,
-            },
-        ],
-        memory_index: [
-            0,
-        ],
-    },
-    variants: Multiple {
-        tag: Scalar {
-            value: Int(
-                I32,
-                false,
-            ),
-            valid_range: 0..=1,
-        },
-        tag_encoding: Direct,
-        tag_field: 0,
-        variants: [
-            Layout {
-                fields: Arbitrary {
-                    offsets: [
-                        Size {
-                            raw: 4,
-                        },
-                    ],
-                    memory_index: [
-                        0,
-                    ],
-                },
-                variants: Single {
-                    index: 0,
-                },
-                abi: Aggregate {
-                    sized: true,
-                },
-                largest_niche: None,
-                align: AbiAndPrefAlign {
-                    abi: Align {
-                        pow2: 2,
-                    },
-                    pref: $PREF_ALIGN,
-                },
-                size: Size {
-                    raw: 8,
-                },
-            },
-            Layout {
-                fields: Arbitrary {
-                    offsets: [
-                        Size {
-                            raw: 4,
-                        },
-                    ],
-                    memory_index: [
-                        0,
-                    ],
-                },
-                variants: Single {
-                    index: 1,
-                },
-                abi: Aggregate {
-                    sized: true,
-                },
-                largest_niche: None,
-                align: AbiAndPrefAlign {
-                    abi: Align {
-                        pow2: 2,
-                    },
-                    pref: $PREF_ALIGN,
-                },
-                size: Size {
-                    raw: 8,
-                },
-            },
-        ],
-    },
-    abi: ScalarPair(
-        Scalar {
-            value: Int(
-                I32,
-                false,
-            ),
-            valid_range: 0..=1,
-        },
-        Scalar {
-            value: Int(
-                I32,
-                true,
-            ),
-            valid_range: 0..=4294967295,
-        },
-    ),
-    largest_niche: Some(
-        Niche {
-            offset: Size {
-                raw: 0,
-            },
-            scalar: Scalar {
-                value: Int(
-                    I32,
-                    false,
-                ),
-                valid_range: 0..=1,
-            },
-        },
-    ),
-    align: AbiAndPrefAlign {
-        abi: Align {
-            pow2: 2,
-        },
-        pref: $PREF_ALIGN,
-    },
-    size: Size {
-        raw: 8,
-    },
-}
+           fields: Arbitrary {
+               offsets: [
+                   Size {
+                       raw: 0,
+                   },
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           variants: Multiple {
+               tag: Scalar {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 0..=1,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [
+                               Size {
+                                   raw: 4,
+                               },
+                           ],
+                           memory_index: [
+                               0,
+                           ],
+                       },
+                       variants: Single {
+                           index: 0,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align {
+                               pow2: 2,
+                           },
+                           pref: $PREF_ALIGN,
+                       },
+                       size: Size {
+                           raw: 8,
+                       },
+                   },
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [
+                               Size {
+                                   raw: 4,
+                               },
+                           ],
+                           memory_index: [
+                               0,
+                           ],
+                       },
+                       variants: Single {
+                           index: 1,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align {
+                               pow2: 2,
+                           },
+                           pref: $PREF_ALIGN,
+                       },
+                       size: Size {
+                           raw: 8,
+                       },
+                   },
+               ],
+           },
+           abi: ScalarPair(
+               Scalar {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 0..=1,
+               },
+               Scalar {
+                   value: Int(
+                       I32,
+                       true,
+                   ),
+                   valid_range: 0..=4294967295,
+               },
+           ),
+           largest_niche: Some(
+               Niche {
+                   offset: Size {
+                       raw: 0,
+                   },
+                   scalar: Scalar {
+                       value: Int(
+                           I32,
+                           false,
+                       ),
+                       valid_range: 0..=1,
+                   },
+               },
+           ),
+           align: AbiAndPrefAlign {
+               abi: Align {
+                   pow2: 2,
+               },
+               pref: $PREF_ALIGN,
+           },
+           size: Size {
+               raw: 8,
+           },
+       }
   --> $DIR/debug.rs:15:1
    |
 LL | type Test = Result<i32, i32>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(i32) = Layout {
-    fields: Primitive,
-    variants: Single {
-        index: 0,
-    },
-    abi: Scalar(
-        Scalar {
-            value: Int(
-                I32,
-                true,
-            ),
-            valid_range: 0..=4294967295,
-        },
-    ),
-    largest_niche: None,
-    align: AbiAndPrefAlign {
-        abi: Align {
-            pow2: 2,
-        },
-        pref: $PREF_ALIGN,
-    },
-    size: Size {
-        raw: 4,
-    },
-}
+           fields: Primitive,
+           variants: Single {
+               index: 0,
+           },
+           abi: Scalar(
+               Scalar {
+                   value: Int(
+                       I32,
+                       true,
+                   ),
+                   valid_range: 0..=4294967295,
+               },
+           ),
+           largest_niche: None,
+           align: AbiAndPrefAlign {
+               abi: Align {
+                   pow2: 2,
+               },
+               pref: $PREF_ALIGN,
+           },
+           size: Size {
+               raw: 4,
+           },
+       }
   --> $DIR/debug.rs:18:1
    |
 LL | type T = impl std::fmt::Debug;
