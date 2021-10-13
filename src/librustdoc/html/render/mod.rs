@@ -1811,23 +1811,53 @@ fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
     format!("{}-{}", url, add)
 }
 
+struct SidebarLink {
+    name: Symbol,
+    url: String,
+}
+
+impl fmt::Display for SidebarLink {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<a href=\"#{}\">{}</a>", self.url, self.name)
+    }
+}
+
+impl PartialEq for SidebarLink {
+    fn eq(&self, other: &Self) -> bool {
+        self.url == other.url
+    }
+}
+
+impl Eq for SidebarLink {}
+
+impl PartialOrd for SidebarLink {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for SidebarLink {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.url.cmp(&other.url)
+    }
+}
+
 fn get_methods(
     i: &clean::Impl,
     for_deref: bool,
     used_links: &mut FxHashSet<String>,
     deref_mut: bool,
     tcx: TyCtxt<'_>,
-) -> Vec<String> {
+) -> Vec<SidebarLink> {
     i.items
         .iter()
         .filter_map(|item| match item.name {
-            Some(ref name) if !name.is_empty() && item.is_method() => {
+            Some(name) if !name.is_empty() && item.is_method() => {
                 if !for_deref || should_render_item(item, deref_mut, tcx) {
-                    Some(format!(
-                        "<a href=\"#{}\">{}</a>",
-                        get_next_url(used_links, format!("method.{}", name)),
-                        name
-                    ))
+                    Some(SidebarLink {
+                        name,
+                        url: get_next_url(used_links, format!("method.{}", name)),
+                    })
                 } else {
                     None
                 }
@@ -1837,15 +1867,17 @@ fn get_methods(
         .collect::<Vec<_>>()
 }
 
-fn get_associated_constants(i: &clean::Impl, used_links: &mut FxHashSet<String>) -> Vec<String> {
+fn get_associated_constants(
+    i: &clean::Impl,
+    used_links: &mut FxHashSet<String>,
+) -> Vec<SidebarLink> {
     i.items
         .iter()
         .filter_map(|item| match item.name {
-            Some(ref name) if !name.is_empty() && item.is_associated_const() => Some(format!(
-                "<a href=\"#{}\">{}</a>",
-                get_next_url(used_links, format!("associatedconstant.{}", name)),
-                name
-            )),
+            Some(name) if !name.is_empty() && item.is_associated_const() => Some(SidebarLink {
+                name,
+                url: get_next_url(used_links, format!("associatedconstant.{}", name)),
+            }),
             _ => None,
         })
         .collect::<Vec<_>>()
@@ -1910,7 +1942,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                      <div class=\"sidebar-links\">",
                 );
                 for line in assoc_consts {
-                    out.push_str(&line);
+                    write!(out, "{}", line);
                 }
                 out.push_str("</div>");
             }
@@ -1928,7 +1960,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                      <div class=\"sidebar-links\">",
                 );
                 for line in methods {
-                    out.push_str(&line);
+                    write!(out, "{}", line);
                 }
                 out.push_str("</div>");
             }
@@ -2063,7 +2095,7 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &V
                 ret.sort();
                 out.push_str("<div class=\"sidebar-links\">");
                 for link in ret {
-                    out.push_str(&link);
+                    write!(out, "{}", link);
                 }
                 out.push_str("</div>");
             }
