@@ -22,7 +22,7 @@ use rustc_serialize::{
 };
 use rustc_session::getopts;
 use rustc_span::{
-    def_id::{CrateNum, DefPathHash},
+    def_id::{CrateNum, DefPathHash, LOCAL_CRATE},
     edition::Edition,
     BytePos, FileName, SourceFile,
 };
@@ -202,18 +202,22 @@ crate fn run(
 
         // Collect CrateIds corresponding to provided target crates
         // If two different versions of the crate in the dependency tree, then examples will be collcted from both.
-        let find_crates_with_name = |target_crate: String| {
-            tcx.crates(())
-                .iter()
-                .filter(move |crate_num| tcx.crate_name(**crate_num).as_str() == target_crate)
-                .copied()
-        };
+        let all_crates = tcx
+            .crates(())
+            .iter()
+            .chain([&LOCAL_CRATE])
+            .map(|crate_num| (crate_num, tcx.crate_name(*crate_num)))
+            .collect::<Vec<_>>();
         let target_crates = options
             .target_crates
             .into_iter()
-            .map(find_crates_with_name)
+            .map(|target| all_crates.iter().filter(move |(_, name)| name.as_str() == target))
             .flatten()
+            .map(|(crate_num, _)| **crate_num)
             .collect::<Vec<_>>();
+
+        debug!("All crates in TyCtxt: {:?}", all_crates);
+        debug!("Scrape examples target_crates: {:?}", target_crates);
 
         // Run call-finder on all items
         let mut calls = FxHashMap::default();
