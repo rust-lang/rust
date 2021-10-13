@@ -1,0 +1,14 @@
+error[E0464]: multiple matching crates for `crateresolve2`
+  --> $DIR/crateresolve2.rs:10:1
+   |
+LL | extern crate crateresolve2;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: candidates:
+           crate `crateresolve2`: $TEST_BUILD_DIR/crate-loading/crateresolve2/auxiliary/libcrateresolve2-1.rmeta
+           crate `crateresolve2`: $TEST_BUILD_DIR/crate-loading/crateresolve2/auxiliary/libcrateresolve2-2.rmeta
+           crate `crateresolve2`: $TEST_BUILD_DIR/crate-loading/crateresolve2/auxiliary/libcrateresolve2-3.rmeta
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0464`.

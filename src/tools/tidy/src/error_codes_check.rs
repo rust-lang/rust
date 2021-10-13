@@ -10,12 +10,12 @@ use regex::Regex;
 
 // A few of those error codes can't be tested but all the others can and *should* be tested!
 const EXEMPTED_FROM_TEST: &[&str] = &[
-    "E0227", "E0279", "E0280", "E0313", "E0377", "E0461", "E0462", "E0464", "E0465", "E0476",
-    "E0514", "E0519", "E0523", "E0554", "E0640", "E0717", "E0729",
+    "E0227", "E0279", "E0280", "E0313", "E0377", "E0461", "E0462", "E0465", "E0476", "E0514",
+    "E0519", "E0523", "E0554", "E0640", "E0717", "E0729",
 ];
 
 // Some error codes don't have any tests apparently...
-const IGNORE_EXPLANATION_CHECK: &[&str] = &["E0570", "E0601", "E0602", "E0729"];
+const IGNORE_EXPLANATION_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602", "E0729"];
 
 // If the file path contains any of these, we don't want to try to extract error codes from it.
 //
