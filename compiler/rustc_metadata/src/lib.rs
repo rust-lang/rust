@@ -9,6 +9,7 @@
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 extern crate proc_macro;
 

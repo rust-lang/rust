@@ -34,6 +34,7 @@
 #![feature(box_patterns)]
 #![feature(iter_zip)]
 #![recursion_limit = "256"]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::token::{self, Token};
