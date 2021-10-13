@@ -242,6 +242,8 @@ impl<T: ?Sized> NonNull<T> {
     /// The pointer can be later reconstructed with [`NonNull::from_raw_parts`].
     #[unstable(feature = "ptr_metadata", issue = "81513")]
     #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     pub const fn to_raw_parts(self) -> (NonNull<()>, <T as super::Pointee>::Metadata) {
         (self.cast(), super::metadata(self.as_ptr()))
@@ -386,6 +388,8 @@ impl<T: ?Sized> NonNull<T> {
     /// ```
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
     #[rustc_const_stable(feature = "const_nonnull_cast", since = "1.36.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     pub const fn cast<U>(self) -> NonNull<U> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
