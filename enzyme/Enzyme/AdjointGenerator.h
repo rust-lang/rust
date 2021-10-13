@@ -1242,46 +1242,77 @@ public:
     eraseIfUnused(SVI);
     if (gutils->isConstantInstruction(&SVI))
       return;
-    if (Mode == DerivativeMode::ReverseModePrimal)
+
+    switch (Mode) {
+    case DerivativeMode::ForwardMode: {
+      IRBuilder<> Builder2(&SVI);
+      getForwardBuilder(Builder2);
+
+      Value *orig_vector1 = SVI.getOperand(0);
+      Value *orig_vector2 = SVI.getOperand(1);
+      Value *orig_mask = SVI.getOperand(0);
+
+      auto diffe_vector1 =
+          gutils->isConstantValue(orig_vector1)
+              ? ConstantVector::getNullValue(orig_vector1->getType())
+              : diffe(orig_vector1, Builder2);
+      auto diffe_vector2 =
+          gutils->isConstantValue(orig_vector2)
+              ? ConstantVector::getNullValue(orig_vector2->getType())
+              : diffe(orig_vector2, Builder2);
+
+      auto diffe = Builder2.CreateShuffleVector(
+          diffe_vector1, diffe_vector2, gutils->getNewFromOriginal(orig_mask));
+
+      setDiffe(&SVI, diffe, Builder2);
       return;
-
-    IRBuilder<> Builder2(SVI.getParent());
-    getReverseBuilder(Builder2);
-
-    auto loaded = diffe(&SVI, Builder2);
-#if LLVM_VERSION_MAJOR >= 12
-    auto count =
-        cast<VectorType>(SVI.getOperand(0)->getType())->getElementCount();
-    assert(!count.isScalable());
-    size_t l1 = count.getKnownMinValue();
-#else
-    size_t l1 =
-        cast<VectorType>(SVI.getOperand(0)->getType())->getNumElements();
-#endif
-    uint64_t instidx = 0;
-
-    for (size_t idx : SVI.getShuffleMask()) {
-      auto opnum = (idx < l1) ? 0 : 1;
-      auto opidx = (idx < l1) ? idx : (idx - l1);
-      SmallVector<Value *, 4> sv;
-      sv.push_back(ConstantInt::get(Type::getInt32Ty(SVI.getContext()), opidx));
-      if (!gutils->isConstantValue(SVI.getOperand(opnum))) {
-        size_t size = 1;
-        if (SVI.getOperand(opnum)->getType()->isSized())
-          size =
-              (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-                   SVI.getOperand(opnum)->getType()) +
-               7) /
-              8;
-        ((DiffeGradientUtils *)gutils)
-            ->addToDiffe(SVI.getOperand(opnum),
-                         Builder2.CreateExtractElement(loaded, instidx),
-                         Builder2, TR.addingType(size, SVI.getOperand(opnum)),
-                         sv);
-      }
-      ++instidx;
     }
-    setDiffe(&SVI, Constant::getNullValue(SVI.getType()), Builder2);
+    case DerivativeMode::ReverseModeGradient:
+    case DerivativeMode::ReverseModeCombined: {
+      IRBuilder<> Builder2(SVI.getParent());
+      getReverseBuilder(Builder2);
+
+      auto loaded = diffe(&SVI, Builder2);
+#if LLVM_VERSION_MAJOR >= 12
+      auto count =
+          cast<VectorType>(SVI.getOperand(0)->getType())->getElementCount();
+      assert(!count.isScalable());
+      size_t l1 = count.getKnownMinValue();
+#else
+      size_t l1 =
+          cast<VectorType>(SVI.getOperand(0)->getType())->getNumElements();
+#endif
+      uint64_t instidx = 0;
+
+      for (size_t idx : SVI.getShuffleMask()) {
+        auto opnum = (idx < l1) ? 0 : 1;
+        auto opidx = (idx < l1) ? idx : (idx - l1);
+        SmallVector<Value *, 4> sv;
+        sv.push_back(
+            ConstantInt::get(Type::getInt32Ty(SVI.getContext()), opidx));
+        if (!gutils->isConstantValue(SVI.getOperand(opnum))) {
+          size_t size = 1;
+          if (SVI.getOperand(opnum)->getType()->isSized())
+            size = (gutils->newFunc->getParent()
+                        ->getDataLayout()
+                        .getTypeSizeInBits(SVI.getOperand(opnum)->getType()) +
+                    7) /
+                   8;
+          ((DiffeGradientUtils *)gutils)
+              ->addToDiffe(SVI.getOperand(opnum),
+                           Builder2.CreateExtractElement(loaded, instidx),
+                           Builder2, TR.addingType(size, SVI.getOperand(opnum)),
+                           sv);
+        }
+        ++instidx;
+      }
+      setDiffe(&SVI, Constant::getNullValue(SVI.getType()), Builder2);
+      return;
+    }
+    case DerivativeMode::ReverseModePrimal: {
+      return;
+    }
+    }
   }
 
   void visitExtractValueInst(llvm::ExtractValueInst &EVI) {
