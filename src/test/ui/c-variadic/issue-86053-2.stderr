@@ -5,7 +5,7 @@ LL | unsafe extern "C" fn ordering4<'a, F: H<&'static &'a ()>>(_: (), ...) {}
    |                                       ^^^^^^^^^^^^^^^^^^
    |
    = note: the pointer is valid for the static lifetime
-note: but the referenced data is only valid for the lifetime `'a` as defined on the function body at 8:32
+note: but the referenced data is only valid for the lifetime `'a` as defined here
   --> $DIR/issue-86053-2.rs:8:32
    |
 LL | unsafe extern "C" fn ordering4<'a, F: H<&'static &'a ()>>(_: (), ...) {}

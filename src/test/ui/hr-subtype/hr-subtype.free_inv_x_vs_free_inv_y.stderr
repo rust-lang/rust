@@ -10,7 +10,7 @@ LL | | fn(Inv<'y>)) }
    |
    = note: expected enum `Option<fn(Inv<'y>)>`
               found enum `Option<fn(Inv<'x>)>`
-note: the lifetime `'x` as defined on the function body at 38:20...
+note: the lifetime `'x` as defined here...
   --> $DIR/hr-subtype.rs:38:20
    |
 LL |           fn subtype<'x, 'y: 'x, 'z: 'y>() {
@@ -19,7 +19,7 @@ LL |           fn subtype<'x, 'y: 'x, 'z: 'y>() {
 LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
 LL | | fn(Inv<'y>)) }
    | |______________- in this macro invocation
-note: ...does not necessarily outlive the lifetime `'y` as defined on the function body at 38:24
+note: ...does not necessarily outlive the lifetime `'y` as defined here
   --> $DIR/hr-subtype.rs:38:24
    |
 LL |           fn subtype<'x, 'y: 'x, 'z: 'y>() {
@@ -42,7 +42,7 @@ LL | | fn(Inv<'y>)) }
    |
    = note: expected enum `Option<fn(Inv<'x>)>`
               found enum `Option<fn(Inv<'y>)>`
-note: the lifetime `'x` as defined on the function body at 44:22...
+note: the lifetime `'x` as defined here...
   --> $DIR/hr-subtype.rs:44:22
    |
 LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {
@@ -51,7 +51,7 @@ LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {
 LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
 LL | | fn(Inv<'y>)) }
    | |______________- in this macro invocation
-note: ...does not necessarily outlive the lifetime `'y` as defined on the function body at 44:26
+note: ...does not necessarily outlive the lifetime `'y` as defined here
   --> $DIR/hr-subtype.rs:44:26
    |
 LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {

@@ -13,7 +13,7 @@ LL | |     };
    |
    = note: expected struct `Invariant<'a>`
               found struct `Invariant<'static>`
-note: the lifetime `'a` as defined on the function body at 13:10...
+note: the lifetime `'a` as defined here...
   --> $DIR/region-invariant-static-error-reporting.rs:13:10
    |
 LL | fn unify<'a>(x: Option<Invariant<'a>>, f: fn(Invariant<'a>)) {

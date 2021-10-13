@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for autoref due to conflictin
 LL |         self.a();
    |              ^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime defined on the method body at 3:10...
+note: first, the lifetime cannot outlive the anonymous lifetime defined here...
   --> $DIR/issue-16683.rs:3:10
    |
 LL |     fn b(&self) {
@@ -14,7 +14,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |         self.a();
    |         ^^^^
-note: but, the lifetime must be valid for the lifetime `'a` as defined on the trait at 1:9...
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
   --> $DIR/issue-16683.rs:1:9
    |
 LL | trait T<'a> {

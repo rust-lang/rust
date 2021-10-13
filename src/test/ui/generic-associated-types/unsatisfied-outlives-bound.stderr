@@ -4,7 +4,7 @@ error[E0477]: the type `&'b ()` does not fulfill the required lifetime
 LL |     type Item<'a> = &'b ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: type must outlive the lifetime `'a` as defined on the associated item at 8:15 as required by this binding
+note: type must outlive the lifetime `'a` as defined here as required by this binding
   --> $DIR/unsatisfied-outlives-bound.rs:8:15
    |
 LL |     type Item<'a> = &'b ();

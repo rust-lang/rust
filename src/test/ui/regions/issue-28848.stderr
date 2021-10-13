@@ -4,12 +4,12 @@ error[E0478]: lifetime bound not satisfied
 LL |     Foo::<'a, 'b>::xmute(u)
    |     ^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'b` as defined on the function body at 9:16
+note: lifetime parameter instantiated with the lifetime `'b` as defined here
   --> $DIR/issue-28848.rs:9:16
    |
 LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
    |                ^^
-note: but lifetime parameter must outlive the lifetime `'a` as defined on the function body at 9:12
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
   --> $DIR/issue-28848.rs:9:12
    |
 LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {

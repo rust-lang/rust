@@ -6,12 +6,12 @@ LL |     fn select(&self) -> BufferViewHandle<R>;
    |
    = note: expected type `Resources<'_>`
               found type `Resources<'a>`
-note: the anonymous lifetime defined on the method body at 5:15...
+note: the anonymous lifetime defined here...
   --> $DIR/issue-27942.rs:5:15
    |
 LL |     fn select(&self) -> BufferViewHandle<R>;
    |               ^^^^^
-note: ...does not necessarily outlive the lifetime `'a` as defined on the trait at 3:18
+note: ...does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/issue-27942.rs:3:18
    |
 LL | pub trait Buffer<'a, R: Resources<'a>> {
@@ -25,12 +25,12 @@ LL |     fn select(&self) -> BufferViewHandle<R>;
    |
    = note: expected type `Resources<'_>`
               found type `Resources<'a>`
-note: the lifetime `'a` as defined on the trait at 3:18...
+note: the lifetime `'a` as defined here...
   --> $DIR/issue-27942.rs:3:18
    |
 LL | pub trait Buffer<'a, R: Resources<'a>> {
    |                  ^^
-note: ...does not necessarily outlive the anonymous lifetime defined on the method body at 5:15
+note: ...does not necessarily outlive the anonymous lifetime defined here
   --> $DIR/issue-27942.rs:5:15
    |
 LL |     fn select(&self) -> BufferViewHandle<R>;

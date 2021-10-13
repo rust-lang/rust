@@ -4,12 +4,12 @@ error[E0312]: lifetime of reference outlives lifetime of borrowed content...
 LL |         u
    |         ^
    |
-note: ...the reference is valid for the lifetime `'a` as defined on the impl at 14:6...
+note: ...the reference is valid for the lifetime `'a` as defined here...
   --> $DIR/wf-static-method.rs:14:6
    |
 LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
    |      ^^
-note: ...but the borrowed content is only valid for the lifetime `'b` as defined on the impl at 14:10
+note: ...but the borrowed content is only valid for the lifetime `'b` as defined here
   --> $DIR/wf-static-method.rs:14:10
    |
 LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
@@ -21,12 +21,12 @@ error[E0478]: lifetime bound not satisfied
 LL |         let me = Self::make_me();
    |                  ^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'b` as defined on the impl at 23:10
+note: lifetime parameter instantiated with the lifetime `'b` as defined here
   --> $DIR/wf-static-method.rs:23:10
    |
 LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
    |          ^^
-note: but lifetime parameter must outlive the lifetime `'a` as defined on the impl at 23:6
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
   --> $DIR/wf-static-method.rs:23:6
    |
 LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
@@ -38,12 +38,12 @@ error[E0312]: lifetime of reference outlives lifetime of borrowed content...
 LL |         u
    |         ^
    |
-note: ...the reference is valid for the lifetime `'a` as defined on the impl at 31:6...
+note: ...the reference is valid for the lifetime `'a` as defined here...
   --> $DIR/wf-static-method.rs:31:6
    |
 LL | impl<'a, 'b> Evil<'a, 'b> {
    |      ^^
-note: ...but the borrowed content is only valid for the lifetime `'b` as defined on the impl at 31:10
+note: ...but the borrowed content is only valid for the lifetime `'b` as defined here
   --> $DIR/wf-static-method.rs:31:10
    |
 LL | impl<'a, 'b> Evil<'a, 'b> {
@@ -55,7 +55,7 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` d
 LL |     <()>::static_evil(b)
    |     ^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'b` as defined on the function body at 40:13...
+note: first, the lifetime cannot outlive the lifetime `'b` as defined here...
   --> $DIR/wf-static-method.rs:40:13
    |
 LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
@@ -65,7 +65,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |     <()>::static_evil(b)
    |                       ^
-note: but, the lifetime must be valid for the lifetime `'a` as defined on the function body at 40:9...
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
   --> $DIR/wf-static-method.rs:40:9
    |
 LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
@@ -82,7 +82,7 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` d
 LL |     <IndirectEvil>::static_evil(b)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'b` as defined on the function body at 44:22...
+note: first, the lifetime cannot outlive the lifetime `'b` as defined here...
   --> $DIR/wf-static-method.rs:44:22
    |
 LL | fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
@@ -92,7 +92,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |     <IndirectEvil>::static_evil(b)
    |                                 ^
-note: but, the lifetime must be valid for the lifetime `'a` as defined on the function body at 44:18...
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
   --> $DIR/wf-static-method.rs:44:18
    |
 LL | fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
@@ -109,7 +109,7 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` d
 LL |     <Evil>::inherent_evil(b)
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'b` as defined on the function body at 49:22...
+note: first, the lifetime cannot outlive the lifetime `'b` as defined here...
   --> $DIR/wf-static-method.rs:49:22
    |
 LL | fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
@@ -119,7 +119,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |     <Evil>::inherent_evil(b)
    |                           ^
-note: but, the lifetime must be valid for the lifetime `'a` as defined on the function body at 49:18...
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
   --> $DIR/wf-static-method.rs:49:18
    |
 LL | fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {

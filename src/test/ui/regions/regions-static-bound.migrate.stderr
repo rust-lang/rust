@@ -5,7 +5,7 @@ LL |     t
    |     ^
    |
    = note: ...the reference is valid for the static lifetime...
-note: ...but the borrowed content is only valid for the lifetime `'a` as defined on the function body at 8:24
+note: ...but the borrowed content is only valid for the lifetime `'a` as defined here
   --> $DIR/regions-static-bound.rs:8:24
    |
 LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {

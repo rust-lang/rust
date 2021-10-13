@@ -14,7 +14,7 @@ LL | type X<'a> = impl Into<&'static str> + From<&'a str>;
    |
    = note: expected trait `From<&'a str>`
               found trait `From<&'static str>`
-note: the lifetime `'a` as defined on the item at 6:8...
+note: the lifetime `'a` as defined here...
   --> $DIR/bounds-are-checked.rs:6:8
    |
 LL | type X<'a> = impl Into<&'static str> + From<&'a str>;

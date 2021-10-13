@@ -6,7 +6,7 @@ LL |     let _x = *s;
    |
    = note: expected type `<<&'a T as A>::X as Sized>`
               found type `<<&'static T as A>::X as Sized>`
-note: the lifetime `'a` as defined on the function body at 9:8...
+note: the lifetime `'a` as defined here...
   --> $DIR/issue-50716.rs:9:8
    |
 LL | fn foo<'a, T: 'static>(s: Box<<&'a T as A>::X>)

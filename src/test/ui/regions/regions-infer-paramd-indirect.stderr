@@ -6,12 +6,12 @@ LL |         self.f = b;
    |
    = note: expected struct `Box<Box<&'a isize>>`
               found struct `Box<Box<&isize>>`
-note: the anonymous lifetime defined on the method body at 21:36...
+note: the anonymous lifetime defined here...
   --> $DIR/regions-infer-paramd-indirect.rs:21:36
    |
 LL |     fn set_f_bad(&mut self, b: Box<B>) {
    |                                    ^
-note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 16:6
+note: ...does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/regions-infer-paramd-indirect.rs:16:6
    |
 LL | impl<'a> SetF<'a> for C<'a> {

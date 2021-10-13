@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for autoref due to conflictin
 LL |     x.borrowed()
    |       ^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 9:42...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/region-object-lifetime-2.rs:9:42
    |
 LL | fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a dyn Foo) -> &'b () {
@@ -14,7 +14,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |     x.borrowed()
    |     ^
-note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 9:45...
+note: but, the lifetime must be valid for the lifetime `'b` as defined here...
   --> $DIR/region-object-lifetime-2.rs:9:45
    |
 LL | fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a dyn Foo) -> &'b () {

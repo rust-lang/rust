@@ -5,7 +5,7 @@ LL |     *y
    |     ^^
    |
    = note: ...the reference is valid for the static lifetime...
-note: ...but the borrowed content is only valid for the lifetime `'a` as defined on the function body at 1:47
+note: ...but the borrowed content is only valid for the lifetime `'a` as defined here
   --> $DIR/issue-55401.rs:1:47
    |
 LL | fn static_to_a_to_static_through_ref_in_tuple<'a>(x: &'a u32) -> &'static u32 {

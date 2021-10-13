@@ -4,12 +4,12 @@ error[E0490]: a value of type `&'b ()` is borrowed for too long
 LL |     let x: &'a _ = &y;
    |                    ^^
    |
-note: the type is valid for the lifetime `'a` as defined on the function body at 1:6
+note: the type is valid for the lifetime `'a` as defined here
   --> $DIR/E0490.rs:1:6
    |
 LL | fn f<'a, 'b>(y: &'b ()) {
    |      ^^
-note: but the borrow lasts for the lifetime `'b` as defined on the function body at 1:10
+note: but the borrow lasts for the lifetime `'b` as defined here
   --> $DIR/E0490.rs:1:10
    |
 LL | fn f<'a, 'b>(y: &'b ()) {
@@ -21,7 +21,7 @@ error[E0495]: cannot infer an appropriate lifetime for borrow expression due to 
 LL |     let x: &'a _ = &y;
    |                    ^^
    |
-note: first, the lifetime cannot outlive the lifetime `'b` as defined on the function body at 1:10...
+note: first, the lifetime cannot outlive the lifetime `'b` as defined here...
   --> $DIR/E0490.rs:1:10
    |
 LL | fn f<'a, 'b>(y: &'b ()) {
@@ -31,7 +31,7 @@ note: ...so that the type `&'b ()` is not borrowed for too long
    |
 LL |     let x: &'a _ = &y;
    |                    ^^
-note: but, the lifetime must be valid for the lifetime `'a` as defined on the function body at 1:6...
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
   --> $DIR/E0490.rs:1:6
    |
 LL | fn f<'a, 'b>(y: &'b ()) {
@@ -48,7 +48,7 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |     let x: &'a _ = &y;
    |                    ^^
    |
-note: first, the lifetime cannot outlive the lifetime `'b` as defined on the function body at 1:10...
+note: first, the lifetime cannot outlive the lifetime `'b` as defined here...
   --> $DIR/E0490.rs:1:10
    |
 LL | fn f<'a, 'b>(y: &'b ()) {
@@ -60,7 +60,7 @@ LL |     let x: &'a _ = &y;
    |                    ^^
    = note: expected `&'a &()`
               found `&'a &'b ()`
-note: but, the lifetime must be valid for the lifetime `'a` as defined on the function body at 1:6...
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
   --> $DIR/E0490.rs:1:6
    |
 LL | fn f<'a, 'b>(y: &'b ()) {

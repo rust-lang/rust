@@ -6,7 +6,7 @@ LL |     let f = |x: &dyn TT| x.func();
    |
    = note: expected reference `&(dyn TT + 'static)`
               found reference `&dyn TT`
-note: the anonymous lifetime #1 defined on the body at 14:13...
+note: the anonymous lifetime #1 defined here...
   --> $DIR/issue-78262.rs:14:13
    |
 LL |     let f = |x: &dyn TT| x.func();

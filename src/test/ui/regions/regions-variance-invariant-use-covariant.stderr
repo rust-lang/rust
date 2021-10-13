@@ -6,7 +6,7 @@ LL |     let _: Invariant<'static> = c;
    |
    = note: expected struct `Invariant<'static>`
               found struct `Invariant<'b>`
-note: the lifetime `'b` as defined on the function body at 11:9...
+note: the lifetime `'b` as defined here...
   --> $DIR/regions-variance-invariant-use-covariant.rs:11:9
    |
 LL | fn use_<'b>(c: Invariant<'b>) {

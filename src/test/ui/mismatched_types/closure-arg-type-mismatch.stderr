@@ -30,7 +30,7 @@ LL |     baz(f);
    |
    = note: expected type `for<'r> Fn<(*mut &'r u32,)>`
               found type `Fn<(*mut &'a u32,)>`
-note: the required lifetime does not necessarily outlive the lifetime `'a` as defined on the function body at 9:10
+note: the required lifetime does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/closure-arg-type-mismatch.rs:9:10
    |
 LL | fn _test<'a>(f: fn(*mut &'a u32)) {
@@ -58,7 +58,7 @@ LL |     baz(f);
    |
    = note: expected type `for<'r> Fn<(*mut &'r u32,)>`
               found type `Fn<(*mut &'a u32,)>`
-note: the lifetime `'a` as defined on the function body at 9:10 doesn't meet the lifetime requirements
+note: the lifetime `'a` as defined here doesn't meet the lifetime requirements
   --> $DIR/closure-arg-type-mismatch.rs:9:10
    |
 LL | fn _test<'a>(f: fn(*mut &'a u32)) {

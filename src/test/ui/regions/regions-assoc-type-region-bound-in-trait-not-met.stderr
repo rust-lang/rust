@@ -16,7 +16,7 @@ error[E0477]: the type `&'a i32` does not fulfill the required lifetime
 LL |     type Value = &'a i32;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: type must outlive the lifetime `'b` as defined on the impl at 19:10 as required by this binding
+note: type must outlive the lifetime `'b` as defined here as required by this binding
   --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:10
    |
 LL | impl<'a, 'b> Foo<'b> for &'a i64 {

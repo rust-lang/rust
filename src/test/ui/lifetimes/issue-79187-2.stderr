@@ -25,7 +25,7 @@ LL |     take_foo(|a: &i32| a);
    |
    = note: expected reference `&i32`
               found reference `&i32`
-note: the anonymous lifetime #1 defined on the body at 9:14 doesn't meet the lifetime requirements
+note: the anonymous lifetime #1 defined here doesn't meet the lifetime requirements
   --> $DIR/issue-79187-2.rs:9:14
    |
 LL |     take_foo(|a: &i32| a);
@@ -44,7 +44,7 @@ LL |     take_foo(|a: &i32| -> &i32 { a });
    |
    = note: expected reference `&i32`
               found reference `&i32`
-note: the anonymous lifetime #1 defined on the body at 10:14 doesn't meet the lifetime requirements
+note: the anonymous lifetime #1 defined here doesn't meet the lifetime requirements
   --> $DIR/issue-79187-2.rs:10:14
    |
 LL |     take_foo(|a: &i32| -> &i32 { a });

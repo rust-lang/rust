@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` d
 LL |         C { f: b }
    |         ^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime defined on the method body at 16:24...
+note: first, the lifetime cannot outlive the anonymous lifetime defined here...
   --> $DIR/type-alias-free-regions.rs:16:24
    |
 LL |     fn from_box(b: Box<B>) -> Self {
@@ -16,7 +16,7 @@ LL |         C { f: b }
    |                ^
    = note: expected `Box<Box<&isize>>`
               found `Box<Box<&isize>>`
-note: but, the lifetime must be valid for the lifetime `'a` as defined on the impl at 15:6...
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
   --> $DIR/type-alias-free-regions.rs:15:6
    |
 LL | impl<'a> FromBox<'a> for C<'a> {
@@ -35,7 +35,7 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |         C { f: Box::new(b.0) }
    |                ^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime defined on the method body at 26:23...
+note: first, the lifetime cannot outlive the anonymous lifetime defined here...
   --> $DIR/type-alias-free-regions.rs:26:23
    |
 LL |     fn from_tuple(b: (B,)) -> Self {
@@ -47,7 +47,7 @@ LL |         C { f: Box::new(b.0) }
    |                         ^^^
    = note: expected `Box<&isize>`
               found `Box<&isize>`
-note: but, the lifetime must be valid for the lifetime `'a` as defined on the impl at 25:6...
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
   --> $DIR/type-alias-free-regions.rs:25:6
    |
 LL | impl<'a> FromTuple<'a> for C<'a> {

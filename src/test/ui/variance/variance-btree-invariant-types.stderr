@@ -6,7 +6,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::IterMut<'_, &'new (), _>`
               found struct `std::collections::btree_map::IterMut<'_, &'static (), _>`
-note: the lifetime `'new` as defined on the function body at 3:21...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:3:21
    |
 LL | fn iter_cov_key<'a, 'new>(v: IterMut<'a, &'static (), ()>) -> IterMut<'a, &'new (), ()> {
@@ -21,7 +21,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::IterMut<'_, _, &'new ()>`
               found struct `std::collections::btree_map::IterMut<'_, _, &'static ()>`
-note: the lifetime `'new` as defined on the function body at 6:21...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:6:21
    |
 LL | fn iter_cov_val<'a, 'new>(v: IterMut<'a, (), &'static ()>) -> IterMut<'a, (), &'new ()> {
@@ -36,7 +36,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::IterMut<'_, &'static (), _>`
               found struct `std::collections::btree_map::IterMut<'_, &'new (), _>`
-note: the lifetime `'new` as defined on the function body at 9:24...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:9:24
    |
 LL | fn iter_contra_key<'a, 'new>(v: IterMut<'a, &'new (), ()>) -> IterMut<'a, &'static (), ()> {
@@ -51,7 +51,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::IterMut<'_, _, &'static ()>`
               found struct `std::collections::btree_map::IterMut<'_, _, &'new ()>`
-note: the lifetime `'new` as defined on the function body at 12:24...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:12:24
    |
 LL | fn iter_contra_val<'a, 'new>(v: IterMut<'a, (), &'new ()>) -> IterMut<'a, (), &'static ()> {
@@ -66,7 +66,7 @@ LL |     v
    |
    = note: expected struct `RangeMut<'_, &'new (), _>`
               found struct `RangeMut<'_, &'static (), _>`
-note: the lifetime `'new` as defined on the function body at 16:22...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:16:22
    |
 LL | fn range_cov_key<'a, 'new>(v: RangeMut<'a, &'static (), ()>) -> RangeMut<'a, &'new (), ()> {
@@ -81,7 +81,7 @@ LL |     v
    |
    = note: expected struct `RangeMut<'_, _, &'new ()>`
               found struct `RangeMut<'_, _, &'static ()>`
-note: the lifetime `'new` as defined on the function body at 19:22...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:19:22
    |
 LL | fn range_cov_val<'a, 'new>(v: RangeMut<'a, (), &'static ()>) -> RangeMut<'a, (), &'new ()> {
@@ -96,7 +96,7 @@ LL |     v
    |
    = note: expected struct `RangeMut<'_, &'static (), _>`
               found struct `RangeMut<'_, &'new (), _>`
-note: the lifetime `'new` as defined on the function body at 22:25...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:22:25
    |
 LL | fn range_contra_key<'a, 'new>(v: RangeMut<'a, &'new (), ()>) -> RangeMut<'a, &'static (), ()> {
@@ -111,7 +111,7 @@ LL |     v
    |
    = note: expected struct `RangeMut<'_, _, &'static ()>`
               found struct `RangeMut<'_, _, &'new ()>`
-note: the lifetime `'new` as defined on the function body at 25:25...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:25:25
    |
 LL | fn range_contra_val<'a, 'new>(v: RangeMut<'a, (), &'new ()>) -> RangeMut<'a, (), &'static ()> {
@@ -126,7 +126,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
               found struct `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
-note: the lifetime `'new` as defined on the function body at 29:20...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:29:20
    |
 LL | fn occ_cov_key<'a, 'new>(v: OccupiedEntry<'a, &'static (), ()>)
@@ -141,7 +141,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
               found struct `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
-note: the lifetime `'new` as defined on the function body at 33:20...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:33:20
    |
 LL | fn occ_cov_val<'a, 'new>(v: OccupiedEntry<'a, (), &'static ()>)
@@ -156,7 +156,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
               found struct `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
-note: the lifetime `'new` as defined on the function body at 37:23...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:37:23
    |
 LL | fn occ_contra_key<'a, 'new>(v: OccupiedEntry<'a, &'new (), ()>)
@@ -171,7 +171,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
               found struct `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
-note: the lifetime `'new` as defined on the function body at 41:23...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:41:23
    |
 LL | fn occ_contra_val<'a, 'new>(v: OccupiedEntry<'a, (), &'new ()>)
@@ -186,7 +186,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
               found struct `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
-note: the lifetime `'new` as defined on the function body at 46:20...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:46:20
    |
 LL | fn vac_cov_key<'a, 'new>(v: VacantEntry<'a, &'static (), ()>)
@@ -201,7 +201,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
               found struct `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
-note: the lifetime `'new` as defined on the function body at 50:20...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:50:20
    |
 LL | fn vac_cov_val<'a, 'new>(v: VacantEntry<'a, (), &'static ()>)
@@ -216,7 +216,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
               found struct `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
-note: the lifetime `'new` as defined on the function body at 54:23...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:54:23
    |
 LL | fn vac_contra_key<'a, 'new>(v: VacantEntry<'a, &'new (), ()>)
@@ -231,7 +231,7 @@ LL |     v
    |
    = note: expected struct `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
               found struct `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
-note: the lifetime `'new` as defined on the function body at 58:23...
+note: the lifetime `'new` as defined here...
   --> $DIR/variance-btree-invariant-types.rs:58:23
    |
 LL | fn vac_contra_val<'a, 'new>(v: VacantEntry<'a, (), &'new ()>)
