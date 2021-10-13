@@ -294,7 +294,7 @@ pub(crate) fn does_nested_pattern(pat: &ast::Pat) -> bool {
     false
 }
 
-fn calc_depth(pat: &ast::Pat, mut depth: usize) -> usize {
+fn calc_depth(pat: &ast::Pat, depth: usize) -> usize {
     match pat {
         ast::Pat::IdentPat(_)
         | ast::Pat::BoxPat(_)
@@ -312,12 +312,16 @@ fn calc_depth(pat: &ast::Pat, mut depth: usize) -> usize {
         | ast::Pat::TuplePat(_)
         | ast::Pat::ConstBlockPat(_) => 1,
 
-        // TODO implement
+        // TODO: Other patterns may also be nested. Currently it simply supports only `TupleStructPat`
         ast::Pat::TupleStructPat(pat) => {
+            let mut max_depth = depth;
             for p in pat.fields() {
-                depth += calc_depth(&p, depth + 1);
+                let d = calc_depth(&p, depth + 1);
+                if d > max_depth {
+                    max_depth = d
+                }
             }
-            depth
+            max_depth
         }
     }
 }
