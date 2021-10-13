@@ -1,5 +1,5 @@
 // Here we check that type ascription is syntactically invalid when
-// not in the top position of a ascribing a let binding or function parameter.
+// not in the top position of an ascribing `let` binding or function parameter.
 
 
 // This has no effect.
