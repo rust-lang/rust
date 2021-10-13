@@ -1,7 +1,6 @@
 use rustc_errors::{Applicability, ErrorReported, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::CtorOf;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
@@ -9,7 +8,7 @@ use rustc_hir::{HirId, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable, TypeFolder};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -198,38 +197,9 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // Try to use the segment resolution if it is valid, otherwise we
             // default to the path resolution.
             let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
-            let generics = match res {
-                Res::Def(DefKind::Ctor(CtorOf::Variant, _), def_id) => tcx
-                    .generics_of(tcx.parent(def_id).and_then(|def_id| tcx.parent(def_id)).unwrap()),
-                Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Struct, _), def_id) => {
-                    tcx.generics_of(tcx.parent(def_id).unwrap())
-                }
-                // Other `DefKind`s don't have generics and would ICE when calling
-                // `generics_of`.
-                Res::Def(
-                    DefKind::Struct
-                    | DefKind::Union
-                    | DefKind::Enum
-                    | DefKind::Trait
-                    | DefKind::OpaqueTy
-                    | DefKind::TyAlias
-                    | DefKind::ForeignTy
-                    | DefKind::TraitAlias
-                    | DefKind::AssocTy
-                    | DefKind::Fn
-                    | DefKind::AssocFn
-                    | DefKind::AssocConst
-                    | DefKind::Impl,
-                    def_id,
-                ) => tcx.generics_of(def_id),
-                Res::Err => {
-                    tcx.sess.delay_span_bug(tcx.def_span(def_id), "anon const with Res::Err");
-                    return None;
-                }
-                _ => {
-                    // If the user tries to specify generics on a type that does not take them,
-                    // e.g. `usize<T>`, we may hit this branch, in which case we treat it as if
-                    // no arguments have been passed. An error should already have been emitted.
+            let generics = match tcx.res_generics_def_id(res) {
+                Some(def_id) => tcx.generics_of(def_id),
+                None => {
                     tcx.sess.delay_span_bug(
                         tcx.def_span(def_id),
                         &format!("unexpected anon const res {:?} in path: {:?}", res, path),
