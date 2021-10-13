@@ -618,6 +618,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Read discriminant, return the runtime value as well as the variant index.
+    /// Can also legally be called on non-enums (e.g. through the discriminant_value intrinsic)!
     pub fn read_discriminant(
         &self,
         op: &OpTy<'tcx, M::PointerTag>,
