@@ -1,5 +1,5 @@
 error[E0599]: the method `f` exists for struct `S`, but its trait bounds were not satisfied
-  --> $DIR/method-unsatified-assoc-type-predicate.rs:26:7
+  --> $DIR/method-unsatified-assoc-type-predicate.rs:27:7
    |
 LL | struct S;
    | ---------
@@ -11,9 +11,12 @@ LL | struct S;
 LL |     a.f();
    |       ^ method cannot be called on `S` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `<S as X>::Y<i32> = i32`
-           which is required by `S: M`
+note: the following trait bounds were not satisfied because of the requirements of the implementation of `M` for `_`:
+      `<S as X>::Y<i32> = i32`
+  --> $DIR/method-unsatified-assoc-type-predicate.rs:14:26
+   |
+LL | impl<T: X<Y<i32> = i32>> M for T {}
+   |                          ^     ^
 
 error: aborting due to previous error
 

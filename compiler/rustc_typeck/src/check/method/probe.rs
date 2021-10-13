@@ -78,7 +78,8 @@ struct ProbeContext<'a, 'tcx> {
 
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
-    unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
+    unsatisfied_predicates:
+        Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>,
 
     is_suggestion: IsSuggestion,
 
@@ -1351,6 +1352,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         possibly_unsatisfied_predicates: &mut Vec<(
             ty::Predicate<'tcx>,
             Option<ty::Predicate<'tcx>>,
+            Option<ObligationCause<'tcx>>,
         )>,
         unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>>
@@ -1497,6 +1499,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         possibly_unsatisfied_predicates: &mut Vec<(
             ty::Predicate<'tcx>,
             Option<ty::Predicate<'tcx>>,
+            Option<ObligationCause<'tcx>>,
         )>,
     ) -> ProbeResult {
         debug!("consider_probe: self_ty={:?} probe={:?}", self_ty, probe);
@@ -1508,8 +1511,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 .sup(probe.xform_self_ty, self_ty)
             {
                 Ok(InferOk { obligations, value: () }) => obligations,
-                Err(_) => {
-                    debug!("--> cannot relate self-types");
+                Err(err) => {
+                    debug!("--> cannot relate self-types {:?}", err);
                     return ProbeResult::NoMatch;
                 }
             };
@@ -1558,7 +1561,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         let o = self.resolve_vars_if_possible(o);
                         if !self.predicate_may_hold(&o) {
                             result = ProbeResult::NoMatch;
-                            possibly_unsatisfied_predicates.push((o.predicate, None));
+                            possibly_unsatisfied_predicates.push((
+                                o.predicate,
+                                None,
+                                Some(o.cause),
+                            ));
                         }
                     }
                 }
@@ -1604,8 +1611,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                             } else {
                                                 Some(predicate)
                                             };
-                                            possibly_unsatisfied_predicates
-                                                .push((nested_predicate, p));
+                                            possibly_unsatisfied_predicates.push((
+                                                nested_predicate,
+                                                p,
+                                                Some(obligation.cause.clone()),
+                                            ));
                                         }
                                     }
                                 }
@@ -1613,7 +1623,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                     // Some nested subobligation of this predicate
                                     // failed.
                                     let predicate = self.resolve_vars_if_possible(predicate);
-                                    possibly_unsatisfied_predicates.push((predicate, None));
+                                    possibly_unsatisfied_predicates.push((predicate, None, None));
                                 }
                             }
                             false
@@ -1632,7 +1642,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let o = self.resolve_vars_if_possible(o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
-                    possibly_unsatisfied_predicates.push((o.predicate, None));
+                    possibly_unsatisfied_predicates.push((o.predicate, None, Some(o.cause)));
                 }
             }
 
