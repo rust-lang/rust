@@ -1024,12 +1024,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         placeholder(fragment_kind, NodeId::placeholder_from_expn_id(expn_id), vis)
     }
 
-    fn collect_bang(
-        &mut self,
-        mac: ast::MacCall,
-        span: Span,
-        kind: AstFragmentKind,
-    ) -> AstFragment {
+    fn collect_bang(&mut self, mac: ast::MacCall, kind: AstFragmentKind) -> AstFragment {
+        // cache the macro call span so that it can be
+        // easily adjusted for incremental compilation
+        let span = mac.span();
         self.collect(kind, InvocationKind::Bang { mac, span })
     }
 
@@ -1216,7 +1214,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
             if let ast::ExprKind::MacCall(mac) = expr.kind {
                 self.check_attributes(&expr.attrs, &mac);
-                self.collect_bang(mac, expr.span, AstFragmentKind::Expr).make_expr().into_inner()
+                self.collect_bang(mac, AstFragmentKind::Expr).make_expr().into_inner()
             } else {
                 assign_id!(self, &mut expr.id, || {
                     ensure_sufficient_stack(|| noop_visit_expr(&mut expr, self));
@@ -1312,7 +1310,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
             if let ast::ExprKind::MacCall(mac) = expr.kind {
                 self.check_attributes(&expr.attrs, &mac);
-                self.collect_bang(mac, expr.span, AstFragmentKind::OptExpr)
+                self.collect_bang(mac, AstFragmentKind::OptExpr)
                     .make_opt_expr()
                     .map(|expr| expr.into_inner())
             } else {
@@ -1333,9 +1331,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         visit_clobber(pat, |mut pat| match mem::replace(&mut pat.kind, PatKind::Wild) {
-            PatKind::MacCall(mac) => {
-                self.collect_bang(mac, pat.span, AstFragmentKind::Pat).make_pat()
-            }
+            PatKind::MacCall(mac) => self.collect_bang(mac, AstFragmentKind::Pat).make_pat(),
             _ => unreachable!(),
         });
     }
@@ -1354,12 +1350,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .make_stmts();
             }
 
-            let span = stmt.span;
             match self.take_stmt_bang(stmt) {
                 Ok((add_semicolon, mac, attrs)) => {
                     self.check_attributes(&attrs, &mac);
-                    let mut stmts =
-                        self.collect_bang(mac, span, AstFragmentKind::Stmts).make_stmts();
+                    let mut stmts = self.collect_bang(mac, AstFragmentKind::Stmts).make_stmts();
 
                     // If this is a macro invocation with a semicolon, then apply that
                     // semicolon to the final statement produced by expansion.
@@ -1427,7 +1421,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 item.attrs = attrs;
                 item.and_then(|item| match item.kind {
                     ItemKind::MacCall(mac) => {
-                        self.collect_bang(mac, span, AstFragmentKind::Items).make_items()
+                        self.collect_bang(mac, AstFragmentKind::Items).make_items()
                     }
                     _ => unreachable!(),
                 })
@@ -1536,9 +1530,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             ast::AssocItemKind::MacCall(ref mac) => {
                 self.check_attributes(&item.attrs, &mac);
                 item.and_then(|item| match item.kind {
-                    ast::AssocItemKind::MacCall(mac) => self
-                        .collect_bang(mac, item.span, AstFragmentKind::TraitItems)
-                        .make_trait_items(),
+                    ast::AssocItemKind::MacCall(mac) => {
+                        self.collect_bang(mac, AstFragmentKind::TraitItems).make_trait_items()
+                    }
                     _ => unreachable!(),
                 })
             }
@@ -1561,9 +1555,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             ast::AssocItemKind::MacCall(ref mac) => {
                 self.check_attributes(&item.attrs, &mac);
                 item.and_then(|item| match item.kind {
-                    ast::AssocItemKind::MacCall(mac) => self
-                        .collect_bang(mac, item.span, AstFragmentKind::ImplItems)
-                        .make_impl_items(),
+                    ast::AssocItemKind::MacCall(mac) => {
+                        self.collect_bang(mac, AstFragmentKind::ImplItems).make_impl_items()
+                    }
                     _ => unreachable!(),
                 })
             }
@@ -1580,9 +1574,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         };
 
         visit_clobber(ty, |mut ty| match mem::replace(&mut ty.kind, ast::TyKind::Err) {
-            ast::TyKind::MacCall(mac) => {
-                self.collect_bang(mac, ty.span, AstFragmentKind::Ty).make_ty()
-            }
+            ast::TyKind::MacCall(mac) => self.collect_bang(mac, AstFragmentKind::Ty).make_ty(),
             _ => unreachable!(),
         });
     }
@@ -1607,9 +1599,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             ast::ForeignItemKind::MacCall(ref mac) => {
                 self.check_attributes(&foreign_item.attrs, &mac);
                 foreign_item.and_then(|item| match item.kind {
-                    ast::ForeignItemKind::MacCall(mac) => self
-                        .collect_bang(mac, item.span, AstFragmentKind::ForeignItems)
-                        .make_foreign_items(),
+                    ast::ForeignItemKind::MacCall(mac) => {
+                        self.collect_bang(mac, AstFragmentKind::ForeignItems).make_foreign_items()
+                    }
                     _ => unreachable!(),
                 })
             }
