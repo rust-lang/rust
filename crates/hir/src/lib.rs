@@ -3007,3 +3007,9 @@ impl HasCrate for Function {
         self.module(db).krate()
     }
 }
+
+impl HasCrate for Type {
+    fn krate(&self, _db: &dyn HirDatabase) -> Crate {
+        self.krate.into()
+    }
+}

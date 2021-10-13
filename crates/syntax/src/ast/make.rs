@@ -124,6 +124,10 @@ pub fn assoc_item_list() -> ast::AssocItemList {
     ast_from_text("impl C for D {}")
 }
 
+pub fn impl_(ty: ast::Path) -> ast::Impl {
+    ast_from_text(&format!("impl {} {{}}", ty))
+}
+
 pub fn impl_trait(trait_: ast::Path, ty: ast::Path) -> ast::Impl {
     ast_from_text(&format!("impl {} for {} {{}}", trait_, ty))
 }
