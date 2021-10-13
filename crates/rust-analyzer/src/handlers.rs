@@ -3,6 +3,7 @@
 //! `ide` crate.
 
 use std::{
+    convert::TryFrom,
     io::Write as _,
     process::{self, Stdio},
 };
@@ -26,10 +27,11 @@ use lsp_types::{
     SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
     TextDocumentIdentifier, Url, WorkspaceEdit,
 };
-use project_model::{ProjectWorkspace, TargetKind};
+use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize, T};
+use vfs::AbsPathBuf;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -606,28 +608,30 @@ pub(crate) fn handle_parent_module(
     let _p = profile::span("handle_parent_module");
     if let Ok(file_path) = &params.text_document.uri.to_file_path() {
         if file_path.file_name().unwrap_or_default() == "Cargo.toml" {
-            // search parent workspace and collect a list of `LocationLink`path,
-            // since cargo.toml doesn't have file_id
+            // search workspaces for parent packages or fallback to workspace root
+            let abs_path_buf = match AbsPathBuf::try_from(file_path.to_path_buf()).ok() {
+                Some(abs_path_buf) => abs_path_buf,
+                None => return Ok(None),
+            };
+
+            let manifest_path = match ManifestPath::try_from(abs_path_buf).ok() {
+                Some(manifest_path) => manifest_path,
+                None => return Ok(None),
+            };
+
             let links: Vec<LocationLink> = snap
                 .workspaces
                 .iter()
                 .filter_map(|ws| match ws {
-                    ProjectWorkspace::Cargo { cargo, .. } => cargo
-                        .packages()
-                        .find(|&pkg| cargo[pkg].manifest.as_ref() == file_path)
-                        .and_then(|_| Some(cargo)),
+                    ProjectWorkspace::Cargo { cargo, .. } => cargo.parent_manifests(&manifest_path),
                     _ => None,
                 })
-                .map(|ws| {
-                    let target_cargo_toml_path = ws.workspace_root().join("Cargo.toml");
-                    let target_cargo_toml_url =
-                        to_proto::url_from_abs_path(&target_cargo_toml_path);
-                    LocationLink {
-                        origin_selection_range: None,
-                        target_uri: target_cargo_toml_url,
-                        target_range: Range::default(),
-                        target_selection_range: Range::default(),
-                    }
+                .flatten()
+                .map(|parent_manifest_path| LocationLink {
+                    origin_selection_range: None,
+                    target_uri: to_proto::url_from_abs_path(&parent_manifest_path),
+                    target_range: Range::default(),
+                    target_selection_range: Range::default(),
                 })
                 .collect::<_>();
             return Ok(Some(links.into()));

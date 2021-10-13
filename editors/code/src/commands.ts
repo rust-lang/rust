@@ -189,12 +189,14 @@ export function parentModule(ctx: Ctx): Cmd {
         const client = ctx.client;
         if (!editor || !client) return;
         if (!(isRustDocument(editor.document) || isCargoTomlDocument(editor.document))) return;
+
         const locations = await client.sendRequest(ra.parentModule, {
             textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
             position: client.code2ProtocolConverter.asPosition(
                 editor.selection.active,
             ),
         });
+        if (!locations) return;
 
         if (locations.length === 1) {
             const loc = locations[0];
