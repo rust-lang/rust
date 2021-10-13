@@ -1,9 +1,9 @@
 use hir::{self, HasCrate, HirDisplay};
 use stdx::format_to;
-use syntax::ast::{self, AstNode, HasName, HasVisibility};
+use syntax::ast::{self, make, AstNode, HasName, HasVisibility};
 
 use crate::{
-    utils::{find_impl_block_end, find_struct_impl, generate_impl_text},
+    utils::{find_impl_block_end, find_struct_impl, generate_impl_text, render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
 
@@ -78,17 +78,16 @@ pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Optio
                     }
                 };
 
-                format_to!(
-                    buf,
-                    "{}fn {}(&self) {} {{
-                    self.{}.{}()
-                }}",
-                    vis,
-                    method.name(ctx.db()),
-                    return_type,
-                    field_name,
-                    method.name(ctx.db())
-                );
+                // make function
+                let vis = strukt.visibility();
+                let name = make::name(&method.name(ctx.db()).to_string());
+                let type_params = None;
+                let params = make::param_list(None, []);
+                let body = make::block_expr([], None);
+                let ret_type = &method.ret_type(ctx.db()).display(ctx.db()).to_string();
+                let ret_type = Some(make::ret_type(make::ty(ret_type)));
+                let is_async = false;
+                let f = make::fn_(vis, name, type_params, params, body, ret_type, is_async);
 
                 let start_offset = impl_def
                     .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
@@ -97,7 +96,14 @@ pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Optio
                         strukt.syntax().text_range().end()
                     });
 
-                builder.insert(start_offset, buf);
+                let cap = ctx.config.snippet_cap.unwrap(); // FIXME.
+                let cursor = Cursor::Before(f.syntax());
+
+                builder.insert_snippet(
+                    cap,
+                    start_offset,
+                    format!("\n\n{}", render_snippet(cap, f.syntax(), cursor)),
+                );
             },
         )?;
     }
