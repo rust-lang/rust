@@ -310,9 +310,9 @@ fn calc_depth(pat: &ast::Pat, depth: usize) -> usize {
         | ast::Pat::RefPat(_)
         | ast::Pat::SlicePat(_)
         | ast::Pat::TuplePat(_)
-        | ast::Pat::ConstBlockPat(_) => 1,
+        | ast::Pat::ConstBlockPat(_) => depth,
 
-        // TODO: Other patterns may also be nested. Currently it simply supports only `TupleStructPat`
+        // FIXME: Other patterns may also be nested. Currently it simply supports only `TupleStructPat`
         ast::Pat::TupleStructPat(pat) => {
             let mut max_depth = depth;
             for p in pat.fields() {
