@@ -1087,25 +1087,19 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 let MacCallStmt { mac, style, attrs, .. } = mac.into_inner();
                 Ok((style == MacStmtStyle::Semicolon, mac, attrs.into()))
             }
-            StmtKind::Item(ref item) if matches!(item.kind, ItemKind::MacCall(..)) => {
-                match stmt.kind {
-                    StmtKind::Item(item) => match item.into_inner() {
-                        ast::Item { kind: ItemKind::MacCall(mac), attrs, .. } => {
-                            Ok((mac.args.need_semicolon(), mac, attrs))
-                        }
-                        _ => unreachable!(),
-                    },
+            StmtKind::Item(item) if matches!(item.kind, ItemKind::MacCall(..)) => {
+                match item.into_inner() {
+                    ast::Item { kind: ItemKind::MacCall(mac), attrs, .. } => {
+                        Ok((mac.args.need_semicolon(), mac, attrs))
+                    }
                     _ => unreachable!(),
                 }
             }
-            StmtKind::Semi(ref expr) if matches!(expr.kind, ast::ExprKind::MacCall(..)) => {
-                match stmt.kind {
-                    StmtKind::Semi(expr) => match expr.into_inner() {
-                        ast::Expr { kind: ast::ExprKind::MacCall(mac), attrs, .. } => {
-                            Ok((mac.args.need_semicolon(), mac, attrs.into()))
-                        }
-                        _ => unreachable!(),
-                    },
+            StmtKind::Semi(expr) if matches!(expr.kind, ast::ExprKind::MacCall(..)) => {
+                match expr.into_inner() {
+                    ast::Expr { kind: ast::ExprKind::MacCall(mac), attrs, .. } => {
+                        Ok((mac.args.need_semicolon(), mac, attrs.into()))
+                    }
                     _ => unreachable!(),
                 }
             }
