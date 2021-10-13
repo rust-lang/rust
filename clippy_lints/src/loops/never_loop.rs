@@ -117,12 +117,12 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
         | ExprKind::Unary(_, e)
         | ExprKind::Cast(e, _)
         | ExprKind::Type(e, _)
-        | ExprKind::Let(_, e, _)
         | ExprKind::Field(e, _)
         | ExprKind::AddrOf(_, _, e)
         | ExprKind::Struct(_, _, Some(e))
         | ExprKind::Repeat(e, _)
         | ExprKind::DropTemps(e) => never_loop_expr(e, main_loop_id),
+        ExprKind::Let(let_expr) => never_loop_expr(let_expr.init, main_loop_id),
         ExprKind::Array(es) | ExprKind::MethodCall(_, _, es, _) | ExprKind::Tup(es) => {
             never_loop_expr_all(&mut es.iter(), main_loop_id)
         },
