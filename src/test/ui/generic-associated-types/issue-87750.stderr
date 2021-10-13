@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `Node<i32, RcFamily>: Sized`
+  --> $DIR/issue-87750.rs:20:16
+   |
+LL |     let _list: <RcFamily as PointerFamily>::Pointer<Node<i32, RcFamily>>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.
