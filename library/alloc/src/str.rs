@@ -538,7 +538,7 @@ impl str {
     /// [`make_ascii_uppercase`]: str::make_ascii_uppercase
     /// [`to_uppercase`]: #method.to_uppercase
     #[cfg(not(no_global_oom_handling))]
-    #[must_use = "to uppercase the value in-place, use `make_ascii_lowercase()`"]
+    #[must_use = "to uppercase the value in-place, use `make_ascii_uppercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> String {

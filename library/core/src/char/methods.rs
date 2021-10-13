@@ -328,9 +328,11 @@ impl char {
     ///
     /// ```should_panic
     /// // this panics
-    /// '1'.to_digit(37);
+    /// let _ = '1'.to_digit(37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     #[inline]
     pub fn to_digit(self, radix: u32) -> Option<u32> {
         assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
