@@ -285,6 +285,43 @@ pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {
     pat_head == var_head
 }
 
+pub(crate) fn does_nested_pattern(pat: &ast::Pat) -> bool {
+    let depth = calc_depth(pat, 0);
+
+    if 1 < depth {
+        return true;
+    }
+    false
+}
+
+fn calc_depth(pat: &ast::Pat, mut depth: usize) -> usize {
+    match pat {
+        ast::Pat::IdentPat(_)
+        | ast::Pat::BoxPat(_)
+        | ast::Pat::RestPat(_)
+        | ast::Pat::LiteralPat(_)
+        | ast::Pat::MacroPat(_)
+        | ast::Pat::OrPat(_)
+        | ast::Pat::ParenPat(_)
+        | ast::Pat::PathPat(_)
+        | ast::Pat::WildcardPat(_)
+        | ast::Pat::RangePat(_)
+        | ast::Pat::RecordPat(_)
+        | ast::Pat::RefPat(_)
+        | ast::Pat::SlicePat(_)
+        | ast::Pat::TuplePat(_)
+        | ast::Pat::ConstBlockPat(_) => 1,
+
+        // TODO implement
+        ast::Pat::TupleStructPat(pat) => {
+            for p in pat.fields() {
+                depth += calc_depth(&p, depth + 1);
+            }
+            depth
+        }
+    }
+}
+
 // Uses a syntax-driven approach to find any impl blocks for the struct that
 // exist within the module/file
 //

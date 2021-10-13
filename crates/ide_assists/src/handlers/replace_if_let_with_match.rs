@@ -12,7 +12,7 @@ use syntax::{
 };
 
 use crate::{
-    utils::{does_pat_match_variant, unwrap_trivial_block},
+    utils::{does_nested_pattern, does_pat_match_variant, unwrap_trivial_block},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -143,6 +143,8 @@ fn make_else_arm(
             Some((it, pat)) => {
                 if does_pat_match_variant(pat, &it.sad_pattern()) {
                     it.happy_pattern_wildcard()
+                } else if does_nested_pattern(pat) {
+                    make::wildcard_pat().into()
                 } else {
                     it.sad_pattern()
                 }
@@ -596,6 +598,7 @@ fn foo(x: Result<i32, ()>) {
         Ok(Some(_)) => (),
         _ => (),
     }
+}
 "#,
         );
     }
