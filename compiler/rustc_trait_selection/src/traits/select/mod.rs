@@ -1127,34 +1127,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
         // Treat negative impls as unimplemented, and reservation impls as ambiguity.
         if let ImplCandidate(def_id) = candidate {
-            match tcx.impl_polarity(def_id) {
-                ty::ImplPolarity::Negative if !self.allow_negative_impls => {
+            if let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id) {
+                if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
+                    let attrs = tcx.get_attrs(def_id);
+                    let attr = tcx.sess.find_by_name(&attrs, sym::rustc_reservation_impl);
+                    let value = attr.and_then(|a| a.value_str());
+                    if let Some(value) = value {
+                        debug!(
+                            "filter_impls: \
+                                 reservation impl ambiguity on {:?}",
+                            def_id
+                        );
+                        intercrate_ambiguity_clauses.push(
+                            IntercrateAmbiguityCause::ReservationImpl {
+                                message: value.to_string(),
+                            },
+                        );
+                    }
+                }
+                return Ok(None);
+            }
+
+            if !self.allow_negative_impls {
+                if obligation.predicate.skip_binder().polarity != tcx.impl_polarity(def_id) {
                     return Err(Unimplemented);
                 }
-                ty::ImplPolarity::Reservation => {
-                    if let Some(intercrate_ambiguity_clauses) =
-                        &mut self.intercrate_ambiguity_causes
-                    {
-                        let attrs = tcx.get_attrs(def_id);
-                        let attr = tcx.sess.find_by_name(&attrs, sym::rustc_reservation_impl);
-                        let value = attr.and_then(|a| a.value_str());
-                        if let Some(value) = value {
-                            debug!(
-                                "filter_impls: \
-                                 reservation impl ambiguity on {:?}",
-                                def_id
-                            );
-                            intercrate_ambiguity_clauses.push(
-                                IntercrateAmbiguityCause::ReservationImpl {
-                                    message: value.to_string(),
-                                },
-                            );
-                        }
-                    }
-                    return Ok(None);
-                }
-                _ => {}
-            };
+            }
         }
         Ok(Some(candidate))
     }
