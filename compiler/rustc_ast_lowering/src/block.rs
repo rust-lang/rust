@@ -152,6 +152,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let block = self.lower_block(els, false);
             self.arena.alloc(self.expr_block(block, AttrVec::new()))
         };
+        self.alias_attrs(let_expr.hir_id, local_hir_id);
         self.alias_attrs(else_expr.hir_id, local_hir_id);
         let if_expr = self.arena.alloc(hir::Expr {
             hir_id: stmt_hir_id,
