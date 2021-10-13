@@ -192,6 +192,7 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                             .collect::<SmallVec<[RegionId; 8]>>();
                         // Sort the id list so that the algorithm is deterministic
                         ids.sort_unstable();
+                        ids.dedup();
                         let ids = ids;
                         match &ids[..] {
                             // Create a new connected region
