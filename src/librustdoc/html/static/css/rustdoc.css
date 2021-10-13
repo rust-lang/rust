@@ -75,12 +75,13 @@
 	font-display: swap;
 }
 
-/* Avoid using legacy CJK serif fonts in Windows like Batang */
+/* Avoid using legacy CJK serif fonts in Windows like Batang. */
 @font-face {
 	font-family: 'Noto Sans KR';
-	src: url("noto-sans-kr-v13-korean-regular.woff") format("woff");
+	src: url("noto-sans-kr-regular.woff2") format("woff2"),
+		url("noto-sans-kr-regular.woff") format("woff");
 	font-display: swap;
-	unicode-range: U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF;
+	unicode-range: U+AC00-D7AF, U+3130-318F, U+1100-11FF, U+A960-A97F, U+D7B0-D7FF;
 }
 
 * {

@@ -157,15 +157,14 @@ crate mod source_code_pro {
 }
 
 crate mod noto_sans_kr {
-    /// The file `noto-sans-kr-v13-korean-regular.woff`, the Regular variant of the Noto Sans KR
-    /// font.
-    crate static REGULAR: &[u8] =
-        include_bytes!("static/fonts/noto-sans-kr-v13-korean-regular.woff");
+    /// The file `noto-sans-kr.woff`, the Regular variant of the Noto Sans KR font.
+    crate static REGULAR: &[u8] = include_bytes!("static/fonts/noto-sans-kr-regular.woff");
 
-    /// The file `noto-sans-kr-v13-korean-regular-LICENSE.txt`, the license text of the Noto Sans KR
-    /// font.
-    crate static LICENSE: &[u8] =
-        include_bytes!("static/fonts/noto-sans-kr-v13-korean-regular-LICENSE.txt");
+    /// The file `noto-sans-kr.woff2`, the Regular variant of the Noto Sans KR font.
+    crate static REGULAR2: &[u8] = include_bytes!("static/fonts/noto-sans-kr-regular.woff2");
+
+    /// The file `noto-sans-kr-LICENSE.txt`, the license text of the Noto Sans KR font.
+    crate static LICENSE: &[u8] = include_bytes!("static/fonts/noto-sans-kr-LICENSE.txt");
 }
 
 /// Files related to the sidebar in rustdoc sources.
