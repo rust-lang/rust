@@ -6,7 +6,7 @@ LL |     let f = |x: &dyn TT| x.func(); //[default]~ ERROR: mismatched types
    |
    = note: expected reference `&(dyn TT + 'static)`
               found reference `&dyn TT`
-note: the anonymous lifetime #1 defined on the body at 13:13...
+note: the anonymous lifetime #1 defined here...
   --> $DIR/ice-6256.rs:13:13
    |
 LL |     let f = |x: &dyn TT| x.func(); //[default]~ ERROR: mismatched types
