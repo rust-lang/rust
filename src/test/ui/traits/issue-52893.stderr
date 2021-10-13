@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-52893.rs:53:22
+   |
+LL | impl<F, Name, P> AddClass<Name, F> for Class<P>
+   |      - this type parameter
+...
+LL |         builder.push(output);
+   |                      ^^^^^^ expected type parameter `F`, found struct `Class`
+   |
+   = note: expected type parameter `F`
+                      found struct `Class<P>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
