@@ -3,6 +3,11 @@ error[E0433]: failed to resolve: use of undeclared crate or module `a`
    |
 LL |     a::bar();
    |     ^ use of undeclared crate or module `a`
+   |
+help: there is a crate or module with a similar name
+   |
+LL |     b::bar();
+   |     ~
 
 error: aborting due to previous error
 
