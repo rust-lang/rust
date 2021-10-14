@@ -160,14 +160,19 @@ impl ProjectWorkspace {
                     cmd
                 })?;
 
-                let meta = CargoWorkspace::fetch_metadata(&cargo_toml, config, progress)
-                    .with_context(|| {
-                        format!(
-                            "Failed to read Cargo metadata from Cargo.toml file {}, {}",
-                            cargo_toml.display(),
-                            cargo_version
-                        )
-                    })?;
+                let meta = CargoWorkspace::fetch_metadata(
+                    &cargo_toml,
+                    cargo_toml.parent(),
+                    config,
+                    progress,
+                )
+                .with_context(|| {
+                    format!(
+                        "Failed to read Cargo metadata from Cargo.toml file {}, {}",
+                        cargo_toml.display(),
+                        cargo_version
+                    )
+                })?;
                 let cargo = CargoWorkspace::new(meta);
 
                 let sysroot = if config.no_sysroot {
@@ -189,10 +194,15 @@ impl ProjectWorkspace {
 
                 let rustc = match rustc_dir {
                     Some(rustc_dir) => Some({
-                        let meta = CargoWorkspace::fetch_metadata(&rustc_dir, config, progress)
-                            .with_context(|| {
-                                "Failed to read Cargo metadata for Rust sources".to_string()
-                            })?;
+                        let meta = CargoWorkspace::fetch_metadata(
+                            &rustc_dir,
+                            cargo_toml.parent(),
+                            config,
+                            progress,
+                        )
+                        .with_context(|| {
+                            "Failed to read Cargo metadata for Rust sources".to_string()
+                        })?;
                         CargoWorkspace::new(meta)
                     }),
                     None => None,
