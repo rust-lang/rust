@@ -1,5 +1,5 @@
 error[E0732]: `#[repr(inttype)]` must be specified
-  --> $DIR/arbitrary_enum_discriminant-no-repr.rs:3:1
+  --> $DIR/arbitrary_enum_discriminant-no-repr.rs:4:1
    |
 LL | / enum Enum {
 LL | |

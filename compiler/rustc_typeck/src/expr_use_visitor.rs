@@ -619,6 +619,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         if let Some(hir::Guard::If(ref e)) = arm.guard {
             self.consume_expr(e)
+        } else if let Some(hir::Guard::IfLet(_, ref e)) = arm.guard {
+            self.consume_expr(e)
         }
 
         self.consume_expr(&arm.body);

@@ -544,6 +544,12 @@ pub struct SimplifyBranchSame;
 
 impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // This optimization is disabled by default for now due to
+        // soundness concerns; see issue #89485 and PR #89489.
+        if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
+            return;
+        }
+
         trace!("Running SimplifyBranchSame on {:?}", body.source);
         let finder = SimplifyBranchSameOptimizationFinder { body, tcx };
         let opts = finder.find();
@@ -706,12 +712,24 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
         let helper = |rhs: &Rvalue<'tcx>,
                       place: &Place<'tcx>,
                       variant_index: &VariantIdx,
+                      switch_value: u128,
                       side_to_choose| {
             let place_type = place.ty(self.body, self.tcx).ty;
             let adt = match *place_type.kind() {
                 ty::Adt(adt, _) if adt.is_enum() => adt,
                 _ => return StatementEquality::NotEqual,
             };
+            // We need to make sure that the switch value that targets the bb with
+            // SetDiscriminant is the same as the variant discriminant.
+            let variant_discr = adt.discriminant_for_variant(self.tcx, *variant_index).val;
+            if variant_discr != switch_value {
+                trace!(
+                    "NO: variant discriminant {} does not equal switch value {}",
+                    variant_discr,
+                    switch_value
+                );
+                return StatementEquality::NotEqual;
+            }
             let variant_is_fieldless = adt.variants[*variant_index].fields.is_empty();
             if !variant_is_fieldless {
                 trace!("NO: variant {:?} was not fieldless", variant_index);
@@ -740,20 +758,28 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
             (
                 StatementKind::Assign(box (_, rhs)),
                 StatementKind::SetDiscriminant { place, variant_index },
-            )
-            // we need to make sure that the switch value that targets the bb with SetDiscriminant (y), is the same as the variant index
-            if Some(variant_index.index() as u128) == y_target_and_value.value => {
+            ) if y_target_and_value.value.is_some() => {
                 // choose basic block of x, as that has the assign
-                helper(rhs, place, variant_index, x_target_and_value.target)
+                helper(
+                    rhs,
+                    place,
+                    variant_index,
+                    y_target_and_value.value.unwrap(),
+                    x_target_and_value.target,
+                )
             }
             (
                 StatementKind::SetDiscriminant { place, variant_index },
                 StatementKind::Assign(box (_, rhs)),
-            )
-            // we need to make sure that the switch value that targets the bb with SetDiscriminant (x), is the same as the variant index
-            if Some(variant_index.index() as u128) == x_target_and_value.value  => {
+            ) if x_target_and_value.value.is_some() => {
                 // choose basic block of y, as that has the assign
-                helper(rhs, place, variant_index, y_target_and_value.target)
+                helper(
+                    rhs,
+                    place,
+                    variant_index,
+                    x_target_and_value.value.unwrap(),
+                    y_target_and_value.target,
+                )
             }
             _ => {
                 trace!("NO: statements `{:?}` and `{:?}` not considered equal", x, y);

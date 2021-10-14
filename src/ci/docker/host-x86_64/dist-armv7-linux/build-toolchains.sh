@@ -22,7 +22,8 @@ exit 1
 mkdir build
 cd build
 cp ../armv7-linux-gnueabihf.config .config
-ct-ng oldconfig
+# FIXME ct-ng oldconfig is not working as intended.
+# ct-ng oldconfig
 hide_output ct-ng build
 cd ..
 rm -rf build

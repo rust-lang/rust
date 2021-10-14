@@ -289,13 +289,11 @@ declare_features! (
     (accepted, member_constraints, "1.54.0", Some(61997), None),
     /// Allows bindings in the subpattern of a binding pattern.
     /// For example, you can write `x @ Some(y)`.
-    (accepted, bindings_after_at, "1.54.0", Some(65490), None),
+    (accepted, bindings_after_at, "1.56.0", Some(65490), None),
     /// Allows calling `transmute` in const fn
     (accepted, const_fn_transmute, "1.56.0", Some(53605), None),
     /// Allows accessing fields of unions inside `const` functions.
     (accepted, const_fn_union, "1.56.0", Some(51909), None),
-    /// Allows explicit discriminants on non-unit enum variants.
-    (accepted, arbitrary_enum_discriminant, "1.56.0", Some(60553), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
