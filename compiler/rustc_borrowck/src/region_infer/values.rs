@@ -174,17 +174,19 @@ impl<N: Idx> LivenessValues<N> {
         self.points.contains(row, index)
     }
 
+    /// Returns an iterator of all the elements contained by the region `r`
+    crate fn get_elements(&self, row: N) -> impl Iterator<Item = Location> + '_ {
+        self.points
+            .row(row)
+            .into_iter()
+            .flat_map(|set| set.iter())
+            .take_while(move |&p| self.elements.point_in_range(p))
+            .map(move |p| self.elements.to_location(p))
+    }
+
     /// Returns a "pretty" string value of the region. Meant for debugging.
     crate fn region_value_str(&self, r: N) -> String {
-        region_value_str(
-            self.points
-                .row(r)
-                .into_iter()
-                .flat_map(|set| set.iter())
-                .take_while(|&p| self.elements.point_in_range(p))
-                .map(|p| self.elements.to_location(p))
-                .map(RegionElement::Location),
-        )
+        region_value_str(self.get_elements(r).map(RegionElement::Location))
     }
 }
 

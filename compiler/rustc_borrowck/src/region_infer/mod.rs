@@ -2154,7 +2154,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // appears to be the most interesting point to report to the
         // user via an even more ad-hoc guess.
         categorized_path.sort_by(|p0, p1| p0.category.cmp(&p1.category));
-        debug!("`: sorted_path={:#?}", categorized_path);
+        debug!("best_blame_constraint: sorted_path={:#?}", categorized_path);
 
         categorized_path.remove(0)
     }
