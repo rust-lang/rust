@@ -168,22 +168,22 @@ fn required_hashes(s: &str) -> usize {
     res
 }
 
-#[test]
-fn test_required_hashes() {
-    assert_eq!(0, required_hashes("abc"));
-    assert_eq!(0, required_hashes("###"));
-    assert_eq!(1, required_hashes("\""));
-    assert_eq!(2, required_hashes("\"#abc"));
-    assert_eq!(0, required_hashes("#abc"));
-    assert_eq!(3, required_hashes("#ab\"##c"));
-    assert_eq!(5, required_hashes("#ab\"##\"####c"));
-}
-
 #[cfg(test)]
 mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
+
+    #[test]
+    fn test_required_hashes() {
+        assert_eq!(0, required_hashes("abc"));
+        assert_eq!(0, required_hashes("###"));
+        assert_eq!(1, required_hashes("\""));
+        assert_eq!(2, required_hashes("\"#abc"));
+        assert_eq!(0, required_hashes("#abc"));
+        assert_eq!(3, required_hashes("#ab\"##c"));
+        assert_eq!(5, required_hashes("#ab\"##\"####c"));
+    }
 
     #[test]
     fn make_raw_string_target() {

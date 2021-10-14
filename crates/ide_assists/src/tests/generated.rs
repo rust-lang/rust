@@ -1395,6 +1395,35 @@ fn t() {}
 }
 
 #[test]
+fn doctest_promote_local_to_const() {
+    check_doc_test(
+        "promote_local_to_const",
+        r#####"
+fn main() {
+    let foo$0 = true;
+
+    if foo {
+        println!("It's true");
+    } else {
+        println!("It's false");
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    const $0FOO: bool = true;
+
+    if FOO {
+        println!("It's true");
+    } else {
+        println!("It's false");
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_pull_assignment_up() {
     check_doc_test(
         "pull_assignment_up",
