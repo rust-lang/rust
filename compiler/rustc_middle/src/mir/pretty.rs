@@ -71,6 +71,7 @@ pub enum PassWhere {
 ///   or `typeck` appears in the name.
 /// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
 ///   or `typeck` and `bar` both appear in the name.
+#[inline]
 pub fn dump_mir<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     pass_num: Option<&dyn Display>,
