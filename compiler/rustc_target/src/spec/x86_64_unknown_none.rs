@@ -18,7 +18,7 @@ pub fn target() -> Target {
         position_independent_executables: true,
         static_position_independent_executables: true,
         relro_level: RelroLevel::Full,
-        relocation_model: RelocModel::Static,
+        relocation_model: RelocModel::Pic,
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         features:
