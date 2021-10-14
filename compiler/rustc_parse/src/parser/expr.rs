@@ -213,6 +213,25 @@ impl<'a> Parser<'a> {
                 }
             }
 
+            if op.node == AssocOp::LessEqual
+                && self.token.kind == token::Gt
+                && self.prev_token.span.hi() == self.token.span.lo()
+            {
+                // Look for C++'s `<=>`
+                let sp = op.span.to(self.token.span);
+                self.struct_span_err(sp, &format!("invalid comparison operator `<=>`"))
+                    .span_suggestion_short(
+                        sp,
+                        &format!(
+                            "`<=>` is not a valid comparison operator, use std::cmp::Ordering"
+                        ),
+                        "<=>".to_string(),
+                        Applicability::Unspecified,
+                    )
+                    .emit();
+                self.bump();
+            }
+
             if (op.node == AssocOp::Equal || op.node == AssocOp::NotEqual)
                 && self.token.kind == token::Eq
                 && self.prev_token.span.hi() == self.token.span.lo()
