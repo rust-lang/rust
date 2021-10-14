@@ -87,7 +87,7 @@ const DW_ATE_signed: c_uint = 0x05;
 #[allow(non_upper_case_globals)]
 const DW_ATE_unsigned: c_uint = 0x07;
 #[allow(non_upper_case_globals)]
-const DW_ATE_unsigned_char: c_uint = 0x08;
+const DW_ATE_UTF: c_uint = 0x10;
 
 pub const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
@@ -933,7 +933,7 @@ fn basic_type_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'l
         ty::Never => ("!", DW_ATE_unsigned),
         ty::Tuple(elements) if elements.is_empty() => ("()", DW_ATE_unsigned),
         ty::Bool => ("bool", DW_ATE_boolean),
-        ty::Char => ("char", DW_ATE_unsigned_char),
+        ty::Char => ("char", DW_ATE_UTF),
         ty::Int(int_ty) if cpp_like_debuginfo => (int_ty.msvc_basic_name(), DW_ATE_signed),
         ty::Uint(uint_ty) if cpp_like_debuginfo => (uint_ty.msvc_basic_name(), DW_ATE_unsigned),
         ty::Float(float_ty) if cpp_like_debuginfo => (float_ty.msvc_basic_name(), DW_ATE_float),
