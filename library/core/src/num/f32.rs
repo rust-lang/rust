@@ -980,6 +980,7 @@ impl f32 {
     /// #     .all(|(a, b)| a.to_bits() == b.to_bits()))
     /// ```
     #[unstable(feature = "total_cmp", issue = "72599")]
+    #[must_use]
     #[inline]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i32;

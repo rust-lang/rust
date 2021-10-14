@@ -1618,6 +1618,7 @@ impl<'a> Formatter<'a> {
     }
 
     /// Flags for formatting
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(
         since = "1.24.0",
@@ -1655,6 +1656,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:G>3}", Foo), "GGG");
     /// assert_eq!(&format!("{:t>6}", Foo), "tttttt");
     /// ```
+    #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn fill(&self) -> char {
         self.fill
@@ -1691,6 +1693,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:^}", Foo), "center");
     /// assert_eq!(&format!("{}", Foo), "into the void");
     /// ```
+    #[must_use]
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {
         match self.align {
@@ -1725,6 +1728,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:10}", Foo(23)), "Foo(23)   ");
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
+    #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn width(&self) -> Option<usize> {
         self.width
@@ -1755,6 +1759,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:.4}", Foo(23.2)), "Foo(23.2000)");
     /// assert_eq!(&format!("{}", Foo(23.2)), "Foo(23.20)");
     /// ```
+    #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn precision(&self) -> Option<usize> {
         self.precision
@@ -1785,6 +1790,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:+}", Foo(23)), "Foo(+23)");
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
+    #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_plus(&self) -> bool {
         self.flags & (1 << FlagV1::SignPlus as u32) != 0
@@ -1813,6 +1819,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:-}", Foo(23)), "-Foo(23)");
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
+    #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_minus(&self) -> bool {
         self.flags & (1 << FlagV1::SignMinus as u32) != 0
@@ -1840,6 +1847,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:#}", Foo(23)), "Foo(23)");
     /// assert_eq!(&format!("{}", Foo(23)), "23");
     /// ```
+    #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn alternate(&self) -> bool {
         self.flags & (1 << FlagV1::Alternate as u32) != 0
@@ -1865,6 +1873,7 @@ impl<'a> Formatter<'a> {
     ///
     /// assert_eq!(&format!("{:04}", Foo(23)), "23");
     /// ```
+    #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_aware_zero_pad(&self) -> bool {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0

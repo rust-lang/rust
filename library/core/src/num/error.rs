@@ -114,6 +114,7 @@ pub enum IntErrorKind {
 
 impl ParseIntError {
     /// Outputs the detailed cause of parsing an integer failing.
+    #[must_use]
     #[stable(feature = "int_error_matching", since = "1.55.0")]
     pub fn kind(&self) -> &IntErrorKind {
         &self.kind

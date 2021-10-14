@@ -211,6 +211,7 @@ impl<'a> CharIndices<'a> {
     /// assert_eq!(chars.next(), None);
     /// ```
     #[inline]
+    #[must_use]
     #[unstable(feature = "char_indices_offset", issue = "83871")]
     pub fn offset(&self) -> usize {
         self.front_offset
@@ -223,6 +224,7 @@ impl<'a> CharIndices<'a> {
 /// See its documentation for more.
 ///
 /// [`bytes`]: str::bytes
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Bytes<'a>(pub(super) Copied<slice::Iter<'a, u8>>);

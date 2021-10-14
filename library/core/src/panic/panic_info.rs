@@ -81,6 +81,7 @@ impl<'a> PanicInfo<'a> {
     ///
     /// panic!("Normal panic");
     /// ```
+    #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn payload(&self) -> &(dyn Any + Send) {
         self.payload
@@ -89,6 +90,7 @@ impl<'a> PanicInfo<'a> {
     /// If the `panic!` macro from the `core` crate (not from `std`)
     /// was used with a formatting string and some additional arguments,
     /// returns that message ready to be used for example with [`fmt::write`]
+    #[must_use]
     #[unstable(feature = "panic_info_message", issue = "66745")]
     pub fn message(&self) -> Option<&fmt::Arguments<'_>> {
         self.message
@@ -118,6 +120,7 @@ impl<'a> PanicInfo<'a> {
     ///
     /// panic!("Normal panic");
     /// ```
+    #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn location(&self) -> Option<&Location<'_>> {
         // NOTE: If this is changed to sometimes return None,
