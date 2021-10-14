@@ -290,7 +290,7 @@ where
         let mut c = 0;
         for i in 0..BENCH_RANGE_SIZE {
             for j in i + 1..BENCH_RANGE_SIZE {
-                black_box(map.range(f(i, j)));
+                let _ = black_box(map.range(f(i, j)));
                 c += 1;
             }
         }
@@ -322,7 +322,7 @@ fn bench_iter(b: &mut Bencher, repeats: i32, size: i32) {
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
     b.iter(|| {
         for _ in 0..repeats {
-            black_box(map.iter());
+            let _ = black_box(map.iter());
         }
     });
 }

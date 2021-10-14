@@ -572,6 +572,7 @@ use crate::string;
 /// [`format_args!`]: core::format_args
 /// [`format!`]: crate::format
 #[cfg(not(no_global_oom_handling))]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn format(args: Arguments<'_>) -> string::String {
     let capacity = args.estimated_capacity();

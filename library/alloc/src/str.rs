@@ -243,6 +243,7 @@ impl str {
     /// assert_eq!(*boxed_bytes, *s.as_bytes());
     /// ```
     #[stable(feature = "str_box_extras", since = "1.20.0")]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {
         self.into()
@@ -484,6 +485,7 @@ impl str {
     /// assert_eq!(boxed_str.into_string(), string);
     /// ```
     #[stable(feature = "box_str", since = "1.4.0")]
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub fn into_string(self: Box<str>) -> String {
         let slice = Box::<[u8]>::from(self);
@@ -508,9 +510,10 @@ impl str {
     ///
     /// ```should_panic
     /// // this will panic at runtime
-    /// "0123456789abcdef".repeat(usize::MAX);
+    /// let huge = "0123456789abcdef".repeat(usize::MAX);
     /// ```
     #[cfg(not(no_global_oom_handling))]
+    #[must_use]
     #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {
         unsafe { String::from_utf8_unchecked(self.as_bytes().repeat(n)) }

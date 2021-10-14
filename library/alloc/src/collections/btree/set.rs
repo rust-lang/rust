@@ -92,6 +92,7 @@ impl<T: Clone> Clone for BTreeSet<T> {
 /// See its documentation for more.
 ///
 /// [`iter`]: BTreeSet::iter
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>,
@@ -123,6 +124,7 @@ pub struct IntoIter<T> {
 /// See its documentation for more.
 ///
 /// [`range`]: BTreeSet::range
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Debug)]
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, T: 'a> {
@@ -668,6 +670,7 @@ impl<T> BTreeSet<T> {
     /// set.insert(2);
     /// assert_eq!(set.first(), Some(&1));
     /// ```
+    #[must_use]
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn first(&self) -> Option<&T>
     where
@@ -694,6 +697,7 @@ impl<T> BTreeSet<T> {
     /// set.insert(2);
     /// assert_eq!(set.last(), Some(&2));
     /// ```
+    #[must_use]
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn last(&self) -> Option<&T>
     where
