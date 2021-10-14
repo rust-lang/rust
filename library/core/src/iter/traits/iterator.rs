@@ -249,9 +249,6 @@ pub trait Iterator {
     /// Calling `advance_by(0)` can do meaningful work, for example [`Flatten`]
     /// can advance its outer iterator until it finds an inner iterator that is not empty, which
     /// then often allows it to return a more accurate `size_hint()` than in its initial state.
-    /// `advance_by(0)` may either return `Ok()` or `Err(0)`. The former conveys no information
-    /// whether the iterator is or is not exhausted, the latter can be treated as if [`next`]
-    /// had returned `None`. Replacing a `Err(0)` with `Ok` is only correct for `n = 0`.
     ///
     /// [`Flatten`]: crate::iter::Flatten
     /// [`next`]: Iterator::next

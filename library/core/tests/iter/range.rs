@@ -300,6 +300,9 @@ fn test_range_advance_by() {
 
     assert_eq!(r.advance_by(usize::MAX), Err(usize::MAX - 2));
 
+    r.advance_by(0).unwrap();
+    r.advance_back_by(0).unwrap();
+
     let mut r = 0u128..u128::MAX;
 
     r.advance_by(usize::MAX).unwrap();
