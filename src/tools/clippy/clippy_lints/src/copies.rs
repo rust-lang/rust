@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, HirId};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{source_map::Span, symbol::Symbol, BytePos};
@@ -432,10 +432,11 @@ fn emit_branches_sharing_code_lint(
     let mut add_expr_note = false;
 
     // Construct suggestions
+    let sm = cx.sess().source_map();
     if start_stmts > 0 {
         let block = blocks[0];
         let span_start = first_line_of_span(cx, if_expr.span).shrink_to_lo();
-        let span_end = block.stmts[start_stmts - 1].span.source_callsite();
+        let span_end = sm.stmt_span(block.stmts[start_stmts - 1].span, block.span);
 
         let cond_span = first_line_of_span(cx, if_expr.span).until(block.span);
         let cond_snippet = reindent_multiline(snippet(cx, cond_span, "_"), false, None);
@@ -454,15 +455,16 @@ fn emit_branches_sharing_code_lint(
         let span_end = block.span.shrink_to_hi();
 
         let moved_start = if end_stmts == 0 && block.expr.is_some() {
-            block.expr.unwrap().span
+            block.expr.unwrap().span.source_callsite()
         } else {
-            block.stmts[block.stmts.len() - end_stmts].span
-        }
-        .source_callsite();
+            sm.stmt_span(block.stmts[block.stmts.len() - end_stmts].span, block.span)
+        };
         let moved_end = block
             .expr
-            .map_or_else(|| block.stmts[block.stmts.len() - 1].span, |expr| expr.span)
-            .source_callsite();
+            .map_or_else(
+                || sm.stmt_span(block.stmts[block.stmts.len() - 1].span, block.span),
+                |expr| expr.span.source_callsite(),
+            );
 
         let moved_span = moved_start.to(moved_end);
         let moved_snipped = reindent_multiline(snippet(cx, moved_span, "_"), true, None);

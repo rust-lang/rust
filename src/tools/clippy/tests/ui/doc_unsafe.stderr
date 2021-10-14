@@ -47,7 +47,7 @@ LL | |         }
    | |_________^
 ...
 LL |   very_unsafe!();
-   |   --------------- in this macro invocation
+   |   -------------- in this macro invocation
    |
    = note: this error originates in the macro `very_unsafe` (in Nightly builds, run with -Z macro-backtrace for more info)
 

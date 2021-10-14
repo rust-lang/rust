@@ -91,7 +91,7 @@ note: first possible panic found here
   --> $DIR/missing_panics_doc.rs:39:5
    |
 LL |     assert_eq!(x, 0);
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
@@ -107,7 +107,7 @@ note: first possible panic found here
   --> $DIR/missing_panics_doc.rs:45:5
    |
 LL |     assert_ne!(x, 0);
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 7 previous errors

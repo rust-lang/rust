@@ -36,9 +36,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::{indent_of, snippet, snippet_block};
 use rustc_ast::ast;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -270,7 +269,7 @@ struct LintData<'a> {
     /// The 0-based index of the `if` statement in the containing loop block.
     stmt_idx: usize,
     /// The statements of the loop block.
-    block_stmts: &'a [ast::Stmt],
+    loop_block: &'a ast::Block,
 }
 
 const MSG_REDUNDANT_CONTINUE_EXPRESSION: &str = "this `continue` expression is redundant";
@@ -343,10 +342,10 @@ fn suggestion_snippet_for_continue_inside_else<'a>(cx: &EarlyContext<'_>, data: 
     let indent = span_of_first_expr_in_block(data.if_block)
         .and_then(|span| indent_of(cx, span))
         .unwrap_or(0);
-    let to_annex = data.block_stmts[data.stmt_idx + 1..]
+    let to_annex = data.loop_block.stmts[data.stmt_idx + 1..]
         .iter()
-        .map(|stmt| original_sp(stmt.span, DUMMY_SP))
-        .map(|span| {
+        .map(|stmt| {
+            let span = cx.sess().source_map().stmt_span(stmt.span, data.loop_block.span);
             let snip = snippet_block(cx, span, "..", None).into_owned();
             snip.lines()
                 .map(|line| format!("{}{}", " ".repeat(indent), line))
@@ -393,7 +392,7 @@ fn check_and_warn<'a>(cx: &EarlyContext<'_>, expr: &'a ast::Expr) {
                     if_cond: cond,
                     if_block: then_block,
                     else_expr,
-                    block_stmts: &loop_block.stmts,
+                    loop_block,
                 };
                 if needless_continue_in_else(else_expr, label) {
                     emit_warning(
