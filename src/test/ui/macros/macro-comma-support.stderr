@@ -2,13 +2,13 @@ error: lel
   --> $DIR/macro-comma-support.rs:6:5
    |
 LL |     compile_error!("lel");
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: lel
   --> $DIR/macro-comma-support.rs:7:5
    |
 LL |     compile_error!("lel",);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

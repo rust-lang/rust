@@ -11,7 +11,7 @@ error: trace_macros! accepts only `true` or `false`
   --> $DIR/trace_macros-gate.rs:4:5
    |
 LL |     trace_macros!();
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^
 
 error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:6:5
@@ -38,7 +38,7 @@ LL |         ($x: ident) => { trace_macros!($x) }
    |                          ^^^^^^^^^^^^
 ...
 LL |     expando!(true);
-   |     --------------- in this macro invocation
+   |     -------------- in this macro invocation
    |
    = note: see issue #29598 <https://github.com/rust-lang/rust/issues/29598> for more information
    = help: add `#![feature(trace_macros)]` to the crate attributes to enable

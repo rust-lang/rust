@@ -17,7 +17,7 @@ LL |         type A = FromOutside;
    |                  ^^^^^^^^^^^ not found in this scope
 ...
 LL |     genmod_transparent!();
-   |     ---------------------- in this macro invocation
+   |     --------------------- in this macro invocation
    |
    = note: this error originates in the macro `genmod_transparent` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -28,7 +28,7 @@ LL |         type Inner = Outer;
    |                      ^^^^^ not found in this scope
 ...
 LL |     genmod_transparent!();
-   |     ---------------------- in this macro invocation
+   |     --------------------- in this macro invocation
    |
    = note: this error originates in the macro `genmod_transparent` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -39,7 +39,7 @@ LL |         type A = FromOutside;
    |                  ^^^^^^^^^^^ not found in this scope
 ...
 LL |     genmod_legacy!();
-   |     ----------------- in this macro invocation
+   |     ---------------- in this macro invocation
    |
    = note: this error originates in the macro `genmod_legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -50,7 +50,7 @@ LL |         type Inner = Outer;
    |                      ^^^^^ not found in this scope
 ...
 LL |     genmod_legacy!();
-   |     ----------------- in this macro invocation
+   |     ---------------- in this macro invocation
    |
    = note: this error originates in the macro `genmod_legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -11,7 +11,7 @@ LL |         bug!("bug" + stringify!(found));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | bug!();
-   | ------- in this macro invocation
+   | ------ in this macro invocation
    |
    = note: this error originates in the macro `bug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -31,7 +31,7 @@ LL |         doc_comment! {format!("{coor}", coor = stringify!($t1)).as_str()}
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | some_macro!(u8);
-   | ---------------- in this macro invocation
+   | --------------- in this macro invocation
    |
    = note: this error originates in the macro `some_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 

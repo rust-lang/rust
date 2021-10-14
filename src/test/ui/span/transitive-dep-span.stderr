@@ -10,7 +10,7 @@ LL | |         }
   ::: $DIR/transitive-dep-span.rs:13:1
    |
 LL |   transitive_dep_two::parse_error!();
-   |   -----------------------------------
+   |   ----------------------------------
    |   |
    |   in this macro invocation
    |   in this macro invocation

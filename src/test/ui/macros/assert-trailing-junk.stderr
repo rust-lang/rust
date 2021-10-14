@@ -38,7 +38,7 @@ error: macro requires an expression as an argument
   --> $DIR/assert-trailing-junk.rs:19:5
    |
 LL |     assert!(true;);
-   |     ^^^^^^^^^^^^-^^
+   |     ^^^^^^^^^^^^-^
    |                 |
    |                 help: try removing semicolon
 

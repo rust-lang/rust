@@ -17,7 +17,7 @@ LL |         fn w<$lt>(w: &mut $lt i32) {}
    |                      ^^^^^^^^ help: place the lifetime before `mut`: `&$lt mut`
 ...
 LL | mac!('a);
-   | --------- in this macro invocation
+   | -------- in this macro invocation
    |
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 

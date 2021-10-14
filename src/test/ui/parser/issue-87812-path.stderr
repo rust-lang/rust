@@ -7,7 +7,7 @@ LL |         let _: usize = $f;
    |                expected due to this
 ...
 LL |     foo!(Baz);
-   |     ---------- in this macro invocation
+   |     --------- in this macro invocation
    |
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 

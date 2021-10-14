@@ -56,7 +56,7 @@ error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:36:5
    |
 LL |     assert_eq!(3i32, &3i32);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `&i32`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `&i32`
    |
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 

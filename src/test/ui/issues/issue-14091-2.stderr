@@ -2,7 +2,7 @@ error[E0600]: cannot apply unary operator `!` to type `BytePos`
   --> $DIR/issue-14091-2.rs:15:5
    |
 LL |     assert!(x, x);
-   |     ^^^^^^^^^^^^^^ cannot apply unary operator `!`
+   |     ^^^^^^^^^^^^^ cannot apply unary operator `!`
    |
 note: an implementation of `Not` might be missing for `BytePos`
   --> $DIR/issue-14091-2.rs:6:1

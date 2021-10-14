@@ -16,7 +16,7 @@ LL |         bar(baz: $rest)
    |         ^^^^^^^^^^^^^^^
 ...
 LL |     foo!(true);
-   |     ----------- in this macro invocation
+   |     ---------- in this macro invocation
    |
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: if `bar` is a struct, use braces as delimiters

@@ -2,7 +2,7 @@ error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable-noallow.rs:16:5
    |
 LL |     call_unstable_noallow!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(function)]` to the crate attributes to enable
    = note: this error originates in the macro `call_unstable_noallow` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -11,7 +11,7 @@ error[E0658]: use of unstable library feature 'struct_field'
   --> $DIR/internal-unstable-noallow.rs:18:5
    |
 LL |     construct_unstable_noallow!(0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(struct_field)]` to the crate attributes to enable
    = note: this error originates in the macro `construct_unstable_noallow` (in Nightly builds, run with -Z macro-backtrace for more info)

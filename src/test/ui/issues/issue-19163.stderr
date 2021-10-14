@@ -2,7 +2,7 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/issue-19163.rs:9:5
    |
 LL |     mywrite!(&v, "Hello world");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
    |
    = note: this error originates in the macro `mywrite` (in Nightly builds, run with -Z macro-backtrace for more info)
 

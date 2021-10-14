@@ -10,4 +10,11 @@ pub fn g() -> String {  //~ ERROR mismatched types
     "removeme".to_string();
 }
 
+pub fn macro_tests() -> u32 {  //~ ERROR mismatched types
+    macro_rules! mac {
+        () => (1);
+    }
+    mac!();
+}
+
 fn main() {}

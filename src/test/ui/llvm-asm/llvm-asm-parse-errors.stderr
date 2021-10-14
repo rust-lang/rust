@@ -2,7 +2,7 @@ error: macro requires a string literal as an argument
   --> $DIR/llvm-asm-parse-errors.rs:5:5
    |
 LL |     llvm_asm!();
-   |     ^^^^^^^^^^^^ string literal required
+   |     ^^^^^^^^^^^ string literal required
 
 error: expected string literal
   --> $DIR/llvm-asm-parse-errors.rs:6:23

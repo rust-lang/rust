@@ -5,7 +5,7 @@ LL | macro_rules! one_arg_macro {
    | -------------------------- when calling this macro
 ...
 LL |     one_arg_macro!(/**/);
-   |     ^^^^^^^^^^^^^^^^^^^^^ missing tokens in macro arguments
+   |     ^^^^^^^^^^^^^^^^^^^^ missing tokens in macro arguments
 
 error: aborting due to previous error
 

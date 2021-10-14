@@ -2,7 +2,7 @@ note: trace_macro
   --> $DIR/trace-macro.rs:5:5
    |
 LL |     println!("Hello, World!");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `println! { "Hello, World!" }`
    = note: to `{ $crate :: io :: _print($crate :: format_args_nl! ("Hello, World!")) ; }`

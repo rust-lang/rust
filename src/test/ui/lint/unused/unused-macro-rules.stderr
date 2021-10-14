@@ -21,7 +21,7 @@ LL | |         }
    | |_________^
 ...
 LL |   create_macro!();
-   |   ---------------- in this macro invocation
+   |   --------------- in this macro invocation
    |
    = note: this error originates in the macro `create_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -2,7 +2,7 @@ error: recursion limit reached while expanding `test!`
   --> $DIR/zero.rs:10:1
    |
 LL | test!(test);
-   | ^^^^^^^^^^^^
+   | ^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "2"]` attribute to your crate (`zero`)
 

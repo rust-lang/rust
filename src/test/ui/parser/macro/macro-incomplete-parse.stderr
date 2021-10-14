@@ -5,7 +5,7 @@ LL |         ,
    |         ^
 ...
 LL | ignored_item!();
-   | ---------------- caused by the macro expansion here
+   | --------------- caused by the macro expansion here
    |
    = note: the usage of `ignored_item!` is likely invalid in item context
 
@@ -16,7 +16,7 @@ LL |     () => ( 1,
    |              ^ expected one of `.`, `;`, `?`, `}`, or an operator
 ...
 LL |     ignored_expr!();
-   |     ---------------- in this macro invocation
+   |     --------------- in this macro invocation
    |
    = note: this error originates in the macro `ignored_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
 

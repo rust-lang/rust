@@ -7,7 +7,7 @@ LL |         println!("{");
    |                   because of this opening brace
 ...
 LL |     macro_with_error!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: if you intended to print `{`, you can escape it using `{{`
    = note: this error originates in the macro `macro_with_error` (in Nightly builds, run with -Z macro-backtrace for more info)

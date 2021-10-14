@@ -2,7 +2,7 @@ error: my error message
   --> $DIR/extenv-not-defined-custom.rs:1:13
    |
 LL | fn main() { env!("__HOPEFULLY_NOT_DEFINED__", "my error message"); }
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -111,7 +111,7 @@ LL | |          in(reg) a,
 ...  |
 LL | |          sym G,
 LL | |     );
-   | |______^
+   | |_____^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
@@ -156,7 +156,7 @@ warning: asm in naked functions must use `noreturn` option
   --> $DIR/naked-functions.rs:89:5
    |
 LL |     asm!("");
-   |     ^^^^^^^^^
+   |     ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
@@ -165,7 +165,7 @@ warning: asm in naked functions must use `noreturn` option
   --> $DIR/naked-functions.rs:92:5
    |
 LL |     asm!("");
-   |     ^^^^^^^^^
+   |     ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
@@ -174,7 +174,7 @@ warning: asm in naked functions must use `noreturn` option
   --> $DIR/naked-functions.rs:95:5
    |
 LL |     asm!("");
-   |     ^^^^^^^^^
+   |     ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
@@ -188,13 +188,13 @@ LL | |
 LL | |     asm!("");
 ...  |
 LL | |     asm!("");
-   | |     --------- multiple asm blocks are unsupported in naked functions
+   | |     -------- multiple asm blocks are unsupported in naked functions
 ...  |
 LL | |     asm!("");
-   | |     --------- multiple asm blocks are unsupported in naked functions
+   | |     -------- multiple asm blocks are unsupported in naked functions
 ...  |
 LL | |     asm!("", options(noreturn));
-   | |     ---------------------------- multiple asm blocks are unsupported in naked functions
+   | |     --------------------------- multiple asm blocks are unsupported in naked functions
 LL | | }
    | |_^
    |
@@ -228,7 +228,7 @@ warning: the LLVM-style inline assembly is unsupported in naked functions
   --> $DIR/naked-functions.rs:116:5
    |
 LL |     llvm_asm!("");
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
@@ -255,7 +255,7 @@ warning: asm options unsupported in naked functions: `nomem`, `preserves_flags`
   --> $DIR/naked-functions.rs:124:5
    |
 LL |     asm!("", options(nomem, preserves_flags, noreturn));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
@@ -264,7 +264,7 @@ warning: asm options unsupported in naked functions: `nostack`, `pure`, `readonl
   --> $DIR/naked-functions.rs:131:5
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
@@ -273,7 +273,7 @@ warning: asm in naked functions must use `noreturn` option
   --> $DIR/naked-functions.rs:131:5
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>

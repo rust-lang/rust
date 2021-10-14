@@ -5,7 +5,7 @@ LL |         use a::$crate::b;
    |                ^^^^^^ `$crate` in paths can only be used in start position
 ...
 LL | m!();
-   | ----- in this macro invocation
+   | ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ LL |         use a::$crate;
    |             ^^^^^^^^^ no `$crate` in `a`
 ...
 LL | m!();
-   | ----- in this macro invocation
+   | ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -27,7 +27,7 @@ LL |         type A = a::$crate;
    |                     ^^^^^^ `$crate` in paths can only be used in start position
 ...
 LL | m!();
-   | ----- in this macro invocation
+   | ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 

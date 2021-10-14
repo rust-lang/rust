@@ -5,7 +5,7 @@ LL |         #[repr(align($n))]
    |                      ^^
 ...
 LL | pass_nonterminal!(n!());
-   | ------------------------ in this macro invocation
+   | ----------------------- in this macro invocation
    |
    = note: this error originates in the macro `pass_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ LL |         #[repr(align($n))]
    |                ^^^^^^^^^
 ...
 LL | pass_nonterminal!(n!());
-   | ------------------------ in this macro invocation
+   | ----------------------- in this macro invocation
    |
    = note: this error originates in the macro `pass_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -5,7 +5,7 @@ LL |         let value = <Pub as PrivTr>::method;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_trait::mac!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ LL |         value;
    |         ^^^^^ private type
 ...
 LL |     priv_trait::mac!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -27,7 +27,7 @@ LL |         Pub.method();
    |             ^^^^^^ private type
 ...
 LL |     priv_trait::mac!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -38,7 +38,7 @@ LL |         <Pub as PrivTr>::CONST;
    |         ^^^^^^^^^^^^^^^^^^^^^^ private associated constant
 ...
 LL |     priv_trait::mac!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -49,7 +49,7 @@ LL |         let _: <Pub as PrivTr>::AssocTy;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^ private associated type
 ...
 LL |     priv_trait::mac!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -60,7 +60,7 @@ LL |         pub type InSignatureTy = <Pub as PrivTr>::AssocTy;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^ private trait
 ...
 LL |     priv_trait::mac!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -71,7 +71,7 @@ LL |         pub trait InSignatureTr: PrivTr {}
    |                                  ^^^^^^ private trait
 ...
 LL |     priv_trait::mac!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -82,7 +82,7 @@ LL |         impl PrivTr for u8 {}
    |              ^^^^^^ private trait
 ...
 LL |     priv_trait::mac!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -93,7 +93,7 @@ LL |         let value = <Pub as PubTr>::method;
    |                     ^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_signature::mac!();
-   |     ----------------------- in this macro invocation
+   |     ---------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_signature::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -104,7 +104,7 @@ LL |         value;
    |         ^^^^^ private type
 ...
 LL |     priv_signature::mac!();
-   |     ----------------------- in this macro invocation
+   |     ---------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_signature::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -115,7 +115,7 @@ LL |         Pub.method(loop {});
    |             ^^^^^^ private type
 ...
 LL |     priv_signature::mac!();
-   |     ----------------------- in this macro invocation
+   |     ---------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_signature::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -126,7 +126,7 @@ LL |         let value = <Pub as PubTr>::method::<Priv>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_substs::mac!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -137,7 +137,7 @@ LL |         value;
    |         ^^^^^ private type
 ...
 LL |     priv_substs::mac!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -148,7 +148,7 @@ LL |         Pub.method::<Priv>();
    |         ^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_substs::mac!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -159,7 +159,7 @@ LL |         let value = <Pub as PubTr>::method;
    |                     ^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -170,7 +170,7 @@ LL |         value;
    |         ^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -181,7 +181,7 @@ LL |         let value = <Pub as PubTr<_>>::method;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -192,7 +192,7 @@ LL |         value;
    |         ^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -203,7 +203,7 @@ LL |         Pub.method();
    |         ^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -214,7 +214,7 @@ LL |         let value = <Priv as PubTr<_>>::method;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -225,7 +225,7 @@ LL |         value;
    |         ^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -236,7 +236,7 @@ LL |         Priv.method();
    |         ^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -247,7 +247,7 @@ LL |         <Pub as PubTr>::CONST;
    |         ^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -258,7 +258,7 @@ LL |         <Pub as PubTr<_>>::CONST;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -269,7 +269,7 @@ LL |         <Priv as PubTr<_>>::CONST;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -280,7 +280,7 @@ LL |         let _: <Pub as PubTr<_>>::AssocTy;
    |                              ^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -291,7 +291,7 @@ LL |         let _: <Priv as PubTr<_>>::AssocTy;
    |                 ^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -302,7 +302,7 @@ LL |         pub type InSignatureTy1 = <Pub as PubTr>::AssocTy;
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -313,7 +313,7 @@ LL |         pub type InSignatureTy2 = <Priv as PubTr<Pub>>::AssocTy;
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -324,7 +324,7 @@ LL |         impl PubTr for u8 {}
    |              ^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -2,7 +2,7 @@ error: the legacy LLVM-style asm! syntax is no longer supported
   --> $DIR/rustfix-asm.rs:11:9
    |
 LL |         asm!("" :: "r" (x));
-   |         ----^^^^^^^^^^^^^^^^
+   |         ----^^^^^^^^^^^^^^^
    |         |
    |         help: replace with: `llvm_asm!`
    |
@@ -13,7 +13,7 @@ error: the legacy LLVM-style asm! syntax is no longer supported
   --> $DIR/rustfix-asm.rs:13:9
    |
 LL |         asm!("" : "=r" (y));
-   |         ----^^^^^^^^^^^^^^^^
+   |         ----^^^^^^^^^^^^^^^
    |         |
    |         help: replace with: `llvm_asm!`
    |

@@ -8,7 +8,7 @@ LL |     n!(a $nt_item b);
    |          ^^^^^^^^ no rules expected this token in macro call
 ...
 LL | complex_nonterminal!(enum E {});
-   | -------------------------------- in this macro invocation
+   | ------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `complex_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
 

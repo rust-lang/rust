@@ -53,7 +53,7 @@ LL |     ($ty: ty) => ($ty::clone(&0))
    |                   ^^^^^^^^^^ help: try: `<$ty>::clone`
 ...
 LL |     expr!(u8);
-   |     ---------- in this macro invocation
+   |     --------- in this macro invocation
    |
    = note: this error originates in the macro `expr` (in Nightly builds, run with -Z macro-backtrace for more info)
 

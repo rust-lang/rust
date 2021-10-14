@@ -7,6 +7,6 @@ macro_rules! test {
     ($tt:tt) => { test!(); };
 }
 
-test!(test); //~ ERROR 10:1: 10:13: recursion limit reached while expanding `test!`
+test!(test); //~ ERROR recursion limit reached while expanding `test!`
 
 fn main() {}

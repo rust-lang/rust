@@ -2,7 +2,7 @@ error[E0412]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:9:1
    |
 LL | generate_mod::check!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   | ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
    = note: consider importing this struct:
            FromOutside
@@ -12,7 +12,7 @@ error[E0412]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:9:1
    |
 LL | generate_mod::check!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   | ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
    = note: consider importing this struct:
            Outer

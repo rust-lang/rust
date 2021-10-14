@@ -106,7 +106,7 @@ LL |             let mut $p = 0;
    |                     ^^ expected identifier
 ...
 LL |     foo!(x);
-   |     -------- in this macro invocation
+   |     ------- in this macro invocation
    |
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -2,7 +2,7 @@ error: `$crate` may not be imported
   --> $DIR/import-crate-var.rs:6:5
    |
 LL |     m!();
-   |     ^^^^^
+   |     ^^^^
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -8,7 +8,7 @@ LL |     'x: for _ in 0..1 {
    |     -- first declared here
 LL |         // this 'x should refer to the outer loop, lexically
 LL |         loop_x!(break 'x);
-   |         ------------------ in this macro invocation
+   |         ----------------- in this macro invocation
    |
    = note: this warning originates in the macro `loop_x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -40,7 +40,7 @@ LL |     'x: for _ in 0..1 {
    |     -- first declared here
 ...
 LL |         loop_x!(break 'x);
-   |         ------------------ in this macro invocation
+   |         ----------------- in this macro invocation
    |
    = note: this warning originates in the macro `loop_x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -54,7 +54,7 @@ LL |         'x: loop { $e }
    |         label `'x` already in scope
 ...
 LL |         loop_x!(break 'x);
-   |         ------------------ in this macro invocation
+   |         ----------------- in this macro invocation
    |
    = note: this warning originates in the macro `loop_x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -68,7 +68,7 @@ LL |     'x: loop {
    |     -- first declared here
 ...
 LL |         loop_x!(break 'x);
-   |         ------------------ in this macro invocation
+   |         ----------------- in this macro invocation
    |
    = note: this warning originates in the macro `loop_x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -118,7 +118,7 @@ LL |     'x: for _ in 0..1 {
    |     -- first declared here
 ...
 LL |         while_x!(break 'x);
-   |         ------------------- in this macro invocation
+   |         ------------------ in this macro invocation
    |
    = note: this warning originates in the macro `while_x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -132,7 +132,7 @@ LL |         'x: while 1 + 1 == 2 { $e }
    |         ^^ label `'x` already in scope
 ...
 LL |         while_x!(break 'x);
-   |         ------------------- in this macro invocation
+   |         ------------------ in this macro invocation
    |
    = note: this warning originates in the macro `while_x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -146,7 +146,7 @@ LL |     'x: loop {
    |     -- first declared here
 ...
 LL |         while_x!(break 'x);
-   |         ------------------- in this macro invocation
+   |         ------------------ in this macro invocation
    |
    = note: this warning originates in the macro `while_x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -160,7 +160,7 @@ LL |         'x: while 1 + 1 == 2 { $e }
    |         ^^ label `'x` already in scope
 ...
 LL |         while_x!(break 'x);
-   |         ------------------- in this macro invocation
+   |         ------------------ in this macro invocation
    |
    = note: this warning originates in the macro `while_x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -174,7 +174,7 @@ LL |     'x: while 1 + 1 == 2 {
    |     -- first declared here
 ...
 LL |         while_x!(break 'x);
-   |         ------------------- in this macro invocation
+   |         ------------------ in this macro invocation
    |
    = note: this warning originates in the macro `while_x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -242,7 +242,7 @@ LL |     'x: for _ in 0..1 {
    |     -- first declared here
 ...
 LL |         run_once!(continue 'x);
-   |         ----------------------- in this macro invocation
+   |         ---------------------- in this macro invocation
    |
    = note: this warning originates in the macro `run_once` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -256,7 +256,7 @@ LL |         'x: for _ in 0..1 { $e }
    |         ^^ label `'x` already in scope
 ...
 LL |         run_once!(continue 'x);
-   |         ----------------------- in this macro invocation
+   |         ---------------------- in this macro invocation
    |
    = note: this warning originates in the macro `run_once` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -270,7 +270,7 @@ LL |     'x: loop {
    |     -- first declared here
 ...
 LL |         run_once!(continue 'x);
-   |         ----------------------- in this macro invocation
+   |         ---------------------- in this macro invocation
    |
    = note: this warning originates in the macro `run_once` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -284,7 +284,7 @@ LL |         'x: for _ in 0..1 { $e }
    |         ^^ label `'x` already in scope
 ...
 LL |         run_once!(continue 'x);
-   |         ----------------------- in this macro invocation
+   |         ---------------------- in this macro invocation
    |
    = note: this warning originates in the macro `run_once` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -298,7 +298,7 @@ LL |     'x: while 1 + 1 == 2 {
    |     -- first declared here
 ...
 LL |         run_once!(continue 'x);
-   |         ----------------------- in this macro invocation
+   |         ---------------------- in this macro invocation
    |
    = note: this warning originates in the macro `run_once` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -312,7 +312,7 @@ LL |         'x: while 1 + 1 == 2 { $e }
    |         -- first declared here
 ...
 LL |         run_once!(continue 'x);
-   |         ----------------------- in this macro invocation
+   |         ---------------------- in this macro invocation
    |
    = note: this warning originates in the macro `run_once` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -326,7 +326,7 @@ LL |     'x: for _ in 0..1 {
    |     -- first declared here
 ...
 LL |         run_once!(continue 'x);
-   |         ----------------------- in this macro invocation
+   |         ---------------------- in this macro invocation
    |
    = note: this warning originates in the macro `run_once` (in Nightly builds, run with -Z macro-backtrace for more info)
 

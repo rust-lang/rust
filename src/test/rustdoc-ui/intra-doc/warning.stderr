@@ -88,7 +88,7 @@ LL |         #[doc = $f]
    |         ^^^^^^^^^^^
 ...
 LL | f!("Foo\nbar [BarF] bar\nbaz");
-   | ------------------------------- in this macro invocation
+   | ------------------------------ in this macro invocation
    |
    = note: the link appears in this line:
            

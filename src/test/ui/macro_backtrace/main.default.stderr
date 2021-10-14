@@ -5,7 +5,7 @@ LL |     () => { syntax error };
    |                    ^^^^^ expected one of 8 possible tokens
 ...
 LL |     pong!();
-   |     -------- in this macro invocation
+   |     ------- in this macro invocation
    |
    = note: this error originates in the macro `pong` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ LL |     () => { syntax error };
    |                    ^^^^^ expected one of 8 possible tokens
 ...
 LL |     ping!();
-   |     -------- in this macro invocation
+   |     ------- in this macro invocation
    |
    = note: this error originates in the macro `pong` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -27,7 +27,7 @@ LL |     () => { syntax error };
    |                    ^^^^^ expected one of 8 possible tokens
 ...
 LL |     deep!();
-   |     -------- in this macro invocation
+   |     ------- in this macro invocation
    |
    = note: this error originates in the macro `pong` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -41,7 +41,7 @@ fn main() {
         reemit!(macro_stringify!(Hello, world!)),
         "reemit!(macro_stringify!(Hello, world!))"
     );
-    let r = "reemit!(assert_eq!(macro_stringify!(Hello, world!), r));";
+    let r = "reemit!(assert_eq!(macro_stringify!(Hello, world!), r))";
     reemit!(assert_eq!(macro_stringify!(Hello, world!), r));
 
     assert_eq!(macro_stringify!(
