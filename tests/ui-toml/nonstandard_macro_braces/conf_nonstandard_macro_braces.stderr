@@ -82,13 +82,13 @@ error: use of irregular braces for `eprint!` macro
   --> $DIR/conf_nonstandard_macro_braces.rs:57:5
    |
 LL |     eprint!("test if user config overrides defaults");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: consider writing `eprint!["test if user config overrides defaults"];`
+help: consider writing `eprint!["test if user config overrides defaults"]`
   --> $DIR/conf_nonstandard_macro_braces.rs:57:5
    |
 LL |     eprint!("test if user config overrides defaults");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

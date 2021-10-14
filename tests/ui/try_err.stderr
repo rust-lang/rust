@@ -35,7 +35,7 @@ LL |             Err(_) => Err(1)?,
    |                       ^^^^^^^ help: try this: `return Err(1)`
 ...
 LL |     try_validation!(Ok::<_, i32>(5));
-   |     --------------------------------- in this macro invocation
+   |     -------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `try_validation` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -46,7 +46,7 @@ LL |             Err(_) => Err(ret_one!())?,
    |                       ^^^^^^^^^^^^^^^^ help: try this: `return Err(ret_one!())`
 ...
 LL |     try_validation_in_macro!(Ok::<_, i32>(5));
-   |     ------------------------------------------ in this macro invocation
+   |     ----------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `try_validation_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -46,7 +46,7 @@ LL | |                     },
    | |_____________________^
 ...
 LL |           mac!(res_opt => Ok(val), val => Some(n), foo(n));
-   |           ------------------------------------------------- in this macro invocation
+   |           ------------------------------------------------ in this macro invocation
    |
 help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match2.rs:46:28

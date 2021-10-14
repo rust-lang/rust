@@ -14,7 +14,7 @@ note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn_assertions.rs:9:9
    |
 LL |         assert!(x == 5, "wrong argument");
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
@@ -32,7 +32,7 @@ note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn_assertions.rs:15:9
    |
 LL |         assert_eq!(x, 5);
-   |         ^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
@@ -50,7 +50,7 @@ note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn_assertions.rs:21:9
    |
 LL |         assert_ne!(x, 1);
-   |         ^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
