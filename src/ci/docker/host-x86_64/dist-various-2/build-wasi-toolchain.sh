@@ -10,7 +10,7 @@ export PATH=`pwd`/clang+llvm-11.0.1-x86_64-linux-gnu-ubuntu-16.04/bin:$PATH
 git clone https://github.com/WebAssembly/wasi-libc
 
 cd wasi-libc
-git reset --hard 58795582905e08fa7748846c1971b4ab911d1e16
+git reset --hard ad5133410f66b93a2381db5b542aad5e0964db96
 make -j$(nproc) INSTALL_DIR=/wasm32-wasi install
 
 cd ..
