@@ -1,4 +1,4 @@
-#![feature(core_intrinsics)]
+#![feature(arbitrary_enum_discriminant, core_intrinsics)]
 
 extern crate core;
 use core::intrinsics::discriminant_value;

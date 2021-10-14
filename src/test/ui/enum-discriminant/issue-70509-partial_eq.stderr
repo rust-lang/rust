@@ -1,7 +1,7 @@
 warning: the feature `repr128` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/issue-70509-partial_eq.rs:2:12
    |
-LL | #![feature(repr128)]
+LL | #![feature(repr128, arbitrary_enum_discriminant)]
    |            ^^^^^^^
    |
    = note: `#[warn(incomplete_features)]` on by default
