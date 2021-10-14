@@ -558,7 +558,7 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
     fn universe_for(&mut self, debruijn: ty::DebruijnIndex) -> ty::UniverseIndex {
         let infcx = self.infcx;
         let index =
-            self.universe_indices.len() - debruijn.as_usize() + self.current_index.as_usize() - 1;
+            self.universe_indices.len() + self.current_index.as_usize() - debruijn.as_usize() - 1;
         let universe = self.universe_indices[index].unwrap_or_else(|| {
             for i in self.universe_indices.iter_mut().take(index + 1) {
                 *i = i.or_else(|| Some(infcx.create_next_universe()))
