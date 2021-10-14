@@ -367,29 +367,31 @@ where
             result.push_str(&comment);
 
             if !inner_item.is_empty() {
-                if tactic == DefinitiveListTactic::Vertical || tactic == DefinitiveListTactic::Mixed
-                {
-                    // We cannot keep pre-comments on the same line if the comment if normalized.
-                    let keep_comment = if formatting.config.normalize_comments()
-                        || item.pre_comment_style == ListItemCommentStyle::DifferentLine
-                    {
-                        false
-                    } else {
-                        // We will try to keep the comment on the same line with the item here.
-                        // 1 = ` `
-                        let total_width = total_item_width(item) + item_sep_len + 1;
-                        total_width <= formatting.shape.width
-                    };
-                    if keep_comment {
-                        result.push(' ');
-                    } else {
-                        result.push('\n');
-                        result.push_str(indent_str);
-                        // This is the width of the item (without comments).
-                        line_len = item.item.as_ref().map_or(0, |s| unicode_str_width(&s));
+                match tactic {
+                    DefinitiveListTactic::SpecialMacro(_)
+                    | DefinitiveListTactic::Vertical
+                    | DefinitiveListTactic::Mixed => {
+                        // We cannot keep pre-comments on the same line if the comment is normalized
+                        let keep_comment = if formatting.config.normalize_comments()
+                            || item.pre_comment_style == ListItemCommentStyle::DifferentLine
+                        {
+                            false
+                        } else {
+                            // We will try to keep the comment on the same line with the item here.
+                            // 1 = ` `
+                            let total_width = total_item_width(item) + item_sep_len + 1;
+                            total_width <= formatting.shape.width
+                        };
+                        if keep_comment {
+                            result.push(' ');
+                        } else {
+                            result.push('\n');
+                            result.push_str(indent_str);
+                            // This is the width of the item (without comments).
+                            line_len = item.item.as_ref().map_or(0, |s| unicode_str_width(&s));
+                        }
                     }
-                } else {
-                    result.push(' ');
+                    _ => result.push(' '),
                 }
             }
             item_max_width = None;
