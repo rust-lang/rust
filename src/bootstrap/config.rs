@@ -825,15 +825,10 @@ impl Config {
                 };
             }
 
-            if config.llvm_thin_lto {
-                // If we're building with ThinLTO on, we want to link to LLVM
-                // shared, to avoid re-doing ThinLTO (which happens in the link
-                // step) with each stage.
-                assert_ne!(
-                    llvm.link_shared,
-                    Some(false),
-                    "setting link-shared=false is incompatible with thin-lto=true"
-                );
+            if config.llvm_thin_lto && llvm.link_shared.is_none() {
+                // If we're building with ThinLTO on, by default we want to link
+                // to LLVM shared, to avoid re-doing ThinLTO (which happens in
+                // the link step) with each stage.
                 config.llvm_link_shared = true;
             }
         }
