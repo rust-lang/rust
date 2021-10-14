@@ -709,7 +709,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?fresh_trait_ref);
 
-        if let Some(result) = self.check_evaluation_cache(obligation.param_env, fresh_trait_ref) {
+        if let Some(result) = self.check_evaluation_cache(
+            obligation.param_env,
+            fresh_trait_ref,
+            obligation.predicate.skip_binder().polarity,
+        ) {
             debug!(?result, "CACHE HIT");
             return Ok(result);
         }
@@ -739,12 +743,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let reached_depth = stack.reached_depth.get();
         if reached_depth >= stack.depth {
             debug!(?result, "CACHE MISS");
-            self.insert_evaluation_cache(obligation.param_env, fresh_trait_ref, dep_node, result);
+            self.insert_evaluation_cache(
+                obligation.param_env,
+                fresh_trait_ref,
+                obligation.predicate.skip_binder().polarity,
+                dep_node,
+                result,
+            );
 
             stack.cache().on_completion(stack.dfn, |fresh_trait_ref, provisional_result| {
                 self.insert_evaluation_cache(
                     obligation.param_env,
                     fresh_trait_ref,
+                    obligation.predicate.skip_binder().polarity,
                     dep_node,
                     provisional_result.max(result),
                 );
@@ -977,6 +988,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
+        polarity: ty::ImplPolarity,
     ) -> Option<EvaluationResult> {
         // Neither the global nor local cache is aware of intercrate
         // mode, so don't do any caching. In particular, we might
@@ -988,17 +1000,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.tcx();
         if self.can_use_global_caches(param_env) {
-            if let Some(res) = tcx.evaluation_cache.get(&param_env.and(trait_ref), tcx) {
+            if let Some(res) = tcx.evaluation_cache.get(&(param_env.and(trait_ref), polarity), tcx)
+            {
                 return Some(res);
             }
         }
-        self.infcx.evaluation_cache.get(&param_env.and(trait_ref), tcx)
+        self.infcx.evaluation_cache.get(&(param_env.and(trait_ref), polarity), tcx)
     }
 
     fn insert_evaluation_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
         trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
+        polarity: ty::ImplPolarity,
         dep_node: DepNodeIndex,
         result: EvaluationResult,
     ) {
@@ -1023,13 +1037,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // FIXME: Due to #50507 this overwrites the different values
                 // This should be changed to use HashMapExt::insert_same
                 // when that is fixed
-                self.tcx().evaluation_cache.insert(param_env.and(trait_ref), dep_node, result);
+                self.tcx().evaluation_cache.insert(
+                    (param_env.and(trait_ref), polarity),
+                    dep_node,
+                    result,
+                );
                 return;
             }
         }
 
         debug!(?trait_ref, ?result, "insert_evaluation_cache");
-        self.infcx.evaluation_cache.insert(param_env.and(trait_ref), dep_node, result);
+        self.infcx.evaluation_cache.insert((param_env.and(trait_ref), polarity), dep_node, result);
     }
 
     /// For various reasons, it's possible for a subobligation
