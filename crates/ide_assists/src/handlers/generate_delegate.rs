@@ -1,5 +1,5 @@
 use hir::{self, HasCrate, HasSource, HirDisplay};
-use syntax::ast::{self, make, AstNode, HasName, HasVisibility};
+use syntax::ast::{self, make, AstNode, HasGenericParams, HasName, HasVisibility};
 
 use crate::{
     utils::{find_struct_impl, render_snippet, Cursor},
@@ -7,29 +7,44 @@ use crate::{
 };
 use syntax::ast::edit::AstNodeEdit;
 
-// Assist: generate_setter
+// Assist: generate_delegate
 //
-// Generate a setter method.
+// Generate a delegate method.
 //
 // ```
+// struct Age(u8);
+// impl Age {
+//     fn age(&self) -> u8 {
+//         self.0
+//     }
+// }
+//
 // struct Person {
-//     nam$0e: String,
+//     ag$0e: Age,
 // }
 // ```
 // ->
 // ```
+// struct Age(u8);
+// impl Age {
+//     fn age(&self) -> u8 {
+//         self.0
+//     }
+// }
+//
 // struct Person {
-//     name: String,
+//     age: Age,
 // }
 //
 // impl Person {
-//     /// Set the person's name.
-//     fn set_name(&mut self, name: String) {
-//         self.name = name;
+//     $0fn age(&self) -> u8 {
+//         self.age.age()
 //     }
 // }
 // ```
 pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let cap = ctx.config.snippet_cap?;
+
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let strukt_name = strukt.name()?;
 
@@ -62,7 +77,7 @@ pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Optio
             format!("Generate a delegate method for '{}'", method.name(ctx.db())),
             target,
             |builder| {
-                // make function
+                // Create the function
                 let method_source = match method.source(ctx.db()) {
                     Some(source) => source.value,
                     None => return,
@@ -70,29 +85,31 @@ pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Optio
                 let method_name = method.name(ctx.db());
                 let vis = method_source.visibility();
                 let name = make::name(&method.name(ctx.db()).to_string());
-                let type_params = None;
-                let self_ty = method
-                    .self_param(ctx.db())
-                    .map(|s| s.source(ctx.db()).map(|s| s.value))
-                    .flatten();
-                let params = make::param_list(self_ty, []);
+                let params =
+                    method_source.param_list().unwrap_or_else(|| make::param_list(None, []));
                 let tail_expr = make::expr_method_call(
-                    field_from_idents(["self", &field_name.to_string()]).unwrap(),
+                    make::ext::field_from_idents(["self", &field_name.to_string()]).unwrap(), // This unwrap is ok because we have at least 1 arg in the list
                     make::name_ref(&method_name.to_string()),
                     make::arg_list([]),
                 );
+                let type_params = method_source.generic_param_list();
                 let body = make::block_expr([], Some(tail_expr));
-                let ret_type = &method.ret_type(ctx.db()).display(ctx.db()).to_string();
-                let ret_type = Some(make::ret_type(make::ty(ret_type)));
-                let is_async = false;
+                let ret_type = method.ret_type(ctx.db());
+                let ret_type = if ret_type.is_unknown() {
+                    Some(make::ret_type(make::ty_placeholder()))
+                } else {
+                    let ret_type = &ret_type.display(ctx.db()).to_string();
+                    Some(make::ret_type(make::ty(ret_type)))
+                };
+                let is_async = method_source.async_token().is_some();
                 let f = make::fn_(vis, name, type_params, params, body, ret_type, is_async)
                     .indent(ast::edit::IndentLevel(1))
                     .clone_for_update();
 
                 let cursor = Cursor::Before(f.syntax());
-                let cap = ctx.config.snippet_cap.unwrap(); // FIXME.
 
-                // Create or update an impl block, and attach the function to it.
+                // Create or update an impl block, attach the function to it,
+                // then insert into our code.
                 match impl_def {
                     Some(impl_def) => {
                         // Remember where in our source our `impl` block lives.
@@ -110,7 +127,10 @@ pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Optio
                     None => {
                         // Attach the function to the impl block
                         let name = &strukt_name.to_string();
-                        let impl_def = make::impl_(make::ext::ident_path(name)).clone_for_update();
+                        let params = strukt.generic_param_list();
+                        let ty_params = params.clone();
+                        let impl_def = make::impl_(make::ext::ident_path(name), params, ty_params)
+                            .clone_for_update();
                         let assoc_items = impl_def.get_or_create_assoc_item_list();
                         assoc_items.add_item(f.clone().into());
 
@@ -125,15 +145,6 @@ pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Optio
         )?;
     }
     Some(())
-}
-
-pub fn field_from_idents<'a>(
-    parts: impl std::iter::IntoIterator<Item = &'a str>,
-) -> Option<ast::Expr> {
-    let mut iter = parts.into_iter();
-    let base = make::expr_path(make::ext::ident_path(iter.next()?));
-    let expr = iter.fold(base, |base, s| make::expr_field(base, s));
-    Some(expr)
 }
 
 #[cfg(test)]
@@ -213,6 +224,36 @@ impl Person {
 }"#,
         );
     }
+
+    #[test]
+    fn test_generate_delegate_enable_all_attributes() {
+        check_assist(
+            generate_delegate,
+            r#"
+struct Age<T>(T);
+impl<T> Age<T> {
+    pub(crate) async fn age<J, 'a>(&'a mut self, ty: T, arg: J) -> T {
+        self.0
+    }
+}
+
+struct Person<T> {
+    ag$0e: Age<T>,
+}"#,
+            r#"
+struct Age<T>(T);
+impl<T> Age<T> {
+    pub(crate) async fn age<J, 'a>(&'a mut self, ty: T, arg: J) -> T {
+        self.0
+    }
+}
+
+struct Person<T> {
+    age: Age<T>,
+}
+
+impl<T> Person<T> {
+    $0pub(crate) async fn age<J, 'a>(&'a mut self, ty: T, arg: J) -> _ {
         self.age.age()
     }
 }"#,

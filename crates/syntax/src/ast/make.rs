@@ -44,6 +44,15 @@ pub mod ext {
         Some(path)
     }
 
+    pub fn field_from_idents<'a>(
+        parts: impl std::iter::IntoIterator<Item = &'a str>,
+    ) -> Option<ast::Expr> {
+        let mut iter = parts.into_iter();
+        let base = expr_path(ext::ident_path(iter.next()?));
+        let expr = iter.fold(base, |base, s| expr_field(base, s));
+        Some(expr)
+    }
+
     pub fn expr_unreachable() -> ast::Expr {
         expr_from_text("unreachable!()")
     }
@@ -124,8 +133,20 @@ pub fn assoc_item_list() -> ast::AssocItemList {
     ast_from_text("impl C for D {}")
 }
 
-pub fn impl_(ty: ast::Path) -> ast::Impl {
-    ast_from_text(&format!("impl {} {{}}", ty))
+pub fn impl_(
+    ty: ast::Path,
+    params: Option<ast::GenericParamList>,
+    ty_params: Option<ast::GenericParamList>,
+) -> ast::Impl {
+    let params = match params {
+        Some(params) => params.to_string(),
+        None => String::new(),
+    };
+    let ty_params = match ty_params {
+        Some(params) => params.to_string(),
+        None => String::new(),
+    };
+    ast_from_text(&format!("impl{} {}{} {{}}", params, ty, ty_params))
 }
 
 pub fn impl_trait(trait_: ast::Path, ty: ast::Path) -> ast::Impl {
@@ -649,7 +670,7 @@ pub fn fn_(
     is_async: bool,
 ) -> ast::Fn {
     let type_params = match type_params {
-        Some(type_params) => format!("<{}>", type_params),
+        Some(type_params) => format!("{}", type_params),
         None => "".into(),
     };
     let ret_type = match ret_type {
