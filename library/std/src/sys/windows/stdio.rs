@@ -291,15 +291,25 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [u16]) -> io::Result<usize> {
     };
 
     let mut amount = 0;
-    cvt(unsafe {
-        c::ReadConsoleW(
-            handle,
-            buf.as_mut_ptr() as c::LPVOID,
-            buf.len() as u32,
-            &mut amount,
-            &mut input_control as c::PCONSOLE_READCONSOLE_CONTROL,
-        )
-    })?;
+    loop {
+        cvt(unsafe {
+            c::SetLastError(0);
+            c::ReadConsoleW(
+                handle,
+                buf.as_mut_ptr() as c::LPVOID,
+                buf.len() as u32,
+                &mut amount,
+                &mut input_control as c::PCONSOLE_READCONSOLE_CONTROL,
+            )
+        })?;
+
+        // ReadConsoleW returns success with ERROR_OPERATION_ABORTED for Ctrl-C or Ctrl-Break.
+        // Explicitly check for that case here and try again.
+        if amount == 0 && unsafe { c::GetLastError() } == c::ERROR_OPERATION_ABORTED {
+            continue;
+        }
+        break;
+    }
 
     if amount > 0 && buf[amount as usize - 1] == CTRL_Z {
         amount -= 1;
