@@ -24,7 +24,7 @@ use std::ops::Deref;
 use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, CustomEq, HasMutInterior, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
-use super::{is_lang_panic_fn, ConstCx, Qualif};
+use super::{is_lang_panic_fn, is_lang_special_const_fn, ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
 
 // We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
@@ -259,7 +259,9 @@ impl Checker<'mir, 'tcx> {
             self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
-        self.visit_body(&body);
+        if !tcx.has_attr(def_id.to_def_id(), sym::rustc_do_not_const_check) {
+            self.visit_body(&body);
+        }
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
         let should_check_for_sync = self.const_kind()
@@ -886,7 +888,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                 }
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
-                if is_lang_panic_fn(tcx, callee) {
+                if is_lang_special_const_fn(tcx, callee) {
                     // `begin_panic` and `panic_display` are generic functions that accept
                     // types other than str. Check to enforce that only str can be used in
                     // const-eval.
@@ -908,7 +910,10 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                         }
                     }
 
-                    return;
+                    if is_lang_panic_fn(tcx, callee) {
+                        // run stability check on non-panic special const fns.
+                        return;
+                    }
                 }
 
                 if Some(callee) == tcx.lang_items().exchange_malloc_fn() {

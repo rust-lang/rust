@@ -26,14 +26,35 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
     /// "Intercept" a function call to a panic-related function
     /// because we have something special to do for it.
     /// If this returns successfully (`Ok`), the function should just be evaluated normally.
-    fn hook_panic_fn(
+    fn hook_special_const_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
+        is_const_fn: bool,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         // The list of functions we handle here must be in sync with
-        // `is_lang_panic_fn` in `transform/check_consts/mod.rs`.
+        // `is_lang_special_const_fn` in `transform/check_consts/mod.rs`.
         let def_id = instance.def_id();
+
+        if is_const_fn {
+            if Some(def_id) == self.tcx.lang_items().const_eval_select() {
+                // redirect to const_eval_select_ct
+                if let Some(const_eval_select) = self.tcx.lang_items().const_eval_select_ct() {
+                    return Ok(Some(
+                        ty::Instance::resolve(
+                            *self.tcx,
+                            ty::ParamEnv::reveal_all(),
+                            const_eval_select,
+                            instance.substs,
+                        )
+                        .unwrap()
+                        .unwrap(),
+                    ));
+                }
+            }
+            return Ok(None);
+        }
+
         if Some(def_id) == self.tcx.lang_items().panic_fn()
             || Some(def_id) == self.tcx.lang_items().panic_str()
             || Some(def_id) == self.tcx.lang_items().panic_display()
@@ -255,30 +276,30 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def) = instance.def {
+            let mut is_const_fn = true;
+
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
             if !ecx.tcx.is_const_fn_raw(def.did) {
                 // allow calling functions marked with #[default_method_body_is_const].
                 if !ecx.tcx.has_attr(def.did, sym::default_method_body_is_const) {
-                    // Some functions we support even if they are non-const -- but avoid testing
-                    // that for const fn!
-                    if let Some(new_instance) = ecx.hook_panic_fn(instance, args)? {
-                        // We call another const fn instead.
-                        return Self::find_mir_or_eval_fn(
-                            ecx,
-                            new_instance,
-                            _abi,
-                            args,
-                            _ret,
-                            _unwind,
-                        );
-                    } else {
-                        // We certainly do *not* want to actually call the fn
-                        // though, so be sure we return here.
-                        throw_unsup_format!("calling non-const function `{}`", instance)
-                    }
+                    is_const_fn = false;
                 }
+            }
+
+            // Some functions we support even if they are non-const -- but avoid testing
+            // that for const fn!
+            // `const_eval_select` is a const fn because it must use const trait bounds.
+            if let Some(new_instance) = ecx.hook_special_const_fn(instance, args, is_const_fn)? {
+                // We call another const fn instead.
+                return Self::find_mir_or_eval_fn(ecx, new_instance, _abi, args, _ret, _unwind);
+            }
+
+            if !is_const_fn {
+                // We certainly do *not* want to actually call the fn
+                // though, so be sure we return here.
+                throw_unsup_format!("calling non-const function `{}`", instance)
             }
         }
         // This is a const fn. Call it.

@@ -390,6 +390,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             sym::black_box => (1, vec![param(0)], param(0)),
 
+            sym::const_eval_select => (4, vec![param(0), param(1), param(2)], param(3)),
+
             other => {
                 tcx.sess.emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });
                 return;
