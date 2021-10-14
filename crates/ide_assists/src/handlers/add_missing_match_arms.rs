@@ -5,6 +5,7 @@ use hir::{Adt, HasSource, ModuleDef, Semantics};
 use ide_db::helpers::{mod_path_to_ast, FamousDefs};
 use ide_db::RootDatabase;
 use itertools::Itertools;
+use syntax::TextRange;
 use syntax::ast::{self, make, AstNode, HasName, MatchArm, Pat};
 
 use crate::{
@@ -39,6 +40,16 @@ use crate::{
 pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let match_expr = ctx.find_node_at_offset_with_descend::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
+
+    let available_range = TextRange::new(
+        match_expr.syntax().text_range().start(),
+        match_arm_list.syntax().text_range().start(),
+    );
+
+    let cursor_in_range = available_range.contains_range(ctx.frange.range);
+    if !cursor_in_range {
+        return None;
+    }
 
     let expr = match_expr.expr()?;
 
@@ -121,11 +132,10 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         return None;
     }
 
-    let target = ctx.sema.original_range(match_expr.syntax()).range;
     acc.add(
         AssistId("add_missing_match_arms", AssistKind::QuickFix),
         "Fill match arms",
-        target,
+        available_range,
         |builder| {
             let new_match_arm_list = match_arm_list.clone_for_update();
             let missing_arms = missing_pats
@@ -303,6 +313,44 @@ fn main() {
     }
 }
             "#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_outside_of_range_left() {
+        check_assist_not_applicable(
+            add_missing_match_arms,
+        r#"
+enum A {
+    X,
+    Y
+}
+
+fn foo(a: A) {
+    $0match a {
+        A::X => { }
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_outside_of_range_right() {
+        check_assist_not_applicable(
+            add_missing_match_arms,
+        r#"
+enum A {
+    X,
+    Y
+}
+
+fn foo(a: A) {
+    match a {$0
+        A::X => { }
+    }
+}
+        "#,
         );
     }
 
