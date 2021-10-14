@@ -263,12 +263,13 @@ config_data! {
         runnables_cargoExtraArgs: Vec<String>   = "[]",
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
-        /// projects, or "discover" to try to automatically find it.
+        /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
+        /// is installed.
         ///
         /// Any project which uses rust-analyzer with the rustcPrivate
         /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
         ///
-        /// This option is not reloaded automatically; you must restart rust-analyzer for it to take effect.
+        /// This option does not take effect until rust-analyzer is restarted.
         rustcSource: Option<String> = "null",
 
         /// Additional arguments to `rustfmt`.
