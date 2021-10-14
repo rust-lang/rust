@@ -49,6 +49,7 @@ pub fn streaming_output(
                 }
             }
         })?;
+        let _ = child.kill();
         child.wait()?
     };
 
