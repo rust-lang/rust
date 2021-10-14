@@ -1,0 +1,10 @@
+error: `const_eval_select` is not yet stable as a const fn
+  --> $DIR/const-eval-select-stability.rs:16:5
+   |
+LL |     const_eval_select((), nothing, log);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: const-stable functions can only call other const-stable functions
+
+error: aborting due to previous error
+

@@ -24,7 +24,7 @@ use std::ops::Deref;
 use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, CustomEq, HasMutInterior, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
-use super::{is_lang_special_const_fn, ConstCx, Qualif};
+use super::{is_lang_panic_fn, is_lang_special_const_fn, ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
 
 // We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
@@ -910,7 +910,10 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                         }
                     }
 
-                    return;
+                    if is_lang_panic_fn(tcx, callee) {
+                        // run stability check on non-panic special const fns.
+                        return;
+                    }
                 }
 
                 if Some(callee) == tcx.lang_items().exchange_malloc_fn() {

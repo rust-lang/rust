@@ -2258,6 +2258,7 @@ pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     issue = "none",
     reason = "const_eval_select will never be stable"
 )]
+#[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
 #[lang = "const_eval_select"]
 #[rustc_do_not_const_check]
 pub const unsafe fn const_eval_select<ARG, F, G, RET>(
@@ -2278,6 +2279,7 @@ where
     issue = "none",
     reason = "const_eval_select will never be stable"
 )]
+#[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
 #[lang = "const_eval_select_ct"]
 pub const unsafe fn const_eval_select_ct<ARG, F, G, RET>(
     arg: ARG,
