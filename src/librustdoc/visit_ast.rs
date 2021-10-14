@@ -96,7 +96,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             if let Res::Def(DefKind::Macro(_), def_id) = export.res {
                 if let Some(local_def_id) = def_id.as_local() {
                     if self.cx.tcx.has_attr(def_id, sym::macro_export) {
-                        if !inserted.insert(def_id) {
+                        if inserted.insert(def_id) {
                             let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
                             let item = self.cx.tcx.hir().expect_item(hir_id);
                             top_level_module.items.push((item, None));
