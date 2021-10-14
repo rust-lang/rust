@@ -2,17 +2,12 @@
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
 
-use std::{
-    fmt,
-    io::{self, BufRead, BufReader},
-    process::{self, Command, Stdio},
-    time::Duration,
-};
+use std::{fmt, io, process::Command, time::Duration};
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use paths::AbsPathBuf;
 use serde::Deserialize;
-use stdx::JodChild;
+use stdx::process::streaming_output;
 
 pub use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
@@ -162,13 +157,10 @@ impl FlycheckActor {
 
                     self.cancel_check_process();
 
-                    let mut command = self.check_command();
+                    let command = self.check_command();
                     tracing::info!("restart flycheck {:?}", command);
-                    command.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null());
-                    if let Ok(child) = command.spawn().map(JodChild) {
-                        self.cargo_handle = Some(CargoHandle::spawn(child));
-                        self.progress(Progress::DidStart);
-                    }
+                    self.cargo_handle = Some(CargoHandle::spawn(command));
+                    self.progress(Progress::DidStart);
                 }
                 Event::CheckEvent(None) => {
                     // Watcher finished, replace it with a never channel to
@@ -258,53 +250,36 @@ impl FlycheckActor {
 }
 
 struct CargoHandle {
-    child: JodChild,
-    #[allow(unused)]
-    thread: jod_thread::JoinHandle<bool>,
+    thread: jod_thread::JoinHandle<io::Result<()>>,
     receiver: Receiver<CargoMessage>,
 }
 
 impl CargoHandle {
-    fn spawn(mut child: JodChild) -> CargoHandle {
-        let child_stdout = child.stdout.take().unwrap();
+    fn spawn(command: Command) -> CargoHandle {
         let (sender, receiver) = unbounded();
-        let actor = CargoActor::new(child_stdout, sender);
+        let actor = CargoActor::new(sender);
         let thread = jod_thread::Builder::new()
             .name("CargoHandle".to_owned())
-            .spawn(move || actor.run())
+            .spawn(move || actor.run(command))
             .expect("failed to spawn thread");
-        CargoHandle { child, thread, receiver }
+        CargoHandle { thread, receiver }
     }
-    fn join(mut self) -> io::Result<()> {
-        // It is okay to ignore the result, as it only errors if the process is already dead
-        let _ = self.child.kill();
-        let exit_status = self.child.wait()?;
-        let read_at_least_one_message = self.thread.join();
-        if !exit_status.success() && !read_at_least_one_message {
-            // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
-            // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!(
-                    "Cargo watcher failed, the command produced no valid metadata (exit code: {:?})",
-                    exit_status
-                ),
-            ));
-        }
-        Ok(())
+
+    fn join(self) -> io::Result<()> {
+        self.thread.join()
     }
 }
 
 struct CargoActor {
-    child_stdout: process::ChildStdout,
     sender: Sender<CargoMessage>,
 }
 
 impl CargoActor {
-    fn new(child_stdout: process::ChildStdout, sender: Sender<CargoMessage>) -> CargoActor {
-        CargoActor { child_stdout, sender }
+    fn new(sender: Sender<CargoMessage>) -> CargoActor {
+        CargoActor { sender }
     }
-    fn run(self) -> bool {
+
+    fn run(self, command: Command) -> io::Result<()> {
         // We manually read a line at a time, instead of using serde's
         // stream deserializers, because the deserializer cannot recover
         // from an error, resulting in it getting stuck, because we try to
@@ -313,41 +288,53 @@ impl CargoActor {
         // Because cargo only outputs one JSON object per line, we can
         // simply skip a line if it doesn't parse, which just ignores any
         // erroneus output.
-        let stdout = BufReader::new(self.child_stdout);
+
+        let mut error = String::new();
         let mut read_at_least_one_message = false;
-        for message in stdout.lines() {
-            let message = match message {
-                Ok(message) => message,
-                Err(err) => {
-                    tracing::error!("Invalid json from cargo check, ignoring ({})", err);
-                    continue;
-                }
-            };
+        let output = streaming_output(
+            command,
+            &mut |line| {
+                read_at_least_one_message = true;
 
-            read_at_least_one_message = true;
-
-            // Try to deserialize a message from Cargo or Rustc.
-            let mut deserializer = serde_json::Deserializer::from_str(&message);
-            deserializer.disable_recursion_limit();
-            if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
-                match message {
-                    // Skip certain kinds of messages to only spend time on what's useful
-                    JsonMessage::Cargo(message) => match message {
-                        cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
-                            self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap();
+                // Try to deserialize a message from Cargo or Rustc.
+                let mut deserializer = serde_json::Deserializer::from_str(&line);
+                deserializer.disable_recursion_limit();
+                if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
+                    match message {
+                        // Skip certain kinds of messages to only spend time on what's useful
+                        JsonMessage::Cargo(message) => match message {
+                            cargo_metadata::Message::CompilerArtifact(artifact)
+                                if !artifact.fresh =>
+                            {
+                                self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap();
+                            }
+                            cargo_metadata::Message::CompilerMessage(msg) => {
+                                self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap();
+                            }
+                            _ => (),
+                        },
+                        JsonMessage::Rustc(message) => {
+                            self.sender.send(CargoMessage::Diagnostic(message)).unwrap();
                         }
-                        cargo_metadata::Message::CompilerMessage(msg) => {
-                            self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap();
-                        }
-                        _ => (),
-                    },
-                    JsonMessage::Rustc(message) => {
-                        self.sender.send(CargoMessage::Diagnostic(message)).unwrap();
                     }
                 }
+            },
+            &mut |line| {
+                error.push_str(line);
+                error.push('\n');
+            },
+        );
+        match output {
+            Ok(_) if read_at_least_one_message => Ok(()),
+            Ok(output) if output.status.success() => {
+                Err(io::Error::new(io::ErrorKind::Other, format!(
+                    "Cargo watcher failed, the command produced no valid metadata (exit code: {:?})",
+                    output.status
+                )))
             }
+            Ok(_) => Err(io::Error::new(io::ErrorKind::Other, error)),
+            Err(e) => Err(e),
         }
-        read_at_least_one_message
     }
 }
 

@@ -394,7 +394,10 @@ impl GlobalState {
                                 flycheck::Progress::DidCancel => (Progress::End, None),
                                 flycheck::Progress::DidFinish(result) => {
                                     if let Err(err) = result {
-                                        tracing::error!("cargo check failed: {}", err)
+                                        self.show_message(
+                                            lsp_types::MessageType::Error,
+                                            format!("cargo check failed: {}", err),
+                                        );
                                     }
                                     (Progress::End, None)
                                 }
