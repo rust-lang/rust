@@ -45,7 +45,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         ctx.sema.original_range(match_arm_list.syntax()).range.start(),
     );
 
-    let cursor_in_range = available_range.contains_range(ctx.frange.range);
+    let cursor_in_range = available_range.contains_range(ctx.selection_trimmed());
     if !cursor_in_range {
         return None;
     }
