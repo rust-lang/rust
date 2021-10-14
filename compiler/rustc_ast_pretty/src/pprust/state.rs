@@ -2235,8 +2235,8 @@ impl<'a> State<'a> {
 
         let mut args = vec![AsmArg::Template(InlineAsmTemplatePiece::to_string(&asm.template))];
         args.extend(asm.operands.iter().map(|(o, _)| AsmArg::Operand(o)));
-        if let Some((abi, _)) = asm.clobber_abi {
-            args.push(AsmArg::ClobberAbi(abi));
+        for (abi, _) in &asm.clobber_abis {
+            args.push(AsmArg::ClobberAbi(*abi));
         }
         if !asm.options.is_empty() {
             args.push(AsmArg::Options(asm.options));

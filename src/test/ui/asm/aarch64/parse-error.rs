@@ -51,7 +51,6 @@ fn main() {
         asm!("{}", options(), clobber_abi("C"), const foo);
         //~^ ERROR clobber_abi is not allowed after options
         asm!("", clobber_abi("C"), clobber_abi("C"));
-        //~^ ERROR clobber_abi specified multiple times
         asm!("{a}", a = const foo, a = const bar);
         //~^ ERROR duplicate argument named `a`
         //~^^ ERROR argument never used
@@ -121,7 +120,7 @@ global_asm!("", options(), clobber_abi("C"));
 global_asm!("{}", options(), clobber_abi("C"), const FOO);
 //~^ ERROR clobber_abi is not allowed after options
 global_asm!("", clobber_abi("C"), clobber_abi("C"));
-//~^ ERROR clobber_abi specified multiple times
+//~^ ERROR `clobber_abi` cannot be used with `global_asm!`
 global_asm!("{a}", a = const FOO, a = const BAR);
 //~^ ERROR duplicate argument named `a`
 //~^^ ERROR argument never used
