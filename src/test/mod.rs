@@ -469,11 +469,6 @@ fn stdin_works_with_modified_lines() {
 #[test]
 fn stdin_disable_all_formatting_test() {
     init_log();
-    match option_env!("CFG_RELEASE_CHANNEL") {
-        None | Some("nightly") => {}
-        // These tests require nightly.
-        _ => return,
-    }
     let input = String::from("fn main() { println!(\"This should not be formatted.\"); }");
     let mut child = Command::new(rustfmt().to_str().unwrap())
         .stdin(Stdio::piped())

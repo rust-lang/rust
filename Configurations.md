@@ -521,11 +521,13 @@ fn main() {
 
 ## `disable_all_formatting`
 
-Don't reformat anything
+Don't reformat anything.
+
+Note that this option may be soft-deprecated in the future once the [ignore](#ignore) option is stabilized. Nightly toolchain users are encouraged to use [ignore](#ignore) instead when possible.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No (tracking issue: #3388)
+- **Stable**: Yes
 
 ## `edition`
 
