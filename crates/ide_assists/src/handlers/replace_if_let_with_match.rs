@@ -12,7 +12,7 @@ use syntax::{
 };
 
 use crate::{
-    utils::{does_pat_match_variant, unwrap_trivial_block},
+    utils::{does_nested_pattern, does_pat_match_variant, unwrap_trivial_block},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -143,6 +143,8 @@ fn make_else_arm(
             Some((it, pat)) => {
                 if does_pat_match_variant(pat, &it.sad_pattern()) {
                     it.happy_pattern_wildcard()
+                } else if does_nested_pattern(pat) {
+                    make::wildcard_pat().into()
                 } else {
                     it.sad_pattern()
                 }
@@ -572,6 +574,33 @@ fn main() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn nested_type() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<i32, ()>) {
+    let bar: Result<_, ()> = Ok(Some(1));
+    $0if let Ok(Some(_)) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<i32, ()>) {
+    let bar: Result<_, ()> = Ok(Some(1));
+    match bar {
+        Ok(Some(_)) => (),
+        _ => (),
+    }
+}
+"#,
+        );
     }
 
     #[test]
