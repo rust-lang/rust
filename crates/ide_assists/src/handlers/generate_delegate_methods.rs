@@ -48,9 +48,21 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let strukt_name = strukt.name()?;
 
-    let field = ctx.find_node_at_offset::<ast::RecordField>()?;
-    let field_name = field.name()?;
-    let field_ty = field.ty()?;
+    let (field_name, field_ty) = match ctx.find_node_at_offset::<ast::RecordField>() {
+        Some(field) => {
+            let field_name = field.name()?;
+            let field_ty = field.ty()?;
+            (format!("{}", field_name), field_ty)
+        }
+        None => {
+            let field = ctx.find_node_at_offset::<ast::TupleField>()?;
+            let field_list = ctx.find_node_at_offset::<ast::TupleFieldList>()?;
+            let field_list_index =
+                field_list.syntax().children().into_iter().position(|s| &s == field.syntax())?;
+            let field_ty = field.ty()?;
+            (format!("{}", field_list_index), field_ty)
+        }
+    };
 
     let sema_field_ty = ctx.sema.resolve_type(&field_ty)?;
     let krate = sema_field_ty.krate(ctx.db());
@@ -88,7 +100,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
                 let params =
                     method_source.param_list().unwrap_or_else(|| make::param_list(None, []));
                 let tail_expr = make::expr_method_call(
-                    make::ext::field_from_idents(["self", &field_name.to_string()]).unwrap(), // This unwrap is ok because we have at least 1 arg in the list
+                    make::ext::field_from_idents(["self", &field_name]).unwrap(), // This unwrap is ok because we have at least 1 arg in the list
                     make::name_ref(&method_name.to_string()),
                     make::arg_list([]),
                 );
@@ -220,6 +232,37 @@ struct Person {
 impl Person {
     $0fn age(&self) -> u8 {
         self.age.age()
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_delegate_tuple_struct() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+
+struct Person(A$0ge);"#,
+            r#"
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+
+struct Person(Age);
+
+impl Person {
+    $0fn age(&self) -> u8 {
+        self.0.age()
     }
 }"#,
         );
