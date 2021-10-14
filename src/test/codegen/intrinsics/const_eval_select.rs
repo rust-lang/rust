@@ -5,10 +5,10 @@
 
 use std::intrinsics::const_eval_select;
 
-const fn foo(_: (i32,)) -> i32 { 1 }
+const fn foo(_: i32) -> i32 { 1 }
 
 #[no_mangle]
-pub fn hi((n,): (i32,)) -> i32 { n }
+pub fn hi(n: i32) -> i32 { n }
 
 #[no_mangle]
 pub unsafe fn hey() {
