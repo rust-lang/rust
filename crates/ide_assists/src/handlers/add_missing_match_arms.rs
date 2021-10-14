@@ -30,7 +30,7 @@ use crate::{
 // enum Action { Move { distance: u32 }, Stop }
 //
 // fn handle(action: Action) {
-//     match action {
+//     match action  {
 //         $0Action::Move { distance } => todo!(),
 //         Action::Stop => todo!(),
 //     }
@@ -41,8 +41,8 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
     let match_arm_list = match_expr.match_arm_list()?;
 
     let available_range = TextRange::new(
-        match_expr.syntax().text_range().start(),
-        match_arm_list.syntax().text_range().start(),
+        ctx.sema.original_range(match_expr.syntax()).range.start(),
+        ctx.sema.original_range(match_arm_list.syntax()).range.start(),
     );
 
     let cursor_in_range = available_range.contains_range(ctx.frange.range);
