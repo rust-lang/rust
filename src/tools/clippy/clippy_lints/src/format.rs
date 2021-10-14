@@ -90,12 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
     }
 }
 
-fn span_useless_format(cx: &LateContext<'_>, span: Span, mut sugg: String, mut applicability: Applicability) {
-    // The callsite span contains the statement semicolon for some reason.
-    if snippet_with_applicability(cx, span, "..", &mut applicability).ends_with(';') {
-        sugg.push(';');
-    }
-
+fn span_useless_format(cx: &LateContext<'_>, span: Span, sugg: String, applicability: Applicability) {
     span_lint_and_sugg(
         cx,
         USELESS_FORMAT,
