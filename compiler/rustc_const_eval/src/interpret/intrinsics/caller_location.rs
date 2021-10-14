@@ -80,10 +80,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         line: u32,
         col: u32,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
-        let file =
-            self.allocate_str(&filename.as_str(), MemoryKind::CallerLocation, Mutability::Not);
-        let line = Scalar::from_u32(line);
-        let col = Scalar::from_u32(col);
+        let loc_details = &self.tcx.sess.opts.debugging_opts.location_detail;
+        let file = if loc_details.file {
+            self.allocate_str(&filename.as_str(), MemoryKind::CallerLocation, Mutability::Not)
+        } else {
+            // FIXME: This creates a new allocation each time. It might be preferable to
+            // perform this allocation only once, and re-use the `MPlaceTy`.
+            // See https://github.com/rust-lang/rust/pull/89920#discussion_r730012398
+            self.allocate_str("<redacted>", MemoryKind::CallerLocation, Mutability::Not)
+        };
+        let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
+        let col = if loc_details.column { Scalar::from_u32(col) } else { Scalar::from_u32(0) };
 
         // Allocate memory for `CallerLocation` struct.
         let loc_ty = self
