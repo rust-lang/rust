@@ -137,6 +137,8 @@ pub struct PackageData {
     pub targets: Vec<Target>,
     /// Does this package come from the local filesystem (and is editable)?
     pub is_local: bool,
+    // Whether this package is a member of the workspace
+    pub is_member: bool,
     /// List of packages this package depends on
     pub dependencies: Vec<PackageDependency>,
     /// Rust edition for this package
@@ -296,6 +298,8 @@ impl CargoWorkspace {
         let mut packages = Arena::default();
         let mut targets = Arena::default();
 
+        let ws_members = &meta.workspace_members;
+
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
         for meta_pkg in &meta.packages {
             let cargo_metadata::Package {
@@ -309,6 +313,7 @@ impl CargoWorkspace {
             // We treat packages without source as "local" packages. That includes all members of
             // the current workspace, as well as any path dependency outside the workspace.
             let is_local = meta_pkg.source.is_none();
+            let is_member = ws_members.contains(id);
 
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
@@ -317,6 +322,7 @@ impl CargoWorkspace {
                 manifest: AbsPathBuf::assert(PathBuf::from(&manifest_path)).try_into().unwrap(),
                 targets: Vec::new(),
                 is_local,
+                is_member,
                 edition,
                 dependencies: Vec::new(),
                 features: meta_pkg.features.clone().into_iter().collect(),
@@ -383,8 +389,8 @@ impl CargoWorkspace {
 
     pub fn target_by_root(&self, root: &AbsPath) -> Option<Target> {
         self.packages()
-            .filter_map(|pkg| self[pkg].targets.iter().find(|&&it| &self[it].root == root))
-            .next()
+            .filter(|&pkg| self[pkg].is_member)
+            .find_map(|pkg| self[pkg].targets.iter().find(|&&it| &self[it].root == root))
             .copied()
     }
 
