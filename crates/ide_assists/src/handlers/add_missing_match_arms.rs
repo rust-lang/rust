@@ -21,8 +21,7 @@ use crate::{
 // enum Action { Move { distance: u32 }, Stop }
 //
 // fn handle(action: Action) {
-//     match action {
-//         $0
+//     match action $0 {
 //     }
 // }
 // ```
@@ -327,7 +326,7 @@ enum A {
 }
 
 fn foo(a: A) {
-    $0match a {
+    $0 match a {
         A::X => { }
     }
 }
@@ -911,7 +910,7 @@ fn main() {
     match E::X$0 {}
 }
 "#,
-            "match E::X {}",
+            "match E::X ",
         );
     }
 
@@ -923,8 +922,8 @@ fn main() {
 enum E { X, Y }
 
 fn main() {
-    match E::X {
-        $0_ => {}
+    match E::X $0 {
+        _ => {}
     }
 }
 "#,
@@ -932,7 +931,7 @@ fn main() {
 enum E { X, Y }
 
 fn main() {
-    match E::X {
+    match E::X  {
         $0E::X => todo!(),
         E::Y => todo!(),
     }
@@ -950,8 +949,7 @@ mod foo { pub enum E { X, Y } }
 use foo::E::X;
 
 fn main() {
-    match X {
-        $0
+    match X $0 {
     }
 }
 "#,
@@ -960,7 +958,7 @@ mod foo { pub enum E { X, Y } }
 use foo::E::X;
 
 fn main() {
-    match X {
+    match X  {
         $0X => todo!(),
         foo::E::Y => todo!(),
     }
@@ -976,8 +974,8 @@ fn main() {
             r#"
 enum A { One, Two }
 fn foo(a: A) {
-    match a {
-        // foo bar baz$0
+    match a $0 {
+        // foo bar baz
         A::One => {}
         // This is where the rest should be
     }
@@ -986,7 +984,7 @@ fn foo(a: A) {
             r#"
 enum A { One, Two }
 fn foo(a: A) {
-    match a {
+    match a  {
         // foo bar baz
         A::One => {}
         $0A::Two => todo!(),
@@ -1004,15 +1002,15 @@ fn foo(a: A) {
             r#"
 enum A { One, Two }
 fn foo(a: A) {
-    match a {
-        // foo bar baz$0
+    match a $0 {
+        // foo bar baz
     }
 }
 "#,
             r#"
 enum A { One, Two }
 fn foo(a: A) {
-    match a {
+    match a  {
         $0A::One => todo!(),
         A::Two => todo!(),
         // foo bar baz
