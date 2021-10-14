@@ -2,7 +2,7 @@ use hir::{self, HasCrate, HasSource, HirDisplay};
 use syntax::ast::{self, make, AstNode, HasGenericParams, HasName, HasVisibility};
 
 use crate::{
-    utils::{find_struct_impl, render_snippet, Cursor},
+    utils::{convert_param_list_to_arg_list, find_struct_impl, render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
 use syntax::ast::edit::AstNodeEdit;
@@ -43,8 +43,6 @@ use syntax::ast::edit::AstNodeEdit;
 // }
 // ```
 pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let cap = ctx.config.snippet_cap?;
-
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let strukt_name = strukt.name()?;
 
@@ -57,8 +55,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
         None => {
             let field = ctx.find_node_at_offset::<ast::TupleField>()?;
             let field_list = ctx.find_node_at_offset::<ast::TupleFieldList>()?;
-            let field_list_index =
-                field_list.syntax().children().into_iter().position(|s| &s == field.syntax())?;
+            let field_list_index = field_list.fields().position(|it| it == field)?;
             let field_ty = field.ty()?;
             (format!("{}", field_list_index), field_ty)
         }
@@ -73,16 +70,14 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
                 methods.push(f)
             }
         }
-        Some(())
+        Option::<()>::None
     });
 
     let target = field_ty.syntax().text_range();
     for method in methods {
-        let impl_def = find_struct_impl(
-            ctx,
-            &ast::Adt::Struct(strukt.clone()),
-            &method.name(ctx.db()).to_string(),
-        )?;
+        let adt = ast::Adt::Struct(strukt.clone());
+        let name = method.name(ctx.db()).to_string();
+        let impl_def = find_struct_impl(ctx, &adt, &name).flatten();
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),
@@ -99,15 +94,22 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
                 let name = make::name(&method.name(ctx.db()).to_string());
                 let params =
                     method_source.param_list().unwrap_or_else(|| make::param_list(None, []));
+                let type_params = method_source.generic_param_list();
+                let arg_list = match method_source.param_list() {
+                    Some(list) => convert_param_list_to_arg_list(list),
+                    None => make::arg_list([]),
+                };
                 let tail_expr = make::expr_method_call(
                     make::ext::field_from_idents(["self", &field_name]).unwrap(), // This unwrap is ok because we have at least 1 arg in the list
                     make::name_ref(&method_name.to_string()),
-                    make::arg_list([]),
+                    arg_list,
                 );
-                let type_params = method_source.generic_param_list();
                 let body = make::block_expr([], Some(tail_expr));
                 let ret_type = method.ret_type(ctx.db());
                 let ret_type = if ret_type.is_unknown() {
+                    // FIXME: we currently can't resolve certain generics, and
+                    // are returning placeholders instead. We should fix our
+                    // type resolution here, so we return fewer placeholders.
                     Some(make::ret_type(make::ty_placeholder()))
                 } else {
                     let ret_type = &ret_type.display(ctx.db()).to_string();
@@ -133,8 +135,15 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
                         assoc_items.add_item(f.clone().into());
 
                         // Update the impl block.
-                        let snippet = render_snippet(cap, impl_def.syntax(), cursor);
-                        builder.replace_snippet(cap, old_range, snippet);
+                        match ctx.config.snippet_cap {
+                            Some(cap) => {
+                                let snippet = render_snippet(cap, impl_def.syntax(), cursor);
+                                builder.replace_snippet(cap, old_range, snippet);
+                            }
+                            None => {
+                                builder.replace(old_range, impl_def.syntax().to_string());
+                            }
+                        }
                     }
                     None => {
                         // Attach the function to the impl block
@@ -147,10 +156,19 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
                         assoc_items.add_item(f.clone().into());
 
                         // Insert the impl block.
-                        let offset = strukt.syntax().text_range().end();
-                        let snippet = render_snippet(cap, impl_def.syntax(), cursor);
-                        let snippet = format!("\n\n{}", snippet);
-                        builder.insert_snippet(cap, offset, snippet);
+                        match ctx.config.snippet_cap {
+                            Some(cap) => {
+                                let offset = strukt.syntax().text_range().end();
+                                let snippet = render_snippet(cap, impl_def.syntax(), cursor);
+                                let snippet = format!("\n\n{}", snippet);
+                                builder.insert_snippet(cap, offset, snippet);
+                            }
+                            None => {
+                                let offset = strukt.syntax().text_range().end();
+                                let snippet = format!("\n\n{}", impl_def.syntax().to_string());
+                                builder.insert(offset, snippet);
+                            }
+                        }
                     }
                 }
             },
@@ -297,7 +315,7 @@ struct Person<T> {
 
 impl<T> Person<T> {
     $0pub(crate) async fn age<J, 'a>(&'a mut self, ty: T, arg: J) -> _ {
-        self.age.age()
+        self.age.age(ty, arg)
     }
 }"#,
         );
