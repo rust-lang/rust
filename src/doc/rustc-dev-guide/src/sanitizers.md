@@ -5,6 +5,8 @@ The rustc compiler contains support for following sanitizers:
 * [AddressSanitizer][clang-asan] a faster memory error detector. Can
   detect out-of-bounds access to heap, stack, and globals, use after free, use
   after return, double free, invalid free, memory leaks.
+* [ControlFlowIntegrity][clang-cfi] LLVM Control Flow Integrity (CFI) provides
+  forward-edge control flow protection.
 * [Hardware-assisted AddressSanitizer][clang-hwasan]  a tool similar to
   AddressSanitizer but based on partial hardware assistance.
 * [LeakSanitizer][clang-lsan] a run-time memory leak detector.
@@ -14,15 +16,16 @@ The rustc compiler contains support for following sanitizers:
 ## How to use the sanitizers?
 
 To enable a sanitizer compile with `-Z sanitizer=...` option, where value is one
-of `address`, `hwaddress`, `leak`, `memory` or `thread`. For more details on how
-to use sanitizers please refer to the sanitizer flag in [the unstable
+of `address`, `cfi`, `hwaddress`, `leak`, `memory` or `thread`. For more details
+on how to use sanitizers please refer to the sanitizer flag in [the unstable
 book](https://doc.rust-lang.org/unstable-book/).
 
 ## How are sanitizers implemented in rustc?
 
-The implementation of sanitizers relies almost entirely on LLVM. The rustc is
-an integration point for LLVM compile time instrumentation passes and runtime
-libraries. Highlight of the most important aspects of the implementation:
+The implementation of sanitizers (except CFI) relies almost entirely on LLVM.
+The rustc is an integration point for LLVM compile time instrumentation passes
+and runtime libraries. Highlight of the most important aspects of the
+implementation:
 
 *  The sanitizer runtime libraries are part of the [compiler-rt] project, and
    [will be built][sanitizer-build] on [supported targets][sanitizer-targets]
@@ -104,12 +107,14 @@ To enable a sanitizer on a new target which is already supported by LLVM:
 
 * [Sanitizers project page](https://github.com/google/sanitizers/wiki/)
 * [AddressSanitizer in Clang][clang-asan]
+* [ControlFlowIntegrity in Clang][clang-cfi]
 * [Hardware-assisted AddressSanitizer][clang-hwasan]
 * [LeakSanitizer in Clang][clang-lsan]
 * [MemorySanitizer in Clang][clang-msan]
 * [ThreadSanitizer in Clang][clang-tsan]
 
 [clang-asan]: https://clang.llvm.org/docs/AddressSanitizer.html
+[clang-cfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html
 [clang-hwasan]: https://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html
 [clang-lsan]: https://clang.llvm.org/docs/LeakSanitizer.html
 [clang-msan]: https://clang.llvm.org/docs/MemorySanitizer.html
