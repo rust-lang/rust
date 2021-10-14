@@ -1331,15 +1331,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::Expr<'hir> {
-        let orig_head_span = head.span;
         // expand <head>
-        let mut head = self.lower_expr_mut(head);
-        let desugared_span = self.mark_span_with_reason(
-            DesugaringKind::ForLoop(ForLoopLoc::Head),
-            orig_head_span,
-            None,
-        );
-        head.span = self.lower_span(desugared_span);
+        let head = self.lower_expr_mut(head);
+        let desugared_span =
+            self.mark_span_with_reason(DesugaringKind::ForLoop(ForLoopLoc::Head), head.span, None);
 
         let iter = Ident::with_dummy_span(sym::iter);
 
@@ -1428,7 +1423,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             loop_block,
             self.lower_label(opt_label),
             hir::LoopSource::ForLoop,
-            self.lower_span(e.span.with_hi(orig_head_span.hi())),
+            self.lower_span(e.span.with_hi(head.span.hi())),
         );
         let loop_expr = self.arena.alloc(hir::Expr {
             hir_id: self.lower_node_id(e.id),
@@ -1441,7 +1436,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let into_iter_span = self.mark_span_with_reason(
             DesugaringKind::ForLoop(ForLoopLoc::IntoIter),
-            orig_head_span,
+            head.span,
             None,
         );
 
