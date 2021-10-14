@@ -104,6 +104,11 @@ export function isRustDocument(document: vscode.TextDocument): document is RustD
     return document.languageId === 'rust' && document.uri.scheme === 'file';
 }
 
+export function isCargoTomlDocument(document: vscode.TextDocument): document is RustDocument {
+    // ideally `document.languageId` should be 'toml' but user maybe not have toml extension installed
+    return document.uri.scheme === 'file' && document.fileName.endsWith('Cargo.toml');
+}
+
 export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
     return isRustDocument(editor.document);
 }

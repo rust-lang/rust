@@ -1,6 +1,6 @@
 //! See [`CargoWorkspace`].
 
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::iter;
 use std::path::PathBuf;
 use std::{ops, process::Command};
@@ -398,6 +398,39 @@ impl CargoWorkspace {
         } else {
             format!("{}:{}", package.name, package.version)
         }
+    }
+
+    pub fn parent_manifests(&self, manifest_path: &ManifestPath) -> Option<Vec<ManifestPath>> {
+        let mut found = false;
+        let parent_manifests = self
+            .packages()
+            .filter_map(|pkg| {
+                if !found && &self[pkg].manifest == manifest_path {
+                    found = true
+                }
+                self[pkg].dependencies.iter().find_map(|dep| {
+                    if &self[dep.pkg].manifest == manifest_path {
+                        return Some(self[pkg].manifest.clone());
+                    }
+                    None
+                })
+            })
+            .collect::<Vec<ManifestPath>>();
+
+        // some packages has this pkg as dep. return their manifests
+        if parent_manifests.len() > 0 {
+            return Some(parent_manifests);
+        }
+
+        // this pkg is inside this cargo workspace, fallback to workspace root
+        if found {
+            return Some(vec![
+                ManifestPath::try_from(self.workspace_root().join("Cargo.toml")).ok()?
+            ]);
+        }
+
+        // not in this workspace
+        None
     }
 
     fn is_unique(&self, name: &str) -> bool {

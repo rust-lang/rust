@@ -3,6 +3,7 @@
 //! `ide` crate.
 
 use std::{
+    convert::TryFrom,
     io::Write as _,
     process::{self, Stdio},
 };
@@ -20,15 +21,17 @@ use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeLens, CompletionItem, Diagnostic, DiagnosticTag, DocumentFormattingParams, FoldingRange,
-    FoldingRangeParams, HoverContents, Location, NumberOrString, Position, PrepareRenameResponse,
-    Range, RenameParams, SemanticTokensDeltaParams, SemanticTokensFullDeltaResult,
-    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
-    SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
+    FoldingRangeParams, HoverContents, Location, LocationLink, NumberOrString, Position,
+    PrepareRenameResponse, Range, RenameParams, SemanticTokensDeltaParams,
+    SemanticTokensFullDeltaResult, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
+    TextDocumentIdentifier, Url, WorkspaceEdit,
 };
-use project_model::TargetKind;
+use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize, T};
+use vfs::AbsPathBuf;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -601,6 +604,62 @@ pub(crate) fn handle_parent_module(
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
     let _p = profile::span("handle_parent_module");
+    if let Ok(file_path) = &params.text_document.uri.to_file_path() {
+        if file_path.file_name().unwrap_or_default() == "Cargo.toml" {
+            // search workspaces for parent packages or fallback to workspace root
+            let abs_path_buf = match AbsPathBuf::try_from(file_path.to_path_buf()).ok() {
+                Some(abs_path_buf) => abs_path_buf,
+                None => return Ok(None),
+            };
+
+            let manifest_path = match ManifestPath::try_from(abs_path_buf).ok() {
+                Some(manifest_path) => manifest_path,
+                None => return Ok(None),
+            };
+
+            let links: Vec<LocationLink> = snap
+                .workspaces
+                .iter()
+                .filter_map(|ws| match ws {
+                    ProjectWorkspace::Cargo { cargo, .. } => cargo.parent_manifests(&manifest_path),
+                    _ => None,
+                })
+                .flatten()
+                .map(|parent_manifest_path| LocationLink {
+                    origin_selection_range: None,
+                    target_uri: to_proto::url_from_abs_path(&parent_manifest_path),
+                    target_range: Range::default(),
+                    target_selection_range: Range::default(),
+                })
+                .collect::<_>();
+            return Ok(Some(links.into()));
+        }
+
+        // check if invoked at the crate root
+        let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+        let crate_id = match snap.analysis.crate_for(file_id)?.first() {
+            Some(&crate_id) => crate_id,
+            None => return Ok(None),
+        };
+        let cargo_spec = match CargoTargetSpec::for_file(&snap, file_id)? {
+            Some(it) => it,
+            None => return Ok(None),
+        };
+
+        if snap.analysis.crate_root(crate_id)? == file_id {
+            let cargo_toml_url = to_proto::url_from_abs_path(&cargo_spec.cargo_toml);
+            let res = vec![LocationLink {
+                origin_selection_range: None,
+                target_uri: cargo_toml_url,
+                target_range: Range::default(),
+                target_selection_range: Range::default(),
+            }]
+            .into();
+            return Ok(Some(res));
+        }
+    }
+
+    // locate parent module by semantics
     let position = from_proto::file_position(&snap, params)?;
     let navs = snap.analysis.parent_module(position)?;
     let res = to_proto::goto_definition_response(&snap, None, navs)?;

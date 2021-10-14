@@ -62,7 +62,7 @@ export interface MatchingBraceParams {
 }
 export const matchingBrace = new lc.RequestType<MatchingBraceParams, lc.Position[], void>("experimental/matchingBrace");
 
-export const parentModule = new lc.RequestType<lc.TextDocumentPositionParams, lc.LocationLink[], void>("experimental/parentModule");
+export const parentModule = new lc.RequestType<lc.TextDocumentPositionParams, lc.LocationLink[] | null, void>("experimental/parentModule");
 
 export interface JoinLinesParams {
     textDocument: lc.TextDocumentIdentifier;

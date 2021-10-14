@@ -8,7 +8,7 @@ import { applySnippetWorkspaceEdit, applySnippetTextEdits } from './snippets';
 import { spawnSync } from 'child_process';
 import { RunnableQuickPick, selectRunnable, createTask, createArgs } from './run';
 import { AstInspector } from './ast_inspector';
-import { isRustDocument, sleep, isRustEditor } from './util';
+import { isRustDocument, isCargoTomlDocument, sleep, isRustEditor } from './util';
 import { startDebugSession, makeDebugConfig } from './debug';
 import { LanguageClient } from 'vscode-languageclient/node';
 
@@ -185,9 +185,10 @@ export function onEnter(ctx: Ctx): Cmd {
 
 export function parentModule(ctx: Ctx): Cmd {
     return async () => {
-        const editor = ctx.activeRustEditor;
+        const editor = vscode.window.activeTextEditor;
         const client = ctx.client;
         if (!editor || !client) return;
+        if (!(isRustDocument(editor.document) || isCargoTomlDocument(editor.document))) return;
 
         const locations = await client.sendRequest(ra.parentModule, {
             textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
@@ -195,6 +196,7 @@ export function parentModule(ctx: Ctx): Cmd {
                 editor.selection.active,
             ),
         });
+        if (!locations) return;
 
         if (locations.length === 1) {
             const loc = locations[0];
