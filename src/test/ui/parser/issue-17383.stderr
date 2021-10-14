@@ -1,0 +1,15 @@
+error[E0658]: custom discriminant values are not allowed in enums with tuple or struct variants
+  --> $DIR/issue-17383.rs:2:9
+   |
+LL |     A = 3,
+   |         ^ disallowed custom discriminant
+LL |
+LL |     B(usize)
+   |     -------- tuple variant defined here
+   |
+   = note: see issue #60553 <https://github.com/rust-lang/rust/issues/60553> for more information
+   = help: add `#![feature(arbitrary_enum_discriminant)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
