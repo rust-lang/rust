@@ -297,7 +297,7 @@ impl CargoActor {
                 read_at_least_one_message = true;
 
                 // Try to deserialize a message from Cargo or Rustc.
-                let mut deserializer = serde_json::Deserializer::from_str(&line);
+                let mut deserializer = serde_json::Deserializer::from_str(line);
                 deserializer.disable_recursion_limit();
                 if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
                     match message {

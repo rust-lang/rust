@@ -741,7 +741,7 @@ fn parents_match(mut node: NodeOrToken<SyntaxNode, SyntaxToken>, mut kinds: &[Sy
     }
 
     // Only true if we matched all expected kinds
-    kinds.len() == 0
+    kinds.is_empty()
 }
 
 #[inline]

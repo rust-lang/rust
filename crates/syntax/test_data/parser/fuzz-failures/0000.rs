@@ -101,7 +101,7 @@ pub /*(meh)*/ fn replace_range(mut text: String, range: TextRange, replace_with:
 }
 
 fn is_balanced(tokens: &[Token]) -> bool {
-    if tokens.len() == 0
+    if tokens.is_empty()
        || tokens.first().unwrap().kind != L_CURLY
        || tokens.last().unwrap().kind != R_CURLY {
         return false
@@ -153,7 +153,7 @@ pub /*(meh)*/ fn replace_range(mut text: String, range: TextRange, replace_with:
 }
 
 fn is_balanced(tokens: &[Token]) -> bool {
-    if tokens.len() == 0
+    if tokens.is_empty()
        || tokens.first().unwrap().kind != L_CURLY
        || tokens.last().unwrap().kind != R_CURLY {
         return false
