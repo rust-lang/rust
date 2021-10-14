@@ -11,13 +11,13 @@ fn foo<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> 
     x //~ ERROR mismatched types
 }
 
-// This case is still subpar:
-// `Pin::new(x)`: store this in the heap by calling `Box::new`: `Box::new(x)`
-// Should suggest changing the code from `Pin::new` to `Box::pin`.
 fn bar<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
     Box::new(x) //~ ERROR mismatched types
 }
 
+// This case is still subpar:
+// `Pin::new(x)`: store this in the heap by calling `Box::new`: `Box::new(x)`
+// Should suggest changing the code from `Pin::new` to `Box::pin`.
 fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
     Pin::new(x) //~ ERROR mismatched types
     //~^ ERROR E0277
