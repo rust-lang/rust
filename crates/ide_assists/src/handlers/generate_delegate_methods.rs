@@ -7,9 +7,9 @@ use crate::{
 };
 use syntax::ast::edit::AstNodeEdit;
 
-// Assist: generate_delegate
+// Assist: generate_delegate_methods
 //
-// Generate a delegate method.
+// Generate delegate methods.
 //
 // ```
 // struct Age(u8);
@@ -42,7 +42,7 @@ use syntax::ast::edit::AstNodeEdit;
 //     }
 // }
 // ```
-pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let cap = ctx.config.snippet_cap?;
 
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
@@ -72,9 +72,9 @@ pub(crate) fn generate_delegate(acc: &mut Assists, ctx: &AssistContext) -> Optio
             &method.name(ctx.db()).to_string(),
         )?;
         acc.add_group(
-            &GroupLabel("Generate delegate".to_owned()),
-            AssistId("generate_delegate", AssistKind::Generate),
-            format!("Generate a delegate method for '{}'", method.name(ctx.db())),
+            &GroupLabel("Generate delegate methods…".to_owned()),
+            AssistId("generate_delegate_methods", AssistKind::Generate),
+            format!("Generate delegate for `{}.{}()`", field_name, method.name(ctx.db())),
             target,
             |builder| {
                 // Create the function
@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn test_generate_delegate_create_impl_block() {
         check_assist(
-            generate_delegate,
+            generate_delegate_methods,
             r#"
 struct Age(u8);
 impl Age {
@@ -191,7 +191,7 @@ impl Person {
     #[test]
     fn test_generate_delegate_update_impl_block() {
         check_assist(
-            generate_delegate,
+            generate_delegate_methods,
             r#"
 struct Age(u8);
 impl Age {
@@ -228,7 +228,7 @@ impl Person {
     #[test]
     fn test_generate_delegate_enable_all_attributes() {
         check_assist(
-            generate_delegate,
+            generate_delegate_methods,
             r#"
 struct Age<T>(T);
 impl<T> Age<T> {

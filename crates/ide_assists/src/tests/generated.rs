@@ -729,9 +729,9 @@ impl Default for Example {
 }
 
 #[test]
-fn doctest_generate_delegate() {
+fn doctest_generate_delegate_methods() {
     check_doc_test(
-        "generate_delegate",
+        "generate_delegate_methods",
         r#####"
 struct Age(u8);
 impl Age {
