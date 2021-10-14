@@ -113,6 +113,10 @@ impl CfgDiff {
     pub fn len(&self) -> usize {
         self.enable.len() + self.disable.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl fmt::Display for CfgDiff {

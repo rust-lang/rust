@@ -57,7 +57,7 @@ mod tests {
             .unwrap()
             .expect("no declaration or definition found")
             .info;
-        if navs.len() == 0 {
+        if navs.is_empty() {
             panic!("unresolved reference")
         }
 
