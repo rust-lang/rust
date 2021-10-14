@@ -985,6 +985,9 @@ fn test_into_iter_advance_by() {
 
     assert_eq!(i.advance_by(usize::MAX), Err(0));
 
+    i.advance_by(0).unwrap();
+    i.advance_back_by(0).unwrap();
+
     assert_eq!(i.len(), 0);
 }
 

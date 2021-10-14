@@ -74,6 +74,28 @@ fn test_iterator_take_nth_back() {
 }
 
 #[test]
+fn test_take_advance_by() {
+    let mut take = (0..10).take(3);
+    assert_eq!(take.advance_by(2), Ok(()));
+    assert_eq!(take.next(), Some(2));
+    assert_eq!(take.advance_by(1), Err(0));
+
+    assert_eq!((0..0).take(10).advance_by(0), Ok(()));
+    assert_eq!((0..0).take(10).advance_by(1), Err(0));
+    assert_eq!((0..10).take(4).advance_by(5), Err(4));
+
+    let mut take = (0..10).take(3);
+    assert_eq!(take.advance_back_by(2), Ok(()));
+    assert_eq!(take.next(), Some(0));
+    assert_eq!(take.advance_back_by(1), Err(0));
+
+    assert_eq!((0..2).take(1).advance_back_by(10), Err(1));
+    assert_eq!((0..0).take(1).advance_back_by(1), Err(0));
+    assert_eq!((0..0).take(1).advance_back_by(0), Ok(()));
+    assert_eq!((0..usize::MAX).take(100).advance_back_by(usize::MAX), Err(100));
+}
+
+#[test]
 fn test_iterator_take_short() {
     let xs = [0, 1, 2, 3];
 

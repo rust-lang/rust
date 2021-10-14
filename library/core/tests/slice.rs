@@ -154,6 +154,7 @@ fn test_iterator_advance_by() {
     assert_eq!(iter.as_slice(), &v[3..]);
     iter.advance_by(2).unwrap();
     assert_eq!(iter.as_slice(), &[]);
+    iter.advance_by(0).unwrap();
 }
 
 #[test]
@@ -175,6 +176,7 @@ fn test_iterator_advance_back_by() {
     assert_eq!(iter.as_slice(), &v[..v.len() - 3]);
     iter.advance_back_by(2).unwrap();
     assert_eq!(iter.as_slice(), &[]);
+    iter.advance_back_by(0).unwrap();
 }
 
 #[test]
