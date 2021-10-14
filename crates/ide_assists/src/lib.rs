@@ -144,6 +144,7 @@ mod handlers {
     mod generate_is_empty_from_len;
     mod generate_new;
     mod generate_setter;
+    mod generate_delegate_methods;
     mod add_return_type;
     mod inline_call;
     mod inline_local_variable;
@@ -210,6 +211,7 @@ mod handlers {
             generate_constant::generate_constant,
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_default_from_new::generate_default_from_new,
+            generate_delegate_methods::generate_delegate_methods,
             generate_deref::generate_deref,
             generate_derive::generate_derive,
             generate_enum_is_method::generate_enum_is_method,

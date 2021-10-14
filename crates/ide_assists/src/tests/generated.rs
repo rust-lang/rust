@@ -729,6 +729,43 @@ impl Default for Example {
 }
 
 #[test]
+fn doctest_generate_delegate_methods() {
+    check_doc_test(
+        "generate_delegate_methods",
+        r#####"
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+
+struct Person {
+    ag$0e: Age,
+}
+"#####,
+        r#####"
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+
+struct Person {
+    age: Age,
+}
+
+impl Person {
+    $0fn age(&self) -> u8 {
+        self.age.age()
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_deref() {
     check_doc_test(
         "generate_deref",
