@@ -5,8 +5,8 @@ use hir::{Adt, HasSource, ModuleDef, Semantics};
 use ide_db::helpers::{mod_path_to_ast, FamousDefs};
 use ide_db::RootDatabase;
 use itertools::Itertools;
-use syntax::TextRange;
 use syntax::ast::{self, make, AstNode, HasName, MatchArm, Pat};
+use syntax::TextRange;
 
 use crate::{
     utils::{self, render_snippet, Cursor},
@@ -319,7 +319,7 @@ fn main() {
     fn not_applicable_outside_of_range_left() {
         check_assist_not_applicable(
             add_missing_match_arms,
-        r#"
+            r#"
 enum A {
     X,
     Y
@@ -338,7 +338,7 @@ fn foo(a: A) {
     fn not_applicable_outside_of_range_right() {
         check_assist_not_applicable(
             add_missing_match_arms,
-        r#"
+            r#"
 enum A {
     X,
     Y
