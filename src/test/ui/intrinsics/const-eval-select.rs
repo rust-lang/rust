@@ -4,11 +4,11 @@
 
 use std::intrinsics::const_eval_select;
 
-const fn yes(_: ()) -> bool {
+const fn yes() -> bool {
     true
 }
 
-fn no(_: ()) -> bool {
+fn no() -> bool {
     false
 }
 

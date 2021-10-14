@@ -2266,10 +2266,10 @@ pub const unsafe fn const_eval_select<ARG, F, G, RET>(
     called_at_rt: G,
 ) -> RET
 where
-    F: ~const FnOnce(ARG) -> RET,
-    G: FnOnce(ARG) -> RET + ~const Drop,
+    F: ~const FnOnce<ARG, Output = RET>,
+    G: FnOnce<ARG, Output = RET> + ~const Drop,
 {
-    called_at_rt(arg)
+    called_at_rt.call_once(arg)
 }
 
 #[cfg(not(bootstrap))]
@@ -2285,8 +2285,8 @@ pub const unsafe fn const_eval_select_ct<ARG, F, G, RET>(
     _called_at_rt: G,
 ) -> RET
 where
-    F: ~const FnOnce(ARG) -> RET,
-    G: FnOnce(ARG) -> RET + ~const Drop,
+    F: ~const FnOnce<ARG, Output = RET>,
+    G: FnOnce<ARG, Output = RET> + ~const Drop,
 {
-    called_in_const(arg)
+    called_in_const.call_once(arg)
 }
