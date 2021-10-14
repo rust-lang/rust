@@ -341,7 +341,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for (sp, label) in spans_and_labels {
                     multi_span.push_span_label(sp, label);
                 }
-                err.span_note(multi_span, "closures can only be coerced to `fn` types if they do not capture any variables");
+                err.span_note(
+                    multi_span,
+                    "closures can only be coerced to `fn` types if they do not capture any variables"
+                );
             }
         }
     }
@@ -361,15 +364,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         let pin_did = self.tcx.lang_items().pin_type();
-        match expected.kind() {
-            ty::Adt(def, _) if Some(def.did) != pin_did => return false,
-            // This guards the `unwrap` and `mk_box` below.
-            _ if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() => return false,
-            _ => {}
+        // This guards the `unwrap` and `mk_box` below.
+        if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() {
+            return false;
         }
-        let boxed_found = self.tcx.mk_box(found);
-        let new_found = self.tcx.mk_lang_item(boxed_found, LangItem::Pin).unwrap();
-        if self.can_coerce(new_found, expected) {
+        match expected.kind() {
+            ty::Adt(def, _) if Some(def.did) == pin_did => (),
+            _ => return false,
+        }
+        let box_found = self.tcx.mk_box(found);
+        let pin_box_found = self.tcx.mk_lang_item(box_found, LangItem::Pin).unwrap();
+        let pin_found = self.tcx.mk_lang_item(found, LangItem::Pin).unwrap();
+        if self.can_coerce(pin_box_found, expected) {
+            debug!("can coerce {:?} to {:?}, suggesting Box::pin", pin_box_found, expected);
             match found.kind() {
                 ty::Adt(def, _) if def.is_box() => {
                     err.help("use `Box::pin`");
@@ -381,11 +388,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             (expr.span.shrink_to_lo(), "Box::pin(".to_string()),
                             (expr.span.shrink_to_hi(), ")".to_string()),
                         ],
-                        Applicability::MachineApplicable,
+                        Applicability::MaybeIncorrect,
                     );
                 }
             }
             true
+        } else if self.can_coerce(pin_found, expected) {
+            match found.kind() {
+                ty::Adt(def, _) if def.is_box() => {
+                    err.help("use `Box::pin`");
+                    true
+                }
+                _ => false,
+            }
         } else {
             false
         }
