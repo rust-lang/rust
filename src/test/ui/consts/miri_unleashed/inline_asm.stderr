@@ -2,7 +2,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/inline_asm.rs:11:14
    |
 LL |     unsafe { llvm_asm!("xor %eax, %eax" ::: "eax"); }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inline assembly is not supported
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inline assembly is not supported
    |
    = note: this error originates in the macro `llvm_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -10,7 +10,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/inline_asm.rs:20:14
    |
 LL |     unsafe { asm!("nop"); }
-   |              ^^^^^^^^^^^^ inline assembly is not supported
+   |              ^^^^^^^^^^^ inline assembly is not supported
 
 warning: skipping const checks
    |
@@ -18,12 +18,12 @@ help: skipping check that does not even have a feature gate
   --> $DIR/inline_asm.rs:11:14
    |
 LL |     unsafe { llvm_asm!("xor %eax, %eax" ::: "eax"); }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
   --> $DIR/inline_asm.rs:20:14
    |
 LL |     unsafe { asm!("nop"); }
-   |              ^^^^^^^^^^^^
+   |              ^^^^^^^^^^^
    = note: this warning originates in the macro `llvm_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors; 1 warning emitted

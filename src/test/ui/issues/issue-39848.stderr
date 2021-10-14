@@ -9,7 +9,7 @@ LL |         if $tgt.has_$field() {}
    |         this `if` expression has a condition, but no block
 ...
 LL |     get_opt!(bar, foo);
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `get_opt` (in Nightly builds, run with -Z macro-backtrace for more info)
 

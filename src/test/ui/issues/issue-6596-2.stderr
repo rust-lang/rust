@@ -5,7 +5,7 @@ LL |         { $inp $nonexistent }
    |                ^^^^^^^^^^^^ expected one of 8 possible tokens
 ...
 LL |     g!(foo);
-   |     -------- in this macro invocation
+   |     ------- in this macro invocation
    |
    = note: this error originates in the macro `g` (in Nightly builds, run with -Z macro-backtrace for more info)
 

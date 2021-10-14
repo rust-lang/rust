@@ -32,7 +32,7 @@ error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:61:12
    |
 LL | n!(f);
-   | ------ in this macro invocation
+   | ----- in this macro invocation
 ...
 LL |         n!(f);
    |            ^ not found in this scope
@@ -45,7 +45,7 @@ error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:65:17
    |
 LL | n!(f);
-   | ------ in this macro invocation
+   | ----- in this macro invocation
 ...
 LL |                 f
    |                 ^ not found in this scope

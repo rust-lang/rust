@@ -10,7 +10,7 @@ LL |             pub use self::$name;
    |                     you can use `as` to change the binding name of the import
 ...
 LL | import!(("issue-56411-aux.rs", issue_56411_aux));
-   | ------------------------------------------------- in this macro invocation
+   | ------------------------------------------------ in this macro invocation
    |
    = note: `issue_56411_aux` must be defined only once in the type namespace of this module
    = note: this error originates in the macro `import` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -22,7 +22,7 @@ LL |             pub use self::$name;
    |                     ^^^^^^^^^^^ re-export of private `issue_56411_aux`
 ...
 LL | import!(("issue-56411-aux.rs", issue_56411_aux));
-   | ------------------------------------------------- in this macro invocation
+   | ------------------------------------------------ in this macro invocation
    |
    = note: consider declaring type or module `issue_56411_aux` with `pub`
    = note: this error originates in the macro `import` (in Nightly builds, run with -Z macro-backtrace for more info)

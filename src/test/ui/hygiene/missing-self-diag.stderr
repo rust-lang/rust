@@ -6,7 +6,7 @@ LL |           self.bar();
 ...
 LL | /     pub fn foo(&self) {
 LL | |         call_bar!();
-   | |         ------------ in this macro invocation
+   | |         ----------- in this macro invocation
 LL | |     }
    | |_____- this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters
    |

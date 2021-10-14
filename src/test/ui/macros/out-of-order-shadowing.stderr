@@ -8,7 +8,7 @@ note: `bar` could refer to the macro defined here
   --> $DIR/out-of-order-shadowing.rs:4:1
    |
 LL | define_macro!(bar);
-   | ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^
 note: `bar` could also refer to the macro defined here
   --> $DIR/out-of-order-shadowing.rs:3:1
    |

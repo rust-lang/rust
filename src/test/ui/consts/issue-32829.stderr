@@ -2,7 +2,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/issue-32829.rs:1:22
    |
 LL | static S : u64 = { { panic!("foo"); 0 } };
-   |                      ^^^^^^^^^^^^^^ the evaluated program panicked at 'foo', $DIR/issue-32829.rs:1:22
+   |                      ^^^^^^^^^^^^^ the evaluated program panicked at 'foo', $DIR/issue-32829.rs:1:22
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 

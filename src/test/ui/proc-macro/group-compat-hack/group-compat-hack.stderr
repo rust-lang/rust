@@ -7,7 +7,7 @@ LL |         #[my_macro] struct One($name);
   ::: $DIR/group-compat-hack.rs:27:5
    |
 LL |     impl_macros!(Foo);
-   |     ------------------ in this macro invocation
+   |     ----------------- in this macro invocation
    |
    = note: `#[warn(proc_macro_back_compat)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -24,7 +24,7 @@ LL |         #[my_macro] struct One($name);
   ::: $DIR/group-compat-hack.rs:44:5
    |
 LL |     impl_macros!(Foo);
-   |     ------------------ in this macro invocation
+   |     ----------------- in this macro invocation
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
@@ -40,7 +40,7 @@ LL |         #[my_macro] struct Two($name);
   ::: $DIR/group-compat-hack.rs:46:5
    |
 LL |     arrays!(Foo);
-   |     ------------- in this macro invocation
+   |     ------------ in this macro invocation
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
@@ -56,7 +56,7 @@ LL |         #[my_macro] struct Three($T);
   ::: $DIR/group-compat-hack.rs:55:5
    |
 LL |     tuple_from_req!(Foo);
-   |     --------------------- in this macro invocation
+   |     -------------------- in this macro invocation
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
@@ -72,7 +72,7 @@ LL |         #[my_macro] struct Three($T);
   ::: $DIR/group-compat-hack.rs:63:5
    |
 LL |     tuple_from_req!(Foo);
-   |     --------------------- in this macro invocation
+   |     -------------------- in this macro invocation
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
@@ -91,7 +91,7 @@ LL |         #[my_macro] struct One($name);
   ::: $DIR/group-compat-hack.rs:27:5
    |
 LL |     impl_macros!(Foo);
-   |     ------------------ in this macro invocation
+   |     ----------------- in this macro invocation
    |
    = note: `#[warn(proc_macro_back_compat)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -109,7 +109,7 @@ LL |         #[my_macro] struct One($name);
   ::: $DIR/group-compat-hack.rs:44:5
    |
 LL |     impl_macros!(Foo);
-   |     ------------------ in this macro invocation
+   |     ----------------- in this macro invocation
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
@@ -126,7 +126,7 @@ LL |         #[my_macro] struct Two($name);
   ::: $DIR/group-compat-hack.rs:46:5
    |
 LL |     arrays!(Foo);
-   |     ------------- in this macro invocation
+   |     ------------ in this macro invocation
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
@@ -143,7 +143,7 @@ LL |         #[my_macro] struct Three($T);
   ::: $DIR/group-compat-hack.rs:55:5
    |
 LL |     tuple_from_req!(Foo);
-   |     --------------------- in this macro invocation
+   |     -------------------- in this macro invocation
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
@@ -160,7 +160,7 @@ LL |         #[my_macro] struct Three($T);
   ::: $DIR/group-compat-hack.rs:63:5
    |
 LL |     tuple_from_req!(Foo);
-   |     --------------------- in this macro invocation
+   |     -------------------- in this macro invocation
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>

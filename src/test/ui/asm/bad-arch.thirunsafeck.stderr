@@ -2,13 +2,13 @@ error[E0472]: inline assembly is unsupported on this target
   --> $DIR/bad-arch.rs:22:9
    |
 LL |         asm!("");
-   |         ^^^^^^^^^
+   |         ^^^^^^^^
 
 error[E0472]: inline assembly is unsupported on this target
   --> $DIR/bad-arch.rs:27:1
    |
 LL | global_asm!("");
-   | ^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^
    |
    = note: this error originates in the macro `global_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
 

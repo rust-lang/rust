@@ -2,7 +2,7 @@ error: macro requires a cfg-pattern as an argument
   --> $DIR/cfg.rs:2:5
    |
 LL |     cfg!();
-   |     ^^^^^^^ cfg-pattern required
+   |     ^^^^^^ cfg-pattern required
    |
    = note: this error originates in the macro `cfg` (in Nightly builds, run with -Z macro-backtrace for more info)
 

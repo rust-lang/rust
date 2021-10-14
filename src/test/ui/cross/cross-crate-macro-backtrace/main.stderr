@@ -2,7 +2,7 @@ error: 1 positional argument in format string, but no arguments were given
   --> $DIR/main.rs:6:5
    |
 LL |     myprintln!("{}");
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the macro `concat` (in Nightly builds, run with -Z macro-backtrace for more info)
 

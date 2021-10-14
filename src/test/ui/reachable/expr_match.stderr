@@ -4,7 +4,7 @@ error: unreachable statement
 LL |     match () { () => return }
    |     ------------------------- any code following this `match` expression is unreachable, as all arms diverge
 LL |     println!("I am dead");
-   |     ^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |     ^^^^^^^^^^^^^^^^^^^^^ unreachable statement
    |
 note: the lint level is defined here
   --> $DIR/expr_match.rs:4:9
@@ -19,7 +19,7 @@ error: unreachable statement
 LL |     match () { () if false => return, () => return }
    |     ------------------------------------------------ any code following this `match` expression is unreachable, as all arms diverge
 LL |     println!("I am dead");
-   |     ^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |     ^^^^^^^^^^^^^^^^^^^^^ unreachable statement
    |
    = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 

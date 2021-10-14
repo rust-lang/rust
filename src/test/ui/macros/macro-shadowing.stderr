@@ -5,7 +5,7 @@ LL |     #[macro_use]
    |     ^^^^^^^^^^^^
 ...
 LL | m1!();
-   | ------ in this macro invocation
+   | ----- in this macro invocation
    |
    = note: macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)
    = note: this error originates in the macro `m1` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -23,7 +23,7 @@ LL |     macro_rules! foo { () => {} }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | m1!();
-   | ------ in this macro invocation
+   | ----- in this macro invocation
 note: `foo` could also refer to the macro defined here
   --> $DIR/macro-shadowing.rs:5:1
    |

@@ -17,7 +17,7 @@ LL | |         let x = a.0;
    | |                 --- in Rust 2018, this closure captures all of `a`, but in Rust 2021, it will only capture `a.0`
 LL | |         println!("{:?}", x);
 LL | |     });
-   | |_______- in this macro invocation
+   | |______- in this macro invocation
    |
 note: the lint level is defined here
   --> $DIR/closure-body-macro-fragment.rs:4:9

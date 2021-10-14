@@ -8,7 +8,7 @@ LL |         my_faulty_macro!(bcd);
    |                          ^^^ no rules expected this token in macro call
 ...
 LL |     my_faulty_macro!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `my_faulty_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ note: trace_macro
   --> $DIR/trace_faulty_macros.rs:31:5
    |
 LL |     my_faulty_macro!();
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `my_faulty_macro! {  }`
    = note: to `my_faulty_macro! (bcd) ;`
@@ -26,10 +26,10 @@ error: recursion limit reached while expanding `my_recursive_macro!`
   --> $DIR/trace_faulty_macros.rs:22:9
    |
 LL |         my_recursive_macro!();
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     my_recursive_macro!();
-   |     ---------------------- in this macro invocation
+   |     --------------------- in this macro invocation
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "8"]` attribute to your crate (`trace_faulty_macros`)
    = note: this error originates in the macro `my_recursive_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -38,7 +38,7 @@ note: trace_macro
   --> $DIR/trace_faulty_macros.rs:32:5
    |
 LL |     my_recursive_macro!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `my_recursive_macro! {  }`
    = note: to `my_recursive_macro! () ;`

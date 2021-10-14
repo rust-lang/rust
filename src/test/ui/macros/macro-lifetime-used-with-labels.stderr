@@ -7,7 +7,7 @@ LL |         'b: loop {
 LL |     'b: loop {
    |     -- first declared here
 LL |         br2!('b);
-   |         --------- in this macro invocation
+   |         -------- in this macro invocation
    |
    = note: this warning originates in the macro `br2` (in Nightly builds, run with -Z macro-backtrace for more info)
 

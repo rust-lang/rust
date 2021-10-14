@@ -5,7 +5,7 @@ LL |         { s.$b; }
    |             ^^
 ...
 LL |     generate_field_accesses!(1.1, 1.1, 1.1);
-   |     ---------------------------------------- in this macro invocation
+   |     --------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ LL |         { s.$b; }
    |             ^^ expected one of `.`, `;`, `?`, `}`, or an operator
 ...
 LL |     generate_field_accesses!(1.1, 1.1, 1.1);
-   |     ---------------------------------------- in this macro invocation
+   |     --------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -27,7 +27,7 @@ LL |         { s.$c; }
    |             ^^
 ...
 LL |     generate_field_accesses!(1.1, 1.1, 1.1);
-   |     ---------------------------------------- in this macro invocation
+   |     --------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -38,7 +38,7 @@ LL |         { s.$c; }
    |             ^^ expected one of `.`, `;`, `?`, `}`, or an operator
 ...
 LL |     generate_field_accesses!(1.1, 1.1, 1.1);
-   |     ---------------------------------------- in this macro invocation
+   |     --------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
 

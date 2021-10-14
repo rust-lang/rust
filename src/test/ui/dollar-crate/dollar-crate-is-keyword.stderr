@@ -5,7 +5,7 @@ LL |             struct $crate {}
    |                    ^^^^^^ expected identifier, found reserved identifier
 ...
 LL | m!();
-   | ----- in this macro invocation
+   | ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ LL |         use $crate as $crate;
    |                       ^^^^^^ expected identifier, found reserved identifier
 ...
 LL | m!();
-   | ----- in this macro invocation
+   | ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -27,7 +27,7 @@ LL |         use $crate;
    |         ^^^^^^^^^^^
 ...
 LL | m!();
-   | ----- in this macro invocation
+   | ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -38,7 +38,7 @@ LL |         use $crate as $crate;
    |         ^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | m!();
-   | ----- in this macro invocation
+   | ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 

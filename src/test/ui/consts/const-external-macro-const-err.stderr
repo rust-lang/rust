@@ -2,7 +2,7 @@ error: any use of this value will cause an error
   --> $DIR/const-external-macro-const-err.rs:12:5
    |
 LL |     static_assert!(2 + 2 == 5);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

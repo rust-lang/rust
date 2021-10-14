@@ -7,7 +7,7 @@ LL |               $options($pure, $nomem, $readonly, $preserves_flags, $noretur
 LL | /     m!(in out lateout inout inlateout const sym
 LL | |        pure nomem readonly preserves_flags
 LL | |        noreturn nostack att_syntax options);
-   | |____________________________________________- in this macro invocation
+   | |___________________________________________- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -20,7 +20,7 @@ LL |               $options($pure, $nomem, $readonly, $preserves_flags, $noretur
 LL | /     m!(in out lateout inout inlateout const sym
 LL | |        pure nomem readonly preserves_flags
 LL | |        noreturn nostack att_syntax options);
-   | |____________________________________________- in this macro invocation
+   | |___________________________________________- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -38,12 +38,12 @@ LL |       m!(in out lateout inout inlateout const sym
    | |
 LL | |        pure nomem readonly preserves_flags
 LL | |        noreturn nostack att_syntax options);
-   | |                                            -
-   | |____________________________________________|
-   | |____________________________________________in this macro invocation
-   | |____________________________________________in this macro invocation
-   | |____________________________________________in this macro invocation
-   |                                              in this macro invocation
+   | |                                           -
+   | |___________________________________________|
+   | |___________________________________________in this macro invocation
+   | |___________________________________________in this macro invocation
+   | |___________________________________________in this macro invocation
+   |                                             in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 

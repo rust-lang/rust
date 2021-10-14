@@ -5,7 +5,7 @@ LL |         let _: Box<dyn PubTr<AssocTy = u8>>;
    |             ^ private trait
 ...
 LL |     priv_trait::mac1!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ LL |         let _: Box<dyn PubTr<AssocTy = u8>>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private trait
 ...
 LL |     priv_trait::mac1!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -27,7 +27,7 @@ LL |         type InSignatureTy2 = Box<dyn PubTr<AssocTy = u8>>;
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private trait
 ...
 LL |     priv_trait::mac1!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -38,7 +38,7 @@ LL |         trait InSignatureTr2: PubTr<AssocTy = u8> {}
    |                               ^^^^^^^^^^^^^^^^^^^ private trait
 ...
 LL |     priv_trait::mac1!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -49,7 +49,7 @@ LL |         let _: Box<dyn PrivTr<AssocTy = u8>>;
    |             ^ private trait
 ...
 LL |     priv_trait::mac2!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -60,7 +60,7 @@ LL |         let _: Box<dyn PrivTr<AssocTy = u8>>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private trait
 ...
 LL |     priv_trait::mac2!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -71,7 +71,7 @@ LL |         type InSignatureTy1 = Box<dyn PrivTr<AssocTy = u8>>;
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private trait
 ...
 LL |     priv_trait::mac2!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -82,7 +82,7 @@ LL |         trait InSignatureTr1: PrivTr<AssocTy = u8> {}
    |                               ^^^^^^^^^^^^^^^^^^^^ private trait
 ...
 LL |     priv_trait::mac2!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_trait::mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -93,7 +93,7 @@ LL |         let _: Box<dyn PubTrWithParam<AssocTy = u8>>;
    |             ^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -104,7 +104,7 @@ LL |         let _: Box<dyn PubTrWithParam<AssocTy = u8>>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -115,7 +115,7 @@ LL |         let _: Box<dyn PubTr<AssocTy = u8>>;
    |             ^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -126,7 +126,7 @@ LL |         let _: Box<dyn PubTr<AssocTy = u8>>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -137,7 +137,7 @@ LL |         pub type InSignatureTy1 = Box<dyn PubTrWithParam<AssocTy = u8>>;
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -148,7 +148,7 @@ LL |         pub type InSignatureTy2 = Box<dyn PubTr<AssocTy = u8>>;
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -159,7 +159,7 @@ LL |         trait InSignatureTr1: PubTrWithParam<AssocTy = u8> {}
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -170,7 +170,7 @@ LL |         trait InSignatureTr2: PubTr<AssocTy = u8> {}
    |                               ^^^^^^^^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
-   |     --------------------------- in this macro invocation
+   |     -------------------------- in this macro invocation
    |
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 

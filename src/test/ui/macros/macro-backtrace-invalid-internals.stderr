@@ -5,7 +5,7 @@ LL |           1.fake()
    |             ^^^^ method not found in `{integer}`
 ...
 LL |     fake_method_stmt!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `fake_method_stmt` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ LL |           1.fake
    |             ^^^^
 ...
 LL |     fake_field_stmt!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `fake_field_stmt` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -27,7 +27,7 @@ LL |           (1).0
    |               ^
 ...
 LL |     fake_anon_field_stmt!();
-   |     ------------------------ in this macro invocation
+   |     ----------------------- in this macro invocation
    |
    = note: this error originates in the macro `fake_anon_field_stmt` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -38,7 +38,7 @@ LL |           2.0.neg()
    |               ^^^
 ...
 LL |     real_method_stmt!();
-   |     -------------------- in this macro invocation
+   |     ------------------- in this macro invocation
    |
    = note: this error originates in the macro `real_method_stmt` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you must specify a concrete type for this numeric value, like `f32`

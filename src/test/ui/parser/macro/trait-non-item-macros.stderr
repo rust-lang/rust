@@ -5,7 +5,7 @@ LL |         $a
    |         ^^
 ...
 LL |     bah!(2);
-   |     -------- caused by the macro expansion here
+   |     ------- caused by the macro expansion here
    |
    = note: the usage of `bah!` is likely invalid in trait item context
 

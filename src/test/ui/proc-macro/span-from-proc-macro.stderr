@@ -38,7 +38,7 @@ LL |         my_ident
   ::: $DIR/span-from-proc-macro.rs:16:5
    |
 LL |     other_error_from_bang!();
-   |     ------------------------- in this macro invocation
+   |     ------------------------ in this macro invocation
 
 error[E0308]: mismatched types
   --> $DIR/auxiliary/span-from-proc-macro.rs:16:36
@@ -54,7 +54,7 @@ LL | pub fn error_from_bang(_input: TokenStream) -> TokenStream {
   ::: $DIR/span-from-proc-macro.rs:15:5
    |
 LL |     error_from_bang!();
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
 
 error: aborting due to 4 previous errors
 

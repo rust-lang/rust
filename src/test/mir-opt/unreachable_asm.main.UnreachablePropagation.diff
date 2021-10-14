@@ -59,7 +59,7 @@
           StorageDead(_6);                 // scope 2 at $DIR/unreachable_asm.rs:18:9: 18:10
           StorageDead(_5);                 // scope 2 at $DIR/unreachable_asm.rs:18:9: 18:10
           StorageLive(_7);                 // scope 2 at $DIR/unreachable_asm.rs:21:9: 21:37
-          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []); // scope 3 at $DIR/unreachable_asm.rs:21:18: 21:35
+          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []); // scope 3 at $DIR/unreachable_asm.rs:21:18: 21:34
           _7 = const ();                   // scope 3 at $DIR/unreachable_asm.rs:21:9: 21:37
           StorageDead(_7);                 // scope 2 at $DIR/unreachable_asm.rs:21:36: 21:37
           StorageLive(_8);                 // scope 2 at $DIR/unreachable_asm.rs:22:9: 22:21

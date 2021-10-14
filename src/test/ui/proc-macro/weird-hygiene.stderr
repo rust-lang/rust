@@ -5,7 +5,7 @@ LL |             Value = (stringify!($tokens + hidden_ident), 1).1
    |                                           ^^^^^^^^^^^^ not found in this scope
 ...
 LL |     other!(50);
-   |     ----------- in this macro invocation
+   |     ---------- in this macro invocation
    |
    = note: this error originates in the macro `inner` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ LL |             hidden_ident
    |             ^^^^^^^^^^^^ not found in this scope
 ...
 LL |     invoke_it!(25);
-   |     --------------- in this macro invocation
+   |     -------------- in this macro invocation
    |
    = note: this error originates in the macro `invoke_it` (in Nightly builds, run with -Z macro-backtrace for more info)
 

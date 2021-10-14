@@ -7,7 +7,7 @@ LL |         $i as u32 < 0
    |                   not interpreted as comparison
 ...
 LL |     is_plainly_printable!(c);
-   |     ------------------------- in this macro invocation
+   |     ------------------------ in this macro invocation
    |
    = note: this error originates in the macro `is_plainly_printable` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: try comparing the cast value
