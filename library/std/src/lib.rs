@@ -195,7 +195,15 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(not(bootstrap), doc(cfg_hide(not(test), not(any(test, bootstrap)))))]
+#![cfg_attr(
+    not(bootstrap),
+    doc(cfg_hide(
+        not(test),
+        not(any(test, bootstrap)),
+        no_global_oom_handling,
+        not(no_global_oom_handling)
+    ))
+)]
 // Don't link to std. We are std.
 #![no_std]
 #![warn(deprecated_in_future)]

@@ -536,7 +536,7 @@ pub trait FromStr: Sized {
     ///
     /// If parsing succeeds, return the value inside [`Ok`], otherwise
     /// when the string is ill-formatted return an error specific to the
-    /// inside [`Err`]. The error type is specific to implementation of the trait.
+    /// inside [`Err`]. The error type is specific to the implementation of the trait.
     ///
     /// # Examples
     ///

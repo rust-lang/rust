@@ -13,10 +13,8 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coercions.rs:15:21
    |
 LL |     let y: &dyn T = x;
-   |            ------   ^
-   |            |        |
-   |            |        expected `&dyn T`, found *-ptr
-   |            |        help: consider borrowing here: `&x`
+   |            ------   ^ expected `&dyn T`, found *-ptr
+   |            |
    |            expected due to this
    |
    = note: expected reference `&dyn T`
@@ -37,10 +35,8 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coercions.rs:20:21
    |
 LL |     let y: &dyn T = x;
-   |            ------   ^
-   |            |        |
-   |            |        expected `&dyn T`, found *-ptr
-   |            |        help: consider borrowing here: `&x`
+   |            ------   ^ expected `&dyn T`, found *-ptr
+   |            |
    |            expected due to this
    |
    = note: expected reference `&dyn T`

@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/box-future-wrong-output.rs:20:39
+   |
+LL |     let _: BoxFuture<'static, bool> = async {}.boxed();
+   |            ------------------------   ^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Pin<Box<(dyn Future<Output = bool> + Send + 'static)>>`
+              found struct `Pin<Box<dyn Future<Output = ()> + Send>>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
