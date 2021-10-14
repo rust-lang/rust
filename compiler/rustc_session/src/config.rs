@@ -174,6 +174,20 @@ impl LinkerPluginLto {
     }
 }
 
+/// The different settings that can be enabled via the `-Z location-detail` flag.
+#[derive(Clone, PartialEq, Hash, Debug)]
+pub struct LocationDetail {
+    pub file: bool,
+    pub line: bool,
+    pub column: bool,
+}
+
+impl LocationDetail {
+    pub fn all() -> Self {
+        Self { file: true, line: true, column: true }
+    }
+}
+
 #[derive(Clone, PartialEq, Hash, Debug)]
 pub enum SwitchWithOptPath {
     Enabled(Option<PathBuf>),
@@ -2422,7 +2436,7 @@ crate mod dep_tracking {
     use super::LdImpl;
     use super::{
         CFGuard, CrateType, DebugInfo, ErrorOutputType, InstrumentCoverage, LinkerPluginLto,
-        LtoCli, OptLevel, OutputType, OutputTypes, Passes, SourceFileHashAlgorithm,
+        LocationDetail, LtoCli, OptLevel, OutputType, OutputTypes, Passes, SourceFileHashAlgorithm,
         SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
@@ -2513,6 +2527,7 @@ crate mod dep_tracking {
         Option<LdImpl>,
         OutputType,
         RealFileName,
+        LocationDetail,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
