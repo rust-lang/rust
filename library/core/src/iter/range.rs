@@ -1,4 +1,5 @@
 use crate::char;
+use crate::cmp::Ordering;
 use crate::convert::TryFrom;
 use crate::mem;
 use crate::ops::{self, Try};
@@ -481,6 +482,173 @@ impl Step for char {
         // SAFETY: because of the previous contract, this is guaranteed
         // by the caller to be a valid char.
         unsafe { char::from_u32_unchecked(res) }
+    }
+}
+
+/// `Step` impl relevant to traversing a `Range<*const T>`, as is common in code
+/// that interfaces with C++ iterators.
+///
+/// # Safety
+///
+/// Traversing a pointer range is always safe, but **using the resulting
+/// pointers** is not!
+///
+/// The pointers between the start and end of a range "remember" the [allocated
+/// object] that they refer into. Pointers resulting from pointer arithmetic
+/// must not be used to read or write to any other allocated object.
+///
+/// As a consequence, pointers from a range traversal are only dereferenceable
+/// if start and end of the original range both point into the same allocated
+/// object. Dereferencing a pointer obtained via `Step` when this is not the
+/// case is Undefined Behavior.
+///
+/// [allocated object]: crate::ptr#allocated-object
+///
+/// # Example
+///
+/// ```
+/// // Designed to be called from C++ or C.
+/// #[no_mangle]
+/// unsafe extern "C" fn demo(start: *const u16, end: *const u16) {
+///     for ptr in start..end {
+///         println!("{}", *ptr);
+///     }
+/// }
+///
+/// fn main() {
+///     let slice = &[1u16, 2, 3];
+///     let range = slice.as_ptr_range();
+///     unsafe { demo(range.start, range.end); }
+/// }
+/// ```
+#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+impl<T> Step for *const T {
+    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+        match start.cmp(end) {
+            Ordering::Less => {
+                let byte_offset = *end as usize - *start as usize;
+                byte_offset.checked_div(mem::size_of::<T>())
+            }
+            Ordering::Equal => Some(0),
+            Ordering::Greater => None,
+        }
+    }
+
+    fn forward_checked(start: Self, count: usize) -> Option<Self> {
+        if mem::size_of::<T>() == 0 {
+            Some(start)
+        } else if count.checked_mul(mem::size_of::<T>()).is_none() {
+            None
+        } else {
+            let maybe_wrapped = start.wrapping_add(count);
+            (maybe_wrapped >= start).then_some(maybe_wrapped)
+        }
+    }
+
+    fn backward_checked(start: Self, count: usize) -> Option<Self> {
+        if mem::size_of::<T>() == 0 {
+            Some(start)
+        } else if count.checked_mul(mem::size_of::<T>()).is_none() {
+            None
+        } else {
+            let maybe_wrapped = start.wrapping_sub(count);
+            (maybe_wrapped <= start).then_some(maybe_wrapped)
+        }
+    }
+
+    unsafe fn forward_unchecked(start: Self, count: usize) -> Self {
+        start.wrapping_add(count)
+    }
+
+    unsafe fn backward_unchecked(start: Self, count: usize) -> Self {
+        start.wrapping_sub(count)
+    }
+}
+
+/// `Step` impl relevant to traversing a `Range<*mut T>`, as is common in code
+/// that interfaces with C++ iterators.
+///
+/// # Safety
+///
+/// Traversing a pointer range is always safe, but **using the resulting
+/// pointers** is not!
+///
+/// The pointers between the start and end of a range "remember" the [allocated
+/// object] that they refer into. Pointers resulting from pointer arithmetic
+/// must not be used to read or write to any other allocated object.
+///
+/// As a consequence, pointers from a range traversal are only dereferenceable
+/// if start and end of the original range both point into the same allocated
+/// object. Dereferencing a pointer obtained via `Step` when this is not the
+/// case is Undefined Behavior.
+///
+/// [allocated object]: crate::ptr#allocated-object
+///
+/// # Example
+///
+/// ```
+/// #![feature(vec_spare_capacity)]
+///
+/// use core::ptr;
+///
+/// // Designed to be called from C++ or C.
+/// #[no_mangle]
+/// unsafe extern "C" fn demo(start: *mut u16, end: *mut u16) {
+///     for (i, ptr) in (start..end).enumerate() {
+///         ptr::write(ptr, i as u16);
+///     }
+/// }
+///
+/// fn main() {
+///     let mut vec: Vec<u16> = Vec::with_capacity(100);
+///     let range = vec.spare_capacity_mut().as_mut_ptr_range();
+///     unsafe {
+///         demo(range.start.cast::<u16>(), range.end.cast::<u16>());
+///         vec.set_len(100);
+///     }
+/// }
+/// ```
+#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+impl<T> Step for *mut T {
+    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+        match start.cmp(end) {
+            Ordering::Less => {
+                let byte_offset = *end as usize - *start as usize;
+                byte_offset.checked_div(mem::size_of::<T>())
+            }
+            Ordering::Equal => Some(0),
+            Ordering::Greater => None,
+        }
+    }
+
+    fn forward_checked(start: Self, count: usize) -> Option<Self> {
+        if mem::size_of::<T>() == 0 {
+            Some(start)
+        } else if count.checked_mul(mem::size_of::<T>()).is_none() {
+            None
+        } else {
+            let maybe_wrapped = start.wrapping_add(count);
+            (maybe_wrapped >= start).then_some(maybe_wrapped)
+        }
+    }
+
+    fn backward_checked(start: Self, count: usize) -> Option<Self> {
+        if mem::size_of::<T>() == 0 {
+            Some(start)
+        } else if count.checked_mul(mem::size_of::<T>()).is_none() {
+            None
+        } else {
+            let maybe_wrapped = start.wrapping_sub(count);
+            (maybe_wrapped <= start).then_some(maybe_wrapped)
+        }
+    }
+
+    unsafe fn forward_unchecked(start: Self, count: usize) -> Self {
+        start.wrapping_add(count)
+    }
+
+    unsafe fn backward_unchecked(start: Self, count: usize) -> Self {
+        start.wrapping_sub(count)
     }
 }
 
