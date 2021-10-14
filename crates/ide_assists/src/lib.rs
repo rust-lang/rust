@@ -157,6 +157,7 @@ mod handlers {
     mod move_module_to_file;
     mod move_to_mod_rs;
     mod move_from_mod_rs;
+    mod promote_local_to_const;
     mod pull_assignment_up;
     mod qualify_path;
     mod raw_string;
@@ -237,6 +238,7 @@ mod handlers {
             move_to_mod_rs::move_to_mod_rs,
             move_from_mod_rs::move_from_mod_rs,
             pull_assignment_up::pull_assignment_up,
+            promote_local_to_const::promote_local_to_const,
             qualify_path::qualify_path,
             raw_string::add_hash,
             raw_string::make_usual_string,

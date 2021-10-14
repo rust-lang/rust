@@ -580,6 +580,19 @@ pub fn expr_stmt(expr: ast::Expr) -> ast::ExprStmt {
     ast_from_text(&format!("fn f() {{ {}{} (); }}", expr, semi))
 }
 
+pub fn item_const(
+    visibility: Option<ast::Visibility>,
+    name: ast::Name,
+    ty: ast::Type,
+    expr: ast::Expr,
+) -> ast::Const {
+    let visibility = match visibility {
+        None => String::new(),
+        Some(it) => format!("{} ", it),
+    };
+    ast_from_text(&format!("{} const {}: {} = {};", visibility, name, ty, expr))
+}
+
 pub fn param(pat: ast::Pat, ty: ast::Type) -> ast::Param {
     ast_from_text(&format!("fn f({}: {}) {{ }}", pat, ty))
 }

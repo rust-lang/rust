@@ -1307,6 +1307,10 @@ impl Function {
         db.function_data(self.id).is_unsafe()
     }
 
+    pub fn is_const(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).is_const()
+    }
+
     pub fn is_async(self, db: &dyn HirDatabase) -> bool {
         db.function_data(self.id).is_async()
     }
