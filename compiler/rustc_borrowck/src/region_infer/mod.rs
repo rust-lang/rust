@@ -1167,6 +1167,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.scc_values.elements_contained_in(lower_bound_scc).next().is_none()
             }
 
+            // FIXME: this is likely to be incorrect, but it side-steps stable ICE #76168,
+            // without any changes to what we accept (or reject for that matter).
+            VerifyBound::OutlivedBy(ty::RePlaceholder(..)) => false,
+
             VerifyBound::OutlivedBy(r) => {
                 let r_vid = self.to_region_vid(r);
                 self.eval_outlives(r_vid, lower_bound)

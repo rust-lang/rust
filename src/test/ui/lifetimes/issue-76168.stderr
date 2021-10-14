@@ -1,0 +1,11 @@
+error: `<F as FnOnce<(&'a mut i32,)>>::Output` does not live long enough
+  --> $DIR/issue-76168.rs:8:1
+   |
+LL | / {
+LL | |     let mut i = 41;
+LL | |     f(&mut i).await;
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
