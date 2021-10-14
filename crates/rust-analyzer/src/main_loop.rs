@@ -112,7 +112,7 @@ impl GlobalState {
             && self.config.notifications().cargo_toml_not_found
         {
             self.show_message(
-                lsp_types::MessageType::Error,
+                lsp_types::MessageType::ERROR,
                 "rust-analyzer failed to discover workspace".to_string(),
             );
         };
@@ -395,7 +395,7 @@ impl GlobalState {
                                 flycheck::Progress::DidFinish(result) => {
                                     if let Err(err) = result {
                                         self.show_message(
-                                            lsp_types::MessageType::Error,
+                                            lsp_types::MessageType::ERROR,
                                             format!("cargo check failed: {}", err),
                                         );
                                     }
@@ -509,7 +509,7 @@ impl GlobalState {
             self.last_reported_status = Some(status.clone());
 
             if let (lsp_ext::Health::Error, Some(message)) = (status.health, &status.message) {
-                self.show_message(lsp_types::MessageType::Error, message.clone());
+                self.show_message(lsp_types::MessageType::ERROR, message.clone());
             }
 
             if self.config.server_status_notification() {

@@ -18,19 +18,19 @@ fn diagnostic_severity(
     code: Option<flycheck::DiagnosticCode>,
 ) -> Option<lsp_types::DiagnosticSeverity> {
     let res = match level {
-        DiagnosticLevel::Ice => lsp_types::DiagnosticSeverity::Error,
-        DiagnosticLevel::Error => lsp_types::DiagnosticSeverity::Error,
+        DiagnosticLevel::Ice => lsp_types::DiagnosticSeverity::ERROR,
+        DiagnosticLevel::Error => lsp_types::DiagnosticSeverity::ERROR,
         DiagnosticLevel::Warning => match &code {
             Some(code) if config.warnings_as_hint.contains(&code.code) => {
-                lsp_types::DiagnosticSeverity::Hint
+                lsp_types::DiagnosticSeverity::HINT
             }
             Some(code) if config.warnings_as_info.contains(&code.code) => {
-                lsp_types::DiagnosticSeverity::Information
+                lsp_types::DiagnosticSeverity::INFORMATION
             }
-            _ => lsp_types::DiagnosticSeverity::Warning,
+            _ => lsp_types::DiagnosticSeverity::WARNING,
         },
-        DiagnosticLevel::Note => lsp_types::DiagnosticSeverity::Information,
-        DiagnosticLevel::Help => lsp_types::DiagnosticSeverity::Hint,
+        DiagnosticLevel::Note => lsp_types::DiagnosticSeverity::INFORMATION,
+        DiagnosticLevel::Help => lsp_types::DiagnosticSeverity::HINT,
         _ => return None,
     };
     Some(res)
@@ -268,11 +268,11 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 | "unused_macros"
                 | "unused_variables"
         ) {
-            tags.push(lsp_types::DiagnosticTag::Unnecessary);
+            tags.push(lsp_types::DiagnosticTag::UNNECESSARY);
         }
 
         if matches!(code, "deprecated") {
-            tags.push(lsp_types::DiagnosticTag::Deprecated);
+            tags.push(lsp_types::DiagnosticTag::DEPRECATED);
         }
     }
 
@@ -337,7 +337,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 let diagnostic = lsp_types::Diagnostic {
                     range: secondary_location.range,
                     // downgrade to hint if we're pointing at the macro
-                    severity: Some(lsp_types::DiagnosticSeverity::Hint),
+                    severity: Some(lsp_types::DiagnosticSeverity::HINT),
                     code: code.clone().map(lsp_types::NumberOrString::String),
                     code_description: code_description.clone(),
                     source: Some(source.clone()),
@@ -398,7 +398,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                     fixes: sub.suggested_fix.iter().cloned().collect(),
                     diagnostic: lsp_types::Diagnostic {
                         range: sub.related.location.range,
-                        severity: Some(lsp_types::DiagnosticSeverity::Hint),
+                        severity: Some(lsp_types::DiagnosticSeverity::HINT),
                         code: code.clone().map(lsp_types::NumberOrString::String),
                         code_description: code_description.clone(),
                         source: Some(source.clone()),
