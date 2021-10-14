@@ -19,10 +19,14 @@ use syntax::{
 pub(crate) fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<TextSize> {
     const BRACES: &[SyntaxKind] =
         &[T!['{'], T!['}'], T!['['], T![']'], T!['('], T![')'], T![<], T![>], T![|], T![|]];
-    let (brace_token, brace_idx) = file.syntax().token_at_offset(offset).find_map(|node| {
-        let idx = BRACES.iter().position(|&brace| brace == node.kind())?;
-        Some((node, idx))
-    })?;
+    let (brace_token, brace_idx) = file
+        .syntax()
+        .token_at_offset(offset)
+        .filter_map(|node| {
+            let idx = BRACES.iter().position(|&brace| brace == node.kind())?;
+            Some((node, idx))
+        })
+        .last()?;
     let parent = brace_token.parent()?;
     if brace_token.kind() == T![|] && !ast::ParamList::can_cast(parent.kind()) {
         cov_mark::hit!(pipes_not_braces);
@@ -58,6 +62,10 @@ mod tests {
         do_check("struct Foo { a: i32, }$0", "struct Foo $0{ a: i32, }");
         do_check("fn main() { |x: i32|$0 x * 2;}", "fn main() { $0|x: i32| x * 2;}");
         do_check("fn main() { $0|x: i32| x * 2;}", "fn main() { |x: i32$0| x * 2;}");
+        do_check(
+            "fn func(x) { return (2 * (x + 3)$0) + 5;}",
+            "fn func(x) { return $0(2 * (x + 3)) + 5;}",
+        );
 
         {
             cov_mark::check!(pipes_not_braces);
