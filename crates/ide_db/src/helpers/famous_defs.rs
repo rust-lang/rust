@@ -68,6 +68,10 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:ops:Deref")
     }
 
+    pub fn core_ops_ControlFlow(&self) -> Option<Enum> {
+        self.find_enum("core:ops:ControlFlow")
+    }
+
     pub fn alloc(&self) -> Option<Crate> {
         self.find_crate("alloc")
     }
