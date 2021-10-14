@@ -1,4 +1,4 @@
-use hir::{self, HasCrate, HasSource, HirDisplay};
+use hir::{self, HasCrate, HasSource};
 use syntax::ast::{self, make, AstNode, HasGenericParams, HasName, HasVisibility};
 
 use crate::{
@@ -105,16 +105,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
                     arg_list,
                 );
                 let body = make::block_expr([], Some(tail_expr));
-                let ret_type = method.ret_type(ctx.db());
-                let ret_type = if ret_type.is_unknown() {
-                    // FIXME: we currently can't resolve certain generics, and
-                    // are returning placeholders instead. We should fix our
-                    // type resolution here, so we return fewer placeholders.
-                    Some(make::ret_type(make::ty_placeholder()))
-                } else {
-                    let ret_type = &ret_type.display(ctx.db()).to_string();
-                    Some(make::ret_type(make::ty(ret_type)))
-                };
+                let ret_type = method_source.ret_type();
                 let is_async = method_source.async_token().is_some();
                 let f = make::fn_(vis, name, type_params, params, body, ret_type, is_async)
                     .indent(ast::edit::IndentLevel(1))
@@ -314,7 +305,7 @@ struct Person<T> {
 }
 
 impl<T> Person<T> {
-    $0pub(crate) async fn age<J, 'a>(&'a mut self, ty: T, arg: J) -> _ {
+    $0pub(crate) async fn age<J, 'a>(&'a mut self, ty: T, arg: J) -> T {
         self.age.age(ty, arg)
     }
 }"#,
