@@ -101,5 +101,5 @@ LL | impl FnOnce<()> for Baz {
 
 error: aborting due to 12 previous errors
 
-Some errors have detailed explanations: E0229, E0658.
-For more information about an error, try `rustc --explain E0229`.
+Some errors have detailed explanations: E0183, E0229, E0658.
+For more information about an error, try `rustc --explain E0183`.
