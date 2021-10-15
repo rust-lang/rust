@@ -78,10 +78,10 @@ impl LateLintPass<'_> for IfThenPanic {
                     if let Expr{kind: ExprKind::Unary(UnOp::Not, not_expr), ..} = e {
                          sugg::Sugg::hir_with_applicability(cx, not_expr, "..", &mut applicability).maybe_par().to_string()
                     } else {
-                       format!("!{}", sugg::Sugg::hir_with_applicability(cx, e, "..", &mut applicability).maybe_par().to_string())
+                       format!("!{}", sugg::Sugg::hir_with_applicability(cx, e, "..", &mut applicability).maybe_par())
                     }
                 } else {
-                   format!("!{}", sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability).maybe_par().to_string())
+                   format!("!{}", sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability).maybe_par())
                 };
 
                 span_lint_and_sugg(

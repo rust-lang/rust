@@ -218,6 +218,7 @@ mod float_equality_without_abs;
 mod float_literal;
 mod floating_point_arithmetic;
 mod format;
+mod format_args;
 mod formatting;
 mod from_over_into;
 mod from_str_radix_10;
@@ -775,6 +776,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(non_send_fields_in_send_ty::NonSendFieldInSendTy::new(enable_raw_pointer_heuristic_for_send)));
     store.register_late_pass(move || Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::default()));
     store.register_late_pass(|| Box::new(match_str_case_mismatch::MatchStrCaseMismatch));
+    store.register_late_pass(move || Box::new(format_args::FormatArgs));
 }
 
 #[rustfmt::skip]

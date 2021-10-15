@@ -678,7 +678,7 @@ fn suggestion_with_swapped_ident(
         Some(format!(
             "{}{}{}",
             snippet_with_applicability(cx, expr.span.with_hi(current_ident.span.lo()), "..", applicability),
-            new_ident.to_string(),
+            new_ident,
             snippet_with_applicability(cx, expr.span.with_lo(current_ident.span.hi()), "..", applicability),
         ))
     })

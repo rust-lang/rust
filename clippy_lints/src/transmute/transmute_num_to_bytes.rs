@@ -37,7 +37,7 @@ pub(super) fn check<'tcx>(
                     diag.span_suggestion(
                         e.span,
                         "consider using `to_ne_bytes()`",
-                        format!("{}.to_ne_bytes()", arg.to_string()),
+                        format!("{}.to_ne_bytes()", arg),
                         Applicability::Unspecified,
                     );
                 },

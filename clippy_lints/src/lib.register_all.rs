@@ -60,6 +60,8 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(float_equality_without_abs::FLOAT_EQUALITY_WITHOUT_ABS),
     LintId::of(float_literal::EXCESSIVE_PRECISION),
     LintId::of(format::USELESS_FORMAT),
+    LintId::of(format_args::FORMAT_IN_FORMAT_ARGS),
+    LintId::of(format_args::TO_STRING_IN_FORMAT_ARGS),
     LintId::of(formatting::POSSIBLE_MISSING_COMMA),
     LintId::of(formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING),
     LintId::of(formatting::SUSPICIOUS_ELSE_FORMATTING),
