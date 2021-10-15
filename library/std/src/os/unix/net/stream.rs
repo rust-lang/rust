@@ -106,6 +106,43 @@ impl UnixStream {
         }
     }
 
+    /// Connects to the socket specified by [`address`].
+    ///
+    /// [`address`]: crate::os::unix::net::SocketAddr
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_abstract)]
+    /// use std::os::unix::net::{UnixListener, UnixStream};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener = UnixListener::bind("/path/to/the/socket")?;
+    ///     let addr = listener.local_addr()?;
+    ///
+    ///     let sock = match UnixStream::connect_addr(&addr) {
+    ///         Ok(sock) => sock,
+    ///         Err(e) => {
+    ///             println!("Couldn't connect: {:?}", e);
+    ///             return Err(e)
+    ///         }
+    ///     };
+    ///     Ok(())
+    /// }
+    /// ````
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
+    pub fn connect_addr(socket_addr: &SocketAddr) -> io::Result<UnixStream> {
+        unsafe {
+            let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+            cvt(libc::connect(
+                inner.as_raw_fd(),
+                &socket_addr.addr as *const _ as *const _,
+                socket_addr.len,
+            ))?;
+            Ok(UnixStream(inner))
+        }
+    }
+
     /// Creates an unnamed pair of connected sockets.
     ///
     /// Returns two `UnixStream`s which are connected to each other.

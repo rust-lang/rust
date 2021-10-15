@@ -112,6 +112,41 @@ impl UnixDatagram {
         }
     }
 
+    /// Creates a Unix datagram socket bound to an address.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_abstract)]
+    /// use std::os::unix::net::{UnixDatagram};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock1 = UnixDatagram::bind("path/to/socket")?;
+    ///     let addr = sock1.local_addr()?;
+    ///
+    ///     let sock2 = match UnixDatagram::bind_addr(&addr) {
+    ///         Ok(sock) => sock,
+    ///         Err(err) => {
+    ///             println!("Couldn't bind: {:?}", err);
+    ///             return Err(err);
+    ///         }
+    ///     };
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
+    pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixDatagram> {
+        unsafe {
+            let socket = UnixDatagram::unbound()?;
+            cvt(libc::bind(
+                socket.as_raw_fd(),
+                &socket_addr.addr as *const _ as *const _,
+                socket_addr.len as _,
+            ))?;
+            Ok(socket)
+        }
+    }
+
     /// Creates a Unix Datagram socket which is not bound to any address.
     ///
     /// # Examples
@@ -156,7 +191,7 @@ impl UnixDatagram {
         Ok((UnixDatagram(i1), UnixDatagram(i2)))
     }
 
-    /// Connects the socket to the specified address.
+    /// Connects the socket to the specified path address.
     ///
     /// The [`send`] method may be used to send data to the specified address.
     /// [`recv`] and [`recv_from`] will only receive data from that address.
@@ -188,6 +223,41 @@ impl UnixDatagram {
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
             cvt(libc::connect(self.as_raw_fd(), &addr as *const _ as *const _, len))?;
+        }
+        Ok(())
+    }
+
+    /// Connects the socket to an address.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_abstract)]
+    /// use std::os::unix::net::{UnixDatagram};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let bound = UnixDatagram::bind("/path/to/socket")?;
+    ///     let addr = bound.local_addr()?;
+    ///
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     match sock.connect_addr(&addr) {
+    ///         Ok(sock) => sock,
+    ///         Err(e) => {
+    ///             println!("Couldn't connect: {:?}", e);
+    ///             return Err(e)
+    ///         }
+    ///     };
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
+    pub fn connect_addr(&self, socket_addr: &SocketAddr) -> io::Result<()> {
+        unsafe {
+            cvt(libc::connect(
+                self.as_raw_fd(),
+                &socket_addr.addr as *const _ as *const _,
+                socket_addr.len,
+            ))?;
         }
         Ok(())
     }
@@ -468,6 +538,42 @@ impl UnixDatagram {
                 MSG_NOSIGNAL,
                 &addr as *const _ as *const _,
                 len,
+            ))?;
+            Ok(count as usize)
+        }
+    }
+
+    /// Sends data on the socket to the specified [SocketAddr].
+    ///
+    /// On success, returns the number of bytes written.
+    ///
+    /// [SocketAddr]: crate::os::unix::net::SocketAddr
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_abstract)]
+    /// use std::os::unix::net::{UnixDatagram};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let bound = UnixDatagram::bind("/path/to/socket")?;
+    ///     let addr = bound.local_addr()?;
+    ///
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.send_to_addr(b"bacon egg and cheese", &addr).expect("send_to_addr function failed");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
+    pub fn send_to_addr(&self, buf: &[u8], socket_addr: &SocketAddr) -> io::Result<usize> {
+        unsafe {
+            let count = cvt(libc::sendto(
+                self.as_raw_fd(),
+                buf.as_ptr() as *const _,
+                buf.len(),
+                MSG_NOSIGNAL,
+                &socket_addr.addr as *const _ as *const _,
+                socket_addr.len,
             ))?;
             Ok(count as usize)
         }
