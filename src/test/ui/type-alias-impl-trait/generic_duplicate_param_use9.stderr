@@ -10,18 +10,6 @@ note: previous use here
 LL | fn two<T: Debug + Foo, U: Debug>(t: T, u: U) -> Two<T, U> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `A: Foo` is not satisfied in `(A, B, <A as Foo>::Bar)`
-  --> $DIR/generic_duplicate_param_use9.rs:7:18
-   |
-LL | type Two<A, B> = impl Debug;
-   |                  ^^^^^^^^^^ within `(A, B, <A as Foo>::Bar)`, the trait `Foo` is not implemented for `A`
-   |
-   = note: required because it appears within the type `(A, B, <A as Foo>::Bar)`
-help: consider restricting type parameter `A`
-   |
-LL | type Two<A: Foo, B> = impl Debug;
-   |           +++++
-
 error[E0277]: `A` doesn't implement `Debug`
   --> $DIR/generic_duplicate_param_use9.rs:7:18
    |
@@ -45,6 +33,18 @@ help: consider restricting type parameter `B`
    |
 LL | type Two<A, B: std::fmt::Debug> = impl Debug;
    |              +++++++++++++++++
+
+error[E0277]: the trait bound `A: Foo` is not satisfied
+  --> $DIR/generic_duplicate_param_use9.rs:7:18
+   |
+LL | type Two<A, B> = impl Debug;
+   |                  ^^^^^^^^^^ the trait `Foo` is not implemented for `A`
+   |
+   = note: required because of the requirements on the impl of `Debug` for `(A, B, <A as Foo>::Bar)`
+help: consider restricting type parameter `A`
+   |
+LL | type Two<A: Foo, B> = impl Debug;
+   |           +++++
 
 error: aborting due to 4 previous errors
 
