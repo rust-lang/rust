@@ -50,6 +50,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
 
         let cursor_in_range = target_range.contains_range(ctx.selection_trimmed());
         if !cursor_in_range {
+            cov_mark::hit!(not_applicable_outside_of_range_right);
             return None;
         }
     } else {
@@ -199,6 +200,7 @@ fn cursor_at_trivial_match_arm_list(
 ) -> Option<()> {
     // match x { $0 }
     if match_arm_list.arms().next() == None {
+        cov_mark::hit!(add_missing_match_arms_empty_body);
         return Some(());
     }
 
@@ -207,6 +209,7 @@ fn cursor_at_trivial_match_arm_list(
     let arm = wild_pat.syntax().parent().and_then(ast::MatchArm::cast)?;
     let arm_match_expr = arm.syntax().ancestors().nth(2).and_then(ast::MatchExpr::cast)?;
     if arm_match_expr == *match_expr {
+        cov_mark::hit!(add_missing_match_arms_trivial_arm);
         return Some(());
     }
 
@@ -360,6 +363,7 @@ fn foo(a: A) {
 
     #[test]
     fn not_applicable_outside_of_range_right() {
+        cov_mark::check!(not_applicable_outside_of_range_right);
         check_assist_not_applicable(
             add_missing_match_arms,
             r#"
@@ -651,6 +655,7 @@ fn main() {
 
     #[test]
     fn add_missing_match_arms_empty_body() {
+        cov_mark::check!(add_missing_match_arms_empty_body);
         check_assist(
             add_missing_match_arms,
             r#"
@@ -954,6 +959,7 @@ fn main() {
 
     #[test]
     fn add_missing_match_arms_trivial_arm() {
+        cov_mark::check!(add_missing_match_arms_trivial_arm);
         check_assist(
             add_missing_match_arms,
             r#"
