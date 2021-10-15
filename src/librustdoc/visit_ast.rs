@@ -87,9 +87,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // we add the rexport as an item here, and then skip over the original
         // definition in `visit_item()` below.
         //
-        // We also skip `#[macro_export] macro_rules!` that have alredy been inserted,
-        // this can append if within the same module a `#[macro_export] macro_rules!`
-        // is declared but also a reexport of itself producing two export of the same
+        // We also skip `#[macro_export] macro_rules!` that have already been inserted,
+        // it can happen if within the same module a `#[macro_export] macro_rules!`
+        // is declared but also a reexport of itself producing two exports of the same
         // macro in the same module.
         let mut inserted = FxHashSet::default();
         for export in self.cx.tcx.module_exports(CRATE_DEF_ID).unwrap_or(&[]) {
