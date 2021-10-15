@@ -7,7 +7,7 @@ LL |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to 
 LL |     Box::new(items.iter())
    |              ----- ^^^^
    |              |
-   |              ...is captured and required to live as long as `'static` here
+   |              ...is used and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
   --> $DIR/dyn-trait-underscore.rs:6:29

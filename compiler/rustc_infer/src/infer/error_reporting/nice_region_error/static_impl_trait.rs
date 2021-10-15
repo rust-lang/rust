@@ -76,7 +76,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     err.span_label(
                         cause.span,
                         &format!(
-                            "...is captured and required to live as long as `'static` here \
+                            "...is used and required to live as long as `'static` here \
                              because of an implicit lifetime bound on the {}",
                             match ctxt.assoc_item.container {
                                 AssocItemContainer::TraitContainer(id) =>
@@ -158,7 +158,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         // We try to make the output have fewer overlapping spans if possible.
         let require_msg = if spans.is_empty() {
-            "...is captured and required to live as long as `'static` here"
+            "...is used and required to live as long as `'static` here"
         } else {
             "...and is required to live as long as `'static` here"
         };
@@ -166,7 +166,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             if sup_origin.span().overlaps(return_sp) { sup_origin.span() } else { return_sp };
 
         for span in &spans {
-            err.span_label(*span, "...is captured here...");
+            err.span_label(*span, "...is used here...");
         }
 
         if spans.iter().any(|sp| sp.overlaps(return_sp) || *sp > return_sp) {

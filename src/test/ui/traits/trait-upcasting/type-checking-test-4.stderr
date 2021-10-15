@@ -36,10 +36,10 @@ LL | fn test_wrong3<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
 LL |     let y = x as &dyn Bar<'_, '_>;
    |             -             ^^
    |             |
-   |             ...is captured here...
+   |             ...is used here...
 LL |
 LL |     y.get_b() // ERROR
-   |     - ...is captured here...
+   |     - ...is used here...
    |
 note: ...and is required to live as long as `'static` here
   --> $DIR/type-checking-test-4.rs:29:5
@@ -61,7 +61,7 @@ error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime
 LL | fn test_wrong4<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
    |                       ------------ this data with lifetime `'a`...
 LL |     <_ as Bar>::get_b(x) // ERROR
-   |     ^^^^^^^^^^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |     ^^^^^^^^^^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
   --> $DIR/type-checking-test-4.rs:32:48
@@ -77,7 +77,7 @@ error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime
 LL | fn test_wrong5<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
    |                       ------------ this data with lifetime `'a`...
 LL |     <_ as Bar<'_, '_>>::get_b(x) // ERROR
-   |     ----------^^------------- ...is captured and required to live as long as `'static` here
+   |     ----------^^------------- ...is used and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
   --> $DIR/type-checking-test-4.rs:37:48
@@ -95,13 +95,13 @@ LL | fn test_wrong6<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
 LL |     let y = x as &dyn Bar<'_, '_>;
    |             -             ^^
    |             |
-   |             ...is captured here...
+   |             ...is used here...
 LL |
 LL |     y.get_b(); // ERROR
-   |     - ...is captured here...
+   |     - ...is used here...
 LL |     let z = y;
 LL |     z.get_b() // ERROR
-   |     - ...is captured here...
+   |     - ...is used here...
    |
 note: ...and is required to live as long as `'static` here
   --> $DIR/type-checking-test-4.rs:47:5

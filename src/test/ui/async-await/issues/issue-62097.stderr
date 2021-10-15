@@ -4,7 +4,7 @@ error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'
 LL |     pub async fn run_dummy_fn(&self) {
    |                               ^^^^^ this data with an anonymous lifetime `'_`...
 LL |         foo(|| self.bar()).await;
-   |         --- ...is captured and required to live as long as `'static` here
+   |         --- ...is used and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by this bound
   --> $DIR/issue-62097.rs:4:19

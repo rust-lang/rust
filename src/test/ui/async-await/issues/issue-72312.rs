@@ -11,7 +11,7 @@ impl Problem {
         //~^ NOTE this data with an anonymous lifetime `'_`
         //~| NOTE in this expansion of desugaring of `async` block or function
         require_static(async move { //~ NOTE ...and is required to live as long as `'static` here
-            &self; //~ NOTE ...is captured here...
+            &self; //~ NOTE ...is used here...
         });
     }
 }
