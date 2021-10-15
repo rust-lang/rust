@@ -41,7 +41,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
     let match_arm_list = match_expr.match_arm_list()?;
     let target_range : TextRange;
 
-    if !cursor_inside_simple_match_arm_list(&ctx, &match_expr, &match_arm_list) {
+    if let None = cursor_inside_simple_match_arm_list(&ctx, &match_expr, &match_arm_list) {
         target_range = TextRange::new(
             ctx.sema.original_range(match_expr.syntax()).range.start(),
             ctx.sema.original_range(match_arm_list.syntax()).range.start(),
@@ -192,12 +192,20 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
     )
 }
 
-fn cursor_inside_simple_match_arm_list(ctx: &AssistContext, match_expr : &MatchExpr, match_arm_list : &MatchArmList) -> bool {
-    // println!("---\n{:#?}\n{:#?}\n---", match_expr, match_arm_list);
+fn cursor_inside_simple_match_arm_list(ctx: &AssistContext, match_expr : &MatchExpr, match_arm_list : &MatchArmList) -> Option<()> {
+    println!("---\n{:#?}\n{:#?}\n---", match_expr, match_arm_list);
     if match_arm_list.arms().next() == None {
-        return true;
+        return Some(());
     }
-    false
+
+    let wild_pat = ctx.find_node_at_offset_with_descend::<ast::WildcardPat>()?;
+    let arm = wild_pat.syntax().parent().and_then(ast::MatchArm::cast)?;
+    let arm_match_expr = arm.syntax().ancestors().nth(2).and_then(ast::MatchExpr::cast)?;
+    if arm_match_expr == *match_expr {
+        return Some(())
+    }
+
+    None
 }
 
 fn is_variant_missing(existing_pats: &[Pat], var: &Pat) -> bool {
