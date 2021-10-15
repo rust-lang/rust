@@ -2,17 +2,17 @@
 
 struct RarelyUseful {
     field: i32,
-    last: [SomeType; 0],
+    last: [usize; 0],
 }
 
 #[repr(C)]
 struct GoodReason {
     field: i32,
-    last: [SomeType; 0],
+    last: [usize; 0],
 }
 
 struct OnlyFieldIsZeroSizeArray {
-    first_and_last: [SomeType; 0],
+    first_and_last: [usize; 0],
 }
 
 struct GenericArrayType<T> {
