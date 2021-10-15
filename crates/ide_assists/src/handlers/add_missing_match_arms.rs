@@ -5,7 +5,7 @@ use hir::{Adt, HasSource, ModuleDef, Semantics};
 use ide_db::helpers::{mod_path_to_ast, FamousDefs};
 use ide_db::RootDatabase;
 use itertools::Itertools;
-use syntax::ast::{self, AstNode, HasName, MatchArm, MatchArmList, MatchExpr, Pat, make};
+use syntax::ast::{self, make, AstNode, HasName, MatchArm, MatchArmList, MatchExpr, Pat};
 use syntax::TextRange;
 
 use crate::{
@@ -40,9 +40,9 @@ use crate::{
 pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let match_expr = ctx.find_node_at_offset_with_descend::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
-    let target_range : TextRange;
+    let target_range: TextRange;
 
-    if let None = trivial_match_arm_list_at_cursor(&ctx, &match_expr, &match_arm_list) {
+    if let None = cursor_at_trivial_match_arm_list(&ctx, &match_expr, &match_arm_list) {
         target_range = TextRange::new(
             ctx.sema.original_range(match_expr.syntax()).range.start(),
             ctx.sema.original_range(match_arm_list.syntax()).range.start(),
@@ -52,8 +52,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         if !cursor_in_range {
             return None;
         }
-    }
-    else {
+    } else {
         target_range = ctx.sema.original_range(match_expr.syntax()).range;
     }
 
@@ -193,7 +192,11 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
     )
 }
 
-fn trivial_match_arm_list_at_cursor(ctx: &AssistContext, match_expr : &MatchExpr, match_arm_list : &MatchArmList) -> Option<()> {
+fn cursor_at_trivial_match_arm_list(
+    ctx: &AssistContext,
+    match_expr: &MatchExpr,
+    match_arm_list: &MatchArmList,
+) -> Option<()> {
     // match x { $0 }
     if match_arm_list.arms().next() == None {
         return Some(());
@@ -204,7 +207,7 @@ fn trivial_match_arm_list_at_cursor(ctx: &AssistContext, match_expr : &MatchExpr
     let arm = wild_pat.syntax().parent().and_then(ast::MatchArm::cast)?;
     let arm_match_expr = arm.syntax().ancestors().nth(2).and_then(ast::MatchExpr::cast)?;
     if arm_match_expr == *match_expr {
-        return Some(())
+        return Some(());
     }
 
     None
@@ -974,7 +977,6 @@ fn main() {
 "#,
         );
     }
-
 
     #[test]
     fn wildcard_inside_expression_not_applicable() {
