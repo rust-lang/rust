@@ -25,9 +25,12 @@ pub const ZX_TASK_TERMINATED: zx_signals_t = ZX_OBJECT_SIGNAL_3;
 
 pub const ZX_RIGHT_SAME_RIGHTS: zx_rights_t = 1 << 31;
 
+// The upper four bits gives the minor version.
 pub type zx_object_info_topic_t = u32;
 
-pub const ZX_INFO_PROCESS: zx_object_info_topic_t = 3;
+pub const ZX_INFO_PROCESS: zx_object_info_topic_t = 3 | (1 << 28);
+
+pub type zx_info_process_flags_t = u32;
 
 pub fn zx_cvt<T>(t: T) -> io::Result<T>
 where
@@ -68,9 +71,9 @@ impl Drop for Handle {
 #[repr(C)]
 pub struct zx_info_process_t {
     pub return_code: i64,
-    pub started: bool,
-    pub exited: bool,
-    pub debugger_attached: bool,
+    pub start_time: zx_time_t,
+    pub flags: zx_info_process_flags_t,
+    pub reserved1: u32,
 }
 
 extern "C" {
