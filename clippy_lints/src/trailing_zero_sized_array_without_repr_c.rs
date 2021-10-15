@@ -1,6 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_lint_defs::Applicability;
+// use clippy_utils::is_integer_const;
+use clippy_utils::consts::{miri_to_const, Constant};
+use rustc_errors::Applicability;
+use rustc_hir::{Item, ItemKind, TyKind, VariantData};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -36,38 +39,55 @@ declare_lint_pass!(TrailingZeroSizedArrayWithoutReprC => [TRAILING_ZERO_SIZED_AR
 // TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
 //       e.g. store.register_early_pass(||
 // Box::new(trailing_zero_sized_array_without_repr_c::TrailingZeroSizedArrayWithoutReprC));
+// DONE!
 
-impl EarlyLintPass for TrailingZeroSizedArrayWithoutReprC {
-    fn check_struct_def(&mut self, cx: &EarlyContext<'_>, data: &rustc_ast::VariantData) {
-        if is_struct_with_trailing_zero_sized_array(cx, data) && !has_repr_c(cx, data) {
-            span_lint_and_sugg(
-                cx,
-                todo!(),
-                todo!(),
-                todo!(),
-                "try",
-                "`#[repr(C)]`".to_string(),
-                Applicability::MachineApplicable,
-            )
+impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
+        if is_struct_with_trailing_zero_sized_array(cx, item)
+        /* && !has_repr_c(cx, item) */
+        {
+            // span_lint_and_sugg(
+            //     cx,
+            //     todo!(),
+            //     todo!(),
+            //     todo!(),
+            //     "try",
+            //     "`#[repr(C)]`".to_string(),
+            //     Applicability::MachineApplicable,
+            // );
+            // println!("consider yourself linted 😎");
         }
     }
 }
 
-fn is_struct_with_trailing_zero_sized_array(cx: &EarlyContext<'_>, data: &rustc_ast::VariantData) -> bool {
+fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
+    dbg!(item.ident);
     if_chain! {
-        if let rustc_ast::ast::VariantData::Struct(field_defs, some_bool_huh) = data;
+        if let ItemKind::Struct(data, _generics) = &item.kind;
+        if let VariantData::Struct(field_defs, _) = data;
         if let Some(last_field) = field_defs.last();
-        if let rustc_ast::ast::TyKind::Array(_, aconst) = &last_field.ty.kind;
-        // TODO: if array is zero-sized;
+        if let TyKind::Array(_, aconst) = last_field.ty.kind;
+        let aconst_def_id = cx.tcx.hir().body_owner_def_id(aconst.body).to_def_id();
+        let ty = cx.tcx.type_of(aconst_def_id);
+        let constant = cx
+            .tcx
+            .const_eval_poly(aconst_def_id) // NOTE: maybe const_eval_resolve? seems especially cursed to be using a const expr which resolves to 0 to create a zero-sized array, tho
+            .ok()
+            .map(|val| rustc_middle::ty::Const::from_value(cx.tcx, val, ty));
+        if let Some(Constant::Int(val)) = constant.and_then(miri_to_const);
+        if val == 0;
         then {
-            dbg!(aconst);
+            eprintln!("true");
             true
         } else {
+            // dbg!(aconst);
+            eprintln!("false");
             false
         }
     }
 }
 
-fn has_repr_c(cx: &EarlyContext<'_>, data: &rustc_ast::VariantData) -> bool {
-    todo!()
+fn has_repr_c(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
+    // todo!()
+    true
 }

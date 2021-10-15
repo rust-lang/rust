@@ -30,7 +30,6 @@ extern crate rustc_index;
 extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
-extern crate rustc_lint_defs;
 extern crate rustc_middle;
 extern crate rustc_mir_dataflow;
 extern crate rustc_parse;
@@ -488,7 +487,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|| Box::new(utils::internal_lints::OuterExpnDataPass));
     }
 
-    store.register_early_pass(||        Box::new(trailing_zero_sized_array_without_repr_c::TrailingZeroSizedArrayWithoutReprC));
     store.register_late_pass(|| Box::new(utils::author::Author));
     store.register_late_pass(|| Box::new(await_holding_invalid::AwaitHolding));
     store.register_late_pass(|| Box::new(serde_api::SerdeApi));
@@ -780,6 +778,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::default()));
     store.register_late_pass(|| Box::new(match_str_case_mismatch::MatchStrCaseMismatch));
     store.register_late_pass(move || Box::new(format_args::FormatArgs));
+    store.register_late_pass(|| Box::new(trailing_zero_sized_array_without_repr_c::TrailingZeroSizedArrayWithoutReprC));
+
 }
 
 #[rustfmt::skip]
