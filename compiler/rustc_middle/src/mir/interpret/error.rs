@@ -287,6 +287,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
         target_size: u64,
         data_size: u64,
     },
+    /// A discriminant of an uninhabited enum variant is written.
+    UninhabitedEnumVariantWritten,
 }
 
 impl fmt::Display for UndefinedBehaviorInfo<'_> {
@@ -391,6 +393,9 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 "scalar size mismatch: expected {} bytes but got {} bytes instead",
                 target_size, data_size
             ),
+            UninhabitedEnumVariantWritten => {
+                write!(f, "writing discriminant of an uninhabited enum")
+            }
         }
     }
 }
