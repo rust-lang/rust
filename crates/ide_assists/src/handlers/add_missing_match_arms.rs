@@ -5,7 +5,8 @@ use hir::{Adt, HasSource, ModuleDef, Semantics};
 use ide_db::helpers::{mod_path_to_ast, FamousDefs};
 use ide_db::RootDatabase;
 use itertools::Itertools;
-use syntax::ast::{self, make, AstNode, HasName, MatchArm, Pat};
+use syntax::ast::{self, make, AstNode, HasName, MatchArm, MatchArmList, MatchExpr, Pat};
+use syntax::TextRange;
 
 use crate::{
     utils::{self, render_snippet, Cursor},
@@ -39,6 +40,22 @@ use crate::{
 pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let match_expr = ctx.find_node_at_offset_with_descend::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
+    let target_range: TextRange;
+
+    if let None = cursor_at_trivial_match_arm_list(&ctx, &match_expr, &match_arm_list) {
+        target_range = TextRange::new(
+            ctx.sema.original_range(match_expr.syntax()).range.start(),
+            ctx.sema.original_range(match_arm_list.syntax()).range.start(),
+        );
+
+        let cursor_in_range = target_range.contains_range(ctx.selection_trimmed());
+        if !cursor_in_range {
+            cov_mark::hit!(not_applicable_outside_of_range_right);
+            return None;
+        }
+    } else {
+        target_range = ctx.sema.original_range(match_expr.syntax()).range;
+    }
 
     let expr = match_expr.expr()?;
 
@@ -121,11 +138,10 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         return None;
     }
 
-    let target = ctx.sema.original_range(match_expr.syntax()).range;
     acc.add(
         AssistId("add_missing_match_arms", AssistKind::QuickFix),
         "Fill match arms",
-        target,
+        target_range,
         |builder| {
             let new_match_arm_list = match_arm_list.clone_for_update();
             let missing_arms = missing_pats
@@ -175,6 +191,29 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
             }
         },
     )
+}
+
+fn cursor_at_trivial_match_arm_list(
+    ctx: &AssistContext,
+    match_expr: &MatchExpr,
+    match_arm_list: &MatchArmList,
+) -> Option<()> {
+    // match x { $0 }
+    if match_arm_list.arms().next() == None {
+        cov_mark::hit!(add_missing_match_arms_empty_body);
+        return Some(());
+    }
+
+    // match { _$0 => {...} }
+    let wild_pat = ctx.find_node_at_offset_with_descend::<ast::WildcardPat>()?;
+    let arm = wild_pat.syntax().parent().and_then(ast::MatchArm::cast)?;
+    let arm_match_expr = arm.syntax().ancestors().nth(2).and_then(ast::MatchExpr::cast)?;
+    if arm_match_expr == *match_expr {
+        cov_mark::hit!(add_missing_match_arms_trivial_arm);
+        return Some(());
+    }
+
+    None
 }
 
 fn is_variant_missing(existing_pats: &[Pat], var: &Pat) -> bool {
@@ -303,6 +342,39 @@ fn main() {
     }
 }
             "#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_outside_of_range_left() {
+        check_assist_not_applicable(
+            add_missing_match_arms,
+            r#"
+enum A { X, Y }
+
+fn foo(a: A) {
+    $0 match a {
+        A::X => { }
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_outside_of_range_right() {
+        cov_mark::check!(not_applicable_outside_of_range_right);
+        check_assist_not_applicable(
+            add_missing_match_arms,
+            r#"
+enum A { X, Y }
+
+fn foo(a: A) {
+    match a {$0
+        A::X => { }
+    }
+}
+        "#,
         );
     }
 
@@ -583,6 +655,7 @@ fn main() {
 
     #[test]
     fn add_missing_match_arms_empty_body() {
+        cov_mark::check!(add_missing_match_arms_empty_body);
         check_assist(
             add_missing_match_arms,
             r#"
@@ -590,7 +663,7 @@ enum A { As, Bs, Cs(String), Ds(String, String), Es { x: usize, y: usize } }
 
 fn main() {
     let a = A::As;
-    match a$0 {}
+    match a {$0}
 }
 "#,
             r#"
@@ -853,7 +926,7 @@ fn foo(a: &mut A) {
     }
 
     #[test]
-    fn add_missing_match_arms_target() {
+    fn add_missing_match_arms_target_simple() {
         check_assist_target(
             add_missing_match_arms,
             r#"
@@ -868,7 +941,25 @@ fn main() {
     }
 
     #[test]
+    fn add_missing_match_arms_target_complex() {
+        check_assist_target(
+            add_missing_match_arms,
+            r#"
+enum E { X, Y }
+
+fn main() {
+    match E::X$0 {
+        E::X => {}
+    }
+}
+"#,
+            "match E::X ",
+        );
+    }
+
+    #[test]
     fn add_missing_match_arms_trivial_arm() {
+        cov_mark::check!(add_missing_match_arms_trivial_arm);
         check_assist(
             add_missing_match_arms,
             r#"
@@ -887,6 +978,25 @@ fn main() {
     match E::X {
         $0E::X => todo!(),
         E::Y => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn wildcard_inside_expression_not_applicable() {
+        check_assist_not_applicable(
+            add_missing_match_arms,
+            r#"
+enum E { X, Y }
+
+fn foo(e : E) {
+    match e {
+        _ => {
+            println!("1");$0
+            println!("2");
+        }
     }
 }
 "#,
@@ -928,8 +1038,8 @@ fn main() {
             r#"
 enum A { One, Two }
 fn foo(a: A) {
-    match a {
-        // foo bar baz$0
+    match a $0 {
+        // foo bar baz
         A::One => {}
         // This is where the rest should be
     }
@@ -938,7 +1048,7 @@ fn foo(a: A) {
             r#"
 enum A { One, Two }
 fn foo(a: A) {
-    match a {
+    match a  {
         // foo bar baz
         A::One => {}
         $0A::Two => todo!(),
