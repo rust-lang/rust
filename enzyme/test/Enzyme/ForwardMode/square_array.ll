@@ -27,6 +27,7 @@ declare { double, double } @__enzyme_fwddiff(i8*, ...)
 ; CHECK-NEXT:   %2 = fmul fast double %1, %x
 ; CHECK-NEXT:   %3 = fmul fast double %"x'", %mul
 ; CHECK-NEXT:   %4 = fadd fast double %2, %3
-; CHECK-NEXT:   %5 = insertvalue { double, double } zeroinitializer, double %4, 1
-; CHECK-NEXT:   ret { double, double } %5
+; CHECK-NEXT:   %5 = insertvalue { double, double } zeroinitializer, double %1, 0
+; CHECK-NEXT:   %6 = insertvalue { double, double } %5, double %4, 1
+; CHECK-NEXT:   ret { double, double } %6
 ; CHECK-NEXT: }

@@ -1207,8 +1207,9 @@ public:
 
       Value *prediff =
           gutils->isConstantValue(orig_vector)
-              ? diffe(orig_vector, Builder2)
-              : ConstantVector::getNullValue(orig_vector->getType());
+              ? ConstantVector::getNullValue(orig_vector->getType())
+              : diffe(orig_vector, Builder2);
+
       auto dindex = Builder2.CreateInsertElement(
           prediff, diff_inserted, gutils->getNewFromOriginal(orig_index));
       setDiffe(&IEI, dindex, Builder2);
@@ -1275,7 +1276,6 @@ public:
 
       Value *orig_vector1 = SVI.getOperand(0);
       Value *orig_vector2 = SVI.getOperand(1);
-      Value *orig_mask = SVI.getOperand(0);
 
       auto diffe_vector1 =
           gutils->isConstantValue(orig_vector1)
@@ -1286,8 +1286,13 @@ public:
               ? ConstantVector::getNullValue(orig_vector2->getType())
               : diffe(orig_vector2, Builder2);
 
-      auto diffe = Builder2.CreateShuffleVector(
-          diffe_vector1, diffe_vector2, gutils->getNewFromOriginal(orig_mask));
+#if LLVM_VERSION_MAJOR >= 11
+      auto diffe = Builder2.CreateShuffleVector(diffe_vector1, diffe_vector2,
+                                                SVI.getShuffleMaskForBitcode());
+#else
+      auto diffe = Builder2.CreateShuffleVector(diffe_vector1, diffe_vector2,
+                                                SVI.getOperand(2));
+#endif
 
       setDiffe(&SVI, diffe, Builder2);
       return;
@@ -1465,8 +1470,8 @@ public:
 
       Value *prediff =
           gutils->isConstantValue(orig_agg)
-              ? diffe(orig_agg, Builder2)
-              : ConstantAggregate::getNullValue(orig_agg->getType());
+              ? ConstantAggregate::getNullValue(orig_agg->getType())
+              : diffe(orig_agg, Builder2);
       auto dindex =
           Builder2.CreateInsertValue(prediff, diff_inserted, IVI.getIndices());
       setDiffe(&IVI, dindex, Builder2);
