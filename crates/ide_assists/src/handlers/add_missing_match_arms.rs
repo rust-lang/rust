@@ -21,7 +21,8 @@ use crate::{
 // enum Action { Move { distance: u32 }, Stop }
 //
 // fn handle(action: Action) {
-//     match action $0 {
+//     match action {
+//         $0
 //     }
 // }
 // ```
@@ -30,7 +31,7 @@ use crate::{
 // enum Action { Move { distance: u32 }, Stop }
 //
 // fn handle(action: Action) {
-//     match action  {
+//     match action {
 //         $0Action::Move { distance } => todo!(),
 //         Action::Stop => todo!(),
 //     }
@@ -41,7 +42,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
     let match_arm_list = match_expr.match_arm_list()?;
     let target_range : TextRange;
 
-    if let None = cursor_inside_simple_match_arm_list(&ctx, &match_expr, &match_arm_list) {
+    if let None = trivial_match_arm_list_at_cursor(&ctx, &match_expr, &match_arm_list) {
         target_range = TextRange::new(
             ctx.sema.original_range(match_expr.syntax()).range.start(),
             ctx.sema.original_range(match_arm_list.syntax()).range.start(),
@@ -192,12 +193,13 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
     )
 }
 
-fn cursor_inside_simple_match_arm_list(ctx: &AssistContext, match_expr : &MatchExpr, match_arm_list : &MatchArmList) -> Option<()> {
-    println!("---\n{:#?}\n{:#?}\n---", match_expr, match_arm_list);
+fn trivial_match_arm_list_at_cursor(ctx: &AssistContext, match_expr : &MatchExpr, match_arm_list : &MatchArmList) -> Option<()> {
+    // match x { $0 }
     if match_arm_list.arms().next() == None {
         return Some(());
     }
 
+    // match { _$0 => {...} }
     let wild_pat = ctx.find_node_at_offset_with_descend::<ast::WildcardPat>()?;
     let arm = wild_pat.syntax().parent().and_then(ast::MatchArm::cast)?;
     let arm_match_expr = arm.syntax().ancestors().nth(2).and_then(ast::MatchExpr::cast)?;
@@ -967,6 +969,26 @@ fn main() {
     match E::X {
         $0E::X => todo!(),
         E::Y => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+
+    #[test]
+    fn wildcard_inside_expression_not_applicable() {
+        check_assist_not_applicable(
+            add_missing_match_arms,
+            r#"
+enum E { X, Y }
+
+fn foo(e : E) {
+    match e {
+        _ => {
+            println!("1");$0
+            println!("2");
+        }
     }
 }
 "#,
