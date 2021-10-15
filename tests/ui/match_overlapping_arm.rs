@@ -88,20 +88,17 @@ fn overlapping() {
         _ => (),
     }
 
-    /*
-    // FIXME(JohnTitor): uncomment this once rustfmt knows half-open patterns
     match 42 {
-        0.. => println!("0 .. 42"),
-        3.. => println!("3 .. 42"),
+        3.. => println!("3.."),
+        0.. => println!("0.."),
         _ => (),
     }
 
     match 42 {
-        ..=23 => println!("0 ... 23"),
-        ..26 => println!("0 .. 26"),
+        ..=23 => println!("..=23"),
+        ..26 => println!("..26"),
         _ => (),
     }
-    */
 
     if let None = Some(42) {
         // nothing
