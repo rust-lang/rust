@@ -355,6 +355,7 @@ mod tabs_in_doc_comments;
 mod temporary_assignment;
 mod to_digit_is_some;
 mod to_string_in_display;
+mod trailing_zero_sized_array_without_repr_c;
 mod trait_bounds;
 mod transmute;
 mod transmuting_null;

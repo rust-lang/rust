@@ -25,6 +25,7 @@ store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
     LintId::of(regex::TRIVIAL_REGEX),
     LintId::of(strings::STRING_LIT_AS_BYTES),
     LintId::of(suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS),
+    LintId::of(trailing_zero_sized_array_without_repr_c::TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR_C),
     LintId::of(transmute::USELESS_TRANSMUTE),
     LintId::of(use_self::USE_SELF),
 ])

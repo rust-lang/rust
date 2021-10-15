@@ -443,6 +443,7 @@ store.register_lints(&[
     temporary_assignment::TEMPORARY_ASSIGNMENT,
     to_digit_is_some::TO_DIGIT_IS_SOME,
     to_string_in_display::TO_STRING_IN_DISPLAY,
+    trailing_zero_sized_array_without_repr_c::TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR_C,
     trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS,
     trait_bounds::TYPE_REPETITION_IN_BOUNDS,
     transmute::CROSSPOINTER_TRANSMUTE,
