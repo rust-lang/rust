@@ -21,8 +21,8 @@ where
 {
     type T = Either<Left::T, Right::T>;
     type TRef<'a>
-    //~^ the associated type
-    //~^^ the associated type
+    //~^ `impl` associated type signature
+    //~^^ `impl` associated type signature
     where
     <Left as HasChildrenOf>::T: 'a,
     <Right as HasChildrenOf>::T: 'a
