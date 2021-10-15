@@ -62,7 +62,7 @@
 //! some atomic operations. Maximally portable code will want to be careful
 //! about which atomic types are used. `AtomicUsize` and `AtomicIsize` are
 //! generally the most portable, but even then they're not available everywhere.
-//! For reference, the `std` library requires pointer-sized atomics, although
+//! For reference, the `std` library requires `AtomicBool`s and pointer-sized atomics, although
 //! `core` does not.
 //!
 //! Currently you'll need to use `#[cfg(target_arch)]` primarily to
