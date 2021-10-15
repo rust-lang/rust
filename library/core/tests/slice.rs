@@ -2152,3 +2152,42 @@ fn test_slice_fill_with_uninit() {
     let mut a = [MaybeUninit::<u8>::uninit(); 10];
     a.fill(MaybeUninit::uninit());
 }
+
+#[test]
+fn test_swap() {
+    let mut x = ["a", "b", "c", "d"];
+    x.swap(1, 3);
+    assert_eq!(x, ["a", "d", "c", "b"]);
+    x.swap(0, 3);
+    assert_eq!(x, ["b", "d", "c", "a"]);
+}
+
+mod swap_panics {
+    #[test]
+    #[should_panic(expected = "index out of bounds: the len is 4 but the index is 4")]
+    fn index_a_equals_len() {
+        let mut x = ["a", "b", "c", "d"];
+        x.swap(4, 2);
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds: the len is 4 but the index is 4")]
+    fn index_b_equals_len() {
+        let mut x = ["a", "b", "c", "d"];
+        x.swap(2, 4);
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds: the len is 4 but the index is 5")]
+    fn index_a_greater_than_len() {
+        let mut x = ["a", "b", "c", "d"];
+        x.swap(5, 2);
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds: the len is 4 but the index is 5")]
+    fn index_b_greater_than_len() {
+        let mut x = ["a", "b", "c", "d"];
+        x.swap(2, 5);
+    }
+}
