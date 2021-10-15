@@ -275,6 +275,14 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             target_os = "solaris",
             target_os = "illumos",
         ))] {
+            #[cfg(any(target_os = "android", target_os = "linux"))]
+            {
+                let mut set: libc::cpu_set_t = unsafe { mem::zeroed() };
+                if unsafe { libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) } == 0 {
+                    let count = unsafe { libc::CPU_COUNT(&set) };
+                    return Ok(unsafe { NonZeroUsize::new_unchecked(count as usize) });
+                }
+            }
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
                 -1 => Err(io::Error::last_os_error()),
                 0 => Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform")),
