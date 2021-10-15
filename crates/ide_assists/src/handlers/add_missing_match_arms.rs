@@ -1006,7 +1006,8 @@ mod foo { pub enum E { X, Y } }
 use foo::E::X;
 
 fn main() {
-    match X $0 {
+    match X {
+        $0
     }
 }
 "#,
@@ -1015,7 +1016,7 @@ mod foo { pub enum E { X, Y } }
 use foo::E::X;
 
 fn main() {
-    match X  {
+    match X {
         $0X => todo!(),
         foo::E::Y => todo!(),
     }
@@ -1059,15 +1060,15 @@ fn foo(a: A) {
             r#"
 enum A { One, Two }
 fn foo(a: A) {
-    match a $0 {
-        // foo bar baz
+    match a {
+        // foo bar baz$0
     }
 }
 "#,
             r#"
 enum A { One, Two }
 fn foo(a: A) {
-    match a  {
+    match a {
         $0A::One => todo!(),
         A::Two => todo!(),
         // foo bar baz
