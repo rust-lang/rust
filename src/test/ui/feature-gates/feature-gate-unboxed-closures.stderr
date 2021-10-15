@@ -26,4 +26,5 @@ LL | impl FnOnce<(u32, u32)> for Test {
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0658`.
+Some errors have detailed explanations: E0183, E0658.
+For more information about an error, try `rustc --explain E0183`.

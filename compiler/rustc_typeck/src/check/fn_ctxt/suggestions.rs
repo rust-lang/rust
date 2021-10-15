@@ -8,11 +8,11 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Expr, ExprKind, ItemKind, Node, Stmt, StmtKind};
+use rustc_hir::{Expr, ExprKind, ItemKind, Node, Path, QPath, Stmt, StmtKind, TyKind};
 use rustc_infer::infer;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Binder, Ty};
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, sym};
 
 use std::iter;
 
@@ -350,6 +350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// When encountering an `impl Future` where `BoxFuture` is expected, suggest `Box::pin`.
+    #[instrument(skip(self, err))]
     pub(in super::super) fn suggest_calling_boxed_future_when_appropriate(
         &self,
         err: &mut DiagnosticBuilder<'_>,
@@ -368,41 +369,70 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() {
             return false;
         }
-        match expected.kind() {
-            ty::Adt(def, _) if Some(def.did) == pin_did => (),
-            _ => return false,
-        }
         let box_found = self.tcx.mk_box(found);
         let pin_box_found = self.tcx.mk_lang_item(box_found, LangItem::Pin).unwrap();
         let pin_found = self.tcx.mk_lang_item(found, LangItem::Pin).unwrap();
-        if self.can_coerce(pin_box_found, expected) {
-            debug!("can coerce {:?} to {:?}, suggesting Box::pin", pin_box_found, expected);
-            match found.kind() {
-                ty::Adt(def, _) if def.is_box() => {
-                    err.help("use `Box::pin`");
-                }
-                _ => {
-                    err.multipart_suggestion(
-                        "you need to pin and box this expression",
-                        vec![
-                            (expr.span.shrink_to_lo(), "Box::pin(".to_string()),
-                            (expr.span.shrink_to_hi(), ")".to_string()),
-                        ],
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-            }
-            true
-        } else if self.can_coerce(pin_found, expected) {
-            match found.kind() {
-                ty::Adt(def, _) if def.is_box() => {
-                    err.help("use `Box::pin`");
+        match expected.kind() {
+            ty::Adt(def, _) if Some(def.did) == pin_did => {
+                if self.can_coerce(pin_box_found, expected) {
+                    debug!("can coerce {:?} to {:?}, suggesting Box::pin", pin_box_found, expected);
+                    match found.kind() {
+                        ty::Adt(def, _) if def.is_box() => {
+                            err.help("use `Box::pin`");
+                        }
+                        _ => {
+                            err.multipart_suggestion(
+                                "you need to pin and box this expression",
+                                vec![
+                                    (expr.span.shrink_to_lo(), "Box::pin(".to_string()),
+                                    (expr.span.shrink_to_hi(), ")".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
                     true
+                } else if self.can_coerce(pin_found, expected) {
+                    match found.kind() {
+                        ty::Adt(def, _) if def.is_box() => {
+                            err.help("use `Box::pin`");
+                            true
+                        }
+                        _ => false,
+                    }
+                } else {
+                    false
                 }
-                _ => false,
             }
-        } else {
-            false
+            ty::Adt(def, _) if def.is_box() && self.can_coerce(box_found, expected) => {
+                // Check if the parent expression is a call to Pin::new.  If it
+                // is and we were expecting a Box, ergo Pin<Box<expected>>, we
+                // can suggest Box::pin.
+                let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+                let fn_name = match self.tcx.hir().find(parent) {
+                    Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) => fn_name,
+                    _ => return false,
+                };
+                match fn_name.kind {
+                    ExprKind::Path(QPath::TypeRelative(
+                        hir::Ty {
+                            kind: TyKind::Path(QPath::Resolved(_, Path { res: recv_ty, .. })),
+                            ..
+                        },
+                        method,
+                    )) if Some(recv_ty.def_id()) == pin_did && method.ident.name == sym::new => {
+                        err.span_suggestion(
+                            fn_name.span,
+                            "use `Box::pin` to pin and box this expression",
+                            "Box::pin".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                        true
+                    }
+                    _ => false,
+                }
+            }
+            _ => false,
         }
     }
 
