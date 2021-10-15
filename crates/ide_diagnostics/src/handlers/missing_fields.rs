@@ -54,6 +54,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         Either::Right(_) => return None,
     };
     let old_field_list = field_list_parent.record_expr_field_list()?;
+
     let new_field_list = old_field_list.clone_for_update();
     let mut locals = FxHashMap::default();
     ctx.sema.scope(field_list_parent.syntax()).process_all_names(&mut |name, def| {
@@ -80,11 +81,19 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         new_field_list.add_field(field);
     }
 
-    let edit = {
-        let mut builder = TextEdit::builder();
+    let mut builder = TextEdit::builder();
+    if d.file.is_macro() {
+        // we can't map the diff up into the macro input unfortunately, as the macro loses all
+        // whitespace information so the diff wouldn't be applicable no matter what
+        // This has the downside that the cursor will be moved in macros by doing it without a diff
+        // but that is a trade off we can make.
+        // FIXE: this also currently discards a lot of whitespace in the input... we really need a formatter here
+        let range = ctx.sema.original_range_opt(old_field_list.syntax())?;
+        builder.replace(range.range, new_field_list.to_string());
+    } else {
         algo::diff(old_field_list.syntax(), new_field_list.syntax()).into_text_edit(&mut builder);
-        builder.finish()
-    };
+    }
+    let edit = builder.finish();
     Some(vec![fix(
         "fill_missing_fields",
         "Fill struct fields",
@@ -151,7 +160,6 @@ fn x(a: S) {
 
     #[test]
     fn range_mapping_out_of_macros() {
-        // FIXME: this is very wrong, but somewhat tricky to fix.
         check_fix(
             r#"
 fn some() {}
@@ -167,14 +175,14 @@ fn main() {
 pub struct Foo { pub a: i32, pub b: i32 }
 "#,
             r#"
-fn some(, b: todo!() ) {}
+fn some() {}
 fn items() {}
 fn here() {}
 
 macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
 
 fn main() {
-    let _x = id![Foo { a: 42 }];
+    let _x = id![Foo {a:42, b: todo!() }];
 }
 
 pub struct Foo { pub a: i32, pub b: i32 }
