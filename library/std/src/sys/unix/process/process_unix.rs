@@ -168,6 +168,8 @@ impl Command {
 
         // Bypassing libc for `clone3` can make further libc calls unsafe,
         // so we use it sparingly for now. See #89522 for details.
+        // Some tools (e.g. sandboxing tools) may also expect `fork`
+        // rather than `clone3`.
         let want_clone3_pidfd = self.get_create_pidfd();
 
         // If we fail to create a pidfd for any reason, this will
