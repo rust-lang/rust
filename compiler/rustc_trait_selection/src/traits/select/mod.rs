@@ -866,34 +866,39 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // precise still.
         let unbound_input_types =
             stack.fresh_trait_ref.value.skip_binder().substs.types().any(|ty| ty.is_fresh());
-        // This check was an imperfect workaround for a bug in the old
-        // intercrate mode; it should be removed when that goes away.
-        if unbound_input_types && self.intercrate {
-            debug!("evaluate_stack --> unbound argument, intercrate -->  ambiguous",);
-            // Heuristics: show the diagnostics when there are no candidates in crate.
-            if self.intercrate_ambiguity_causes.is_some() {
-                debug!("evaluate_stack: intercrate_ambiguity_causes is some");
-                if let Ok(candidate_set) = self.assemble_candidates(stack) {
-                    if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
-                        let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
-                        let self_ty = trait_ref.self_ty();
-                        let cause =
-                            with_no_trimmed_paths(|| IntercrateAmbiguityCause::DownstreamCrate {
-                                trait_desc: trait_ref.print_only_trait_path().to_string(),
-                                self_desc: if self_ty.has_concrete_skeleton() {
-                                    Some(self_ty.to_string())
-                                } else {
-                                    None
-                                },
+
+        if stack.obligation.predicate.skip_binder().polarity != ty::ImplPolarity::Negative {
+            // This check was an imperfect workaround for a bug in the old
+            // intercrate mode; it should be removed when that goes away.
+            if unbound_input_types && self.intercrate {
+                debug!("evaluate_stack --> unbound argument, intercrate -->  ambiguous",);
+                // Heuristics: show the diagnostics when there are no candidates in crate.
+                if self.intercrate_ambiguity_causes.is_some() {
+                    debug!("evaluate_stack: intercrate_ambiguity_causes is some");
+                    if let Ok(candidate_set) = self.assemble_candidates(stack) {
+                        if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
+                            let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
+                            let self_ty = trait_ref.self_ty();
+                            let cause = with_no_trimmed_paths(|| {
+                                IntercrateAmbiguityCause::DownstreamCrate {
+                                    trait_desc: trait_ref.print_only_trait_path().to_string(),
+                                    self_desc: if self_ty.has_concrete_skeleton() {
+                                        Some(self_ty.to_string())
+                                    } else {
+                                        None
+                                    },
+                                }
                             });
 
-                        debug!(?cause, "evaluate_stack: pushing cause");
-                        self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
+                            debug!(?cause, "evaluate_stack: pushing cause");
+                            self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
+                        }
                     }
                 }
+                return Ok(EvaluatedToAmbig);
             }
-            return Ok(EvaluatedToAmbig);
         }
+
         if unbound_input_types
             && stack.iter().skip(1).any(|prev| {
                 stack.obligation.param_env == prev.obligation.param_env
@@ -1178,7 +1183,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Option<Conflict> {
         debug!("is_knowable(intercrate={:?})", self.intercrate);
 
-        if !self.intercrate {
+        if !self.intercrate
+            || stack.obligation.predicate.skip_binder().polarity == ty::ImplPolarity::Negative
+        {
             return None;
         }
 
