@@ -5,7 +5,7 @@ LL |         assert_eq!(a, a);
    |                    ^^^^
 ...
 LL |     assert_in_macro_def!();
-   |     ----------------------- in this macro invocation
+   |     ---------------------- in this macro invocation
    |
    = note: `-D clippy::eq-op` implied by `-D warnings`
    = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -17,7 +17,7 @@ LL |         assert_ne!(a, a);
    |                    ^^^^
 ...
 LL |     assert_in_macro_def!();
-   |     ----------------------- in this macro invocation
+   |     ---------------------- in this macro invocation
    |
    = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -52,7 +52,7 @@ LL |         debug_assert_eq!(a, a);
    |                          ^^^^
 ...
 LL |     assert_in_macro_def!();
-   |     ----------------------- in this macro invocation
+   |     ---------------------- in this macro invocation
    |
    = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -63,7 +63,7 @@ LL |         debug_assert_ne!(a, a);
    |                          ^^^^
 ...
 LL |     assert_in_macro_def!();
-   |     ----------------------- in this macro invocation
+   |     ---------------------- in this macro invocation
    |
    = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 

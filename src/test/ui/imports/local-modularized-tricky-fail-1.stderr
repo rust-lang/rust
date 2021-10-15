@@ -13,7 +13,7 @@ LL | |     }
    | |_____^
 ...
 LL |       define_exported!();
-   |       ------------------- in this macro invocation
+   |       ------------------ in this macro invocation
 note: `exported` could also refer to the macro imported here
   --> $DIR/local-modularized-tricky-fail-1.rs:22:5
    |
@@ -37,7 +37,7 @@ LL | |     }
    | |_____^
 ...
 LL |       define_exported!();
-   |       ------------------- in this macro invocation
+   |       ------------------ in this macro invocation
 note: `exported` could also refer to the macro imported here
   --> $DIR/local-modularized-tricky-fail-1.rs:22:5
    |
@@ -62,7 +62,7 @@ LL | |     }
    | |_____^
 ...
 LL |       define_panic!();
-   |       ---------------- in this macro invocation
+   |       --------------- in this macro invocation
    = help: use `crate::panic` to refer to this macro unambiguously
    = note: this error originates in the macro `define_panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -82,7 +82,7 @@ LL | |     }
    | |_____^
 ...
 LL |       define_include!();
-   |       ------------------ in this macro invocation
+   |       ----------------- in this macro invocation
    = help: use `crate::include` to refer to this macro unambiguously
    = note: this error originates in the macro `define_include` (in Nightly builds, run with -Z macro-backtrace for more info)
 

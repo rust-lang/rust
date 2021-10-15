@@ -20,6 +20,17 @@ LL |     "this won't work".to_string();
 LL |     "removeme".to_string();
    |                           - help: consider removing this semicolon
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/consider-removing-last-semi.rs:13:25
+   |
+LL | pub fn macro_tests() -> u32 {
+   |        -----------      ^^^ expected `u32`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+...
+LL |     mac!();
+   |           - help: consider removing this semicolon
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

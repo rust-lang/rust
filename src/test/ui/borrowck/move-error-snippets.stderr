@@ -10,7 +10,7 @@ LL |         let a = $c;
   ::: $DIR/move-error-snippets.rs:21:1
    |
 LL | sss!();
-   | ------- in this macro invocation
+   | ------ in this macro invocation
    |
    = note: this error originates in the macro `aaa` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -2,7 +2,7 @@ error[E0369]: binary operation `==` cannot be applied to type `for<'r> fn(&'r i3
   --> $DIR/issue-77910-1.rs:8:5
    |
 LL |     assert_eq!(foo, y);
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^
    |     |
    |     for<'r> fn(&'r i32) -> &'r i32 {foo}
    |     _
@@ -13,7 +13,7 @@ error[E0277]: `for<'r> fn(&'r i32) -> &'r i32 {foo}` doesn't implement `Debug`
   --> $DIR/issue-77910-1.rs:8:5
    |
 LL |     assert_eq!(foo, y);
-   |     ^^^^^^^^^^^^^^^^^^^ `for<'r> fn(&'r i32) -> &'r i32 {foo}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |     ^^^^^^^^^^^^^^^^^^ `for<'r> fn(&'r i32) -> &'r i32 {foo}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = help: the trait `Debug` is not implemented for `for<'r> fn(&'r i32) -> &'r i32 {foo}`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)

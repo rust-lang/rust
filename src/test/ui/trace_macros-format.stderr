@@ -2,37 +2,37 @@ error: trace_macros! accepts only `true` or `false`
   --> $DIR/trace_macros-format.rs:4:5
    |
 LL |     trace_macros!();
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^
 
 error: trace_macros! accepts only `true` or `false`
   --> $DIR/trace_macros-format.rs:5:5
    |
 LL |     trace_macros!(1);
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^
 
 error: trace_macros! accepts only `true` or `false`
   --> $DIR/trace_macros-format.rs:6:5
    |
 LL |     trace_macros!(ident);
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^
 
 error: trace_macros! accepts only `true` or `false`
   --> $DIR/trace_macros-format.rs:7:5
    |
 LL |     trace_macros!(for);
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^
 
 error: trace_macros! accepts only `true` or `false`
   --> $DIR/trace_macros-format.rs:8:5
    |
 LL |     trace_macros!(true,);
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^
 
 error: trace_macros! accepts only `true` or `false`
   --> $DIR/trace_macros-format.rs:9:5
    |
 LL |     trace_macros!(false 1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

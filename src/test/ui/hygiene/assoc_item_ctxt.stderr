@@ -8,7 +8,7 @@ LL |             fn method() {}
    |             not a member of trait `Tr`
 ...
 LL |     mac_trait_impl!();
-   |     ------------------ in this macro invocation
+   |     ----------------- in this macro invocation
    |
    = note: this error originates in the macro `mac_trait_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -22,7 +22,7 @@ LL |         impl Tr for u8 {
    |         ^^^^^^^^^^^^^^ missing `method` in implementation
 ...
 LL |     mac_trait_impl!();
-   |     ------------------ in this macro invocation
+   |     ----------------- in this macro invocation
    |
    = note: this error originates in the macro `mac_trait_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 

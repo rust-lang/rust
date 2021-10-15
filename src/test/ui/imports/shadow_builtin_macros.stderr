@@ -27,7 +27,7 @@ LL |         macro_rules! panic { () => {} }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     } }
 LL |     m!();
-   |     ----- in this macro invocation
+   |     ---- in this macro invocation
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `n` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)

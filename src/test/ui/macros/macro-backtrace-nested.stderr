@@ -16,7 +16,7 @@ LL |     () => (fake)
    |            ^^^^ not found in this scope
 ...
 LL |     call_nested_expr_sum!();
-   |     ------------------------ in this macro invocation
+   |     ----------------------- in this macro invocation
    |
    = note: this error originates in the macro `nested_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
 

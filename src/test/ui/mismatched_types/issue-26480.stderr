@@ -5,7 +5,7 @@ LL |                   $arr.len() * size_of($arr[0]));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `usize`
 ...
 LL |     write!(hello);
-   |     -------------- in this macro invocation
+   |     ------------- in this macro invocation
    |
    = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
@@ -20,7 +20,7 @@ LL |     ($x:expr) => ($x as ())
    |                   ^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 ...
 LL |     cast!(2);
-   |     --------- in this macro invocation
+   |     -------- in this macro invocation
    |
    = note: this error originates in the macro `cast` (in Nightly builds, run with -Z macro-backtrace for more info)
 

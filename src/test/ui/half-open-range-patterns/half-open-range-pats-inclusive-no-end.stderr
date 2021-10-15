@@ -37,7 +37,7 @@ LL |             let $e...;
    |                   ^^^ help: use `..` instead
 ...
 LL |     mac!(0);
-   |     -------- in this macro invocation
+   |     ------- in this macro invocation
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -49,7 +49,7 @@ LL |             let $e..=;
    |                   ^^^ help: use `..` instead
 ...
 LL |     mac!(0);
-   |     -------- in this macro invocation
+   |     ------- in this macro invocation
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)

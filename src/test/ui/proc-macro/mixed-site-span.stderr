@@ -2,7 +2,7 @@ error[E0426]: use of undeclared label `'label_use`
   --> $DIR/mixed-site-span.rs:13:9
    |
 LL |         proc_macro_rules!();
-   |         ^^^^^^^^^^^^^^^^^^^^ undeclared label `'label_use`
+   |         ^^^^^^^^^^^^^^^^^^^ undeclared label `'label_use`
    |
    = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -10,7 +10,7 @@ error[E0425]: cannot find value `local_use` in this scope
   --> $DIR/mixed-site-span.rs:13:9
    |
 LL |         proc_macro_rules!();
-   |         ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |         ^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
    = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -24,7 +24,7 @@ error[E0412]: cannot find type `ItemUse` in crate `$crate`
   --> $DIR/mixed-site-span.rs:24:1
    |
 LL | pass_dollar_crate!();
-   | ^^^^^^^^^^^^^^^^^^^^^ not found in `$crate`
+   | ^^^^^^^^^^^^^^^^^^^^ not found in `$crate`
    |
    = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 

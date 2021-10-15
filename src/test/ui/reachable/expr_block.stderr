@@ -18,7 +18,7 @@ error: unreachable statement
 LL |         return;
    |         ------ any code following this expression is unreachable
 LL |         println!("foo");
-   |         ^^^^^^^^^^^^^^^^ unreachable statement
+   |         ^^^^^^^^^^^^^^^ unreachable statement
    |
    = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 

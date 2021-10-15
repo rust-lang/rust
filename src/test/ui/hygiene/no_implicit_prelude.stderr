@@ -2,7 +2,7 @@ error[E0433]: failed to resolve: use of undeclared type `Vec`
   --> $DIR/no_implicit_prelude.rs:11:9
    |
 LL |     fn f() { ::bar::m!(); }
-   |              ------------ in this macro invocation
+   |              ----------- in this macro invocation
 ...
 LL |         Vec::new();
    |         ^^^ not found in this scope
@@ -17,7 +17,7 @@ error[E0599]: no method named `clone` found for unit type `()` in the current sc
   --> $DIR/no_implicit_prelude.rs:12:12
    |
 LL |     fn f() { ::bar::m!(); }
-   |              ------------ in this macro invocation
+   |              ----------- in this macro invocation
 ...
 LL |         ().clone()
    |            ^^^^^ method not found in `()`

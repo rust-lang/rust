@@ -13,7 +13,7 @@ LL |         const $name: $ty = $e;
    |         ^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC); //~ ERROR interior mutable
-   |     ----------------------------------------------------------- in this macro invocation
+   |     ---------------------------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `declare_const` (in Nightly builds, run with -Z macro-backtrace for more info)
 

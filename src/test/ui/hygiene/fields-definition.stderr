@@ -7,7 +7,7 @@ LL |             $a: u8,
    |             ^^^^^^ field already declared
 ...
 LL | legacy!(a);
-   | ----------- in this macro invocation
+   | ---------- in this macro invocation
    |
    = note: this error originates in the macro `legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -6,7 +6,7 @@ LL |         x = &id(3);
    |              |
    |              creates a temporary which is freed while still in use
 LL |         assert_eq!(*x, 3);
-   |         ------------------ borrow later used here
+   |         ----------------- borrow later used here
    |
    = note: consider using a `let` binding to create a longer lived value
 

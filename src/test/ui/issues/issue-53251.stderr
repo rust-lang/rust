@@ -7,7 +7,7 @@ LL |                 S::f::<i64>();
    |                    expected 0 generic arguments
 ...
 LL | impl_add!(a b);
-   | --------------- in this macro invocation
+   | -------------- in this macro invocation
    |
 note: associated function defined here, with 0 generic parameters
   --> $DIR/issue-53251.rs:4:8
@@ -25,7 +25,7 @@ LL |                 S::f::<i64>();
    |                    expected 0 generic arguments
 ...
 LL | impl_add!(a b);
-   | --------------- in this macro invocation
+   | -------------- in this macro invocation
    |
 note: associated function defined here, with 0 generic parameters
   --> $DIR/issue-53251.rs:4:8

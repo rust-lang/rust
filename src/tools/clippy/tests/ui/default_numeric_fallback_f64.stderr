@@ -139,7 +139,7 @@ LL |             let x = 22.;
    |                     ^^^ help: consider adding suffix: `22.0_f64`
 ...
 LL |         internal_macro!();
-   |         ------------------ in this macro invocation
+   |         ----------------- in this macro invocation
    |
    = note: this error originates in the macro `internal_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 

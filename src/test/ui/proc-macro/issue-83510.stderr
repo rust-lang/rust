@@ -2,7 +2,7 @@ error[E0412]: cannot find type `Foo` in this scope
   --> $DIR/issue-83510.rs:5:1
    |
 LL | issue_83510::dance_like_you_want_to_ice!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
    = note: this error originates in the macro `issue_83510::dance_like_you_want_to_ice` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -10,7 +10,7 @@ error[E0404]: expected trait, found struct `Box`
   --> $DIR/issue-83510.rs:5:1
    |
 LL | issue_83510::dance_like_you_want_to_ice!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a trait
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a trait
    |
    = note: this error originates in the macro `issue_83510::dance_like_you_want_to_ice` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -18,7 +18,7 @@ error[E0405]: cannot find trait `Baz` in this scope
   --> $DIR/issue-83510.rs:5:1
    |
 LL | issue_83510::dance_like_you_want_to_ice!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
    = note: this error originates in the macro `issue_83510::dance_like_you_want_to_ice` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -26,7 +26,7 @@ error[E0658]: inherent associated types are unstable
   --> $DIR/issue-83510.rs:5:1
    |
 LL | issue_83510::dance_like_you_want_to_ice!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable

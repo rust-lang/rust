@@ -2,7 +2,7 @@ error: cannot glob-import all possible crates
   --> $DIR/edition-imports-2015.rs:23:5
    |
 LL |     gen_glob!();
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^
    |
    = note: this error originates in the macro `gen_glob` (in Nightly builds, run with -Z macro-backtrace for more info)
 

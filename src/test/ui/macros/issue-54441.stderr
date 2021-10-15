@@ -5,7 +5,7 @@ LL |         let
    |         ^^^
 ...
 LL |     m!();
-   |     ----- caused by the macro expansion here
+   |     ---- caused by the macro expansion here
    |
    = note: the usage of `m!` is likely invalid in foreign item context
 

@@ -199,7 +199,7 @@ warning: panic message contains braces
   --> $DIR/non-fmt-panic.rs:31:5
    |
 LL |     panic!(concat!("{", "{"));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this message is not used as a format string, but will be in Rust 2021
 help: add a "{}" format string to use the message literally

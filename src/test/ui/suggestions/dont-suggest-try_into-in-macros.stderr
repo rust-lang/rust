@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/dont-suggest-try_into-in-macros.rs:2:5
    |
 LL |     assert_eq!(10u64, 10usize);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `usize`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `usize`
    |
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 

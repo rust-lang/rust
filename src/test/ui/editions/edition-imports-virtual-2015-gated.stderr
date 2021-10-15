@@ -2,7 +2,7 @@ error[E0432]: unresolved import `E`
   --> $DIR/edition-imports-virtual-2015-gated.rs:8:5
    |
 LL |     gen_gated!();
-   |     ^^^^^^^^^^^^^ could not find `E` in the list of imported crates
+   |     ^^^^^^^^^^^^ could not find `E` in the list of imported crates
    |
    = note: this error originates in the macro `gen_gated` (in Nightly builds, run with -Z macro-backtrace for more info)
 

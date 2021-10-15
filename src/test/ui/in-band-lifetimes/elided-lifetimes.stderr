@@ -35,7 +35,7 @@ LL |         fn $fn_name(gift: &str) -> $type_name {
    |                                    ^^^^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
 ...
 LL | autowrapper!(Autowrapped, autowrap_gift, 'a);
-   | --------------------------------------------- in this macro invocation
+   | -------------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `autowrapper` (in Nightly builds, run with -Z macro-backtrace for more info)
 

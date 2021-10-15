@@ -18,7 +18,7 @@ error[E0668]: malformed inline assembly
   --> $DIR/inline-asm-bad-constraint.rs:38:9
    |
 LL |         llvm_asm!("addb $1, $0" : "={rax}"((0i32, rax)));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the macro `llvm_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
 

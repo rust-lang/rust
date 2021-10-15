@@ -8,7 +8,7 @@ note: the constant `baz` is defined here
   --> $DIR/macro-local-data-key-priv.rs:4:5
    |
 LL |     thread_local!(static baz: f64 = 0.0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `$crate::__thread_local_inner` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

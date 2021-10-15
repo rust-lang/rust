@@ -2,7 +2,7 @@ error: requires at least a format string argument
   --> $DIR/bad-format-args.rs:2:5
    |
 LL |     format!();
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^
    |
    = note: this error originates in the macro `$crate::__export::format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 

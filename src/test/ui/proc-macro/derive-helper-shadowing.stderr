@@ -27,7 +27,7 @@ LL |         #[empty_helper]
    |           ^^^^^^^^^^^^
 ...
 LL |             gen_helper_use!();
-   |             ------------------ in this macro invocation
+   |             ----------------- in this macro invocation
    |
    = note: consider importing this attribute macro:
            crate::empty_helper

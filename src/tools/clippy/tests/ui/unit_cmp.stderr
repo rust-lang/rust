@@ -32,7 +32,7 @@ LL | |         },
 ...  |
 LL | |         }
 LL | |     );
-   | |______^
+   | |_____^
    |
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -46,7 +46,7 @@ LL | |         },
 ...  |
 LL | |         }
 LL | |     );
-   | |______^
+   | |_____^
    |
    = note: this error originates in the macro `$crate::assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -60,7 +60,7 @@ LL | |         },
 ...  |
 LL | |         }
 LL | |     );
-   | |______^
+   | |_____^
    |
    = note: this error originates in the macro `assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -74,7 +74,7 @@ LL | |         },
 ...  |
 LL | |         }
 LL | |     );
-   | |______^
+   | |_____^
    |
    = note: this error originates in the macro `$crate::assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
 

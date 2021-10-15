@@ -5,7 +5,7 @@ LL |     pub priv_x!();
    |     ^^^ help: remove the visibility
 ...
 LL |     pub_x!();
-   |     --------- in this macro invocation
+   |     -------- in this macro invocation
    |
    = help: try adjusting the macro to put `pub` inside the invocation
    = note: this error originates in the macro `pub_x` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -23,7 +23,7 @@ LL |         static x: u32 = 0;
    |         ^^^^^^^^^^^^^^^^^^
 ...
 LL |     pub_x!();
-   |     --------- in this macro invocation
+   |     -------- in this macro invocation
    = note: this error originates in the macro `priv_x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

@@ -2,7 +2,7 @@ error[E0600]: cannot apply unary operator `!` to type `&'static str`
   --> $DIR/issue-28308.rs:2:5
    |
 LL |     assert!("foo");
-   |     ^^^^^^^^^^^^^^^ cannot apply unary operator `!`
+   |     ^^^^^^^^^^^^^^ cannot apply unary operator `!`
    |
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 

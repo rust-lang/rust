@@ -2,7 +2,7 @@ error: a very descriptive error message
   --> $DIR/compile_error_macro.rs:2:5
    |
 LL |     compile_error!("a very descriptive error message");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -5,7 +5,7 @@ LL |             field: MissingType
    |                    ^^^^^^^^^^^ not found in this scope
 ...
 LL | produce_it!(MyName);
-   | -------------------- in this macro invocation
+   | ------------------- in this macro invocation
    |
    = note: this error originates in the macro `produce_it` (in Nightly builds, run with -Z macro-backtrace for more info)
 
