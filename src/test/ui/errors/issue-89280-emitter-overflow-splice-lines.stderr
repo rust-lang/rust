@@ -1,0 +1,23 @@
+warning: anonymous parameters are deprecated and will be removed in the next edition
+  --> $DIR/issue-89280-emitter-overflow-splice-lines.rs:4:21
+   |
+LL |       fn test(x: u32, (
+   |  _____________________^
+LL | |
+LL | |
+LL | |     )) {}
+   | |_____^
+   |
+   = note: `#[warn(anonymous_parameters)]` on by default
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
+help: try naming the parameter or explicitly ignoring it
+   |
+LL ~     fn test(x: u32, _: (
+LL +
+LL +
+LL ~     )) {}
+   |
+
+warning: 1 warning emitted
+
