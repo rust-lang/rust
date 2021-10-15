@@ -92,6 +92,7 @@ E0164: include_str!("./error_codes/E0164.md"),
 E0165: include_str!("./error_codes/E0165.md"),
 E0170: include_str!("./error_codes/E0170.md"),
 E0178: include_str!("./error_codes/E0178.md"),
+E0183: include_str!("./error_codes/E0183.md"),
 E0184: include_str!("./error_codes/E0184.md"),
 E0185: include_str!("./error_codes/E0185.md"),
 E0186: include_str!("./error_codes/E0186.md"),
@@ -513,7 +514,6 @@ E0785: include_str!("./error_codes/E0785.md"),
 //  E0173, // manual implementations of unboxed closure traits are experimental
 //  E0174,
 //  E0182, // merged into E0229
-    E0183,
 //  E0187, // cannot infer the kind of the closure
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
