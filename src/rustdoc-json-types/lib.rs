@@ -510,5 +510,8 @@ pub struct Static {
     pub expr: String,
 }
 
+/// rustdoc format-version.
+pub const FORMAT_VERSION: u32 = 9;
+
 #[cfg(test)]
 mod tests;
