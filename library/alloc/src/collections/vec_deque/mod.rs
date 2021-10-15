@@ -418,6 +418,25 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
+    /// Copies all values from `src` to `dst`, wrapping around if needed.
+    /// Assumes capacity is sufficient.
+    #[inline]
+    unsafe fn copy_slice(&mut self, dst: usize, src: &[T]) {
+        debug_assert!(src.len() <= self.cap());
+        let head_room = self.cap() - dst;
+        if src.len() <= head_room {
+            unsafe {
+                ptr::copy_nonoverlapping(src.as_ptr(), self.ptr().add(dst), src.len());
+            }
+        } else {
+            let (left, right) = src.split_at(head_room);
+            unsafe {
+                ptr::copy_nonoverlapping(left.as_ptr(), self.ptr().add(dst), left.len());
+                ptr::copy_nonoverlapping(right.as_ptr(), self.ptr(), right.len());
+            }
+        }
+    }
+
     /// Frobs the head and tail sections around to handle the fact that we
     /// just reallocated. Unsafe because it trusts old_capacity.
     #[inline]
@@ -2081,8 +2100,17 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
-        // naive impl
-        self.extend(other.drain(..));
+        self.reserve(other.len());
+        unsafe {
+            let (left, right) = other.as_slices();
+            self.copy_slice(self.head, left);
+            self.copy_slice(self.wrap_add(self.head, left.len()), right);
+        }
+        // SAFETY: Update pointers after copying to avoid leaving doppelganger
+        // in case of panics.
+        self.head = self.wrap_add(self.head, other.len());
+        // Silently drop values in `other`.
+        other.tail = other.head;
     }
 
     /// Retains only the elements specified by the predicate.
