@@ -1530,7 +1530,11 @@ impl Options {
     }
 
     pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
-        self.cg.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
+        self.cg.symbol_mangling_version.unwrap_or(if self.unstable_features.is_nightly_build() {
+            SymbolManglingVersion::V0
+        } else {
+            SymbolManglingVersion::Legacy
+        })
     }
 
     #[inline]

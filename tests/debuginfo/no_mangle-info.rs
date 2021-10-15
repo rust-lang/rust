@@ -14,7 +14,7 @@
 // lldb-command:v TEST
 // lldb-check:(unsigned long) TEST = 3735928559
 // lldb-command:v OTHER_TEST
-// lldb-check:(unsigned long) no_mangle_info::namespace::OTHER_TEST::[...] = 42
+// lldb-check:(unsigned long) no_mangle_info::namespace::OTHER_TEST = 42
 
 // === CDB TESTS ==================================================================================
 // cdb-command: g
