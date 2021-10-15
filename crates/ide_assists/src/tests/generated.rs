@@ -129,7 +129,8 @@ fn doctest_add_missing_match_arms() {
 enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
-    match action $0 {
+    match action {
+        $0
     }
 }
 "#####,
@@ -137,7 +138,7 @@ fn handle(action: Action) {
 enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
-    match action  {
+    match action {
         $0Action::Move { distance } => todo!(),
         Action::Stop => todo!(),
     }
