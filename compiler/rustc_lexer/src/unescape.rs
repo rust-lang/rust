@@ -68,10 +68,11 @@ pub enum EscapeError {
 impl EscapeError {
     /// Returns true for actual errors, as opposed to warnings.
     pub fn is_fatal(&self) -> bool {
-        !matches!(
-            self,
-            EscapeError::UnskippedWhitespaceWarning | EscapeError::MultipleSkippedLinesWarning
-        )
+        match self {
+            EscapeError::UnskippedWhitespaceWarning => false,
+            EscapeError::MultipleSkippedLinesWarning => false,
+            _ => true,
+        }
     }
 }
 
@@ -329,7 +330,7 @@ where
             callback(start..end, Err(EscapeError::MultipleSkippedLinesWarning));
         }
         let tail = &tail[first_non_space..];
-        if let Some(c) = tail.chars().next() {
+        if let Some(c) = tail.chars().nth(0) {
             // For error reporting, we would like the span to contain the character that was not
             // skipped.  The +1 is necessary to account for the leading \ that started the escape.
             let end = start + first_non_space + c.len_utf8() + 1;

@@ -634,15 +634,18 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = T> + '_ {
+    pub fn drain<'a, R: RangeBounds<usize>>(
+        &'a mut self,
+        range: R,
+    ) -> impl Iterator<Item = T> + 'a {
         self.raw.drain(range)
     }
 
     #[inline]
-    pub fn drain_enumerated<R: RangeBounds<usize>>(
-        &mut self,
+    pub fn drain_enumerated<'a, R: RangeBounds<usize>>(
+        &'a mut self,
         range: R,
-    ) -> impl Iterator<Item = (I, T)> + '_ {
+    ) -> impl Iterator<Item = (I, T)> + 'a {
         self.raw.drain(range).enumerate().map(|(n, t)| (I::new(n), t))
     }
 

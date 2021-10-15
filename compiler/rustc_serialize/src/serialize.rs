@@ -500,8 +500,8 @@ impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
         d.read_seq(|d, len| {
             assert!(len == N);
             let mut v = [0u8; N];
-            for x in &mut v {
-                *x = d.read_seq_elt(|d| Decodable::decode(d))?;
+            for i in 0..len {
+                v[i] = d.read_seq_elt(|d| Decodable::decode(d))?;
             }
             Ok(v)
         })

@@ -512,7 +512,7 @@ impl<'a> LabelText<'a> {
     pub fn to_dot_string(&self) -> String {
         match *self {
             LabelStr(ref s) => format!("\"{}\"", s.escape_default()),
-            EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(s)),
+            EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(&s)),
             HtmlStr(ref s) => format!("<{}>", s),
         }
     }
