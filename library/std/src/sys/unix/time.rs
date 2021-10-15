@@ -154,14 +154,6 @@ mod inner {
             Instant { t: unsafe { mach_absolute_time() } }
         }
 
-        pub const fn zero() -> Instant {
-            Instant { t: 0 }
-        }
-
-        pub fn actually_monotonic() -> bool {
-            true
-        }
-
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
             let diff = self.t.checked_sub(other.t)?;
             let info = info();
@@ -294,17 +286,6 @@ mod inner {
     impl Instant {
         pub fn now() -> Instant {
             Instant { t: now(libc::CLOCK_MONOTONIC) }
-        }
-
-        pub const fn zero() -> Instant {
-            Instant { t: Timespec::zero() }
-        }
-
-        pub fn actually_monotonic() -> bool {
-            (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64"))
-                || (cfg!(target_os = "linux") && cfg!(target_arch = "x86"))
-                || (cfg!(target_os = "linux") && cfg!(target_arch = "aarch64"))
-                || cfg!(target_os = "fuchsia")
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {

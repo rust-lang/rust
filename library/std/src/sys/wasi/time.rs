@@ -25,14 +25,6 @@ impl Instant {
         Instant(current_time(wasi::CLOCKID_MONOTONIC))
     }
 
-    pub const fn zero() -> Instant {
-        Instant(Duration::from_secs(0))
-    }
-
-    pub fn actually_monotonic() -> bool {
-        true
-    }
-
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         self.0.checked_sub(other.0)
     }
