@@ -1,29 +1,32 @@
-error[E0309]: the associated type `<Left as HasChildrenOf>::T` may not live long enough
+error: `impl` associated type signature for `TRef` doesn't match `trait` associated type signature
   --> $DIR/issue-86787.rs:23:5
    |
+LL |       type TRef<'a>;
+   |       -------------- expected
+...
 LL | /     type TRef<'a>
 LL | |
 LL | |
 LL | |     where
 LL | |     <Left as HasChildrenOf>::T: 'a,
 LL | |     <Right as HasChildrenOf>::T: 'a
-   | |                                    - help: consider adding a where clause: `, <Left as HasChildrenOf>::T: 'a`
 LL | |     = Either<&'a Left::T, &'a Right::T>;
-   | |________________________________________^ ...so that the definition in impl matches the definition from the trait
+   | |________________________________________^ found
 
-error[E0309]: the associated type `<Right as HasChildrenOf>::T` may not live long enough
+error: `impl` associated type signature for `TRef` doesn't match `trait` associated type signature
   --> $DIR/issue-86787.rs:23:5
    |
+LL |       type TRef<'a>;
+   |       -------------- expected
+...
 LL | /     type TRef<'a>
 LL | |
 LL | |
 LL | |     where
 LL | |     <Left as HasChildrenOf>::T: 'a,
 LL | |     <Right as HasChildrenOf>::T: 'a
-   | |                                    - help: consider adding a where clause: `, <Right as HasChildrenOf>::T: 'a`
 LL | |     = Either<&'a Left::T, &'a Right::T>;
-   | |________________________________________^ ...so that the definition in impl matches the definition from the trait
+   | |________________________________________^ found
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0309`.
