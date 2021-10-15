@@ -166,6 +166,10 @@ impl Command {
             fn clone3(cl_args: *mut clone_args, len: libc::size_t) -> libc::c_long
         }
 
+        // Bypassing libc for `clone3` can make further libc calls unsafe,
+        // so we use it sparingly for now. See #89522 for details.
+        let want_clone3 = self.get_create_pidfd();
+
         // If we fail to create a pidfd for any reason, this will
         // stay as -1, which indicates an error.
         let mut pidfd: pid_t = -1;
@@ -173,7 +177,7 @@ impl Command {
         // Attempt to use the `clone3` syscall, which supports more arguments
         // (in particular, the ability to create a pidfd). If this fails,
         // we will fall through this block to a call to `fork()`
-        if HAS_CLONE3.load(Ordering::Relaxed) {
+        if want_clone3 && HAS_CLONE3.load(Ordering::Relaxed) {
             let mut flags = 0;
             if self.get_create_pidfd() {
                 flags |= CLONE_PIDFD;
