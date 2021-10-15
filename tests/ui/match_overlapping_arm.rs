@@ -10,98 +10,95 @@ fn overlapping() {
     const FOO: u64 = 2;
 
     match 42 {
-        0..=10 => println!("0 ... 10"),
-        0..=11 => println!("0 ... 11"),
+        0..=10 => println!("0..=10"),
+        0..=11 => println!("0..=11"),
         _ => (),
     }
 
     match 42 {
-        0..=5 => println!("0 ... 5"),
-        6..=7 => println!("6 ... 7"),
-        FOO..=11 => println!("0 ... 11"),
-        _ => (),
-    }
-
-    match 42 {
-        2 => println!("2"),
-        0..=5 => println!("0 ... 5"),
+        0..=5 => println!("0..=5"),
+        6..=7 => println!("6..=7"),
+        FOO..=11 => println!("FOO..=11"),
         _ => (),
     }
 
     match 42 {
         2 => println!("2"),
-        0..=2 => println!("0 ... 2"),
-        _ => (),
-    }
-
-    match 42 {
-        0..=10 => println!("0 ... 10"),
-        11..=50 => println!("11 ... 50"),
+        0..=5 => println!("0..=5"),
         _ => (),
     }
 
     match 42 {
         2 => println!("2"),
-        0..2 => println!("0 .. 2"),
+        0..=2 => println!("0..=2"),
         _ => (),
     }
 
     match 42 {
-        0..10 => println!("0 .. 10"),
-        10..50 => println!("10 .. 50"),
+        0..=10 => println!("0..=10"),
+        11..=50 => println!("11..=50"),
         _ => (),
     }
 
     match 42 {
-        0..11 => println!("0 .. 11"),
-        0..=11 => println!("0 ... 11"),
+        2 => println!("2"),
+        0..2 => println!("0..2"),
         _ => (),
     }
 
     match 42 {
-        5..7 => println!("5 .. 7"),
-        0..10 => println!("0 .. 10"),
+        0..10 => println!("0..10"),
+        10..50 => println!("10..50"),
         _ => (),
     }
 
     match 42 {
-        5..10 => println!("5 .. 10"),
-        0..=10 => println!("0 ... 10"),
+        0..11 => println!("0..11"),
+        0..=11 => println!("0..=11"),
         _ => (),
     }
 
     match 42 {
-        0..14 => println!("0 .. 14"),
-        5..10 => println!("5 .. 10"),
+        5..7 => println!("5..7"),
+        0..10 => println!("0..10"),
         _ => (),
     }
 
     match 42 {
-        5..14 => println!("5 .. 14"),
-        0..=10 => println!("0 ... 10"),
+        5..10 => println!("5..10"),
+        0..=10 => println!("0..=10"),
         _ => (),
     }
 
     match 42 {
-        0..7 => println!("0 .. 7"),
-        0..=10 => println!("0 ... 10"),
-        _ => (),
-    }
-
-    /*
-    // FIXME(JohnTitor): uncomment this once rustfmt knows half-open patterns
-    match 42 {
-        0.. => println!("0 .. 42"),
-        3.. => println!("3 .. 42"),
+        0..14 => println!("0..14"),
+        5..10 => println!("5..10"),
         _ => (),
     }
 
     match 42 {
-        ..=23 => println!("0 ... 23"),
-        ..26 => println!("0 .. 26"),
+        5..14 => println!("5..14"),
+        0..=10 => println!("0..=10"),
         _ => (),
     }
-    */
+
+    match 42 {
+        0..7 => println!("0..7"),
+        0..=10 => println!("0..=10"),
+        _ => (),
+    }
+
+    match 42 {
+        3.. => println!("3.."),
+        0.. => println!("0.."),
+        _ => (),
+    }
+
+    match 42 {
+        ..=23 => println!("..=23"),
+        ..26 => println!("..26"),
+        _ => (),
+    }
 
     if let None = Some(42) {
         // nothing
