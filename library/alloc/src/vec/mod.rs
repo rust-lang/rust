@@ -1973,8 +1973,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// `'a`. If the type has only static references, or none at all, then this
     /// may be chosen to be `'static`.
     ///
-    /// This function is similar to the [`leak`][Box::leak] function on [`Box`]
-    /// except that there is no way to recover the leaked memory.
+    /// As of Rust 1.57, this method does not reallocate or shrink the `Vec`,
+    /// so the leaked allocation may include unused capacity that is not part
+    /// of the returned slice.
     ///
     /// This function is mainly useful for data that lives for the remainder of
     /// the program's life. Dropping the returned reference will cause a memory
@@ -1997,7 +1998,8 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         A: 'a,
     {
-        Box::leak(self.into_boxed_slice())
+        let mut me = ManuallyDrop::new(self);
+        unsafe { slice::from_raw_parts_mut(me.as_mut_ptr(), me.len) }
     }
 
     /// Returns the remaining spare capacity of the vector as a slice of
