@@ -211,8 +211,8 @@ impl Command {
             }
         }
 
-        // If we get here, the 'clone3' syscall does not exist
-        // or we do not have permission to call it
+        // Generally, we just call `fork`. If we get here after wanting `clone3`,
+        // then the syscall does not exist or we do not have permission to call it.
         cvt(libc::fork()).map(|res| (res, pidfd))
     }
 
