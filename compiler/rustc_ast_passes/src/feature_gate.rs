@@ -1,11 +1,11 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{AssocTyConstraint, AssocTyConstraintKind, NodeId};
-use rustc_ast::{PatKind, RangeEnd};
+use rustc_ast::{PatKind, RangeEnd, VariantData};
 use rustc_errors::struct_span_err;
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue};
-use rustc_session::parse::feature_err_issue;
+use rustc_session::parse::{feature_err, feature_err_issue};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
@@ -218,6 +218,46 @@ impl<'a> PostExpansionVisitor<'a> {
         }
     }
 
+    fn maybe_report_invalid_custom_discriminants(&self, variants: &[ast::Variant]) {
+        let has_fields = variants.iter().any(|variant| match variant.data {
+            VariantData::Tuple(..) | VariantData::Struct(..) => true,
+            VariantData::Unit(..) => false,
+        });
+
+        let discriminant_spans = variants
+            .iter()
+            .filter(|variant| match variant.data {
+                VariantData::Tuple(..) | VariantData::Struct(..) => false,
+                VariantData::Unit(..) => true,
+            })
+            .filter_map(|variant| variant.disr_expr.as_ref().map(|c| c.value.span))
+            .collect::<Vec<_>>();
+
+        if !discriminant_spans.is_empty() && has_fields {
+            let mut err = feature_err(
+                &self.sess.parse_sess,
+                sym::arbitrary_enum_discriminant,
+                discriminant_spans.clone(),
+                "custom discriminant values are not allowed in enums with tuple or struct variants",
+            );
+            for sp in discriminant_spans {
+                err.span_label(sp, "disallowed custom discriminant");
+            }
+            for variant in variants.iter() {
+                match &variant.data {
+                    VariantData::Struct(..) => {
+                        err.span_label(variant.span, "struct variant defined here");
+                    }
+                    VariantData::Tuple(..) => {
+                        err.span_label(variant.span, "tuple variant defined here");
+                    }
+                    VariantData::Unit(..) => {}
+                }
+            }
+            err.emit();
+        }
+    }
+
     fn check_gat(&self, generics: &ast::Generics, span: Span) {
         if !generics.params.is_empty() {
             gate_feature_post!(
@@ -360,6 +400,26 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                             );
                         }
                     }
+                }
+            }
+
+            ast::ItemKind::Enum(ast::EnumDef { ref variants, .. }, ..) => {
+                for variant in variants {
+                    match (&variant.data, &variant.disr_expr) {
+                        (ast::VariantData::Unit(..), _) => {}
+                        (_, Some(disr_expr)) => gate_feature_post!(
+                            &self,
+                            arbitrary_enum_discriminant,
+                            disr_expr.value.span,
+                            "discriminants on non-unit variants are experimental"
+                        ),
+                        _ => {}
+                    }
+                }
+
+                let has_feature = self.features.arbitrary_enum_discriminant;
+                if !has_feature && !i.span.allows_unstable(sym::arbitrary_enum_discriminant) {
+                    self.maybe_report_invalid_custom_discriminants(&variants);
                 }
             }
 

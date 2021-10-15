@@ -464,6 +464,9 @@ declare_features! (
     /// Allows #[repr(transparent)] on unions (RFC 2645).
     (active, transparent_unions, "1.37.0", Some(60405), None),
 
+    /// Allows explicit discriminants on non-unit enum variants.
+    (active, arbitrary_enum_discriminant, "1.37.0", Some(60553), None),
+
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
 

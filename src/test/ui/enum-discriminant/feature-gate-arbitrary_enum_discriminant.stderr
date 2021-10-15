@@ -1,0 +1,36 @@
+error[E0658]: discriminants on non-unit variants are experimental
+  --> $DIR/feature-gate-arbitrary_enum_discriminant.rs:6:13
+   |
+LL |   Tuple() = 2,
+   |             ^
+   |
+   = note: see issue #60553 <https://github.com/rust-lang/rust/issues/60553> for more information
+   = help: add `#![feature(arbitrary_enum_discriminant)]` to the crate attributes to enable
+
+error[E0658]: discriminants on non-unit variants are experimental
+  --> $DIR/feature-gate-arbitrary_enum_discriminant.rs:8:14
+   |
+LL |   Struct{} = 3,
+   |              ^
+   |
+   = note: see issue #60553 <https://github.com/rust-lang/rust/issues/60553> for more information
+   = help: add `#![feature(arbitrary_enum_discriminant)]` to the crate attributes to enable
+
+error[E0658]: custom discriminant values are not allowed in enums with tuple or struct variants
+  --> $DIR/feature-gate-arbitrary_enum_discriminant.rs:4:10
+   |
+LL |   Unit = 1,
+   |          ^ disallowed custom discriminant
+LL |
+LL |   Tuple() = 2,
+   |   ----------- tuple variant defined here
+LL |
+LL |   Struct{} = 3,
+   |   ------------ struct variant defined here
+   |
+   = note: see issue #60553 <https://github.com/rust-lang/rust/issues/60553> for more information
+   = help: add `#![feature(arbitrary_enum_discriminant)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
