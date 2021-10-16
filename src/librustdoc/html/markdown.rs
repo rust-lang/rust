@@ -765,7 +765,7 @@ crate fn find_testable_code<T: doctest::Tester>(
                 // If there are characters between the preceding line ending and
                 // this code block, `str::lines` will return an additional line,
                 // which we subtract here.
-                if nb_lines != 0 && !&doc[prev_offset..offset.start].ends_with("\n") {
+                if nb_lines != 0 && !&doc[prev_offset..offset.start].ends_with('\n') {
                     nb_lines -= 1;
                 }
                 let line = tests.get_line() + nb_lines + 1;

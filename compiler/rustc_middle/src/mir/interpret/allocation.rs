@@ -1004,13 +1004,13 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Checks that a range of bytes is initialized. If not, returns the `InvalidUninitBytes`
     /// error which will report the first range of bytes which is uninitialized.
     fn check_init(&self, range: AllocRange) -> AllocResult {
-        self.is_init(range).or_else(|idx_range| {
-            Err(AllocError::InvalidUninitBytes(Some(UninitBytesAccess {
+        self.is_init(range).map_err(|idx_range| {
+            AllocError::InvalidUninitBytes(Some(UninitBytesAccess {
                 access_offset: range.start,
                 access_size: range.size,
                 uninit_offset: idx_range.start,
                 uninit_size: idx_range.end - idx_range.start, // `Size` subtraction
-            })))
+            }))
         })
     }
 
