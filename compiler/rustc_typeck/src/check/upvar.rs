@@ -1678,9 +1678,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         diag_expr_id: hir::HirId,
     ) {
         let tcx = self.fcx.tcx;
-        let upvar_id = if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
-            upvar_id
-        } else {
+        let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else {
             return;
         };
 
