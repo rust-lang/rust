@@ -107,14 +107,14 @@ fn find_definition(
         {
             bail!("Renaming aliases is currently unsupported")
         }
-        ast::NameLike::Name(name) => NameClass::classify(sema, &name).map(|class| match class {
+        ast::NameLike::Name(name) => NameClass::classify(sema, name).map(|class| match class {
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
             NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
                 Definition::Local(local_def)
             }
         }),
         ast::NameLike::NameRef(name_ref) => {
-            if let Some(def) = NameRefClass::classify(sema, &name_ref).map(|class| match class {
+            if let Some(def) = NameRefClass::classify(sema, name_ref).map(|class| match class {
                 NameRefClass::Definition(def) => def,
                 NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
                     Definition::Local(local_ref)
@@ -129,13 +129,13 @@ fn find_definition(
                 None
             }
         }
-        ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
+        ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, lifetime)
             .and_then(|class| match class {
                 NameRefClass::Definition(def) => Some(def),
                 _ => None,
             })
             .or_else(|| {
-                NameClass::classify_lifetime(sema, &lifetime).and_then(|it| match it {
+                NameClass::classify_lifetime(sema, lifetime).and_then(|it| match it {
                     NameClass::Definition(it) => Some(it),
                     _ => None,
                 })
@@ -305,7 +305,6 @@ mod tests {
                         .skip("error:".len())
                         .collect::<String>();
                     assert_eq!(error_message.trim(), err.to_string());
-                    return;
                 } else {
                     panic!("Rename to '{}' failed unexpectedly: {}", new_name, err)
                 }

@@ -166,7 +166,7 @@ impl GlobalState {
             self.handle_event(event)?
         }
 
-        Err("client exited without proper shutdown sequence")?
+        return Err("client exited without proper shutdown sequence".into());
     }
 
     fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
@@ -769,7 +769,6 @@ impl GlobalState {
                             if !is_cancelled(&*err) {
                                 tracing::error!("failed to compute diagnostics: {:?}", err);
                             }
-                            ()
                         })
                         .ok()
                         .map(|diags| (file_id, diags))

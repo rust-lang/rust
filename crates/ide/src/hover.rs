@@ -97,7 +97,7 @@ pub(crate) fn hover(
     let file = sema.parse(file_id).syntax().clone();
 
     if !range.is_empty() {
-        return hover_ranged(&file, range, &sema, config);
+        return hover_ranged(&file, range, sema, config);
     }
     let offset = range.start();
 
@@ -121,7 +121,7 @@ pub(crate) fn hover(
     // FIXME: Definition should include known lints and the like instead of having this special case here
     if let Some(res) = descended.iter().find_map(|token| {
         let attr = token.ancestors().find_map(ast::Attr::cast)?;
-        render::try_for_lint(&attr, &token)
+        render::try_for_lint(&attr, token)
     }) {
         return Some(RangeInfo::new(original_token.text_range(), res));
     }
@@ -164,7 +164,7 @@ pub(crate) fn hover_for_definition(
 ) -> Option<HoverResult> {
     let famous_defs = match &definition {
         Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
-            Some(FamousDefs(&sema, sema.scope(&node).krate()))
+            Some(FamousDefs(sema, sema.scope(node).krate()))
         }
         _ => None,
     };
@@ -179,7 +179,7 @@ pub(crate) fn hover_for_definition(
             res.actions.push(action);
         }
 
-        if let Some(action) = runnable_action(&sema, definition, file_id) {
+        if let Some(action) = runnable_action(sema, definition, file_id) {
             res.actions.push(action);
         }
 
@@ -246,7 +246,7 @@ fn hover_type_fallback(
         }
     };
 
-    let res = render::type_info(&sema, config, &expr_or_pat)?;
+    let res = render::type_info(sema, config, &expr_or_pat)?;
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }

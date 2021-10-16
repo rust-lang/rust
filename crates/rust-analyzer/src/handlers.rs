@@ -367,9 +367,8 @@ pub(crate) fn handle_document_symbol(
         let mut tags = Vec::new();
 
         #[allow(deprecated)]
-        match symbol.deprecated {
-            Some(true) => tags.push(SymbolTag::Deprecated),
-            _ => {}
+        if let Some(true) = symbol.deprecated {
+            tags.push(SymbolTag::Deprecated)
         }
 
         #[allow(deprecated)]
@@ -1094,7 +1093,7 @@ pub(crate) fn handle_code_action_resolve(
     let _p = profile::span("handle_code_action_resolve");
     let params = match code_action.data.take() {
         Some(it) => it,
-        None => return Err(invalid_params_error(format!("code action without data")).into()),
+        None => return Err(invalid_params_error("code action without data".to_string()).into()),
     };
 
     let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?;
@@ -1153,7 +1152,7 @@ pub(crate) fn handle_code_action_resolve(
 fn parse_action_id(action_id: &str) -> Result<(usize, SingleResolve), String> {
     let id_parts = action_id.split(':').collect_vec();
     match id_parts.as_slice() {
-        &[assist_id_string, assist_kind_string, index_string] => {
+        [assist_id_string, assist_kind_string, index_string] => {
             let assist_kind: AssistKind = assist_kind_string.parse()?;
             let index: usize = match index_string.parse() {
                 Ok(index) => index,

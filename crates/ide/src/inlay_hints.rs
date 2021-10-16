@@ -201,7 +201,7 @@ fn get_bind_pat_hints(
     let desc_pat = descended.as_ref().unwrap_or(pat);
     let ty = sema.type_of_pat(&desc_pat.clone().into())?.original;
 
-    if should_not_display_type_hint(sema, &pat, &ty) {
+    if should_not_display_type_hint(sema, pat, &ty) {
         return None;
     }
 
@@ -269,7 +269,7 @@ fn is_named_constructor(
         callable_kind
     {
         if let Some(ctor) = path.segment() {
-            return (&ctor.to_string() == ty_name).then(|| ());
+            return (ctor.to_string() == ty_name).then(|| ());
         }
     }
 
@@ -285,7 +285,7 @@ fn is_named_constructor(
         ast::PathSegmentKind::Type { type_ref: Some(ty), trait_ref: None } => ty.to_string(),
         _ => return None,
     };
-    (&ctor_name == ty_name).then(|| ())
+    (ctor_name == ty_name).then(|| ())
 }
 
 /// Checks if the type is an Iterator from std::iter and replaces its hint with an `impl Iterator<Item = Ty>`.
@@ -584,7 +584,7 @@ mod tests {
 
     #[track_caller]
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
-        let (analysis, file_id) = fixture::file(&ra_fixture);
+        let (analysis, file_id) = fixture::file(ra_fixture);
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis.inlay_hints(&config, file_id).unwrap();
         let actual =
@@ -594,7 +594,7 @@ mod tests {
 
     #[track_caller]
     fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
-        let (analysis, file_id) = fixture::file(&ra_fixture);
+        let (analysis, file_id) = fixture::file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(&config, file_id).unwrap();
         expect.assert_debug_eq(&inlay_hints)
     }

@@ -353,7 +353,7 @@ mod tests {
     fn check_with_config(ra_fixture: &str, config: HighlightRelatedConfig) {
         let (analysis, pos, annotations) = fixture::annotations(ra_fixture);
 
-        let hls = analysis.highlight_related(config, pos).unwrap().unwrap_or(Vec::default());
+        let hls = analysis.highlight_related(config, pos).unwrap().unwrap_or_default();
 
         let mut expected = annotations
             .into_iter()

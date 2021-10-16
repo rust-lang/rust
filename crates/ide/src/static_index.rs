@@ -120,9 +120,11 @@ impl StaticIndex<'_> {
         });
         let hover_config =
             HoverConfig { links_in_hover: true, documentation: Some(HoverDocFormat::Markdown) };
-        let tokens = tokens.filter(|token| match token.kind() {
-            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => true,
-            _ => false,
+        let tokens = tokens.filter(|token| {
+            matches!(
+                token.kind(),
+                IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate]
+            )
         });
         let mut result = StaticIndexedFile { file_id, inlay_hints, folds, tokens: vec![] };
         for token in tokens {
@@ -158,7 +160,7 @@ impl StaticIndex<'_> {
         self.files.push(result);
     }
 
-    pub fn compute<'a>(analysis: &'a Analysis) -> StaticIndex<'a> {
+    pub fn compute(analysis: &Analysis) -> StaticIndex {
         let db = &*analysis.db;
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source(db).file_id.original_file(db);
@@ -189,7 +191,7 @@ impl StaticIndex<'_> {
 
 fn get_definition(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Definition> {
     for token in sema.descend_into_macros(token) {
-        let def = Definition::from_token(&sema, &token);
+        let def = Definition::from_token(sema, &token);
         if let [x] = def.as_slice() {
             return Some(*x);
         } else {

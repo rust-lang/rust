@@ -538,7 +538,7 @@ fn highlight_def(
         Definition::Label(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)),
     };
 
-    let famous_defs = FamousDefs(&sema, krate);
+    let famous_defs = FamousDefs(sema, krate);
     let def_crate = def.module(db).map(hir::Module::krate).or_else(|| match def {
         Definition::ModuleDef(hir::ModuleDef::Module(module)) => Some(module.krate()),
         _ => None,
@@ -591,7 +591,7 @@ fn highlight_method_call(
         h |= HlMod::Trait;
     }
 
-    let famous_defs = FamousDefs(&sema, krate);
+    let famous_defs = FamousDefs(sema, krate);
     let def_crate = func.module(sema.db).krate();
     let is_from_other_crate = Some(def_crate) != krate;
     let is_from_builtin_crate = famous_defs.builtin_crates().any(|it| def_crate == it);
