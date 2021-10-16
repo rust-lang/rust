@@ -1,5 +1,4 @@
 // error-pattern: evaluation of constant value failed
-#![feature(const_unreachable_unchecked)]
 
 const unsafe fn foo(x: bool) -> bool {
     match x {
@@ -11,5 +10,5 @@ const unsafe fn foo(x: bool) -> bool {
 const BAR: bool = unsafe { foo(false) };
 
 fn main() {
-  assert_eq!(BAR, true);
+    assert_eq!(BAR, true);
 }
