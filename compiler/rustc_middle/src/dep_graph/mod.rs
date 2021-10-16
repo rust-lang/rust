@@ -34,19 +34,8 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         self.is_eval_always
     }
 
-    #[inline(always)]
-    fn has_params(&self) -> bool {
-        self.has_params
-    }
-
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", node.kind)?;
-
-        if !node.kind.has_params && !node.kind.is_anon {
-            return Ok(());
-        }
-
-        write!(f, "(")?;
+        write!(f, "{:?}(", node.kind)?;
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {

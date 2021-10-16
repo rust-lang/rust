@@ -75,9 +75,6 @@ pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 /// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
 /// jump table instead of large matches.
 pub struct DepKindStruct {
-    /// Whether the DepNode has parameters (query keys).
-    pub(super) has_params: bool,
-
     /// Anonymous queries cannot be replayed from one compiler invocation to the next.
     /// When their result is needed, it is recomputed. They are useful for fine-grained
     /// dependency tracking, and caching within one compiler invocation.
@@ -115,13 +112,6 @@ impl DepKind {
     }
 }
 
-// erase!() just makes tokens go away. It's used to specify which macro argument
-// is repeated (i.e., which sub-expression of the macro we are in) but don't need
-// to actually use any of the arguments.
-macro_rules! erase {
-    ($x:tt) => {{}};
-}
-
 macro_rules! is_anon_attr {
     (anon) => {
         true
@@ -156,7 +146,6 @@ pub mod dep_kind {
 
     // We use this for most things when incr. comp. is turned off.
     pub const Null: DepKindStruct = DepKindStruct {
-        has_params: false,
         is_anon: false,
         is_eval_always: false,
 
@@ -164,7 +153,6 @@ pub mod dep_kind {
     };
 
     pub const TraitSelect: DepKindStruct = DepKindStruct {
-        has_params: false,
         is_anon: true,
         is_eval_always: false,
 
@@ -172,7 +160,6 @@ pub mod dep_kind {
     };
 
     pub const CompileCodegenUnit: DepKindStruct = DepKindStruct {
-        has_params: true,
         is_anon: false,
         is_eval_always: false,
 
@@ -180,7 +167,6 @@ pub mod dep_kind {
     };
 
     pub const CompileMonoItem: DepKindStruct = DepKindStruct {
-        has_params: true,
         is_anon: false,
         is_eval_always: false,
 
@@ -193,7 +179,6 @@ pub mod dep_kind {
             $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
         ,)*) => (
             $(pub const $variant: DepKindStruct = {
-                const has_params: bool = $({ erase!($tuple_arg_ty); true } |)* false;
                 const is_anon: bool = contains_anon_attr!($($attrs)*);
                 const is_eval_always: bool = contains_eval_always_attr!($($attrs)*);
 
@@ -204,7 +189,6 @@ pub mod dep_kind {
                 }
 
                 DepKindStruct {
-                    has_params,
                     is_anon,
                     is_eval_always,
                     fingerprint_style,
@@ -350,13 +334,7 @@ impl DepNodeExt for DepNode {
 
         match kind.fingerprint_style() {
             FingerprintStyle::Opaque => Err(()),
-            FingerprintStyle::Unit => {
-                if !kind.has_params {
-                    Ok(DepNode::new_no_params(kind))
-                } else {
-                    Err(())
-                }
-            }
+            FingerprintStyle::Unit => Ok(DepNode::new_no_params(kind)),
             FingerprintStyle::DefPathHash => Ok(DepNode::from_def_path_hash(def_path_hash, kind)),
         }
     }

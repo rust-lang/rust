@@ -61,7 +61,7 @@ impl<K: DepKind> DepNode<K> {
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.
     pub fn new_no_params(kind: K) -> DepNode<K> {
-        debug_assert!(!kind.has_params());
+        debug_assert_eq!(kind.fingerprint_style(), FingerprintStyle::Unit);
         DepNode { kind, hash: Fingerprint::ZERO.into() }
     }
 
