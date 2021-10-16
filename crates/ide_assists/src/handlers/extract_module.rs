@@ -51,7 +51,7 @@ use super::remove_unused_param::range_to_remove;
 // }
 // ```
 pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    if ctx.frange.range.is_empty() {
+    if ctx.has_empty_selection() {
         return None;
     }
 
@@ -66,7 +66,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         curr_parent_module = ast::Module::cast(mod_syn_opt);
     }
 
-    let mut module = extract_target(&node, ctx.frange.range)?;
+    let mut module = extract_target(&node, ctx.selection_trimmed())?;
     if module.body_items.len() == 0 {
         return None;
     }
@@ -119,7 +119,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
 
             let mut usages_to_be_updated_for_curr_file = vec![];
             for usages_to_be_updated_for_file in usages_to_be_processed {
-                if usages_to_be_updated_for_file.0 == ctx.frange.file_id {
+                if usages_to_be_updated_for_file.0 == ctx.file_id() {
                     usages_to_be_updated_for_curr_file = usages_to_be_updated_for_file.1;
                     continue;
                 }
@@ -129,7 +129,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                 }
             }
 
-            builder.edit_file(ctx.frange.file_id);
+            builder.edit_file(ctx.file_id());
             for usage_to_be_processed in usages_to_be_updated_for_curr_file {
                 builder.replace(usage_to_be_processed.0, usage_to_be_processed.1)
             }
@@ -426,11 +426,11 @@ impl Module {
         ctx: &AssistContext,
     ) -> Option<TextRange> {
         //We only need to find in the current file
-        let selection_range = ctx.frange.range;
-        let search_scope = SearchScope::single_file(ctx.frange.file_id);
+        let selection_range = ctx.selection_trimmed();
+        let curr_file_id = ctx.file_id();
+        let search_scope = SearchScope::single_file(curr_file_id);
         let usage_res = def.usages(&ctx.sema).in_scope(search_scope).all();
-        let curr_file_id = ctx.frange.file_id;
-        let file = ctx.sema.parse(ctx.frange.file_id);
+        let file = ctx.sema.parse(curr_file_id);
 
         let mut exists_inside_sel = false;
         let mut exists_outside_sel = false;
@@ -470,7 +470,7 @@ impl Module {
         let use_stmt_opt: Option<ast::Use> = usage_res.into_iter().find_map(|x| {
             let file_id = x.0;
             let mut use_opt: Option<ast::Use> = None;
-            if file_id == ctx.frange.file_id {
+            if file_id == curr_file_id {
                 (&x.1).into_iter().for_each(|x| {
                     let node_opt: Option<ast::Use> = find_node_at_range(file.syntax(), x.range);
                     if let Some(node) = node_opt {
