@@ -3,7 +3,7 @@
 #![feature(generic_associated_types)]
 
 trait A {
-    type B<'a>;
+    type B<'a> where Self: 'a;
 
     fn make_b<'a>(&'a self) -> Self::B<'a>;
 }

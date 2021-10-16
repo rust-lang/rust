@@ -17,12 +17,12 @@ impl<'a, T> RefCont<'a, T> for Box<T> {
 }
 
 trait MapLike<K, V> {
-    type VRefCont<'a>: RefCont<'a, V>;
+    type VRefCont<'a>: RefCont<'a, V> where Self: 'a;
     fn get<'a>(&'a self, key: &K) -> Option<Self::VRefCont<'a>>;
 }
 
 impl<K: Ord, V: 'static> MapLike<K, V> for std::collections::BTreeMap<K, V> {
-    type VRefCont<'a> = &'a V;
+    type VRefCont<'a> where Self: 'a = &'a V;
     fn get<'a>(&'a self, key: &K) -> Option<&'a V> {
         std::collections::BTreeMap::get(self, key)
     }

@@ -8,7 +8,7 @@
 // check that we don't normalize with trait defaults.
 
 trait Collection<T> {
-    type Iter<'iter>: Iterator<Item=&'iter T> where T: 'iter;
+    type Iter<'iter>: Iterator<Item=&'iter T> where T: 'iter, Self: 'iter;
     type Family: CollectionFamily;
     // Test associated type defaults with parameters
     type Sibling<U>: Collection<U> =

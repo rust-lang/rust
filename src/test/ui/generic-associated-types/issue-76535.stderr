@@ -7,7 +7,7 @@ LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruc
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/issue-76535.rs:6:10
    |
-LL |     type SubType<'a>: SubTrait;
+LL |     type SubType<'a>: SubTrait where Self: 'a;
    |          ^^^^^^^ --
 help: add missing lifetime argument
    |
@@ -25,7 +25,7 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
    |
 LL | pub trait SuperTrait {
    |           ---------- this trait cannot be made into an object...
-LL |     type SubType<'a>: SubTrait;
+LL |     type SubType<'a>: SubTrait where Self: 'a;
    |          ^^^^^^^ ...because it contains the generic associated type `SubType`
    = help: consider moving `SubType` to another trait
 
@@ -40,7 +40,7 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
    |
 LL | pub trait SuperTrait {
    |           ---------- this trait cannot be made into an object...
-LL |     type SubType<'a>: SubTrait;
+LL |     type SubType<'a>: SubTrait where Self: 'a;
    |          ^^^^^^^ ...because it contains the generic associated type `SubType`
    = help: consider moving `SubType` to another trait
    = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn SuperTrait<SubType = SubStruct<'_>>>>` for `Box<SuperStruct>`
