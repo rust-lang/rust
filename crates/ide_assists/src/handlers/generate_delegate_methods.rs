@@ -1,5 +1,5 @@
-use hir::{self, HasCrate, HasSource};
-use syntax::ast::{self, make, AstNode, HasGenericParams, HasName, HasVisibility};
+use hir::{self, HasCrate, HasSource, HasVisibility};
+use syntax::ast::{self, make, AstNode, HasGenericParams, HasName, HasVisibility as _};
 
 use crate::{
     utils::{convert_param_list_to_arg_list, find_struct_impl, render_snippet, Cursor},
@@ -45,6 +45,7 @@ use syntax::ast::edit::AstNodeEdit;
 pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let strukt_name = strukt.name()?;
+    let current_module = ctx.sema.scope(strukt.syntax()).module()?;
 
     let (field_name, field_ty) = match ctx.find_node_at_offset::<ast::RecordField>() {
         Some(field) => {
@@ -66,7 +67,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
     let mut methods = vec![];
     sema_field_ty.iterate_assoc_items(ctx.db(), krate, |item| {
         if let hir::AssocItem::Function(f) = item {
-            if f.self_param(ctx.db()).is_some() {
+            if f.self_param(ctx.db()).is_some() && f.is_visible_from(ctx.db(), current_module) {
                 methods.push(f)
             }
         }
@@ -170,7 +171,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
@@ -310,5 +311,25 @@ impl<T> Person<T> {
     }
 }"#,
         );
+    }
+
+    #[test]
+    fn test_generate_delegate_visibility() {
+        check_assist_not_applicable(
+            generate_delegate_methods,
+            r#"
+mod m {
+    pub struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+}
+
+struct Person {
+    ag$0e: m::Age,
+}"#,
+        )
     }
 }
