@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 // use clippy_utils::is_integer_const;
 use clippy_utils::consts::{miri_to_const, Constant};
 use rustc_errors::Applicability;
-use rustc_hir::{Item, ItemKind, TyKind, VariantData};
+use rustc_hir::{HirId, Item, ItemKind, TyKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -45,17 +45,29 @@ declare_lint_pass!(TrailingZeroSizedArrayWithoutReprC => [TRAILING_ZERO_SIZED_AR
 impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         dbg!(item.ident);
-        if is_struct_with_trailing_zero_sized_array(cx, item) && !has_repr_c(cx, item) {
-            // span_lint_and_sugg(
-            //     cx,
-            //     todo!(),
-            //     todo!(),
-            //     todo!(),
-            //     "try",
-            //     "`#[repr(C)]`".to_string(),
-            //     Applicability::MachineApplicable,
-            // );
-            // println!("consider yourself linted 😎");
+
+        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id);
+        let hir_id2 = item.hir_id();
+        dbg!(hir_id);
+        dbg!(hir_id2);
+        dbg!(hir_id == hir_id2);
+
+        let span1 = cx.tcx.hir().span(hir_id);
+        let span2 = item.span;
+        dbg!(span1);
+        dbg!(span2);
+        dbg!(span1 == span2);
+
+        if is_struct_with_trailing_zero_sized_array(cx, item) && !has_repr_c(cx, hir_id) {
+            span_lint_and_sugg(
+                cx,
+                TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR_C,
+                span2,
+                "trailing zero-sized array in a struct which isn't marked `#[repr(C)]`",
+                "try",
+                "#[repr(C)]".to_string(),
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 }
@@ -76,7 +88,7 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx 
                         .map(|val| rustc_middle::ty::Const::from_value(cx.tcx, val, ty));
                     if let Some(Constant::Int(val)) = constant.and_then(miri_to_const) {
                         if val == 0 {
-                            eprintln!("trailing: true");
+                            // eprintln!("trailing: true");
                             return true;
                         }
                     }
@@ -85,28 +97,21 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx 
         }
     }
     // dbg!(aconst);
-    eprintln!("trailing: false");
+    // eprintln!("trailing: false");
     false
 }
 
-fn has_repr_c(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
-    // let hir_id2 = if let Some(body) = cx.enclosing_body {
-    //     body.hir_id
-    // } else {
-    //     todo!();
-    // };
-
-    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id);
+fn has_repr_c(cx: &LateContext<'tcx>, hir_id: HirId) -> bool {
     let attrs = cx.tcx.hir().attrs(hir_id);
     // NOTE: Can there ever be more than one `repr` attribute?
     // other `repr` syms: repr, repr128, repr_align, repr_align_enum, repr_no_niche, repr_packed,
     // repr_simd, repr_transparent
 
     if let Some(repr_attr) = attrs.iter().find(|attr| attr.has_name(sym::repr)) {
-        eprintln!("repr: true");
+        // eprintln!("repr: true");
         true
     } else {
-        eprintln!("repr: false");
+        // eprintln!("repr: false");
         false
     }
 }
