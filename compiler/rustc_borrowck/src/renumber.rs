@@ -1,7 +1,7 @@
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
-use rustc_middle::mir::{Body, Location, PlaceElem, Promoted};
+use rustc_middle::mir::{Body, Location, Promoted};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
@@ -60,22 +60,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
         *ty = self.renumber_regions(ty);
 
         debug!(?ty);
-    }
-
-    fn process_projection_elem(
-        &mut self,
-        elem: PlaceElem<'tcx>,
-        _: Location,
-    ) -> Option<PlaceElem<'tcx>> {
-        if let PlaceElem::Field(field, ty) = elem {
-            let new_ty = self.renumber_regions(ty);
-
-            if new_ty != ty {
-                return Some(PlaceElem::Field(field, new_ty));
-            }
-        }
-
-        None
     }
 
     #[instrument(skip(self), level = "debug")]

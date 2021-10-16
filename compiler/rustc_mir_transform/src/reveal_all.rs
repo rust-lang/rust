@@ -35,24 +35,4 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
         *ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
     }
-
-    #[inline]
-    fn process_projection_elem(
-        &mut self,
-        elem: PlaceElem<'tcx>,
-        _: Location,
-    ) -> Option<PlaceElem<'tcx>> {
-        match elem {
-            PlaceElem::Field(field, ty) => {
-                let new_ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
-                if ty != new_ty { Some(PlaceElem::Field(field, new_ty)) } else { None }
-            }
-            // None of those contain a Ty.
-            PlaceElem::Index(..)
-            | PlaceElem::Deref
-            | PlaceElem::ConstantIndex { .. }
-            | PlaceElem::Subslice { .. }
-            | PlaceElem::Downcast(..) => None,
-        }
-    }
 }

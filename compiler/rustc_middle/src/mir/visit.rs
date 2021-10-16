@@ -1004,8 +1004,12 @@ macro_rules! visit_place_fns {
 
                     if new_local == local { None } else { Some(PlaceElem::Index(new_local)) }
                 }
+                PlaceElem::Field(field, ty) => {
+                    let mut new_ty = ty;
+                    self.visit_ty(&mut new_ty, TyContext::Location(location));
+                    if ty != new_ty { Some(PlaceElem::Field(field, new_ty)) } else { None }
+                }
                 PlaceElem::Deref
-                | PlaceElem::Field(..)
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
                 | PlaceElem::Downcast(..) => None,
