@@ -291,14 +291,14 @@ macro_rules! is_eval_always {
 }
 
 macro_rules! hash_result {
-    ([][$hcx:expr, $result:expr]) => {{
-        dep_graph::hash_result($hcx, &$result)
+    ([]) => {{
+        Some(dep_graph::hash_result)
     }};
-    ([(no_hash) $($rest:tt)*][$hcx:expr, $result:expr]) => {{
+    ([(no_hash) $($rest:tt)*]) => {{
         None
     }};
-    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
-        hash_result!([$($modifiers)*][$($args)*])
+    ([$other:tt $($modifiers:tt)*]) => {
+        hash_result!([$($modifiers)*])
     };
 }
 
@@ -378,6 +378,7 @@ macro_rules! define_queries {
             const ANON: bool = is_anon!([$($modifiers)*]);
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
             const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$name;
+            const HASH_RESULT: Option<fn(&mut StableHashingContext<'_>, &Self::Value) -> Fingerprint> = hash_result!([$($modifiers)*]);
 
             type Cache = query_storage::$name<$tcx>;
 
@@ -404,13 +405,6 @@ macro_rules! define_queries {
                 } else {
                     tcx.queries.extern_providers.$name
                 }
-            }
-
-            fn hash_result(
-                _hcx: &mut StableHashingContext<'_>,
-                _result: &Self::Value
-            ) -> Option<Fingerprint> {
-                hash_result!([$($modifiers)*][_hcx, _result])
             }
 
             fn handle_cycle_error(

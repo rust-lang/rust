@@ -96,14 +96,13 @@ struct DepGraphData<K: DepKind> {
     dep_node_debug: Lock<FxHashMap<DepNode<K>, String>>,
 }
 
-pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Option<Fingerprint>
+pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Fingerprint
 where
     R: for<'a> HashStable<StableHashingContext<'a>>,
 {
     let mut stable_hasher = StableHasher::new();
     result.hash_stable(hcx, &mut stable_hasher);
-
-    Some(stable_hasher.finish())
+    stable_hasher.finish()
 }
 
 impl<K: DepKind> DepGraph<K> {
@@ -215,7 +214,7 @@ impl<K: DepKind> DepGraph<K> {
         cx: Ctxt,
         arg: A,
         task: fn(Ctxt, A) -> R,
-        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         if self.is_fully_enabled() {
             self.with_task_impl(key, cx, arg, task, hash_result)
@@ -234,7 +233,7 @@ impl<K: DepKind> DepGraph<K> {
         cx: Ctxt,
         arg: A,
         task: fn(Ctxt, A) -> R,
-        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         // This function is only called when the graph is enabled.
         let data = self.data.as_ref().unwrap();
@@ -268,9 +267,11 @@ impl<K: DepKind> DepGraph<K> {
         let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
         let dcx = cx.dep_context();
-        let mut hcx = dcx.create_stable_hashing_context();
         let hashing_timer = dcx.profiler().incr_result_hashing();
-        let current_fingerprint = hash_result(&mut hcx, &result);
+        let current_fingerprint = hash_result.map(|f| {
+            let mut hcx = dcx.create_stable_hashing_context();
+            f(&mut hcx, &result)
+        });
 
         let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
 
