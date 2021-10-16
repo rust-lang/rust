@@ -1021,6 +1021,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                     debug!("not returning");
                 }
+                ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
             }
             debug!(?stack, "assemble_const_drop_candidates - in loop");
         }

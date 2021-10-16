@@ -144,6 +144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .delay_span_bug(span, &format!("`{:?}` should be sized but is not?", t));
                 return Err(ErrorReported);
             }
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         })
     }
 }

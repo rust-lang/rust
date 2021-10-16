@@ -187,6 +187,7 @@ fn compute_components(
                 // themselves can be readily identified.
                 compute_components_recursive(tcx, ty.into(), out, visited);
             }
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
 }
 

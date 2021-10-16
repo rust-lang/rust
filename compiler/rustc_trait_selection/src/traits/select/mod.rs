@@ -1835,6 +1835,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
+
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 
@@ -1912,6 +1914,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
+
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 
@@ -1993,6 +1997,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // the auto trait bounds in question.
                 t.rebind(vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)])
             }
+
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 

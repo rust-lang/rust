@@ -195,6 +195,9 @@ pub enum TyKind<'tcx> {
     /// A type variable used during type checking.
     Infer(InferTy),
 
+    /// Type of a variant of an enum
+    Variant(Ty<'tcx>, VariantIdx),
+
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
     Error(DelaySpanBugEmitted),
@@ -2059,6 +2062,8 @@ impl<'tcx> TyS<'tcx> {
             | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`discriminant_ty` applied to unexpected type: {:?}", self)
             }
+
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 
@@ -2107,6 +2112,8 @@ impl<'tcx> TyS<'tcx> {
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`ptr_metadata_ty` applied to unexpected type: {:?}", tail)
             }
+
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 
@@ -2185,6 +2192,8 @@ impl<'tcx> TyS<'tcx> {
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
             }
+
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 }

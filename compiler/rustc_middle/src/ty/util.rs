@@ -712,6 +712,7 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Param(_)
             | ty::Placeholder(_)
             | ty::Projection(_) => false,
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 
@@ -752,6 +753,7 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Param(_)
             | ty::Placeholder(_)
             | ty::Projection(_) => false,
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 
@@ -874,6 +876,8 @@ impl<'tcx> ty::TyS<'tcx> {
             Projection(_) | Opaque(..) | Param(_) | Bound(..) | Placeholder(_) | Infer(_) => false,
 
             Foreign(_) | GeneratorWitness(..) | Error(_) => false,
+
+            Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 
@@ -1022,6 +1026,7 @@ pub fn needs_drop_components(
         | ty::Infer(_)
         | ty::Closure(..)
         | ty::Generator(..) => Ok(smallvec![ty]),
+        ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
     }
 }
 

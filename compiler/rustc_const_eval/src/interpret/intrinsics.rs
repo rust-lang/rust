@@ -100,6 +100,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_) => ConstValue::from_machine_usize(0u64, &tcx),
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         },
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })

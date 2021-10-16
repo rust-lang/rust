@@ -903,6 +903,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             | ty::Placeholder(..)
             | ty::Never
             | ty::Foreign(..) => return self,
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         };
 
         if *self.kind() == kind { self } else { folder.tcx().mk_ty(kind) }
@@ -951,6 +952,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             | ty::Param(..)
             | ty::Never
             | ty::Foreign(..) => ControlFlow::CONTINUE,
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 

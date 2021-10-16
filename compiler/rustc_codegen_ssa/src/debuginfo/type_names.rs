@@ -373,6 +373,8 @@ fn push_debuginfo_type_name<'tcx>(
                 t
             );
         }
+
+        ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
     }
 
     /// MSVC names enums differently than other platforms so that the debugging visualization

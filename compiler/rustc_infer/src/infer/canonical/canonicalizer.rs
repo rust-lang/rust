@@ -406,6 +406,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                     t
                 }
             }
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 

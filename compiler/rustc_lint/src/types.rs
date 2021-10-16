@@ -1130,6 +1130,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::GeneratorWitness(..)
             | ty::Placeholder(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 

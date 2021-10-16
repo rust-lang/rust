@@ -277,6 +277,7 @@ where
             ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
 
         if self.def_id_visitor.shallow() {

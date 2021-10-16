@@ -68,6 +68,8 @@ fn sized_constraint_for_ty<'tcx>(
         Placeholder(..) | Bound(..) | Infer(..) => {
             bug!("unexpected type `{:?}` in sized_constraint_for_ty", ty)
         }
+
+        ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
     };
     debug!("sized_constraint_for_ty({:?}) = {:?}", ty, result);
     result

@@ -129,6 +129,7 @@ fn const_to_valtree_inner<'tcx>(
         | ty::Closure(..)
         | ty::Generator(..)
         | ty::GeneratorWitness(..) => None,
+        ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
     }
 }
 

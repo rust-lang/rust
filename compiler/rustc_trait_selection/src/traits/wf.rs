@@ -687,6 +687,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         self.compute(ty.into());
                     }
                 }
+                ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
             }
         }
     }

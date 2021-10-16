@@ -651,5 +651,7 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
         ty::Generator(..) | ty::GeneratorWitness(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
         }
+
+        ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
     }
 }

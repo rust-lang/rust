@@ -336,6 +336,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     ty
                 );
             }
+
+            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
         }
     }
 

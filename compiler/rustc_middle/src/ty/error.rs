@@ -247,6 +247,7 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Tuple(ref tys) if tys.is_empty() => format!("`{}`", self).into(),
 
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did)).into(),
+            ty::Variant(ty, _) => ty.sort_string(tcx),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
             ty::Array(t, n) => {
                 if t.is_simple_ty() {
@@ -318,6 +319,10 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Never => "type".into(),
             ty::Tuple(ref tys) if tys.is_empty() => "unit type".into(),
             ty::Adt(def, _) => def.descr().into(),
+            ty::Variant(ty, _) => match ty.kind() {
+                ty::Adt(def, _) => format!("{} variant", def.descr()).into(),
+                _ => bug!("unexpected type: {:?}", ty.kind()),
+            },
             ty::Foreign(_) => "extern type".into(),
             ty::Array(..) => "array".into(),
             ty::Slice(_) => "slice".into(),
