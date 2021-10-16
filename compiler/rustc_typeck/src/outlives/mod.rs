@@ -9,6 +9,7 @@ use rustc_span::Span;
 
 mod explicit;
 mod implicit_infer;
+crate mod outlives_bounds;
 /// Code to write unit test for outlives.
 pub mod test;
 mod utils;

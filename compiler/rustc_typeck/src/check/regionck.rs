@@ -76,19 +76,19 @@ use crate::check::dropck;
 use crate::check::FnCtxt;
 use crate::mem_categorization as mc;
 use crate::middle::region;
+use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::PatKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{self, RegionObligation, RegionckMode};
+use rustc_infer::infer::{self, InferCtxt, RegionObligation, RegionckMode};
 use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId};
 use rustc_middle::ty::adjustment;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
-use rustc_trait_selection::infer::OutlivesEnvironmentExt;
-use rustc_trait_selection::opaque_types::InferCtxtExt;
+use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use std::ops::Deref;
 
 // a variation on try that just returns unit
@@ -102,6 +102,51 @@ macro_rules! ignore_err {
             }
         }
     };
+}
+
+trait OutlivesEnvironmentExt<'tcx> {
+    fn add_implied_bounds(
+        &mut self,
+        infcx: &InferCtxt<'a, 'tcx>,
+        fn_sig_tys: FxHashSet<Ty<'tcx>>,
+        body_id: hir::HirId,
+        span: Span,
+    );
+}
+
+impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
+    /// This method adds "implied bounds" into the outlives environment.
+    /// Implied bounds are outlives relationships that we can deduce
+    /// on the basis that certain types must be well-formed -- these are
+    /// either the types that appear in the function signature or else
+    /// the input types to an impl. For example, if you have a function
+    /// like
+    ///
+    /// ```
+    /// fn foo<'a, 'b, T>(x: &'a &'b [T]) { }
+    /// ```
+    ///
+    /// we can assume in the caller's body that `'b: 'a` and that `T:
+    /// 'b` (and hence, transitively, that `T: 'a`). This method would
+    /// add those assumptions into the outlives-environment.
+    ///
+    /// Tests: `src/test/ui/regions/regions-free-region-ordering-*.rs`
+    fn add_implied_bounds(
+        &mut self,
+        infcx: &InferCtxt<'a, 'tcx>,
+        fn_sig_tys: FxHashSet<Ty<'tcx>>,
+        body_id: hir::HirId,
+        span: Span,
+    ) {
+        debug!("add_implied_bounds()");
+
+        for ty in fn_sig_tys {
+            let ty = infcx.resolve_vars_if_possible(ty);
+            debug!("add_implied_bounds: ty = {}", ty);
+            let implied_bounds = infcx.implied_outlives_bounds(self.param_env, body_id, ty, span);
+            self.add_outlives_bounds(Some(infcx), implied_bounds)
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
