@@ -10,23 +10,27 @@
 use hir::ScopeDef;
 use syntax::ast;
 
-use crate::{completions::Completions, context::CompletionContext};
+use crate::{
+    completions::Completions,
+    context::{CompletionContext, LifetimeContext},
+};
 
 /// Completes lifetimes.
 pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.lifetime_allowed {
-        return;
-    }
+    let lp = match &ctx.lifetime_ctx {
+        Some(LifetimeContext::Lifetime) => None,
+        Some(LifetimeContext::LifetimeParam(param)) => param.as_ref(),
+        _ => return,
+    };
     let lp_string;
-    let param_lifetime =
-        match (&ctx.name_syntax, ctx.lifetime_param_syntax.as_ref().and_then(|lp| lp.lifetime())) {
-            (Some(ast::NameLike::Lifetime(lt)), Some(lp)) if lp == lt.clone() => return,
-            (Some(_), Some(lp)) => {
-                lp_string = lp.to_string();
-                Some(&*lp_string)
-            }
-            _ => None,
-        };
+    let param_lifetime = match (&ctx.name_syntax, lp.and_then(|lp| lp.lifetime())) {
+        (Some(ast::NameLike::Lifetime(lt)), Some(lp)) if lp == lt.clone() => return,
+        (Some(_), Some(lp)) => {
+            lp_string = lp.to_string();
+            Some(&*lp_string)
+        }
+        _ => None,
+    };
 
     ctx.scope.process_all_names(&mut |name, res| {
         if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) = res {
@@ -42,7 +46,7 @@ pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) 
 
 /// Completes labels.
 pub(crate) fn complete_label(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_label_ref {
+    if !matches!(ctx.lifetime_ctx, Some(LifetimeContext::LabelRef)) {
         return;
     }
     ctx.scope.process_all_names(&mut |name, res| {
