@@ -1,12 +1,8 @@
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::query::outlives_bounds::InferCtxtExt as _;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
 
-use rustc_data_structures::stable_set::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalizedQueryResponse, QueryResponse};
@@ -178,50 +174,5 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
                 )
             },
         )
-    }
-}
-
-pub trait OutlivesEnvironmentExt<'tcx> {
-    fn add_implied_bounds(
-        &mut self,
-        infcx: &InferCtxt<'a, 'tcx>,
-        fn_sig_tys: FxHashSet<Ty<'tcx>>,
-        body_id: hir::HirId,
-        span: Span,
-    );
-}
-
-impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
-    /// This method adds "implied bounds" into the outlives environment.
-    /// Implied bounds are outlives relationships that we can deduce
-    /// on the basis that certain types must be well-formed -- these are
-    /// either the types that appear in the function signature or else
-    /// the input types to an impl. For example, if you have a function
-    /// like
-    ///
-    /// ```
-    /// fn foo<'a, 'b, T>(x: &'a &'b [T]) { }
-    /// ```
-    ///
-    /// we can assume in the caller's body that `'b: 'a` and that `T:
-    /// 'b` (and hence, transitively, that `T: 'a`). This method would
-    /// add those assumptions into the outlives-environment.
-    ///
-    /// Tests: `src/test/ui/regions/regions-free-region-ordering-*.rs`
-    fn add_implied_bounds(
-        &mut self,
-        infcx: &InferCtxt<'a, 'tcx>,
-        fn_sig_tys: FxHashSet<Ty<'tcx>>,
-        body_id: hir::HirId,
-        span: Span,
-    ) {
-        debug!("add_implied_bounds()");
-
-        for ty in fn_sig_tys {
-            let ty = infcx.resolve_vars_if_possible(ty);
-            debug!("add_implied_bounds: ty = {}", ty);
-            let implied_bounds = infcx.implied_outlives_bounds(self.param_env, body_id, ty, span);
-            self.add_outlives_bounds(Some(infcx), implied_bounds)
-        }
     }
 }

@@ -46,7 +46,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 }
             }
         }
-        if let RegionResolutionError::ConcreteFailure(origin, _, _) = error.clone() {
+        if let RegionResolutionError::ConcreteFailure(origin, _, _)
+        | RegionResolutionError::GenericBoundFailure(origin, _, _) = error.clone()
+        {
             if let SubregionOrigin::CompareImplTypeObligation {
                 span,
                 item_name,
