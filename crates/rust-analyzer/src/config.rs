@@ -673,7 +673,7 @@ impl Config {
         FilesConfig {
             watcher: match self.data.files_watcher.as_str() {
                 "notify" => FilesWatcher::Notify,
-                "client" | _ => FilesWatcher::Client,
+                _ => FilesWatcher::Client,
             },
             exclude: self.data.files_excludeDirs.iter().map(|it| self.root_path.join(it)).collect(),
         }

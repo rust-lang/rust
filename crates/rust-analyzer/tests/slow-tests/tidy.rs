@@ -91,7 +91,7 @@ fn files_are_tidy() {
     tidy_marks.finish();
 }
 
-fn check_cargo_toml(path: &Path, text: String) -> () {
+fn check_cargo_toml(path: &Path, text: String) {
     let mut section = None;
     for (line_no, text) in text.lines().enumerate() {
         let text = text.trim();

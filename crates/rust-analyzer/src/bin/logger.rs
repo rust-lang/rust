@@ -27,7 +27,7 @@ pub(crate) struct Logger {
 
 impl Logger {
     pub(crate) fn new(file: Option<File>, filter: Option<&str>) -> Logger {
-        let filter = filter.map_or(EnvFilter::default(), |dirs| EnvFilter::new(dirs));
+        let filter = filter.map_or(EnvFilter::default(), EnvFilter::new);
 
         Logger { filter, file }
     }

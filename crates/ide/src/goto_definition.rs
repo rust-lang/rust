@@ -49,13 +49,13 @@ pub(crate) fn goto_definition(
             let parent = token.parent()?;
             if let Some(tt) = ast::TokenTree::cast(parent) {
                 if let x @ Some(_) =
-                    try_lookup_include_path(&sema, tt, token.clone(), position.file_id)
+                    try_lookup_include_path(sema, tt, token.clone(), position.file_id)
                 {
                     return x;
                 }
             }
             Some(
-                Definition::from_token(&sema, &token)
+                Definition::from_token(sema, &token)
                     .into_iter()
                     .flat_map(|def| {
                         try_find_trait_item_definition(sema.db, &def)
@@ -145,7 +145,7 @@ mod tests {
     fn check(ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
-        if navs.len() == 0 {
+        if navs.is_empty() {
             panic!("unresolved reference")
         }
 

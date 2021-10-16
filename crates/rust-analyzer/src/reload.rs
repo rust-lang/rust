@@ -211,7 +211,7 @@ impl GlobalState {
 
         if same_workspaces {
             let (workspaces, build_scripts) = self.fetch_build_data_queue.last_op_result();
-            if Arc::ptr_eq(&workspaces, &self.workspaces) {
+            if Arc::ptr_eq(workspaces, &self.workspaces) {
                 let workspaces = workspaces
                     .iter()
                     .cloned()
@@ -417,7 +417,7 @@ impl GlobalState {
                     id,
                     Box::new(move |msg| sender.send(msg).unwrap()),
                     config.clone(),
-                    root.to_path_buf().into(),
+                    root.to_path_buf(),
                 )
             })
             .collect();

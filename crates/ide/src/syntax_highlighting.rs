@@ -342,7 +342,7 @@ fn traverse(
             element_to_highlight.clone(),
         ) {
             if inside_attribute {
-                highlight = highlight | HlMod::Attribute;
+                highlight |= HlMod::Attribute
             }
 
             hl.add(HlRange { range, highlight, binding_hash });
