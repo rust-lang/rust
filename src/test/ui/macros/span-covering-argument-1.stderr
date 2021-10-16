@@ -7,7 +7,7 @@ LL |             *&mut $s = 0;
    |              ^^^^^^^ cannot borrow as mutable
 ...
 LL |     bad!(foo whatever);
-   |     ------------------- in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `bad` (in Nightly builds, run with -Z macro-backtrace for more info)
 

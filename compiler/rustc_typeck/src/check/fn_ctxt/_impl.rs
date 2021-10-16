@@ -1171,8 +1171,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             return None;
         }
-        let original_span = original_sp(last_stmt.span, blk.span);
-        Some((original_span.with_lo(original_span.hi() - BytePos(1)), needs_box))
+        let span = if last_stmt.span.from_expansion() {
+            let mac_call = original_sp(last_stmt.span, blk.span);
+            self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)?
+        } else {
+            last_stmt.span.with_lo(last_stmt.span.hi() - BytePos(1))
+        };
+        Some((span, needs_box))
     }
 
     // Instantiates the given path, which must refer to an item with the given

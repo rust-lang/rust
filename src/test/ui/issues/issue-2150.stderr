@@ -2,7 +2,7 @@ error: unreachable statement
   --> $DIR/issue-2150.rs:8:5
    |
 LL |     panic!();
-   |     --------- any code following this expression is unreachable
+   |     -------- any code following this expression is unreachable
 LL |     for x in &v { i += 1; }
    |     ^^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
    |

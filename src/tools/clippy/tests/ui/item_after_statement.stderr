@@ -25,7 +25,7 @@ LL | |             }
    | |_____________^
 ...
 LL |       b!();
-   |       ----- in this macro invocation
+   |       ---- in this macro invocation
    |
    = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 

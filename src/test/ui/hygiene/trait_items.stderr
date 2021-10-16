@@ -5,7 +5,7 @@ LL |         fn f(&self) {}
    |            - the method is available for `()` here
 ...
 LL |     fn f() { ::baz::m!(); }
-   |              ------------ in this macro invocation
+   |              ----------- in this macro invocation
 ...
 LL |     pub macro m() { ().f() }
    |                        ^ method not found in `()`

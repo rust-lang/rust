@@ -20,7 +20,7 @@ error: erroneous constant used
   --> $DIR/defaults-not-assumed-fail.rs:34:5
    |
 LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>

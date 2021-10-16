@@ -2,7 +2,7 @@ error: proc macro panicked
   --> $DIR/invalid-punct-ident-2.rs:19:1
    |
 LL | invalid_ident!();
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^
    |
    = help: message: `"*"` is not a valid identifier
 

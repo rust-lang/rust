@@ -77,7 +77,7 @@ error[E0381]: use of possibly-uninitialized variable: `y`
   --> $DIR/type-check-2.rs:20:9
    |
 LL |         asm!("{}", inout(reg) y);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ use of possibly-uninitialized `y`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ use of possibly-uninitialized `y`
 
 error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
   --> $DIR/type-check-2.rs:28:29

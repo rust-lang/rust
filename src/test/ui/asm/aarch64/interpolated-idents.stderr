@@ -7,7 +7,7 @@ LL |               $options($pure, $nomem, $readonly, $preserves_flags, $noretur
 LL | /     m!(in out lateout inout inlateout const sym
 LL | |        pure nomem readonly preserves_flags
 LL | |        noreturn nostack options);
-   | |_________________________________- in this macro invocation
+   | |________________________________- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -20,7 +20,7 @@ LL |               $options($pure, $nomem, $readonly, $preserves_flags, $noretur
 LL | /     m!(in out lateout inout inlateout const sym
 LL | |        pure nomem readonly preserves_flags
 LL | |        noreturn nostack options);
-   | |_________________________________- in this macro invocation
+   | |________________________________- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -38,12 +38,12 @@ LL |       m!(in out lateout inout inlateout const sym
    | |
 LL | |        pure nomem readonly preserves_flags
 LL | |        noreturn nostack options);
-   | |                                 -
-   | |_________________________________|
-   | |_________________________________in this macro invocation
-   | |_________________________________in this macro invocation
-   | |_________________________________in this macro invocation
-   |                                   in this macro invocation
+   | |                                -
+   | |________________________________|
+   | |________________________________in this macro invocation
+   | |________________________________in this macro invocation
+   | |________________________________in this macro invocation
+   |                                  in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 

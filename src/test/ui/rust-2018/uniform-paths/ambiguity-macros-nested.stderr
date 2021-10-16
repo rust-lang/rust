@@ -15,7 +15,7 @@ LL | |             }
    | |_____________^
 ...
 LL |       m!();
-   |       ----- in this macro invocation
+   |       ---- in this macro invocation
    = help: use `self::std` to refer to this module unambiguously
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 

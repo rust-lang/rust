@@ -5,7 +5,7 @@ LL |         let _: () = S.f();
    |                       ^ private type
 ...
 LL |     foo::m!();
-   |     ---------- in this macro invocation
+   |     --------- in this macro invocation
    |
    = note: this error originates in the macro `foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 

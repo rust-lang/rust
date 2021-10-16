@@ -5,7 +5,7 @@ LL |                     $y(vec1, vec2, ARR)
    |                     ^^^^^^^^^^^^^^^^^^^
 ...
 LL |     test_shuffle_lanes!(2, u8x2, simd_shuffle2);
-   |     -------------------------------------------- in this macro invocation
+   |     ------------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ LL |                     $y(vec1, vec2, ARR)
    |                     ^^^^^^^^^^^^^^^^^^^
 ...
 LL |     test_shuffle_lanes!(4, u8x4, simd_shuffle4);
-   |     -------------------------------------------- in this macro invocation
+   |     ------------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -27,7 +27,7 @@ LL |                     $y(vec1, vec2, ARR)
    |                     ^^^^^^^^^^^^^^^^^^^
 ...
 LL |     test_shuffle_lanes!(8, u8x8, simd_shuffle8);
-   |     -------------------------------------------- in this macro invocation
+   |     ------------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -38,7 +38,7 @@ LL |                     $y(vec1, vec2, ARR)
    |                     ^^^^^^^^^^^^^^^^^^^
 ...
 LL |     test_shuffle_lanes!(16, u8x16, simd_shuffle16);
-   |     ----------------------------------------------- in this macro invocation
+   |     ---------------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -49,7 +49,7 @@ LL |                     $y(vec1, vec2, ARR)
    |                     ^^^^^^^^^^^^^^^^^^^
 ...
 LL |     test_shuffle_lanes!(32, u8x32, simd_shuffle32);
-   |     ----------------------------------------------- in this macro invocation
+   |     ---------------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -60,7 +60,7 @@ LL |                     $y(vec1, vec2, ARR)
    |                     ^^^^^^^^^^^^^^^^^^^
 ...
 LL |     test_shuffle_lanes!(64, u8x64, simd_shuffle64);
-   |     ----------------------------------------------- in this macro invocation
+   |     ---------------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -2,7 +2,7 @@ error: option_env! takes 1 argument
   --> $DIR/extoption_env-no-args.rs:1:13
    |
 LL | fn main() { option_env!(); }
-   |             ^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

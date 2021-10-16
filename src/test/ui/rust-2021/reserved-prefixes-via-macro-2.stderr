@@ -2,7 +2,7 @@ error: prefix `hey` is unknown
   --> $DIR/reserved-prefixes-via-macro-2.rs:15:5
    |
 LL |     m2021::number_of_tokens_in_a_prefixed_integer_literal!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
    |
    = note: prefixed identifiers and literals are reserved since Rust 2021
    = note: this error originates in the macro `m2021::number_of_tokens_in_a_prefixed_integer_literal` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -11,7 +11,7 @@ error: prefix `hey` is unknown
   --> $DIR/reserved-prefixes-via-macro-2.rs:17:5
    |
 LL |     m2021::number_of_tokens_in_a_prefixed_char_literal!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
    |
    = note: prefixed identifiers and literals are reserved since Rust 2021
    = note: this error originates in the macro `m2021::number_of_tokens_in_a_prefixed_char_literal` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -20,7 +20,7 @@ error: prefix `hey` is unknown
   --> $DIR/reserved-prefixes-via-macro-2.rs:19:5
    |
 LL |     m2021::number_of_tokens_in_a_prefixed_string_literal!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
    |
    = note: prefixed identifiers and literals are reserved since Rust 2021
    = note: this error originates in the macro `m2021::number_of_tokens_in_a_prefixed_string_literal` (in Nightly builds, run with -Z macro-backtrace for more info)

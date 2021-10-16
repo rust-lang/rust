@@ -37,7 +37,7 @@ LL |         let ref _y = 42;
    |         ----^^^^^^------ help: try: `let _y = &42;`
 ...
 LL |         gen_binding!();
-   |         --------------- in this macro invocation
+   |         -------------- in this macro invocation
    |
    = note: this error originates in the macro `gen_binding` (in Nightly builds, run with -Z macro-backtrace for more info)
 

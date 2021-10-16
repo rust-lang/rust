@@ -8,7 +8,7 @@ LL | | }
    | |_- in this expansion of `pong!`
 ...
 LL |       pong!();
-   |       -------- in this macro invocation
+   |       ------- in this macro invocation
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:10:20
@@ -20,14 +20,14 @@ LL | |  }
    | |__- in this expansion of `pong!` (#2)
 ...
 LL |        ping!();
-   |        -------- in this macro invocation (#1)
+   |        ------- in this macro invocation (#1)
    |
   ::: $DIR/auxiliary/ping.rs:5:1
    |
 LL |  / macro_rules! ping {
 LL |  |     () => {
 LL |  |         pong!();
-   |  |         -------- in this macro invocation (#2)
+   |  |         ------- in this macro invocation (#2)
 LL |  |     }
 LL |  | }
    |  |_- in this expansion of `ping!` (#1)
@@ -42,14 +42,14 @@ LL | |  }
    | |__- in this expansion of `pong!` (#5)
 ...
 LL |        deep!();
-   |        -------- in this macro invocation (#1)
+   |        ------- in this macro invocation (#1)
    |
   ::: $DIR/auxiliary/ping.rs:5:1
    |
 LL |  / macro_rules! ping {
 LL |  |     () => {
 LL |  |         pong!();
-   |  |         -------- in this macro invocation (#5)
+   |  |         ------- in this macro invocation (#5)
 LL |  |     }
 LL |  | }
    |  |_- in this expansion of `ping!` (#4)
@@ -57,7 +57,7 @@ LL |  | }
 LL | /  macro_rules! deep {
 LL | |      () => {
 LL | |          foo!();
-   | |          ------- in this macro invocation (#2)
+   | |          ------ in this macro invocation (#2)
 LL | |      }
 LL | |  }
    | |__- in this expansion of `deep!` (#1)
@@ -65,7 +65,7 @@ LL | |  }
 LL | /  macro_rules! foo {
 LL | |      () => {
 LL | |          bar!();
-   | |          ------- in this macro invocation (#3)
+   | |          ------ in this macro invocation (#3)
 LL | |      }
 LL | |  }
    | |__- in this expansion of `foo!` (#2)
@@ -73,7 +73,7 @@ LL | |  }
 LL | /  macro_rules! bar {
 LL | |      () => {
 LL | |          ping!();
-   | |          -------- in this macro invocation (#4)
+   | |          ------- in this macro invocation (#4)
 LL | |      }
 LL | |  }
    | |__- in this expansion of `bar!` (#3)

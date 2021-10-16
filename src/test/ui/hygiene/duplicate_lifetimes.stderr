@@ -5,7 +5,7 @@ LL |     fn g<$a, 'a>() {}
    |              ^^ declared twice
 ...
 LL | m!('a);
-   | -------
+   | ------
    | |  |
    | |  previous declaration here
    | in this macro invocation
@@ -19,7 +19,7 @@ LL |     fn h<$a, 'a>() {}
    |              ^^ declared twice
 ...
 LL | n!('a);
-   | -------
+   | ------
    | |  |
    | |  previous declaration here
    | in this macro invocation

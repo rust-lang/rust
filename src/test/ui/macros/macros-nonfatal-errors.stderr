@@ -142,7 +142,7 @@ error: concat_idents! requires ident args
   --> $DIR/macros-nonfatal-errors.rs:102:5
    |
 LL |     concat_idents!("not", "idents");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: argument must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:104:17
@@ -166,7 +166,7 @@ error: environment variable `RUST_HOPEFULLY_THIS_DOESNT_EXIST` not defined
   --> $DIR/macros-nonfatal-errors.rs:107:5
    |
 LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -197,7 +197,7 @@ error: couldn't read $DIR/i'd be quite surprised if a file with this name existe
   --> $DIR/macros-nonfatal-errors.rs:114:5
    |
 LL |     include_str!("i'd be quite surprised if a file with this name existed");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -211,7 +211,7 @@ error: couldn't read $DIR/i'd be quite surprised if a file with this name existe
   --> $DIR/macros-nonfatal-errors.rs:116:5
    |
 LL |     include_bytes!("i'd be quite surprised if a file with this name existed");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -219,7 +219,7 @@ error: trace_macros! accepts only `true` or `false`
   --> $DIR/macros-nonfatal-errors.rs:118:5
    |
 LL |     trace_macros!(invalid);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 27 previous errors
 

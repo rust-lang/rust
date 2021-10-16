@@ -18,7 +18,7 @@ LL |         impl LintPass for Custom {
    |              ^^^^^^^^
 ...
 LL | custom_lint_pass_macro!();
-   | -------------------------- in this macro invocation
+   | ------------------------- in this macro invocation
    |
    = help: try using `declare_lint_pass!` or `impl_lint_pass!` instead
    = note: this error originates in the macro `custom_lint_pass_macro` (in Nightly builds, run with -Z macro-backtrace for more info)

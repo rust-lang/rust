@@ -653,6 +653,18 @@ impl SourceMap {
         })
     }
 
+    /// Extends the given `Span` while the next character matches the predicate
+    pub fn span_extend_while(
+        &self,
+        span: Span,
+        f: impl Fn(char) -> bool,
+    ) -> Result<Span, SpanSnippetError> {
+        self.span_to_source(span, |s, _start, end| {
+            let n = s[end..].char_indices().find(|&(_, c)| !f(c)).map_or(s.len() - end, |(i, _)| i);
+            Ok(span.with_hi(span.hi() + BytePos(n as u32)))
+        })
+    }
+
     /// Extends the given `Span` to just after the next occurrence of `c`.
     pub fn span_extend_to_next_char(&self, sp: Span, c: char, accept_newlines: bool) -> Span {
         if let Ok(next_source) = self.span_to_next_source(sp) {
@@ -1012,6 +1024,32 @@ impl SourceMap {
         let source_file_index = self.lookup_source_file_idx(sp.lo());
         let source_file = &self.files()[source_file_index];
         source_file.is_imported()
+    }
+
+    /// Gets the span of a statement. If the statement is a macro expansion, the
+    /// span in the context of the block span is found. The trailing semicolon is included
+    /// on a best-effort basis.
+    pub fn stmt_span(&self, stmt_span: Span, block_span: Span) -> Span {
+        if !stmt_span.from_expansion() {
+            return stmt_span;
+        }
+        let mac_call = original_sp(stmt_span, block_span);
+        self.mac_call_stmt_semi_span(mac_call).map_or(mac_call, |s| mac_call.with_hi(s.hi()))
+    }
+
+    /// Tries to find the span of the semicolon of a macro call statement.
+    /// The input must be the *call site* span of a statement from macro expansion.
+    ///
+    ///           v output
+    ///     mac!();
+    ///     ^^^^^^ input
+    pub fn mac_call_stmt_semi_span(&self, mac_call: Span) -> Option<Span> {
+        let span = self.span_extend_while(mac_call, char::is_whitespace).ok()?;
+        let span = span.shrink_to_hi().with_hi(BytePos(span.hi().0.checked_add(1)?));
+        if self.span_to_snippet(span).as_deref() != Ok(";") {
+            return None;
+        }
+        Some(span)
     }
 }
 

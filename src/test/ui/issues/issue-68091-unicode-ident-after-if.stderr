@@ -11,7 +11,7 @@ LL |         $($c)ö* {}
    |                 ^^ expected `bool`, found `()`
 ...
 LL |     x!(if);
-   |     ------- in this macro invocation
+   |     ------ in this macro invocation
    |
    = note: this error originates in the macro `x` (in Nightly builds, run with -Z macro-backtrace for more info)
 

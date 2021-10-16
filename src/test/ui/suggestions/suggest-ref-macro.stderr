@@ -8,7 +8,7 @@ LL |         x(123);
    |           help: consider mutably borrowing here: `&mut 123`
 ...
 LL |     bla!();
-   |     ------- in this macro invocation
+   |     ------ in this macro invocation
    |
    = note: this error originates in the macro `bla` (in Nightly builds, run with -Z macro-backtrace for more info)
 
