@@ -227,7 +227,9 @@ fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     if file_text.char_at(after_arrow) != Some('{') {
         return None;
     }
-    find_node_at_offset::<ast::RetType>(file.syntax(), offset)?;
+    if find_node_at_offset::<ast::RetType>(file.syntax(), offset).is_none() {
+        return None;
+    }
 
     Some(TextEdit::insert(after_arrow, " ".to_string()))
 }
