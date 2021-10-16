@@ -353,6 +353,29 @@ fn result_const() {
 }
 
 #[test]
+const fn result_const_mut() {
+    let mut result: Result<usize, bool> = Ok(32);
+
+    {
+        let as_mut = result.as_mut();
+        match as_mut {
+            Ok(v) => *v = 42,
+            Err(_) => unreachable!(),
+        }
+    }
+
+    let mut result_err: Result<usize, bool> = Err(false);
+
+    {
+        let as_mut = result_err.as_mut();
+        match as_mut {
+            Ok(_) => unreachable!(),
+            Err(v) => *v = true,
+        }
+    }
+}
+
+#[test]
 fn result_opt_conversions() {
     #[derive(Copy, Clone, Debug, PartialEq)]
     struct BadNumErr;
