@@ -60,8 +60,11 @@ impl<K: DepKind> DepNode<K> {
     /// Creates a new, parameterless DepNode. This method will assert
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.
-    pub fn new_no_params(kind: K) -> DepNode<K> {
-        debug_assert_eq!(kind.fingerprint_style(), FingerprintStyle::Unit);
+    pub fn new_no_params<Ctxt>(tcx: Ctxt, kind: K) -> DepNode<K>
+    where
+        Ctxt: super::DepContext<DepKind = K>,
+    {
+        debug_assert_eq!(tcx.fingerprint_style(kind), FingerprintStyle::Unit);
         DepNode { kind, hash: Fingerprint::ZERO.into() }
     }
 
@@ -75,7 +78,7 @@ impl<K: DepKind> DepNode<K> {
 
         #[cfg(debug_assertions)]
         {
-            if !kind.fingerprint_style().reconstructible()
+            if !tcx.fingerprint_style(kind).reconstructible()
                 && (tcx.sess().opts.debugging_opts.incremental_info
                     || tcx.sess().opts.debugging_opts.query_dep_graph)
             {

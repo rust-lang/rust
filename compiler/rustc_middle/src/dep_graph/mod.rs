@@ -12,7 +12,7 @@ pub use rustc_query_system::dep_graph::{
     SerializedDepNodeIndex, WorkProduct, WorkProductId,
 };
 
-pub use dep_node::{label_strs, DepKind, DepNode, DepNodeExt};
+pub use dep_node::{label_strs, DepKind, DepKindStruct, DepNode, DepNodeExt};
 crate use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
@@ -23,16 +23,6 @@ pub type EdgeFilter = rustc_query_system::dep_graph::debug::EdgeFilter<DepKind>;
 
 impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
-
-    #[inline(always)]
-    fn fingerprint_style(&self) -> rustc_query_system::dep_graph::FingerprintStyle {
-        DepKind::fingerprint_style(self)
-    }
-
-    #[inline(always)]
-    fn is_eval_always(&self) -> bool {
-        self.is_eval_always
-    }
 
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}(", node.kind)?;
@@ -98,5 +88,15 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     #[inline(always)]
     fn sess(&self) -> &Session {
         self.sess
+    }
+
+    #[inline(always)]
+    fn fingerprint_style(&self, kind: DepKind) -> rustc_query_system::dep_graph::FingerprintStyle {
+        kind.fingerprint_style(*self)
+    }
+
+    #[inline(always)]
+    fn is_eval_always(&self, kind: DepKind) -> bool {
+        self.query_kind(kind).is_eval_always
     }
 }

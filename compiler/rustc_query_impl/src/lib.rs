@@ -19,7 +19,7 @@ extern crate tracing;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::DiagnosticBuilder;
-use rustc_middle::dep_graph;
+use rustc_middle::dep_graph::{self, DepKindStruct};
 use rustc_middle::ty::query::{query_keys, query_storage, query_stored, query_values};
 use rustc_middle::ty::query::{Providers, QueryEngine};
 use rustc_middle::ty::{self, TyCtxt};
@@ -29,7 +29,6 @@ use rustc_span::Span;
 #[macro_use]
 mod plumbing;
 pub use plumbing::QueryCtxt;
-use plumbing::QueryStruct;
 use rustc_query_system::query::*;
 
 mod stats;

@@ -78,126 +78,76 @@ pub struct DepKindStruct {
     /// Anonymous queries cannot be replayed from one compiler invocation to the next.
     /// When their result is needed, it is recomputed. They are useful for fine-grained
     /// dependency tracking, and caching within one compiler invocation.
-    pub(super) is_anon: bool,
+    pub is_anon: bool,
 
     /// Eval-always queries do not track their dependencies, and are always recomputed, even if
     /// their inputs have not changed since the last compiler invocation. The result is still
     /// cached within one compiler invocation.
-    pub(super) is_eval_always: bool,
+    pub is_eval_always: bool,
 
     /// Whether the query key can be recovered from the hashed fingerprint.
     /// See [DepNodeParams] trait for the behaviour of each key type.
-    // FIXME: Make this a simple boolean once DepNodeParams::fingerprint_style
-    // can be made a specialized associated const.
-    fingerprint_style: fn() -> FingerprintStyle,
-}
+    pub fingerprint_style: fn() -> FingerprintStyle,
 
-impl std::ops::Deref for DepKind {
-    type Target = DepKindStruct;
-    fn deref(&self) -> &DepKindStruct {
-        &DEP_KINDS[*self as usize]
-    }
+    /// The red/green evaluation system will try to mark a specific DepNode in the
+    /// dependency graph as green by recursively trying to mark the dependencies of
+    /// that `DepNode` as green. While doing so, it will sometimes encounter a `DepNode`
+    /// where we don't know if it is red or green and we therefore actually have
+    /// to recompute its value in order to find out. Since the only piece of
+    /// information that we have at that point is the `DepNode` we are trying to
+    /// re-evaluate, we need some way to re-run a query from just that. This is what
+    /// `force_from_dep_node()` implements.
+    ///
+    /// In the general case, a `DepNode` consists of a `DepKind` and an opaque
+    /// GUID/fingerprint that will uniquely identify the node. This GUID/fingerprint
+    /// is usually constructed by computing a stable hash of the query-key that the
+    /// `DepNode` corresponds to. Consequently, it is not in general possible to go
+    /// back from hash to query-key (since hash functions are not reversible). For
+    /// this reason `force_from_dep_node()` is expected to fail from time to time
+    /// because we just cannot find out, from the `DepNode` alone, what the
+    /// corresponding query-key is and therefore cannot re-run the query.
+    ///
+    /// The system deals with this case letting `try_mark_green` fail which forces
+    /// the root query to be re-evaluated.
+    ///
+    /// Now, if `force_from_dep_node()` would always fail, it would be pretty useless.
+    /// Fortunately, we can use some contextual information that will allow us to
+    /// reconstruct query-keys for certain kinds of `DepNode`s. In particular, we
+    /// enforce by construction that the GUID/fingerprint of certain `DepNode`s is a
+    /// valid `DefPathHash`. Since we also always build a huge table that maps every
+    /// `DefPathHash` in the current codebase to the corresponding `DefId`, we have
+    /// everything we need to re-run the query.
+    ///
+    /// Take the `mir_promoted` query as an example. Like many other queries, it
+    /// just has a single parameter: the `DefId` of the item it will compute the
+    /// validated MIR for. Now, when we call `force_from_dep_node()` on a `DepNode`
+    /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
+    /// is actually a `DefPathHash`, and can therefore just look up the corresponding
+    /// `DefId` in `tcx.def_path_hash_to_def_id`.
+    ///
+    /// When you implement a new query, it will likely have a corresponding new
+    /// `DepKind`, and you'll have to support it here in `force_from_dep_node()`. As
+    /// a rule of thumb, if your query takes a `DefId` or `LocalDefId` as sole parameter,
+    /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
+    /// add it to the "We don't have enough information to reconstruct..." group in
+    /// the match below.
+    pub force_from_dep_node: fn(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool,
+
+    /// Invoke a query to put the on-disk cached value in memory.
+    pub try_load_from_on_disk_cache: fn(TyCtxt<'_>, &DepNode),
 }
 
 impl DepKind {
     #[inline(always)]
-    pub fn fingerprint_style(&self) -> FingerprintStyle {
+    pub fn fingerprint_style(self, tcx: TyCtxt<'_>) -> FingerprintStyle {
         // Only fetch the DepKindStruct once.
-        let data: &DepKindStruct = &**self;
+        let data = tcx.query_kind(self);
         if data.is_anon {
             return FingerprintStyle::Opaque;
         }
 
         (data.fingerprint_style)()
     }
-}
-
-macro_rules! is_anon_attr {
-    (anon) => {
-        true
-    };
-    ($attr:ident) => {
-        false
-    };
-}
-
-macro_rules! is_eval_always_attr {
-    (eval_always) => {
-        true
-    };
-    ($attr:ident) => {
-        false
-    };
-}
-
-macro_rules! contains_anon_attr {
-    ($(($attr:ident $($attr_args:tt)* )),*) => ({$(is_anon_attr!($attr) | )* false});
-}
-
-macro_rules! contains_eval_always_attr {
-    ($(($attr:ident $($attr_args:tt)* )),*) => ({$(is_eval_always_attr!($attr) | )* false});
-}
-
-#[allow(non_upper_case_globals)]
-pub mod dep_kind {
-    use super::*;
-    use crate::ty::query::query_keys;
-    use rustc_query_system::dep_graph::FingerprintStyle;
-
-    // We use this for most things when incr. comp. is turned off.
-    pub const Null: DepKindStruct = DepKindStruct {
-        is_anon: false,
-        is_eval_always: false,
-
-        fingerprint_style: || FingerprintStyle::Unit,
-    };
-
-    pub const TraitSelect: DepKindStruct = DepKindStruct {
-        is_anon: true,
-        is_eval_always: false,
-
-        fingerprint_style: || FingerprintStyle::Unit,
-    };
-
-    pub const CompileCodegenUnit: DepKindStruct = DepKindStruct {
-        is_anon: false,
-        is_eval_always: false,
-
-        fingerprint_style: || FingerprintStyle::Opaque,
-    };
-
-    pub const CompileMonoItem: DepKindStruct = DepKindStruct {
-        is_anon: false,
-        is_eval_always: false,
-
-        fingerprint_style: || FingerprintStyle::Opaque,
-    };
-
-    macro_rules! define_query_dep_kinds {
-        ($(
-            [$($attrs:tt)*]
-            $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
-        ,)*) => (
-            $(pub const $variant: DepKindStruct = {
-                const is_anon: bool = contains_anon_attr!($($attrs)*);
-                const is_eval_always: bool = contains_eval_always_attr!($($attrs)*);
-
-                #[inline(always)]
-                fn fingerprint_style() -> rustc_query_system::dep_graph::FingerprintStyle {
-                    <query_keys::$variant<'_> as DepNodeParams<TyCtxt<'_>>>
-                        ::fingerprint_style()
-                }
-
-                DepKindStruct {
-                    is_anon,
-                    is_eval_always,
-                    fingerprint_style,
-                }
-            };)*
-        );
-    }
-
-    rustc_dep_node_append!([define_query_dep_kinds!][]);
 }
 
 macro_rules! define_dep_nodes {
@@ -212,9 +162,7 @@ macro_rules! define_dep_nodes {
             ($mod:ident) => {[ $(($mod::$variant),)* ]};
         }
 
-        static DEP_KINDS: &[DepKindStruct] = &make_dep_kind_array!(dep_kind);
-
-        /// This enum serves as an index into the `DEP_KINDS` array.
+        /// This enum serves as an index into arrays built by `make_dep_kind_array`.
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
         #[allow(non_camel_case_types)]
         pub enum DepKind {
@@ -280,7 +228,7 @@ pub trait DepNodeExt: Sized {
     /// Construct a DepNode from the given DepKind and DefPathHash. This
     /// method will assert that the given DepKind actually requires a
     /// single DefId/DefPathHash parameter.
-    fn from_def_path_hash(def_path_hash: DefPathHash, kind: DepKind) -> Self;
+    fn from_def_path_hash(tcx: TyCtxt<'_>, def_path_hash: DefPathHash, kind: DepKind) -> Self;
 
     /// Extracts the DefId corresponding to this DepNode. This will work
     /// if two conditions are met:
@@ -295,7 +243,11 @@ pub trait DepNodeExt: Sized {
     fn extract_def_id(&self, tcx: TyCtxt<'_>) -> Option<DefId>;
 
     /// Used in testing
-    fn from_label_string(label: &str, def_path_hash: DefPathHash) -> Result<Self, ()>;
+    fn from_label_string(
+        tcx: TyCtxt<'_>,
+        label: &str,
+        def_path_hash: DefPathHash,
+    ) -> Result<Self, ()>;
 
     /// Used in testing
     fn has_label_string(label: &str) -> bool;
@@ -305,8 +257,8 @@ impl DepNodeExt for DepNode {
     /// Construct a DepNode from the given DepKind and DefPathHash. This
     /// method will assert that the given DepKind actually requires a
     /// single DefId/DefPathHash parameter.
-    fn from_def_path_hash(def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
-        debug_assert!(kind.fingerprint_style() == FingerprintStyle::DefPathHash);
+    fn from_def_path_hash(tcx: TyCtxt<'_>, def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
+        debug_assert!(kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash);
         DepNode { kind, hash: def_path_hash.0.into() }
     }
 
@@ -321,7 +273,7 @@ impl DepNodeExt for DepNode {
     /// refers to something from the previous compilation session that
     /// has been removed.
     fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
-        if self.kind.fingerprint_style() == FingerprintStyle::DefPathHash {
+        if self.kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash {
             Some(tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into())))
         } else {
             None
@@ -329,13 +281,19 @@ impl DepNodeExt for DepNode {
     }
 
     /// Used in testing
-    fn from_label_string(label: &str, def_path_hash: DefPathHash) -> Result<DepNode, ()> {
+    fn from_label_string(
+        tcx: TyCtxt<'_>,
+        label: &str,
+        def_path_hash: DefPathHash,
+    ) -> Result<DepNode, ()> {
         let kind = dep_kind_from_label_string(label)?;
 
-        match kind.fingerprint_style() {
+        match kind.fingerprint_style(tcx) {
             FingerprintStyle::Opaque => Err(()),
-            FingerprintStyle::Unit => Ok(DepNode::new_no_params(kind)),
-            FingerprintStyle::DefPathHash => Ok(DepNode::from_def_path_hash(def_path_hash, kind)),
+            FingerprintStyle::Unit => Ok(DepNode::new_no_params(tcx, kind)),
+            FingerprintStyle::DefPathHash => {
+                Ok(DepNode::from_def_path_hash(tcx, def_path_hash, kind))
+            }
         }
     }
 

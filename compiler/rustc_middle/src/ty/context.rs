@@ -1,7 +1,7 @@
 //! Type context book-keeping.
 
 use crate::arena::Arena;
-use crate::dep_graph::DepGraph;
+use crate::dep_graph::{DepGraph, DepKind, DepKindStruct};
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
@@ -1011,6 +1011,7 @@ pub struct GlobalCtxt<'tcx> {
 
     pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
+    query_kinds: &'tcx [DepKindStruct],
 
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1144,6 +1145,7 @@ impl<'tcx> TyCtxt<'tcx> {
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
+        query_kinds: &'tcx [DepKindStruct],
         crate_name: &str,
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
@@ -1170,6 +1172,7 @@ impl<'tcx> TyCtxt<'tcx> {
             on_disk_cache,
             queries,
             query_caches: query::QueryCaches::default(),
+            query_kinds,
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),
             selection_cache: Default::default(),
@@ -1181,6 +1184,10 @@ impl<'tcx> TyCtxt<'tcx> {
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames),
         }
+    }
+
+    pub fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct {
+        &self.query_kinds[k as usize]
     }
 
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.

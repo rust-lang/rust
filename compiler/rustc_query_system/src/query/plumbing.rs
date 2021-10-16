@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
+use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
 use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
 use crate::query::job::{
@@ -520,14 +520,6 @@ where
         let result = query.try_load_from_disk(tcx, prev_dep_node_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-        // We always expect to find a cached result for things that
-        // can be forced from `DepNode`.
-        debug_assert!(
-            !dep_node.kind.fingerprint_style().reconstructible() || result.is_some(),
-            "missing on-disk cache entry for {:?}",
-            dep_node
-        );
-
         if let Some(result) = result {
             // If `-Zincremental-verify-ich` is specified, re-hash results from
             // the cache and make sure that they have the expected fingerprint.
@@ -537,6 +529,14 @@ where
 
             return Some((result, dep_node_index));
         }
+
+        // We always expect to find a cached result for things that
+        // can be forced from `DepNode`.
+        debug_assert!(
+            !tcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
+            "missing on-disk cache entry for {:?}",
+            dep_node
+        );
     }
 
     // We could not load a result from the on-disk cache, so

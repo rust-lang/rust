@@ -252,7 +252,7 @@ impl<K: DepKind> DepGraph<K> {
             key
         );
 
-        let task_deps = if key.kind.is_eval_always() {
+        let task_deps = if cx.dep_context().is_eval_always(key.kind) {
             None
         } else {
             Some(Lock::new(TaskDeps {
@@ -316,7 +316,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        debug_assert!(!dep_kind.is_eval_always());
+        debug_assert!(!cx.is_eval_always(dep_kind));
 
         if let Some(ref data) = self.data {
             let task_deps = Lock::new(TaskDeps::default());
@@ -493,7 +493,7 @@ impl<K: DepKind> DepGraph<K> {
         tcx: Ctxt,
         dep_node: &DepNode<K>,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
-        debug_assert!(!dep_node.kind.is_eval_always());
+        debug_assert!(!tcx.dep_context().is_eval_always(dep_node.kind));
 
         // Return None if the dep graph is disabled
         let data = self.data.as_ref()?;
@@ -553,7 +553,7 @@ impl<K: DepKind> DepGraph<K> {
 
         // We don't know the state of this dependency. If it isn't
         // an eval_always node, let's try to mark it green recursively.
-        if !dep_dep_node.kind.is_eval_always() {
+        if !tcx.dep_context().is_eval_always(dep_dep_node.kind) {
             debug!(
                 "try_mark_previous_green({:?}) --- state of dependency {:?} ({}) \
                                  is unknown, trying to mark it green",
@@ -643,7 +643,7 @@ impl<K: DepKind> DepGraph<K> {
         }
 
         // We never try to mark eval_always nodes as green
-        debug_assert!(!dep_node.kind.is_eval_always());
+        debug_assert!(!tcx.dep_context().is_eval_always(dep_node.kind));
 
         debug_assert_eq!(data.previous.index_to_node(prev_dep_node_index), *dep_node);
 

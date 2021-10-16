@@ -32,6 +32,11 @@ pub trait DepContext: Copy {
 
     /// Access the compiler session.
     fn sess(&self) -> &Session;
+
+    /// Return whether this kind always require evaluation.
+    fn is_eval_always(&self, kind: Self::DepKind) -> bool;
+
+    fn fingerprint_style(&self, kind: Self::DepKind) -> FingerprintStyle;
 }
 
 pub trait HasDepContext: Copy {
@@ -75,9 +80,6 @@ impl FingerprintStyle {
 pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
     const NULL: Self;
 
-    /// Return whether this kind always require evaluation.
-    fn is_eval_always(&self) -> bool;
-
     /// Implementation of `std::fmt::Debug` for `DepNode`.
     fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
@@ -90,6 +92,4 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder>
     fn read_deps<OP>(op: OP)
     where
         OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>);
-
-    fn fingerprint_style(&self) -> FingerprintStyle;
 }
