@@ -251,6 +251,7 @@ struct PackageMetadata {
 impl CargoWorkspace {
     pub fn fetch_metadata(
         cargo_toml: &ManifestPath,
+        current_dir: &AbsPath,
         config: &CargoConfig,
         progress: &dyn Fn(String),
     ) -> Result<cargo_metadata::Metadata> {
@@ -275,7 +276,7 @@ impl CargoWorkspace {
                 meta.features(CargoOpt::SomeFeatures(config.features.clone()));
             }
         }
-        meta.current_dir(cargo_toml.parent().as_os_str());
+        meta.current_dir(current_dir.as_os_str());
 
         if let Some(target) = target {
             meta.other_options(vec![String::from("--filter-platform"), target]);
