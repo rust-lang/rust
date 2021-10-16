@@ -1,8 +1,9 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
-// use clippy_utils::is_integer_const;
 use clippy_utils::consts::{miri_to_const, Constant};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
-use rustc_hir::{HirId, Item, ItemKind, TyKind, VariantData};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::{Item, ItemKind, TyKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -46,26 +47,14 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         dbg!(item.ident);
 
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id);
-        let hir_id2 = item.hir_id();
-        dbg!(hir_id);
-        dbg!(hir_id2);
-        dbg!(hir_id == hir_id2);
-
-        let span1 = cx.tcx.hir().span(hir_id);
-        let span2 = item.span;
-        dbg!(span1);
-        dbg!(span2);
-        dbg!(span1 == span2);
-
-        if is_struct_with_trailing_zero_sized_array(cx, item) && !has_repr_c(cx, hir_id) {
+        if is_struct_with_trailing_zero_sized_array(cx, item) && !has_repr_c(cx, item.def_id) {
             span_lint_and_sugg(
                 cx,
                 TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR_C,
-                span2,
-                "trailing zero-sized array in a struct which isn't marked `#[repr(C)]`",
+                item.span,
+                "trailing zero-sized array in a struct which is not marked `#[repr(C)]`",
                 "try",
-                "#[repr(C)]".to_string(),
+                format!("#[repr(C)]\n{}", snippet(cx, item.span, "..")),
                 Applicability::MaybeIncorrect,
             );
         }
@@ -101,13 +90,14 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx 
     false
 }
 
-fn has_repr_c(cx: &LateContext<'tcx>, hir_id: HirId) -> bool {
+fn has_repr_c(cx: &LateContext<'tcx>, def_id: LocalDefId) -> bool {
+    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
     let attrs = cx.tcx.hir().attrs(hir_id);
+
     // NOTE: Can there ever be more than one `repr` attribute?
     // other `repr` syms: repr, repr128, repr_align, repr_align_enum, repr_no_niche, repr_packed,
     // repr_simd, repr_transparent
-
-    if let Some(repr_attr) = attrs.iter().find(|attr| attr.has_name(sym::repr)) {
+    if let Some(_repr_attr) = attrs.iter().find(|attr| attr.has_name(sym::repr)) {
         // eprintln!("repr: true");
         true
     } else {
