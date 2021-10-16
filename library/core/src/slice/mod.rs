@@ -2953,9 +2953,6 @@ impl<T> [T] {
     ///
     /// The length of `src` must be the same as `self`.
     ///
-    /// If `T` implements `Copy`, it can be more performant to use
-    /// [`copy_from_slice`].
-    ///
     /// # Panics
     ///
     /// This function will panic if the two slices have different lengths.
