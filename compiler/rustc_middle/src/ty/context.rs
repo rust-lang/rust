@@ -79,11 +79,6 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     where
         Self: Sized;
 
-    /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
-    /// session, if it still exists. This is used during incremental compilation to
-    /// turn a deserialized `DefPathHash` into its current `DefId`.
-    fn def_path_hash_to_def_id(&self, tcx: TyCtxt<'tcx>, def_path_hash: DefPathHash) -> DefId;
-
     fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>);
 
     fn serialize(&self, tcx: TyCtxt<'tcx>, encoder: &mut FileEncoder) -> FileEncodeResult;
@@ -1298,6 +1293,27 @@ impl<'tcx> TyCtxt<'tcx> {
             LOCAL_CRATE
         } else {
             self.untracked_resolutions.cstore.stable_crate_id_to_crate_num(stable_crate_id)
+        }
+    }
+
+    /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
+    /// session, if it still exists. This is used during incremental compilation to
+    /// turn a deserialized `DefPathHash` into its current `DefId`.
+    pub fn def_path_hash_to_def_id(self, hash: DefPathHash) -> DefId {
+        debug!("def_path_hash_to_def_id({:?})", hash);
+
+        let stable_crate_id = hash.stable_crate_id();
+
+        // If this is a DefPathHash from the local crate, we can look up the
+        // DefId in the tcx's `Definitions`.
+        if stable_crate_id == self.sess.local_stable_crate_id() {
+            self.untracked_resolutions.definitions.local_def_path_hash_to_def_id(hash).to_def_id()
+        } else {
+            // If this is a DefPathHash from an upstream crate, let the CrateStore map
+            // it to a DefId.
+            let cstore = &self.untracked_resolutions.cstore;
+            let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
+            cstore.def_path_hash_to_def_id(cnum, hash)
         }
     }
 
