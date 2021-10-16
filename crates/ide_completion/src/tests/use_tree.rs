@@ -122,11 +122,14 @@ use foo::$0
 mod foo {
     struct Private;
     pub struct Foo;
+    macro_rules! foo_ { {} => {} }
+    pub use foo_ as foo;
 }
 struct Bar;
 "#,
         expect![[r#"
             st Foo
+            ma foo! macro_rules! foo_
         "#]],
     );
 }

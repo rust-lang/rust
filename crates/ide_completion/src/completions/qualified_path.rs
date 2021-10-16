@@ -223,6 +223,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 });
             }
         }
+        hir::PathResolution::Macro(mac) => acc.add_macro(ctx, None, mac),
         _ => {}
     }
 }
