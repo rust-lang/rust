@@ -1,6 +1,6 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
-use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::query::Fallible;
+use rustc_infer::traits::query::OutlivesBound;
 use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, HashStable, TypeFoldable, Lift)]

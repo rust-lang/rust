@@ -1,11 +1,11 @@
-use crate::infer::canonical::OriginalQueryValues;
-use crate::infer::InferCtxt;
-use crate::traits::query::NoSolution;
-use crate::traits::{FulfillmentContext, ObligationCause, TraitEngine};
 use rustc_hir as hir;
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Span;
+use rustc_trait_selection::infer::canonical::OriginalQueryValues;
+use rustc_trait_selection::infer::InferCtxt;
+use rustc_trait_selection::traits::query::NoSolution;
+use rustc_trait_selection::traits::{FulfillmentContext, ObligationCause, TraitEngine};
 
 pub use rustc_middle::traits::query::OutlivesBound;
 

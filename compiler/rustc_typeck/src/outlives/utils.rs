@@ -1,4 +1,4 @@
-use rustc_middle::ty::outlives::Component;
+use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, Region, RegionKind, Ty, TyCtxt};
 use rustc_span::Span;
@@ -35,7 +35,7 @@ pub fn insert_outlives_predicate<'tcx>(
             // Or if within `struct Foo<U>` you had `T = Vec<U>`, then
             // we would want to add `U: 'outlived_region`
             let mut components = smallvec![];
-            tcx.push_outlives_components(ty, &mut components);
+            push_outlives_components(tcx, ty, &mut components);
             for component in components {
                 match component {
                     Component::Region(r) => {

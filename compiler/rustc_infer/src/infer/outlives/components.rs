@@ -2,10 +2,10 @@
 // refers to rules defined in RFC 1214 (`OutlivesFooBar`), so see that
 // RFC for reference.
 
-use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::sso::SsoHashSet;
-use smallvec::SmallVec;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug)]
 pub enum Component<'tcx> {
@@ -47,14 +47,16 @@ pub enum Component<'tcx> {
     EscapingProjection(Vec<Component<'tcx>>),
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    /// Push onto `out` all the things that must outlive `'a` for the condition
-    /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
-    pub fn push_outlives_components(self, ty0: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
-        let mut visited = SsoHashSet::new();
-        compute_components(self, ty0, out, &mut visited);
-        debug!("components({:?}) = {:?}", ty0, out);
-    }
+/// Push onto `out` all the things that must outlive `'a` for the condition
+/// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
+pub fn push_outlives_components(
+    tcx: TyCtxt<'tcx>,
+    ty0: Ty<'tcx>,
+    out: &mut SmallVec<[Component<'tcx>; 4]>,
+) {
+    let mut visited = SsoHashSet::new();
+    compute_components(tcx, ty0, out, &mut visited);
+    debug!("components({:?}) = {:?}", ty0, out);
 }
 
 fn compute_components(

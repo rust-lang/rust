@@ -4,14 +4,14 @@
 
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{self, Canonical};
+use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::query::OutlivesBound;
 use rustc_infer::traits::TraitEngineExt as _;
-use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
-use rustc_trait_selection::traits::query::outlives_bounds::OutlivesBound;
 use rustc_trait_selection::traits::query::{CanonicalTyGoal, Fallible, NoSolution};
 use rustc_trait_selection::traits::wf;
 use rustc_trait_selection::traits::FulfillmentContext;
@@ -118,7 +118,7 @@ fn compute_implied_outlives_bounds<'tcx>(
                     ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_a, r_b)) => {
                         let ty_a = infcx.resolve_vars_if_possible(ty_a);
                         let mut components = smallvec![];
-                        tcx.push_outlives_components(ty_a, &mut components);
+                        push_outlives_components(tcx, ty_a, &mut components);
                         implied_bounds_from_components(r_b, components)
                     }
                 },
