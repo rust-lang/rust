@@ -718,10 +718,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         // Resolve the path and check the definition for errors.
-        let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(qpath, pat.hir_id)
-        {
-            variant_ty
-        } else {
+        let Some((variant, pat_ty)) = self.check_struct_path(qpath, pat.hir_id) else {
             let err = self.tcx.ty_error();
             for field in fields {
                 let ti = TopInfo { parent_pat: Some(pat), ..ti };

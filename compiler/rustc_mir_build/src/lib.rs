@@ -6,6 +6,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(bool_to_option)]
 #![feature(iter_zip)]
+#![feature(let_else)]
 #![feature(once_cell)]
 #![feature(min_specialization)]
 #![recursion_limit = "256"]

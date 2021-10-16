@@ -17,9 +17,7 @@ impl<'tcx> MirPass<'tcx> for LowerSliceLenCalls {
 
 pub fn lower_slice_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let language_items = tcx.lang_items();
-    let slice_len_fn_item_def_id = if let Some(slice_len_fn_item) = language_items.slice_len_fn() {
-        slice_len_fn_item
-    } else {
+    let Some(slice_len_fn_item_def_id) = language_items.slice_len_fn() else {
         // there is no language item to compare to :)
         return;
     };

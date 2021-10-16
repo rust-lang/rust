@@ -116,10 +116,8 @@ pub(super) fn transcribe<'a>(
 
     loop {
         // Look at the last frame on the stack.
-        let tree = if let Some(tree) = stack.last_mut().unwrap().next() {
-            // If it still has a TokenTree we have not looked at yet, use that tree.
-            tree
-        } else {
+        // If it still has a TokenTree we have not looked at yet, use that tree.
+        let Some(tree) = stack.last_mut().unwrap().next() else {
             // This else-case never produces a value for `tree` (it `continue`s or `return`s).
 
             // Otherwise, if we have just reached the end of a sequence and we can keep repeating,
@@ -190,9 +188,7 @@ pub(super) fn transcribe<'a>(
                     LockstepIterSize::Constraint(len, _) => {
                         // We do this to avoid an extra clone above. We know that this is a
                         // sequence already.
-                        let (sp, seq) = if let mbe::TokenTree::Sequence(sp, seq) = seq {
-                            (sp, seq)
-                        } else {
+                        let mbe::TokenTree::Sequence(sp, seq) = seq else {
                             unreachable!()
                         };
 

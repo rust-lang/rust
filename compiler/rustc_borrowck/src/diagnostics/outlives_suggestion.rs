@@ -90,9 +90,7 @@ impl OutlivesSuggestionBuilder {
         let mut unified_already = FxHashSet::default();
 
         for (fr, outlived) in &self.constraints_to_add {
-            let fr_name = if let Some(fr_name) = self.region_vid_to_name(mbcx, *fr) {
-                fr_name
-            } else {
+            let Some(fr_name) = self.region_vid_to_name(mbcx, *fr) else {
                 continue;
             };
 

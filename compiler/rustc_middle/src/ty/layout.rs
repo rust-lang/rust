@@ -755,17 +755,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
 
                     // Extract the number of elements from the layout of the array field:
-                    let len = if let Ok(TyAndLayout {
+                    let Ok(TyAndLayout {
                         layout: Layout { fields: FieldsShape::Array { count, .. }, .. },
                         ..
-                    }) = self.layout_of(f0_ty)
-                    {
-                        count
-                    } else {
+                    }) = self.layout_of(f0_ty) else {
                         return Err(LayoutError::Unknown(ty));
                     };
 
-                    (*e_ty, *len, true)
+                    (*e_ty, *count, true)
                 } else {
                     // First ADT field is not an array:
                     (f0_ty, def.non_enum_variant().fields.len() as _, false)
@@ -787,9 +784,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 // Compute the ABI of the element type:
                 let e_ly = self.layout_of(e_ty)?;
-                let e_abi = if let Abi::Scalar(scalar) = e_ly.abi {
-                    scalar
-                } else {
+                let Abi::Scalar(e_abi) = e_ly.abi else {
                     // This error isn't caught in typeck, e.g., if
                     // the element type of the vector is generic.
                     tcx.sess.fatal(&format!(

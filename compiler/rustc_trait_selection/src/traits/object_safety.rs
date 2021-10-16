@@ -647,9 +647,7 @@ fn receiver_is_dispatchable<'tcx>(
     debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
 
     let traits = (tcx.lang_items().unsize_trait(), tcx.lang_items().dispatch_from_dyn_trait());
-    let (unsize_did, dispatch_from_dyn_did) = if let (Some(u), Some(cu)) = traits {
-        (u, cu)
-    } else {
+    let (Some(unsize_did), Some(dispatch_from_dyn_did)) = traits else {
         debug!("receiver_is_dispatchable: Missing Unsize or DispatchFromDyn traits");
         return false;
     };

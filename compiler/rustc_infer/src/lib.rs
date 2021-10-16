@@ -17,6 +17,7 @@
 #![feature(box_patterns)]
 #![feature(extend_one)]
 #![feature(iter_zip)]
+#![feature(let_else)]
 #![feature(never_type)]
 #![feature(in_band_lifetimes)]
 #![feature(control_flow_enum)]

@@ -716,9 +716,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             cause.clone(),
         );
 
-        let data = if let ty::Dynamic(ref data, ..) = normalized_ty.kind() {
-            data
-        } else {
+        let ty::Dynamic(data, ..) = normalized_ty.kind() else {
             return None;
         };
 

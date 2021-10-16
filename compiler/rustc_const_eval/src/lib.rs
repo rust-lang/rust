@@ -13,6 +13,7 @@ Rust MIR: a lowered representation of Rust.
 #![feature(exact_size_is_empty)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
+#![feature(let_else)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(slice_ptr_get)]

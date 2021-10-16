@@ -15,6 +15,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
+#![feature(let_else)]
 #![feature(never_type)]
 #![feature(nll)]
 #![recursion_limit = "256"]

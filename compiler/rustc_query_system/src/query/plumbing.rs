@@ -761,11 +761,9 @@ where
         return false;
     }
 
-    let key = if let Some(key) =
+    let Some(key) =
         <Q::Key as DepNodeParams<CTX::DepContext>>::recover(*tcx.dep_context(), &dep_node)
-    {
-        key
-    } else {
+    else {
         return false;
     };
 

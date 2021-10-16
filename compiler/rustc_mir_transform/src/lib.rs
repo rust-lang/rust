@@ -4,6 +4,7 @@
 #![cfg_attr(bootstrap, feature(const_panic))]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
+#![feature(let_else)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(option_get_or_insert_default)]

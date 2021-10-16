@@ -343,9 +343,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             .unwrap_or_else(|| bug!("indirect_dest has non-pointer type: {:?}", indirect_dest))
             .ty;
 
-        let (llptr, llextra) = if let OperandValue::Ref(llptr, Some(llextra), _) = self {
-            (llptr, llextra)
-        } else {
+        let OperandValue::Ref(llptr, Some(llextra), _) = self else {
             bug!("store_unsized called with a sized value")
         };
 

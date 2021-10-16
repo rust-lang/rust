@@ -2,6 +2,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
+#![feature(let_else)]
 #![feature(nll)]
 #![feature(once_cell)]
 #![feature(proc_macro_internals)]

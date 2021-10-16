@@ -644,9 +644,7 @@ pub fn print_query_stack<CTX: QueryContext>(
         if Some(i) == num_frames {
             break;
         }
-        let query_info = if let Some(info) = query_map.as_ref().and_then(|map| map.get(&query)) {
-            info
-        } else {
+        let Some(query_info) = query_map.as_ref().and_then(|map| map.get(&query)) else {
             break;
         };
         let mut diag = Diagnostic::new(

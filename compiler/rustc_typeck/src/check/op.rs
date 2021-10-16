@@ -502,9 +502,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME: Instead of exiting early when encountering bound vars in
             // the function signature, consider keeping the binder here and
             // propagating it downwards.
-            let fn_sig = if let Some(fn_sig) = self.tcx.fn_sig(def_id).no_bound_vars() {
-                fn_sig
-            } else {
+            let Some(fn_sig) = self.tcx.fn_sig(def_id).no_bound_vars() else {
                 return false;
             };
 

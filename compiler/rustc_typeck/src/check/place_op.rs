@@ -411,9 +411,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("convert_place_op_to_mutable: method={:?}", method);
         self.write_method_call(expr.hir_id, method);
 
-        let region = if let ty::Ref(r, _, hir::Mutability::Mut) = method.sig.inputs()[0].kind() {
-            r
-        } else {
+        let ty::Ref(region, _, hir::Mutability::Mut) = method.sig.inputs()[0].kind() else {
             span_bug!(expr.span, "input to mutable place op is not a mut ref?");
         };
 
