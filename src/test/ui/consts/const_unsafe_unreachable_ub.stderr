@@ -7,13 +7,13 @@ LL |     unsafe { intrinsics::unreachable() }
    |              entering unreachable code
    |              inside `unreachable_unchecked` at $SRC_DIR/core/src/hint.rs:LL:COL
    |
-  ::: $DIR/const_unsafe_unreachable_ub.rs:7:18
+  ::: $DIR/const_unsafe_unreachable_ub.rs:6:18
    |
 LL |         false => std::hint::unreachable_unchecked(),
-   |                  ---------------------------------- inside `foo` at $DIR/const_unsafe_unreachable_ub.rs:7:18
+   |                  ---------------------------------- inside `foo` at $DIR/const_unsafe_unreachable_ub.rs:6:18
 ...
 LL | const BAR: bool = unsafe { foo(false) };
-   |                            ---------- inside `BAR` at $DIR/const_unsafe_unreachable_ub.rs:11:28
+   |                            ---------- inside `BAR` at $DIR/const_unsafe_unreachable_ub.rs:10:28
 
 error: aborting due to previous error
 
