@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind, TyKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -43,9 +44,8 @@ declare_lint_pass!(TrailingZeroSizedArrayWithoutReprC => [TRAILING_ZERO_SIZED_AR
 
 impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if is_struct_with_trailing_zero_sized_array(cx, item)
-        /* && !has_repr_c(cx, item) */
-        {
+        dbg!(item.ident);
+        if is_struct_with_trailing_zero_sized_array(cx, item) && !has_repr_c(cx, item) {
             // span_lint_and_sugg(
             //     cx,
             //     todo!(),
@@ -61,33 +61,52 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
 }
 
 fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
-    dbg!(item.ident);
-    if_chain! {
-        if let ItemKind::Struct(data, _generics) = &item.kind;
-        if let VariantData::Struct(field_defs, _) = data;
-        if let Some(last_field) = field_defs.last();
-        if let TyKind::Array(_, aconst) = last_field.ty.kind;
-        let aconst_def_id = cx.tcx.hir().body_owner_def_id(aconst.body).to_def_id();
-        let ty = cx.tcx.type_of(aconst_def_id);
-        let constant = cx
-            .tcx
-            .const_eval_poly(aconst_def_id) // NOTE: maybe const_eval_resolve? seems especially cursed to be using a const expr which resolves to 0 to create a zero-sized array, tho
-            .ok()
-            .map(|val| rustc_middle::ty::Const::from_value(cx.tcx, val, ty));
-        if let Some(Constant::Int(val)) = constant.and_then(miri_to_const);
-        if val == 0;
-        then {
-            eprintln!("true");
-            true
-        } else {
-            // dbg!(aconst);
-            eprintln!("false");
-            false
+    if let ItemKind::Struct(data, _generics) = &item.kind {
+        if let VariantData::Struct(field_defs, _) = data {
+            if let Some(last_field) = field_defs.last() {
+                if let TyKind::Array(_, aconst) = last_field.ty.kind {
+                    let aconst_def_id = cx.tcx.hir().body_owner_def_id(aconst.body).to_def_id();
+                    let ty = cx.tcx.type_of(aconst_def_id);
+                    let constant = cx
+                        .tcx
+                        // NOTE: maybe const_eval_resolve? seems especially cursed to be using a const expr which
+                        // resolves to 0 to create a zero-sized array, tho
+                        .const_eval_poly(aconst_def_id)
+                        .ok()
+                        .map(|val| rustc_middle::ty::Const::from_value(cx.tcx, val, ty));
+                    if let Some(Constant::Int(val)) = constant.and_then(miri_to_const) {
+                        if val == 0 {
+                            eprintln!("trailing: true");
+                            return true;
+                        }
+                    }
+                }
+            }
         }
     }
+    // dbg!(aconst);
+    eprintln!("trailing: false");
+    false
 }
 
 fn has_repr_c(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
-    // todo!()
-    true
+    // let hir_id2 = if let Some(body) = cx.enclosing_body {
+    //     body.hir_id
+    // } else {
+    //     todo!();
+    // };
+
+    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id);
+    let attrs = cx.tcx.hir().attrs(hir_id);
+    // NOTE: Can there ever be more than one `repr` attribute?
+    // other `repr` syms: repr, repr128, repr_align, repr_align_enum, repr_no_niche, repr_packed,
+    // repr_simd, repr_transparent
+
+    if let Some(repr_attr) = attrs.iter().find(|attr| attr.has_name(sym::repr)) {
+        eprintln!("repr: true");
+        true
+    } else {
+        eprintln!("repr: false");
+        false
+    }
 }
