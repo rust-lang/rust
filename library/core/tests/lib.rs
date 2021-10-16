@@ -60,7 +60,6 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
-#![feature(option_result_unwrap_unchecked)]
 #![feature(result_into_ok_or_err)]
 #![feature(ptr_metadata)]
 #![feature(once_cell)]
