@@ -90,26 +90,32 @@ LL |         asm!("{}", options(), const foo);
    |                    |
    |                    previous options
 
-error: expected string literal
+error: at least one abi must be provided as an argument to `clobber_abi`
   --> $DIR/parse-error.rs:40:30
+   |
+LL |         asm!("", clobber_abi());
+   |                              ^
+
+error: expected string literal
+  --> $DIR/parse-error.rs:42:30
    |
 LL |         asm!("", clobber_abi(foo));
    |                              ^^^ not a string literal
 
-error: expected `)`, found `foo`
-  --> $DIR/parse-error.rs:42:34
+error: expected one of `)` or `,`, found `foo`
+  --> $DIR/parse-error.rs:44:34
    |
 LL |         asm!("", clobber_abi("C" foo));
-   |                                  ^^^ expected `)`
+   |                                  ^^^ expected one of `)` or `,`
 
-error: expected `)`, found `,`
-  --> $DIR/parse-error.rs:44:33
+error: expected string literal
+  --> $DIR/parse-error.rs:46:35
    |
 LL |         asm!("", clobber_abi("C", foo));
-   |                                 ^ expected `)`
+   |                                   ^^^ not a string literal
 
 error: arguments are not allowed after clobber_abi
-  --> $DIR/parse-error.rs:46:38
+  --> $DIR/parse-error.rs:48:38
    |
 LL |         asm!("{}", clobber_abi("C"), const foo);
    |                    ----------------  ^^^^^^^^^ argument
@@ -117,7 +123,7 @@ LL |         asm!("{}", clobber_abi("C"), const foo);
    |                    clobber_abi
 
 error: clobber_abi is not allowed after options
-  --> $DIR/parse-error.rs:49:29
+  --> $DIR/parse-error.rs:51:29
    |
 LL |         asm!("", options(), clobber_abi("C"));
    |                  ---------  ^^^^^^^^^^^^^^^^
@@ -125,20 +131,12 @@ LL |         asm!("", options(), clobber_abi("C"));
    |                  options
 
 error: clobber_abi is not allowed after options
-  --> $DIR/parse-error.rs:51:31
+  --> $DIR/parse-error.rs:53:31
    |
 LL |         asm!("{}", options(), clobber_abi("C"), const foo);
    |                    ---------  ^^^^^^^^^^^^^^^^
    |                    |
    |                    options
-
-error: clobber_abi specified multiple times
-  --> $DIR/parse-error.rs:53:36
-   |
-LL |         asm!("", clobber_abi("C"), clobber_abi("C"));
-   |                  ----------------  ^^^^^^^^^^^^^^^^
-   |                  |
-   |                  clobber_abi previously specified here
 
 error: duplicate argument named `a`
   --> $DIR/parse-error.rs:55:36
@@ -300,17 +298,17 @@ error: expected string literal
 LL | global_asm!("", clobber_abi(FOO));
    |                             ^^^ not a string literal
 
-error: expected `)`, found `FOO`
+error: expected one of `)` or `,`, found `FOO`
   --> $DIR/parse-error.rs:112:33
    |
 LL | global_asm!("", clobber_abi("C" FOO));
-   |                                 ^^^ expected `)`
+   |                                 ^^^ expected one of `)` or `,`
 
-error: expected `)`, found `,`
-  --> $DIR/parse-error.rs:114:32
+error: expected string literal
+  --> $DIR/parse-error.rs:114:34
    |
 LL | global_asm!("", clobber_abi("C", FOO));
-   |                                ^ expected `)`
+   |                                  ^^^ not a string literal
 
 error: arguments are not allowed after clobber_abi
   --> $DIR/parse-error.rs:116:37
@@ -342,13 +340,11 @@ LL | global_asm!("{}", options(), clobber_abi("C"), const FOO);
    |                   |
    |                   options
 
-error: clobber_abi specified multiple times
-  --> $DIR/parse-error.rs:123:35
+error: `clobber_abi` cannot be used with `global_asm!`
+  --> $DIR/parse-error.rs:123:17
    |
 LL | global_asm!("", clobber_abi("C"), clobber_abi("C"));
-   |                 ----------------  ^^^^^^^^^^^^^^^^
-   |                 |
-   |                 clobber_abi previously specified here
+   |                 ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
 
 error: duplicate argument named `a`
   --> $DIR/parse-error.rs:125:35
@@ -404,7 +400,7 @@ LL |         asm!("{}", options(), const foo);
    |                                     ^^^ non-constant value
 
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/parse-error.rs:46:44
+  --> $DIR/parse-error.rs:48:44
    |
 LL |     let mut foo = 0;
    |      ---------- help: consider using `const` instead of `let`: `const foo`
