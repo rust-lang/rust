@@ -450,7 +450,9 @@ fn collect_items_rec<'tcx>(
     // involving a dependency, and the lack of context is confusing) in this MVP, we focus on
     // diagnostics on edges crossing a crate boundary: the collected mono items which are not
     // defined in the local crate.
-    if tcx.sess.diagnostic().err_count() > error_count && starting_point.node.krate() != LOCAL_CRATE
+    if tcx.sess.diagnostic().err_count() > error_count
+        && starting_point.node.krate() != LOCAL_CRATE
+        && starting_point.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths(|| starting_point.node.to_string());
         tcx.sess.span_note_without_error(
@@ -934,21 +936,13 @@ fn visit_instance_use<'tcx>(
     }
 }
 
-// Returns `true` if we should codegen an instance in the local crate.
-// Returns `false` if we can just link to the upstream crate and therefore don't
-// need a mono item.
+/// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
+/// can just link to the upstream crate and therefore don't need a mono item.
 fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) -> bool {
-    let def_id = match instance.def {
-        ty::InstanceDef::Item(def) => def.did,
-        ty::InstanceDef::DropGlue(def_id, Some(_)) => def_id,
-        ty::InstanceDef::VtableShim(..)
-        | ty::InstanceDef::ReifyShim(..)
-        | ty::InstanceDef::ClosureOnceShim { .. }
-        | ty::InstanceDef::Virtual(..)
-        | ty::InstanceDef::FnPtrShim(..)
-        | ty::InstanceDef::DropGlue(..)
-        | ty::InstanceDef::Intrinsic(_)
-        | ty::InstanceDef::CloneShim(..) => return true,
+    let def_id = if let Some(def_id) = instance.def.def_id_if_not_guaranteed_local_codegen() {
+        def_id
+    } else {
+        return true;
     };
 
     if tcx.is_foreign_item(def_id) {

@@ -83,6 +83,12 @@ impl IntoArgs for (CrateNum, DefId) {
     }
 }
 
+impl IntoArgs for ty::InstanceDef<'tcx> {
+    fn into_args(self) -> (DefId, DefId) {
+        (self.def_id(), self.def_id())
+    }
+}
+
 provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
     generics_of => { cdata.get_generics(def_id.index, tcx.sess) }

@@ -1319,7 +1319,9 @@ impl EncodeContext<'a, 'tcx> {
             }
             record!(self.tables.promoted_mir[def_id.to_def_id()] <- self.tcx.promoted_mir(def_id));
 
-            let unused = self.tcx.unused_generic_params(def_id);
+            let instance =
+                ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id()));
+            let unused = self.tcx.unused_generic_params(instance);
             if !unused.is_empty() {
                 record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
             }
