@@ -45,7 +45,6 @@ trait Deserializer3<T, U> {
 
 trait Deserializer4 {
     type Out<'x>;
-    //~^ Missing bound
     fn deserialize<'a, T>(&self, input: &'a T) -> Self::Out<'a>;
 }
 
@@ -53,7 +52,6 @@ struct Wrap<T>(T);
 
 trait Des {
     type Out<'x, D>;
-    //~^ Missing bound
     fn des<'z, T>(&self, data: &'z Wrap<T>) -> Self::Out<'z, Wrap<T>>;
 }
 /*
@@ -92,5 +90,5 @@ impl Des3 for () {
     }
 }
 */
-  
+
 fn main() {}

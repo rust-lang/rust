@@ -16,12 +16,6 @@ error: Missing bound: T: 'x
 LL |     type Out<'x>;
    |             ^^^^
 
-error: Missing bound: T: 'x
-  --> $DIR/self-outlives-lint.rs:40:13
-   |
-LL |     type Out<'x, 'y>;
-   |             ^^^^^^^^
-
 error: Missing bound: U: 'y
   --> $DIR/self-outlives-lint.rs:40:13
    |
@@ -29,28 +23,22 @@ LL |     type Out<'x, 'y>;
    |             ^^^^^^^^
 
 error: Missing bound: T: 'x
-  --> $DIR/self-outlives-lint.rs:47:13
+  --> $DIR/self-outlives-lint.rs:40:13
    |
-LL |     type Out<'x>;
-   |             ^^^^
+LL |     type Out<'x, 'y>;
+   |             ^^^^^^^^
 
-error: Missing bound: T: 'x
-  --> $DIR/self-outlives-lint.rs:55:13
-   |
-LL |     type Out<'x, D>;
-   |             ^^^^^^^
-
-error: Missing bound: T: 'x
-  --> $DIR/self-outlives-lint.rs:69:13
+error: Missing bound: D: 'x
+  --> $DIR/self-outlives-lint.rs:67:13
    |
 LL |     type Out<'x, D>;
    |             ^^^^^^^
 
-error: Missing bound: T: 'x
-  --> $DIR/self-outlives-lint.rs:83:13
+error: Missing bound: D: 'x
+  --> $DIR/self-outlives-lint.rs:81:13
    |
 LL |     type Out<'x, D>;
    |             ^^^^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
