@@ -113,11 +113,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .unwrap_or(&[])
                     .iter()
                     .filter_map(|attr| {
-                        Some(
-                            Cfg::parse(attr.meta_item()?)
-                                .map_err(|e| self.cx.sess().diagnostic().span_err(e.span, e.msg))
-                                .ok()?,
-                        )
+                        Cfg::parse(attr.meta_item()?)
+                            .map_err(|e| self.cx.sess().diagnostic().span_err(e.span, e.msg))
+                            .ok()
                     })
                     .collect::<Vec<_>>()
             })

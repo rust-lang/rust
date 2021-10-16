@@ -1837,7 +1837,7 @@ crate fn show_candidates(
                 .skip(1)
                 .all(|(_, descr, _)| descr == descr_first)
             {
-                format!("{}", descr_first)
+                descr_first.to_string()
             } else {
                 "item".to_string()
             };

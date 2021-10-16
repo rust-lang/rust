@@ -171,7 +171,7 @@ fn get_features(
             }
 
             if let Some(allowed) = sess.opts.debugging_opts.allow_features.as_ref() {
-                if allowed.iter().find(|&f| name.as_str() == *f).is_none() {
+                if allowed.iter().all(|f| name.as_str() != *f) {
                     struct_span_err!(
                         span_handler,
                         mi.span(),
