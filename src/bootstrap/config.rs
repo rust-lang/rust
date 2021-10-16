@@ -770,6 +770,7 @@ impl Config {
                     // FIXME: this is duplicated in bootstrap.py
                     let supported_platforms = [
                         "aarch64-unknown-linux-gnu",
+                        "aarch64-apple-darwin",
                         "i686-pc-windows-gnu",
                         "i686-pc-windows-msvc",
                         "i686-unknown-linux-gnu",
