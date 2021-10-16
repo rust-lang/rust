@@ -6,7 +6,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{self, InferCtxt, InferOk};
+use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
@@ -295,36 +295,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             hir::OpaqueTyOrigin::TyAlias => 0,
         };
 
-        let span = tcx.def_span(def_id);
-
-        // Check if the `impl Trait` bounds include region bounds.
-        // For example, this would be true for:
-        //
-        //     fn foo<'a, 'b, 'c>() -> impl Trait<'c> + 'a + 'b
-        //
-        // but false for:
-        //
-        //     fn foo<'c>() -> impl Trait<'c>
-        //
-        // unless `Trait` was declared like:
-        //
-        //     trait Trait<'c>: 'c
-        //
-        // in which case it would be true.
-        //
-        // This is used during regionck to decide whether we need to
-        // impose any additional constraints to ensure that region
-        // variables in `concrete_ty` wind up being constrained to
-        // something from `substs` (or, at minimum, things that outlive
-        // the fn body). (Ultimately, writeback is responsible for this
-        // check.)
-        let bounds = tcx.explicit_item_bounds(def_id);
-        debug!("{:#?}", bounds);
-        let bounds = bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_type_key.substs));
-        debug!("{:#?}", bounds);
-        let opaque_type = tcx.mk_opaque(def_id, opaque_type_key.substs);
-
-        // (A) The regions that appear in the hidden type must be equal to
+        // The regions that appear in the hidden type must be equal to
         // one of the regions in scope for the opaque type.
         self.generate_member_constraint(
             concrete_ty,
@@ -332,14 +303,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             opaque_type_key,
             first_own_region,
         );
-
-        // (B) We can also generate outlives bounds that must be enforced.
-        for required_region in required_region_bounds(tcx, opaque_type, bounds) {
-            concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-                tcx,
-                op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
-            });
-        }
     }
 
     /// As a fallback, we sometimes generate an "in constraint". For
