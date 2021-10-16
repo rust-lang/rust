@@ -205,7 +205,7 @@ fn overlap_within_probe(
             !selcx.predicate_may_hold_fatal(o)
                 || o.flip_polarity(tcx)
                     .as_ref()
-                    .map(|o| selcx.infcx().predicate_must_hold_considering_regions(o))
+                    .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
                     .unwrap_or(false)
         });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
