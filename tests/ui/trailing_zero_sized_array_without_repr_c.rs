@@ -1,5 +1,5 @@
 #![warn(clippy::trailing_zero_sized_array_without_repr_c)]
-// #![feature(const_generics_defaults)] // see below
+#![feature(const_generics_defaults)] // see below
 
 // Do lint:
 
@@ -20,13 +20,13 @@ struct GenericArrayType<T> {
 #[derive(Debug)]
 struct PlayNiceWithOtherAttributesDerive {
     field: i32,
-    last: [usize; 0]
+    last: [usize; 0],
 }
 
 #[must_use]
 struct PlayNiceWithOtherAttributesMustUse {
     field: i32,
-    last: [usize; 0]
+    last: [usize; 0],
 }
 
 const ZERO: usize = 0;
@@ -72,7 +72,7 @@ struct GoodReason {
     last: [usize; 0],
 }
 
-struct SizedArray {
+struct NonZeroSizedArray {
     field: i32,
     last: [usize; 1],
 }
@@ -114,8 +114,8 @@ enum DontLintAnonymousStructsFromDesuraging {
     C { x: u32, y: [u64; 0] },
 }
 
-// NOTE: including these (along with the required feature) triggers an ICE. Should make sure the
-// const generics people are aware of that if they weren't already.
+// NOTE: including these (along with the required feature) triggers an ICE. Not sure why. Should
+// make sure the const generics people are aware of that if they weren't already.
 
 // #[repr(C)]
 // struct ConstParamOk<const N: usize = 0> {
@@ -129,5 +129,5 @@ enum DontLintAnonymousStructsFromDesuraging {
 // }
 
 fn main() {
-    let _ = PlayNiceWithOtherAttributesMustUse {field: 0, last: []};
+    let _ = PlayNiceWithOtherAttributesMustUse { field: 0, last: [] };
 }
