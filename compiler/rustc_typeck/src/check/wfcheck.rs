@@ -288,7 +288,6 @@ fn check_gat_where_clauses(
         associated_items.in_definition_order().filter(|item| matches!(item.kind, ty::AssocKind::Fn))
     {
         let id = hir::HirId::make_owner(item.def_id.expect_local());
-        let span = DUMMY_SP;
         let param_env = tcx.param_env(item.def_id.expect_local());
 
         let sig = tcx.fn_sig(item.def_id);
@@ -308,7 +307,7 @@ fn check_gat_where_clauses(
             for (ty, ty_idx) in &visitor.types {
                 tcx.infer_ctxt().enter(|infcx| {
                     let mut outlives_environment = OutlivesEnvironment::new(param_env);
-                    outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id, span);
+                    outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id, DUMMY_SP);
                     outlives_environment.save_implied_bounds(id);
                     let region_bound_pairs =
                         outlives_environment.region_bound_pairs_map().get(&id).unwrap();
@@ -349,7 +348,6 @@ fn check_gat_where_clauses(
                             name: ty_param.name,
                         }));
                         let region_param = generics.param_at(*region_idx, tcx);
-                        // Then create a clause that is required on the GAT
                         let region_param =
                             tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
                                 def_id: region_param.def_id,
@@ -372,13 +370,35 @@ fn check_gat_where_clauses(
     debug!(?clauses);
     if !clauses.is_empty() {
         let written_predicates: ty::GenericPredicates<'_> = tcx.predicates_of(trait_item.def_id);
-        for clause in clauses {
-            let found = written_predicates.predicates.iter().find(|p| p.0 == clause).is_some();
-            debug!(?clause, ?found);
-            let mut error = tcx
-                .sess
-                .struct_span_err(trait_item.generics.span, &format!("Missing bound: {}", clause));
-            error.emit();
+        let clauses: Vec<_> = clauses
+            .drain_filter(|clause| {
+                written_predicates.predicates.iter().find(|p| &p.0 == clause).is_none()
+            })
+            .map(|clause| format!("{}", clause))
+            .collect();
+        if !clauses.is_empty() {
+            let mut err = tcx.sess.struct_span_err(
+                trait_item.span,
+                &format!("Missing required bounds on {}", trait_item.ident),
+            );
+
+            let suggestion = format!(
+                "{} {}",
+                if !trait_item.generics.where_clause.predicates.is_empty() {
+                    ","
+                } else {
+                    " where"
+                },
+                clauses.join(", "),
+            );
+            err.span_suggestion(
+                trait_item.generics.where_clause.tail_span_for_suggestion(),
+                "add the required where clauses",
+                suggestion,
+                Applicability::MachineApplicable,
+            );
+
+            err.emit()
         }
     }
 }
