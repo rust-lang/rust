@@ -4319,7 +4319,6 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "tracing",
 ]
 
 [[package]]

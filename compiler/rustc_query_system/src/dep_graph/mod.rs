@@ -37,6 +37,12 @@ pub trait DepContext: Copy {
     fn is_eval_always(&self, kind: Self::DepKind) -> bool;
 
     fn fingerprint_style(&self, kind: Self::DepKind) -> FingerprintStyle;
+
+    /// Try to force a dep node to execute and see if it's green.
+    fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
+
+    /// Load data from the on-disk cache.
+    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode<Self::DepKind>);
 }
 
 pub trait HasDepContext: Copy {

@@ -13,8 +13,6 @@
 extern crate rustc_macros;
 #[macro_use]
 extern crate rustc_middle;
-#[macro_use]
-extern crate tracing;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};

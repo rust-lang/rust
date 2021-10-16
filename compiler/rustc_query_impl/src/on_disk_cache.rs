@@ -219,7 +219,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         // Do this *before* we clone 'latest_foreign_def_path_hashes', since
         // loading existing queries may cause us to create new DepNodes, which
         // may in turn end up invoking `store_foreign_def_id_hash`
-        tcx.dep_graph.exec_cache_promotions(QueryCtxt::from_tcx(tcx));
+        tcx.dep_graph.exec_cache_promotions(tcx);
 
         *self.serialized_data.write() = None;
     }
