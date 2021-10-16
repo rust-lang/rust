@@ -25,7 +25,7 @@ macro_rules! features {
                 ($nort_feature) => {
                     compile_error!(
                         concat!(
-                            stringify!(nort_feature),
+                            stringify!($nort_feature),
                             " feature cannot be detected at run-time"
                         )
                     )
