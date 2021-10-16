@@ -60,6 +60,14 @@ pub(super) struct PatternContext {
     pub(super) is_param: Option<ParamKind>,
 }
 
+#[derive(Debug)]
+pub(super) enum LifetimeContext {
+    LifetimeParam(Option<ast::LifetimeParam>),
+    Lifetime,
+    LabelRef,
+    LabelDef,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum CallKind {
     Pat,
@@ -96,16 +104,12 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) impl_def: Option<ast::Impl>,
     pub(super) name_syntax: Option<ast::NameLike>,
 
-    // potentially set if we are completing a lifetime
-    pub(super) lifetime_param_syntax: Option<ast::LifetimeParam>,
-    pub(super) lifetime_allowed: bool,
-    pub(super) is_label_ref: bool,
-
     pub(super) completion_location: Option<ImmediateLocation>,
     pub(super) prev_sibling: Option<ImmediatePrevSibling>,
     pub(super) attribute_under_caret: Option<ast::Attr>,
     pub(super) previous_token: Option<SyntaxToken>,
 
+    pub(super) lifetime_ctx: Option<LifetimeContext>,
     pub(super) pattern_ctx: Option<PatternContext>,
     pub(super) path_context: Option<PathCompletionContext>,
     pub(super) locals: Vec<(String, Local)>,
@@ -161,9 +165,7 @@ impl<'a> CompletionContext<'a> {
             function_def: None,
             impl_def: None,
             name_syntax: None,
-            lifetime_param_syntax: None,
-            lifetime_allowed: false,
-            is_label_ref: false,
+            lifetime_ctx: None,
             pattern_ctx: None,
             completion_location: None,
             prev_sibling: None,
@@ -294,8 +296,14 @@ impl<'a> CompletionContext<'a> {
         self.previous_token.as_ref().map_or(false, |tok| tok.kind() == kind)
     }
 
-    pub(crate) fn expects_assoc_item(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::Trait | ImmediateLocation::Impl))
+    pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
+        match &self.completion_location {
+            Some(
+                ImmediateLocation::MethodCall { receiver, .. }
+                | ImmediateLocation::FieldAccess { receiver, .. },
+            ) => receiver.as_ref(),
+            _ => None,
+        }
     }
 
     pub(crate) fn has_dot_receiver(&self) -> bool {
@@ -306,14 +314,8 @@ impl<'a> CompletionContext<'a> {
         )
     }
 
-    pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
-        match &self.completion_location {
-            Some(
-                ImmediateLocation::MethodCall { receiver, .. }
-                | ImmediateLocation::FieldAccess { receiver, .. },
-            ) => receiver.as_ref(),
-            _ => None,
-        }
+    pub(crate) fn expects_assoc_item(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::Trait | ImmediateLocation::Impl))
     }
 
     pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
@@ -676,19 +678,15 @@ impl<'a> CompletionContext<'a> {
                 return;
             }
 
-            match_ast! {
+            self.lifetime_ctx = Some(match_ast! {
                 match parent {
-                    ast::LifetimeParam(_it) => {
-                        self.lifetime_allowed = true;
-                        self.lifetime_param_syntax =
-                            self.sema.find_node_at_offset_with_macros(original_file, offset);
-                    },
-                    ast::BreakExpr(_it) => self.is_label_ref = true,
-                    ast::ContinueExpr(_it) => self.is_label_ref = true,
-                    ast::Label(_it) => (),
-                    _ => self.lifetime_allowed = true,
+                    ast::LifetimeParam(_it) => LifetimeContext::LifetimeParam(self.sema.find_node_at_offset_with_macros(original_file, offset)),
+                    ast::BreakExpr(_it) => LifetimeContext::LabelRef,
+                    ast::ContinueExpr(_it) => LifetimeContext::LabelRef,
+                    ast::Label(_it) => LifetimeContext::LabelDef,
+                    _ => LifetimeContext::Lifetime,
                 }
-            }
+            });
         }
     }
 
