@@ -100,6 +100,8 @@ macro_rules! arena_types {
             // This is used to decode the &'tcx [Span] for InlineAsm's line_spans.
             [decode] span: rustc_span::Span,
             [decode] used_trait_imports: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
+
+            [] dep_kind: rustc_middle::dep_graph::DepKindStruct,
         ], $tcx);
     )
 }

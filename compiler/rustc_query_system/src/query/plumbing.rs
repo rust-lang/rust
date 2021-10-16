@@ -665,41 +665,6 @@ where
     }
 }
 
-#[inline(never)]
-fn force_query_impl<CTX, C>(
-    tcx: CTX,
-    state: &QueryState<CTX::DepKind, C::Key>,
-    cache: &QueryCacheStore<C>,
-    key: C::Key,
-    dep_node: DepNode<CTX::DepKind>,
-    query: &QueryVtable<CTX, C::Key, C::Value>,
-    compute: fn(CTX::DepContext, C::Key) -> C::Value,
-) -> bool
-where
-    C: QueryCache,
-    C::Key: DepNodeParams<CTX::DepContext>,
-    CTX: QueryContext,
-{
-    debug_assert!(!query.anon);
-
-    // We may be concurrently trying both execute and force a query.
-    // Ensure that only one of them runs the query.
-    let cached = cache.cache.lookup(cache, &key, |_, index| {
-        if unlikely!(tcx.dep_context().profiler().enabled()) {
-            tcx.dep_context().profiler().query_cache_hit(index.into());
-        }
-    });
-
-    let lookup = match cached {
-        Ok(()) => return true,
-        Err(lookup) => lookup,
-    };
-
-    let _ =
-        try_execute_query(tcx, state, cache, DUMMY_SP, key, lookup, Some(dep_node), query, compute);
-    true
-}
-
 pub enum QueryMode {
     Get,
     Ensure,
@@ -747,34 +712,30 @@ where
     Some(result)
 }
 
-pub fn force_query<Q, CTX>(tcx: CTX, dep_node: &DepNode<CTX::DepKind>) -> bool
+pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, dep_node: DepNode<CTX::DepKind>)
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    if Q::ANON {
-        return false;
-    }
+    let query = &Q::VTABLE;
+    debug_assert!(!Q::ANON);
 
-    if !<Q::Key as DepNodeParams<CTX::DepContext>>::fingerprint_style().reconstructible() {
-        return false;
-    }
+    // We may be concurrently trying both execute and force a query.
+    // Ensure that only one of them runs the query.
+    let cache = Q::query_cache(tcx);
+    let cached = cache.cache.lookup(cache, &key, |_, index| {
+        if unlikely!(tcx.dep_context().profiler().enabled()) {
+            tcx.dep_context().profiler().query_cache_hit(index.into());
+        }
+    });
 
-    let Some(key) =
-        <Q::Key as DepNodeParams<CTX::DepContext>>::recover(*tcx.dep_context(), &dep_node)
-    else {
-        return false;
+    let lookup = match cached {
+        Ok(()) => return,
+        Err(lookup) => lookup,
     };
 
     let compute = Q::compute_fn(tcx, &key);
-    force_query_impl(
-        tcx,
-        Q::query_state(tcx),
-        Q::query_cache(tcx),
-        key,
-        *dep_node,
-        &Q::VTABLE,
-        compute,
-    )
+    let state = Q::query_state(tcx);
+    try_execute_query(tcx, state, cache, DUMMY_SP, key, lookup, Some(dep_node), query, compute);
 }

@@ -1186,7 +1186,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct {
+    crate fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct {
         &self.query_kinds[k as usize]
     }
 

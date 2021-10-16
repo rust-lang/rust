@@ -87,7 +87,7 @@ pub struct DepKindStruct {
 
     /// Whether the query key can be recovered from the hashed fingerprint.
     /// See [DepNodeParams] trait for the behaviour of each key type.
-    pub fingerprint_style: fn() -> FingerprintStyle,
+    pub fingerprint_style: FingerprintStyle,
 
     /// The red/green evaluation system will try to mark a specific DepNode in the
     /// dependency graph as green by recursively trying to mark the dependencies of
@@ -131,10 +131,10 @@ pub struct DepKindStruct {
     /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
     /// add it to the "We don't have enough information to reconstruct..." group in
     /// the match below.
-    pub force_from_dep_node: fn(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool,
+    pub force_from_dep_node: Option<fn(tcx: TyCtxt<'_>, dep_node: DepNode) -> bool>,
 
     /// Invoke a query to put the on-disk cached value in memory.
-    pub try_load_from_on_disk_cache: fn(TyCtxt<'_>, &DepNode),
+    pub try_load_from_on_disk_cache: Option<fn(TyCtxt<'_>, DepNode)>,
 }
 
 impl DepKind {
@@ -145,8 +145,7 @@ impl DepKind {
         if data.is_anon {
             return FingerprintStyle::Opaque;
         }
-
-        (data.fingerprint_style)()
+        data.fingerprint_style
     }
 }
 
@@ -159,7 +158,7 @@ macro_rules! define_dep_nodes {
     ) => (
         #[macro_export]
         macro_rules! make_dep_kind_array {
-            ($mod:ident) => {[ $(($mod::$variant),)* ]};
+            ($mod:ident) => {[ $($mod::$variant()),* ]};
         }
 
         /// This enum serves as an index into arrays built by `make_dep_kind_array`.

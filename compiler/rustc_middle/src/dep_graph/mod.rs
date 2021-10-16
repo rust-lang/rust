@@ -100,7 +100,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         self.query_kind(kind).is_eval_always
     }
 
-    fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool {
+    fn try_force_from_dep_node(&self, dep_node: DepNode) -> bool {
         debug!("try_force_from_dep_node({:?}) --- trying to force", dep_node);
 
         // We must avoid ever having to call `force_from_dep_node()` for a
@@ -122,11 +122,18 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         );
 
         let cb = self.query_kind(dep_node.kind);
-        (cb.force_from_dep_node)(*self, dep_node)
+        if let Some(f) = cb.force_from_dep_node {
+            f(*self, dep_node);
+            true
+        } else {
+            false
+        }
     }
 
-    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode) {
+    fn try_load_from_on_disk_cache(&self, dep_node: DepNode) {
         let cb = self.query_kind(dep_node.kind);
-        (cb.try_load_from_on_disk_cache)(*self, dep_node)
+        if let Some(f) = cb.try_load_from_on_disk_cache {
+            f(*self, dep_node)
+        }
     }
 }

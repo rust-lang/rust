@@ -331,7 +331,7 @@ macro_rules! define_queries {
             }
         })*
 
-        #[allow(non_upper_case_globals)]
+        #[allow(nonstandard_style)]
         pub mod query_callbacks {
             use super::*;
             use rustc_middle::dep_graph::DepNode;
@@ -341,74 +341,83 @@ macro_rules! define_queries {
             use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
-            pub const Null: DepKindStruct = DepKindStruct {
-                is_anon: false,
-                is_eval_always: false,
+            pub fn Null() -> DepKindStruct {
+                DepKindStruct {
+                    is_anon: false,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Unit,
+                    force_from_dep_node: Some(|_, dep_node| bug!("force_from_dep_node: encountered {:?}", dep_node)),
+                    try_load_from_on_disk_cache: None,
+                }
+            }
 
-                fingerprint_style: || FingerprintStyle::Unit,
-                force_from_dep_node: |_, dep_node| bug!("force_from_dep_node: encountered {:?}", dep_node),
-                try_load_from_on_disk_cache: |_, _| {},
-            };
+            pub fn TraitSelect() -> DepKindStruct {
+                DepKindStruct {
+                    is_anon: true,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Unit,
+                    force_from_dep_node: None,
+                    try_load_from_on_disk_cache: None,
+                }
+            }
 
-            pub const TraitSelect: DepKindStruct = DepKindStruct {
-                is_anon: true,
-                is_eval_always: false,
+            pub fn CompileCodegenUnit() -> DepKindStruct {
+                DepKindStruct {
+                    is_anon: false,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Opaque,
+                    force_from_dep_node: None,
+                    try_load_from_on_disk_cache: None,
+                }
+            }
 
-                fingerprint_style: || FingerprintStyle::Unit,
-                force_from_dep_node: |_, _| false,
-                try_load_from_on_disk_cache: |_, _| {},
-            };
+            pub fn CompileMonoItem() -> DepKindStruct {
+                DepKindStruct {
+                    is_anon: false,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Opaque,
+                    force_from_dep_node: None,
+                    try_load_from_on_disk_cache: None,
+                }
+            }
 
-            pub const CompileCodegenUnit: DepKindStruct = DepKindStruct {
-                is_anon: false,
-                is_eval_always: false,
+            $(pub fn $name()-> DepKindStruct {
+                let is_anon = is_anon!([$($modifiers)*]);
+                let is_eval_always = is_eval_always!([$($modifiers)*]);
 
-                fingerprint_style: || FingerprintStyle::Opaque,
-                force_from_dep_node: |_, _| false,
-                try_load_from_on_disk_cache: |_, _| {},
-            };
+                let fingerprint_style =
+                    <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>::fingerprint_style();
 
-            pub const CompileMonoItem: DepKindStruct = DepKindStruct {
-                is_anon: false,
-                is_eval_always: false,
-
-                fingerprint_style: || FingerprintStyle::Opaque,
-                force_from_dep_node: |_, _| false,
-                try_load_from_on_disk_cache: |_, _| {},
-            };
-
-            $(pub const $name: DepKindStruct = {
-                const is_anon: bool = is_anon!([$($modifiers)*]);
-                const is_eval_always: bool = is_eval_always!([$($modifiers)*]);
+                if is_anon || !fingerprint_style.reconstructible() {
+                    return DepKindStruct {
+                        is_anon,
+                        is_eval_always,
+                        fingerprint_style,
+                        force_from_dep_node: None,
+                        try_load_from_on_disk_cache: None,
+                    }
+                }
 
                 #[inline(always)]
-                fn fingerprint_style() -> FingerprintStyle {
-                    <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>
-                        ::fingerprint_style()
+                fn recover<'tcx>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> Option<query_keys::$name<'tcx>> {
+                    <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, &dep_node)
                 }
 
-                fn recover<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<query_keys::$name<'tcx>> {
-                    <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node)
-                }
-
-                fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
-                    let tcx = QueryCtxt::from_tcx(tcx);
-                    force_query::<queries::$name<'_>, _>(tcx, dep_node)
-                }
-
-                fn try_load_from_on_disk_cache(tcx: TyCtxt<'_>, dep_node: &DepNode) {
-                    let tcx = QueryCtxt::from_tcx(tcx);
-                    if is_anon {
-                        return
+                fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: DepNode) -> bool {
+                    if let Some(key) = recover(tcx, dep_node) {
+                        let tcx = QueryCtxt::from_tcx(tcx);
+                        force_query::<queries::$name<'_>, _>(tcx, key, dep_node);
+                        true
+                    } else {
+                        false
                     }
+                }
 
-                    if !fingerprint_style().reconstructible() {
-                        return
-                    }
+                fn try_load_from_on_disk_cache(tcx: TyCtxt<'_>, dep_node: DepNode) {
+                    debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
-                    debug_assert!(tcx.dep_graph.is_green(dep_node));
-
-                    let key = recover(*tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
+                    let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
+                    let tcx = QueryCtxt::from_tcx(tcx);
                     if queries::$name::cache_on_disk(tcx, &key, None) {
                         let _ = tcx.$name(key);
                     }
@@ -418,13 +427,15 @@ macro_rules! define_queries {
                     is_anon,
                     is_eval_always,
                     fingerprint_style,
-                    force_from_dep_node,
-                    try_load_from_on_disk_cache,
+                    force_from_dep_node: Some(force_from_dep_node),
+                    try_load_from_on_disk_cache: Some(try_load_from_on_disk_cache),
                 }
-            };)*
+            })*
         }
 
-        pub static QUERY_CALLBACKS: &[DepKindStruct] = &make_dep_kind_array!(query_callbacks);
+        pub fn query_callbacks<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindStruct] {
+            arena.alloc_from_iter(make_dep_kind_array!(query_callbacks))
+        }
     }
 }
 
