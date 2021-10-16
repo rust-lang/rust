@@ -1,6 +1,5 @@
 #![warn(clippy::trailing_zero_sized_array_without_repr_c)]
-
-// #![feature(const_generics_defaults)]
+// #![feature(const_generics_defaults)] // see below
 
 struct RarelyUseful {
     field: i32,
@@ -48,6 +47,9 @@ struct UsingFunction {
     last: [usize; compute_zero()],
 }
 
+// NOTE: including these (along with the required feature) triggers an ICE. Should make sure the
+// const generics people are aware of that if they weren't already.
+
 // #[repr(C)]
 // struct ConstParamOk<const N: usize = 0> {
 //     field: i32,
@@ -59,8 +61,7 @@ struct UsingFunction {
 //     last: [usize; N]
 // }
 
-
-// TODO: actually, uh,,
+// TODO: actually, uh,, no idea what behavior here would be
 #[repr(packed)]
 struct ReprPacked {
     small: u8,
@@ -68,20 +69,21 @@ struct ReprPacked {
     weird: [u64; 0],
 }
 
-// same
+// TODO: clarify expected behavior
 #[repr(align(64))]
 struct ReprAlign {
     field: i32,
     last: [usize; 0],
 }
 
-// same
+// TODO: clarify expected behavior
 #[repr(C, align(64))]
 struct ReprCAlign {
     field: i32,
     last: [usize; 0],
 }
 
+// NOTE: because of https://doc.rust-lang.org/stable/reference/type-layout.html#primitive-representation-of-enums-with-fields and I'm not sure when in the compilation pipeline that would happen
 #[repr(C)]
 enum DontLintAnonymousStructsFromDesuraging {
     A(u32),
@@ -109,5 +111,4 @@ struct LotsOfFields {
     last: [usize; 0],
 }
 
-fn main() {
-}
+fn main() {}
