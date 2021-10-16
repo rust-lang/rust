@@ -146,7 +146,7 @@ fn main() {
     }
 
     let is_test = args.iter().any(|a| a == "--test");
-    if verbose > 1 {
+    if verbose > 2 {
         let rust_env_vars =
             env::vars().filter(|(k, _)| k.starts_with("RUST") || k.starts_with("CARGO"));
         let prefix = if is_test { "[RUSTC-SHIM] rustc --test" } else { "[RUSTC-SHIM] rustc" };
