@@ -1,10 +1,10 @@
-#![feature(start, core_intrinsics, alloc_prelude, alloc_error_handler, box_syntax)]
+#![feature(start, core_intrinsics, alloc_error_handler, box_syntax)]
 #![no_std]
 
 extern crate alloc;
 extern crate alloc_system;
 
-use alloc::prelude::v1::*;
+use alloc::boxed::Box;
 
 use alloc_system::System;
 
