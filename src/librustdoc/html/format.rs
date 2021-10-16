@@ -1177,6 +1177,10 @@ impl clean::FnDecl {
                     args.push_str(" <br>");
                     args_plain.push(' ');
                 }
+                if input.is_const {
+                    args.push_str("const ");
+                    args_plain.push_str("const ");
+                }
                 if !input.name.is_empty() {
                     args.push_str(&format!("{}: ", input.name));
                     args_plain.push_str(&format!("{}: ", input.name));

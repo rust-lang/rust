@@ -749,7 +749,38 @@ fn clean_fn_or_proc_macro(
                 } else {
                     hir::Constness::NotConst
                 };
+            clean_fn_decl_legacy_const_generics(&mut func, attrs);
             FunctionItem(func)
+        }
+    }
+}
+
+/// This is needed to make it more "readable" when documenting functions using
+/// `rustc_legacy_const_generics`. More information in
+/// <https://github.com/rust-lang/rust/issues/83167>.
+fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attribute]) {
+    for meta_item_list in attrs
+        .iter()
+        .filter(|a| a.has_name(sym::rustc_legacy_const_generics))
+        .filter_map(|a| a.meta_item_list())
+    {
+        for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.literal()).enumerate() {
+            match literal.kind {
+                ast::LitKind::Int(a, _) => {
+                    let gen = func.generics.params.remove(0);
+                    if let GenericParamDef { name, kind: GenericParamDefKind::Const { ty, .. } } =
+                        gen
+                    {
+                        func.decl
+                            .inputs
+                            .values
+                            .insert(a as _, Argument { name, type_: *ty, is_const: true });
+                    } else {
+                        panic!("unexpected non const in position {}", pos);
+                    }
+                }
+                _ => panic!("invalid arg index"),
+            }
         }
     }
 }
@@ -779,7 +810,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
                     if name.is_empty() {
                         name = kw::Underscore;
                     }
-                    Argument { name, type_: ty.clean(cx) }
+                    Argument { name, type_: ty.clean(cx), is_const: false }
                 })
                 .collect(),
         }
@@ -798,6 +829,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
                 .map(|(i, ty)| Argument {
                     name: name_from_pat(body.params[i].pat),
                     type_: ty.clean(cx),
+                    is_const: false,
                 })
                 .collect(),
         }
@@ -828,6 +860,7 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
                     .map(|t| Argument {
                         type_: t.clean(cx),
                         name: names.next().map_or(kw::Empty, |i| i.name),
+                        is_const: false,
                     })
                     .collect(),
             },
