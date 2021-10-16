@@ -1,13 +1,9 @@
 #![warn(clippy::trailing_zero_sized_array_without_repr_c)]
 // #![feature(const_generics_defaults)] // see below
 
-struct RarelyUseful {
-    field: i32,
-    last: [usize; 0],
-}
+// Do lint:
 
-#[repr(C)]
-struct GoodReason {
+struct RarelyUseful {
     field: i32,
     last: [usize; 0],
 }
@@ -21,9 +17,16 @@ struct GenericArrayType<T> {
     last: [T; 0],
 }
 
-struct SizedArray {
+#[derive(Debug)]
+struct PlayNiceWithOtherAttributesDerive {
     field: i32,
-    last: [usize; 1],
+    last: [usize; 0]
+}
+
+#[must_use]
+struct PlayNiceWithOtherAttributesMustUse {
+    field: i32,
+    last: [usize; 0]
 }
 
 const ZERO: usize = 0;
@@ -32,63 +35,13 @@ struct ZeroSizedFromExternalConst {
     last: [usize; ZERO],
 }
 
-const ONE: usize = 1;
-struct NonZeroSizedFromExternalConst {
-    field: i32,
-    last: [usize; ONE],
-}
-
-#[allow(clippy::eq_op)] // lmao im impressed
+#[allow(clippy::eq_op)]
 const fn compute_zero() -> usize {
     (4 + 6) - (2 * 5)
 }
 struct UsingFunction {
     field: i32,
     last: [usize; compute_zero()],
-}
-
-// NOTE: including these (along with the required feature) triggers an ICE. Should make sure the
-// const generics people are aware of that if they weren't already.
-
-// #[repr(C)]
-// struct ConstParamOk<const N: usize = 0> {
-//     field: i32,
-//     last: [usize; N]
-// }
-
-// struct ConstParamLint<const N: usize = 0> {
-//     field: i32,
-//     last: [usize; N]
-// }
-
-// TODO: actually, uh,, no idea what behavior here would be
-#[repr(packed)]
-struct ReprPacked {
-    small: u8,
-    medium: i32,
-    weird: [u64; 0],
-}
-
-// TODO: clarify expected behavior
-#[repr(align(64))]
-struct ReprAlign {
-    field: i32,
-    last: [usize; 0],
-}
-
-// TODO: clarify expected behavior
-#[repr(C, align(64))]
-struct ReprCAlign {
-    field: i32,
-    last: [usize; 0],
-}
-
-// NOTE: because of https://doc.rust-lang.org/stable/reference/type-layout.html#primitive-representation-of-enums-with-fields and I'm not sure when in the compilation pipeline that would happen
-#[repr(C)]
-enum DontLintAnonymousStructsFromDesuraging {
-    A(u32),
-    B(f32, [u64; 0]),
-    C { x: u32, y: [u64; 0] },
 }
 
 struct LotsOfFields {
@@ -111,4 +64,70 @@ struct LotsOfFields {
     last: [usize; 0],
 }
 
-fn main() {}
+// Don't lint
+
+#[repr(C)]
+struct GoodReason {
+    field: i32,
+    last: [usize; 0],
+}
+
+struct SizedArray {
+    field: i32,
+    last: [usize; 1],
+}
+
+const ONE: usize = 1;
+struct NonZeroSizedFromExternalConst {
+    field: i32,
+    last: [usize; ONE],
+}
+
+#[repr(packed)]
+struct ReprPacked {
+    field: i32,
+    last: [usize; 0],
+}
+
+#[repr(C, packed)]
+struct ReprCPacked {
+    field: i32,
+    last: [usize; 0],
+}
+
+#[repr(align(64))]
+struct ReprAlign {
+    field: i32,
+    last: [usize; 0],
+}
+#[repr(C, align(64))]
+struct ReprCAlign {
+    field: i32,
+    last: [usize; 0],
+}
+
+// NOTE: because of https://doc.rust-lang.org/stable/reference/type-layout.html#primitive-representation-of-enums-with-fields and I'm not sure when in the compilation pipeline that would happen
+#[repr(C)]
+enum DontLintAnonymousStructsFromDesuraging {
+    A(u32),
+    B(f32, [u64; 0]),
+    C { x: u32, y: [u64; 0] },
+}
+
+// NOTE: including these (along with the required feature) triggers an ICE. Should make sure the
+// const generics people are aware of that if they weren't already.
+
+// #[repr(C)]
+// struct ConstParamOk<const N: usize = 0> {
+//     field: i32,
+//     last: [usize; N]
+// }
+
+// struct ConstParamLint<const N: usize = 0> {
+//     field: i32,
+//     last: [usize; N]
+// }
+
+fn main() {
+    let _ = PlayNiceWithOtherAttributesMustUse {field: 0, last: []};
+}
