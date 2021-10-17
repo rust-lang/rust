@@ -578,28 +578,25 @@ pub fn home_dir() -> Option<PathBuf> {
 /// may result in "insecure temporary file" security vulnerabilities. Consider
 /// using a crate that securely creates temporary files or directories.
 ///
-/// # Unix
+/// # Platform-specific behavior
 ///
-/// Returns the value of the `TMPDIR` environment variable if it is
+/// On Unix, returns the value of the `TMPDIR` environment variable if it is
 /// set, otherwise for non-Android it returns `/tmp`. If Android, since there
 /// is no global temporary folder (it is usually allocated per-app), it returns
 /// `/data/local/tmp`.
+/// On Windows, the behavior is equivalent to that of [`GetTempPath2`][GetTempPath2] /
+/// [`GetTempPath`][GetTempPath], which this function uses internally.
+/// Note that, this [may change in the future][changes].
 ///
-/// # Windows
-///
-/// Returns the value of, in order, the `TMP`, `TEMP`,
-/// `USERPROFILE` environment variable if any are set and not the empty
-/// string. Otherwise, `temp_dir` returns the path of the Windows directory.
-/// This behavior is identical to that of [`GetTempPath`][msdn], which this
-/// function uses internally.
-///
-/// [msdn]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppatha
+/// [changes]: io#platform-specific-behavior
+/// [GetTempPath2]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppath2a
+/// [GetTempPath]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppatha
 ///
 /// ```no_run
 /// use std::env;
 ///
 /// fn main() {
-///     let mut dir = env::temp_dir();
+///     let dir = env::temp_dir();
 ///     println!("Temporary directory: {}", dir.display());
 /// }
 /// ```
