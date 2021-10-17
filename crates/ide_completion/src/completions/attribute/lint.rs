@@ -1,6 +1,6 @@
 //! Completion for lints
 use ide_db::helpers::generated_lints::Lint;
-use syntax::ast;
+use syntax::{ast, T};
 
 use crate::{
     context::CompletionContext,
@@ -16,7 +16,7 @@ pub(super) fn complete_lint(
 ) {
     if let Some(existing_lints) = super::parse_comma_sep_paths(derive_input) {
         for &Lint { label, description } in lints_completions {
-            let (ex_q, ex_name) = {
+            let (qual, name) = {
                 // FIXME: change `Lint`'s label to not store a path in it but split the prefix off instead?
                 let mut parts = label.split("::");
                 let ns_or_label = match parts.next() {
@@ -29,7 +29,7 @@ pub(super) fn complete_lint(
                     None => (None, ns_or_label),
                 }
             };
-            let repr_already_annotated = existing_lints
+            let lint_already_annotated = existing_lints
                 .iter()
                 .filter_map(|path| {
                     let q = path.qualifier();
@@ -38,21 +38,26 @@ pub(super) fn complete_lint(
                     }
                     Some((q.and_then(|it| it.as_single_name_ref()), path.segment()?.name_ref()?))
                 })
-                .any(|(q, name)| {
-                    let qualifier_matches = match (q, ex_q) {
+                .any(|(q, name_ref)| {
+                    let qualifier_matches = match (q, qual) {
                         (None, None) => true,
                         (None, Some(_)) => false,
                         (Some(_), None) => false,
                         (Some(q), Some(ns)) => q.text() == ns,
                     };
-                    qualifier_matches && name.text() == ex_name
+                    qualifier_matches && name_ref.text() == name
                 });
-            if repr_already_annotated {
+            if lint_already_annotated {
                 continue;
             }
+            let insert = match qual {
+                Some(qual) if !ctx.previous_token_is(T![:]) => format!("{}::{}", qual, name),
+                _ => name.to_owned(),
+            };
             let mut item =
-                CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), ex_name);
+                CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label);
             item.kind(CompletionItemKind::Attribute)
+                .insert_text(insert)
                 .documentation(hir::Documentation::new(description.to_owned()));
             item.add_to(acc)
         }

@@ -23,7 +23,7 @@ pub(super) fn complete_repr(acc: &mut Completions, ctx: &CompletionContext, inpu
                 })
                 .any(|it| {
                     let text = it.text();
-                    label == text || collides.contains(&text.as_str())
+                    lookup.unwrap_or(label) == text || collides.contains(&text.as_str())
                 });
             if repr_already_annotated {
                 continue;

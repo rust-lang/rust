@@ -692,6 +692,24 @@ mod lint {
             r#"#[feature(box_syntax)] struct Test;"#,
         )
     }
+
+    #[test]
+    fn lint_clippy_unqualified() {
+        check_edit(
+            "clippy::as_conversions",
+            r#"#[allow($0)] struct Test;"#,
+            r#"#[allow(clippy::as_conversions)] struct Test;"#,
+        );
+    }
+
+    #[test]
+    fn lint_clippy_qualified() {
+        check_edit(
+            "clippy::as_conversions",
+            r#"#[allow(clippy::$0)] struct Test;"#,
+            r#"#[allow(clippy::as_conversions)] struct Test;"#,
+        );
+    }
 }
 
 mod repr {
@@ -742,7 +760,6 @@ mod repr {
         check_repr(
             r#"#[repr(align(1), $0)] struct Test;"#,
             expect![[r#"
-            at align($0)
             at transparent
             at C
             at u8
