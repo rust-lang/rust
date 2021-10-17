@@ -3,7 +3,7 @@
 
 use std::cell::RefCell;
 use std::ffi::CString;
-use std::lazy::{Lazy, SyncOnceCell};
+use std::lazy::SyncOnceCell;
 use std::os::raw::{c_char, c_int};
 use std::sync::{mpsc, Mutex};
 
@@ -50,12 +50,11 @@ impl UnsafeMessage {
     fn send(self) -> Result<(), mpsc::SendError<UnsafeMessage>> {
         thread_local! {
             /// The Sender owned by the local thread
-            static LOCAL_MESSAGE_SENDER: Lazy<mpsc::Sender<UnsafeMessage>> = Lazy::new(||
+            static LOCAL_MESSAGE_SENDER: mpsc::Sender<UnsafeMessage> =
                 GLOBAL_MESSAGE_SENDER
                     .get().unwrap()
                     .lock().unwrap()
-                    .clone()
-            );
+                    .clone();
         }
         LOCAL_MESSAGE_SENDER.with(|sender| sender.send(self))
     }
