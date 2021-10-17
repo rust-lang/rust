@@ -16,7 +16,7 @@ use rustc_ast::{
 };
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
 
@@ -300,6 +300,12 @@ impl<'a> Parser<'a> {
             None => LocalKind::Decl,
             Some(init) => {
                 if self.eat_keyword(kw::Else) {
+                    if self.token.is_keyword(kw::If) {
+                        // `let...else if`. Emit the same error that `parse_block()` would,
+                        // but explicitly point out that this pattern is not allowed.
+                        let msg = "conditional `else if` is not supported for `let...else`";
+                        return Err(self.error_block_no_opening_brace_msg(msg));
+                    }
                     let els = self.parse_block()?;
                     self.check_let_else_init_bool_expr(&init);
                     self.check_let_else_init_trailing_brace(&init);
@@ -392,10 +398,9 @@ impl<'a> Parser<'a> {
         Ok(block)
     }
 
-    fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
+    fn error_block_no_opening_brace_msg(&mut self, msg: &str) -> DiagnosticBuilder<'a> {
         let sp = self.token.span;
-        let tok = super::token_descr(&self.token);
-        let mut e = self.struct_span_err(sp, &format!("expected `{{`, found {}", tok));
+        let mut e = self.struct_span_err(sp, msg);
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
 
         // Check to see if the user has written something like
@@ -435,7 +440,13 @@ impl<'a> Parser<'a> {
             _ => {}
         }
         e.span_label(sp, "expected `{`");
-        Err(e)
+        e
+    }
+
+    fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
+        let tok = super::token_descr(&self.token);
+        let msg = format!("expected `{{`, found {}", tok);
+        Err(self.error_block_no_opening_brace_msg(&msg))
     }
 
     /// Parses a block. Inner attributes are allowed.
