@@ -966,6 +966,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         match (res, source) {
             (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
+                // FIXME: peek at the next token to see if it is one of `(`, `[` or `{`.
                 err.span_label(span, fallback_label);
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
