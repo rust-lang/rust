@@ -1,0 +1,18 @@
+error[E0599]: no function or associated item named `deserialize` found for struct `A` in the current scope
+  --> $DIR/issue-87932.rs:13:8
+   |
+LL | pub struct A {}
+   | ------------ function or associated item `deserialize` not found for this
+...
+LL |     A::deserialize();
+   |        ^^^^^^^^^^^ function or associated item not found in `A`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+   |
+LL | use <crate::A as issue_87932_a::Deserialize>::deserialize::_a::Deserialize;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.
