@@ -4,13 +4,13 @@ error: expected one of `)`, `,`, `@`, or `|`, found keyword `in`
 LL |     for ( elem in vec ) {
    |                ^^ expected one of `)`, `,`, `@`, or `|`
 
-error: unexpected parenthesis surrounding `for` loop head
+error: unexpected parentheses surrounding `for` loop head
   --> $DIR/recover-for-loop-parens-around-head.rs:10:9
    |
 LL |     for ( elem in vec ) {
    |         ^             ^
    |
-help: remove parenthesis in `for` loop
+help: remove parentheses in `for` loop
    |
 LL -     for ( elem in vec ) {
 LL +     for  elem in vec  {

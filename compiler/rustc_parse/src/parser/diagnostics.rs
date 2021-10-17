@@ -1342,10 +1342,10 @@ impl<'a> Parser<'a> {
 
                 self.struct_span_err(
                     MultiSpan::from_spans(vec![begin_par_sp, self.prev_token.span]),
-                    "unexpected parenthesis surrounding `for` loop head",
+                    "unexpected parentheses surrounding `for` loop head",
                 )
                 .multipart_suggestion(
-                    "remove parenthesis in `for` loop",
+                    "remove parentheses in `for` loop",
                     vec![(begin_par_sp, String::new()), (self.prev_token.span, String::new())],
                     // With e.g. `for (x) in y)` this would replace `(x) in y)`
                     // with `x) in y)` which is syntactically invalid.

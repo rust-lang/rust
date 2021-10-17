@@ -16,10 +16,10 @@ use std::convert::TryInto;
 use std::fmt::Display;
 use std::ops::{Add, Neg, Not, Sub};
 
-/// A helper type to build suggestion correctly handling parenthesis.
+/// A helper type to build suggestion correctly handling parentheses.
 #[derive(Clone, PartialEq)]
 pub enum Sugg<'a> {
-    /// An expression that never needs parenthesis such as `1337` or `[0; 42]`.
+    /// An expression that never needs parentheses such as `1337` or `[0; 42]`.
     NonParen(Cow<'a, str>),
     /// An expression that does not fit in other variants.
     MaybeParen(Cow<'a, str>),
@@ -283,7 +283,7 @@ impl<'a> Sugg<'a> {
         }
     }
 
-    /// Adds parenthesis to any expression that might need them. Suitable to the
+    /// Adds parentheses to any expression that might need them. Suitable to the
     /// `self` argument of a method call
     /// (e.g., to build `bar.foo()` or `(1 + 2).foo()`).
     pub fn maybe_par(self) -> Self {

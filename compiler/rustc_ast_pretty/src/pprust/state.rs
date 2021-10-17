@@ -1675,7 +1675,7 @@ impl<'a> State<'a> {
         self.print_expr_cond_paren(expr, Self::cond_needs_par(expr))
     }
 
-    // Does `expr` need parenthesis when printed in a condition position?
+    // Does `expr` need parentheses when printed in a condition position?
     //
     // These cases need parens due to the parse error observed in #26461: `if return {}`
     // parses as the erroneous construct `if (return {})`, not `if (return) {}`.

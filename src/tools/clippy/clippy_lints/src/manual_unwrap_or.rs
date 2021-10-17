@@ -98,7 +98,7 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
                 reindent_multiline(or_body_snippet.into(), true, Some(indent));
 
             let suggestion = if scrutinee.span.from_expansion() {
-                    // we don't want parenthesis around macro, e.g. `(some_macro!()).unwrap_or(0)`
+                    // we don't want parentheses around macro, e.g. `(some_macro!()).unwrap_or(0)`
                     sugg::Sugg::hir_with_macro_callsite(cx, scrutinee, "..")
                 }
                 else {

@@ -113,7 +113,7 @@ impl<'a> AstValidator<'a> {
         if sess.opts.unstable_features.is_nightly_build() {
             sess.struct_span_err(expr.span, "`let` expressions are not supported here")
                 .note("only supported directly in conditions of `if`- and `while`-expressions")
-                .note("as well as when nested within `&&` and parenthesis in those conditions")
+                .note("as well as when nested within `&&` and parentheses in those conditions")
                 .emit();
         } else {
             sess.struct_span_err(expr.span, "expected expression, found statement (`let`)")

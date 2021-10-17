@@ -1258,7 +1258,7 @@ impl<'a> Parser<'a> {
     /// Parses `pub`, `pub(crate)` and `pub(in path)` plus shortcuts `crate` for `pub(crate)`,
     /// `pub(self)` for `pub(in self)` and `pub(super)` for `pub(in super)`.
     /// If the following element can't be a tuple (i.e., it's a function definition), then
-    /// it's not a tuple struct field), and the contents within the parentheses isn't valid,
+    /// it's not a tuple struct field), and the contents within the parentheses aren't valid,
     /// so emit a proper diagnostic.
     // Public for rustfmt usage.
     pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
