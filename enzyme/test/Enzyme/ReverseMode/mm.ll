@@ -102,9 +102,9 @@ attributes #3 = { argmemonly nounwind }
 ; CHECK-NEXT:   %rhs_data = load float*, float** %rhs, align 8, !tbaa !2
 ; CHECK-NEXT:   %[[dout_data:.+]] = load double*, double** %"out'", align 8
 ; CHECK-NEXT:   %out_data = load double*, double** %out, align 8, !tbaa !2
-; CHECK-NEXT:   %0 = icmp sgt i64 %cols, 2
-; CHECK-NEXT:   %smax = select i1 %0, i64 %cols, i64 2
-; CHECK-NEXT:   %[[smaxm2:.+]] = add nsw i64 %smax, -2
+; TODO-MAXCHECK-NEXT:   %0 = icmp sgt i64 %cols, 2
+; TODO-MAXCHECK-NEXT:   %smax = select i1 %0, i64 %cols, i64 2
+; CHECK:   %[[smaxm2:.+]] = add nsw i64 %smax, -2
 ; CHECK-NEXT:   br label %for.cond2.preheader
 
 ; CHECK: for.cond2.preheader:                              ; preds = %for.inc47, %entry

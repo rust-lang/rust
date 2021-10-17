@@ -485,15 +485,15 @@ attributes #11 = { cold }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 dereferenceable(16) dereferenceable_or_null(16) %"malloccall'mi", i8 0, i64 16, i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* {{(noundef )?}}nonnull align 1 dereferenceable(16) dereferenceable_or_null(16) %"malloccall'mi", i8 0, i64 16, i1 false)
 ; CHECK-NEXT:   %"Bref'ipc" = bitcast i8* %"malloccall'mi" to <2 x double>*
 ; CHECK-NEXT:   %Bref = bitcast i8* %malloccall to <2 x double>*
 ; CHECK-NEXT:   %W34p = getelementptr inbounds <2 x double>, <2 x double>* %W, i64 1
 ; CHECK-NEXT:   %W34 = load <2 x double>, <2 x double>* %W34p, align 16
 ; CHECK-NEXT:   %preb1 = insertelement <2 x double> undef, double %B1, i32 0
-; CHECK-NEXT:   %B11 = shufflevector <2 x double> %preb1, <2 x double> undef, <2 x i32> zeroinitializer
+; CHECK-NEXT:   %B11 = shufflevector <2 x double> %preb1, <2 x double> {{(undef|poison)}}, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
-; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> undef, <2 x i32> zeroinitializer
+; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> {{(undef|poison)}}, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   store <2 x double> %B11, <2 x double>* %Bref, align 16
 ; CHECK-NEXT:   %call_augmented = call { <2 x double>, <2 x double> } @augmented_loadmul(<2 x double>* %W, <2 x double>* %"W'", <2 x double>*{{( nonnull)?}} %Bref, <2 x double>*{{( nonnull)?}} %"Bref'ipc")
 ; CHECK-NEXT:   %subcache = extractvalue { <2 x double>, <2 x double> } %call_augmented, 0
@@ -520,7 +520,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   %[[W34:.+]] = extractvalue { <2 x double>, i8*, i8*, <2 x double> } %tapeArg, 3
 
 ; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
-; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> undef, <2 x i32> zeroinitializer
+; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> {{(undef|poison)}}, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   %[[loadmultape:.+]] = extractvalue { <2 x double>, i8*, i8*, <2 x double> } %tapeArg, 0
 ; CHECK-NEXT:   %m0diffeW34 = fmul fast <2 x double> %B22, %differeturn
 ; CHECK-NEXT:   %m1diffeB22 = fmul fast <2 x double> %[[W34]], %differeturn

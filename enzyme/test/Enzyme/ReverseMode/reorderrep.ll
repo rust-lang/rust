@@ -85,23 +85,23 @@ attributes #3 = { nounwind }
 
 ; CHECK: bexit:                                            ; preds = %bb43, %bb
 ; CHECK-NEXT:   %.020 = phi i64 [ -1, %bb ], [ %tmp44, %bb43 ]
-; CHECK-NEXT:   %1 = icmp sgt i64 %.020, 10
-; CHECK-NEXT:   %smax = select i1 %1, i64 %.020, i64 10
-; CHECK-NEXT:   %2 = sub i64 %smax, %.020
-; CHECK-NEXT:   %3 = add nuw i64 %2, 1
-; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %3, 8
+; TODO-CHECK-NEXT:   %1 = icmp sgt i64 %.020, 10
+; TODO-CHECK-NEXT:   %smax = select i1 %1, i64 %.020, i64 10
+; CHECK:   %[[a2:.+]] = sub i64 %smax, %.020
+; CHECK-NEXT:   %[[a3:.+]] = add nuw i64 %[[a2]], 1
+; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %[[a3]], 8
 ; CHECK-NEXT:   br label %bb377
 
 ; CHECK: bb377:                                            ; preds = %bb381, %bexit
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %bb381 ], [ 0, %bexit ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %4 = add i64 %.020, %iv
-; CHECK-NEXT:   %tmp378 = icmp slt i64 %4, 10
+; CHECK-NEXT:   %[[a4:.+]] = add i64 %.020, %iv
+; CHECK-NEXT:   %tmp378 = icmp slt i64 %[[a4]], 10
 ; CHECK-NEXT:   br i1 %tmp378, label %bb381, label %bb450
 
 ; CHECK: bb381:                                            ; preds = %bb377
-; CHECK-NEXT:   %5 = getelementptr inbounds double*, double** %0, i64 %iv
-; CHECK-NEXT:   %"tmp384'il_phi" = load double*, double** %5, align 8, !invariant.group !13
+; CHECK-NEXT:   %[[a5:.+]] = getelementptr inbounds double*, double** %0, i64 %iv
+; CHECK-NEXT:   %"tmp384'il_phi" = load double*, double** %[[a5]], align 8, !invariant.group !13
 ; CHECK-NEXT:   br label %bb377
 
 ; CHECK: bb450:                                            ; preds = %bb377
@@ -114,40 +114,38 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   br label %invertbb
 
 ; CHECK: invertbexit:                                      ; preds = %invertbb377
-; CHECK-NEXT:   %6 = bitcast double** %0 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %6)
+; CHECK-NEXT:   %[[a6:.+]] = bitcast double** %0 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[a6]])
 ; CHECK-NEXT:   br i1 %tmp39, label %invertbb, label %invertbb43
 
 ; CHECK: invertbb377:                                      ; preds = %mergeinvertbb377_bb450, %invertbb381
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %2, %mergeinvertbb377_bb450 ], [ %9, %invertbb381 ]
-; CHECK-NEXT:   %7 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %8 = xor i1 %7, true
-; CHECK-NEXT:   br i1 %7, label %invertbexit, label %incinvertbb377
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[a2]], %mergeinvertbb377_bb450 ], [ %[[a9:.+]], %invertbb381 ]
+; CHECK-NEXT:   %[[a7:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   %[[a8:.+]] = xor i1 %[[a7]], true
+; CHECK-NEXT:   br i1 %[[a7]], label %invertbexit, label %incinvertbb377
 
 ; CHECK: incinvertbb377:                                   ; preds = %invertbb377
-; CHECK-NEXT:   %9 = add nsw i64 %"iv'ac.0", -1
+; CHECK-NEXT:   %[[a9]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertbb381
 
 ; CHECK: invertbb381:                                      ; preds = %incinvertbb377
-; CHECK-NEXT:   %10 = load double, double* %"arg4'", align 8
+; CHECK-NEXT:   %[[a10:.+]] = load double, double* %"arg4'", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arg4'", align 8
-; CHECK-NEXT:   %11 = fadd fast double 0.000000e+00, %10
-; CHECK-NEXT:   %12 = fadd fast double 0.000000e+00, %11
+; CHECK-NEXT:   %[[a11:.+]] = fadd fast double 0.000000e+00, %[[a10]]
+; CHECK-NEXT:   %[[a12:.+]] = fadd fast double 0.000000e+00, %[[a11]]
 ; CHECK-NEXT:   %[[tmp37_unwrap6:.+]] = extractvalue { double**, i64 } %tapeArg, 1
 ; CHECK-NEXT:   %tmp39_unwrap = icmp ne i64 %[[tmp37_unwrap6]], 0
 ; CHECK-NEXT:   %[[tmp37_unwrap5:.+]] = extractvalue { double**, i64 } %tapeArg, 1
 ; CHECK-NEXT:   %tmp44_unwrap = udiv i64 %[[tmp37_unwrap5]], 8
 ; CHECK-NEXT:   %.020_unwrap = select i1 %tmp39_unwrap, i64 -1, i64 %tmp44_unwrap
-; CHECK-NEXT:   %_unwrap = icmp sgt i64 %.020_unwrap, 10
-; CHECK-NEXT:   %smax_unwrap = select i1 %_unwrap, i64 %.020_unwrap, i64 10
-; CHECK-NEXT:   %_unwrap3 = sub i64 %smax_unwrap, %.020_unwrap
-; CHECK-NEXT:   %13 = add nuw i64 %_unwrap3, 1
-; CHECK-NEXT:   %14 = extractvalue { double**, i64 } %tapeArg, 0
-; CHECK-NEXT:   %15 = getelementptr inbounds double*, double** %14, i64 %9
-; CHECK-NEXT:   %16 = load double*, double** %15, align 8, !invariant.group !14
-; CHECK-NEXT:   %17 = load double, double* %16, align 8
-; CHECK-NEXT:   %18 = fadd fast double %17, %12
-; CHECK-NEXT:   store double %18, double* %16, align 8
+; CHECK:   %[[_unwrap3:.+]] = sub i64 %[[smax_unwrap:.+]], %.020_unwrap
+; CHECK-NEXT:   %[[a13:.+]] = add nuw i64 %[[_unwrap3]], 1
+; CHECK-NEXT:   %[[a14:.+]] = extractvalue { double**, i64 } %tapeArg, 0
+; CHECK-NEXT:   %[[a15:.+]] = getelementptr inbounds double*, double** %[[a14]], i64 %[[a9]]
+; CHECK-NEXT:   %[[a16:.+]] = load double*, double** %[[a15]], align 8, !invariant.group !14
+; CHECK-NEXT:   %[[a17:.+]] = load double, double* %[[a16]], align 8
+; CHECK-NEXT:   %[[a18:.+]] = fadd fast double %[[a17]], %[[a12]]
+; CHECK-NEXT:   store double %[[a18]], double* %[[a16]], align 8
 ; CHECK-NEXT:   br label %invertbb377
 
 ; CHECK: invertbb450:                                      ; preds = %bb450

@@ -176,7 +176,12 @@ bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val) {
     return false;
 
   auto arg = F->arg_begin();
-  for (size_t i = 0, size = CI->getNumArgOperands(); i < size; i++) {
+#if LLVM_VERSION_MAJOR >= 14
+  for (size_t i = 0, size = CI->arg_size(); i < size; i++)
+#else
+  for (size_t i = 0, size = CI->getNumArgOperands(); i < size; i++)
+#endif
+  {
     if (val == CI->getArgOperand(i)) {
       // This is a vararg, assume captured
       if (arg == F->arg_end()) {
@@ -307,7 +312,11 @@ static inline void UpgradeAllocasToMallocs(Function *NewF,
     if (auto C = dyn_cast<CastInst>(rep))
       CI = cast<CallInst>(C->getOperand(0));
     CI->setMetadata("enzyme_fromstack", MDNode::get(CI->getContext(), {}));
+#if LLVM_VERSION_MAJOR >= 14
+    CI->addRetAttr(Attribute::NoAlias);
+#else
     CI->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
+#endif
     assert(rep->getType() == AI->getType());
     AI->replaceAllUsesWith(rep);
     AI->eraseFromParent();
@@ -469,8 +478,12 @@ OldAllocationSize(Value *Ptr, CallInst *Loc, Function *NewF, IntegerType *T,
     }
 
     AttributeList list;
+#if LLVM_VERSION_MAJOR >= 14
+    list = list.addFnAttribute(NewF->getContext(), Attribute::ReadOnly);
+#else
     list = list.addAttribute(NewF->getContext(), AttributeList::FunctionIndex,
                              Attribute::ReadOnly);
+#endif
     list = list.addParamAttribute(NewF->getContext(), 0, Attribute::ReadNone);
     list = list.addParamAttribute(NewF->getContext(), 0, Attribute::NoCapture);
     auto allocSize = NewF->getParent()->getOrInsertFunction(
@@ -638,17 +651,30 @@ Function *CreateMPIWrapper(Function *F) {
   auto FT = FunctionType::get(F->getReturnType(), types, false);
   Function *W = Function::Create(FT, GlobalVariable::InternalLinkage, name,
                                  F->getParent());
-  W->addAttribute(AttributeList::FunctionIndex, Attribute::ReadOnly);
-  W->addAttribute(AttributeList::FunctionIndex, Attribute::InaccessibleMemOnly);
+  llvm::Attribute::AttrKind attrs[] = {
+    Attribute::ReadOnly,
+    Attribute::Speculatable,
+    Attribute::NoUnwind,
+    Attribute::AlwaysInline,
+#if LLVM_VERSION_MAJOR >= 10
+    Attribute::NoFree,
+    Attribute::NoSync,
+#endif
+    Attribute::InaccessibleMemOnly
+  };
+  for (auto attr : attrs) {
+#if LLVM_VERSION_MAJOR >= 14
+    W->addFnAttr(attr);
+#else
+    W->addAttribute(AttributeList::FunctionIndex, attr);
+#endif
+  }
+#if LLVM_VERSION_MAJOR >= 14
+  W->addFnAttr(Attribute::get(F->getContext(), "enzyme_inactive"));
+#else
   W->addAttribute(AttributeList::FunctionIndex,
                   Attribute::get(F->getContext(), "enzyme_inactive"));
-  W->addAttribute(AttributeList::FunctionIndex, Attribute::Speculatable);
-  W->addAttribute(AttributeList::FunctionIndex, Attribute::NoUnwind);
-#if LLVM_VERSION_MAJOR >= 10
-  W->addAttribute(AttributeList::FunctionIndex, Attribute::NoFree);
-  W->addAttribute(AttributeList::FunctionIndex, Attribute::NoSync);
 #endif
-  W->addAttribute(AttributeList::FunctionIndex, Attribute::AlwaysInline);
   BasicBlock *entry = BasicBlock::Create(W->getContext(), "entry", W);
   IRBuilder<> B(entry);
   auto alloc = B.CreateAlloca(F->getReturnType());

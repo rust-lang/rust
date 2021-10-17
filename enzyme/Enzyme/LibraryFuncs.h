@@ -241,9 +241,20 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
     freecall->setDebugLoc(debuglocation);
     freecall->setTailCall();
     if (isa<CallInst>(tofree) &&
+#if LLVM_VERSION_MAJOR >= 14
+        cast<CallInst>(tofree)->getAttributes().hasAttributeAtIndex(
+            AttributeList::ReturnIndex, Attribute::NonNull)
+#else
         cast<CallInst>(tofree)->getAttributes().hasAttribute(
-            AttributeList::ReturnIndex, Attribute::NonNull)) {
+            AttributeList::ReturnIndex, Attribute::NonNull)
+#endif
+    ) {
+#if LLVM_VERSION_MAJOR >= 14
+      freecall->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                    Attribute::NonNull);
+#else
       freecall->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
     }
     if (Function *F = dyn_cast<Function>(freevalue))
       freecall->setCallingConv(F->getCallingConv());
@@ -353,9 +364,20 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   freecall->setTailCall();
   freecall->setDebugLoc(debuglocation);
   if (isa<CallInst>(tofree) &&
+#if LLVM_VERSION_MAJOR >= 14
+      cast<CallInst>(tofree)->getAttributes().hasAttributeAtIndex(
+          AttributeList::ReturnIndex, Attribute::NonNull)
+#else
       cast<CallInst>(tofree)->getAttributes().hasAttribute(
-          AttributeList::ReturnIndex, Attribute::NonNull)) {
+          AttributeList::ReturnIndex, Attribute::NonNull)
+#endif
+  ) {
+#if LLVM_VERSION_MAJOR >= 14
+    freecall->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                  Attribute::NonNull);
+#else
     freecall->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
   }
   if (Function *F = dyn_cast<Function>(freevalue))
     freecall->setCallingConv(F->getCallingConv());

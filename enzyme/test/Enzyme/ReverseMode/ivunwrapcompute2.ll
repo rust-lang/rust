@@ -83,7 +83,7 @@ exit:                                        ; preds = %.lr.ph
 
 ; CHECK: mid.thread:                                       ; preds = %mid, %bb
 ; CHECK-NEXT:   %0 = phi i64 [ 15, %bb ], [ %spec.select, %mid ]
-; CHECK-NEXT:   %1 = add i64 %0, -1
+; CHECK-NEXT:   %1 = add {{(nsw )?}}i64 %0, -1
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %0, 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %g_malloccache = bitcast i8* %malloccall to double*

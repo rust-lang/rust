@@ -1027,9 +1027,9 @@ attributes #9 = { noreturn nounwind }
 ; CHECK: invertscalar:                                     ; preds = %invertfor.cond.cleanup4, %incinvertmatfor2
 ; CHECK-NEXT:   %"iv3'ac.0" = phi i64 [ 3, %invertfor.cond.cleanup4 ], [ %[[iv3sub]], %incinvertmatfor2 ]
 ; CHECK-NEXT:   %[[rows_uw:.+]] = load i64, i64* %m_rows.i1, align 8
-; CHECK-NEXT:   %[[sgt:.+]] = icmp sgt i64 %[[rows_uw]], 1
-; CHECK-NEXT:   %[[smax:.+]] = select i1 %[[sgt]], i64 %[[rows_uw]], i64 1
-; CHECK-NEXT:   %[[iv5start]] = add{{( nsw)?}} i64 %[[smax]], -1
+; TODO-MAX-ORCHECK-NEXT:   %[[sgt:.+]] = icmp sgt i64 %[[rows_uw]], 1
+; TODO-MAX-ORCHECK-NEXT:   %[[smax:.+]] = select i1 %[[sgt]], i64 %[[rows_uw]], i64 1
+; CHECK:   %[[iv5start]] = add{{( nsw)?}} i64 %[[smax:.+]], -1
 ; CHECK-NEXT:   br label %invertmatfor3
 
 ; CHECK: invertfor.cond.cleanup4:                          ; preds = %scalar, %incinvertmatfor1

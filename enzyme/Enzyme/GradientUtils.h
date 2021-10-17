@@ -188,8 +188,13 @@ public:
     auto FT = FunctionType::get(Type::getInt64Ty(B.getContext()),
                                 ArrayRef<Type *>(), false);
     AttributeList AL;
+#if LLVM_VERSION_MAJOR >= 14
+    AL = AL.addAttributeAtIndex(B.getContext(), AttributeList::FunctionIndex,
+                                Attribute::AttrKind::ReadOnly);
+#else
     AL = AL.addAttribute(B.getContext(), AttributeList::FunctionIndex,
                          Attribute::AttrKind::ReadOnly);
+#endif
     return tid = B.CreateCall(newFunc->getParent()->getOrInsertFunction(
                "omp_get_thread_num", FT, AL));
   }
@@ -202,8 +207,13 @@ public:
     auto FT = FunctionType::get(Type::getInt64Ty(B.getContext()),
                                 ArrayRef<Type *>(), false);
     AttributeList AL;
+#if LLVM_VERSION_MAJOR >= 14
+    AL = AL.addAttributeAtIndex(B.getContext(), AttributeList::FunctionIndex,
+                                Attribute::AttrKind::ReadOnly);
+#else
     AL = AL.addAttribute(B.getContext(), AttributeList::FunctionIndex,
                          Attribute::AttrKind::ReadOnly);
+#endif
     return numThreads = B.CreateCall(newFunc->getParent()->getOrInsertFunction(
                "omp_get_max_threads", FT, AL));
   }
@@ -682,8 +692,13 @@ public:
     IRBuilder<> bb(placeholder);
 
     SmallVector<Value *, 8> args;
-    for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
-      args.push_back(getNewFromOriginal(orig->getArgOperand(i)));
+#if LLVM_VERSION_MAJOR >= 14
+    for (auto &arg : orig->args())
+#else
+    for (auto &arg : orig->arg_operands())
+#endif
+    {
+      args.push_back(getNewFromOriginal(arg));
     }
 
     if (shadowHandlers.find(orig->getCalledFunction()->getName().str()) !=
@@ -718,27 +733,49 @@ public:
     cast<CallInst>(anti)->setTailCallKind(orig->getTailCallKind());
     cast<CallInst>(anti)->setDebugLoc(getNewFromOriginal(orig->getDebugLoc()));
 
+#if LLVM_VERSION_MAJOR >= 14
+    cast<CallInst>(anti)->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                              Attribute::NoAlias);
+    cast<CallInst>(anti)->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                              Attribute::NonNull);
+#else
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex,
                                        Attribute::NoAlias);
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex,
                                        Attribute::NonNull);
-
+#endif
     unsigned derefBytes = 0;
     if (orig->getCalledFunction()->getName() == "malloc" ||
         orig->getCalledFunction()->getName() == "_Znwm") {
       if (auto ci = dyn_cast<ConstantInt>(args[0])) {
         derefBytes = ci->getLimitedValue();
+        CallInst *cal = cast<CallInst>(getNewFromOriginal(orig));
+#if LLVM_VERSION_MAJOR >= 14
+        cast<CallInst>(anti)->addDereferenceableRetAttr(ci->getLimitedValue());
+        cal->addDereferenceableRetAttr(ci->getLimitedValue());
+        AttrBuilder B;
+        B.addDereferenceableOrNullAttr(ci->getLimitedValue());
+        cast<CallInst>(anti)->setAttributes(
+            cast<CallInst>(anti)->getAttributes().addRetAttributes(
+                orig->getContext(), B));
+        cal->setAttributes(
+            cal->getAttributes().addRetAttributes(orig->getContext(), B));
+        cal->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                 Attribute::NoAlias);
+        cal->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                 Attribute::NonNull);
+#else
         cast<CallInst>(anti)->addDereferenceableAttr(
             llvm::AttributeList::ReturnIndex, ci->getLimitedValue());
-        cast<CallInst>(anti)->addDereferenceableOrNullAttr(
-            llvm::AttributeList::ReturnIndex, ci->getLimitedValue());
-        CallInst *cal = cast<CallInst>(getNewFromOriginal(orig));
         cal->addDereferenceableAttr(llvm::AttributeList::ReturnIndex,
                                     ci->getLimitedValue());
+        cast<CallInst>(anti)->addDereferenceableOrNullAttr(
+            llvm::AttributeList::ReturnIndex, ci->getLimitedValue());
         cal->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex,
                                           ci->getLimitedValue());
         cal->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
         cal->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+#endif
       }
     }
 
@@ -807,10 +844,17 @@ public:
       // inst->getAlignment()));
       memset->addParamAttr(0, Attribute::NonNull);
       if (derefBytes) {
+#if LLVM_VERSION_MAJOR >= 14
+        memset->addDereferenceableParamAttr(0, derefBytes);
+        memset->setAttributes(
+            memset->getAttributes().addDereferenceableOrNullParamAttr(
+                memset->getContext(), 0, derefBytes));
+#else
         memset->addDereferenceableAttr(llvm::AttributeList::FirstArgIndex,
                                        derefBytes);
         memset->addDereferenceableOrNullAttr(llvm::AttributeList::FirstArgIndex,
                                              derefBytes);
+#endif
       }
     }
 
@@ -1785,7 +1829,11 @@ public:
     if (newFunc->getSubprogram())
       ci->setDebugLoc(DILocation::get(newFunc->getContext(), 0, 0,
                                       newFunc->getSubprogram(), 0));
+#if LLVM_VERSION_MAJOR >= 14
+    ci->addAttributeAtIndex(AttributeList::FirstArgIndex, Attribute::NonNull);
+#else
     ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
     if (ci->getParent() == nullptr) {
       tbuild.Insert(ci);
     }

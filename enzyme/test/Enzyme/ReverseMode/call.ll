@@ -37,7 +37,7 @@ attributes #0 = { readnone }
 
 declare double @__enzyme_autodiff(double (double)*, ...)
 
-; CHECK: define internal {{(dso_local )?}}{ double } @diffeadd4(double %x, double %[[differet:.+]])
+; CHECK: define internal {{(dso_local )?}}{ double } @diffeadd4(double %x, double {{(noundef )?}}%[[differet:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call { double } @diffeadd2(double %x, double %[[differet]])
 ; CHECK-NEXT:   ret { double } %0

@@ -710,19 +710,37 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         }
 
         if (auto ci = dyn_cast<ConstantInt>(size)) {
+#if LLVM_VERSION_MAJOR >= 14
+          malloccall->addDereferenceableRetAttr(
+              ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
+          AttrBuilder B;
+          B.addDereferenceableOrNullAttr(ci->getLimitedValue() *
+                                         byteSizeOfType->getLimitedValue());
+          malloccall->setAttributes(
+              malloccall->getAttributes().addRetAttributes(
+                  malloccall->getContext(), B));
+#else
           malloccall->addDereferenceableAttr(
               llvm::AttributeList::ReturnIndex,
               ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
           malloccall->addDereferenceableOrNullAttr(
               llvm::AttributeList::ReturnIndex,
               ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
+#endif
           // malloccall->removeAttribute(llvm::AttributeList::ReturnIndex,
           // Attribute::DereferenceableOrNull);
         }
+#if LLVM_VERSION_MAJOR >= 14
+        malloccall->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                        Attribute::NoAlias);
+        malloccall->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                        Attribute::NonNull);
+#else
         malloccall->addAttribute(AttributeList::ReturnIndex,
                                  Attribute::NoAlias);
         malloccall->addAttribute(AttributeList::ReturnIndex,
                                  Attribute::NonNull);
+#endif
 
         storealloc = allocationBuilder.CreateStore(firstallocation, storeInto);
 

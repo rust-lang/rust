@@ -183,7 +183,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call.i = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @_Znwm(i64 16) 
 ; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @_Znwm(i64 16) 
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}dereferenceable(16) dereferenceable_or_null(16) %"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* {{(noundef )?}}nonnull {{(align 1 )?}}dereferenceable(16) dereferenceable_or_null(16) %"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false)
 ; CHECK-NEXT:   %"'ipc.i" = bitcast i8* %"call'mi.i" to %class.node*
 ; CHECK-NEXT:   %[[bcnode]] = bitcast i8* %call.i to %class.node*
 ; CHECK-NEXT:   %value.i.i = bitcast i8* %call.i to double*

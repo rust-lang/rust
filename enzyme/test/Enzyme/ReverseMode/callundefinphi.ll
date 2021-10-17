@@ -445,9 +445,9 @@ attributes #22 = { readnone speculatable }
 
 ; CHECK: define internal void @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEES3_(double* noalias %W, double* %"W'", double* noalias %M, double* %"M'", double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call.i.i.i.i.i.i.i = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128) #8
-; CHECK-NEXT:   %"call.i.i.i.i.i.i.i'mi" = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128) #8
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(128) dereferenceable_or_null(128) %"call.i.i.i.i.i.i.i'mi", i8 0, i64 128, i1 false)
+; CHECK-NEXT:   %call.i.i.i.i.i.i.i = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128)
+; CHECK-NEXT:   %"call.i.i.i.i.i.i.i'mi" = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* {{(noundef )?}}nonnull dereferenceable(128) dereferenceable_or_null(128) %"call.i.i.i.i.i.i.i'mi", i8 0, i64 128, i1 false)
 ; CHECK-NEXT:   %"'ipc" = bitcast i8* %"call.i.i.i.i.i.i.i'mi" to double*
 ; CHECK-NEXT:   %0 = bitcast i8* %call.i.i.i.i.i.i.i to double*
 ; CHECK-NEXT:   br label %for.body.i.i
@@ -466,9 +466,9 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br i1 %exitcond.i.i, label %_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit, label %for.body.i.i
 
 ; CHECK: _ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit: ; preds = %for.body.i.i
-; CHECK-NEXT:   %call.i.i.i.i.i.i.i13 = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128) #8
-; CHECK-NEXT:   %"call.i.i.i.i.i.i.i13'mi" = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128) #8
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(128) dereferenceable_or_null(128) %"call.i.i.i.i.i.i.i13'mi", i8 0, i64 128, i1 false)
+; CHECK-NEXT:   %call.i.i.i.i.i.i.i13 = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128)
+; CHECK-NEXT:   %"call.i.i.i.i.i.i.i13'mi" = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* {{(noundef )?}}nonnull dereferenceable(128) dereferenceable_or_null(128) %"call.i.i.i.i.i.i.i13'mi", i8 0, i64 128, i1 false)
 ; CHECK-NEXT:   %"'ipc8" = bitcast i8* %"call.i.i.i.i.i.i.i13'mi" to double*
 ; CHECK-NEXT:   %[[unwrap:.+]] = bitcast i8* %call.i.i.i.i.i.i.i13 to double*
 ; CHECK-NEXT:   br label %for.body.i

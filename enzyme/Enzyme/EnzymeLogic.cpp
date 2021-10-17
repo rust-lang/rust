@@ -61,6 +61,11 @@
 #include "LibraryFuncs.h"
 #include "Utils.h"
 
+#if LLVM_VERSION_MAJOR >= 14
+#define addAttribute addAttributeAtIndex
+#define removeAttribute removeAttributeAtIndex
+#endif
+
 using namespace llvm;
 
 extern "C" {
@@ -567,7 +572,12 @@ struct CacheAnalysis {
     // function to the callee.
     //   because memory location x modified after parent returns => x modified
     //   after callee returns.
-    for (unsigned i = 0; i < callsite_op->getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+    for (unsigned i = 0; i < callsite_op->arg_size(); ++i)
+#else
+    for (unsigned i = 0; i < callsite_op->getNumArgOperands(); ++i)
+#endif
+    {
       args.push_back(callsite_op->getArgOperand(i));
 
 // If the UnderlyingObject is from one of this function's arguments, then we
@@ -1068,7 +1078,12 @@ bool shouldAugmentCall(CallInst *op, const GradientUtils *gutils,
   if (!called || called->empty())
     modifyPrimal = true;
 
-  for (unsigned i = 0; i < op->getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+  for (unsigned i = 0; i < op->arg_size(); ++i)
+#else
+  for (unsigned i = 0; i < op->getNumArgOperands(); ++i)
+#endif
+  {
     if (gutils->isConstantValue(op->getArgOperand(i)) && called &&
         !called->empty()) {
       continue;
@@ -1419,38 +1434,48 @@ void clearFunctionAttributes(Function *f) {
   if (f->hasFnAttribute(Attribute::OptimizeNone))
     f->removeFnAttr(Attribute::OptimizeNone);
 
-  if (auto bytes =
-          f->getDereferenceableBytes(llvm::AttributeList::ReturnIndex)) {
+#if LLVM_VERSION_MAJOR >= 14
+  if (auto bytes = f->getAttributes().getRetDereferenceableBytes())
+#else
+  if (auto bytes = f->getDereferenceableBytes(llvm::AttributeList::ReturnIndex))
+#endif
+  {
     AttrBuilder ab;
     ab.addDereferenceableAttr(bytes);
+#if LLVM_VERSION_MAJOR >= 14
+    f->removeRetAttrs(ab);
+#else
     f->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
+#endif
   }
 
   if (f->getAttributes().getRetAlignment()) {
     AttrBuilder ab;
     ab.addAlignmentAttr(f->getAttributes().getRetAlignment());
+#if LLVM_VERSION_MAJOR >= 14
+    f->removeRetAttrs(ab);
+#else
     f->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
-  }
-  if (f->hasAttribute(llvm::AttributeList::ReturnIndex,
-                      llvm::Attribute::NoAlias)) {
-    f->removeAttribute(llvm::AttributeList::ReturnIndex,
-                       llvm::Attribute::NoAlias);
-  }
-#if LLVM_VERSION_MAJOR >= 11
-  if (f->hasAttribute(llvm::AttributeList::ReturnIndex,
-                      llvm::Attribute::NoUndef)) {
-    f->removeAttribute(llvm::AttributeList::ReturnIndex,
-                       llvm::Attribute::NoUndef);
-  }
 #endif
-  if (f->hasAttribute(llvm::AttributeList::ReturnIndex,
-                      llvm::Attribute::NonNull)) {
-    f->removeAttribute(llvm::AttributeList::ReturnIndex,
-                       llvm::Attribute::NonNull);
   }
-  if (f->hasAttribute(llvm::AttributeList::ReturnIndex,
-                      llvm::Attribute::ZExt)) {
-    f->removeAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::ZExt);
+  Attribute::AttrKind attrs[] = {
+#if LLVM_VERSION_MAJOR >= 11
+    Attribute::NoUndef,
+#endif
+    Attribute::NonNull,
+    Attribute::ZExt,
+    Attribute::NoAlias
+  };
+  for (auto attr : attrs) {
+#if LLVM_VERSION_MAJOR >= 14
+    if (f->hasRetAttribute(attr)) {
+      f->removeRetAttr(attr);
+    }
+#else
+    if (f->hasAttribute(llvm::AttributeList::ReturnIndex, attr)) {
+      f->removeAttribute(llvm::AttributeList::ReturnIndex, attr);
+    }
+#endif
   }
 }
 
@@ -1920,40 +1945,52 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   if (gutils->newFunc->hasFnAttribute(Attribute::OptimizeNone))
     gutils->newFunc->removeFnAttr(Attribute::OptimizeNone);
 
+#if LLVM_VERSION_MAJOR >= 14
+  if (auto bytes =
+          gutils->newFunc->getAttributes().getRetDereferenceableBytes())
+#else
   if (auto bytes = gutils->newFunc->getDereferenceableBytes(
-          llvm::AttributeList::ReturnIndex)) {
+          llvm::AttributeList::ReturnIndex))
+#endif
+  {
     AttrBuilder ab;
     ab.addDereferenceableAttr(bytes);
+#if LLVM_VERSION_MAJOR >= 14
+    gutils->newFunc->removeRetAttrs(ab);
+#else
     gutils->newFunc->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
+#endif
   }
 
   // TODO could keep nonnull if returning value -1
   if (gutils->newFunc->getAttributes().getRetAlignment()) {
     AttrBuilder ab;
     ab.addAlignmentAttr(gutils->newFunc->getAttributes().getRetAlignment());
+#if LLVM_VERSION_MAJOR >= 14
+    gutils->newFunc->removeRetAttrs(ab);
+#else
     gutils->newFunc->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
-  }
-  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
-                                    llvm::Attribute::NoAlias)) {
-    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
-                                     llvm::Attribute::NoAlias);
-  }
-#if LLVM_VERSION_MAJOR >= 11
-  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
-                                    llvm::Attribute::NoUndef)) {
-    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
-                                     llvm::Attribute::NoUndef);
-  }
 #endif
-  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
-                                    llvm::Attribute::NonNull)) {
-    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
-                                     llvm::Attribute::NonNull);
   }
-  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
-                                    llvm::Attribute::ZExt)) {
-    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
-                                     llvm::Attribute::ZExt);
+
+  llvm::Attribute::AttrKind attrs[] = {
+    llvm::Attribute::NoAlias,
+#if LLVM_VERSION_MAJOR >= 11
+    llvm::Attribute::NoUndef,
+#endif
+    llvm::Attribute::NonNull,
+    llvm::Attribute::ZExt,
+  };
+  for (auto attr : attrs) {
+#if LLVM_VERSION_MAJOR >= 14
+    if (gutils->newFunc->hasRetAttribute(attr)) {
+      gutils->newFunc->removeRetAttr(attr);
+    }
+#else
+    if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex, attr)) {
+      gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex, attr);
+    }
+#endif
   }
 
   //! Keep track of inverted pointers we may need to return
@@ -2125,12 +2162,25 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
         malloccall =
             cast<CallInst>(cast<Instruction>(tapeMemory)->getOperand(0));
       }
-      malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
-      malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+      for (auto attr : {Attribute::NoAlias, Attribute::NonNull}) {
+#if LLVM_VERSION_MAJOR >= 14
+        malloccall->addRetAttr(attr);
+#else
+        malloccall->addAttribute(AttributeList::ReturnIndex, attr);
+#endif
+      }
+#if LLVM_VERSION_MAJOR >= 14
+      malloccall->addDereferenceableRetAttr(size->getLimitedValue());
+      AttrBuilder B;
+      B.addDereferenceableOrNullAttr(size->getLimitedValue());
+      malloccall->setAttributes(malloccall->getAttributes().addRetAttributes(
+          malloccall->getContext(), B));
+#else
       malloccall->addDereferenceableAttr(llvm::AttributeList::ReturnIndex,
                                          size->getLimitedValue());
       malloccall->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex,
                                                size->getLimitedValue());
+#endif
       std::vector<Value *> Idxs = {
           ib.getInt32(0),
           ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),

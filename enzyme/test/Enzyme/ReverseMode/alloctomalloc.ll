@@ -496,7 +496,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 dereferenceable(16) dereferenceable_or_null(16) %"malloccall'mi", i8 0, i64 16, i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* {{(noundef )?}}nonnull align 1 dereferenceable(16) dereferenceable_or_null(16) %"malloccall'mi", i8 0, i64 16, i1 false)
 ; CHECK-NEXT:   %"tmp.i'ipc" = bitcast i8* %"malloccall'mi" to <2 x double>*
 ; CHECK-NEXT:   %tmp.i = bitcast i8* %malloccall to <2 x double>*
 ; CHECK-NEXT:   %subcast_augmented = call { <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>*{{( nonnull)?}} %tmp.i, <2 x double>*{{( nonnull)?}} %"tmp.i'ipc")
@@ -507,7 +507,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %W12 = load <2 x double>, <2 x double>* %W12p, align 16
 ; CHECK-NEXT:   %B1 = load double, double* %B, align 8
 ; CHECK-NEXT:   %preb1 = insertelement <2 x double> undef, double %B1, i32 0
-; CHECK-NEXT:   %B11 = shufflevector <2 x double> %preb1, <2 x double> undef, <2 x i32> zeroinitializer
+; CHECK-NEXT:   %B11 = shufflevector <2 x double> %preb1, <2 x double> {{(undef|poison)?}}, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   %mul = fmul <2 x double> %W12, %B11
 ; CHECK-NEXT:   %W34p = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 0, i32 0, i64 2
 ; CHECK-NEXT:   %0 = bitcast double* %W34p to <2 x double>*
@@ -515,7 +515,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %B2p = getelementptr inbounds double, double* %B, i64 1
 ; CHECK-NEXT:   %B2 = load double, double* %B2p, align 8
 ; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
-; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> undef, <2 x i32> zeroinitializer
+; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> {{(undef|poison)?}}, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   %mul2 = fmul <2 x double> %W34, %B22
 ; CHECK-NEXT:   %result = fadd <2 x double> %mul2, %mul
 ; CHECK-NEXT:   store <2 x double> %result, <2 x double>* %subcast, align 16
@@ -549,7 +549,7 @@ attributes #9 = { cold }
 
 ; CHECK-NEXT:   %B1 = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 4
 ; CHECK-NEXT:   %preb1 = insertelement <2 x double> undef, double %B1, i32 0
-; CHECK-NEXT:   %B11 = shufflevector <2 x double> %preb1, <2 x double> undef, <2 x i32> zeroinitializer
+; CHECK-NEXT:   %B11 = shufflevector <2 x double> %preb1, <2 x double> {{(undef|poison)?}}, <2 x i32> zeroinitializer
 
 ; CHECK-NEXT:   %[[W34p_ipge:.+]] = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %"W'", i64 0, i32 0, i32 0, i32 0, i32 0, i64 2
 ; CHECK-NEXT:   %[[vW34:.+]] = bitcast double* %[[W34p_ipge]] to <2 x double>*
@@ -560,7 +560,7 @@ attributes #9 = { cold }
 
 ; CHECK-NEXT:   %B2 = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 6
 ; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
-; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> undef, <2 x i32> zeroinitializer
+; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> {{(undef|poison)?}}, <2 x i32> zeroinitializer
 
 ; CHECK-NEXT:   %[[dstload:.+]] = load <2 x double>, <2 x double>* %"dst'", align 16
 ; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %"dst'", align 16

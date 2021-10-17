@@ -321,7 +321,12 @@ static inline void propagateArgumentInformation(
 
   // For other calls, check all operands of the instruction
   // as conservatively they may impact the activity of the call
-  for (auto &a : CI.arg_operands()) {
+#if LLVM_VERSION_MAJOR >= 14
+  for (auto &a : CI.args())
+#else
+  for (auto &a : CI.arg_operands())
+#endif
+  {
     if (propagateFromOperand(a))
       break;
   }

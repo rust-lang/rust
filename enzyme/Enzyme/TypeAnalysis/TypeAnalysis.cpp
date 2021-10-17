@@ -714,12 +714,17 @@ void TypeAnalyzer::considerTBAA() {
               F = fn;
             }
         }
+#if LLVM_VERSION_MAJOR >= 14
+        size_t num_args = call->arg_size();
+#else
+        size_t num_args = call->getNumArgOperands();
+#endif
         if (F && F->getName().contains("__enzyme_float")) {
-          assert(call->getNumArgOperands() == 1 || call->getNumOperands() == 2);
+          assert(num_args == 1 || num_args == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
           TypeTree TT;
           size_t num = 1;
-          if (call->getNumArgOperands() == 2) {
+          if (num_args == 2) {
             assert(isa<ConstantInt>(call->getArgOperand(1)));
             num = cast<ConstantInt>(call->getArgOperand(1))->getLimitedValue();
           }
@@ -729,11 +734,11 @@ void TypeAnalyzer::considerTBAA() {
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
         if (F && F->getName().contains("__enzyme_double")) {
-          assert(call->getNumArgOperands() == 1 || call->getNumOperands() == 2);
+          assert(num_args == 1 || num_args == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
           TypeTree TT;
           size_t num = 1;
-          if (call->getNumArgOperands() == 2) {
+          if (num_args == 2) {
             assert(isa<ConstantInt>(call->getArgOperand(1)));
             num = cast<ConstantInt>(call->getArgOperand(1))->getLimitedValue();
           }
@@ -743,11 +748,10 @@ void TypeAnalyzer::considerTBAA() {
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
         if (F && F->getName().contains("__enzyme_integer")) {
-          assert(call->getNumArgOperands() == 1 ||
-                 call->getNumArgOperands() == 2);
+          assert(num_args == 1 || num_args == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
           size_t num = 1;
-          if (call->getNumArgOperands() == 2) {
+          if (num_args == 2) {
             assert(isa<ConstantInt>(call->getArgOperand(1)));
             num = cast<ConstantInt>(call->getArgOperand(1))->getLimitedValue();
           }
@@ -758,12 +762,11 @@ void TypeAnalyzer::considerTBAA() {
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
         if (F && F->getName().contains("__enzyme_pointer")) {
-          assert(call->getNumArgOperands() == 1 ||
-                 call->getNumArgOperands() == 2);
+          assert(num_args == 1 || num_args == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
           TypeTree TT;
           size_t num = 1;
-          if (call->getNumArgOperands() == 2) {
+          if (num_args == 2) {
             assert(isa<ConstantInt>(call->getArgOperand(1)));
             num = cast<ConstantInt>(call->getArgOperand(1))->getLimitedValue();
           }
@@ -2495,7 +2498,12 @@ void TypeAnalyzer::visitMemTransferCommon(llvm::CallInst &MTI) {
   res.insert({-1}, BaseType::Pointer);
   updateAnalysis(MTI.getArgOperand(0), res, &MTI);
   updateAnalysis(MTI.getArgOperand(1), res, &MTI);
-  for (unsigned i = 2; i < MTI.getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+  for (unsigned i = 2; i < MTI.arg_size(); ++i)
+#else
+  for (unsigned i = 2; i < MTI.getNumArgOperands(); ++i)
+#endif
+  {
     updateAnalysis(MTI.getArgOperand(i), TypeTree(BaseType::Integer).Only(-1),
                    &MTI);
   }
@@ -3225,7 +3233,12 @@ void TypeAnalyzer::visitInvokeInst(InvokeInst &call) {
 
   IRBuilder<> B(&call);
   std::vector<Value *> args;
-  for (auto &val : call.arg_operands()) {
+#if LLVM_VERSION_MAJOR >= 14
+  for (auto &val : call.args())
+#else
+  for (auto &val : call.arg_operands())
+#endif
+  {
     args.push_back(val);
   }
 #if LLVM_VERSION_MAJOR >= 11
@@ -3260,9 +3273,16 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     // NO direction check as always valid
     if (StringRef(iasm->getAsmString()).contains("cpuid")) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
-      for (unsigned i = 0; i < call.getNumArgOperands(); ++i) {
+      size_t i = 0;
+#if LLVM_VERSION_MAJOR >= 14
+      for (auto &arg : call.args())
+#else
+      for (auto &arg : call.arg_operands())
+#endif
+      {
         updateAnalysis(call.getArgOperand(i),
                        TypeTree(BaseType::Integer).Only(-1), &call);
+        ++i;
       }
     }
   }
@@ -3308,7 +3328,12 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       auto returnAnalysis = getAnalysis(&call);
       std::vector<TypeTree> args;
       std::vector<std::set<int64_t>> knownValues;
-      for (auto &arg : call.arg_operands()) {
+#if LLVM_VERSION_MAJOR >= 14
+      for (auto &arg : call.args())
+#else
+      for (auto &arg : call.arg_operands())
+#endif
+      {
         args.push_back(getAnalysis(arg));
         knownValues.push_back(
             fntypeinfo.knownIntegralValues((Value *)arg, *DT, intseen));
@@ -3321,7 +3346,12 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       }
       updateAnalysis(&call, returnAnalysis, &call);
       size_t argnum = 0;
-      for (auto &arg : call.arg_operands()) {
+#if LLVM_VERSION_MAJOR >= 14
+      for (auto &arg : call.args())
+#else
+      for (auto &arg : call.arg_operands())
+#endif
+      {
         updateAnalysis(arg, args[argnum], &call);
         argnum++;
       }
@@ -3375,9 +3405,14 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
           fn = dyn_cast<Function>(castinst->getOperand(0));
 
       if (fn) {
+#if LLVM_VERSION_MAJOR >= 14
+        if (call.arg_size() - 3 != fn->getFunctionType()->getNumParams() - 2)
+          return;
+#else
         if (call.getNumArgOperands() - 3 !=
             fn->getFunctionType()->getNumParams() - 2)
           return;
+#endif
 
         if (direction & UP) {
           FnTypeInfo typeInfo(fn);
@@ -3417,7 +3452,12 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
           ++a;
           ++a;
           TypeResults STR = interprocedural.analyzeFunction(typeInfo);
-          for (size_t i = 3; i < call.getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+          for (unsigned i = 3; i < call.arg_size(); ++i)
+#else
+          for (unsigned i = 3; i < call.getNumArgOperands(); ++i)
+#endif
+          {
             auto dt = STR.query(a);
             updateAnalysis(call.getArgOperand(i), dt, &call);
             ++a;
@@ -3937,7 +3977,12 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     CONSIDER(remquol)
 
     if (isMemFreeLibMFunction(funcName)) {
-      for (size_t i = 0; i < call.getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+      for (size_t i = 0; i < call.arg_size(); ++i)
+#else
+      for (size_t i = 0; i < call.getNumArgOperands(); ++i)
+#endif
+      {
         Type *T = call.getArgOperand(i)->getType();
         if (T->isFloatingPointTy()) {
           updateAnalysis(
@@ -4386,8 +4431,13 @@ FnTypeInfo TypeAnalyzer::getCallInfo(CallInst &call, Function &fn) {
 }
 
 void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
+#if LLVM_VERSION_MAJOR >= 14
+  if (call.arg_size() != fn.getFunctionType()->getNumParams())
+    return;
+#else
   if (call.getNumArgOperands() != fn.getFunctionType()->getNumParams())
     return;
+#endif
 
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
@@ -4405,7 +4455,12 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
   }
   if (hasUp) {
     bool unknown = false;
-    for (auto &arg : call.arg_operands()) {
+#if LLVM_VERSION_MAJOR >= 14
+    for (auto &arg : call.args())
+#else
+    for (auto &arg : call.arg_operands())
+#endif
+    {
       if (isa<ConstantData>(arg))
         continue;
       if (!getAnalysis(arg).IsFullyDetermined()) {
@@ -4430,9 +4485,14 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
 
   if (hasUp) {
     auto a = fn.arg_begin();
-    for (size_t i = 0; i < call.getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+    for (auto &arg : call.args())
+#else
+    for (auto &arg : call.arg_operands())
+#endif
+    {
       auto dt = STR.query(a);
-      updateAnalysis(call.getArgOperand(i), dt, &call);
+      updateAnalysis(arg, dt, &call);
       ++a;
     }
   }

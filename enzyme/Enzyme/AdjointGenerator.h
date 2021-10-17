@@ -177,21 +177,30 @@ public:
         AL.addParamAttribute(DT->getContext(), 1, Attribute::AttrKind::NoAlias);
     AL =
         AL.addParamAttribute(DT->getContext(), 1, Attribute::AttrKind::NonNull);
+#if LLVM_VERSION_MAJOR >= 14
+    AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
+                                Attribute::AttrKind::ArgMemOnly);
+    AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
+                                Attribute::AttrKind::NoUnwind);
+    AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
+                                Attribute::AttrKind::NoFree);
+    AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
+                                Attribute::AttrKind::NoSync);
+    AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
+                                Attribute::AttrKind::WillReturn);
+#elif LLVM_VERSION_MAJOR >= 9
+    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
+                         Attribute::AttrKind::NoFree);
+    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
+                         Attribute::AttrKind::NoSync);
+    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
+                         Attribute::AttrKind::WillReturn);
+#endif
+#if LLVM_VERSION_MAJOR < 14
     AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
                          Attribute::AttrKind::ArgMemOnly);
     AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
                          Attribute::AttrKind::NoUnwind);
-#if LLVM_VERSION_MAJOR >= 9
-    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
-                         Attribute::AttrKind::NoFree);
-#endif
-#if LLVM_VERSION_MAJOR >= 9
-    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
-                         Attribute::AttrKind::NoSync);
-#endif
-#if LLVM_VERSION_MAJOR >= 9
-    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
-                         Attribute::AttrKind::WillReturn);
 #endif
     B.CreateCall(
         B.GetInsertBlock()->getParent()->getParent()->getOrInsertFunction(
@@ -216,17 +225,25 @@ public:
     AL = AL.addParamAttribute(context, 1, Attribute::AttrKind::NoCapture);
     AL = AL.addParamAttribute(context, 1, Attribute::AttrKind::NoAlias);
     AL = AL.addParamAttribute(context, 1, Attribute::AttrKind::NonNull);
+#if LLVM_VERSION_MAJOR >= 14
+    AL = AL.addAttributeAtIndex(context, AttributeList::FunctionIndex,
+                                Attribute::AttrKind::NoUnwind);
+#else
     AL = AL.addAttribute(context, AttributeList::FunctionIndex,
                          Attribute::AttrKind::NoUnwind);
-#if LLVM_VERSION_MAJOR >= 9
+#endif
+#if LLVM_VERSION_MAJOR >= 14
+    AL = AL.addAttributeAtIndex(context, AttributeList::FunctionIndex,
+                                Attribute::AttrKind::NoFree);
+    AL = AL.addAttributeAtIndex(context, AttributeList::FunctionIndex,
+                                Attribute::AttrKind::NoSync);
+    AL = AL.addAttributeAtIndex(context, AttributeList::FunctionIndex,
+                                Attribute::AttrKind::WillReturn);
+#elif LLVM_VERSION_MAJOR >= 9
     AL = AL.addAttribute(context, AttributeList::FunctionIndex,
                          Attribute::AttrKind::NoFree);
-#endif
-#if LLVM_VERSION_MAJOR >= 9
     AL = AL.addAttribute(context, AttributeList::FunctionIndex,
                          Attribute::AttrKind::NoSync);
-#endif
-#if LLVM_VERSION_MAJOR >= 9
     AL = AL.addAttribute(context, AttributeList::FunctionIndex,
                          Attribute::AttrKind::WillReturn);
 #endif
@@ -252,17 +269,25 @@ public:
     AL = AL.addParamAttribute(context, 1, Attribute::AttrKind::NoCapture);
     AL = AL.addParamAttribute(context, 1, Attribute::AttrKind::NoAlias);
     AL = AL.addParamAttribute(context, 1, Attribute::AttrKind::NonNull);
+#if LLVM_VERSION_MAJOR >= 14
+    AL = AL.addAttributeAtIndex(context, AttributeList::FunctionIndex,
+                                Attribute::AttrKind::NoUnwind);
+#else
     AL = AL.addAttribute(context, AttributeList::FunctionIndex,
                          Attribute::AttrKind::NoUnwind);
-#if LLVM_VERSION_MAJOR >= 9
+#endif
+#if LLVM_VERSION_MAJOR >= 14
+    AL = AL.addAttributeAtIndex(context, AttributeList::FunctionIndex,
+                                Attribute::AttrKind::NoFree);
+    AL = AL.addAttributeAtIndex(context, AttributeList::FunctionIndex,
+                                Attribute::AttrKind::NoSync);
+    AL = AL.addAttributeAtIndex(context, AttributeList::FunctionIndex,
+                                Attribute::AttrKind::WillReturn);
+#elif LLVM_VERSION_MAJOR >= 9
     AL = AL.addAttribute(context, AttributeList::FunctionIndex,
                          Attribute::AttrKind::NoFree);
-#endif
-#if LLVM_VERSION_MAJOR >= 9
     AL = AL.addAttribute(context, AttributeList::FunctionIndex,
                          Attribute::AttrKind::NoSync);
-#endif
-#if LLVM_VERSION_MAJOR >= 9
     AL = AL.addAttribute(context, AttributeList::FunctionIndex,
                          Attribute::AttrKind::WillReturn);
 #endif
@@ -2958,7 +2983,13 @@ public:
               lookup(op0, Builder2),
               Builder2.CreateSub(lookup(op1, Builder2),
                                  ConstantInt::get(op1->getType(), 1))};
-          Type *tys[] = {orig_ops[0]->getType()};
+          Type *tys[] = {
+            orig_ops[0]->getType()
+#if LLVM_VERSION_MAJOR >= 13
+                ,
+            orig_ops[1]->getType()
+#endif
+          };
           Function *PowF = Intrinsic::getDeclaration(M, Intrinsic::powi, tys);
           auto cal = cast<CallInst>(Builder2.CreateCall(PowF, args));
           cal->setCallingConv(PowF->getCallingConv());
@@ -3343,7 +3374,13 @@ public:
           SmallVector<Value *, 2> args = {
               op0,
               Builder2.CreateSub(op1, ConstantInt::get(op1->getType(), 1))};
-          Type *tys[] = {orig_ops[0]->getType()};
+          Type *tys[] = {
+            orig_ops[0]->getType()
+#if LLVM_VERSION_MAJOR >= 13
+                ,
+            orig_ops[1]->getType()
+#endif
+          };
           Function *PowF = Intrinsic::getDeclaration(M, Intrinsic::powi, tys);
           auto cal = cast<CallInst>(Builder2.CreateCall(PowF, args));
           cal->setCallingConv(PowF->getCallingConv());
@@ -3547,7 +3584,12 @@ public:
     SmallVector<Value *, 0> OutTypes;
     SmallVector<Type *, 0> OutFPTypes;
 
-    for (unsigned i = 3; i < call.getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+    for (unsigned i = 3; i < call.arg_size(); ++i)
+#else
+    for (unsigned i = 3; i < call.getNumArgOperands(); ++i)
+#endif
+    {
 
       auto argi = gutils->getNewFromOriginal(call.getArgOperand(i));
 
@@ -4081,7 +4123,12 @@ public:
                     idx == -1 ? tape : Builder2.CreateExtractValue(tape, idx),
                     Type::getInt8PtrTy(Builder2.getContext())),
                 Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+            ci->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                    Attribute::NonNull);
+#else
             ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
             if (ci->getParent() == nullptr) {
               Builder2.Insert(ci);
             }
@@ -4453,7 +4500,12 @@ public:
 
             auto ci = cast<CallInst>(CallInst::CreateFree(
                 firstallocation, Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+            ci->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                    Attribute::NonNull);
+#else
             ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
             if (ci->getParent() == nullptr) {
               Builder2.Insert(ci);
             }
@@ -4515,8 +4567,13 @@ public:
         Value *cache = Builder2.CreateLoad(d_reqp);
         CallInst *freecall = cast<CallInst>(
             CallInst::CreateFree(d_reqp, Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+        freecall->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                      Attribute::NonNull);
+#else
         freecall->addAttribute(AttributeList::FirstArgIndex,
                                Attribute::NonNull);
+#endif
         if (freecall->getParent() == nullptr) {
           Builder2.Insert(freecall);
         }
@@ -4615,8 +4672,13 @@ public:
         Value *cache = Builder2.CreateLoad(d_reqp);
         CallInst *freecall = cast<CallInst>(
             CallInst::CreateFree(d_reqp, Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+        freecall->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                      Attribute::NonNull);
+#else
         freecall->addAttribute(AttributeList::FirstArgIndex,
                                Attribute::NonNull);
+#endif
         if (freecall->getParent() == nullptr) {
           Builder2.Insert(freecall);
         }
@@ -4724,7 +4786,12 @@ public:
 
         auto ci = cast<CallInst>(
             CallInst::CreateFree(firstallocation, Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+        ci->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                Attribute::NonNull);
+#else
         ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
         if (ci->getParent() == nullptr) {
           Builder2.Insert(ci);
         }
@@ -4929,7 +4996,12 @@ public:
           // Free up the memory of the buffer
           auto ci = cast<CallInst>(
               CallInst::CreateFree(buf, Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+          ci->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                  Attribute::NonNull);
+#else
           ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
           if (ci->getParent() == nullptr) {
             Builder2.Insert(ci);
           }
@@ -5140,7 +5212,12 @@ public:
         // Free up intermediate buffer
         auto ci = cast<CallInst>(
             CallInst::CreateFree(buf, Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+        ci->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                Attribute::NonNull);
+#else
         ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
         if (ci->getParent() == nullptr) {
           Builder2.Insert(ci);
         }
@@ -5280,7 +5357,12 @@ public:
         // Free up intermediate buffer
         auto ci = cast<CallInst>(
             CallInst::CreateFree(buf, Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+        ci->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                Attribute::NonNull);
+#else
         ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
         if (ci->getParent() == nullptr) {
           Builder2.Insert(ci);
         }
@@ -5437,7 +5519,12 @@ public:
         // Free up intermediate buffer
         auto ci = cast<CallInst>(
             CallInst::CreateFree(buf, Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+        ci->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                Attribute::NonNull);
+#else
         ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
         if (ci->getParent() == nullptr) {
           Builder2.Insert(ci);
         }
@@ -5623,7 +5710,12 @@ public:
           // Free up intermediate buffer
           auto ci = cast<CallInst>(
               CallInst::CreateFree(buf, Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+          ci->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                  Attribute::NonNull);
+#else
           ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
           if (ci->getParent() == nullptr) {
             Builder2.Insert(ci);
           }
@@ -5773,7 +5865,12 @@ public:
         // Free up intermediate buffer
         auto ci = cast<CallInst>(
             CallInst::CreateFree(buf, Builder2.GetInsertBlock()));
+#if LLVM_VERSION_MAJOR >= 14
+        ci->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                Attribute::NonNull);
+#else
         ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
         if (ci->getParent() == nullptr) {
           Builder2.Insert(ci);
         }
@@ -6657,7 +6754,12 @@ public:
         if (gutils->isConstantValue(orig->getArgOperand(3)))
           return;
         SmallVector<Value *, 2> args;
-        for (auto &arg : call.arg_operands()) {
+#if LLVM_VERSION_MAJOR >= 14
+        for (auto &arg : call.args())
+#else
+        for (auto &arg : call.arg_operands())
+#endif
+        {
           if (gutils->isConstantValue(arg))
             args.push_back(gutils->getNewFromOriginal(arg));
           else
@@ -6698,7 +6800,12 @@ public:
               else {
                 SmallVector<Value *, 2> args;
                 size_t i = 0;
-                for (auto &arg : call.arg_operands()) {
+#if LLVM_VERSION_MAJOR >= 14
+                for (auto &arg : call.args())
+#else
+                for (auto &arg : call.arg_operands())
+#endif
+                {
                   if (gutils->isConstantValue(arg) ||
                       (funcName == "__dynamic_cast" && i > 0))
                     args.push_back(gutils->getNewFromOriginal(arg));
@@ -7151,8 +7258,12 @@ public:
           }
           SmallVector<Value *, 1> iargs;
           IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&call));
-          for (size_t i = 0, end = orig->getNumArgOperands(); i < end; ++i) {
-            auto arg = orig->getArgOperand(i);
+#if LLVM_VERSION_MAJOR >= 14
+          for (auto &arg : orig->args())
+#else
+          for (auto &arg : orig->arg_operands())
+#endif
+          {
             if (!gutils->isConstantValue(arg)) {
               Value *ptrshadow = gutils->invertPointerM(arg, BuilderZ);
               iargs.push_back(ptrshadow);
@@ -7274,9 +7385,12 @@ public:
             getForwardBuilder(Builder2);
 
             SmallVector<Value *, 2> args;
-            for (size_t i = 0; i < orig->getNumArgOperands(); ++i)
-              args.push_back(
-                  gutils->getNewFromOriginal(orig->getArgOperand(i)));
+#if LLVM_VERSION_MAJOR >= 14
+            for (auto &arg : orig->args())
+#else
+            for (auto &arg : orig->arg_operands())
+#endif
+              args.push_back(gutils->getNewFromOriginal(arg));
 
             CallInst *d = cast<CallInst>(Builder2.CreateCall(called, args));
 
@@ -7304,10 +7418,12 @@ public:
             Value *vdiff = diffe(orig, Builder2);
 
             SmallVector<Value *, 2> args;
-            for (size_t i = 0; i < orig->getNumArgOperands(); ++i)
-              args.push_back(
-                  lookup(gutils->getNewFromOriginal(orig->getArgOperand(i)),
-                         Builder2));
+#if LLVM_VERSION_MAJOR >= 14
+            for (auto &arg : orig->args())
+#else
+            for (auto &arg : orig->arg_operands())
+#endif
+              args.push_back(lookup(gutils->getNewFromOriginal(arg), Builder2));
 
             CallInst *d = cast<CallInst>(Builder2.CreateCall(called, args));
 
@@ -7428,8 +7544,13 @@ public:
             auto CI = freeKnownAllocation(Builder2, tofree, *called, dbgLoc,
                                           gutils->TLI);
             if (CI)
+#if LLVM_VERSION_MAJOR >= 14
+              CI->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                      Attribute::NonNull);
+#else
               CI->addAttribute(AttributeList::FirstArgIndex,
                                Attribute::NonNull);
+#endif
           }
         } else if (Mode == DerivativeMode::ForwardMode) {
           IRBuilder<> Builder2(&call);
@@ -7788,7 +7909,12 @@ public:
       std::vector<DIFFE_TYPE> argsInverted;
       std::map<int, Type *> gradByVal;
 
-      for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+      for (unsigned i = 0; i < orig->arg_size(); ++i)
+#else
+      for (unsigned i = 0; i < orig->getNumArgOperands(); ++i)
+#endif
+      {
 
         auto argi = gutils->getNewFromOriginal(orig->getArgOperand(i));
 
@@ -7902,7 +8028,12 @@ public:
     std::map<int, Type *> preByVal;
     std::map<int, Type *> gradByVal;
 
-    for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+    for (unsigned i = 0; i < orig->arg_size(); ++i)
+#else
+    for (unsigned i = 0; i < orig->getNumArgOperands(); ++i)
+#endif
+    {
 
       auto argi = gutils->getNewFromOriginal(orig->getArgOperand(i));
 
@@ -7975,13 +8106,18 @@ public:
       }
     }
     if (called) {
+#if LLVM_VERSION_MAJOR >= 14
+      if (orig->arg_size() !=
+          cast<Function>(called)->getFunctionType()->getNumParams())
+#else
       if (orig->getNumArgOperands() !=
-          cast<Function>(called)->getFunctionType()->getNumParams()) {
+          cast<Function>(called)->getFunctionType()->getNumParams())
+#endif
+      {
         llvm::errs() << *gutils->oldFunc << "\n";
         llvm::errs() << *orig << "\n";
+        assert(0 && "number of arg operands != function parameters");
       }
-      assert(orig->getNumArgOperands() ==
-             cast<Function>(called)->getFunctionType()->getNumParams());
       assert(argsInverted.size() ==
              cast<Function>(called)->getFunctionType()->getNumParams());
     }
@@ -8319,7 +8455,12 @@ public:
 
         CallInst *ci = cast<CallInst>(
             CallInst::CreateFree(tape, &*BuilderZ.GetInsertPoint()));
+#if LLVM_VERSION_MAJOR >= 14
+        ci->addAttributeAtIndex(AttributeList::FirstArgIndex,
+                                Attribute::NonNull);
+#else
         ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
         tape = truetape;
       }
     } else {
@@ -8478,7 +8619,12 @@ public:
     if (subdretptr)
       ++structidx;
 
-    for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+    for (unsigned i = 0; i < orig->arg_size(); ++i)
+#else
+    for (unsigned i = 0; i < orig->getNumArgOperands(); ++i)
+#endif
+    {
       if (argsInverted[i] == DIFFE_TYPE::OUT_DIFF) {
         Value *diffeadd = Builder2.CreateExtractValue(diffes, {structidx});
         ++structidx;

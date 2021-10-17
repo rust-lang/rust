@@ -82,7 +82,7 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
 ; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 dereferenceable(16) dereferenceable_or_null(16) %"call'mi", i8 0, i64 16, i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* {{(noundef )?}}nonnull align 1 dereferenceable(16) dereferenceable_or_null(16) %"call'mi", i8 0, i64 16, i1 false)
 ; CHECK-NEXT:   %[[ipc1:.+]] = bitcast i8* %"call'mi" to i64*
 ; CHECK-NEXT:   %0 = bitcast i8* %call to i64*
 ; CHECK-NEXT:   store i64 %flt, i64* %0, align 8

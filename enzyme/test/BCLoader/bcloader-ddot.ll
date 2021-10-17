@@ -1,4 +1,5 @@
-;RUN: if [ %llvmver -ge 10 ]; then %clang %s -Xclang -load -Xclang %loadBC -mllvm -bcpath=%BClibdir -S -emit-llvm -o - | %FileCheck %s; fi
+;RUN: if [ %llvmver -ge 10 && %llvmver -le 12 ]; then %clang %s -Xclang -load -Xclang %loadBC -mllvm -bcpath=%BClibdir -S -emit-llvm -o - | %FileCheck %s; fi
+;RUN: if [ %llvmver -ge 12 ]; then %clang %s -fno-experimental-new-pass-manager -Xclang -load -Xclang %loadBC -mllvm -bcpath=%BClibdir -S -emit-llvm -o - | %FileCheck %s; fi
 
 ;#include <cblas.h>
 ;#include <stdio.h>

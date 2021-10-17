@@ -1187,8 +1187,8 @@ attributes #10 = { noreturn nounwind }
 
 ; CHECK: define internal { i8*, i8* } @augmented_subfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36) #7
-; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36) #7
+; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36)
+; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(36) dereferenceable_or_null(36) %"call'mi", i8 0, i64 36, i1 false)
 ; CHECK-NEXT:   %"a0'ipc" = bitcast i8* %"call'mi" to float*
 ; CHECK-NEXT:   %a0 = bitcast i8* %call to float*

@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["7", "8", "9", "10", "11", "12"]
+        llvm: ["7", "8", "9", "10", "11", "12", "13"]
         build: ["Release"] # "RelWithDebInfo"
         os: [ubuntu-20.04, ubuntu-18.04]
     
@@ -30,6 +30,10 @@ jobs:
           sudo python3 -m pip install --upgrade pip setuptools
           sudo python3 -m pip install lit
           sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
+          if [[ '${{ matrix.llvm }}' == '13' ]]; then
+            sudo sed -i 's/add_executable(llvm-omp-device-info IMPORTED)//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
+            sudo sed -i 's/llvm-omp-device-info//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
+          fi
     - uses: actions/checkout@v1
       with:
           fetch-depth: 1

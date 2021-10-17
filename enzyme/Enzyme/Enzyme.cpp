@@ -74,9 +74,15 @@ using namespace llvm;
 #define DEBUG_TYPE "lower-enzyme-intrinsic"
 
 llvm::cl::opt<bool>
-    EnzymePostOpt("enzmye-postopt", cl::init(false), cl::Hidden,
+    EnzymePostOpt("enzyme-postopt", cl::init(false), cl::Hidden,
                   cl::desc("Run enzymepostprocessing optimizations"));
 
+llvm::cl::opt<bool> EnzymeAttributor("enzyme-attributor", cl::init(true),
+                                     cl::Hidden,
+                                     cl::desc("Run attributor post Enzyme"));
+#if LLVM_VERSION_MAJOR >= 14
+#define addAttribute addAttributeAtIndex
+#endif
 namespace {
 
 template <const char *handlername, int numargs>
@@ -407,7 +413,12 @@ public:
     llvm::Value *tape = nullptr;
     bool tapeIsPointer = false;
     int allocatedTapeSize = -1;
-    for (unsigned i = 1 + sret; i < CI->getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+    for (unsigned i = 1 + sret; i < CI->arg_size(); ++i)
+#else
+    for (unsigned i = 1 + sret; i < CI->getNumArgOperands(); ++i)
+#endif
+    {
       Value *res = CI->getArgOperand(i);
 
       if (truei >= FT->getNumParams()) {
@@ -848,7 +859,12 @@ public:
       if (ty == DIFFE_TYPE::DUP_ARG || ty == DIFFE_TYPE::DUP_NONEED) {
         ++i;
 
-        if (i >= CI->getNumArgOperands()) {
+#if LLVM_VERSION_MAJOR >= 14
+        if (i >= CI->arg_size())
+#else
+        if (i >= CI->getNumArgOperands())
+#endif
+        {
           EmitFailure("MissingArgShadow", CI->getDebugLoc(), CI,
                       "__enzyme_autodiff missing argument shadow at index ", i,
                       ", need shadow of type ", *PTy,
@@ -1288,6 +1304,7 @@ public:
     for (BasicBlock &BB : F) {
       for (Instruction &I : BB) {
         CallInst *CI = dyn_cast<CallInst>(&I);
+
         if (!CI)
           continue;
 
@@ -1307,9 +1324,15 @@ public:
         if (!Fn)
           continue;
 
+#if LLVM_VERSION_MAJOR >= 14
+        size_t num_args = CI->arg_size();
+#else
+        size_t num_args = CI->getNumArgOperands();
+#endif
+
         if (Fn->getName().contains("__enzyme_float")) {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
-          for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
+          for (size_t i = 0; i < num_args; ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadNone);
               CI->addParamAttr(i, Attribute::NoCapture);
@@ -1318,7 +1341,7 @@ public:
         }
         if (Fn->getName().contains("__enzyme_integer")) {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
-          for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
+          for (size_t i = 0; i < num_args; ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadNone);
               CI->addParamAttr(i, Attribute::NoCapture);
@@ -1327,7 +1350,7 @@ public:
         }
         if (Fn->getName().contains("__enzyme_double")) {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
-          for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
+          for (size_t i = 0; i < num_args; ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadNone);
               CI->addParamAttr(i, Attribute::NoCapture);
@@ -1336,7 +1359,7 @@ public:
         }
         if (Fn->getName().contains("__enzyme_pointer")) {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
-          for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
+          for (size_t i = 0; i < num_args; ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadNone);
               CI->addParamAttr(i, Attribute::NoCapture);
@@ -1389,14 +1412,14 @@ public:
           CI->addAttribute(AttributeList::FunctionIndex,
                            Attribute::InaccessibleMemOrArgMemOnly);
           for (size_t i : {0, 1, 2, 3, 4, 5, 6, 7, /*8, */ 9, 10, 11, 12, 13}) {
-            if (i < CI->getNumArgOperands() &&
+            if (i < num_args &&
                 CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadOnly);
             }
           }
           // todo more
           for (size_t i : {0, 1}) {
-            if (i < CI->getNumArgOperands() &&
+            if (i < num_args &&
                 CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::NoCapture);
             }
@@ -1408,7 +1431,7 @@ public:
                            Attribute::InaccessibleMemOrArgMemOnly);
           // todo more
           for (size_t i : {0, 2}) {
-            if (i < CI->getNumArgOperands() &&
+            if (i < num_args &&
                 CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadOnly);
             }
@@ -1416,7 +1439,7 @@ public:
 
           // todo more
           for (size_t i : {0, 2}) {
-            if (i < CI->getNumArgOperands() &&
+            if (i < num_args &&
                 CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::NoCapture);
             }
@@ -1429,7 +1452,7 @@ public:
                            Attribute::InaccessibleMemOrArgMemOnly);
           // todo more
           for (size_t i : {0, 1, 2, 3}) {
-            if (i < CI->getNumArgOperands() &&
+            if (i < num_args &&
                 CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadOnly);
             }
@@ -1437,7 +1460,7 @@ public:
 
           // todo more
           for (size_t i : {0, 1, 2, 3}) {
-            if (i < CI->getNumArgOperands() &&
+            if (i < num_args &&
                 CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::NoCapture);
             }
@@ -1450,7 +1473,7 @@ public:
                            Attribute::InaccessibleMemOrArgMemOnly);
           // todo more
           for (size_t i : {0, 1}) {
-            if (i < CI->getNumArgOperands() &&
+            if (i < num_args &&
                 CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadOnly);
             }
@@ -1458,7 +1481,7 @@ public:
 
           // todo more
           for (size_t i : {0}) {
-            if (i < CI->getNumArgOperands() &&
+            if (i < num_args &&
                 CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::NoCapture);
             }
@@ -1474,7 +1497,7 @@ public:
           Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex,
                            Attribute::InaccessibleMemOrArgMemOnly);
-          for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
+          for (size_t i = 0; i < num_args; ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadOnly);
               CI->addParamAttr(i, Attribute::NoCapture);
@@ -1566,7 +1589,12 @@ public:
       Value *fn = CI->getArgOperand(0);
       SmallVector<Value *, 4> Args;
       SmallVector<Type *, 4> ArgTypes;
-      for (size_t i = 1; i < CI->getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+      for (size_t i = 1; i < CI->arg_size(); ++i)
+#else
+      for (size_t i = 1; i < CI->getNumArgOperands(); ++i)
+#endif
+      {
         Args.push_back(CI->getArgOperand(i));
         ArgTypes.push_back(CI->getArgOperand(i)->getType());
       }
@@ -1624,7 +1652,7 @@ public:
       Changed = true;
     }
 
-    if (Changed) {
+    if (Changed && EnzymeAttributor) {
       // TODO consider enabling when attributor does not delete
       // dead internal functions, which invalidates Enzyme's cache
       // code left here to re-enable upon Attributor patch

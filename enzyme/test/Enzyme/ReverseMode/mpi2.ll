@@ -277,9 +277,6 @@ attributes #4 = { nounwind }
 
 ; CHECK: invertISend:                                      ; preds = %entry
 ; CHECK-NEXT:   %6 = call i32 @MPI_Irecv(i8* %buf, i32 %0, %struct.ompi_datatype_t* %1, i32 %2, i32 %3, %struct.ompi_communicator_t* %4, %struct.ompi_request_t** %d_req)
-; CHECK-NEXT:   ret void
 
 ; CHECK: invertIRecv:                                      ; preds = %entry
 ; CHECK-NEXT:   %7 = call i32 @MPI_Isend(i8* %buf, i32 %0, %struct.ompi_datatype_t* %1, i32 %2, i32 %3, %struct.ompi_communicator_t* %4, %struct.ompi_request_t** %d_req)
-; CHECK-NEXT:   ret void
-; CHECK-NEXT: }

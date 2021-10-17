@@ -62,12 +62,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %dx = alloca %"struct.std::array", align 8
 ; CHECK-NEXT:   %0 = bitcast %"struct.std::array"* %dx to i8*
-; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 24, i8* nonnull %0) #4
+; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 24, i8* nonnull %0)
 ; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 dereferenceable(24) %0, i8* nonnull align 8 dereferenceable(24) bitcast (%"struct.std::array"* @__const._Z7dsquared.dx to i8*), i64 24, i1 false)
 ; CHECK-NEXT:   %1 = alloca %"struct.std::array", align 8
 ; CHECK-NEXT:   %2 = call { double } @diffe_Z6squared(%"struct.std::array"* %1, %"struct.std::array"* %dx, double %x)
 ; CHECK-NEXT:   %3 = extractvalue { double } %2, 0
-; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 24, i8* nonnull %0) #4
+; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 24, i8* nonnull %0)
 ; CHECK-NEXT:   ret double %3
 ; CHECK-NEXT: }
 

@@ -687,7 +687,12 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       goto endCheck;
 
     std::vector<Value *> args;
-    for (unsigned i = 0; i < op->getNumArgOperands(); ++i) {
+#if LLVM_VERSION_MAJOR >= 14
+    for (unsigned i = 0; i < op->arg_size(); ++i)
+#else
+    for (unsigned i = 0; i < op->getNumArgOperands(); ++i)
+#endif
+    {
       args.emplace_back(getOp(op->getArgOperand(i)));
       if (args[i] == nullptr)
         goto endCheck;
@@ -2550,10 +2555,11 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
   } else if (auto arg = dyn_cast<ConstantExpr>(oval)) {
     auto C = GetOrCreateShadowConstant(Logic, TLI, TA, arg->getOperand(0),
                                        AtomicAdd, PostOpt);
-    if (arg->isCast()) {
-      return arg->getWithOperandReplaced(0, C);
-    } else if (arg->getOpcode() == Instruction::GetElementPtr) {
-      return arg->getWithOperandReplaced(0, C);
+    if (arg->isCast() || arg->getOpcode() == Instruction::GetElementPtr) {
+      SmallVector<Constant *, 8> NewOps;
+      for (unsigned i = 0, e = arg->getNumOperands(); i != e; ++i)
+        NewOps.push_back(i == 0 ? C : arg->getOperand(i));
+      return arg->getWithOperands(NewOps);
     }
   } else if (auto arg = dyn_cast<GlobalVariable>(oval)) {
     if (arg->getName() == "_ZTVN10__cxxabiv120__si_class_type_infoE" ||
@@ -3007,9 +3013,12 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         return shadow;
       }
     } else if (arg->getOpcode() == Instruction::GetElementPtr) {
-      if (auto C = dyn_cast<Constant>(ip))
-        return arg->getWithOperandReplaced(0, C);
-      else {
+      if (auto C = dyn_cast<Constant>(ip)) {
+        SmallVector<Constant *, 8> NewOps;
+        for (unsigned i = 0, e = arg->getNumOperands(); i != e; ++i)
+          NewOps.push_back(i == 0 ? C : arg->getOperand(i));
+        return arg->getWithOperands(NewOps);
+      } else {
         SmallVector<Value *, 4> invertargs;
         for (unsigned i = 0; i < arg->getNumOperands() - 1; ++i) {
           Value *b = getNewFromOriginal(arg->getOperand(1 + i));

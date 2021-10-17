@@ -69,11 +69,11 @@ attributes #3 = { nounwind }
 
 ; CHECK: define internal void @diffecache(double* nocapture %x, double* nocapture %"x'", i32 %N, double %differeturn) #0 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = icmp ugt i32 %N, 1
-; CHECK-NEXT:   %umax = select i1 %0, i32 %N, i32 1
-; CHECK-NEXT:   %1 = zext i32 %umax to i64
-; CHECK-NEXT:   %2 = add nuw{{( nsw)?}} i64 %1, 1
-; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %2, 8
+; TODO-CHECK-NEXT:   %0 = icmp ugt i32 %N, 1
+; TODO-CHECK-NEXT:   %umax = select i1 %0, i32 %N, i32 1
+; CHECK:   %[[a1:.+]] = zext i32 %umax to i64
+; CHECK-NEXT:   %[[a2:.+]] = add nuw{{( nsw)?}} i64 %[[a1]], 1
+; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %[[a2]], 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   br label %for.body
@@ -86,13 +86,13 @@ attributes #3 = { nounwind }
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %3 = trunc i64 %iv to i32
-; CHECK-NEXT:   %idxprom = zext i32 %3 to i64
+; CHECK-NEXT:   %[[a3:.+]] = trunc i64 %iv to i32
+; CHECK-NEXT:   %idxprom = zext i32 %[[a3]] to i64
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 %idxprom
-; CHECK-NEXT:   %4 = load double, double* %arrayidx, align 8, !tbaa !2
-; CHECK-NEXT:   %5 = getelementptr inbounds double, double* %_malloccache, i64 %iv
-; CHECK-NEXT:   store double %4, double* %5, align 8, !invariant.group !6
-; CHECK-NEXT:   %inc = add i32 %3, 1
+; CHECK-NEXT:   %[[a4:.+]] = load double, double* %arrayidx, align 8, !tbaa !2
+; CHECK-NEXT:   %[[a5:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %iv
+; CHECK-NEXT:   store double %[[a4]], double* %[[a5]], align 8, !invariant.group !6
+; CHECK-NEXT:   %inc = add i32 %[[a3]], 1
 ; CHECK-NEXT:   %cmp = icmp ugt i32 %inc, %N
 ; CHECK-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for.body
 
@@ -101,21 +101,21 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body:                                   ; preds = %incinvertfor.body, %for.cond.cleanup
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %1, %for.cond.cleanup ], [ %12, %incinvertfor.body ]
-; CHECK-NEXT:   %6 = getelementptr inbounds double, double* %_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %7 = load double, double* %6, align 8, !invariant.group !6
-; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %7
-; CHECK-NEXT:   %8 = fadd fast double %m0diffe, %m0diffe
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[a1]], %for.cond.cleanup ], [ %[[a12:.+]], %incinvertfor.body ]
+; CHECK-NEXT:   %[[a6:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[a7:.+]] = load double, double* %[[a6]], align 8, !invariant.group !6
+; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %[[a7]]
+; CHECK-NEXT:   %[[a8:.+]] = fadd fast double %m0diffe, %m0diffe
 ; CHECK-NEXT:   %[[unwrap:.+]] = trunc i64 %"iv'ac.0" to i32
 ; CHECK-NEXT:   %idxprom_unwrap = zext i32 %[[unwrap]] to i64
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"x'", i64 %idxprom_unwrap
-; CHECK-NEXT:   %9 = load double, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %10 = fadd fast double %9, %8
-; CHECK-NEXT:   store double %10, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %11 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %11, label %invertentry, label %incinvertfor.body
+; CHECK-NEXT:   %[[a9:.+]] = load double, double* %"arrayidx'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[a10:.+]] = fadd fast double %[[a9]], %[[a8]]
+; CHECK-NEXT:   store double %[[a10]], double* %"arrayidx'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[a11:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %[[a11]], label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %12 = add nsw i64 %"iv'ac.0", -1
+; CHECK-NEXT:   %[[a12]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body
 ; CHECK-NEXT: }
