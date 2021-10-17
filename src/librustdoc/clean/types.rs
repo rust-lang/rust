@@ -1450,6 +1450,10 @@ crate enum Type {
     ImplTrait(Vec<GenericBound>),
 }
 
+// `Type` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Type, 72);
+
 crate trait GetDefId {
     /// Use this method to get the [`DefId`] of a [`clean`] AST node.
     /// This will return [`None`] when called on a primitive [`clean::Type`].
