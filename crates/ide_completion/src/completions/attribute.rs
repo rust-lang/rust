@@ -5,9 +5,10 @@
 
 use hir::HasAttrs;
 use ide_db::helpers::generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES};
+use itertools::Itertools;
 use once_cell::sync::Lazy;
-use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::{algo::non_trivia_sibling, ast, AstNode, Direction, NodeOrToken, SyntaxKind, T};
+use rustc_hash::FxHashMap;
+use syntax::{algo::non_trivia_sibling, ast, AstNode, Direction, SyntaxKind, T};
 
 use crate::{
     context::CompletionContext,
@@ -303,31 +304,38 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     .prefer_inner(),
 ];
 
-fn parse_comma_sep_input(derive_input: ast::TokenTree) -> Option<FxHashSet<String>> {
-    let (l_paren, r_paren) = derive_input.l_paren_token().zip(derive_input.r_paren_token())?;
-    let mut input_derives = FxHashSet::default();
-    let mut tokens = derive_input
+fn parse_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Path>> {
+    let r_paren = input.r_paren_token()?;
+    let tokens = input
         .syntax()
         .children_with_tokens()
-        .filter_map(NodeOrToken::into_token)
-        .skip_while(|token| token != &l_paren)
         .skip(1)
-        .take_while(|token| token != &r_paren)
-        .peekable();
-    let mut input = String::new();
-    while tokens.peek().is_some() {
-        for token in tokens.by_ref().take_while(|t| t.kind() != T![,]) {
-            input.push_str(token.text());
-        }
+        .take_while(|it| it.as_token() != Some(&r_paren));
+    let input_expressions = tokens.into_iter().group_by(|tok| tok.kind() == T![,]);
+    Some(
+        input_expressions
+            .into_iter()
+            .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
+            .filter_map(|mut tokens| ast::Path::parse(&tokens.join("")).ok())
+            .collect::<Vec<ast::Path>>(),
+    )
+}
 
-        if !input.is_empty() {
-            input_derives.insert(input.trim().to_owned());
-        }
-
-        input.clear();
-    }
-
-    Some(input_derives)
+fn parse_comma_sep_expr(input: ast::TokenTree) -> Option<Vec<ast::Expr>> {
+    let r_paren = input.r_paren_token()?;
+    let tokens = input
+        .syntax()
+        .children_with_tokens()
+        .skip(1)
+        .take_while(|it| it.as_token() != Some(&r_paren));
+    let input_expressions = tokens.into_iter().group_by(|tok| tok.kind() == T![,]);
+    Some(
+        input_expressions
+            .into_iter()
+            .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
+            .filter_map(|mut tokens| ast::Expr::parse(&tokens.join("")).ok())
+            .collect::<Vec<ast::Expr>>(),
+    )
 }
 
 #[test]

@@ -192,6 +192,8 @@ fn deny_clippy(path: &Path, text: &str) {
         "ide_db/src/helpers/generated_lints.rs",
         // The tests test clippy lint hovers
         "ide/src/hover/tests.rs",
+        // The tests test clippy lint completions
+        "ide_completion/src/tests/attribute.rs",
     ];
     if ignore.iter().any(|p| path.ends_with(p)) {
         return;
