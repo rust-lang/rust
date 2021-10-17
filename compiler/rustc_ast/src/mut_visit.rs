@@ -37,9 +37,7 @@ pub trait MutVisitor: Sized {
     /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
     /// used otherwise. Token visitor would be entirely separate from the regular visitor if
     /// the marker didn't have to visit AST fragments in nonterminal tokens.
-    fn token_visiting_enabled(&self) -> bool {
-        false
-    }
+    const VISIT_TOKENS: bool = false;
 
     // Methods in this trait have one of three forms:
     //
@@ -363,7 +361,7 @@ pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
         }
         MacArgs::Eq(eq_span, token) => {
             vis.visit_span(eq_span);
-            if vis.token_visiting_enabled() {
+            if T::VISIT_TOKENS {
                 visit_token(token, vis);
             } else {
                 // The value in `#[key = VALUE]` must be visited as an expression for backward
@@ -682,7 +680,7 @@ pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
-    if vis.token_visiting_enabled() && !tts.is_empty() {
+    if T::VISIT_TOKENS && !tts.is_empty() {
         let tts = Lrc::make_mut(tts);
         visit_vec(tts, |(tree, _is_joint)| visit_tt(tree, vis));
     }
@@ -692,14 +690,14 @@ pub fn visit_attr_annotated_tts<T: MutVisitor>(
     AttrAnnotatedTokenStream(tts): &mut AttrAnnotatedTokenStream,
     vis: &mut T,
 ) {
-    if vis.token_visiting_enabled() && !tts.is_empty() {
+    if T::VISIT_TOKENS && !tts.is_empty() {
         let tts = Lrc::make_mut(tts);
         visit_vec(tts, |(tree, _is_joint)| visit_attr_annotated_tt(tree, vis));
     }
 }
 
 pub fn visit_lazy_tts_opt_mut<T: MutVisitor>(lazy_tts: Option<&mut LazyTokenStream>, vis: &mut T) {
-    if vis.token_visiting_enabled() {
+    if T::VISIT_TOKENS {
         if let Some(lazy_tts) = lazy_tts {
             let mut tts = lazy_tts.create_token_stream();
             visit_attr_annotated_tts(&mut tts, vis);
