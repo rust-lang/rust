@@ -1,7 +1,7 @@
 use ide_db::helpers::{for_each_tail_expr, node_ext::walk_expr, FamousDefs};
 use syntax::{
     ast::{self, Expr},
-    match_ast, AstNode,
+    match_ast, AstNode, TextRange, TextSize,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -60,25 +60,45 @@ pub(crate) fn unwrap_result_return_type(acc: &mut Assists, ctx: &AssistContext) 
             });
             for_each_tail_expr(&body, tail_cb);
 
-            for ret_expr_arg in exprs_to_unwrap {
-                let new_ret_expr = ret_expr_arg.to_string();
-                let new_ret_expr =
-                    new_ret_expr.trim_start_matches("Ok(").trim_start_matches("Err(");
-                builder.replace(
-                    ret_expr_arg.syntax().text_range(),
-                    new_ret_expr.strip_suffix(')').unwrap_or(new_ret_expr),
-                )
-            }
-
+            let mut is_unit_type = false;
             if let Some((_, inner_type)) = type_ref.to_string().split_once('<') {
                 let inner_type = match inner_type.split_once(',') {
                     Some((success_inner_type, _)) => success_inner_type,
                     None => inner_type,
                 };
-                builder.replace(
-                    type_ref.syntax().text_range(),
-                    inner_type.strip_suffix('>').unwrap_or(inner_type),
-                )
+                let new_ret_type = inner_type.strip_suffix('>').unwrap_or(inner_type);
+                if new_ret_type == "()" {
+                    is_unit_type = true;
+                    let text_range = TextRange::new(
+                        ret_type.syntax().text_range().start(),
+                        ret_type.syntax().text_range().end() + TextSize::from(1u32),
+                    );
+                    builder.replace(text_range, "")
+                } else {
+                    builder.replace(
+                        type_ref.syntax().text_range(),
+                        inner_type.strip_suffix('>').unwrap_or(inner_type),
+                    )
+                }
+            }
+
+            for ret_expr_arg in exprs_to_unwrap {
+                let ret_expr_str = ret_expr_arg.to_string();
+                if ret_expr_str.starts_with("Ok(") || ret_expr_str.starts_with("Err(") {
+                    let arg_list = ret_expr_arg.syntax().children().find_map(ast::ArgList::cast);
+                    if let Some(arg_list) = arg_list {
+                        if is_unit_type {
+                            builder.replace(ret_expr_arg.syntax().text_range(), "");
+                        } else {
+                            let new_ret_expr = arg_list
+                                .args()
+                                .map(|arg| arg.to_string())
+                                .collect::<Vec<String>>()
+                                .join(", ");
+                            builder.replace(ret_expr_arg.syntax().text_range(), new_ret_expr);
+                        }
+                    }
+                }
             }
         },
     )
@@ -121,6 +141,50 @@ fn foo() -> Result<i3$02> {
 fn foo() -> i32 {
     let test = "test";
     return 42i32;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unwrap_result_return_type_unit_type() {
+        check_assist(
+            unwrap_result_return_type,
+            r#"
+//- minicore: result
+fn foo() -> Result<(), Box<dyn Error$0>> {
+    Ok(())
+}
+"#,
+            r#"
+fn foo() {
+    
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unwrap_result_return_type_ending_with_parent() {
+        check_assist(
+            unwrap_result_return_type,
+            r#"
+//- minicore: result
+fn foo() -> Result<i32, Box<dyn Error$0>> {
+    if true {
+        Ok(42)
+    } else {
+        foo()
+    }
+}
+"#,
+            r#"
+fn foo() -> i32 {
+    if true {
+        42
+    } else {
+        foo()
+    }
 }
 "#,
         );
