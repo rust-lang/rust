@@ -437,7 +437,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 
             let section =
                 file.add_section(b"__DWARF".to_vec(), b".rmeta".to_vec(), SectionKind::Debug);
-            file.append_section_data(section, metadata, 1);
+            file.set_section_data(section, metadata, 1);
             file
         } else if sess.target.is_like_windows {
             const IMAGE_SCN_LNK_REMOVE: u32 = 0;
@@ -446,7 +446,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             let section = file.add_section(Vec::new(), b".rmeta".to_vec(), SectionKind::Debug);
             file.section_mut(section).flags =
                 SectionFlags::Coff { characteristics: IMAGE_SCN_LNK_REMOVE };
-            file.append_section_data(section, metadata, 1);
+            file.set_section_data(section, metadata, 1);
             file
         } else {
             const SHF_EXCLUDE: u64 = 0x80000000;
@@ -478,7 +478,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 
             let section = file.add_section(Vec::new(), b".rmeta".to_vec(), SectionKind::Debug);
             file.section_mut(section).flags = SectionFlags::Elf { sh_flags: SHF_EXCLUDE };
-            file.append_section_data(section, metadata, 1);
+            file.set_section_data(section, metadata, 1);
             file
         };
         let out_file = match fs::File::create(out_filename) {
