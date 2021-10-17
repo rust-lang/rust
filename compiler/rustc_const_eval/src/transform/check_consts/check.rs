@@ -39,7 +39,7 @@ type QualifResults<'mir, 'tcx, Q> =
 #[derive(Default)]
 pub struct Qualifs<'mir, 'tcx> {
     has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
-    needs_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,
+    needs_non_const_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,
     indirectly_mutable: Option<IndirectlyMutableResults<'mir, 'tcx>>,
 }
 
@@ -70,10 +70,10 @@ impl Qualifs<'mir, 'tcx> {
         indirectly_mutable.get().contains(local)
     }
 
-    /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
+    /// Returns `true` if `local` is `NeedsNonConstDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    pub fn needs_drop(
+    pub fn needs_non_const_drop(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -84,7 +84,7 @@ impl Qualifs<'mir, 'tcx> {
             return false;
         }
 
-        let needs_drop = self.needs_drop.get_or_insert_with(|| {
+        let needs_non_const_drop = self.needs_non_const_drop.get_or_insert_with(|| {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsNonConstDrop, ccx)
@@ -93,8 +93,8 @@ impl Qualifs<'mir, 'tcx> {
                 .into_results_cursor(&body)
         });
 
-        needs_drop.seek_before_primary_effect(location);
-        needs_drop.get().contains(local) || self.indirectly_mutable(ccx, local, location)
+        needs_non_const_drop.seek_before_primary_effect(location);
+        needs_non_const_drop.get().contains(local) || self.indirectly_mutable(ccx, local, location)
     }
 
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
@@ -172,7 +172,7 @@ impl Qualifs<'mir, 'tcx> {
         };
 
         ConstQualifs {
-            needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
+            needs_non_const_drop: self.needs_non_const_drop(ccx, RETURN_PLACE, return_loc),
             has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
             custom_eq,
             error_occured,
@@ -999,7 +999,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
             }
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no
-            // projections that cannot be `NeedsDrop`.
+            // projections that cannot be `NeedsNonConstDrop`.
             TerminatorKind::Drop { place: dropped_place, .. }
             | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
                 // If we are checking live drops after drop-elaboration, don't emit duplicate
@@ -1019,15 +1019,15 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                     return;
                 }
 
-                let needs_drop = if let Some(local) = dropped_place.as_local() {
+                let needs_non_const_drop = if let Some(local) = dropped_place.as_local() {
                     // Use the span where the local was declared as the span of the drop error.
                     err_span = self.body.local_decls[local].source_info.span;
-                    self.qualifs.needs_drop(self.ccx, local, location)
+                    self.qualifs.needs_non_const_drop(self.ccx, local, location)
                 } else {
                     true
                 };
 
-                if needs_drop {
+                if needs_non_const_drop {
                     self.check_op_spanned(
                         ops::LiveDrop { dropped_at: Some(terminator.source_info.span) },
                         err_span,

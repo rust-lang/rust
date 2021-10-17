@@ -21,7 +21,7 @@ pub fn in_any_value_of_ty(
 ) -> ConstQualifs {
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
-        needs_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
+        needs_non_const_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
         custom_eq: CustomEq::in_any_value_of_ty(cx, ty),
         error_occured,
     }
@@ -108,7 +108,7 @@ impl Qualif for NeedsNonConstDrop {
     const IS_CLEARED_ON_MOVE: bool = true;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
-        qualifs.needs_drop
+        qualifs.needs_non_const_drop
     }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, mut ty: Ty<'tcx>) -> bool {
