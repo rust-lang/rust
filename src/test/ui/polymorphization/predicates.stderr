@@ -1,8 +1,45 @@
 error: item has unused generic parameters
+  --> $DIR/predicates.rs:14:4
+   |
+LL | fn foo<I, T>(_: I)
+   |    ^^^    - generic parameter `T` is unused
+
+error: item has unused generic parameters
+  --> $DIR/predicates.rs:23:4
+   |
+LL | fn baz<I, T>(_: I)
+   |    ^^^    - generic parameter `T` is unused
+
+error: item has unused generic parameters
+  --> $DIR/predicates.rs:44:19
+   |
+LL | impl<'a, I, T: 'a, E> Iterator for Foo<'a, I, E>
+   |          -         - generic parameter `E` is unused
+   |          |
+   |          generic parameter `I` is unused
+...
+LL |         self.find(|_| true)
+   |                   ^^^^^^^^
+
+error: item has unused generic parameters
+  --> $DIR/predicates.rs:58:4
+   |
+LL | fn quux<A, B, C: Default>() -> usize
+   |    ^^^^ -  - generic parameter `B` is unused
+   |         |
+   |         generic parameter `A` is unused
+
+error: item has unused generic parameters
+  --> $DIR/predicates.rs:75:4
+   |
+LL | fn foobar<F, G>() -> usize
+   |    ^^^^^^ - generic parameter `F` is unused
+
+error: item has unused generic parameters
   --> $DIR/predicates.rs:9:4
    |
 LL | fn bar<I>() {
    |    ^^^ - generic parameter `I` is unused
 
-error: aborting due to previous error
+error: aborting due to 6 previous errors
 

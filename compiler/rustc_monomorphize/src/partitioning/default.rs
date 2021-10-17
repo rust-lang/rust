@@ -9,7 +9,7 @@ use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::print::characteristic_def_id_of_type;
-use rustc_middle::ty::{self, DefIdTree, InstanceDef, TyCtxt};
+use rustc_middle::ty::{self, fold::TypeFoldable, DefIdTree, InstanceDef, TyCtxt};
 use rustc_span::symbol::Symbol;
 
 use super::PartitioningCx;
@@ -300,14 +300,21 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                     // call it.
                     return None;
                 }
-                // This is a method within an impl, find out what the self-type is:
-                let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
-                    instance.substs,
-                    ty::ParamEnv::reveal_all(),
-                    tcx.type_of(impl_def_id),
-                );
-                if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
-                    return Some(def_id);
+
+                // When polymorphization is enabled, methods which do not depend on their generic
+                // parameters, but the self-type of their impl block do will fail to normalize.
+                if !tcx.sess.opts.debugging_opts.polymorphize
+                    || !instance.definitely_needs_subst(tcx)
+                {
+                    // This is a method within an impl, find out what the self-type is:
+                    let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
+                        instance.substs,
+                        ty::ParamEnv::reveal_all(),
+                        tcx.type_of(impl_def_id),
+                    );
+                    if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
+                        return Some(def_id);
+                    }
                 }
             }
 

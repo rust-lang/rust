@@ -152,6 +152,22 @@ impl<'tcx> InstanceDef<'tcx> {
         }
     }
 
+    /// Returns the `DefId` of instances which might not require codegen locally.
+    pub fn def_id_if_not_guaranteed_local_codegen(self) -> Option<DefId> {
+        match self {
+            ty::InstanceDef::Item(def) => Some(def.did),
+            ty::InstanceDef::DropGlue(def_id, Some(_)) => Some(def_id),
+            InstanceDef::VtableShim(..)
+            | InstanceDef::ReifyShim(..)
+            | InstanceDef::FnPtrShim(..)
+            | InstanceDef::Virtual(..)
+            | InstanceDef::Intrinsic(..)
+            | InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::DropGlue(..)
+            | InstanceDef::CloneShim(..) => None,
+        }
+    }
+
     #[inline]
     pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
         match self {
@@ -567,29 +583,26 @@ impl<'tcx> Instance<'tcx> {
             return self;
         }
 
-        if let InstanceDef::Item(def) = self.def {
-            let polymorphized_substs = polymorphize(tcx, def.did, self.substs);
-            debug!("polymorphize: self={:?} polymorphized_substs={:?}", self, polymorphized_substs);
-            Self { def: self.def, substs: polymorphized_substs }
-        } else {
-            self
-        }
+        let polymorphized_substs = polymorphize(tcx, self.def, self.substs);
+        debug!("polymorphize: self={:?} polymorphized_substs={:?}", self, polymorphized_substs);
+        Self { def: self.def, substs: polymorphized_substs }
     }
 }
 
 fn polymorphize<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    instance: ty::InstanceDef<'tcx>,
     substs: SubstsRef<'tcx>,
 ) -> SubstsRef<'tcx> {
-    debug!("polymorphize({:?}, {:?})", def_id, substs);
-    let unused = tcx.unused_generic_params(def_id);
+    debug!("polymorphize({:?}, {:?})", instance, substs);
+    let unused = tcx.unused_generic_params(instance);
     debug!("polymorphize: unused={:?}", unused);
 
     // If this is a closure or generator then we need to handle the case where another closure
     // from the function is captured as an upvar and hasn't been polymorphized. In this case,
     // the unpolymorphized upvar closure would result in a polymorphized closure producing
     // multiple mono items (and eventually symbol clashes).
+    let def_id = instance.def_id();
     let upvars_ty = if tcx.is_closure(def_id) {
         Some(substs.as_closure().tupled_upvars_ty())
     } else if tcx.type_of(def_id).is_generator() {
@@ -613,7 +626,11 @@ fn polymorphize<'tcx>(
             debug!("fold_ty: ty={:?}", ty);
             match ty.kind {
                 ty::Closure(def_id, substs) => {
-                    let polymorphized_substs = polymorphize(self.tcx, def_id, substs);
+                    let polymorphized_substs = polymorphize(
+                        self.tcx,
+                        ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
+                        substs,
+                    );
                     if substs == polymorphized_substs {
                         ty
                     } else {
@@ -621,7 +638,11 @@ fn polymorphize<'tcx>(
                     }
                 }
                 ty::Generator(def_id, substs, movability) => {
-                    let polymorphized_substs = polymorphize(self.tcx, def_id, substs);
+                    let polymorphized_substs = polymorphize(
+                        self.tcx,
+                        ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
+                        substs,
+                    );
                     if substs == polymorphized_substs {
                         ty
                     } else {

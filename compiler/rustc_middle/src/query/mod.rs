@@ -1558,11 +1558,11 @@ rustc_queries! {
     query codegen_unit(_: Symbol) -> &'tcx CodegenUnit<'tcx> {
         desc { "codegen_unit" }
     }
-    query unused_generic_params(key: DefId) -> FiniteBitSet<u32> {
-        cache_on_disk_if { key.is_local() }
+    query unused_generic_params(key: ty::InstanceDef<'tcx>) -> FiniteBitSet<u32> {
+        cache_on_disk_if { key.def_id().is_local() }
         desc {
             |tcx| "determining which generic parameters are unused by `{}`",
-                tcx.def_path_str(key)
+                tcx.def_path_str(key.def_id())
         }
     }
     query backend_optimization_level(_: ()) -> OptLevel {
