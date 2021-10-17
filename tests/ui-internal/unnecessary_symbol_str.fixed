@@ -11,6 +11,6 @@ fn main() {
     Symbol::intern("foo") == rustc_span::sym::clippy;
     Symbol::intern("foo") == rustc_span::symbol::kw::SelfLower;
     Symbol::intern("foo") != rustc_span::symbol::kw::SelfUpper;
-    Ident::invalid().name == rustc_span::sym::clippy;
-    rustc_span::sym::clippy == Ident::invalid().name;
+    Ident::empty().name == rustc_span::sym::clippy;
+    rustc_span::sym::clippy == Ident::empty().name;
 }
