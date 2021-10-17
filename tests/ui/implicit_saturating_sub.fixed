@@ -157,4 +157,12 @@ fn main() {
     if i_64 != 0 {
         i_64 -= 1;
     }
+
+    // issue #7831
+    // No Lint
+    if u_32 > 0 {
+        u_32 -= 1;
+    } else {
+        println!("side effect");
+    }
 }
