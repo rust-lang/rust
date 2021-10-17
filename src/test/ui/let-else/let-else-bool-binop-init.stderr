@@ -4,7 +4,7 @@ error: a `&&` expression cannot be directly assigned in `let...else`
 LL |     let true = true && false else { return };
    |                ^^^^^^^^^^^^^
    |
-help: wrap the expression in parenthesis
+help: wrap the expression in parentheses
    |
 LL |     let true = (true && false) else { return };
    |                +             +
@@ -15,7 +15,7 @@ error: a `||` expression cannot be directly assigned in `let...else`
 LL |     let true = true || false else { return };
    |                ^^^^^^^^^^^^^
    |
-help: wrap the expression in parenthesis
+help: wrap the expression in parentheses
    |
 LL |     let true = (true || false) else { return };
    |                +             +

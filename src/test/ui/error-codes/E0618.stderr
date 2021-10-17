@@ -9,7 +9,7 @@ LL |     X::Entry();
    |     |
    |     call expression requires function
    |
-help: `X::Entry` is a unit variant, you need to write it without the parenthesis
+help: `X::Entry` is a unit variant, you need to write it without the parentheses
    |
 LL |     X::Entry;
    |     ~~~~~~~~

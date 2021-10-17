@@ -576,7 +576,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                         rhs,
                                     });
                                     continue; // If something other than a Fn ends up
-                                    // with parenthesis, leave it alone
+                                    // with parentheses, leave it alone
                                 }
                             }
 

@@ -5,7 +5,7 @@
 // the tuple struct pattern, has 0 fields, but requires 1 field.
 //
 // In emitting E0023, we try to see if this is a case of e.g., `Some(a, b, c)` but where
-// the scrutinee was of type `Some((a, b, c))`, and suggest that parenthesis be added.
+// the scrutinee was of type `Some((a, b, c))`, and suggest that parentheses be added.
 //
 // However, we did not account for the expected type being different than the tuple pattern type.
 // This caused an issue when the tuple pattern type (`P<T>`) was generic.

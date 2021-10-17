@@ -357,13 +357,13 @@ impl ExprPrecedence {
     }
 }
 
-/// In `let p = e`, operators with precedence `<=` this one requires parenthesis in `e`.
+/// In `let p = e`, operators with precedence `<=` this one requires parentheses in `e`.
 pub fn prec_let_scrutinee_needs_par() -> usize {
     AssocOp::LAnd.precedence()
 }
 
 /// Suppose we have `let _ = e` and the `order` of `e`.
-/// Is the `order` such that `e` in `let _ = e` needs parenthesis when it is on the RHS?
+/// Is the `order` such that `e` in `let _ = e` needs parentheses when it is on the RHS?
 ///
 /// Conversely, suppose that we have `(let _ = a) OP b` and `order` is that of `OP`.
 /// Can we print this as `let _ = a OP b`?

@@ -1552,7 +1552,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             matches!(source, PathSource::TupleStruct(..)) || source.is_call();
         if suggest_only_tuple_variants {
             // Suggest only tuple variants regardless of whether they have fields and do not
-            // suggest path with added parenthesis.
+            // suggest path with added parentheses.
             let mut suggestable_variants = variants
                 .iter()
                 .filter(|(.., kind)| *kind == CtorKind::Fn)
