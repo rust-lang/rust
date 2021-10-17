@@ -18,8 +18,7 @@ LL | bug!();
 error: unexpected token: `{
            let res =
                ::alloc::fmt::format(::core::fmt::Arguments::new_v1(&[""],
-                                                                   &[::core::fmt::ArgumentV1::new(&"u8",
-                                                                                                  ::core::fmt::Display::fmt)]));
+                                                                   &[::core::fmt::ArgumentV1::new_display(&"u8")]));
            res
        }.as_str()`
   --> $DIR/key-value-expansion.rs:48:23

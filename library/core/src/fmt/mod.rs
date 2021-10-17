@@ -308,9 +308,21 @@ static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |ptr, _| {
     loop {}
 };
 
+macro_rules! arg_new {
+    ($f: ident, $t: ident) => {
+        #[doc(hidden)]
+        #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+        #[inline]
+        pub fn $f<'b, T: $t>(x: &'b T) -> ArgumentV1<'_> {
+            Self::new(x, $t::fmt)
+        }
+    };
+}
+
 impl<'a> ArgumentV1<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[inline]
     pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
         // SAFETY: `mem::transmute(x)` is safe because
         //     1. `&'b T` keeps the lifetime it originated with `'b`
@@ -322,6 +334,16 @@ impl<'a> ArgumentV1<'a> {
         // (as long as `T` is `Sized`)
         unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
     }
+
+    arg_new!(new_display, Display);
+    arg_new!(new_debug, Debug);
+    arg_new!(new_octal, Octal);
+    arg_new!(new_lower_hex, LowerHex);
+    arg_new!(new_upper_hex, UpperHex);
+    arg_new!(new_pointer, Pointer);
+    arg_new!(new_binary, Binary);
+    arg_new!(new_lower_exp, LowerExp);
+    arg_new!(new_upper_exp, UpperExp);
 
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]

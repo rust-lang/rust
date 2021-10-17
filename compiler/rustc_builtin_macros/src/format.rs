@@ -877,11 +877,21 @@ impl<'a, 'b> Context<'a, 'b> {
                 return ecx.expr_call_global(macsp, path, vec![arg]);
             }
         };
+        let new_fn_name = match trait_ {
+            "Display" => "new_display",
+            "Debug" => "new_debug",
+            "LowerExp" => "new_lower_exp",
+            "UpperExp" => "new_upper_exp",
+            "Octal" => "new_octal",
+            "Pointer" => "new_pointer",
+            "Binary" => "new_binary",
+            "LowerHex" => "new_lower_hex",
+            "UpperHex" => "new_upper_hex",
+            _ => unreachable!(),
+        };
 
-        let path = ecx.std_path(&[sym::fmt, Symbol::intern(trait_), sym::fmt]);
-        let format_fn = ecx.path_global(sp, path);
-        let path = ecx.std_path(&[sym::fmt, sym::ArgumentV1, sym::new]);
-        ecx.expr_call_global(macsp, path, vec![arg, ecx.expr_path(format_fn)])
+        let path = ecx.std_path(&[sym::fmt, sym::ArgumentV1, Symbol::intern(new_fn_name)]);
+        ecx.expr_call_global(sp, path, vec![arg])
     }
 }
 

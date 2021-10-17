@@ -5,6 +5,11 @@ LL |     format!("{:X}", "3");
    |                     ^^^ the trait `UpperHex` is not implemented for `str`
    |
    = note: required because of the requirements on the impl of `UpperHex` for `&str`
+note: required by a bound in `ArgumentV1::<'a>::new_upper_hex`
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+   |
+LL |     arg_new!(new_upper_hex, UpperHex);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `ArgumentV1::<'a>::new_upper_hex`
    = note: this error originates in the macro `$crate::__export::format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
