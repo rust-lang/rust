@@ -1,5 +1,4 @@
 #![warn(clippy::trailing_zero_sized_array_without_repr_c)]
-#![feature(const_generics_defaults)] // see below
 
 // Do lint:
 
@@ -17,14 +16,16 @@ struct GenericArrayType<T> {
     last: [T; 0],
 }
 
-#[derive(Debug)]
-struct OnlyAnotherAttributeDerive {
+#[must_use]
+struct OnlyAnotherAttributeMustUse {
     field: i32,
     last: [usize; 0],
 }
 
-#[must_use]
-struct OnlyAnotherAttributeMustUse {
+// NOTE: Unfortunately the attribute isn't included in the lint output. I'm not sure how to make it
+// show up.
+#[derive(Debug)]
+struct OnlyAnotherAttributeDerive {
     field: i32,
     last: [usize; 0],
 }
@@ -82,6 +83,12 @@ struct NonZeroSizedArray {
     last: [usize; 1],
 }
 
+struct NotLastField {
+    f1: u32,
+    zero_sized: [usize; 0],
+    last: i32,
+}
+
 const ONE: usize = 1;
 struct NonZeroSizedWithConst {
     field: i32,
@@ -133,21 +140,4 @@ enum DontLintAnonymousStructsFromDesuraging {
     C { x: u32, y: [u64; 0] },
 }
 
-// NOTE: including these (along with the required feature) triggers an ICE. Not sure why. Should
-// make sure the const generics people are aware of that if they weren't already.
-
-// #[repr(C)]
-// struct ConstParamOk<const N: usize = 0> {
-//     field: i32,
-//     last: [usize; N]
-// }
-
-// struct ConstParamLint<const N: usize = 0> {
-//     field: i32,
-//     last: [usize; N]
-// }
-
-fn main() {
-    let _ = OnlyAnotherAttributeMustUse { field: 0, last: [] };
-    let _ = OtherAttributesMustUse { field: 0, last: [] };
-}
+fn main() {}

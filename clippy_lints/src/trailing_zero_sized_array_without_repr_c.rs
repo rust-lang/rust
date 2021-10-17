@@ -36,16 +36,15 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(TrailingZeroSizedArrayWithoutReprC => [TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR_C]);
 
-// TESTNAME=trailing_zero_sized_array_without_repr_c cargo uitest
-
 impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if is_struct_with_trailing_zero_sized_array(cx, item) {
+            // NOTE: This is to include attributes on the definition when we print the lint. If the convention
+            // is to not do that with struct definitions (I'm not sure), then this isn't necessary.
             let attrs = cx.tcx.get_attrs(item.def_id.to_def_id());
-            let first_attr = attrs.first(); // Actually, I've no idea if this is guaranteed to be the first one in the source code.
-
+            let first_attr = attrs.iter().min_by_key(|attr| attr.span.lo());
             let lint_span = if let Some(first_attr) = first_attr {
-                first_attr.span.until(item.span)
+                first_attr.span.to(item.span)
             } else {
                 item.span
             };
@@ -66,18 +65,29 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
 
 fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
     if_chain! {
-        // Check if last field is an array
+        // First check if last field is an array
         if let ItemKind::Struct(data, _) = &item.kind;
         if let VariantData::Struct(field_defs, _) = data;
         if let Some(last_field) = field_defs.last();
         if let rustc_hir::TyKind::Array(_, length) = last_field.ty.kind;
 
-        // Check if that that array zero-sized.
-        let length_ldid = cx.tcx.hir().local_def_id(length.hir_id);
-        let length = Const::from_anon_const(cx.tcx, length_ldid);
-        if let Some(Constant::Int(length)) = miri_to_const(length);
-        if length == 0;
+        // Then check if that that array zero-sized
 
+        // This is pretty much copied from `enum_clike.rs` and I don't fully understand it, so let me know
+        // if there's a better way. I tried `Const::from_anon_const` but it didn't fold in the values
+        // on the `ZeroSizedWithConst` and `ZeroSizedWithConstFunction` tests.
+
+        // This line in particular seems convoluted.
+        let length_did = cx.tcx.hir().body_owner_def_id(length.body).to_def_id();
+        let length_ty = cx.tcx.type_of(length_did);
+        let length = cx
+            .tcx
+            .const_eval_poly(length_did)
+            .ok()
+            .map(|val| Const::from_value(cx.tcx, val, length_ty))
+            .and_then(miri_to_const);
+        if let Some(Constant::Int(length)) = length;
+        if length == 0;
         then {
             true
         } else {
@@ -88,7 +98,8 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx 
 
 fn has_repr_attr(cx: &LateContext<'tcx>, attrs: &[Attribute]) -> bool {
     // NOTE: there's at least four other ways to do this but I liked this one the best. (All five agreed
-    // on all testcases.) Happy to use another; they're in the commit history.
+    // on all testcases.) Happy to use another; they're in the commit history if you want to look (or I
+    // can go find them).
     attrs
         .iter()
         .any(|attr| !rustc_attr::find_repr_attrs(cx.tcx.sess(), attr).is_empty())

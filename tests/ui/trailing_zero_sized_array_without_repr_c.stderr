@@ -1,5 +1,5 @@
 error: trailing zero-sized array in a struct which is not marked `#[repr(C)]`
-  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:4:1
+  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:5:1
    |
 LL | / struct RarelyUseful {
 LL | |     field: i32,
@@ -8,33 +8,20 @@ LL | | }
    | |_^
    |
    = note: `-D clippy::trailing-zero-sized-array-without-repr-c` implied by `-D warnings`
-help: try annotating the struct definition with `#[repr(C)]` (or another `repr` attribute):
-   |
-LL + #[repr(C)]
-LL + struct RarelyUseful {
-LL +     field: i32,
-LL +     last: [usize; 0],
-LL + }
-   |
+   = help: consider annotating the struct definition with `#[repr(C)]` (or another `repr` attribute)
 
 error: trailing zero-sized array in a struct which is not marked `#[repr(C)]`
-  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:15:1
+  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:10:1
    |
-LL | / struct OnlyFieldIsZeroSizeArray {
+LL | / struct OnlyField {
 LL | |     first_and_last: [usize; 0],
 LL | | }
    | |_^
    |
-help: try annotating the struct definition with `#[repr(C)]` (or another `repr` attribute):
-   |
-LL + #[repr(C)]
-LL + struct OnlyFieldIsZeroSizeArray {
-LL +     first_and_last: [usize; 0],
-LL + }
-   |
+   = help: consider annotating the struct definition with `#[repr(C)]` (or another `repr` attribute)
 
 error: trailing zero-sized array in a struct which is not marked `#[repr(C)]`
-  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:19:1
+  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:14:1
    |
 LL | / struct GenericArrayType<T> {
 LL | |     field: i32,
@@ -42,53 +29,55 @@ LL | |     last: [T; 0],
 LL | | }
    | |_^
    |
-help: try annotating the struct definition with `#[repr(C)]` (or another `repr` attribute):
-   |
-LL + #[repr(C)]
-LL + struct GenericArrayType<T> {
-LL +     field: i32,
-LL +     last: [T; 0],
-LL + }
-   |
+   = help: consider annotating the struct definition with `#[repr(C)]` (or another `repr` attribute)
 
 error: trailing zero-sized array in a struct which is not marked `#[repr(C)]`
-  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:30:1
+  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:19:1
    |
-LL | / struct ZeroSizedFromExternalConst {
+LL | / #[must_use]
+LL | | struct OnlyAnotherAttributeMustUse {
+LL | |     field: i32,
+LL | |     last: [usize; 0],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating the struct definition with `#[repr(C)]` (or another `repr` attribute)
+
+error: trailing zero-sized array in a struct which is not marked `#[repr(C)]`
+  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:28:1
+   |
+LL | / struct OnlyAnotherAttributeDerive {
+LL | |     field: i32,
+LL | |     last: [usize; 0],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating the struct definition with `#[repr(C)]` (or another `repr` attribute)
+
+error: trailing zero-sized array in a struct which is not marked `#[repr(C)]`
+  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:34:1
+   |
+LL | / struct ZeroSizedWithConst {
 LL | |     field: i32,
 LL | |     last: [usize; ZERO],
 LL | | }
    | |_^
    |
-help: try annotating the struct definition with `#[repr(C)]` (or another `repr` attribute):
-   |
-LL + #[repr(C)]
-LL + struct ZeroSizedFromExternalConst {
-LL +     field: i32,
-LL +     last: [usize; ZERO],
-LL + }
-   |
+   = help: consider annotating the struct definition with `#[repr(C)]` (or another `repr` attribute)
 
 error: trailing zero-sized array in a struct which is not marked `#[repr(C)]`
-  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:45:1
+  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:43:1
    |
-LL | / struct UsingFunction {
+LL | / struct ZeroSizedWithConstFunction {
 LL | |     field: i32,
 LL | |     last: [usize; compute_zero()],
 LL | | }
    | |_^
    |
-help: try annotating the struct definition with `#[repr(C)]` (or another `repr` attribute):
-   |
-LL + #[repr(C)]
-LL + struct UsingFunction {
-LL +     field: i32,
-LL +     last: [usize; compute_zero()],
-LL + }
-   |
+   = help: consider annotating the struct definition with `#[repr(C)]` (or another `repr` attribute)
 
 error: trailing zero-sized array in a struct which is not marked `#[repr(C)]`
-  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:94:1
+  --> $DIR/trailing_zero_sized_array_without_repr_c.rs:48:1
    |
 LL | / struct LotsOfFields {
 LL | |     f1: u32,
@@ -99,15 +88,7 @@ LL | |     last: [usize; 0],
 LL | | }
    | |_^
    |
-help: try annotating the struct definition with `#[repr(C)]` (or another `repr` attribute):
-   |
-LL + #[repr(C)]
-LL + struct LotsOfFields {
-LL +     f1: u32,
-LL +     f2: u32,
-LL +     f3: u32,
-LL +     f4: u32,
- ...
+   = help: consider annotating the struct definition with `#[repr(C)]` (or another `repr` attribute)
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 
