@@ -2,7 +2,7 @@
 use hir::HasAttrs;
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
-use syntax::ast;
+use syntax::{ast, SmolStr};
 
 use crate::{
     context::CompletionContext,
@@ -15,26 +15,31 @@ pub(super) fn complete_derive(
     ctx: &CompletionContext,
     derive_input: ast::TokenTree,
 ) {
-    if let Some(existing_derives) = super::parse_comma_sep_input(derive_input) {
+    if let Some(existing_derives) = super::parse_comma_sep_paths(derive_input) {
         for (derive, docs) in get_derive_names_in_scope(ctx) {
+            let label;
             let (label, lookup) = if let Some(derive_completion) = DEFAULT_DERIVE_COMPLETIONS
                 .iter()
                 .find(|derive_completion| derive_completion.label == derive)
             {
                 let mut components = vec![derive_completion.label];
-                components.extend(
-                    derive_completion
-                        .dependencies
+                components.extend(derive_completion.dependencies.iter().filter(|&&dependency| {
+                    !existing_derives
                         .iter()
-                        .filter(|&&dependency| !existing_derives.contains(dependency)),
-                );
+                        .filter_map(|it| it.as_single_name_ref())
+                        .any(|it| it.text() == dependency)
+                }));
                 let lookup = components.join(", ");
-                let label = components.iter().rev().join(", ");
-                (label, Some(lookup))
-            } else if existing_derives.contains(&derive) {
+                label = components.iter().rev().join(", ");
+                (&*label, Some(lookup))
+            } else if existing_derives
+                .iter()
+                .filter_map(|it| it.as_single_name_ref())
+                .any(|it| it.text().as_str() == derive)
+            {
                 continue;
             } else {
-                (derive, None)
+                (&*derive, None)
             };
             let mut item =
                 CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label);
@@ -52,12 +57,12 @@ pub(super) fn complete_derive(
 
 fn get_derive_names_in_scope(
     ctx: &CompletionContext,
-) -> FxHashMap<String, Option<hir::Documentation>> {
+) -> FxHashMap<SmolStr, Option<hir::Documentation>> {
     let mut result = FxHashMap::default();
     ctx.process_all_names(&mut |name, scope_def| {
         if let hir::ScopeDef::MacroDef(mac) = scope_def {
             if mac.kind() == hir::MacroKind::Derive {
-                result.insert(name.to_string(), mac.docs(ctx.db));
+                result.insert(name.to_smol_str(), mac.docs(ctx.db));
             }
         }
     });
