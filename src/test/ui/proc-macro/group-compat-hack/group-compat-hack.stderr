@@ -1,27 +1,27 @@
-warning: using an old version of `time-macros-impl`
+error: using an old version of `time-macros-impl`
   --> $DIR/time-macros-impl/src/lib.rs:5:32
    |
 LL |         #[my_macro] struct One($name);
    |                                ^^^^^
    |
-  ::: $DIR/group-compat-hack.rs:27:5
+  ::: $DIR/group-compat-hack.rs:26:5
    |
 LL |     impl_macros!(Foo);
    |     ----------------- in this macro invocation
    |
-   = note: `#[warn(proc_macro_back_compat)]` on by default
+   = note: `#[deny(proc_macro_back_compat)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-   = note: this warning originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: using an old version of `time-macros-impl`
+error: using an old version of `time-macros-impl`
   --> $DIR/time-macros-impl-0.1.0/src/lib.rs:5:32
    |
 LL |         #[my_macro] struct One($name);
    |                                ^^^^^
    |
-  ::: $DIR/group-compat-hack.rs:44:5
+  ::: $DIR/group-compat-hack.rs:43:5
    |
 LL |     impl_macros!(Foo);
    |     ----------------- in this macro invocation
@@ -29,15 +29,15 @@ LL |     impl_macros!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-   = note: this warning originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: using an old version of `js-sys`
+error: using an old version of `js-sys`
   --> $DIR/js-sys-0.3.17/src/lib.rs:5:32
    |
 LL |         #[my_macro] struct Two($name);
    |                                ^^^^^
    |
-  ::: $DIR/group-compat-hack.rs:46:5
+  ::: $DIR/group-compat-hack.rs:45:5
    |
 LL |     arrays!(Foo);
    |     ------------ in this macro invocation
@@ -45,15 +45,15 @@ LL |     arrays!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `js-sys` crate will stop compiling in future versions of Rust; please update to `js-sys` v0.3.40 or above
-   = note: this warning originates in the macro `arrays` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `arrays` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: using an old version of `actix-web`
+error: using an old version of `actix-web`
   --> $DIR/actix-web/src/extract.rs:5:34
    |
 LL |         #[my_macro] struct Three($T);
    |                                  ^^
    |
-  ::: $DIR/group-compat-hack.rs:55:5
+  ::: $DIR/group-compat-hack.rs:54:5
    |
 LL |     tuple_from_req!(Foo);
    |     -------------------- in this macro invocation
@@ -61,15 +61,15 @@ LL |     tuple_from_req!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the version of `actix-web` you are using might stop compiling in future versions of Rust; please update to the latest version of the `actix-web` crate to avoid breakage
-   = note: this warning originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: using an old version of `actix-web`
+error: using an old version of `actix-web`
   --> $DIR/actix-web-2.0.0/src/extract.rs:5:34
    |
 LL |         #[my_macro] struct Three($T);
    |                                  ^^
    |
-  ::: $DIR/group-compat-hack.rs:63:5
+  ::: $DIR/group-compat-hack.rs:62:5
    |
 LL |     tuple_from_req!(Foo);
    |     -------------------- in this macro invocation
@@ -77,36 +77,36 @@ LL |     tuple_from_req!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the version of `actix-web` you are using might stop compiling in future versions of Rust; please update to the latest version of the `actix-web` crate to avoid breakage
-   = note: this warning originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: 5 warnings emitted
+error: aborting due to 5 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
-warning: using an old version of `time-macros-impl`
+error: using an old version of `time-macros-impl`
   --> $DIR/time-macros-impl/src/lib.rs:5:32
    |
 LL |         #[my_macro] struct One($name);
    |                                ^^^^^
    |
-  ::: $DIR/group-compat-hack.rs:27:5
+  ::: $DIR/group-compat-hack.rs:26:5
    |
 LL |     impl_macros!(Foo);
    |     ----------------- in this macro invocation
    |
-   = note: `#[warn(proc_macro_back_compat)]` on by default
+   = note: `#[deny(proc_macro_back_compat)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-   = note: this warning originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-warning: using an old version of `time-macros-impl`
+error: using an old version of `time-macros-impl`
   --> $DIR/time-macros-impl-0.1.0/src/lib.rs:5:32
    |
 LL |         #[my_macro] struct One($name);
    |                                ^^^^^
    |
-  ::: $DIR/group-compat-hack.rs:44:5
+  ::: $DIR/group-compat-hack.rs:43:5
    |
 LL |     impl_macros!(Foo);
    |     ----------------- in this macro invocation
@@ -114,16 +114,16 @@ LL |     impl_macros!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-   = note: this warning originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-warning: using an old version of `js-sys`
+error: using an old version of `js-sys`
   --> $DIR/js-sys-0.3.17/src/lib.rs:5:32
    |
 LL |         #[my_macro] struct Two($name);
    |                                ^^^^^
    |
-  ::: $DIR/group-compat-hack.rs:46:5
+  ::: $DIR/group-compat-hack.rs:45:5
    |
 LL |     arrays!(Foo);
    |     ------------ in this macro invocation
@@ -131,16 +131,16 @@ LL |     arrays!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `js-sys` crate will stop compiling in future versions of Rust; please update to `js-sys` v0.3.40 or above
-   = note: this warning originates in the macro `arrays` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `arrays` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-warning: using an old version of `actix-web`
+error: using an old version of `actix-web`
   --> $DIR/actix-web/src/extract.rs:5:34
    |
 LL |         #[my_macro] struct Three($T);
    |                                  ^^
    |
-  ::: $DIR/group-compat-hack.rs:55:5
+  ::: $DIR/group-compat-hack.rs:54:5
    |
 LL |     tuple_from_req!(Foo);
    |     -------------------- in this macro invocation
@@ -148,16 +148,16 @@ LL |     tuple_from_req!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the version of `actix-web` you are using might stop compiling in future versions of Rust; please update to the latest version of the `actix-web` crate to avoid breakage
-   = note: this warning originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-warning: using an old version of `actix-web`
+error: using an old version of `actix-web`
   --> $DIR/actix-web-2.0.0/src/extract.rs:5:34
    |
 LL |         #[my_macro] struct Three($T);
    |                                  ^^
    |
-  ::: $DIR/group-compat-hack.rs:63:5
+  ::: $DIR/group-compat-hack.rs:62:5
    |
 LL |     tuple_from_req!(Foo);
    |     -------------------- in this macro invocation
@@ -165,5 +165,5 @@ LL |     tuple_from_req!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the version of `actix-web` you are using might stop compiling in future versions of Rust; please update to the latest version of the `actix-web` crate to avoid breakage
-   = note: this warning originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
 
