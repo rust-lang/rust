@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `A`
+error[E0369]: can't compare `A` with `fn(()) -> A {A::Value}`
   --> $DIR/issue-62375.rs:7:7
    |
 LL |     a == A::Value;

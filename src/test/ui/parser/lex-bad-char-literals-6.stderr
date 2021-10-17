@@ -31,13 +31,21 @@ help: if you meant to write a `str` literal, use double quotes
 LL |     let z = "ef";
    |             ~~~~
 
-error[E0277]: can't compare `&str` with `char`
+error[E0369]: can't compare `&str` with `char`
   --> $DIR/lex-bad-char-literals-6.rs:9:10
    |
 LL |     if x == y {}
-   |          ^^ no implementation for `&str == char`
+   |        - ^^ - char
+   |        |
+   |        &str
+
+error[E0369]: can't compare `&str` with `char`
+  --> $DIR/lex-bad-char-literals-6.rs:12:10
    |
-   = help: the trait `PartialEq<char>` is not implemented for `&str`
+LL |     if x == z {}
+   |        - ^^ - char
+   |        |
+   |        &str
 
 error[E0308]: mismatched types
   --> $DIR/lex-bad-char-literals-6.rs:15:20
@@ -47,15 +55,7 @@ LL |     let a: usize = "";
    |            |
    |            expected due to this
 
-error[E0277]: can't compare `&str` with `char`
-  --> $DIR/lex-bad-char-literals-6.rs:12:10
-   |
-LL |     if x == z {}
-   |          ^^ no implementation for `&str == char`
-   |
-   = help: the trait `PartialEq<char>` is not implemented for `&str`
-
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0277, E0308.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0308, E0369.
+For more information about an error, try `rustc --explain E0308`.

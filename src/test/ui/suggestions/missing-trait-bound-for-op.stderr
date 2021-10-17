@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `&[T]`
+error[E0369]: can't compare `&[T]` with `&[T]`
   --> $DIR/missing-trait-bound-for-op.rs:4:15
    |
 LL |     let _ = s == t;

@@ -44,6 +44,9 @@ pub struct MethodCallee<'tcx> {
     /// substituted, normalized, and has had late-bound
     /// lifetimes replaced with inference variables.
     pub sig: ty::FnSig<'tcx>,
+
+    /// Used only for diagnostics, to skip redundant E0277 errors.
+    pub trait_def_id: DefId,
 }
 
 #[derive(Debug)]
@@ -432,7 +435,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Binder::dummy(ty::PredicateKind::WellFormed(method_ty.into())).to_predicate(tcx),
         ));
 
-        let callee = MethodCallee { def_id, substs, sig: fn_sig };
+        let callee = MethodCallee { def_id, substs, sig: fn_sig, trait_def_id };
 
         debug!("callee = {:?}", callee);
 

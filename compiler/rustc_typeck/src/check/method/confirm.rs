@@ -128,6 +128,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             def_id: pick.item.def_id,
             substs: all_substs,
             sig: method_sig.skip_binder(),
+            trait_def_id: pick.item.container.id(),
         };
         ConfirmResult { callee, illegal_sized_bound }
     }

@@ -1,11 +1,11 @@
 fn main() {
     let x = ();
     1 +
-    x //~^ ERROR E0277
+    x //~^ ERROR cannot add
     ;
 
     let x: () = ();
     1 +
-    x //~^ ERROR E0277
+    x //~^ ERROR cannot add
     ;
 }

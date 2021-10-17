@@ -1,15 +1,20 @@
-error[E0277]: can't compare `&T` with `T`
-  --> $DIR/partialeq_help.rs:2:7
+error[E0369]: can't compare `&T` with `T`
+  --> $DIR/partialeq_help.rs:3:15
    |
-LL |     a == b;
-   |       ^^ no implementation for `&T == T`
+LL |     let _ = a == b;
+   |             - ^^ - T
+   |             |
+   |             &T
    |
-   = help: the trait `PartialEq<T>` is not implemented for `&T`
-help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+help: `==` can be applied on `&T`
    |
-LL | fn foo<T: PartialEq>(a: &T, b: T) where &T: PartialEq<T> {
-   |                                   ++++++++++++++++++++++
+LL |     let _ = a == &b;
+   |                  +
+help: consider further restricting this bound
+   |
+LL | fn foo<T: PartialEq + std::cmp::PartialEq>(a: &T, b: T) {
+   |                     +++++++++++++++++++++
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0369`.

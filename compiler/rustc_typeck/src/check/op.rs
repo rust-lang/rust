@@ -206,6 +206,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // see `NB` above
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
         let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
+        let mut erased = false;
+        let mut non_binop_obligations = 0;
+        self.select_obligations_where_possible(false, |errors| {
+            errors.retain(|e| match (&result, e.obligation.predicate.kind().skip_binder()) {
+                (Ok(callee), ty::PredicateKind::Trait(predicate)) => {
+                    // Skip the obligations coming from the binop, we want to emit E0369 instead
+                    // of E0277.
+                    erased = true;
+                    callee.trait_def_id != predicate.def_id()
+                }
+                _ => true,
+            });
+            non_binop_obligations = errors.len();
+        });
+
+        // Run again with more accurate types for better diagnostics. Even if `result` was `Ok`,
+        // we can rerun with a more accurate rhs type for eager obligation errors.
+        let result = if result.is_ok() && erased && non_binop_obligations == 0 {
+            self.lookup_op_method(lhs_ty, &[rhs_ty], Op::Binary(op, is_assign))
+        } else {
+            result
+        };
 
         let return_ty = match result {
             Ok(method) => {
@@ -261,6 +283,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
             Err(errors) => {
                 let source_map = self.tcx.sess.source_map();
+                let lhs_ty = self.resolve_vars_if_possible(lhs_ty);
+                let rhs_ty = self.resolve_vars_if_possible(rhs_ty);
                 let (mut err, missing_trait, use_output) = match is_assign {
                     IsAssign::Yes => {
                         let mut err = struct_span_err!(
@@ -344,11 +368,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 true,
                             ),
                             hir::BinOpKind::Eq | hir::BinOpKind::Ne => (
-                                format!(
-                                    "binary operation `{}` cannot be applied to type `{}`",
-                                    op.node.as_str(),
-                                    lhs_ty
-                                ),
+                                // can't compare `&str` with `char`
+                                if lhs_ty == rhs_ty {
+                                    format!(
+                                        "binary operation `{}` cannot be applied to type `{}`",
+                                        op.node.as_str(),
+                                        lhs_ty,
+                                    )
+                                } else {
+                                    format!("can't compare `{}` with `{}`", lhs_ty, rhs_ty,)
+                                },
                                 Some("std::cmp::PartialEq"),
                                 false,
                             ),
@@ -356,11 +385,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             | hir::BinOpKind::Le
                             | hir::BinOpKind::Gt
                             | hir::BinOpKind::Ge => (
-                                format!(
-                                    "binary operation `{}` cannot be applied to type `{}`",
-                                    op.node.as_str(),
-                                    lhs_ty
-                                ),
+                                if lhs_ty == rhs_ty {
+                                    format!(
+                                        "binary operation `{}` cannot be applied to type `{}`",
+                                        op.node.as_str(),
+                                        lhs_ty
+                                    )
+                                } else {
+                                    format!("can't compare `{}` with `{}`", lhs_ty, rhs_ty,)
+                                },
                                 Some("std::cmp::PartialOrd"),
                                 false,
                             ),
@@ -398,6 +431,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (err, missing_trait, use_output)
                     }
                 };
+
+                let borrowed_rhs = self.tcx.mk_ref(
+                    self.tcx.lifetimes.re_static,
+                    ty::TypeAndMut { ty: rhs_ty, mutbl: hir::Mutability::Not },
+                );
+                if self.lookup_op_method(lhs_ty, &[borrowed_rhs], Op::Binary(op, is_assign)).is_ok()
+                {
+                    let borrowed_rhs = self.tcx.mk_ref(
+                        self.tcx.lifetimes.re_erased,
+                        ty::TypeAndMut { ty: rhs_ty, mutbl: hir::Mutability::Not },
+                    );
+                    let msg = &format!(
+                        "`{}{}` can be applied on `{}`",
+                        op.node.as_str(),
+                        match is_assign {
+                            IsAssign::Yes => "=",
+                            IsAssign::No => "",
+                        },
+                        borrowed_rhs,
+                    );
+                    err.span_suggestion_verbose(
+                        rhs_expr.span.shrink_to_lo(),
+                        msg,
+                        "&".to_string(),
+                        rustc_errors::Applicability::MachineApplicable,
+                    );
+                }
+                self.check_for_cast(&mut err, rhs_expr, rhs_ty, lhs_ty, Some(lhs_expr));
+                self.check_for_cast(&mut err, lhs_expr, lhs_ty, rhs_ty, Some(rhs_expr));
                 if let Ref(_, rty, _) = lhs_ty.kind() {
                     if {
                         self.infcx.type_is_copy_modulo_regions(self.param_env, rty, lhs_expr.span)
@@ -421,6 +483,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 msg,
                                 "*".to_string(),
                                 rustc_errors::Applicability::MachineApplicable,
+                            );
+                        } else if let IsAssign::No = is_assign {
+                            let msg = &format!(
+                                "`{}` can be used on `{}`, you can borrow it",
+                                op.node.as_str(),
+                                rty,
+                            );
+                            err.span_suggestion_verbose(
+                                rhs_expr.span.shrink_to_lo(),
+                                msg,
+                                "&".to_string(),
+                                rustc_errors::Applicability::MaybeIncorrect,
                             );
                         }
                     }

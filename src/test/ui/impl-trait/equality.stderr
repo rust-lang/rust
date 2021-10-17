@@ -26,15 +26,15 @@ LL |     0_u32
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
    = help: you could instead create a new `enum` with a variant for each returned type
 
-error[E0277]: cannot add `impl Foo` to `u32`
+error[E0369]: cannot add `impl Foo` to `u32`
   --> $DIR/equality.rs:24:11
    |
 LL |         n + sum_to(n - 1)
-   |           ^ no implementation for `u32 + impl Foo`
-   |
-   = help: the trait `Add<impl Foo>` is not implemented for `u32`
+   |         - ^ ------------- impl Foo
+   |         |
+   |         u32
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0277, E0308.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0308, E0369.
+For more information about an error, try `rustc --explain E0308`.

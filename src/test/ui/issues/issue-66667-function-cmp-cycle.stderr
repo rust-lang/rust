@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `fn() {second}`
+error[E0369]: can't compare `fn() {second}` with `{integer}`
   --> $DIR/issue-66667-function-cmp-cycle.rs:2:12
    |
 LL |     second == 1
@@ -15,7 +15,7 @@ LL |     second == 1
    = note: expected fn item `fn() {second}`
                  found type `{integer}`
 
-error[E0369]: binary operation `==` cannot be applied to type `fn() {first}`
+error[E0369]: can't compare `fn() {first}` with `{integer}`
   --> $DIR/issue-66667-function-cmp-cycle.rs:7:11
    |
 LL |     first == 1
@@ -32,7 +32,7 @@ LL |     first == 1
    = note: expected fn item `fn() {first}`
                  found type `{integer}`
 
-error[E0369]: binary operation `==` cannot be applied to type `fn() {bar}`
+error[E0369]: can't compare `fn() {bar}` with `{integer}`
   --> $DIR/issue-66667-function-cmp-cycle.rs:12:9
    |
 LL |     bar == 1

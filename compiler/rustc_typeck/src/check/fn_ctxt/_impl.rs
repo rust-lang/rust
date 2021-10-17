@@ -656,7 +656,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn select_obligations_where_possible(
         &self,
         fallback_has_occurred: bool,
-        mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
+        mut mutate_fulfillment_errors: impl FnMut(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
         let result = self
             .fulfillment_cx

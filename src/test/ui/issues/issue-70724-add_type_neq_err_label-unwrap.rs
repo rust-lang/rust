@@ -4,7 +4,7 @@ fn a() -> i32 {
 
 pub fn main() {
     assert_eq!(a, 0);
-    //~^ ERROR binary operation `==` cannot
+    //~^ ERROR can't compare
     //~| ERROR mismatched types
     //~| ERROR doesn't implement
 }

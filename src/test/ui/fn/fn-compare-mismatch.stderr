@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `fn() {f}`
+error[E0369]: can't compare `fn() {f}` with `fn() {g}`
   --> $DIR/fn-compare-mismatch.rs:4:15
    |
 LL |     let x = f == g;

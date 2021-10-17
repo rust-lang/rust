@@ -6,6 +6,6 @@ fn main() {
     let y;
     // we shouldn't ice with the bound var here.
     assert_eq!(foo, y);
-    //~^ ERROR binary operation `==` cannot be applied to type
+    //~^ ERROR can't compare
     //~| ERROR `for<'r> fn(&'r i32) -> &'r i32 {foo}` doesn't implement `Debug`
 }
