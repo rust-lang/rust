@@ -50,8 +50,13 @@ pub(super) fn complete_lint(
             if lint_already_annotated {
                 continue;
             }
-            let insert = match qual {
-                Some(qual) if !ctx.previous_token_is(T![:]) => format!("{}::{}", qual, name),
+            let insert = match (qual, ctx.previous_token_is(T![:])) {
+                (Some(qual), false) => format!("{}::{}", qual, name),
+                // user is completing a qualified path but this completion has no qualifier
+                // so discard this completion
+                // FIXME: This is currently very hacky and will propose odd completions if
+                // we add more qualified (tool) completions other than clippy
+                (None, true) => continue,
                 _ => name.to_owned(),
             };
             let mut item =
