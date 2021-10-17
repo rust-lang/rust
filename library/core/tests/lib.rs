@@ -65,6 +65,7 @@
 #![feature(once_cell)]
 #![feature(unsized_tuple_coercion)]
 #![feature(const_option)]
+#![feature(const_result)]
 #![feature(integer_atomics)]
 #![feature(int_roundings)]
 #![feature(slice_group_by)]
