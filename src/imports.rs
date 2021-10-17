@@ -10,6 +10,7 @@ use rustc_span::{
 
 use crate::comment::combine_strs_with_missing_comments;
 use crate::config::lists::*;
+use crate::config::ImportGranularity;
 use crate::config::{Edition, IndentStyle};
 use crate::lists::{
     definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
@@ -182,7 +183,18 @@ impl UseSegment {
     }
 }
 
-pub(crate) fn merge_use_trees(use_trees: Vec<UseTree>, merge_by: SharedPrefix) -> Vec<UseTree> {
+pub(crate) fn regroup_use_trees(
+    use_trees: Vec<UseTree>,
+    import_granularity: ImportGranularity,
+) -> Vec<UseTree> {
+    let merge_by = match import_granularity {
+        ImportGranularity::Item => return flatten_use_trees(use_trees, ImportGranularity::Item),
+        ImportGranularity::Preserve => return use_trees,
+        ImportGranularity::Crate => SharedPrefix::Crate,
+        ImportGranularity::Module => SharedPrefix::Module,
+        ImportGranularity::One => SharedPrefix::One,
+    };
+
     let mut result = Vec::with_capacity(use_trees.len());
     for use_tree in use_trees {
         if use_tree.has_comment() || use_tree.attrs.is_some() {
@@ -190,7 +202,7 @@ pub(crate) fn merge_use_trees(use_trees: Vec<UseTree>, merge_by: SharedPrefix) -
             continue;
         }
 
-        for mut flattened in use_tree.flatten() {
+        for mut flattened in use_tree.flatten(import_granularity) {
             if let Some(tree) = result
                 .iter_mut()
                 .find(|tree| tree.share_prefix(&flattened, merge_by))
@@ -208,10 +220,13 @@ pub(crate) fn merge_use_trees(use_trees: Vec<UseTree>, merge_by: SharedPrefix) -
     result
 }
 
-pub(crate) fn flatten_use_trees(use_trees: Vec<UseTree>) -> Vec<UseTree> {
+fn flatten_use_trees(
+    use_trees: Vec<UseTree>,
+    import_granularity: ImportGranularity,
+) -> Vec<UseTree> {
     use_trees
         .into_iter()
-        .flat_map(UseTree::flatten)
+        .flat_map(|tree| tree.flatten(import_granularity))
         .map(UseTree::nest_trailing_self)
         .collect()
 }
@@ -581,7 +596,7 @@ impl UseTree {
         }
     }
 
-    fn flatten(self) -> Vec<UseTree> {
+    fn flatten(self, import_granularity: ImportGranularity) -> Vec<UseTree> {
         if self.path.is_empty() {
             return vec![self];
         }
@@ -595,7 +610,7 @@ impl UseTree {
                 let prefix = &self.path[..self.path.len() - 1];
                 let mut result = vec![];
                 for nested_use_tree in list {
-                    for flattend in &mut nested_use_tree.clone().flatten() {
+                    for flattend in &mut nested_use_tree.clone().flatten(import_granularity) {
                         let mut new_path = prefix.to_vec();
                         new_path.append(&mut flattend.path);
                         result.push(UseTree {
@@ -603,7 +618,11 @@ impl UseTree {
                             span: self.span,
                             list_item: None,
                             visibility: self.visibility.clone(),
-                            attrs: None,
+                            // only retain attributes for `ImportGranularity::Item`
+                            attrs: match import_granularity {
+                                ImportGranularity::Item => self.attrs.clone(),
+                                _ => None,
+                            },
                         });
                     }
                 }
@@ -951,7 +970,7 @@ impl Rewrite for UseTree {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum SharedPrefix {
+enum SharedPrefix {
     Crate,
     Module,
     One,
@@ -1106,7 +1125,7 @@ mod test {
     macro_rules! test_merge {
         ($by:ident, [$($input:expr),* $(,)*], [$($output:expr),* $(,)*]) => {
             assert_eq!(
-                merge_use_trees(parse_use_trees!($($input,)*), SharedPrefix::$by),
+                regroup_use_trees(parse_use_trees!($($input,)*), ImportGranularity::$by),
                 parse_use_trees!($($output,)*),
             );
         }
@@ -1215,12 +1234,18 @@ mod test {
     #[test]
     fn test_flatten_use_trees() {
         assert_eq!(
-            flatten_use_trees(parse_use_trees!["foo::{a::{b, c}, d::e}"]),
+            flatten_use_trees(
+                parse_use_trees!["foo::{a::{b, c}, d::e}"],
+                ImportGranularity::Item
+            ),
             parse_use_trees!["foo::a::b", "foo::a::c", "foo::d::e"]
         );
 
         assert_eq!(
-            flatten_use_trees(parse_use_trees!["foo::{self, a, b::{c, d}, e::*}"]),
+            flatten_use_trees(
+                parse_use_trees!["foo::{self, a, b::{c, d}, e::*}"],
+                ImportGranularity::Item
+            ),
             parse_use_trees![
                 "foo::{self}",
                 "foo::a",
@@ -1234,12 +1259,13 @@ mod test {
     #[test]
     fn test_use_tree_flatten() {
         assert_eq!(
-            parse_use_tree("a::b::{c, d, e, f}").flatten(),
+            parse_use_tree("a::b::{c, d, e, f}").flatten(ImportGranularity::Item),
             parse_use_trees!("a::b::c", "a::b::d", "a::b::e", "a::b::f",)
         );
 
         assert_eq!(
-            parse_use_tree("a::b::{c::{d, e, f}, g, h::{i, j, k}}").flatten(),
+            parse_use_tree("a::b::{c::{d, e, f}, g, h::{i, j, k}}")
+                .flatten(ImportGranularity::Item),
             parse_use_trees![
                 "a::b::c::d",
                 "a::b::c::e",
