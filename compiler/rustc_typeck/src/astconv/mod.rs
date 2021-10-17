@@ -2635,7 +2635,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     sugg = format!("<{}>", sugg);
                 }
             }
-            if tcx.sess.edition() >= Edition::Edition2021 {
+            if self_ty.span.edition() >= Edition::Edition2021 {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";
                 let mut err =
