@@ -230,7 +230,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                         // We cannot promote things that need dropping, since the promoted value
                         // would not get dropped.
-                        if self.qualif_local::<qualifs::NeedsNonConstDrop>(place.local) {
+                        if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
                             return Err(Unpromotable);
                         }
 

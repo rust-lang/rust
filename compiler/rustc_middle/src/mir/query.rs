@@ -224,6 +224,7 @@ pub struct BorrowCheckResult<'tcx> {
 #[derive(Clone, Copy, Debug, Default, TyEncodable, TyDecodable, HashStable)]
 pub struct ConstQualifs {
     pub has_mut_interior: bool,
+    pub needs_drop: bool,
     pub needs_non_const_drop: bool,
     pub custom_eq: bool,
     pub error_occured: Option<ErrorReported>,

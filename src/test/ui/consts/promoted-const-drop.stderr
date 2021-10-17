@@ -1,0 +1,24 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promoted-const-drop.rs:13:26
+   |
+LL |     let _: &'static A = &A();
+   |            ----------    ^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |     let _: &'static [A] = &[C];
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promoted-const-drop.rs:14:28
+   |
+LL |     let _: &'static [A] = &[C];
+   |            ------------    ^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

@@ -22,7 +22,7 @@ use std::mem;
 use std::ops::Deref;
 
 use super::ops::{self, NonConstOp, Status};
-use super::qualifs::{self, CustomEq, HasMutInterior, NeedsNonConstDrop};
+use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, is_lang_special_const_fn, ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
@@ -39,6 +39,7 @@ type QualifResults<'mir, 'tcx, Q> =
 #[derive(Default)]
 pub struct Qualifs<'mir, 'tcx> {
     has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
+    needs_drop: Option<QualifResults<'mir, 'tcx, NeedsDrop>>,
     needs_non_const_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,
     indirectly_mutable: Option<IndirectlyMutableResults<'mir, 'tcx>>,
 }
@@ -68,6 +69,33 @@ impl Qualifs<'mir, 'tcx> {
 
         indirectly_mutable.seek_before_primary_effect(location);
         indirectly_mutable.get().contains(local)
+    }
+
+    /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
+    ///
+    /// Only updates the cursor if absolutely necessary
+    pub fn needs_drop(
+        &mut self,
+        ccx: &'mir ConstCx<'mir, 'tcx>,
+        local: Local,
+        location: Location,
+    ) -> bool {
+        let ty = ccx.body.local_decls[local].ty;
+        if !NeedsDrop::in_any_value_of_ty(ccx, ty) {
+            return false;
+        }
+
+        let needs_drop = self.needs_drop.get_or_insert_with(|| {
+            let ConstCx { tcx, body, .. } = *ccx;
+
+            FlowSensitiveAnalysis::new(NeedsDrop, ccx)
+                .into_engine(tcx, &body)
+                .iterate_to_fixpoint()
+                .into_results_cursor(&body)
+        });
+
+        needs_drop.seek_before_primary_effect(location);
+        needs_drop.get().contains(local) || self.indirectly_mutable(ccx, local, location)
     }
 
     /// Returns `true` if `local` is `NeedsNonConstDrop` at the given `Location`.
@@ -172,6 +200,7 @@ impl Qualifs<'mir, 'tcx> {
         };
 
         ConstQualifs {
+            needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
             needs_non_const_drop: self.needs_non_const_drop(ccx, RETURN_PLACE, return_loc),
             has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
             custom_eq,
