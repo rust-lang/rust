@@ -308,10 +308,12 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for () {
         FingerprintStyle::Unit
     }
 
+    #[inline(always)]
     fn to_fingerprint(&self, _: TyCtxt<'tcx>) -> Fingerprint {
         Fingerprint::ZERO
     }
 
+    #[inline(always)]
     fn recover(_: TyCtxt<'tcx>, _: &DepNode) -> Option<Self> {
         Some(())
     }
@@ -323,14 +325,17 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
         FingerprintStyle::DefPathHash
     }
 
+    #[inline(always)]
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         tcx.def_path_hash(*self).0
     }
 
+    #[inline(always)]
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
         tcx.def_path_str(*self)
     }
 
+    #[inline(always)]
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
         dep_node.extract_def_id(tcx)
     }
@@ -342,14 +347,17 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
         FingerprintStyle::DefPathHash
     }
 
+    #[inline(always)]
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         self.to_def_id().to_fingerprint(tcx)
     }
 
+    #[inline(always)]
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
         self.to_def_id().to_debug_str(tcx)
     }
 
+    #[inline(always)]
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
         dep_node.extract_def_id(tcx).map(|id| id.expect_local())
     }
@@ -361,15 +369,18 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
         FingerprintStyle::DefPathHash
     }
 
+    #[inline(always)]
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
         def_id.to_fingerprint(tcx)
     }
 
+    #[inline(always)]
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
         tcx.crate_name(*self).to_string()
     }
 
+    #[inline(always)]
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
         dep_node.extract_def_id(tcx).map(|id| id.krate)
     }
@@ -384,6 +395,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full
     // hashing context and stable-hashing state.
+    #[inline(always)]
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         let (def_id_0, def_id_1) = *self;
 
@@ -393,6 +405,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
         def_path_hash_0.0.combine(def_path_hash_1.0)
     }
 
+    #[inline(always)]
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
         let (def_id_0, def_id_1) = *self;
 
@@ -409,6 +422,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full
     // hashing context and stable-hashing state.
+    #[inline(always)]
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         let HirId { owner, local_id } = *self;
 
