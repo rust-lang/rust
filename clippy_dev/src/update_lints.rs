@@ -18,7 +18,7 @@ static DEC_CLIPPY_LINT_RE: SyncLazy<Regex> = SyncLazy::new(|| {
         r#"(?x)
     declare_clippy_lint!\s*[\{(]
     (?:\s+///.*)*
-    (?:\s*\#\[clippy::version\s*=\s*"[^"]*"\])?
+    (?:\s*\#\[clippy::version\s*=\s*"[^"]*"\])
     \s+pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
     (?P<cat>[a-z_]+)\s*,\s*
     "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]
@@ -496,6 +496,7 @@ fn test_parse_contents() {
     let result: Vec<Lint> = parse_contents(
         r#"
 declare_clippy_lint! {
+    #[clippy::version = "Hello Clippy!"]
     pub PTR_ARG,
     style,
     "really long \
@@ -503,6 +504,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint!{
+    #[clippy::version = "Test version"]
     pub DOC_MARKDOWN,
     pedantic,
     "single line"
@@ -510,6 +512,7 @@ declare_clippy_lint!{
 
 /// some doc comment
 declare_deprecated_lint! {
+    #[clippy::version = "I'm a version"]
     pub SHOULD_ASSERT_EQ,
     "`assert!()` will be more flexible with RFC 2011"
 }
