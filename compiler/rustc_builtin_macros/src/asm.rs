@@ -812,7 +812,7 @@ pub fn expand_global_asm<'cx>(
         Ok(args) => {
             if let Some(inline_asm) = expand_preparsed_asm(ecx, args) {
                 MacEager::items(smallvec![P(ast::Item {
-                    ident: Ident::invalid(),
+                    ident: Ident::empty(),
                     attrs: Vec::new(),
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ItemKind::GlobalAsm(inline_asm),

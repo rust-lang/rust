@@ -23,7 +23,7 @@ pub fn placeholder(
         }
     }
 
-    let ident = Ident::invalid();
+    let ident = Ident::empty();
     let attrs = Vec::new();
     let vis = vis.unwrap_or(ast::Visibility {
         span: DUMMY_SP,

@@ -1327,7 +1327,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 if fst.ident.span.rust_2018() && !fst.ident.is_path_segment_keyword() =>
             {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
-                path.insert(0, Segment::from_ident(Ident::invalid()));
+                path.insert(0, Segment::from_ident(Ident::empty()));
             }
             _ => return None,
         }
