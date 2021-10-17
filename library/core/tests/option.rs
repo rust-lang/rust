@@ -380,6 +380,14 @@ const fn option_const_mut() {
 
     let _take = option.take();
     let _replace = option.replace(42);
+
+    {
+        let as_mut = option.as_mut();
+        match as_mut {
+            Some(v) => *v = 32,
+            None => unreachable!(),
+        }
+    }
 }
 
 #[test]
