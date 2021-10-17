@@ -769,11 +769,16 @@ fn foo(&self) -> Self::T { String::new() }
     ) -> bool {
         let assoc = self.associated_item(proj_ty.item_def_id);
         if let ty::Opaque(def_id, _) = *proj_ty.self_ty().kind() {
-            let opaque_local_def_id = def_id.expect_local();
-            let opaque_hir_id = self.hir().local_def_id_to_hir_id(opaque_local_def_id);
-            let opaque_hir_ty = match &self.hir().expect_item(opaque_hir_id).kind {
-                hir::ItemKind::OpaqueTy(opaque_hir_ty) => opaque_hir_ty,
-                _ => bug!("The HirId comes from a `ty::Opaque`"),
+            let opaque_local_def_id = def_id.as_local();
+            let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
+                let hir = self.hir();
+                let opaque_hir_id = hir.local_def_id_to_hir_id(opaque_local_def_id);
+                match &hir.expect_item(opaque_hir_id).kind {
+                    hir::ItemKind::OpaqueTy(opaque_hir_ty) => opaque_hir_ty,
+                    _ => bug!("The HirId comes from a `ty::Opaque`"),
+                }
+            } else {
+                return false;
             };
 
             let (trait_ref, assoc_substs) = proj_ty.trait_ref_and_own_substs(self);

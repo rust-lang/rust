@@ -1,0 +1,34 @@
+error[E0271]: type mismatch resolving `<impl Future as Future>::Output == ()`
+  --> $DIR/issue-89686.rs:7:17
+   |
+LL | type G<'a, T> = impl Future<Output = ()>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found associated type
+...
+LL |         async move { self.f().await }
+   |                    ------------------ the found `async` block
+   |
+  ::: $SRC_DIR/core/src/future/mod.rs:LL:COL
+   |
+LL | pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
+   |                                           ------------------------------- the found opaque type
+   |
+   = note:    expected unit type `()`
+           found associated type `<impl Future as Future>::Output`
+   = help: consider constraining the associated type `<impl Future as Future>::Output` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error[E0277]: the trait bound `T: Trait` is not satisfied
+  --> $DIR/issue-89686.rs:7:17
+   |
+LL | type G<'a, T> = impl Future<Output = ()>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | type G<'a, T: Trait> = impl Future<Output = ()>;
+   |             +++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.
