@@ -1018,7 +1018,7 @@ pub fn encode_query_results<'a, 'tcx, CTX, Q>(
 ) -> FileEncodeResult
 where
     CTX: QueryContext + 'tcx,
-    Q: super::QueryDescription<CTX> + super::QueryAccessors<CTX>,
+    Q: super::QueryDescription<CTX>,
     Q::Value: Encodable<CacheEncoder<'a, 'tcx, FileEncoder>>,
 {
     let _timer = tcx
