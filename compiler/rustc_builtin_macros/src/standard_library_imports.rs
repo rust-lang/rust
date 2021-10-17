@@ -77,7 +77,7 @@ pub fn inject(
 
     let use_item = cx.item(
         span,
-        Ident::invalid(),
+        Ident::empty(),
         vec![cx.attribute(cx.meta_word(span, sym::prelude_import))],
         ast::ItemKind::Use(ast::UseTree {
             prefix: cx.path(span, import_path),

@@ -724,7 +724,7 @@ impl<'a> TraitDef<'a> {
 
         cx.item(
             self.span,
-            Ident::invalid(),
+            Ident::empty(),
             a,
             ast::ItemKind::Impl(Box::new(ast::ImplKind {
                 unsafety,

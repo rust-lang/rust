@@ -11,6 +11,6 @@ fn main() {
     Symbol::intern("foo").as_str() == "clippy";
     Symbol::intern("foo").to_string() == "self";
     Symbol::intern("foo").to_ident_string() != "Self";
-    &*Ident::invalid().as_str() == "clippy";
-    "clippy" == Ident::invalid().to_string();
+    &*Ident::empty().as_str() == "clippy";
+    "clippy" == Ident::empty().to_string();
 }

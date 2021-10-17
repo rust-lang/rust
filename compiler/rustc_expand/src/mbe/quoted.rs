@@ -204,7 +204,7 @@ fn parse_tree(
                         pprust::token_to_string(&token),
                     );
                     sess.span_diagnostic.span_err(token.span, &msg);
-                    TokenTree::MetaVar(token.span, Ident::invalid())
+                    TokenTree::MetaVar(token.span, Ident::empty())
                 }
 
                 // There are no more tokens. Just return the `$` we already have.

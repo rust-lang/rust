@@ -121,7 +121,7 @@ impl LifetimeName {
         match *self {
             LifetimeName::ImplicitObjectLifetimeDefault
             | LifetimeName::Implicit
-            | LifetimeName::Error => Ident::invalid(),
+            | LifetimeName::Error => Ident::empty(),
             LifetimeName::Underscore => Ident::with_dummy_span(kw::UnderscoreLifetime),
             LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
             LifetimeName::Param(param_name) => param_name.ident(),
@@ -233,7 +233,7 @@ impl<'hir> PathSegment<'hir> {
     }
 
     pub fn invalid() -> Self {
-        Self::from_ident(Ident::invalid())
+        Self::from_ident(Ident::empty())
     }
 
     pub fn args(&self) -> &GenericArgs<'hir> {
@@ -310,7 +310,7 @@ impl GenericArg<'_> {
     }
 
     pub fn is_synthetic(&self) -> bool {
-        matches!(self, GenericArg::Lifetime(lifetime) if lifetime.name.ident() == Ident::invalid())
+        matches!(self, GenericArg::Lifetime(lifetime) if lifetime.name.ident() == Ident::empty())
     }
 
     pub fn descr(&self) -> &'static str {

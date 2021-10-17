@@ -216,7 +216,7 @@ impl<'a> Parser<'a> {
                 return Err(e);
             }
 
-            (Ident::invalid(), ItemKind::Use(tree))
+            (Ident::empty(), ItemKind::Use(tree))
         } else if self.check_fn_front_matter(def_final) {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, req_name, lo)?;
@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
             return Ok(None);
         } else if macros_allowed && self.check_path() {
             // MACRO INVOCATION ITEM
-            (Ident::invalid(), ItemKind::MacCall(self.parse_item_macro(vis)?))
+            (Ident::empty(), ItemKind::MacCall(self.parse_item_macro(vis)?))
         } else {
             return Ok(None);
         };
@@ -586,7 +586,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok((Ident::invalid(), item_kind))
+        Ok((Ident::empty(), item_kind))
     }
 
     fn parse_item_list<T>(
@@ -933,7 +933,7 @@ impl<'a> Parser<'a> {
         let abi = self.parse_abi(); // ABI?
         let items = self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?;
         let module = ast::ForeignMod { unsafety, abi, items };
-        Ok((Ident::invalid(), ItemKind::ForeignMod(module)))
+        Ok((Ident::empty(), ItemKind::ForeignMod(module)))
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).
