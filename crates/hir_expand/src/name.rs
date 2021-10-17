@@ -67,10 +67,28 @@ impl Name {
         Name::new_text("[missing name]".into())
     }
 
+    /// Returns the tuple index this name represents if it is a tuple field.
     pub fn as_tuple_index(&self) -> Option<usize> {
         match self.0 {
             Repr::TupleField(idx) => Some(idx),
             _ => None,
+        }
+    }
+
+    /// Returns the text this name represents if it isn't a tuple field.
+    pub fn as_text(&self) -> Option<SmolStr> {
+        match &self.0 {
+            Repr::Text(it) => Some(it.clone()),
+            _ => None,
+        }
+    }
+
+    /// Returns the textual representation of this name as a [`SmolStr`].
+    /// Prefer using this over [`ToString::to_string`] if possible as this conversion is cheaper.
+    pub fn to_smol_str(&self) -> SmolStr {
+        match &self.0 {
+            Repr::Text(it) => it.clone(),
+            Repr::TupleField(it) => SmolStr::new(&it.to_string()),
         }
     }
 }

@@ -1,5 +1,6 @@
 //! Renderer for function calls.
 
+use either::Either;
 use hir::{AsAssocItem, HasSource, HirDisplay};
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -160,47 +161,25 @@ impl<'a> FunctionRender<'a> {
         format!("-> {}", ret_ty.display(self.ctx.db()))
     }
 
-    fn add_arg(&self, arg: &str, ty: &hir::Type) -> String {
-        if let Some(derefed_ty) = ty.remove_ref() {
-            for (name, local) in self.ctx.completion.locals.iter() {
-                if name == arg && local.ty(self.ctx.db()) == derefed_ty {
-                    let mutability = if ty.is_mutable_reference() { "&mut " } else { "&" };
-                    return format!("{}{}", mutability, arg);
-                }
-            }
-        }
-        arg.to_string()
-    }
-
     fn params(&self) -> Params {
         let ast_params = match self.ast_node.param_list() {
             Some(it) => it,
             None => return Params::Named(Vec::new()),
         };
+        let params = ast_params.params().map(Either::Right);
 
-        let mut params_pats = Vec::new();
-        let params_ty = if self.ctx.completion.has_dot_receiver() || self.receiver.is_some() {
-            self.func.method_params(self.ctx.db()).unwrap_or_default()
+        let params = if self.ctx.completion.has_dot_receiver() || self.receiver.is_some() {
+            params.zip(self.func.method_params(self.ctx.db()).unwrap_or_default()).collect()
         } else {
-            if let Some(s) = ast_params.self_param() {
-                cov_mark::hit!(parens_for_method_call_as_assoc_fn);
-                params_pats.push(Some(s.to_string()));
-            }
-            self.func.assoc_fn_params(self.ctx.db())
+            ast_params
+                .self_param()
+                .map(Either::Left)
+                .into_iter()
+                .chain(params)
+                .zip(self.func.assoc_fn_params(self.ctx.db()))
+                .collect()
         };
-        params_pats
-            .extend(ast_params.params().into_iter().map(|it| it.pat().map(|it| it.to_string())));
 
-        let params = params_pats
-            .into_iter()
-            .zip(params_ty)
-            .flat_map(|(pat, param_ty)| {
-                let pat = pat?;
-                let name = pat;
-                let arg = name.trim_start_matches("mut ").trim_start_matches('_');
-                Some(self.add_arg(arg, param_ty.ty()))
-            })
-            .collect();
         Params::Named(params)
     }
 
@@ -310,7 +289,6 @@ impl S {
 
     #[test]
     fn parens_for_method_call_as_assoc_fn() {
-        cov_mark::check!(parens_for_method_call_as_assoc_fn);
         check_edit(
             "foo",
             r#"
