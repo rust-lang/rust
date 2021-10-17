@@ -8,7 +8,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: unwrap_result_return_type
 //
-// Wrap the function's return type into Result.
+// Unwrap the function's return type.
 //
 // ```
 // # //- minicore: result
