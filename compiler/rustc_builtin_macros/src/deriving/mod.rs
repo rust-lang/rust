@@ -178,7 +178,7 @@ fn inject_impl_of_structural_trait(
 
     let newitem = cx.item(
         span,
-        Ident::invalid(),
+        Ident::empty(),
         attrs,
         ItemKind::Impl(Box::new(ImplKind {
             unsafety: ast::Unsafe::No,

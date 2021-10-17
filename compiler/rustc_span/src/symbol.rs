@@ -1453,7 +1453,7 @@ impl Ident {
     }
 
     #[inline]
-    pub fn invalid() -> Ident {
+    pub fn empty() -> Ident {
         Ident::with_dummy_span(kw::Empty)
     }
 
