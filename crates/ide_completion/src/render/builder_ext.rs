@@ -1,12 +1,14 @@
 //! Extensions for `Builder` structure required for item rendering.
 
+use either::Either;
 use itertools::Itertools;
+use syntax::ast::{self, HasName};
 
 use crate::{context::CallKind, item::Builder, patterns::ImmediateLocation, CompletionContext};
 
 #[derive(Debug)]
 pub(super) enum Params {
-    Named(Vec<String>),
+    Named(Vec<(Either<ast::SelfParam, ast::Param>, hir::Param)>),
     Anonymous(usize),
 }
 
@@ -76,10 +78,46 @@ impl Builder {
             self.trigger_call_info();
             let snippet = match (ctx.config.add_call_argument_snippets, params) {
                 (true, Params::Named(params)) => {
-                    let function_params_snippet =
-                        params.iter().enumerate().format_with(", ", |(index, param_name), f| {
-                            f(&format_args!("${{{}:{}}}", index + 1, param_name))
-                        });
+                    let function_params_snippet = params.iter().enumerate().format_with(
+                        ", ",
+                        |(index, (param_source, param)), f| {
+                            let name;
+                            let text;
+                            let (ref_, name) = match param_source {
+                                Either::Left(self_param) => (
+                                    match self_param.kind() {
+                                        ast::SelfParamKind::Owned => "",
+                                        ast::SelfParamKind::Ref => "&",
+                                        ast::SelfParamKind::MutRef => "&mut ",
+                                    },
+                                    "self",
+                                ),
+                                Either::Right(it) => {
+                                    let n = (|| {
+                                        let mut pat = it.pat()?;
+                                        loop {
+                                            match pat {
+                                                ast::Pat::IdentPat(pat) => break pat.name(),
+                                                ast::Pat::RefPat(it) => pat = it.pat()?,
+                                                _ => return None,
+                                            }
+                                        }
+                                    })();
+                                    match n {
+                                        Some(n) => {
+                                            name = n;
+                                            text = name.text();
+                                            let text = text.as_str().trim_start_matches('_');
+                                            let ref_ = ref_of_param(ctx, text, param.ty());
+                                            (ref_, text)
+                                        }
+                                        None => ("", "_"),
+                                    }
+                                }
+                            };
+                            f(&format_args!("${{{}:{}{}}}", index + 1, ref_, name))
+                        },
+                    );
                     format!("{}({})$0", name, function_params_snippet)
                 }
                 _ => {
@@ -92,4 +130,14 @@ impl Builder {
         };
         self.lookup_by(name).label(label).insert_snippet(cap, snippet)
     }
+}
+fn ref_of_param(ctx: &CompletionContext, arg: &str, ty: &hir::Type) -> &'static str {
+    if let Some(derefed_ty) = ty.remove_ref() {
+        for (name, local) in ctx.locals.iter() {
+            if name.as_text().as_deref() == Some(arg) && local.ty(ctx.db) == derefed_ty {
+                return if ty.is_mutable_reference() { "&mut " } else { "&" };
+            }
+        }
+    }
+    ""
 }

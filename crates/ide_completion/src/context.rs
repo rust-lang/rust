@@ -102,7 +102,9 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) function_def: Option<ast::Fn>,
     /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
+    /// The NameLike under the cursor in the original file if it exists.
     pub(super) name_syntax: Option<ast::NameLike>,
+    pub(super) incomplete_let: bool,
 
     pub(super) completion_location: Option<ImmediateLocation>,
     pub(super) prev_sibling: Option<ImmediatePrevSibling>,
@@ -112,9 +114,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) lifetime_ctx: Option<LifetimeContext>,
     pub(super) pattern_ctx: Option<PatternContext>,
     pub(super) path_context: Option<PathCompletionContext>,
-    pub(super) locals: Vec<(String, Local)>,
-
-    pub(super) incomplete_let: bool,
+    pub(super) locals: Vec<(Name, Local)>,
 
     no_completion_required: bool,
 }
@@ -148,7 +148,7 @@ impl<'a> CompletionContext<'a> {
         let mut locals = vec![];
         scope.process_all_names(&mut |name, scope| {
             if let ScopeDef::Local(local) = scope {
-                locals.push((name.to_string(), local));
+                locals.push((name, local));
             }
         });
         let mut ctx = CompletionContext {
@@ -492,14 +492,6 @@ impl<'a> CompletionContext<'a> {
         false
     }
 
-    fn fill_impl_def(&mut self) {
-        self.impl_def = self
-            .sema
-            .token_ancestors_with_macros(self.token.clone())
-            .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-            .find_map(ast::Impl::cast);
-    }
-
     fn expected_type_and_name(&self) -> (Option<Type>, Option<NameOrNameRef>) {
         let mut node = match self.token.parent() {
             Some(it) => it,
@@ -654,6 +646,16 @@ impl<'a> CompletionContext<'a> {
         self.prev_sibling = determine_prev_sibling(&name_like);
         self.name_syntax =
             find_node_at_offset(original_file, name_like.syntax().text_range().start());
+        self.impl_def = self
+            .sema
+            .token_ancestors_with_macros(self.token.clone())
+            .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+            .find_map(ast::Impl::cast);
+        self.function_def = self
+            .sema
+            .token_ancestors_with_macros(self.token.clone())
+            .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+            .find_map(ast::Fn::cast);
         match name_like {
             ast::NameLike::Lifetime(lifetime) => {
                 self.classify_lifetime(original_file, lifetime, offset);
@@ -691,8 +693,6 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_name(&mut self, name: ast::Name) {
-        self.fill_impl_def();
-
         if let Some(bind_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
             let is_name_in_field_pat = bind_pat
                 .syntax()
@@ -740,14 +740,6 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_name_ref(&mut self, original_file: &SyntaxNode, name_ref: ast::NameRef) {
-        self.fill_impl_def();
-
-        self.function_def = self
-            .sema
-            .token_ancestors_with_macros(self.token.clone())
-            .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-            .find_map(ast::Fn::cast);
-
         let parent = match name_ref.syntax().parent() {
             Some(it) => it,
             None => return,
