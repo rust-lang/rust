@@ -8,7 +8,7 @@ struct RarelyUseful {
     last: [usize; 0],
 }
 
-struct OnlyFieldIsZeroSizeArray {
+struct OnlyField {
     first_and_last: [usize; 0],
 }
 
@@ -18,19 +18,19 @@ struct GenericArrayType<T> {
 }
 
 #[derive(Debug)]
-struct PlayNiceWithOtherAttributesDerive {
+struct OnlyAnotherAttributeDerive {
     field: i32,
     last: [usize; 0],
 }
 
 #[must_use]
-struct PlayNiceWithOtherAttributesMustUse {
+struct OnlyAnotherAttributeMustUse {
     field: i32,
     last: [usize; 0],
 }
 
 const ZERO: usize = 0;
-struct ZeroSizedFromExternalConst {
+struct ZeroSizedWithConst {
     field: i32,
     last: [usize; ZERO],
 }
@@ -39,7 +39,7 @@ struct ZeroSizedFromExternalConst {
 const fn compute_zero() -> usize {
     (4 + 6) - (2 * 5)
 }
-struct UsingFunction {
+struct ZeroSizedWithConstFunction {
     field: i32,
     last: [usize; compute_zero()],
 }
@@ -72,15 +72,34 @@ struct GoodReason {
     last: [usize; 0],
 }
 
+#[repr(C)]
+struct OnlyFieldWithReprC {
+    first_and_last: [usize; 0],
+}
+
 struct NonZeroSizedArray {
     field: i32,
     last: [usize; 1],
 }
 
 const ONE: usize = 1;
-struct NonZeroSizedFromExternalConst {
+struct NonZeroSizedWithConst {
     field: i32,
     last: [usize; ONE],
+}
+
+#[derive(Debug)]
+#[repr(C)]
+struct OtherAttributesDerive {
+    field: i32,
+    last: [usize; 0],
+}
+
+#[must_use]
+#[repr(C)]
+struct OtherAttributesMustUse {
+    field: i32,
+    last: [usize; 0],
 }
 
 #[repr(packed)]
@@ -129,5 +148,6 @@ enum DontLintAnonymousStructsFromDesuraging {
 // }
 
 fn main() {
-    let _ = PlayNiceWithOtherAttributesMustUse { field: 0, last: [] };
+    let _ = OnlyAnotherAttributeMustUse { field: 0, last: [] };
+    let _ = OtherAttributesMustUse { field: 0, last: [] };
 }
