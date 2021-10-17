@@ -328,7 +328,7 @@ impl<'a> Parser<'a> {
                     ),
                 )
                 .multipart_suggestion(
-                    "wrap the expression in parenthesis",
+                    "wrap the expression in parentheses",
                     suggs,
                     Applicability::MachineApplicable,
                 )
@@ -349,7 +349,7 @@ impl<'a> Parser<'a> {
                 "right curly brace `}` before `else` in a `let...else` statement not allowed",
             )
             .multipart_suggestion(
-                "try wrapping the expression in parenthesis",
+                "try wrapping the expression in parentheses",
                 suggs,
                 Applicability::MachineApplicable,
             )

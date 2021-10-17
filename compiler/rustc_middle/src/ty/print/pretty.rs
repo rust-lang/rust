@@ -350,18 +350,26 @@ pub trait PrettyPrinter<'tcx>:
             match self.tcx().extern_crate(def_id) {
                 Some(&ExternCrate { src, dependency_of, span, .. }) => match (src, dependency_of) {
                     (ExternCrateSource::Extern(def_id), LOCAL_CRATE) => {
-                        debug!("try_print_visible_def_path: def_id={:?}", def_id);
-                        return Ok((
-                            if !span.is_dummy() {
-                                self.print_def_path(def_id, &[])?
-                            } else {
-                                self.path_crate(cnum)?
-                            },
-                            true,
-                        ));
+                        // NOTE(eddyb) the only reason `span` might be dummy,
+                        // that we're aware of, is that it's the `std`/`core`
+                        // `extern crate` injected by default.
+                        // FIXME(eddyb) find something better to key this on,
+                        // or avoid ending up with `ExternCrateSource::Extern`,
+                        // for the injected `std`/`core`.
+                        if span.is_dummy() {
+                            return Ok((self.path_crate(cnum)?, true));
+                        }
+
+                        // Disable `try_print_trimmed_def_path` behavior within
+                        // the `print_def_path` call, to avoid infinite recursion
+                        // in cases where the `extern crate foo` has non-trivial
+                        // parents, e.g. it's nested in `impl foo::Trait for Bar`
+                        // (see also issues #55779 and #87932).
+                        self = with_no_visible_paths(|| self.print_def_path(def_id, &[]))?;
+
+                        return Ok((self, true));
                     }
                     (ExternCrateSource::Path, LOCAL_CRATE) => {
-                        debug!("try_print_visible_def_path: def_id={:?}", def_id);
                         return Ok((self.path_crate(cnum)?, true));
                     }
                     _ => {}

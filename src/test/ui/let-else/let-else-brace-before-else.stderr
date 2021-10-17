@@ -4,7 +4,7 @@ error: right curly brace `}` before `else` in a `let...else` statement not allow
 LL |     let Some(1) = { Some(1) } else {
    |                             ^
    |
-help: try wrapping the expression in parenthesis
+help: try wrapping the expression in parentheses
    |
 LL |     let Some(1) = ({ Some(1) }) else {
    |                   +           +
@@ -15,7 +15,7 @@ error: right curly brace `}` before `else` in a `let...else` statement not allow
 LL |     let Some(1) = loop { break Some(1) } else {
    |                                        ^
    |
-help: try wrapping the expression in parenthesis
+help: try wrapping the expression in parentheses
    |
 LL |     let Some(1) = (loop { break Some(1) }) else {
    |                   +                      +
@@ -26,7 +26,7 @@ error: right curly brace `}` before `else` in a `let...else` statement not allow
 LL |     let 2 = 1 + match 1 { n => n } else {
    |                                  ^
    |
-help: try wrapping the expression in parenthesis
+help: try wrapping the expression in parentheses
    |
 LL |     let 2 = 1 + (match 1 { n => n }) else {
    |                 +                  +
@@ -37,7 +37,7 @@ error: right curly brace `}` before `else` in a `let...else` statement not allow
 LL |     let Some(1) = unsafe { unsafe_fn() } else {
    |                                        ^
    |
-help: try wrapping the expression in parenthesis
+help: try wrapping the expression in parentheses
    |
 LL |     let Some(1) = (unsafe { unsafe_fn() }) else {
    |                   +                      +

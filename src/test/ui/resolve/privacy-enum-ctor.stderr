@@ -338,7 +338,7 @@ LL |         let _ = Z::Unit();
    |                 |
    |                 call expression requires function
    |
-help: `Z::Unit` is a unit variant, you need to write it without the parenthesis
+help: `Z::Unit` is a unit variant, you need to write it without the parentheses
    |
 LL |         let _ = Z::Unit;
    |                 ~~~~~~~
@@ -372,7 +372,7 @@ LL |     let _: E = m::E::Unit();
    |                |
    |                call expression requires function
    |
-help: `m::E::Unit` is a unit variant, you need to write it without the parenthesis
+help: `m::E::Unit` is a unit variant, you need to write it without the parentheses
    |
 LL |     let _: E = m::E::Unit;
    |                ~~~~~~~~~~
@@ -406,7 +406,7 @@ LL |     let _: E = E::Unit();
    |                |
    |                call expression requires function
    |
-help: `E::Unit` is a unit variant, you need to write it without the parenthesis
+help: `E::Unit` is a unit variant, you need to write it without the parentheses
    |
 LL |     let _: E = E::Unit;
    |                ~~~~~~~

@@ -6,7 +6,7 @@ LL |     let _ = ||{}();
    |               |
    |               call expression requires function
    |
-help: if you meant to create this closure and immediately call it, surround the closure with parenthesis
+help: if you meant to create this closure and immediately call it, surround the closure with parentheses
    |
 LL |     let _ = (||{})();
    |             +    +

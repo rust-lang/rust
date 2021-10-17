@@ -492,7 +492,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         other_ty: Ty<'tcx>,
         op: hir::BinOp,
         is_assign: IsAssign,
-    ) -> bool /* did we suggest to call a function because of missing parenthesis? */ {
+    ) -> bool /* did we suggest to call a function because of missing parentheses? */ {
         err.span_label(span, ty.to_string());
         if let FnDef(def_id, _) = *ty.kind() {
             let source_map = self.tcx.sess.source_map();

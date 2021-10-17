@@ -670,7 +670,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// The parenthesis are not needed, and should be removed. This is the
+    /// The parentheses are not needed, and should be removed. This is the
     /// preferred style for writing these expressions.
     pub(super) UNUSED_PARENS,
     Warn,

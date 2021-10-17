@@ -300,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let end = callee_span.shrink_to_hi();
             err.multipart_suggestion(
                 "if you meant to create this closure and immediately call it, surround the \
-                closure with parenthesis",
+                closure with parentheses",
                 vec![(start, "(".to_string()), (end, ")".to_string())],
                 Applicability::MaybeIncorrect,
             );
@@ -383,7 +383,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         call_expr.span,
                         &format!(
                             "`{}` is a unit variant, you need to write it \
-                                 without the parenthesis",
+                                 without the parentheses",
                             path
                         ),
                         path.to_string(),

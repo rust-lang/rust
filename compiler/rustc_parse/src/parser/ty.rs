@@ -430,7 +430,7 @@ impl<'a> Parser<'a> {
     }
 
     // Parses the `typeof(EXPR)`.
-    // To avoid ambiguity, the type is surrounded by parenthesis.
+    // To avoid ambiguity, the type is surrounded by parentheses.
     fn parse_typeof_ty(&mut self) -> PResult<'a, TyKind> {
         self.expect(&token::OpenDelim(token::Paren))?;
         let expr = self.parse_anon_const_expr()?;
