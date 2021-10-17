@@ -93,7 +93,7 @@ cargo dev update_lints
 cargo dev new_lint
 # automatically formatting all code before each commit
 cargo dev setup git-hook
-# (experimental) Setup Clippy to work with IntelliJ-Rust
+# (experimental) Setup Clippy to work with IntelliJ-Rust. Details here: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#intellij-rust
 cargo dev setup intellij
 ```
 
