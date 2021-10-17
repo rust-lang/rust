@@ -1,10 +1,4 @@
-error: expected crate top-level item to be a module after macro expansion, found a function
-  --> $DIR/issue-59191-replace-root-with-fn.rs:6:1
-   |
-LL | #![issue_59191::no_main]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `issue_59191::no_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+error: requires `sized` lang_item
 
 error: aborting due to previous error
 

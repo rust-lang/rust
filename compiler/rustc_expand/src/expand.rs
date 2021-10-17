@@ -14,13 +14,13 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{AstLike, Block, Inline, ItemKind, MacArgs, MacCall};
 use rustc_ast::{MacCallStmt, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem};
-use rustc_ast::{NodeId, PatKind, Path, StmtKind, Unsafe};
+use rustc_ast::{NodeId, PatKind, Path, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_attr::is_builtin_attr;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, FatalError, PResult};
+use rustc_errors::{Applicability, PResult};
 use rustc_feature::Features;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, ForceCollect, Parser, RecoverColon, RecoverComma,
@@ -33,7 +33,7 @@ use rustc_session::Limit;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{FileName, LocalExpnId, Span};
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -205,6 +205,7 @@ ast_fragments! {
     Variants(SmallVec<[ast::Variant; 1]>) {
         "variant"; many fn flat_map_variant; fn visit_variant(); fn make_variants;
     }
+    Crate(ast::Crate) { "crate"; one fn visit_crate; fn visit_crate; fn make_crate; }
 }
 
 pub enum SupportsMacroExpansion {
@@ -227,9 +228,8 @@ impl AstFragmentKind {
             AstFragmentKind::Items
             | AstFragmentKind::TraitItems
             | AstFragmentKind::ImplItems
-            | AstFragmentKind::ForeignItems => {
-                SupportsMacroExpansion::Yes { supports_inner_attrs: true }
-            }
+            | AstFragmentKind::ForeignItems
+            | AstFragmentKind::Crate => SupportsMacroExpansion::Yes { supports_inner_attrs: true },
             AstFragmentKind::Arms
             | AstFragmentKind::Fields
             | AstFragmentKind::FieldPats
@@ -287,6 +287,9 @@ impl AstFragmentKind {
             ),
             AstFragmentKind::OptExpr => {
                 AstFragment::OptExpr(items.next().map(Annotatable::expect_expr))
+            }
+            AstFragmentKind::Crate => {
+                AstFragment::Crate(items.next().expect("expected exactly one crate").expect_crate())
             }
             AstFragmentKind::Pat | AstFragmentKind::Ty => {
                 panic!("patterns and types aren't annotatable")
@@ -359,9 +362,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         MacroExpander { cx, monotonic }
     }
 
-    // FIXME: Avoid visiting the crate as a `Mod` item,
-    // make crate a first class expansion target instead.
-    pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
+    pub fn expand_crate(&mut self, krate: ast::Crate) -> ast::Crate {
         let file_path = match self.cx.source_map().span_to_filename(krate.span) {
             FileName::Real(name) => name
                 .into_local_path()
@@ -375,52 +376,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             file_path_stack: vec![file_path],
             dir_path,
         });
-
-        let krate_item = AstFragment::Items(smallvec![P(ast::Item {
-            attrs: krate.attrs,
-            span: krate.span,
-            kind: ast::ItemKind::Mod(
-                Unsafe::No,
-                ModKind::Loaded(krate.items, Inline::Yes, krate.span)
-            ),
-            ident: Ident::empty(),
-            id: ast::DUMMY_NODE_ID,
-            vis: ast::Visibility {
-                span: krate.span.shrink_to_lo(),
-                kind: ast::VisibilityKind::Public,
-                tokens: None,
-            },
-            tokens: None,
-        })]);
-
-        match self.fully_expand_fragment(krate_item).make_items().pop().map(P::into_inner) {
-            Some(ast::Item {
-                attrs,
-                kind: ast::ItemKind::Mod(_, ModKind::Loaded(items, ..)),
-                ..
-            }) => {
-                krate.attrs = attrs;
-                krate.items = items;
-            }
-            None => {
-                // Resolution failed so we return an empty expansion
-                krate.attrs = vec![];
-                krate.items = vec![];
-            }
-            Some(ast::Item { span, kind, .. }) => {
-                krate.attrs = vec![];
-                krate.items = vec![];
-                self.cx.span_err(
-                    span,
-                    &format!(
-                        "expected crate top-level item to be a module after macro expansion, found {} {}",
-                        kind.article(), kind.descr()
-                    ),
-                );
-                // FIXME: this workaround issue #84569
-                FatalError.raise();
-            }
-        };
+        let krate = self.fully_expand_fragment(AstFragment::Crate(krate)).make_crate();
         self.cx.trace_macros_diag();
         krate
     }
@@ -708,26 +664,32 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
-                    let mut fake_tokens = false;
-                    if let Annotatable::Item(item_inner) = &item {
-                        if let ItemKind::Mod(_, mod_kind) = &item_inner.kind {
-                            // FIXME: Collect tokens and use them instead of generating
-                            // fake ones. These are unstable, so it needs to be
-                            // fixed prior to stabilization
-                            // Fake tokens when we are invoking an inner attribute, and:
-                            fake_tokens = matches!(attr.style, ast::AttrStyle::Inner) &&
-                                // We are invoking an attribute on the crate root, or an outline
-                                // module
-                                (item_inner.ident.name.is_empty() || !matches!(mod_kind, ast::ModKind::Loaded(_, Inline::Yes, _)));
-                        }
-                    }
-                    let tokens = if fake_tokens {
-                        rustc_parse::fake_token_stream(
+                    let tokens = match &item {
+                        // FIXME: Collect tokens and use them instead of generating
+                        // fake ones. These are unstable, so it needs to be
+                        // fixed prior to stabilization
+                        // Fake tokens when we are invoking an inner attribute, and
+                        // we are invoking it on an out-of-line module or crate.
+                        Annotatable::Crate(krate) => rustc_parse::fake_token_stream_for_crate(
                             &self.cx.sess.parse_sess,
-                            &item.into_nonterminal(),
-                        )
-                    } else {
-                        item.into_tokens(&self.cx.sess.parse_sess)
+                            krate,
+                        ),
+                        Annotatable::Item(item_inner)
+                            if matches!(attr.style, ast::AttrStyle::Inner)
+                                && matches!(
+                                    item_inner.kind,
+                                    ItemKind::Mod(
+                                        _,
+                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _),
+                                    )
+                                ) =>
+                        {
+                            rustc_parse::fake_token_stream(
+                                &self.cx.sess.parse_sess,
+                                &item.into_nonterminal(),
+                            )
+                        }
+                        _ => item.into_tokens(&self.cx.sess.parse_sess),
                     };
                     let attr_item = attr.unwrap_normal_item();
                     if let MacArgs::Eq(..) = attr_item.args {
@@ -804,7 +766,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             Annotatable::Item(_)
             | Annotatable::TraitItem(_)
             | Annotatable::ImplItem(_)
-            | Annotatable::ForeignItem(_) => return,
+            | Annotatable::ForeignItem(_)
+            | Annotatable::Crate(..) => return,
             Annotatable::Stmt(stmt) => {
                 // Attributes are stable on item statements,
                 // but unstable on all other kinds of statements
@@ -949,6 +912,7 @@ pub fn parse_ast_fragment<'a>(
             RecoverComma::No,
             RecoverColon::Yes,
         )?),
+        AstFragmentKind::Crate => AstFragment::Crate(this.parse_crate_mod()?),
         AstFragmentKind::Arms
         | AstFragmentKind::Fields
         | AstFragmentKind::FieldPats
@@ -1195,6 +1159,30 @@ macro_rules! assign_id {
 }
 
 impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
+    fn visit_crate(&mut self, krate: &mut ast::Crate) {
+        let span = krate.span;
+        let empty_crate =
+            || ast::Crate { attrs: Vec::new(), items: Vec::new(), span, is_placeholder: None };
+        let mut fold_crate = |krate: ast::Crate| {
+            let mut krate = match self.configure(krate) {
+                Some(krate) => krate,
+                None => return empty_crate(),
+            };
+
+            if let Some(attr) = self.take_first_attr(&mut krate) {
+                return self
+                    .collect_attr(attr, Annotatable::Crate(krate), AstFragmentKind::Crate)
+                    .make_crate();
+            }
+
+            noop_visit_crate(&mut krate, self);
+            krate
+        };
+
+        // Cannot use `visit_clobber` here, see the FIXME on it.
+        *krate = fold_crate(mem::replace(krate, empty_crate()));
+    }
+
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.cfg.configure_expr(expr);
         visit_clobber(expr.deref_mut(), |mut expr| {

@@ -211,6 +211,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_pat_field(&mut self, fp: &'ast PatField) {
         walk_pat_field(self, fp)
     }
+    fn visit_crate(&mut self, krate: &'ast Crate) {
+        walk_crate(self, krate)
+    }
 }
 
 #[macro_export]

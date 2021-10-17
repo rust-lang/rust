@@ -77,6 +77,10 @@ fn flat_map_annotatable(
         Annotatable::Param(param) => vis.flat_map_param(param).pop().map(Annotatable::Param),
         Annotatable::FieldDef(sf) => vis.flat_map_field_def(sf).pop().map(Annotatable::FieldDef),
         Annotatable::Variant(v) => vis.flat_map_variant(v).pop().map(Annotatable::Variant),
+        Annotatable::Crate(mut krate) => {
+            vis.visit_crate(&mut krate);
+            Some(Annotatable::Crate(krate))
+        }
     }
 }
 
@@ -101,6 +105,7 @@ impl CfgFinder {
             Annotatable::Param(param) => finder.visit_param(&param),
             Annotatable::FieldDef(field) => finder.visit_field_def(&field),
             Annotatable::Variant(variant) => finder.visit_variant(&variant),
+            Annotatable::Crate(krate) => finder.visit_crate(krate),
         };
         finder.has_cfg_or_cfg_attr
     }
