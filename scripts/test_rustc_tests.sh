@@ -88,6 +88,8 @@ rm -r src/test/run-make/fmt-write-bloat/ # tests an optimization
 rm src/test/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
 rm src/test/ui/abi/variadic-ffi.rs # requires callee side vararg support
 
+rm src/test/ui/command/command-current-dir.rs # can't find libstd.so
+
 echo "[TEST] rustc test suite"
 RUST_TEST_NOCAPTURE=1 COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 src/test/{codegen-units,run-make,run-pass-valgrind,ui}
 popd
