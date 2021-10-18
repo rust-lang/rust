@@ -1,5 +1,6 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::{diagnostics::{span_lint_and_help, span_lint_and_then, span_lint_and_sugg}, source::{indent_of, snippet}};
 use rustc_ast::Attribute;
+use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::dep_graph::DepContext;
@@ -50,14 +51,34 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutRepr {
             };
 
             if !has_repr_attr(cx, attrs) {
-                span_lint_and_help(
-                    cx,
-                    TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR,
-                    lint_span,
-                    "trailing zero-sized array in a struct which is not marked with a `repr` attribute",
-                    None,
-                    "consider annotating the struct definition with `#[repr(C)]` or another `repr` attribute",
-                );
+                let suggestion_span = item.span.shrink_to_lo();
+                let indent = " ".repeat(indent_of(cx, item.span).unwrap_or(0));
+
+                span_lint_and_sugg(cx, TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR, item.span, "trailing zero-sized array in a struct which is not marked with a `repr` attribute", "consider adding `#[repr(C)]` or another `repr` attribute", format!("#[repr(C)]\n{}", snippet(cx, item.span.shrink_to_lo().to(item.ident.span), "..")), Applicability::MaybeIncorrect);
+
+                // span_lint_and_then(
+                //     cx,
+                //     TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR,
+                //     item.span,
+                //     "trailing zero-sized array in a struct which is not marked with a `repr` attribute",
+                //     |diag| {
+                //         let sugg = format!("#[repr(C)]\n{}", indent);
+                //         let sugg2 = format!("#[repr(C)]\n{}", item.ident.span);
+                //         diag.span_suggestion(item.span,
+                //                               "consider adding `#[repr(C)]` or another `repr` attribute",
+                //                               sugg2,
+                //                               Applicability::MaybeIncorrect);
+                //     }
+                // );
+              
+                // span_lint_and_help(
+                //     cx,
+                //     TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR,
+                //     lint_span,
+                //     "trailing zero-sized array in a struct which is not marked with a `repr` attribute",
+                //     None,
+                //     "consider annotating the struct definition with `#[repr(C)]` or another `repr` attribute",
+                // );
             }
         }
     }
@@ -91,7 +112,8 @@ fn has_repr_attr(cx: &LateContext<'tcx>, attrs: &[Attribute]) -> bool {
     // NOTE: there's at least four other ways to do this but I liked this one the best. (All five agreed
     // on all testcases (when i wrote this comment. I added a few since then).) Happy to use another;
     // they're in the commit history if you want to look (or I can go find them).
+    let sess = cx.tcx.sess(); // are captured values in closures evaluated once or every time?
     attrs
         .iter()
-        .any(|attr| !rustc_attr::find_repr_attrs(cx.tcx.sess(), attr).is_empty())
+        .any(|attr| !rustc_attr::find_repr_attrs(sess, attr).is_empty())
 }
