@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// ```
     pub TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR,
     nursery,
-    "struct with a trailing zero-sized array but without `repr(C)` or another `repr` attribute"
+    "struct with a trailing zero-sized array but without `#[repr(C)]` or another `repr` attribute"
 }
 declare_lint_pass!(TrailingZeroSizedArrayWithoutRepr => [TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR]);
 
@@ -54,9 +54,9 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutRepr {
                     cx,
                     TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR,
                     lint_span,
-                    "trailing zero-sized array in a struct which is not marked `#[repr(C)]`",
+                    "trailing zero-sized array in a struct which is not marked with a `repr` attribute",
                     None,
-                    "consider annotating the struct definition with `#[repr(C)]` (or another `repr` attribute)",
+                    "consider annotating the struct definition with `#[repr(C)]` or another `repr` attribute",
                 );
             }
         }
