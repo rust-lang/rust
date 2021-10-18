@@ -64,35 +64,42 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
 }
 
 fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
-    if_chain! {
-        // First check if last field is an array
-        if let ItemKind::Struct(data, _) = &item.kind;
-        if let VariantData::Struct(field_defs, _) = data;
-        if let Some(last_field) = field_defs.last();
-        if let rustc_hir::TyKind::Array(_, length) = last_field.ty.kind;
+    // First check if last field is an array
+    if let ItemKind::Struct(data, _) = &item.kind {
+        if let VariantData::Struct(field_defs, _) = data {
+            if let Some(last_field) = field_defs.last() {
+                if let rustc_hir::TyKind::Array(_, length) = last_field.ty.kind {
+                    // Then check if that that array zero-sized
 
-        // Then check if that that array zero-sized
+                    // This is pretty much copied from `enum_clike.rs` and I don't fully understand it, so let me know
+                    // if there's a better way. I tried `Const::from_anon_const` but it didn't fold in the values
+                    // on the `ZeroSizedWithConst` and `ZeroSizedWithConstFunction` tests.
 
-        // This is pretty much copied from `enum_clike.rs` and I don't fully understand it, so let me know
-        // if there's a better way. I tried `Const::from_anon_const` but it didn't fold in the values
-        // on the `ZeroSizedWithConst` and `ZeroSizedWithConstFunction` tests.
-
-        // This line in particular seems convoluted.
-        let length_did = cx.tcx.hir().body_owner_def_id(length.body).to_def_id();
-        let length_ty = cx.tcx.type_of(length_did);
-        let length = cx
-            .tcx
-            .const_eval_poly(length_did)
-            .ok()
-            .map(|val| Const::from_value(cx.tcx, val, length_ty))
-            .and_then(miri_to_const);
-        if let Some(Constant::Int(length)) = length;
-        if length == 0;
-        then {
-            true
+                    // This line in particular seems convoluted.
+                    let length_did = cx.tcx.hir().body_owner_def_id(length.body).to_def_id();
+                    let length_ty = cx.tcx.type_of(length_did);
+                    let length = cx
+                        .tcx
+                        .const_eval_poly(length_did)
+                        .ok()
+                        .map(|val| Const::from_value(cx.tcx, val, length_ty))
+                        .and_then(miri_to_const);
+                    if let Some(Constant::Int(length)) = length {
+                        length == 0
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
         } else {
             false
         }
+    } else {
+        false
     }
 }
 

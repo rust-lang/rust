@@ -1,4 +1,5 @@
 #![warn(clippy::trailing_zero_sized_array_without_repr_c)]
+#![feature(const_generics_defaults)]
 
 // Do lint:
 
@@ -44,6 +45,10 @@ struct ZeroSizedWithConstFunction {
     field: i32,
     last: [usize; compute_zero()],
 }
+
+struct ZeroSizedArrayWrapper([usize; 0]);
+
+struct TupleStruct(i32, [usize; 0]);
 
 struct LotsOfFields {
     f1: u32,
@@ -139,5 +144,32 @@ enum DontLintAnonymousStructsFromDesuraging {
     B(f32, [u64; 0]),
     C { x: u32, y: [u64; 0] },
 }
+
+#[repr(C)]
+struct TupleStructReprC(i32, [usize; 0]);
+
+type NamedTuple = (i32, [usize; 0]);
+
+#[rustfmt::skip] // [rustfmt#4995](https://github.com/rust-lang/rustfmt/issues/4995)
+struct ConstParamZeroDefault<const N: usize = 0> {
+    field: i32,
+    last: [usize; N],
+}
+
+struct ConstParamNoDefault<const N: usize> {
+    field: i32,
+    last: [usize; N],
+}
+
+#[rustfmt::skip] 
+struct ConstParamNonZeroDefault<const N: usize = 1> {
+    field: i32,
+    last: [usize; N],
+}
+
+type A = ConstParamZeroDefault;
+type B = ConstParamZeroDefault<0>;
+type C = ConstParamNoDefault<0>;
+type D = ConstParamNonZeroDefault<0>;
 
 fn main() {}
