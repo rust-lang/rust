@@ -8,10 +8,10 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Displays a warning when a struct with a trailing zero-sized array is declared without the `repr(C)` attribute.
+    /// Displays a warning when a struct with a trailing zero-sized array is declared without a `repr` attribute.
     ///
     /// ### Why is this bad?
-    /// Zero-sized arrays aren't very useful in Rust itself, so such a struct is likely being created to pass to C code (or in conjuction with manual allocation to make it easy to compute the offset of the array). Either way, `#[repr(C)]` is needed.
+    /// Zero-sized arrays aren't very useful in Rust itself, so such a struct is likely being created to pass to C code or in some other situation where control over memory layout matters (for example, in conjuction with manual allocation to make it easy to compute the offset of the array). Either way, `#[repr(C)]` (or another `repr` attribute) is needed.
     ///
     /// ### Example
     /// ```rust
@@ -29,13 +29,13 @@ declare_clippy_lint! {
     ///     last: [SomeType; 0],
     /// }
     /// ```
-    pub TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR_C,
+    pub TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR,
     nursery,
     "struct with a trailing zero-sized array but without `repr(C)` or another `repr` attribute"
 }
-declare_lint_pass!(TrailingZeroSizedArrayWithoutReprC => [TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR_C]);
+declare_lint_pass!(TrailingZeroSizedArrayWithoutRepr => [TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR]);
 
-impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
+impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutRepr {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if is_struct_with_trailing_zero_sized_array(cx, item) {
             // NOTE: This is to include attributes on the definition when we print the lint. If the convention
@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
             if !has_repr_attr(cx, attrs) {
                 span_lint_and_help(
                     cx,
-                    TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR_C,
+                    TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR,
                     lint_span,
                     "trailing zero-sized array in a struct which is not marked `#[repr(C)]`",
                     None,
@@ -65,17 +65,17 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
 
 fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
     // TODO: when finalized, replace with an `if_chain`. I have it like this because my rust-analyzer
-    // doesn't work when it's an `if_chain` First check if last field is an array
+    // doesn't work when it's an `if_chain`.
+
+    // First check if last field is an array
     if let ItemKind::Struct(data, _) = &item.kind {
-        let field_defs = data.fields();
-        if let Some(last_field) = field_defs.last() {
+        if let Some(last_field) = data.fields().last() {
             if let rustc_hir::TyKind::Array(_, length) = last_field.ty.kind {
                 // Then check if that that array zero-sized
                 let length_ldid = cx.tcx.hir().local_def_id(length.hir_id);
                 let length = Const::from_anon_const(cx.tcx, length_ldid);
                 let length = length.try_eval_usize(cx.tcx, cx.param_env);
-                // if let Some((Constant::Int(length), _)) = length {
-                if let Some(length) = length { length == 0 } else { false }
+                length == Some(0)
             } else {
                 false
             }

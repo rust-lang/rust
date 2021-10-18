@@ -1,4 +1,4 @@
-#![warn(clippy::trailing_zero_sized_array_without_repr_c)]
+#![warn(clippy::trailing_zero_sized_array_without_repr)]
 #![feature(const_generics_defaults)]
 
 // Do lint:
