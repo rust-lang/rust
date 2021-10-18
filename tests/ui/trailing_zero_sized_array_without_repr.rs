@@ -18,7 +18,7 @@ struct GenericArrayType<T> {
 }
 
 #[must_use]
-struct OnlyAnotherAttributeMustUse {
+struct OnlyAnotherAttribute {
     field: i32,
     last: [usize; 0],
 }
@@ -26,7 +26,7 @@ struct OnlyAnotherAttributeMustUse {
 // NOTE: Unfortunately the attribute isn't included in the lint output. I'm not sure how to make it
 // show up.
 #[derive(Debug)]
-struct OnlyAnotherAttributeDerive {
+struct OnlyADeriveAttribute {
     field: i32,
     last: [usize; 0],
 }
@@ -102,14 +102,14 @@ struct NonZeroSizedWithConst {
 
 #[derive(Debug)]
 #[repr(C)]
-struct OtherAttributesDerive {
+struct AlsoADeriveAttribute {
     field: i32,
     last: [usize; 0],
 }
 
 #[must_use]
 #[repr(C)]
-struct OtherAttributesMustUse {
+struct AlsoAnotherAttribute {
     field: i32,
     last: [usize; 0],
 }

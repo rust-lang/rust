@@ -35,7 +35,7 @@ error: trailing zero-sized array in a struct which is not marked with a `repr` a
   --> $DIR/trailing_zero_sized_array_without_repr.rs:20:1
    |
 LL | / #[must_use]
-LL | | struct OnlyAnotherAttributeMustUse {
+LL | | struct OnlyAnotherAttribute {
 LL | |     field: i32,
 LL | |     last: [usize; 0],
 LL | | }
@@ -46,7 +46,7 @@ LL | | }
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
   --> $DIR/trailing_zero_sized_array_without_repr.rs:29:1
    |
-LL | / struct OnlyAnotherAttributeDerive {
+LL | / struct OnlyADeriveAttribute {
 LL | |     field: i32,
 LL | |     last: [usize; 0],
 LL | | }
