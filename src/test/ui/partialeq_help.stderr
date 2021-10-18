@@ -10,10 +10,10 @@ help: `==` can be applied on `&T`
    |
 LL |     let _ = a == &b;
    |                  +
-help: consider further restricting this bound
+help: consider changing this type parameter bound to `std::cmp::PartialEq`
    |
-LL | fn foo<T: PartialEq + std::cmp::PartialEq>(a: &T, b: T) {
-   |                     +++++++++++++++++++++
+LL | fn foo<T: std::cmp::PartialEq>(a: &T, b: T) {
+   |           ~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

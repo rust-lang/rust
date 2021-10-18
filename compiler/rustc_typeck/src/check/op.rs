@@ -5,6 +5,7 @@ use super::{has_expected_num_generic_args, FnCtxt};
 use rustc_ast as ast;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
@@ -16,7 +17,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, TraitEngine, TraitEngineExt};
 
@@ -532,6 +533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     ty,
                                     rhs_ty,
                                     missing_trait,
+                                    self.op_metadata(Op::Binary(op, is_assign), op.span).1,
                                     p,
                                     use_output,
                                 );
@@ -801,19 +803,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn lookup_op_method(
-        &self,
-        lhs_ty: Ty<'tcx>,
-        other_tys: &[Ty<'tcx>],
-        op: Op,
-    ) -> Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>> {
+    fn op_metadata(&self, op: Op, span: Span) -> (Symbol, Option<DefId>) {
         let lang = self.tcx.lang_items();
-
-        let span = match op {
-            Op::Binary(op, _) => op.span,
-            Op::Unary(_, span) => span,
-        };
-        let (opname, trait_did) = if let Op::Binary(op, IsAssign::Yes) = op {
+        if let Op::Binary(op, IsAssign::Yes) = op {
             match op.node {
                 hir::BinOpKind::Add => (sym::add_assign, lang.add_assign_trait()),
                 hir::BinOpKind::Sub => (sym::sub_assign, lang.sub_assign_trait()),
@@ -864,8 +856,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (sym::neg, lang.neg_trait())
         } else {
             bug!("lookup_op_method: op not supported: {:?}", op)
-        };
+        }
+    }
 
+    fn lookup_op_method(
+        &self,
+        lhs_ty: Ty<'tcx>,
+        other_tys: &[Ty<'tcx>],
+        op: Op,
+    ) -> Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>> {
+        let span = match op {
+            Op::Binary(op, _) => op.span,
+            Op::Unary(_, span) => span,
+        };
+        let (opname, trait_did) = self.op_metadata(op, span);
         debug!(
             "lookup_op_method(lhs_ty={:?}, op={:?}, opname={:?}, trait_did={:?})",
             lhs_ty, op, opname, trait_did
@@ -1043,6 +1047,7 @@ fn suggest_constraining_param(
     lhs_ty: Ty<'_>,
     rhs_ty: Ty<'_>,
     missing_trait: &str,
+    trait_def_id: Option<DefId>,
     p: ty::ParamTy,
     set_output: bool,
 ) {
@@ -1068,7 +1073,7 @@ fn suggest_constraining_param(
             &mut err,
             &format!("{}", lhs_ty),
             &format!("{}{}", missing_trait, output),
-            None,
+            trait_def_id,
         );
     } else {
         let span = tcx.def_span(param_def_id);

@@ -238,6 +238,22 @@ pub fn suggest_constraining_type_param(
         suggest_removing_unsized_bound(generics, err, param_name, param, def_id);
         return true;
     }
+
+    for bound in param.bounds {
+        if def_id.is_some() && def_id == bound.trait_ref().and_then(|tr| tr.trait_def_id()) {
+            // FIXME: This can happen when we have `Foo<Bar>` when `Foo<Baz>` was intended, but it
+            // can also happen when using `Foo` where `~const Foo`. Right now the later isn't
+            // accounted for, but it is still a nightly feature, so I haven't tried to clean it up.
+            err.span_suggestion_verbose(
+                bound.span(),
+                &format!("consider changing this type parameter bound to `{}`", constraint),
+                constraint.to_string(),
+                Applicability::MaybeIncorrect,
+            );
+            return false;
+        }
+    }
+
     let mut suggest_restrict = |span| {
         err.span_suggestion_verbose(
             span,

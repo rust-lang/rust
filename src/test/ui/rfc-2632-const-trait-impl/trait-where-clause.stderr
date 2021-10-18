@@ -9,10 +9,10 @@ note: required by `Foo::b`
    |
 LL |     fn b() where Self: ~const Bar;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider further restricting this bound
+help: consider changing this type parameter bound to `Bar`
    |
-LL | const fn test1<T: ~const Foo + Bar + Bar>() {
-   |                                    +++++
+LL | const fn test1<T: ~const Foo + Bar>() {
+   |                                ~~~
 
 error[E0277]: the trait bound `T: Bar` is not satisfied
   --> $DIR/trait-where-clause.rs:16:5
@@ -25,10 +25,10 @@ note: required by a bound in `Foo::c`
    |
 LL |     fn c<T: ~const Bar>();
    |          ^ required by this bound in `Foo::c`
-help: consider further restricting this bound
+help: consider changing this type parameter bound to `Bar`
    |
-LL | const fn test1<T: ~const Foo + Bar + Bar>() {
-   |                                    +++++
+LL | const fn test1<T: ~const Foo + Bar>() {
+   |                                ~~~
 
 error[E0277]: the trait bound `T: Bar` is not satisfied
   --> $DIR/trait-where-clause.rs:28:5
