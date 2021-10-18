@@ -1175,6 +1175,7 @@ impl CStr {
     /// }
     /// # }
     /// ```
+    #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
