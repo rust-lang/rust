@@ -574,11 +574,24 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 }
 
 fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
-    fn gen_partial_cmp_call(mut lhs: Vec<ast::Expr>, mut rhs: Vec<ast::Expr>) -> ast::Expr {
-        let (lhs, rhs) = match (lhs.len(), rhs.len()) {
-            (1, 1) => (lhs.pop().unwrap(), rhs.pop().unwrap()),
-            _ => (make::expr_tuple(lhs.into_iter()), make::expr_tuple(rhs.into_iter())),
-        };
+    fn gen_partial_eq_match(match_target: ast::Expr) -> Option<ast::Stmt> {
+        let mut arms = vec![];
+
+        let variant_name =
+            make::path_pat(make::ext::path_from_idents(["core", "cmp", "Ordering", "Equal"])?);
+        let lhs = make::tuple_struct_pat(make::ext::path_from_idents(["Some"])?, [variant_name]);
+        arms.push(make::match_arm(Some(lhs.into()), None, make::expr_empty_block()));
+
+        arms.push(make::match_arm(
+            [make::ident_pat(false, false, make::name("ord")).into()],
+            None,
+            make::expr_return(Some(make::expr_path(make::ext::ident_path("ord")))),
+        ));
+        let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
+        Some(make::expr_stmt(make::expr_match(match_target, list)).into())
+    }
+
+    fn gen_partial_cmp_call(lhs: ast::Expr, rhs: ast::Expr) -> ast::Expr {
         let rhs = make::expr_ref(rhs, false);
         let method = make::name_ref("partial_cmp");
         make::expr_method_call(lhs, method, make::arg_list(Some(rhs)))
@@ -594,35 +607,41 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         ast::Adt::Enum(_) => return None,
         ast::Adt::Struct(strukt) => match strukt.field_list() {
             Some(ast::FieldList::RecordFieldList(field_list)) => {
-                let mut l_fields = vec![];
-                let mut r_fields = vec![];
+                let mut exprs = vec![];
                 for field in field_list.fields() {
                     let lhs = make::expr_path(make::ext::ident_path("self"));
                     let lhs = make::expr_field(lhs, &field.name()?.to_string());
                     let rhs = make::expr_path(make::ext::ident_path("other"));
                     let rhs = make::expr_field(rhs, &field.name()?.to_string());
-                    l_fields.push(lhs);
-                    r_fields.push(rhs);
+                    let ord = gen_partial_cmp_call(lhs, rhs);
+                    exprs.push(ord);
                 }
 
-                let expr = gen_partial_cmp_call(l_fields, r_fields);
-                make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1))
+                let tail = exprs.pop();
+                let stmts = exprs
+                    .into_iter()
+                    .map(gen_partial_eq_match)
+                    .collect::<Option<Vec<ast::Stmt>>>()?;
+                make::block_expr(stmts.into_iter(), tail).indent(ast::edit::IndentLevel(1))
             }
 
             Some(ast::FieldList::TupleFieldList(field_list)) => {
-                let mut l_fields = vec![];
-                let mut r_fields = vec![];
+                let mut exprs = vec![];
                 for (i, _) in field_list.fields().enumerate() {
                     let idx = format!("{}", i);
                     let lhs = make::expr_path(make::ext::ident_path("self"));
                     let lhs = make::expr_field(lhs, &idx);
                     let rhs = make::expr_path(make::ext::ident_path("other"));
                     let rhs = make::expr_field(rhs, &idx);
-                    l_fields.push(lhs);
-                    r_fields.push(rhs);
+                    let ord = gen_partial_cmp_call(lhs, rhs);
+                    exprs.push(ord);
                 }
-                let expr = gen_partial_cmp_call(l_fields, r_fields);
-                make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1))
+                let tail = exprs.pop();
+                let stmts = exprs
+                    .into_iter()
+                    .map(gen_partial_eq_match)
+                    .collect::<Option<Vec<ast::Stmt>>>()?;
+                make::block_expr(stmts.into_iter(), tail).indent(ast::edit::IndentLevel(1))
             }
 
             // No fields in the body means there's nothing to hash.
