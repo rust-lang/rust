@@ -1435,7 +1435,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         trace!("registering opaque type with id {:#?}", opaque_ty_id);
         let opaque_ty_item = hir::Item {
             def_id: opaque_ty_id,
-            ident: Ident::invalid(),
+            ident: Ident::empty(),
             kind: opaque_ty_item_kind,
             vis: respan(self.lower_span(span.shrink_to_lo()), hir::VisibilityKind::Inherited),
             span: self.lower_span(opaque_ty_span),
