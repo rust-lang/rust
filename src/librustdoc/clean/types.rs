@@ -1252,6 +1252,10 @@ crate struct GenericParamDef {
     crate kind: GenericParamDefKind,
 }
 
+// `GenericParamDef` is used in many places. Make sure it doesn't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(GenericParamDef, 120);
+
 impl GenericParamDef {
     crate fn is_synthetic_type_param(&self) -> bool {
         match self.kind {
