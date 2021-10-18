@@ -100,7 +100,7 @@ extern "C" {}
     not(feature = "llvm-libunwind"),
     feature = "system-llvm-libunwind"
 ))]
-#[link(name = "unwind", kind = "static", cfg(target_feature = "crt-static"))]
+#[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
 #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
 extern "C" {}
 
