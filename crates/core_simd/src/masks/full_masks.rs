@@ -119,7 +119,7 @@ where
             // There is a bug where LLVM appears to implement this operation with the wrong
             // bit order.
             // TODO fix this in a better way
-            if cfg!(any(target_arch = "mips", target_arch = "mips64")) {
+            if cfg!(target_endian = "big") {
                 for x in bitmask.as_mut() {
                     *x = x.reverse_bits();
                 }
@@ -136,7 +136,7 @@ where
             // There is a bug where LLVM appears to implement this operation with the wrong
             // bit order.
             // TODO fix this in a better way
-            if cfg!(any(target_arch = "mips", target_arch = "mips64")) {
+            if cfg!(target_endian = "big") {
                 for x in bitmask.as_mut() {
                     *x = x.reverse_bits();
                 }
