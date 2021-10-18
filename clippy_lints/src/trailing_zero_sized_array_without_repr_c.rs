@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::Attribute;
-use rustc_hir::VariantData;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::dep_graph::DepContext;
@@ -90,7 +89,7 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx 
 
 fn has_repr_attr(cx: &LateContext<'tcx>, attrs: &[Attribute]) -> bool {
     // NOTE: there's at least four other ways to do this but I liked this one the best. (All five agreed
-    // on all testcases.) Happy to use another; they're in the commit history if you want to look (or I
+    // on all testcases (when i wrote this comment. I added a few since then).) Happy to use another; they're in the commit history if you want to look (or I
     // can go find them).
     attrs
         .iter()
