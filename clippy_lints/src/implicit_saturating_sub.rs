@@ -43,7 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             return;
         }
         if_chain! {
-            if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr);
+            if let Some(higher::If { cond, then, r#else: None }) = higher::If::hir(expr);
 
             // Check if the conditional expression is a binary operation
             if let ExprKind::Binary(ref cond_op, cond_left, cond_right) = cond.kind;
