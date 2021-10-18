@@ -18,7 +18,6 @@
 #include "llvm/Support/Host.h"
 #include "llvm/Support/Memory.h"
 #include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
