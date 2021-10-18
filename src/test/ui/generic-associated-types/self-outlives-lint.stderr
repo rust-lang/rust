@@ -31,6 +31,14 @@ LL |     type Out<'x, 'y>;
    |                     help: add the required where clauses: `where U: 'y, T: 'x`
 
 error: Missing required bounds on Out
+  --> $DIR/self-outlives-lint.rs:59:5
+   |
+LL |     type Out<'x, D>;
+   |     ^^^^^^^^^^^^^^^-
+   |                    |
+   |                    help: add the required where clauses: `where D: 'x`
+
+error: Missing required bounds on Out
   --> $DIR/self-outlives-lint.rs:75:5
    |
 LL |     type Out<'x, D>;
@@ -46,5 +54,5 @@ LL |     type Out<'x, D>;
    |                    |
    |                    help: add the required where clauses: `where D: 'x`
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

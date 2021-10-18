@@ -54,10 +54,10 @@ trait Deserializer4 {
 
 struct Wrap<T>(T);
 
-// Even though we might theoretically want `D: 'x`, because we pass `Wrap<T>` and
-// we see `&'z Wrap<T>`, we are conservative and only add bounds for direct params
+// We pass `Wrap<T>` and we see `&'z Wrap<T>`, so we require `D: 'x`
 trait Des {
     type Out<'x, D>;
+    //~^ Missing required bounds
     fn des<'z, T>(&self, data: &'z Wrap<T>) -> Self::Out<'z, Wrap<T>>;
 }
 /*

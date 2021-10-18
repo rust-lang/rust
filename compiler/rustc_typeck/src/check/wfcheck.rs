@@ -301,7 +301,6 @@ fn check_gat_where_clauses(
         sig.output().visit_with(&mut visitor);
         let mut wf_tys = FxHashSet::default();
         wf_tys.extend(sig.inputs());
-        // FIXME: normalize and add normalized inputs?
 
         for (region, region_idx) in &visitor.regions {
             for (ty, ty_idx) in &visitor.types {
@@ -423,12 +422,9 @@ impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
                         GenericArgKind::Lifetime(lt) => {
                             self.regions.insert((lt, idx));
                         }
-                        GenericArgKind::Type(t) => match t.kind() {
-                            ty::Param(_) => {
-                                self.types.insert((t, idx));
-                            }
-                            _ => {}
-                        },
+                        GenericArgKind::Type(t) => {
+                            self.types.insert((t, idx));
+                        }
                         _ => {}
                     }
                 }
