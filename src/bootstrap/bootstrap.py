@@ -980,7 +980,7 @@ class RustBuild(object):
                 self.cargo()))
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
-        for _ in range(1, self.verbose):
+        for _ in range(0, self.verbose):
             args.append("--verbose")
         if self.use_locked_deps:
             args.append("--locked")

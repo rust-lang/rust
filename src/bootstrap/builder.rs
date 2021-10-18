@@ -1483,7 +1483,7 @@ impl<'a> Builder<'a> {
             cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
         }
 
-        for _ in 1..self.verbosity {
+        for _ in 0..self.verbosity {
             cargo.arg("-v");
         }
 
