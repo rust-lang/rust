@@ -19,9 +19,9 @@ LL | | >(Unique<T>, A);
    | |________________- doesn't satisfy `Box<dyn Foo>: Clone`
    |
    = note: the following trait bounds were not satisfied:
-           `dyn Foo: Clone`
-           which is required by `Box<dyn Foo>: Clone`
            `dyn Foo: Sized`
+           which is required by `Box<dyn Foo>: Clone`
+           `dyn Foo: Clone`
            which is required by `Box<dyn Foo>: Clone`
 
 error: aborting due to previous error
