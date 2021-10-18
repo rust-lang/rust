@@ -45,32 +45,32 @@ pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Rang
 
 pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
-        SymbolKind::Function => lsp_types::SymbolKind::Function,
-        SymbolKind::Struct => lsp_types::SymbolKind::Struct,
-        SymbolKind::Enum => lsp_types::SymbolKind::Enum,
-        SymbolKind::Variant => lsp_types::SymbolKind::EnumMember,
-        SymbolKind::Trait => lsp_types::SymbolKind::Interface,
-        SymbolKind::Macro => lsp_types::SymbolKind::Function,
-        SymbolKind::Module => lsp_types::SymbolKind::Module,
-        SymbolKind::TypeAlias | SymbolKind::TypeParam => lsp_types::SymbolKind::TypeParameter,
-        SymbolKind::Field => lsp_types::SymbolKind::Field,
-        SymbolKind::Static => lsp_types::SymbolKind::Constant,
-        SymbolKind::Const => lsp_types::SymbolKind::Constant,
-        SymbolKind::ConstParam => lsp_types::SymbolKind::Constant,
-        SymbolKind::Impl => lsp_types::SymbolKind::Object,
+        SymbolKind::Function => lsp_types::SymbolKind::FUNCTION,
+        SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
+        SymbolKind::Enum => lsp_types::SymbolKind::ENUM,
+        SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
+        SymbolKind::Trait => lsp_types::SymbolKind::INTERFACE,
+        SymbolKind::Macro => lsp_types::SymbolKind::FUNCTION,
+        SymbolKind::Module => lsp_types::SymbolKind::MODULE,
+        SymbolKind::TypeAlias | SymbolKind::TypeParam => lsp_types::SymbolKind::TYPE_PARAMETER,
+        SymbolKind::Field => lsp_types::SymbolKind::FIELD,
+        SymbolKind::Static => lsp_types::SymbolKind::CONSTANT,
+        SymbolKind::Const => lsp_types::SymbolKind::CONSTANT,
+        SymbolKind::ConstParam => lsp_types::SymbolKind::CONSTANT,
+        SymbolKind::Impl => lsp_types::SymbolKind::OBJECT,
         SymbolKind::Local
         | SymbolKind::SelfParam
         | SymbolKind::LifetimeParam
         | SymbolKind::ValueParam
-        | SymbolKind::Label => lsp_types::SymbolKind::Variable,
-        SymbolKind::Union => lsp_types::SymbolKind::Struct,
+        | SymbolKind::Label => lsp_types::SymbolKind::VARIABLE,
+        SymbolKind::Union => lsp_types::SymbolKind::STRUCT,
     }
 }
 
 pub(crate) fn structure_node_kind(kind: StructureNodeKind) -> lsp_types::SymbolKind {
     match kind {
         StructureNodeKind::SymbolKind(symbol) => symbol_kind(symbol),
-        StructureNodeKind::Region => lsp_types::SymbolKind::Namespace,
+        StructureNodeKind::Region => lsp_types::SymbolKind::NAMESPACE,
     }
 }
 
@@ -78,15 +78,15 @@ pub(crate) fn document_highlight_kind(
     category: ReferenceCategory,
 ) -> lsp_types::DocumentHighlightKind {
     match category {
-        ReferenceCategory::Read => lsp_types::DocumentHighlightKind::Read,
-        ReferenceCategory::Write => lsp_types::DocumentHighlightKind::Write,
+        ReferenceCategory::Read => lsp_types::DocumentHighlightKind::READ,
+        ReferenceCategory::Write => lsp_types::DocumentHighlightKind::WRITE,
     }
 }
 
 pub(crate) fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSeverity {
     match severity {
-        Severity::Error => lsp_types::DiagnosticSeverity::Error,
-        Severity::WeakWarning => lsp_types::DiagnosticSeverity::Hint,
+        Severity::Error => lsp_types::DiagnosticSeverity::ERROR,
+        Severity::WeakWarning => lsp_types::DiagnosticSeverity::HINT,
     }
 }
 
@@ -100,34 +100,34 @@ pub(crate) fn completion_item_kind(
     completion_item_kind: CompletionItemKind,
 ) -> lsp_types::CompletionItemKind {
     match completion_item_kind {
-        CompletionItemKind::Attribute => lsp_types::CompletionItemKind::EnumMember,
-        CompletionItemKind::Binding => lsp_types::CompletionItemKind::Variable,
-        CompletionItemKind::BuiltinType => lsp_types::CompletionItemKind::Struct,
-        CompletionItemKind::Keyword => lsp_types::CompletionItemKind::Keyword,
-        CompletionItemKind::Method => lsp_types::CompletionItemKind::Method,
-        CompletionItemKind::Snippet => lsp_types::CompletionItemKind::Snippet,
-        CompletionItemKind::UnresolvedReference => lsp_types::CompletionItemKind::Reference,
+        CompletionItemKind::Attribute => lsp_types::CompletionItemKind::ENUM_MEMBER,
+        CompletionItemKind::Binding => lsp_types::CompletionItemKind::VARIABLE,
+        CompletionItemKind::BuiltinType => lsp_types::CompletionItemKind::STRUCT,
+        CompletionItemKind::Keyword => lsp_types::CompletionItemKind::KEYWORD,
+        CompletionItemKind::Method => lsp_types::CompletionItemKind::METHOD,
+        CompletionItemKind::Snippet => lsp_types::CompletionItemKind::SNIPPET,
+        CompletionItemKind::UnresolvedReference => lsp_types::CompletionItemKind::REFERENCE,
         CompletionItemKind::SymbolKind(symbol) => match symbol {
-            SymbolKind::Const => lsp_types::CompletionItemKind::Constant,
-            SymbolKind::ConstParam => lsp_types::CompletionItemKind::TypeParameter,
-            SymbolKind::Enum => lsp_types::CompletionItemKind::Enum,
-            SymbolKind::Field => lsp_types::CompletionItemKind::Field,
-            SymbolKind::Function => lsp_types::CompletionItemKind::Function,
-            SymbolKind::Impl => lsp_types::CompletionItemKind::Text,
-            SymbolKind::Label => lsp_types::CompletionItemKind::Variable,
-            SymbolKind::LifetimeParam => lsp_types::CompletionItemKind::TypeParameter,
-            SymbolKind::Local => lsp_types::CompletionItemKind::Variable,
-            SymbolKind::Macro => lsp_types::CompletionItemKind::Method,
-            SymbolKind::Module => lsp_types::CompletionItemKind::Module,
-            SymbolKind::SelfParam => lsp_types::CompletionItemKind::Value,
-            SymbolKind::Static => lsp_types::CompletionItemKind::Value,
-            SymbolKind::Struct => lsp_types::CompletionItemKind::Struct,
-            SymbolKind::Trait => lsp_types::CompletionItemKind::Interface,
-            SymbolKind::TypeAlias => lsp_types::CompletionItemKind::Struct,
-            SymbolKind::TypeParam => lsp_types::CompletionItemKind::TypeParameter,
-            SymbolKind::Union => lsp_types::CompletionItemKind::Struct,
-            SymbolKind::ValueParam => lsp_types::CompletionItemKind::Value,
-            SymbolKind::Variant => lsp_types::CompletionItemKind::EnumMember,
+            SymbolKind::Const => lsp_types::CompletionItemKind::CONSTANT,
+            SymbolKind::ConstParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
+            SymbolKind::Enum => lsp_types::CompletionItemKind::ENUM,
+            SymbolKind::Field => lsp_types::CompletionItemKind::FIELD,
+            SymbolKind::Function => lsp_types::CompletionItemKind::FUNCTION,
+            SymbolKind::Impl => lsp_types::CompletionItemKind::TEXT,
+            SymbolKind::Label => lsp_types::CompletionItemKind::VARIABLE,
+            SymbolKind::LifetimeParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
+            SymbolKind::Local => lsp_types::CompletionItemKind::VARIABLE,
+            SymbolKind::Macro => lsp_types::CompletionItemKind::METHOD,
+            SymbolKind::Module => lsp_types::CompletionItemKind::MODULE,
+            SymbolKind::SelfParam => lsp_types::CompletionItemKind::VALUE,
+            SymbolKind::Static => lsp_types::CompletionItemKind::VALUE,
+            SymbolKind::Struct => lsp_types::CompletionItemKind::STRUCT,
+            SymbolKind::Trait => lsp_types::CompletionItemKind::INTERFACE,
+            SymbolKind::TypeAlias => lsp_types::CompletionItemKind::STRUCT,
+            SymbolKind::TypeParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
+            SymbolKind::Union => lsp_types::CompletionItemKind::STRUCT,
+            SymbolKind::ValueParam => lsp_types::CompletionItemKind::VALUE,
+            SymbolKind::Variant => lsp_types::CompletionItemKind::ENUM_MEMBER,
         },
     }
 }
@@ -165,7 +165,7 @@ pub(crate) fn snippet_text_edit(
 ) -> lsp_ext::SnippetTextEdit {
     let text_edit = text_edit(line_index, indel);
     let insert_text_format =
-        if is_snippet { Some(lsp_types::InsertTextFormat::Snippet) } else { None };
+        if is_snippet { Some(lsp_types::InsertTextFormat::SNIPPET) } else { None };
     lsp_ext::SnippetTextEdit {
         range: text_edit.range,
         new_text: text_edit.new_text,
@@ -259,7 +259,7 @@ fn completion_item(
     set_score(&mut lsp_item, max_relevance, item.relevance());
 
     if item.deprecated() {
-        lsp_item.tags = Some(vec![lsp_types::CompletionItemTag::Deprecated])
+        lsp_item.tags = Some(vec![lsp_types::CompletionItemTag::DEPRECATED])
     }
 
     if item.trigger_call_info() && config.client_commands().trigger_parameter_hints {
@@ -267,7 +267,7 @@ fn completion_item(
     }
 
     if item.is_snippet() {
-        lsp_item.insert_text_format = Some(lsp_types::InsertTextFormat::Snippet);
+        lsp_item.insert_text_format = Some(lsp_types::InsertTextFormat::SNIPPET);
     }
     if config.completion().enable_imports_on_the_fly {
         if let imports @ [_, ..] = item.imports_to_add() {
@@ -786,7 +786,7 @@ pub(crate) fn snippet_text_document_ops(
                 let text_edit = lsp_ext::SnippetTextEdit {
                     range: lsp_types::Range::default(),
                     new_text: initial_contents,
-                    insert_text_format: Some(lsp_types::InsertTextFormat::PlainText),
+                    insert_text_format: Some(lsp_types::InsertTextFormat::PLAIN_TEXT),
                     annotation_id: None,
                 };
                 let edit_file =
@@ -908,7 +908,7 @@ pub(crate) fn call_hierarchy_item(
 ) -> Result<lsp_types::CallHierarchyItem> {
     let name = target.name.to_string();
     let detail = target.description.clone();
-    let kind = target.kind.map(symbol_kind).unwrap_or(lsp_types::SymbolKind::Function);
+    let kind = target.kind.map(symbol_kind).unwrap_or(lsp_types::SymbolKind::FUNCTION);
     let (uri, range, selection_range) = location_info(snap, target)?;
     Ok(lsp_types::CallHierarchyItem {
         name,

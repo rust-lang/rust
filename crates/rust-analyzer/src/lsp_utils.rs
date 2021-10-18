@@ -62,7 +62,7 @@ impl GlobalState {
         let from_source_build = env!("REV").contains("dev");
         let profiling_enabled = std::env::var("RA_PROFILE").is_ok();
         if from_source_build || profiling_enabled {
-            self.show_message(lsp_types::MessageType::Error, message)
+            self.show_message(lsp_types::MessageType::ERROR, message)
         }
     }
 

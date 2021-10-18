@@ -23,7 +23,9 @@
                 },
             },
             severity: Some(
-                Hint,
+                DiagnosticSeverity(
+                    4,
+                ),
             ),
             code: None,
             code_description: None,
@@ -90,7 +92,9 @@
                 },
             },
             severity: Some(
-                Hint,
+                DiagnosticSeverity(
+                    4,
+                ),
             ),
             code: None,
             code_description: None,
@@ -157,7 +161,9 @@
                 },
             },
             severity: Some(
-                Error,
+                DiagnosticSeverity(
+                    1,
+                ),
             ),
             code: None,
             code_description: None,

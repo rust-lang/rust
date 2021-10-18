@@ -311,7 +311,7 @@ pub(crate) fn handle_document_symbol(
     for symbol in snap.analysis.file_structure(file_id)? {
         let mut tags = Vec::new();
         if symbol.deprecated {
-            tags.push(SymbolTag::Deprecated)
+            tags.push(SymbolTag::DEPRECATED)
         };
 
         #[allow(deprecated)]
@@ -368,7 +368,7 @@ pub(crate) fn handle_document_symbol(
 
         #[allow(deprecated)]
         if let Some(true) = symbol.deprecated {
-            tags.push(SymbolTag::Deprecated)
+            tags.push(SymbolTag::DEPRECATED)
         }
 
         #[allow(deprecated)]
@@ -464,7 +464,7 @@ pub(crate) fn handle_workspace_symbol(
                 kind: nav
                     .kind
                     .map(to_proto::symbol_kind)
-                    .unwrap_or(lsp_types::SymbolKind::Variable),
+                    .unwrap_or(lsp_types::SymbolKind::VARIABLE),
                 tags: None,
                 location: to_proto::location_from_nav(snap, nav)?,
                 container_name,
@@ -1294,7 +1294,7 @@ pub(crate) fn publish_diagnostics(
             source: Some("rust-analyzer".to_string()),
             message: d.message,
             related_information: None,
-            tags: if d.unused { Some(vec![DiagnosticTag::Unnecessary]) } else { None },
+            tags: if d.unused { Some(vec![DiagnosticTag::UNNECESSARY]) } else { None },
             data: None,
         })
         .collect();

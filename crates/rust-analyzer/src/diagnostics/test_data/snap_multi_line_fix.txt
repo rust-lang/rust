@@ -23,7 +23,9 @@
                 },
             },
             severity: Some(
-                Warning,
+                DiagnosticSeverity(
+                    2,
+                ),
             ),
             code: Some(
                 String(
@@ -140,7 +142,9 @@
                 },
             },
             severity: Some(
-                Hint,
+                DiagnosticSeverity(
+                    4,
+                ),
             ),
             code: Some(
                 String(
@@ -231,7 +235,9 @@
                 },
             },
             severity: Some(
-                Hint,
+                DiagnosticSeverity(
+                    4,
+                ),
             ),
             code: Some(
                 String(
