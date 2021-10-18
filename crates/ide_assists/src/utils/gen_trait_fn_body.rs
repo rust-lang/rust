@@ -578,7 +578,7 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         let mut arms = vec![];
 
         let variant_name =
-            make::path_pat(make::ext::path_from_idents(["core", "cmp", "Ordering", "Eq"])?);
+            make::path_pat(make::ext::path_from_idents(["core", "cmp", "Ordering", "Equal"])?);
         let lhs = make::tuple_struct_pat(make::ext::path_from_idents(["Some"])?, [variant_name]);
         arms.push(make::match_arm(Some(lhs.into()), None, make::expr_empty_block()));
 
