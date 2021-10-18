@@ -58,34 +58,28 @@ pub fn find_best_match_for_name(
     let lookup = &lookup.as_str();
     let max_dist = dist.unwrap_or_else(|| cmp::max(lookup.len(), 3) / 3);
 
-    let (case_insensitive_match, levenshtein_match) = name_vec
+    // Priority of matches:
+    // 1. Exact case insensitive match
+    // 2. Levenshtein distance match
+    // 3. Sorted word match
+    if let Some(case_insensitive_match) =
+        name_vec.iter().find(|candidate| candidate.as_str().to_uppercase() == lookup.to_uppercase())
+    {
+        return Some(*case_insensitive_match);
+    }
+    let levenshtein_match = name_vec
         .iter()
         .filter_map(|&name| {
             let dist = lev_distance(lookup, &name.as_str());
             if dist <= max_dist { Some((name, dist)) } else { None }
         })
         // Here we are collecting the next structure:
-        // (case_insensitive_match, (levenshtein_match, levenshtein_distance))
-        .fold((None, None), |result, (candidate, dist)| {
-            (
-                if candidate.as_str().to_uppercase() == lookup.to_uppercase() {
-                    Some(candidate)
-                } else {
-                    result.0
-                },
-                match result.1 {
-                    None => Some((candidate, dist)),
-                    Some((c, d)) => Some(if dist < d { (candidate, dist) } else { (c, d) }),
-                },
-            )
+        // (levenshtein_match, levenshtein_distance)
+        .fold(None, |result, (candidate, dist)| match result {
+            None => Some((candidate, dist)),
+            Some((c, d)) => Some(if dist < d { (candidate, dist) } else { (c, d) }),
         });
-    // Priority of matches:
-    // 1. Exact case insensitive match
-    // 2. Levenshtein distance match
-    // 3. Sorted word match
-    if let Some(candidate) = case_insensitive_match {
-        Some(candidate)
-    } else if levenshtein_match.is_some() {
+    if levenshtein_match.is_some() {
         levenshtein_match.map(|(candidate, _)| candidate)
     } else {
         find_match_by_sorted_words(name_vec, lookup)
