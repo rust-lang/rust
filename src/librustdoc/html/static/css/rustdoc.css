@@ -253,7 +253,10 @@ code, pre, a.test-arrow, .code-header {
 pre {
 	padding: 14px;
 }
-.type-decl pre {
+.docblock.item-decl {
+	margin-left: 0;
+}
+.item-decl pre {
 	overflow-x: auto;
 }
 

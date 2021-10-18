@@ -5,4 +5,4 @@ size: (1100, 800)
 // Logically, the <body> scroll width should be the width of the window.
 assert-property: ("body", {"scrollWidth": "1100"})
 // However, since there is overflow in the type declaration, its scroll width is bigger.
-assert-property: (".type-decl pre", {"scrollWidth": "1324"})
+assert-property: (".item-decl pre", {"scrollWidth": "1324"})
