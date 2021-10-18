@@ -722,7 +722,15 @@ struct Foo {
 
 impl PartialOrd for Foo {
     $0fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        (self.bin, self.bar, self.baz).partial_cmp(&(other.bin, other.bar, other.baz))
+        match self.bin.partial_cmp(&other.bin) {
+            Some(core::cmp::Ordering::Eq) => {}
+            ord => return ord,
+        }
+        match self.bar.partial_cmp(&other.bar) {
+            Some(core::cmp::Ordering::Eq) => {}
+            ord => return ord,
+        }
+        self.baz.partial_cmp(&other.baz)
     }
 }
 "#,
@@ -743,7 +751,15 @@ struct Foo(usize, usize, usize);
 
 impl PartialOrd for Foo {
     $0fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        (self.0, self.1, self.2).partial_cmp(&(other.0, other.1, other.2))
+        match self.0.partial_cmp(&other.0) {
+            Some(core::cmp::Ordering::Eq) => {}
+            ord => return ord,
+        }
+        match self.1.partial_cmp(&other.1) {
+            Some(core::cmp::Ordering::Eq) => {}
+            ord => return ord,
+        }
+        self.2.partial_cmp(&other.2)
     }
 }
 "#,
