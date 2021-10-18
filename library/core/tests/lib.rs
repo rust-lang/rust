@@ -9,6 +9,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(const_assume)]
 #![feature(const_cell_into_inner)]
+#![feature(const_convert)]
 #![feature(const_maybe_uninit_assume_init)]
 #![cfg_attr(bootstrap, feature(const_panic))]
 #![feature(const_ptr_read)]
