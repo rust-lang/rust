@@ -89,8 +89,8 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx 
 
 fn has_repr_attr(cx: &LateContext<'tcx>, attrs: &[Attribute]) -> bool {
     // NOTE: there's at least four other ways to do this but I liked this one the best. (All five agreed
-    // on all testcases (when i wrote this comment. I added a few since then).) Happy to use another; they're in the commit history if you want to look (or I
-    // can go find them).
+    // on all testcases (when i wrote this comment. I added a few since then).) Happy to use another;
+    // they're in the commit history if you want to look (or I can go find them).
     attrs
         .iter()
         .any(|attr| !rustc_attr::find_repr_attrs(cx.tcx.sess(), attr).is_empty())
