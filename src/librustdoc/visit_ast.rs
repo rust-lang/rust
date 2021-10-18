@@ -87,13 +87,21 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // the rexport defines the path that a user will actually see. Accordingly,
         // we add the rexport as an item here, and then skip over the original
         // definition in `visit_item()` below.
+        //
+        // We also skip `#[macro_export] macro_rules!` that have already been inserted,
+        // it can happen if within the same module a `#[macro_export] macro_rules!`
+        // is declared but also a reexport of itself producing two exports of the same
+        // macro in the same module.
+        let mut inserted = FxHashSet::default();
         for export in self.cx.tcx.module_exports(CRATE_DEF_ID).unwrap_or(&[]) {
             if let Res::Def(DefKind::Macro(_), def_id) = export.res {
                 if let Some(local_def_id) = def_id.as_local() {
                     if self.cx.tcx.has_attr(def_id, sym::macro_export) {
-                        let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
-                        let item = self.cx.tcx.hir().expect_item(hir_id);
-                        top_level_module.items.push((item, None));
+                        if inserted.insert(def_id) {
+                            let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
+                            let item = self.cx.tcx.hir().expect_item(hir_id);
+                            top_level_module.items.push((item, None));
+                        }
                     }
                 }
             }
