@@ -243,9 +243,9 @@ fn main() {
     foo::<i8>(42i8);
     //~^ ERROR mismatched types
 
-    foo::<f64>(42_f64);
+    foo::<f64>(42.0_f64);
     //~^ ERROR mismatched types
-    foo::<f64>(42_f64);
+    foo::<f64>(42.0_f64);
     //~^ ERROR mismatched types
     foo::<f64>(42_u32.into());
     //~^ ERROR mismatched types
@@ -253,9 +253,9 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<f64>(42_u8.into());
     //~^ ERROR mismatched types
-    foo::<f64>(42_f64);
+    foo::<f64>(42.0_f64);
     //~^ ERROR mismatched types
-    foo::<f64>(42_f64);
+    foo::<f64>(42.0_f64);
     //~^ ERROR mismatched types
     foo::<f64>(42_i32.into());
     //~^ ERROR mismatched types
@@ -267,21 +267,21 @@ fn main() {
     foo::<f64>(42.0_f64);
     //~^ ERROR mismatched types
 
-    foo::<f32>(42_f32);
+    foo::<f32>(42.0_f32);
     //~^ ERROR mismatched types
-    foo::<f32>(42_f32);
+    foo::<f32>(42.0_f32);
     //~^ ERROR mismatched types
-    foo::<f32>(42_f32);
+    foo::<f32>(42.0_f32);
     //~^ ERROR mismatched types
     foo::<f32>(42_u16.into());
     //~^ ERROR mismatched types
     foo::<f32>(42_u8.into());
     //~^ ERROR mismatched types
-    foo::<f32>(42_f32);
+    foo::<f32>(42.0_f32);
     //~^ ERROR mismatched types
-    foo::<f32>(42_f32);
+    foo::<f32>(42.0_f32);
     //~^ ERROR mismatched types
-    foo::<f32>(42_f32);
+    foo::<f32>(42.0_f32);
     //~^ ERROR mismatched types
     foo::<f32>(42_i16.into());
     //~^ ERROR mismatched types

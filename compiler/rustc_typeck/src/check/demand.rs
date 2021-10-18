@@ -844,6 +844,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut into_suggestion = sugg.clone();
         into_suggestion.push((expr.span.shrink_to_hi(), format!("{}.into()", close_paren)));
         let mut suffix_suggestion = sugg.clone();
+
+        if matches!(
+            (&expected_ty.kind(), &checked_ty.kind()),
+            (ty::Float(_), ty::Int(_) | ty::Uint(_))
+        ) {
+            // Add fractional part from literal, for example `42.0f32` into `42`
+            let len = src.trim_end_matches(&checked_ty.to_string()).len();
+            let len = src[..len].trim_end_matches("_").len();
+            let pos = expr.span.lo() + BytePos(len as u32);
+            let span = expr.span.with_lo(pos).with_hi(pos);
+            suffix_suggestion.push((span, ".0".to_string()));
+        };
+
         suffix_suggestion.push((
             if matches!(
                 (&expected_ty.kind(), &checked_ty.kind()),
