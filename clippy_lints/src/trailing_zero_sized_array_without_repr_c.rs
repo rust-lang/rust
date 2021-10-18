@@ -1,4 +1,4 @@
-use clippy_utils::consts::{miri_to_const, Constant};
+use clippy_utils::consts::{constant, miri_to_const, ConstEvalLateContext, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::Attribute;
 use rustc_hir::{Item, ItemKind, VariantData};
@@ -38,9 +38,11 @@ declare_lint_pass!(TrailingZeroSizedArrayWithoutReprC => [TRAILING_ZERO_SIZED_AR
 
 impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
+        dbg!(item.ident);
         if is_struct_with_trailing_zero_sized_array(cx, item) {
             // NOTE: This is to include attributes on the definition when we print the lint. If the convention
-            // is to not do that with struct definitions (I'm not sure), then this isn't necessary.
+            // is to not do that with struct definitions (I'm not sure), then this isn't necessary. (note: if
+            // you don't get rid of this, change `has_repr_attr` to `includes_repr_attr`).
             let attrs = cx.tcx.get_attrs(item.def_id.to_def_id());
             let first_attr = attrs.iter().min_by_key(|attr| attr.span.lo());
             let lint_span = if let Some(first_attr) = first_attr {
@@ -70,21 +72,11 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx 
             if let Some(last_field) = field_defs.last() {
                 if let rustc_hir::TyKind::Array(_, length) = last_field.ty.kind {
                     // Then check if that that array zero-sized
-
-                    // This is pretty much copied from `enum_clike.rs` and I don't fully understand it, so let me know
-                    // if there's a better way. I tried `Const::from_anon_const` but it didn't fold in the values
-                    // on the `ZeroSizedWithConst` and `ZeroSizedWithConstFunction` tests.
-
-                    // This line in particular seems convoluted.
-                    let length_did = cx.tcx.hir().body_owner_def_id(length.body).to_def_id();
-                    let length_ty = cx.tcx.type_of(length_did);
-                    let length = cx
-                        .tcx
-                        .const_eval_poly(length_did)
-                        .ok()
-                        .map(|val| Const::from_value(cx.tcx, val, length_ty))
-                        .and_then(miri_to_const);
-                    if let Some(Constant::Int(length)) = length {
+                    let length_ldid = cx.tcx.hir().local_def_id(length.hir_id);
+                    let length = Const::from_anon_const(cx.tcx, length_ldid);
+                    let length = length.try_eval_usize(cx.tcx, cx.param_env);
+                    // if let Some((Constant::Int(length), _)) = length {
+                    if let Some(length) = length {
                         length == 0
                     } else {
                         false
