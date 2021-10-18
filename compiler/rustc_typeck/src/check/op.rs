@@ -372,7 +372,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 true,
                             ),
                             hir::BinOpKind::Eq | hir::BinOpKind::Ne => (
-                                // can't compare `&str` with `char`
                                 if lhs_ty == rhs_ty {
                                     format!(
                                         "binary operation `{}` cannot be applied to type `{}`",
