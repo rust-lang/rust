@@ -430,7 +430,7 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
                 self.name,
                 GenericParamDefKind::Const {
                     did: self.def_id,
-                    ty: cx.tcx.type_of(self.def_id).clean(cx),
+                    ty: Box::new(cx.tcx.type_of(self.def_id).clean(cx)),
                     default: match has_default {
                         true => Some(Box::new(cx.tcx.const_param_default(self.def_id).to_string())),
                         false => None,
@@ -470,7 +470,7 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
                 self.name.ident().name,
                 GenericParamDefKind::Const {
                     did: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
-                    ty: ty.clean(cx),
+                    ty: Box::new(ty.clean(cx)),
                     default: default.map(|ct| {
                         let def_id = cx.tcx.hir().local_def_id(ct.hir_id);
                         Box::new(ty::Const::from_anon_const(cx.tcx, def_id).to_string())
