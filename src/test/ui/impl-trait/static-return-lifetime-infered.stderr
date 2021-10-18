@@ -1,43 +1,55 @@
-error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/static-return-lifetime-infered.rs:7:16
-   |
-LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                         ----- this data with an anonymous lifetime `'_`...
-LL |         self.x.iter().map(|a| a.0)
-   |         ------ ^^^^
-   |         |
-   |         ...is captured here...
-   |
-note: ...and is required to live as long as `'static` here
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/static-return-lifetime-infered.rs:6:35
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
-help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'_` lifetime bound
+   |                         -----     ^^^^^^^^^^^^^^^^^^^^^^^
+   |                         |
+   |                         hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:9:27: 9:34]>` captures the anonymous lifetime defined here
+   |
+help: to declare that the `impl Trait` captures '_, you can add an explicit `'_` lifetime bound
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
    |                                                           ++++
 
-error[E0759]: `self` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/static-return-lifetime-infered.rs:10:16
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/static-return-lifetime-infered.rs:6:35
+   |
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
+   |                         -----     ^^^^^^^^^^^^^^^^^^^^^^^
+   |                         |
+   |                         hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:9:27: 9:34]>` captures the anonymous lifetime defined here
+   |
+help: to declare that the `impl Trait` captures '_, you can add an explicit `'_` lifetime bound
+   |
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
+   |                                                           ++++
+
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/static-return-lifetime-infered.rs:11:37
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                        -------- this data with lifetime `'a`...
-LL |         self.x.iter().map(|a| a.0)
-   |         ------ ^^^^
-   |         |
-   |         ...is captured here...
+   |                    --               ^^^^^^^^^^^^^^^^^^^^^^^
+   |                    |
+   |                    hidden type `Map<std::slice::Iter<'a, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:14:27: 14:34]>` captures the lifetime `'a` as defined here
    |
-note: ...and is required to live as long as `'static` here
-  --> $DIR/static-return-lifetime-infered.rs:9:37
-   |
-LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
-help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'a` lifetime bound
+help: to declare that the `impl Trait` captures 'a, you can add an explicit `'a` lifetime bound
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
    |                                                             ++++
 
-error: aborting due to 2 previous errors
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/static-return-lifetime-infered.rs:11:37
+   |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
+   |                    --               ^^^^^^^^^^^^^^^^^^^^^^^
+   |                    |
+   |                    hidden type `Map<std::slice::Iter<'a, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:14:27: 14:34]>` captures the lifetime `'a` as defined here
+   |
+help: to declare that the `impl Trait` captures 'a, you can add an explicit `'a` lifetime bound
+   |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
+   |                                                             ++++
 
-For more information about this error, try `rustc --explain E0759`.
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0700`.

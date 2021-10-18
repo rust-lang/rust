@@ -36,7 +36,7 @@ use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::opaque_types::{GenerateMemberConstraints, InferCtxtExt};
+use rustc_trait_selection::opaque_types::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::type_op;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
@@ -185,7 +185,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
         &region_bound_pairs,
         implicit_region_bound,
         &mut borrowck_context,
-        &universal_region_relations,
         |mut cx| {
             cx.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
             liveness::generate(&mut cx, body, elements, flow_inits, move_data, location_table);
@@ -253,15 +252,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
 }
 
 #[instrument(
-    skip(
-        infcx,
-        body,
-        promoted,
-        region_bound_pairs,
-        borrowck_context,
-        universal_region_relations,
-        extra
-    ),
+    skip(infcx, body, promoted, region_bound_pairs, borrowck_context, extra),
     level = "debug"
 )]
 fn type_check_internal<'a, 'tcx, R>(
@@ -272,7 +263,6 @@ fn type_check_internal<'a, 'tcx, R>(
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
-    universal_region_relations: &'a UniversalRegionRelations<'tcx>,
     extra: impl FnOnce(TypeChecker<'a, 'tcx>) -> R,
 ) -> R {
     let mut checker = TypeChecker::new(
@@ -282,7 +272,6 @@ fn type_check_internal<'a, 'tcx, R>(
         region_bound_pairs,
         implicit_region_bound,
         borrowck_context,
-        universal_region_relations,
     );
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, body, promoted);
@@ -901,7 +890,6 @@ struct TypeChecker<'a, 'tcx> {
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
-    universal_region_relations: &'a UniversalRegionRelations<'tcx>,
 }
 
 struct BorrowCheckContext<'a, 'tcx> {
@@ -1050,7 +1038,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: ty::Region<'tcx>,
         borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
-        universal_region_relations: &'a UniversalRegionRelations<'tcx>,
     ) -> Self {
         let mut checker = Self {
             infcx,
@@ -1062,7 +1049,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             implicit_region_bound,
             borrowck_context,
             reported_errors: Default::default(),
-            universal_region_relations,
         };
         checker.check_user_type_annotations();
         checker
@@ -1322,8 +1308,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             ),
         )?;
 
-        let universal_region_relations = self.universal_region_relations;
-
         // Finally, if we instantiated the anon types successfully, we
         // have to solve any bounds (e.g., `-> impl Iterator` needs to
         // prove that `T: Iterator` where `T` is the type we
@@ -1335,12 +1319,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 ConstraintCategory::OpaqueType,
                 CustomTypeOp::new(
                     |infcx| {
-                        infcx.constrain_opaque_type(
-                            opaque_type_key,
-                            &opaque_decl,
-                            GenerateMemberConstraints::IfNoStaticBound,
-                            universal_region_relations,
-                        );
+                        infcx.constrain_opaque_type(opaque_type_key, &opaque_decl);
                         Ok(InferOk { value: (), obligations: vec![] })
                     },
                     || "opaque_type_map".to_string(),

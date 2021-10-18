@@ -1,10 +1,13 @@
 error: lifetime may not live long enough
-  --> $DIR/trait-object-nested-in-impl-trait.rs:27:23
+  --> $DIR/trait-object-nested-in-impl-trait.rs:28:9
    |
-LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
-   |             -         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ opaque type requires that `'1` must outlive `'static`
-   |             |
-   |             let's call the lifetime of this reference `'1`
+LL |       fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
+   |               - let's call the lifetime of this reference `'1`
+LL | /         Iter {
+LL | |             current: None,
+LL | |             remaining: self.0.iter(),
+LL | |         }
+   | |_________^ returning this value requires that `'1` must outlive `'static`
    |
 help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as a bound
    |
@@ -34,12 +37,15 @@ LL | |         }
    | |_________^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/trait-object-nested-in-impl-trait.rs:60:30
+  --> $DIR/trait-object-nested-in-impl-trait.rs:61:9
    |
-LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
-   |             --               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ opaque type requires that `'a` must outlive `'static`
-   |             |
-   |             lifetime `'a` defined here
+LL |       fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
+   |               -- lifetime `'a` defined here
+LL | /         Iter {
+LL | |             current: None,
+LL | |             remaining: self.0.iter(),
+LL | |         }
+   | |_________^ returning this value requires that `'a` must outlive `'static`
    |
 help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, add `'a` as a bound
    |

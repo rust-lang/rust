@@ -341,7 +341,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.visit_body(body);
         self.visit_region_obligations(body_id.hir_id);
 
-        self.constrain_opaque_types(self.outlives_environment.free_region_map());
+        self.constrain_opaque_types();
     }
 
     fn visit_region_obligations(&mut self, hir_id: hir::HirId) {

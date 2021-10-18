@@ -53,9 +53,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::RelateObjectBound(span) => {
                 label_or_note(span, "...so that it can be closed over into an object");
             }
-            infer::CallReturn(span) => {
-                label_or_note(span, "...so that return value is valid for the call");
-            }
             infer::DataBorrowed(ty, span) => {
                 label_or_note(
                     span,
@@ -276,23 +273,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     &mut err,
                     "but lifetime parameter must outlive ",
                     sub,
-                    "",
-                    None,
-                );
-                err
-            }
-            infer::CallReturn(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0482,
-                    "lifetime of return value does not outlive the function call"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "the return value is only valid for ",
-                    sup,
                     "",
                     None,
                 );

@@ -1,17 +1,16 @@
-error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:16
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:37
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                ^^^^  ----------     ---------- ...and is required to live as long as `'static` here
-   |                |     |
-   |                |     this data with an anonymous lifetime `'_`...
-   |                ...is captured here...
+   |                          -          ^^^^^^^^^^
+   |                          |
+   |                          hidden type `Pin<&Foo>` captures the lifetime `'_` as defined here
    |
-help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'_` lifetime bound
+help: to declare that the `impl Trait` captures '_, you can add an explicit `'_` lifetime bound
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
    |                                                ++++
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0759`.
+For more information about this error, try `rustc --explain E0700`.

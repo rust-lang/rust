@@ -4,29 +4,15 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
-use rustc_infer::infer::free_regions::FreeRegionRelations;
 use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{self, InferCtxt, InferOk};
+use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
 use rustc_span::Span;
 
 use std::ops::ControlFlow;
-
-/// Whether member constraints should be generated for all opaque types
-#[derive(Debug)]
-pub enum GenerateMemberConstraints {
-    /// The default, used by typeck
-    WhenRequired,
-    /// The borrow checker needs member constraints in any case where we don't
-    /// have a `'static` bound. This is because the borrow checker has more
-    /// flexibility in the values of regions. For example, given `f<'a, 'b>`
-    /// the borrow checker can have an inference variable outlive `'a` and `'b`,
-    /// but not be equal to `'static`.
-    IfNoStaticBound,
-}
 
 pub trait InferCtxtExt<'tcx> {
     fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
@@ -37,14 +23,12 @@ pub trait InferCtxtExt<'tcx> {
         value_span: Span,
     ) -> InferOk<'tcx, T>;
 
-    fn constrain_opaque_types<FRR: FreeRegionRelations<'tcx>>(&self, free_region_relations: &FRR);
+    fn constrain_opaque_types(&self);
 
-    fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
+    fn constrain_opaque_type(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
-        mode: GenerateMemberConstraints,
-        free_region_relations: &FRR,
     );
 
     /*private*/
@@ -270,26 +254,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// - `opaque_types` -- the map produced by `instantiate_opaque_types`
     /// - `free_region_relations` -- something that can be used to relate
     ///   the free regions (`'a`) that appear in the impl trait.
-    fn constrain_opaque_types<FRR: FreeRegionRelations<'tcx>>(&self, free_region_relations: &FRR) {
+    fn constrain_opaque_types(&self) {
         let opaque_types = self.inner.borrow().opaque_types.clone();
         for (opaque_type_key, opaque_defn) in opaque_types {
-            self.constrain_opaque_type(
-                opaque_type_key,
-                &opaque_defn,
-                GenerateMemberConstraints::WhenRequired,
-                free_region_relations,
-            );
+            self.constrain_opaque_type(opaque_type_key, &opaque_defn);
         }
     }
 
     /// See `constrain_opaque_types` for documentation.
-    #[instrument(level = "debug", skip(self, free_region_relations))]
-    fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
+    #[instrument(level = "debug", skip(self))]
+    fn constrain_opaque_type(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
-        mode: GenerateMemberConstraints,
-        free_region_relations: &FRR,
     ) {
         let def_id = opaque_type_key.def_id;
 
@@ -318,118 +295,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             hir::OpaqueTyOrigin::TyAlias => 0,
         };
 
-        let span = tcx.def_span(def_id);
-
-        // Check if the `impl Trait` bounds include region bounds.
-        // For example, this would be true for:
-        //
-        //     fn foo<'a, 'b, 'c>() -> impl Trait<'c> + 'a + 'b
-        //
-        // but false for:
-        //
-        //     fn foo<'c>() -> impl Trait<'c>
-        //
-        // unless `Trait` was declared like:
-        //
-        //     trait Trait<'c>: 'c
-        //
-        // in which case it would be true.
-        //
-        // This is used during regionck to decide whether we need to
-        // impose any additional constraints to ensure that region
-        // variables in `concrete_ty` wind up being constrained to
-        // something from `substs` (or, at minimum, things that outlive
-        // the fn body). (Ultimately, writeback is responsible for this
-        // check.)
-        let bounds = tcx.explicit_item_bounds(def_id);
-        debug!("{:#?}", bounds);
-        let bounds = bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_type_key.substs));
-        debug!("{:#?}", bounds);
-        let opaque_type = tcx.mk_opaque(def_id, opaque_type_key.substs);
-
-        let required_region_bounds = required_region_bounds(tcx, opaque_type, bounds);
-        if !required_region_bounds.is_empty() {
-            for required_region in required_region_bounds {
-                concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-                    tcx,
-                    op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
-                });
-            }
-            if let GenerateMemberConstraints::IfNoStaticBound = mode {
-                self.generate_member_constraint(
-                    concrete_ty,
-                    opaque_defn,
-                    opaque_type_key,
-                    first_own_region,
-                );
-            }
-            return;
-        }
-
-        // There were no `required_region_bounds`,
-        // so we have to search for a `least_region`.
-        // Go through all the regions used as arguments to the
-        // opaque type. These are the parameters to the opaque
-        // type; so in our example above, `substs` would contain
-        // `['a]` for the first impl trait and `'b` for the
-        // second.
-        let mut least_region = None;
-
-        for subst_arg in &opaque_type_key.substs[first_own_region..] {
-            let subst_region = match subst_arg.unpack() {
-                GenericArgKind::Lifetime(r) => r,
-                GenericArgKind::Type(_) | GenericArgKind::Const(_) => continue,
-            };
-
-            // Compute the least upper bound of it with the other regions.
-            debug!(?least_region);
-            debug!(?subst_region);
-            match least_region {
-                None => least_region = Some(subst_region),
-                Some(lr) => {
-                    if free_region_relations.sub_free_regions(self.tcx, lr, subst_region) {
-                        // keep the current least region
-                    } else if free_region_relations.sub_free_regions(self.tcx, subst_region, lr) {
-                        // switch to `subst_region`
-                        least_region = Some(subst_region);
-                    } else {
-                        // There are two regions (`lr` and
-                        // `subst_region`) which are not relatable. We
-                        // can't find a best choice. Therefore,
-                        // instead of creating a single bound like
-                        // `'r: 'a` (which is our preferred choice),
-                        // we will create a "in bound" like `'r in
-                        // ['a, 'b, 'c]`, where `'a..'c` are the
-                        // regions that appear in the impl trait.
-
-                        return self.generate_member_constraint(
-                            concrete_ty,
-                            opaque_defn,
-                            opaque_type_key,
-                            first_own_region,
-                        );
-                    }
-                }
-            }
-        }
-
-        let least_region = least_region.unwrap_or(tcx.lifetimes.re_static);
-        debug!(?least_region);
-
-        if let GenerateMemberConstraints::IfNoStaticBound = mode {
-            if least_region != tcx.lifetimes.re_static {
-                self.generate_member_constraint(
-                    concrete_ty,
-                    opaque_defn,
-                    opaque_type_key,
-                    first_own_region,
-                );
-            }
-        }
-        concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-            tcx,
-            op: |r| self.sub_regions(infer::CallReturn(span), least_region, r),
-        });
+        // The regions that appear in the hidden type must be equal to
+        // one of the regions in scope for the opaque type.
+        self.generate_member_constraint(
+            concrete_ty,
+            opaque_defn,
+            opaque_type_key,
+            first_own_region,
+        );
     }
 
     /// As a fallback, we sometimes generate an "in constraint". For
