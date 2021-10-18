@@ -12,16 +12,15 @@ note: required because of the requirements on the impl of `Add<{integer}>` for `
 LL | impl<RHS: Scalar> Add <RHS> for Bob {
    |                   ^^^^^^^^^     ^^^
 
-error[E0308]: mismatched types
-  --> $DIR/issue-22645.rs:15:3
+error[E0369]: cannot add `{integer}` to `Bob`
+  --> $DIR/issue-22645.rs:15:5
    |
-LL | fn main() {
-   |           - expected `()` because of default return type
-LL |   let b = Bob + 3.5;
 LL |   b + 3
-   |   ^^^^^ expected `()`, found struct `Bob`
+   |   - ^ - {integer}
+   |   |
+   |   Bob
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0277, E0308.
+Some errors have detailed explanations: E0277, E0369.
 For more information about an error, try `rustc --explain E0277`.

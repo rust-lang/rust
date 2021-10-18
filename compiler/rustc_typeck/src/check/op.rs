@@ -202,31 +202,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span: rhs_expr.span,
         });
 
-        let mut orig_result =
-            self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
+        let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
 
         // see `NB` above
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
         let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
-        let mut erased = false;
-        self.select_obligations_where_possible(false, |errors| {
-            errors.retain(|e| match (&orig_result, e.obligation.predicate.kind().skip_binder()) {
-                (Ok(callee), ty::PredicateKind::Trait(predicate)) => {
-                    // Skip the obligations coming from the binop, we want to emit E0369 instead
-                    // of E0277.
-                    erased = true;
-                    callee.trait_def_id != predicate.def_id()
-                }
-                _ => true,
-            });
-        });
 
         // Run again with more accurate types for better diagnostics. Even if `result` was `Ok`,
         // we can rerun with a more accurate rhs type for eager obligation errors.
-        let result = match orig_result {
-            Ok(_) if erased => self.lookup_op_method(lhs_ty, &[rhs_ty], Op::Binary(op, is_assign)),
-            Ok(method) => Ok(method),
-            Err(ref mut err) => Err(std::mem::take(err)),
+        let result = match result {
+            Ok(method) => {
+                let trait_did = self.op_metadata(Op::Binary(op, is_assign), op.span).1.unwrap();
+                let (obligation, _) =
+                    self.obligation_for_method(op.span, trait_did, lhs_ty, Some(&[rhs_ty]));
+                let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);
+                fulfill.register_predicate_obligation(self, obligation);
+                match fulfill.select_where_possible(&self.infcx) {
+                    Ok(_) => Ok(method),
+                    Err(err) => {
+                        self.select_obligations_where_possible(false, |errors| {
+                            errors.retain(|e| match e.obligation.predicate.kind().skip_binder() {
+                                ty::PredicateKind::Trait(predicate) => {
+                                    // Skip the obligations coming from the binop, we want to emit E0369 instead
+                                    // of E0277.
+                                    method.trait_def_id != predicate.def_id()
+                                }
+                                _ => true,
+                            });
+                        });
+                        Err(err)
+                    }
+                }
+            }
+            Err(err) => Err(err),
         };
 
         match result {
@@ -529,13 +537,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 err.emit();
+                let ty = self.tcx.ty_error();
                 if suggested {
                     // If we show labels with the types pointing at both sides of a binop, we replace these
                     // with `TyErr` to avoid unnecessary E0308s from `enforce_builtin_binop_types`.
-                    let ty = self.tcx.ty_error();
-                    (ty, ty, orig_result.map_or(ty, |method| method.sig.output()))
+                    (ty, ty, ty)
                 } else {
-                    (lhs_ty, rhs_ty, self.tcx.ty_error())
+                    (lhs_ty, rhs_ty, ty)
                 }
             }
         }
@@ -914,18 +922,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let opname = Ident::with_dummy_span(opname);
-        let method = trait_did.and_then(|trait_did| {
-            self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys))
-        });
+        let (trait_did, method) = match trait_did {
+            Some(trait_did) => (
+                trait_did,
+                self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys)),
+            ),
+            None => return Err(vec![]),
+        };
 
-        match (method, trait_did) {
-            (Some(ok), _) => {
+        match method {
+            Some(ok) => {
                 let method = self.register_infer_ok_obligations(ok);
                 self.select_obligations_where_possible(false, |_| {});
                 Ok(method)
             }
-            (None, None) => Err(vec![]),
-            (None, Some(trait_did)) => {
+            None => {
                 let (obligation, _) =
                     self.obligation_for_method(span, trait_did, lhs_ty, Some(other_tys));
                 let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);

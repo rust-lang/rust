@@ -8,6 +8,25 @@ LL |     let _ = Pin::new(Apple) == Rc::pin(Apple);
               found struct `Rc<Apple>`
    = note: required because of the requirements on the impl of `PartialEq<Pin<Rc<Apple>>>` for `Pin<Apple>`
 
-error: aborting due to previous error
+error[E0369]: can't compare `Pin<Apple>` with `Pin<Rc<Apple>>`
+  --> $DIR/issue-67039-unsound-pin-partialeq.rs:25:29
+   |
+LL |     let _ = Pin::new(Apple) == Rc::pin(Apple);
+   |             --------------- ^^ -------------- Pin<Rc<Apple>>
+   |             |
+   |             Pin<Apple>
+   |
+note: an implementation of `PartialEq` might be missing for `Apple`
+  --> $DIR/issue-67039-unsound-pin-partialeq.rs:9:1
+   |
+LL | struct Apple;
+   | ^^^^^^^^^^^^^ must implement `PartialEq`
+help: consider annotating `Apple` with `#[derive(PartialEq)]`
+   |
+LL | #[derive(PartialEq)]
+   |
 
-For more information about this error, try `rustc --explain E0271`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0271, E0369.
+For more information about an error, try `rustc --explain E0271`.
