@@ -1059,8 +1059,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Missing try_into implementation for `{integer}` to `{float}`
                     err.multipart_suggestion_verbose(
                         &format!(
-                            "{}, producing the floating point representation of the integer,
-                                 rounded if necessary",
+                            "{}, producing the floating point representation of the integer, \
+                             rounded if necessary",
                             cast_msg,
                         ),
                         cast_suggestion,
@@ -1091,7 +1091,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.multipart_suggestion_verbose(
                         &format!(
                             "{}, producing the floating point representation of the integer, \
-                                rounded if necessary",
+                             rounded if necessary",
                             &msg,
                         ),
                         cast_suggestion,
