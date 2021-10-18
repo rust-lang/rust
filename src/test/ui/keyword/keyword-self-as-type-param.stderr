@@ -1,24 +1,33 @@
-error: expected identifier, found keyword `Self`
+error: unexpected keyword `Self` in generic parameters
   --> $DIR/keyword-self-as-type-param.rs:3:12
    |
 LL | struct Foo<Self>(Self);
-   |            ^^^^ expected identifier, found keyword
+   |            ^^^^
+   |
+   = note: you cannot use `Self` as a generic parameter because it is reserved for associated items
 
-error: expected identifier, found keyword `Self`
+error: unexpected keyword `Self` in generic parameters
   --> $DIR/keyword-self-as-type-param.rs:7:11
    |
 LL | trait Bar<Self> {}
-   |           ^^^^ expected identifier, found keyword
+   |           ^^^^
+   |
+   = note: you cannot use `Self` as a generic parameter because it is reserved for associated items
 
-error[E0392]: parameter `Self` is never used
-  --> $DIR/keyword-self-as-type-param.rs:3:12
+error[E0072]: recursive type `Foo` has infinite size
+  --> $DIR/keyword-self-as-type-param.rs:3:1
    |
 LL | struct Foo<Self>(Self);
-   |            ^^^^ unused parameter
+   | ^^^^^^^^^^^^^^^^^----^^
+   | |                |
+   | |                recursive without indirection
+   | recursive type has infinite size
    |
-   = help: consider removing `Self`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `Self` to be a const parameter, use `const Self: usize` instead
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
+   |
+LL | struct Foo<Self>(Box<Self>);
+   |                  ++++    +
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0392`.
+For more information about this error, try `rustc --explain E0072`.
