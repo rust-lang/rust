@@ -552,6 +552,7 @@ nav.sub {
 	flex-grow: 1;
 	margin: 0px;
 	padding: 0px;
+	overflow-wrap: anywhere;
 }
 
 .in-band > code, .in-band > .code-header {
