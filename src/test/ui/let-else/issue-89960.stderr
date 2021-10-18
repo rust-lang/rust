@@ -1,0 +1,12 @@
+error[E0596]: cannot borrow value as mutable, as `val` is not declared as mutable
+  --> $DIR/issue-89960.rs:5:14
+   |
+LL |     let Some(ref mut meow) = Some(()) else { return };
+   |     ---------^^^^^^^^^^^^-----------------------------
+   |     |        |
+   |     |        cannot borrow as mutable
+   |     help: consider changing this to be mutable: `mut val`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.
