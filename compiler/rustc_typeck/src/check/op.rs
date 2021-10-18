@@ -209,7 +209,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
         let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
         let mut erased = false;
-        let mut non_binop_obligations = 0;
         self.select_obligations_where_possible(false, |errors| {
             errors.retain(|e| match (&orig_result, e.obligation.predicate.kind().skip_binder()) {
                 (Ok(callee), ty::PredicateKind::Trait(predicate)) => {
@@ -220,19 +219,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => true,
             });
-            non_binop_obligations = errors.len();
         });
 
         // Run again with more accurate types for better diagnostics. Even if `result` was `Ok`,
         // we can rerun with a more accurate rhs type for eager obligation errors.
         let result = match orig_result {
-            Ok(_) if erased && non_binop_obligations == 0 => {
-                self.lookup_op_method(lhs_ty, &[rhs_ty], Op::Binary(op, is_assign))
-            }
+            Ok(_) if erased => self.lookup_op_method(lhs_ty, &[rhs_ty], Op::Binary(op, is_assign)),
             Ok(method) => Ok(method),
             Err(ref mut err) => Err(std::mem::take(err)),
         };
 
+        // If we show labels with the types pointing at both sides of a binop, we replace these
+        // with `TyErr` to avoid unnecessary E0308s from `enforce_builtin_binop_types`.
+        let mut lhs_ty = lhs_ty;
+        let mut rhs_ty = rhs_ty;
         let return_ty = match result {
             Ok(method) => {
                 let by_ref_binop = !op.node.is_by_value();
@@ -287,8 +287,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
             Err(errors) => {
                 let source_map = self.tcx.sess.source_map();
-                let lhs_ty = self.resolve_vars_if_possible(lhs_ty);
-                let rhs_ty = self.resolve_vars_if_possible(rhs_ty);
                 let (mut err, missing_trait, use_output) = match is_assign {
                     IsAssign::Yes => {
                         let mut err = struct_span_err!(
@@ -536,6 +534,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !suggested {
                     orig_result.map_or(self.tcx.ty_error(), |method| method.sig.output())
                 } else {
+                    lhs_ty = self.tcx.ty_error();
+                    rhs_ty = self.tcx.ty_error();
                     self.tcx.ty_error()
                 }
             }

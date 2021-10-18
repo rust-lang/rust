@@ -3,6 +3,5 @@ fn main() {
     let b: u16 = 42;
     let c: usize = 5;
 
-    a = c + b * 5; //~ ERROR: mismatched types [E0308]
-                   //~| ERROR: cannot add `u16` to `usize`
+    a = c + b * 5; //~ ERROR cannot add `u16` to `usize`
 }

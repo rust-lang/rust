@@ -11,13 +11,6 @@ help: you can convert a `u16` to a `usize`
 LL |     a = c + (b * 5).into();
    |             +     ++++++++
 
-error[E0308]: mismatched types
-  --> $DIR/issue-81293.rs:6:13
-   |
-LL |     a = c + b * 5;
-   |             ^^^^^ expected `usize`, found `u16`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0308, E0369.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0369`.

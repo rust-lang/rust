@@ -38,15 +38,23 @@ LL |     5 < String::new();
    |
    = help: the trait `PartialEq<String>` is not implemented for `{integer}`
 
+error[E0369]: can't compare `{integer}` with `String`
+  --> $DIR/binops.rs:6:7
+   |
+LL |     5 < String::new();
+   |     - ^ ------------- String
+   |     |
+   |     {integer}
+
 error[E0277]: can't compare `{integer}` with `Result<{integer}, _>`
-  --> $DIR/binops.rs:7:7
+  --> $DIR/binops.rs:8:7
    |
 LL |     6 == Ok(1);
    |       ^^ no implementation for `{integer} == Result<{integer}, _>`
    |
    = help: the trait `PartialEq<Result<{integer}, _>>` is not implemented for `{integer}`
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0277, E0369.
 For more information about an error, try `rustc --explain E0277`.
