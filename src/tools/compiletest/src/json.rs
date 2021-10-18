@@ -74,8 +74,6 @@ struct DiagnosticSpanMacroExpansion {
 struct DiagnosticCode {
     /// The code itself.
     code: String,
-    /// An explanation for the code.
-    explanation: Option<String>,
 }
 
 pub fn rustfix_diagnostics_only(output: &str) -> String {
