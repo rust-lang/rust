@@ -170,6 +170,7 @@ impl Step for Llvm {
 
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
         let plugins = if builder.config.llvm_plugins { "ON" } else { "OFF" };
+        let enable_tests = if builder.config.llvm_tests { "ON" } else { "OFF" };
 
         cfg.out_dir(&out_dir)
             .profile(profile)
@@ -180,7 +181,7 @@ impl Step for Llvm {
             .define("LLVM_INCLUDE_EXAMPLES", "OFF")
             .define("LLVM_INCLUDE_DOCS", "OFF")
             .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
-            .define("LLVM_INCLUDE_TESTS", "OFF")
+            .define("LLVM_INCLUDE_TESTS", enable_tests)
             .define("LLVM_ENABLE_TERMINFO", "OFF")
             .define("LLVM_ENABLE_LIBEDIT", "OFF")
             .define("LLVM_ENABLE_BINDINGS", "OFF")
