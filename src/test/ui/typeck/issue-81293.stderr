@@ -10,10 +10,6 @@ help: you can convert a `u16` to a `usize`
    |
 LL |     a = c + (b * 5).into();
    |             +     ++++++++
-help: you can convert `b * 5` from `u16` to `usize`, matching the type of `c`
-   |
-LL |     a = c + usize::from(b * 5);
-   |             ++++++++++++     +
 
 error[E0308]: mismatched types
   --> $DIR/issue-81293.rs:6:13

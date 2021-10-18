@@ -10,10 +10,6 @@ help: you can convert an `i32` to an `i32`
    |
 LL |     let x = 5 + 6.into();
    |                  +++++++
-help: you can convert an `i32` to an `i32`
-   |
-LL |     let x = 5.into() + 6;
-   |              +++++++
 
 error[E0369]: cannot add `i32` to `i32`
   --> $DIR/issue-31076.rs:15:18
@@ -27,10 +23,6 @@ help: change the type of the numeric literal from `i32` to `i32`
    |
 LL |     let y = 5i32 + 6i32;
    |                     ~~~
-help: change the type of the numeric literal from `i32` to `i32`
-   |
-LL |     let y = 5i32 + 6i32;
-   |              ~~~
 
 error: aborting due to 2 previous errors
 

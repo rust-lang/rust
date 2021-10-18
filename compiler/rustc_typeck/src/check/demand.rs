@@ -915,19 +915,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     suggestion,
                     Applicability::MachineApplicable,
                 );
+                true
             };
 
         let suggest_to_change_suffix_or_into =
             |err: &mut DiagnosticBuilder<'_>,
              found_to_exp_is_fallible: bool,
              exp_to_found_is_fallible: bool| {
-                let exp_is_lhs =
+                let exp_is_assign_lhs =
                     expected_ty_expr.map(|e| self.tcx.hir().is_lhs(e.hir_id)).unwrap_or(false);
 
-                if exp_is_lhs {
-                    return;
+                if exp_is_assign_lhs {
+                    return false;
                 }
-
                 let always_fallible = found_to_exp_is_fallible
                     && (exp_to_found_is_fallible || expected_ty_expr.is_none());
                 let msg = if literal_is_ty_suffixed(expr) {
@@ -938,10 +938,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // expected type.
                     let msg = format!("`{}` cannot fit into type `{}`", src, expected_ty);
                     err.note(&msg);
-                    return;
+                    return false;
                 } else if in_const_context {
                     // Do not recommend `into` or `try_into` in const contexts.
-                    return;
+                    return false;
                 } else if found_to_exp_is_fallible {
                     return suggest_fallible_into_or_lhs_from(err, exp_to_found_is_fallible);
                 } else {
@@ -953,6 +953,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     into_suggestion.clone()
                 };
                 err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
+                true
             };
 
         match (&expected_ty.kind(), &checked_ty.kind()) {
@@ -966,8 +967,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (None, _) | (_, None) => (true, true),
                     _ => (false, false),
                 };
-                suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
-                true
+                suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible)
             }
             (&ty::Uint(ref exp), &ty::Uint(ref found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
@@ -979,8 +979,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (None, _) | (_, None) => (true, true),
                     _ => (false, false),
                 };
-                suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
-                true
+                suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible)
             }
             (&ty::Int(exp), &ty::Uint(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
@@ -989,8 +988,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (None, Some(8)) => (false, true),
                     _ => (true, true),
                 };
-                suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
-                true
+                suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible)
             }
             (&ty::Uint(exp), &ty::Int(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
@@ -999,12 +997,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (Some(8), None) => (true, false),
                     _ => (true, true),
                 };
-                suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
-                true
+                suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible)
             }
             (&ty::Float(ref exp), &ty::Float(ref found)) => {
                 if found.bit_width() < exp.bit_width() {
-                    suggest_to_change_suffix_or_into(err, false, true);
+                    return suggest_to_change_suffix_or_into(err, false, true);
                 } else if literal_is_ty_suffixed(expr) {
                     err.multipart_suggestion_verbose(
                         &lit_msg,
@@ -1028,6 +1025,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
+                    true
                 } else if can_cast {
                     // Missing try_into implementation for `{float}` to `{integer}`
                     err.multipart_suggestion_verbose(
@@ -1035,8 +1033,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
                     );
+                    true
+                } else {
+                    false
                 }
-                true
             }
             (&ty::Float(ref exp), &ty::Uint(ref found)) => {
                 // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`

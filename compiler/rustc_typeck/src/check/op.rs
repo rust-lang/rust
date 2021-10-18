@@ -202,7 +202,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span: rhs_expr.span,
         });
 
-        let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
+        let mut orig_result =
+            self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
 
         // see `NB` above
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
@@ -210,7 +211,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut erased = false;
         let mut non_binop_obligations = 0;
         self.select_obligations_where_possible(false, |errors| {
-            errors.retain(|e| match (&result, e.obligation.predicate.kind().skip_binder()) {
+            errors.retain(|e| match (&orig_result, e.obligation.predicate.kind().skip_binder()) {
                 (Ok(callee), ty::PredicateKind::Trait(predicate)) => {
                     // Skip the obligations coming from the binop, we want to emit E0369 instead
                     // of E0277.
@@ -224,10 +225,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Run again with more accurate types for better diagnostics. Even if `result` was `Ok`,
         // we can rerun with a more accurate rhs type for eager obligation errors.
-        let result = if result.is_ok() && erased && non_binop_obligations == 0 {
-            self.lookup_op_method(lhs_ty, &[rhs_ty], Op::Binary(op, is_assign))
-        } else {
-            result
+        let result = match orig_result {
+            Ok(_) if erased && non_binop_obligations == 0 => {
+                self.lookup_op_method(lhs_ty, &[rhs_ty], Op::Binary(op, is_assign))
+            }
+            Ok(method) => Ok(method),
+            Err(ref mut err) => Err(std::mem::take(err)),
         };
 
         let return_ty = match result {
@@ -433,34 +436,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
 
-                let borrowed_rhs = self.tcx.mk_ref(
-                    self.tcx.lifetimes.re_static,
-                    ty::TypeAndMut { ty: rhs_ty, mutbl: hir::Mutability::Not },
-                );
-                if self.lookup_op_method(lhs_ty, &[borrowed_rhs], Op::Binary(op, is_assign)).is_ok()
-                {
-                    let borrowed_rhs = self.tcx.mk_ref(
-                        self.tcx.lifetimes.re_erased,
-                        ty::TypeAndMut { ty: rhs_ty, mutbl: hir::Mutability::Not },
-                    );
-                    let msg = &format!(
-                        "`{}{}` can be applied on `{}`",
-                        op.node.as_str(),
-                        match is_assign {
-                            IsAssign::Yes => "=",
-                            IsAssign::No => "",
-                        },
-                        borrowed_rhs,
-                    );
-                    err.span_suggestion_verbose(
-                        rhs_expr.span.shrink_to_lo(),
-                        msg,
-                        "&".to_string(),
-                        rustc_errors::Applicability::MachineApplicable,
-                    );
-                }
-                self.check_for_cast(&mut err, rhs_expr, rhs_ty, lhs_ty, Some(lhs_expr));
-                self.check_for_cast(&mut err, lhs_expr, lhs_ty, rhs_ty, Some(rhs_expr));
+                let mut suggested = self
+                    .check_binop_borrow(&mut err, lhs_ty, rhs_ty, rhs_expr, op, is_assign)
+                    || self.check_for_cast(&mut err, rhs_expr, rhs_ty, lhs_ty, Some(lhs_expr))
+                    || self.check_for_cast(&mut err, lhs_expr, lhs_ty, rhs_ty, Some(rhs_expr));
+
                 if let Ref(_, rty, _) = lhs_ty.kind() {
                     if {
                         self.infcx.type_is_copy_modulo_regions(self.param_env, rty, lhs_expr.span)
@@ -485,6 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 "*".to_string(),
                                 rustc_errors::Applicability::MachineApplicable,
                             );
+                            suggested = true;
                         } else if let IsAssign::No = is_assign {
                             let msg = &format!(
                                 "`{}` can be used on `{}`, you can borrow it",
@@ -497,6 +478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 "&".to_string(),
                                 rustc_errors::Applicability::MaybeIncorrect,
                             );
+                            suggested = true;
                         }
                     }
                 }
@@ -537,6 +519,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     p,
                                     use_output,
                                 );
+                                suggested = true;
                             } else if *ty != lhs_ty {
                                 // When we know that a missing bound is responsible, we don't show
                                 // this note as it is redundant.
@@ -551,11 +534,53 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 err.emit();
-                self.tcx.ty_error()
+                if !suggested {
+                    orig_result.map_or(self.tcx.ty_error(), |method| method.sig.output())
+                } else {
+                    self.tcx.ty_error()
+                }
             }
         };
 
         (lhs_ty, rhs_ty, return_ty)
+    }
+
+    fn check_binop_borrow(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        lhs_ty: Ty<'tcx>,
+        rhs_ty: Ty<'tcx>,
+        rhs_expr: &'tcx hir::Expr<'tcx>,
+        op: hir::BinOp,
+        is_assign: IsAssign,
+    ) -> bool {
+        let borrowed_rhs = self.tcx.mk_ref(
+            self.tcx.lifetimes.re_static,
+            ty::TypeAndMut { ty: rhs_ty, mutbl: hir::Mutability::Not },
+        );
+        if self.lookup_op_method(lhs_ty, &[borrowed_rhs], Op::Binary(op, is_assign)).is_ok() {
+            let borrowed_rhs = self.tcx.mk_ref(
+                self.tcx.lifetimes.re_erased,
+                ty::TypeAndMut { ty: rhs_ty, mutbl: hir::Mutability::Not },
+            );
+            let msg = &format!(
+                "`{}{}` can be applied on `{}`",
+                op.node.as_str(),
+                match is_assign {
+                    IsAssign::Yes => "=",
+                    IsAssign::No => "",
+                },
+                borrowed_rhs,
+            );
+            err.span_suggestion_verbose(
+                rhs_expr.span.shrink_to_lo(),
+                msg,
+                "&".to_string(),
+                rustc_errors::Applicability::MachineApplicable,
+            );
+            return true;
+        }
+        false
     }
 
     /// If one of the types is an uncalled function and calling it would yield the other type,
