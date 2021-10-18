@@ -167,6 +167,11 @@ struct ConstParamNonZeroDefault<const N: usize = 1> {
     last: [usize; N],
 }
 
+struct TwoGenericParams<T, const N: usize> {
+    field: i32,
+    last: [T; N],
+}
+
 type A = ConstParamZeroDefault;
 type B = ConstParamZeroDefault<0>;
 type C = ConstParamNoDefault<0>;
