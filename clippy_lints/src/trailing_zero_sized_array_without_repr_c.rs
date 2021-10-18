@@ -1,7 +1,7 @@
-use clippy_utils::consts::{constant, miri_to_const, ConstEvalLateContext, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::Attribute;
-use rustc_hir::{Item, ItemKind, VariantData};
+use rustc_hir::VariantData;
+use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::Const;
@@ -65,8 +65,8 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
 }
 
 fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
-    // TODO: when finalized, replace with an `if_chain`. I have it like this because my rust-analyzer doesn't work when it's an `if_chain`
-    // First check if last field is an array
+    // TODO: when finalized, replace with an `if_chain`. I have it like this because my rust-analyzer
+    // doesn't work when it's an `if_chain` First check if last field is an array
     if let ItemKind::Struct(data, _) = &item.kind {
         let field_defs = data.fields();
         if let Some(last_field) = field_defs.last() {
