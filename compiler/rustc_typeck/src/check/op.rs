@@ -229,11 +229,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(ref mut err) => Err(std::mem::take(err)),
         };
 
-        // If we show labels with the types pointing at both sides of a binop, we replace these
-        // with `TyErr` to avoid unnecessary E0308s from `enforce_builtin_binop_types`.
-        let mut lhs_ty = lhs_ty;
-        let mut rhs_ty = rhs_ty;
-        let return_ty = match result {
+        match result {
             Ok(method) => {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
@@ -281,10 +277,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 self.write_method_call(expr.hir_id, method);
 
-                method.sig.output()
+                (lhs_ty, rhs_ty, method.sig.output())
             }
             // error types are considered "builtin"
-            Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
+            Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => {
+                (self.tcx.ty_error(), self.tcx.ty_error(), self.tcx.ty_error())
+            }
             Err(errors) => {
                 let source_map = self.tcx.sess.source_map();
                 let (mut err, missing_trait, use_output) = match is_assign {
@@ -531,17 +529,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 err.emit();
-                if !suggested {
-                    orig_result.map_or(self.tcx.ty_error(), |method| method.sig.output())
+                if suggested {
+                    // If we show labels with the types pointing at both sides of a binop, we replace these
+                    // with `TyErr` to avoid unnecessary E0308s from `enforce_builtin_binop_types`.
+                    let ty = self.tcx.ty_error();
+                    (ty, ty, orig_result.map_or(ty, |method| method.sig.output()))
                 } else {
-                    lhs_ty = self.tcx.ty_error();
-                    rhs_ty = self.tcx.ty_error();
-                    self.tcx.ty_error()
+                    (lhs_ty, rhs_ty, self.tcx.ty_error())
                 }
             }
-        };
-
-        (lhs_ty, rhs_ty, return_ty)
+        }
     }
 
     fn check_binop_borrow(
