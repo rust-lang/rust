@@ -84,6 +84,26 @@ extern "C" {}
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 extern "C" {}
 
+#[cfg(all(
+    windows,
+    target_env = "gnu",
+    not(feature = "llvm-libunwind"),
+    not(feature = "system-llvm-libunwind")
+))]
+#[link(name = "gcc_eh", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+#[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
+extern "C" {}
+
+#[cfg(all(
+    windows,
+    target_env = "gnu",
+    not(feature = "llvm-libunwind"),
+    feature = "system-llvm-libunwind"
+))]
+#[link(name = "unwind", kind = "static", cfg(target_feature = "crt-static"))]
+#[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
+extern "C" {}
+
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
 #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
 extern "C" {}

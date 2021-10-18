@@ -17,8 +17,6 @@ pub fn opts() -> TargetOptions {
     );
 
     let mut late_link_args = LinkArgs::new();
-    let mut late_link_args_dynamic = LinkArgs::new();
-    let mut late_link_args_static = LinkArgs::new();
     // Order of `late_link_args*` was found through trial and error to work with various
     // mingw-w64 versions (not tested on the CI). It's expected to change from time to time.
     let mingw_libs = vec![
@@ -39,25 +37,6 @@ pub fn opts() -> TargetOptions {
     ];
     late_link_args.insert(LinkerFlavor::Gcc, mingw_libs.clone());
     late_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), mingw_libs);
-    let dynamic_unwind_libs = vec![
-        // If any of our crates are dynamically linked then we need to use
-        // the shared libgcc_s-dw2-1.dll. This is required to support
-        // unwinding across DLL boundaries.
-        "-lgcc_s".to_string(),
-    ];
-    late_link_args_dynamic.insert(LinkerFlavor::Gcc, dynamic_unwind_libs.clone());
-    late_link_args_dynamic.insert(LinkerFlavor::Lld(LldFlavor::Ld), dynamic_unwind_libs);
-    let static_unwind_libs = vec![
-        // If all of our crates are statically linked then we can get away
-        // with statically linking the libgcc unwinding code. This allows
-        // binaries to be redistributed without the libgcc_s-dw2-1.dll
-        // dependency, but unfortunately break unwinding across DLL
-        // boundaries when unwinding across FFI boundaries.
-        "-lgcc_eh".to_string(),
-        "-l:libpthread.a".to_string(),
-    ];
-    late_link_args_static.insert(LinkerFlavor::Gcc, static_unwind_libs.clone());
-    late_link_args_static.insert(LinkerFlavor::Lld(LldFlavor::Ld), static_unwind_libs);
 
     TargetOptions {
         os: "windows".to_string(),
@@ -81,8 +60,8 @@ pub fn opts() -> TargetOptions {
         post_link_objects_fallback: crt_objects::post_mingw_fallback(),
         crt_objects_fallback: Some(CrtObjectsFallback::Mingw),
         late_link_args,
-        late_link_args_dynamic,
-        late_link_args_static,
+        crt_static_allows_dylibs: true,
+        crt_static_respected: true,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,
