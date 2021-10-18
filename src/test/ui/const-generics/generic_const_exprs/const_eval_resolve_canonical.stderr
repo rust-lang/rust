@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/const_eval_resolve_canonical.rs:26:9
+   |
+LL |     let mut _q = Default::default();
+   |         ^^^^^^ consider giving `_q` a type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.
