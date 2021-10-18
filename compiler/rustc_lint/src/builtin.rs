@@ -657,6 +657,24 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             return;
         }
 
+        // If the method is an impl for an item with docs_hidden, don't doc.
+        if method_context(cx, impl_item.hir_id()) == MethodLateContext::PlainImpl {
+            let parent = cx.tcx.hir().get_parent_did(impl_item.hir_id());
+            let impl_ty = cx.tcx.type_of(parent);
+            let outerdef = match impl_ty.kind() {
+                ty::Adt(def, _) => Some(def.did),
+                ty::Foreign(def_id) => Some(*def_id),
+                _ => None,
+            };
+            let is_hidden = match outerdef {
+                Some(id) => cx.tcx.is_doc_hidden(id),
+                None => false,
+            };
+            if is_hidden {
+                return;
+            }
+        }
+
         let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
         self.check_missing_docs_attrs(cx, impl_item.def_id, impl_item.span, article, desc);
     }

@@ -383,7 +383,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 Unsafe::No,
                 ModKind::Loaded(krate.items, Inline::Yes, krate.span)
             ),
-            ident: Ident::invalid(),
+            ident: Ident::empty(),
             id: ast::DUMMY_NODE_ID,
             vis: ast::Visibility {
                 span: krate.span.shrink_to_lo(),
@@ -1426,7 +1426,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     _ => unreachable!(),
                 })
             }
-            ast::ItemKind::Mod(_, ref mut mod_kind) if ident != Ident::invalid() => {
+            ast::ItemKind::Mod(_, ref mut mod_kind) if ident != Ident::empty() => {
                 let (file_path, dir_path, dir_ownership) = match mod_kind {
                     ModKind::Loaded(_, inline, _) => {
                         // Inline `mod foo { ... }`, but we still need to push directories.
@@ -1508,7 +1508,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             _ => {
                 item.attrs = attrs;
                 // The crate root is special - don't assign an ID to it.
-                if !(matches!(item.kind, ast::ItemKind::Mod(..)) && ident == Ident::invalid()) {
+                if !(matches!(item.kind, ast::ItemKind::Mod(..)) && ident == Ident::empty()) {
                     assign_id!(self, &mut item.id, || noop_flat_map_item(item, self))
                 } else {
                     noop_flat_map_item(item, self)

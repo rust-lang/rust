@@ -1060,7 +1060,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
         let item_vis =
             Visibility { kind: VisibilityKind::Public, span: span.shrink_to_lo(), tokens: None };
         let item = P(Item {
-            ident: Ident::invalid(),
+            ident: Ident::empty(),
             attrs,
             id: DUMMY_NODE_ID,
             vis: item_vis,
