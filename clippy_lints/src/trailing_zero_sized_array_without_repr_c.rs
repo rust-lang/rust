@@ -38,7 +38,6 @@ declare_lint_pass!(TrailingZeroSizedArrayWithoutReprC => [TRAILING_ZERO_SIZED_AR
 
 impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        dbg!(item.ident);
         if is_struct_with_trailing_zero_sized_array(cx, item) {
             // NOTE: This is to include attributes on the definition when we print the lint. If the convention
             // is to not do that with struct definitions (I'm not sure), then this isn't necessary. (note: if
@@ -66,24 +65,18 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutReprC {
 }
 
 fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
+    // TODO: when finalized, replace with an `if_chain`. I have it like this because my rust-analyzer doesn't work when it's an `if_chain`
     // First check if last field is an array
     if let ItemKind::Struct(data, _) = &item.kind {
-        if let VariantData::Struct(field_defs, _) = data {
-            if let Some(last_field) = field_defs.last() {
-                if let rustc_hir::TyKind::Array(_, length) = last_field.ty.kind {
-                    // Then check if that that array zero-sized
-                    let length_ldid = cx.tcx.hir().local_def_id(length.hir_id);
-                    let length = Const::from_anon_const(cx.tcx, length_ldid);
-                    let length = length.try_eval_usize(cx.tcx, cx.param_env);
-                    // if let Some((Constant::Int(length), _)) = length {
-                    if let Some(length) = length {
-                        length == 0
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
+        let field_defs = data.fields();
+        if let Some(last_field) = field_defs.last() {
+            if let rustc_hir::TyKind::Array(_, length) = last_field.ty.kind {
+                // Then check if that that array zero-sized
+                let length_ldid = cx.tcx.hir().local_def_id(length.hir_id);
+                let length = Const::from_anon_const(cx.tcx, length_ldid);
+                let length = length.try_eval_usize(cx.tcx, cx.param_env);
+                // if let Some((Constant::Int(length), _)) = length {
+                if let Some(length) = length { length == 0 } else { false }
             } else {
                 false
             }
