@@ -33,16 +33,18 @@
 #![feature(crate_visibility_modifier)]
 #![feature(box_patterns)]
 #![feature(iter_zip)]
+#![feature(never_type)]
 #![recursion_limit = "256"]
 
-use rustc_ast::node_id::NodeMap;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -52,13 +54,14 @@ use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, InferKind, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::BARE_TRAIT_OBJECTS;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::source_map::{respan, CachingSourceMapView, DesugaringKind};
+use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -76,6 +79,7 @@ macro_rules! arena_vec {
 mod asm;
 mod block;
 mod expr;
+mod index;
 mod item;
 mod pat;
 mod path;
@@ -97,12 +101,13 @@ struct LoweringContext<'a, 'hir: 'a> {
     arena: &'hir Arena<'hir>,
 
     /// The items being lowered are collected here.
-    owners: IndexVec<LocalDefId, Option<hir::OwnerNode<'hir>>>,
-    bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
+    owners: IndexVec<LocalDefId, Option<hir::OwnerInfo<'hir>>>,
+    /// Bodies inside the owner being lowered.
+    bodies: IndexVec<hir::ItemLocalId, Option<&'hir hir::Body<'hir>>>,
+    /// Attributes inside the owner being lowered.
+    attrs: BTreeMap<hir::ItemLocalId, &'hir [Attribute]>,
 
     generator_kind: Option<hir::GeneratorKind>,
-
-    attrs: BTreeMap<hir::HirId, &'hir [Attribute]>,
 
     /// When inside an `async` context, this is the `HirId` of the
     /// `task_context` local bound to the resume argument of the generator.
@@ -152,6 +157,9 @@ struct LoweringContext<'a, 'hir: 'a> {
     item_local_id_counter: hir::ItemLocalId,
     node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
 
+    /// NodeIds that are lowered inside the current HIR owner.
+    local_node_ids: Vec<NodeId>,
+
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
 }
@@ -178,11 +186,13 @@ pub trait ResolverAstLowering {
     /// This should only return `None` during testing.
     fn definitions(&mut self) -> &mut Definitions;
 
+    fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
+
     fn lint_buffer(&mut self) -> &mut LintBuffer;
 
     fn next_node_id(&mut self) -> NodeId;
 
-    fn take_trait_map(&mut self) -> NodeMap<Vec<hir::TraitCandidate>>;
+    fn take_trait_map(&mut self, node: NodeId) -> Option<Vec<hir::TraitCandidate>>;
 
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId>;
 
@@ -198,37 +208,6 @@ pub trait ResolverAstLowering {
         expn_id: ExpnId,
         span: Span,
     ) -> LocalDefId;
-}
-
-struct LoweringHasher<'a> {
-    source_map: CachingSourceMapView<'a>,
-    resolver: &'a dyn ResolverAstLowering,
-}
-
-impl<'a> rustc_span::HashStableContext for LoweringHasher<'a> {
-    #[inline]
-    fn hash_spans(&self) -> bool {
-        true
-    }
-
-    #[inline]
-    fn def_span(&self, id: LocalDefId) -> Span {
-        self.resolver.def_span(id)
-    }
-
-    #[inline]
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-        self.resolver.def_path_hash(def_id)
-    }
-
-    #[inline]
-    fn span_data_to_lines_and_cols(
-        &mut self,
-        span: &rustc_span::SpanData,
-    ) -> Option<(Lrc<rustc_span::SourceFile>, usize, rustc_span::BytePos, usize, rustc_span::BytePos)>
-    {
-        self.source_map.span_data_to_lines_and_cols(span)
-    }
 }
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
@@ -314,13 +293,14 @@ pub fn lower_crate<'a, 'hir>(
 ) -> &'hir hir::Crate<'hir> {
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
 
+    let owners = IndexVec::from_fn_n(|_| None, resolver.definitions().def_index_count());
     LoweringContext {
         sess,
         resolver,
         nt_to_tokenstream,
         arena,
-        owners: IndexVec::default(),
-        bodies: BTreeMap::new(),
+        owners,
+        bodies: IndexVec::new(),
         attrs: BTreeMap::default(),
         catch_scope: None,
         loop_scope: None,
@@ -331,6 +311,7 @@ pub fn lower_crate<'a, 'hir>(
         current_hir_id_owner: CRATE_DEF_ID,
         item_local_id_counter: hir::ItemLocalId::new(0),
         node_id_to_hir_id: IndexVec::new(),
+        local_node_ids: Vec::new(),
         generator_kind: None,
         task_context: None,
         current_item: None,
@@ -420,13 +401,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::OwnerNode::Crate(lctx.arena.alloc(module))
         });
 
-        let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
-        for (k, v) in self.resolver.take_trait_map().into_iter() {
-            if let Some(Some(hir_id)) = self.node_id_to_hir_id.get(k) {
-                let map = trait_map.entry(hir_id.owner).or_default();
-                map.insert(hir_id.local_id, v.into_boxed_slice());
-            }
-        }
+        let hir_hash = self.compute_hir_hash();
 
         let mut def_id_to_hir_id = IndexVec::default();
 
@@ -441,24 +416,29 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.resolver.definitions().init_def_id_to_hir_id_mapping(def_id_to_hir_id);
 
-        #[cfg(debug_assertions)]
-        for (&id, attrs) in self.attrs.iter() {
-            // Verify that we do not store empty slices in the map.
-            if attrs.is_empty() {
-                panic!("Stored empty attributes for {:?}", id);
-            }
-        }
-
-        let krate =
-            hir::Crate { owners: self.owners, bodies: self.bodies, trait_map, attrs: self.attrs };
+        let krate = hir::Crate { owners: self.owners, hir_hash };
         self.arena.alloc(krate)
     }
 
-    fn create_stable_hashing_context(&self) -> LoweringHasher<'_> {
-        LoweringHasher {
-            source_map: CachingSourceMapView::new(self.sess.source_map()),
-            resolver: self.resolver,
-        }
+    /// Compute the hash for the HIR of the full crate.
+    /// This hash will then be part of the crate_hash which is stored in the metadata.
+    fn compute_hir_hash(&mut self) -> Fingerprint {
+        let definitions = self.resolver.definitions();
+        let mut hir_body_nodes: Vec<_> = self
+            .owners
+            .iter_enumerated()
+            .filter_map(|(def_id, info)| {
+                let info = info.as_ref()?;
+                let def_path_hash = definitions.def_path_hash(def_id);
+                Some((def_path_hash, info))
+            })
+            .collect();
+        hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
+
+        let mut stable_hasher = StableHasher::new();
+        let mut hcx = self.resolver.create_stable_hashing_context();
+        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
+        stable_hasher.finish()
     }
 
     fn with_hir_id_owner(
@@ -468,23 +448,89 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> LocalDefId {
         let def_id = self.resolver.local_def_id(owner);
 
-        // Always allocate the first `HirId` for the owner itself.
-        let _old = self.node_id_to_hir_id.insert(owner, hir::HirId::make_owner(def_id));
-        debug_assert_eq!(_old, None);
-
+        let current_attrs = std::mem::take(&mut self.attrs);
+        let current_bodies = std::mem::take(&mut self.bodies);
+        let current_node_ids = std::mem::take(&mut self.local_node_ids);
         let current_owner = std::mem::replace(&mut self.current_hir_id_owner, def_id);
         let current_local_counter =
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
 
-        let item = f(self);
+        // Always allocate the first `HirId` for the owner itself.
+        let _old = self.node_id_to_hir_id.insert(owner, hir::HirId::make_owner(def_id));
+        debug_assert_eq!(_old, None);
+        self.local_node_ids.push(owner);
 
+        let item = f(self);
+        debug_assert_eq!(def_id, item.def_id());
+        let info = self.make_owner_info(item);
+
+        self.attrs = current_attrs;
+        self.bodies = current_bodies;
+        self.local_node_ids = current_node_ids;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
 
-        let _old = self.owners.insert(def_id, item);
+        let _old = self.owners.insert(def_id, info);
         debug_assert!(_old.is_none());
 
         def_id
+    }
+
+    fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> hir::OwnerInfo<'hir> {
+        let attrs = std::mem::take(&mut self.attrs);
+        let bodies = std::mem::take(&mut self.bodies);
+        let local_node_ids = std::mem::take(&mut self.local_node_ids);
+        let trait_map = local_node_ids
+            .into_iter()
+            .filter_map(|node_id| {
+                let hir_id = self.node_id_to_hir_id[node_id]?;
+                let traits = self.resolver.take_trait_map(node_id)?;
+                Some((hir_id.local_id, traits.into_boxed_slice()))
+            })
+            .collect();
+
+        #[cfg(debug_assertions)]
+        for (&id, attrs) in attrs.iter() {
+            // Verify that we do not store empty slices in the map.
+            if attrs.is_empty() {
+                panic!("Stored empty attributes for {:?}", id);
+            }
+        }
+
+        let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
+        let (nodes, parenting) =
+            index::index_hir(self.sess, self.resolver.definitions(), node, &bodies);
+        let nodes = hir::OwnerNodes { hash_including_bodies, hash_without_bodies, nodes, bodies };
+        let attrs = {
+            let mut hcx = self.resolver.create_stable_hashing_context();
+            let mut stable_hasher = StableHasher::new();
+            attrs.hash_stable(&mut hcx, &mut stable_hasher);
+            let hash = stable_hasher.finish();
+            hir::AttributeMap { map: attrs, hash }
+        };
+
+        hir::OwnerInfo { nodes, parenting, attrs, trait_map }
+    }
+
+    /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate
+    /// queries which depend on the full HIR tree and those which only depend on the item signature.
+    fn hash_owner(
+        &mut self,
+        node: hir::OwnerNode<'hir>,
+        bodies: &IndexVec<hir::ItemLocalId, Option<&'hir hir::Body<'hir>>>,
+    ) -> (Fingerprint, Fingerprint) {
+        let mut hcx = self.resolver.create_stable_hashing_context();
+        let mut stable_hasher = StableHasher::new();
+        hcx.with_hir_bodies(true, node.def_id(), bodies, |hcx| {
+            node.hash_stable(hcx, &mut stable_hasher)
+        });
+        let hash_including_bodies = stable_hasher.finish();
+        let mut stable_hasher = StableHasher::new();
+        hcx.with_hir_bodies(false, node.def_id(), bodies, |hcx| {
+            node.hash_stable(hcx, &mut stable_hasher)
+        });
+        let hash_without_bodies = stable_hasher.finish();
+        (hash_including_bodies, hash_without_bodies)
     }
 
     /// This method allocates a new `HirId` for the given `NodeId` and stores it in
@@ -501,6 +547,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let owner = self.current_hir_id_owner;
             let local_id = self.item_local_id_counter;
             self.item_local_id_counter.increment_by(1);
+            self.local_node_ids.push(ast_node_id);
             hir::HirId { owner, local_id }
         })
     }
@@ -547,7 +594,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             allow_internal_unstable,
             reason,
             self.sess.edition(),
-            self.create_stable_hashing_context(),
+            self.resolver.create_stable_hashing_context(),
         )
     }
 
@@ -791,9 +838,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if attrs.is_empty() {
             None
         } else {
+            debug_assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(attrs.iter().map(|a| self.lower_attr(a)));
             debug_assert!(!ret.is_empty());
-            self.attrs.insert(id, ret);
+            self.attrs.insert(id.local_id, ret);
             Some(ret)
         }
     }
@@ -819,9 +867,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn alias_attrs(&mut self, id: hir::HirId, target_id: hir::HirId) {
-        if let Some(&a) = self.attrs.get(&target_id) {
+        debug_assert_eq!(id.owner, self.current_hir_id_owner);
+        debug_assert_eq!(target_id.owner, self.current_hir_id_owner);
+        if let Some(&a) = self.attrs.get(&target_id.local_id) {
             debug_assert!(!a.is_empty());
-            self.attrs.insert(id, a);
+            self.attrs.insert(id.local_id, a);
         }
     }
 
@@ -2066,7 +2116,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let hir_id = self.next_id();
         if let Some(a) = attrs {
             debug_assert!(!a.is_empty());
-            self.attrs.insert(hir_id, a);
+            self.attrs.insert(hir_id.local_id, a);
         }
         let local = hir::Local { hir_id, init, pat, source, span: self.lower_span(span), ty: None };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))

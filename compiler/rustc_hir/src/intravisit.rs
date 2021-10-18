@@ -130,6 +130,28 @@ pub trait Map<'hir> {
     fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir>;
 }
 
+// Used when no map is actually available, forcing manual implementation of nested visitors.
+impl Map<'hir> for ! {
+    fn find(&self, _: HirId) -> Option<Node<'hir>> {
+        unreachable!()
+    }
+    fn body(&self, _: BodyId) -> &'hir Body<'hir> {
+        unreachable!()
+    }
+    fn item(&self, _: ItemId) -> &'hir Item<'hir> {
+        unreachable!()
+    }
+    fn trait_item(&self, _: TraitItemId) -> &'hir TraitItem<'hir> {
+        unreachable!()
+    }
+    fn impl_item(&self, _: ImplItemId) -> &'hir ImplItem<'hir> {
+        unreachable!()
+    }
+    fn foreign_item(&self, _: ForeignItemId) -> &'hir ForeignItem<'hir> {
+        unreachable!()
+    }
+}
+
 /// An erased version of `Map<'hir>`, using dynamic dispatch.
 /// NOTE: This type is effectively only usable with `NestedVisitorMap::None`.
 pub struct ErasedMap<'hir>(&'hir dyn Map<'hir>);

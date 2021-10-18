@@ -14,6 +14,7 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_target = { path = "../rustc_target" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_index = { path = "../rustc_index" }
+rustc_query_system = { path = "../rustc_query_system" }
 rustc_span = { path = "../rustc_span" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_session = { path = "../rustc_session" }

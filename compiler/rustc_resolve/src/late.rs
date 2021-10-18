@@ -1994,7 +1994,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 if ns == ValueNS {
                     let item_name = path.last().unwrap().ident;
                     let traits = self.traits_in_scope(item_name, ns);
-                    self.r.trait_map.as_mut().unwrap().insert(id, traits);
+                    self.r.trait_map.insert(id, traits);
                 }
 
                 if PrimTy::from_name(path[0].ident.name).is_some() {
@@ -2479,12 +2479,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
                 let traits = self.traits_in_scope(ident, ValueNS);
-                self.r.trait_map.as_mut().unwrap().insert(expr.id, traits);
+                self.r.trait_map.insert(expr.id, traits);
             }
             ExprKind::MethodCall(ref segment, ..) => {
                 debug!("(recording candidate traits for expr) recording traits for {}", expr.id);
                 let traits = self.traits_in_scope(segment.ident, ValueNS);
-                self.r.trait_map.as_mut().unwrap().insert(expr.id, traits);
+                self.r.trait_map.insert(expr.id, traits);
             }
             _ => {
                 // Nothing to do.

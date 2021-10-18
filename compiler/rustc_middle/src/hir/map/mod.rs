@@ -1,6 +1,4 @@
-use self::collector::NodeCollector;
-
-use crate::hir::{AttributeMap, IndexedHir, ModuleItems, Owner};
+use crate::hir::{ModuleItems, Owner};
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -23,7 +21,6 @@ use rustc_target::spec::abi::Abi;
 use std::collections::VecDeque;
 
 pub mod blocks;
-mod collector;
 
 fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
     match node {
@@ -166,8 +163,8 @@ impl<'hir> Map<'hir> {
 
     pub fn items(&self) -> impl Iterator<Item = &'hir Item<'hir>> + 'hir {
         let krate = self.krate();
-        krate.owners.iter().filter_map(|owner| match owner.as_ref()? {
-            OwnerNode::Item(item) => Some(*item),
+        krate.owners.iter().filter_map(|owner| match owner.as_ref()?.node() {
+            OwnerNode::Item(item) => Some(item),
             _ => None,
         })
     }
@@ -318,7 +315,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_parent_node(&self, hir_id: HirId) -> HirId {
-        self.find_parent_node(hir_id).unwrap_or(CRATE_HIR_ID)
+        self.find_parent_node(hir_id).unwrap()
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
@@ -381,7 +378,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies.get(&id.hir_id.local_id).unwrap()
+        self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies[id.hir_id.local_id].unwrap()
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
@@ -495,11 +492,41 @@ impl<'hir> Map<'hir> {
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
     pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
-        self.krate().bodies.keys().map(move |&body_id| self.body_owner_def_id(body_id))
+        self.krate()
+            .owners
+            .iter_enumerated()
+            .flat_map(move |(owner, owner_info)| {
+                let bodies = &owner_info.as_ref()?.nodes.bodies;
+                Some(bodies.iter_enumerated().filter_map(move |(local_id, body)| {
+                    if body.is_none() {
+                        return None;
+                    }
+                    let hir_id = HirId { owner, local_id };
+                    let body_id = BodyId { hir_id };
+                    Some(self.body_owner_def_id(body_id))
+                }))
+            })
+            .flatten()
     }
 
     pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
-        par_for_each_in(&self.krate().bodies, |(&body_id, _)| f(self.body_owner_def_id(body_id)));
+        use rustc_data_structures::sync::{par_iter, ParallelIterator};
+        #[cfg(parallel_compiler)]
+        use rustc_rayon::iter::IndexedParallelIterator;
+
+        par_iter(&self.krate().owners.raw).enumerate().for_each(|(owner, owner_info)| {
+            let owner = LocalDefId::new(owner);
+            if let Some(owner_info) = owner_info {
+                par_iter(&owner_info.nodes.bodies.raw).enumerate().for_each(|(local_id, body)| {
+                    if body.is_some() {
+                        let local_id = ItemLocalId::new(local_id);
+                        let hir_id = HirId { owner, local_id };
+                        let body_id = BodyId { hir_id };
+                        f(self.body_owner_def_id(body_id))
+                    }
+                })
+            }
+        });
     }
 
     pub fn ty_param_owner(&self, id: HirId) -> HirId {
@@ -551,9 +578,14 @@ impl<'hir> Map<'hir> {
     /// Walks the attributes in a crate.
     pub fn walk_attributes(self, visitor: &mut impl Visitor<'hir>) {
         let krate = self.krate();
-        for (&id, attrs) in krate.attrs.iter() {
-            for a in *attrs {
-                visitor.visit_attribute(id, a)
+        for (owner, info) in krate.owners.iter_enumerated() {
+            if let Some(info) = info {
+                for (&local_id, attrs) in info.attrs.map.iter() {
+                    let id = HirId { owner, local_id };
+                    for a in *attrs {
+                        visitor.visit_attribute(id, a)
+                    }
+                }
             }
         }
     }
@@ -572,7 +604,7 @@ impl<'hir> Map<'hir> {
     {
         let krate = self.krate();
         for owner in krate.owners.iter().filter_map(Option::as_ref) {
-            match owner {
+            match owner.node() {
                 OwnerNode::Item(item) => visitor.visit_item(item),
                 OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
                 OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
@@ -588,7 +620,7 @@ impl<'hir> Map<'hir> {
         V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
     {
         let krate = self.krate();
-        par_for_each_in(&krate.owners.raw, |owner| match owner.as_ref() {
+        par_for_each_in(&krate.owners.raw, |owner| match owner.as_ref().map(OwnerInfo::node) {
             Some(OwnerNode::Item(item)) => visitor.visit_item(item),
             Some(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
             Some(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
@@ -839,21 +871,21 @@ impl<'hir> Map<'hir> {
 
     pub fn expect_item(&self, id: HirId) -> &'hir Item<'hir> {
         match self.tcx.hir_owner(id.expect_owner()) {
-            Some(Owner { node: OwnerNode::Item(item) }) => item,
+            Some(Owner { node: OwnerNode::Item(item), .. }) => item,
             _ => bug!("expected item, found {}", self.node_to_string(id)),
         }
     }
 
     pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem<'hir> {
         match self.tcx.hir_owner(id.expect_owner()) {
-            Some(Owner { node: OwnerNode::ImplItem(item) }) => item,
+            Some(Owner { node: OwnerNode::ImplItem(item), .. }) => item,
             _ => bug!("expected impl item, found {}", self.node_to_string(id)),
         }
     }
 
     pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem<'hir> {
         match self.tcx.hir_owner(id.expect_owner()) {
-            Some(Owner { node: OwnerNode::TraitItem(item) }) => item,
+            Some(Owner { node: OwnerNode::TraitItem(item), .. }) => item,
             _ => bug!("expected trait item, found {}", self.node_to_string(id)),
         }
     }
@@ -867,7 +899,7 @@ impl<'hir> Map<'hir> {
 
     pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem<'hir> {
         match self.tcx.hir_owner(id.expect_owner()) {
-            Some(Owner { node: OwnerNode::ForeignItem(item) }) => item,
+            Some(Owner { node: OwnerNode::ForeignItem(item), .. }) => item,
             _ => bug!("expected foreign item, found {}", self.node_to_string(id)),
         }
     }
@@ -1032,42 +1064,10 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     }
 }
 
-pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexedHir<'tcx> {
-    let _prof_timer = tcx.sess.prof.generic_activity("build_hir_map");
-
-    // We can access untracked state since we are an eval_always query.
-    let hcx = tcx.create_stable_hashing_context();
-    let mut collector = NodeCollector::root(
-        tcx.sess,
-        &**tcx.arena,
-        tcx.untracked_crate,
-        &tcx.untracked_resolutions.definitions,
-        hcx,
-    );
-    let top_mod = tcx.untracked_crate.module();
-    collector.visit_mod(top_mod, top_mod.inner, CRATE_HIR_ID);
-
-    let map = collector.finalize_and_compute_crate_hash();
-    tcx.arena.alloc(map)
-}
-
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
-    assert_eq!(crate_num, LOCAL_CRATE);
-
-    // We can access untracked state since we are an eval_always query.
-    let mut hcx = tcx.create_stable_hashing_context();
-
-    let mut hir_body_nodes: Vec<_> = tcx
-        .index_hir(())
-        .map
-        .iter_enumerated()
-        .filter_map(|(def_id, hod)| {
-            let def_path_hash = tcx.untracked_resolutions.definitions.def_path_hash(def_id);
-            let hash = hod.as_ref()?.hash;
-            Some((def_path_hash, hash, def_id))
-        })
-        .collect();
-    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
+    debug_assert_eq!(crate_num, LOCAL_CRATE);
+    let krate = tcx.hir_crate(());
+    let hir_body_hash = krate.hir_hash;
 
     let upstream_crates = upstream_crates(tcx);
 
@@ -1087,20 +1087,27 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
 
     source_file_names.sort_unstable();
 
+    let mut hcx = tcx.create_stable_hashing_context();
     let mut stable_hasher = StableHasher::new();
-    for (def_path_hash, fingerprint, def_id) in hir_body_nodes.iter() {
-        def_path_hash.0.hash_stable(&mut hcx, &mut stable_hasher);
-        fingerprint.hash_stable(&mut hcx, &mut stable_hasher);
-        AttributeMap { map: &tcx.untracked_crate.attrs, prefix: *def_id }
-            .hash_stable(&mut hcx, &mut stable_hasher);
-        if tcx.sess.opts.debugging_opts.incremental_relative_spans {
-            let span = tcx.untracked_resolutions.definitions.def_span(*def_id);
-            debug_assert_eq!(span.parent(), None);
-            span.hash_stable(&mut hcx, &mut stable_hasher);
-        }
-    }
+    hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
     upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
     source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
+    if tcx.sess.opts.debugging_opts.incremental_relative_spans {
+        let definitions = &tcx.untracked_resolutions.definitions;
+        let mut owner_spans: Vec<_> = krate
+            .owners
+            .iter_enumerated()
+            .filter_map(|(def_id, info)| {
+                let _ = info.as_ref()?;
+                let def_path_hash = definitions.def_path_hash(def_id);
+                let span = definitions.def_span(def_id);
+                debug_assert_eq!(span.parent(), None);
+                Some((def_path_hash, span))
+            })
+            .collect();
+        owner_spans.sort_unstable_by_key(|bn| bn.0);
+        owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
+    }
     tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
 

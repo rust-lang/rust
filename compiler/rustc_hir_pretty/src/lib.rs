@@ -15,7 +15,6 @@ use rustc_target::spec::abi::Abi;
 
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::collections::BTreeMap;
 use std::vec;
 
 pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
@@ -69,7 +68,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
-    attrs: &'a BTreeMap<hir::HirId, &'a [ast::Attribute]>,
+    attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
     ann: &'a (dyn PpAnn + 'a),
 }
 
@@ -146,17 +145,18 @@ pub const INDENT_UNIT: usize = 4;
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(
     sm: &'a SourceMap,
-    krate: &hir::Crate<'_>,
+    krate: &hir::Mod<'_>,
     filename: FileName,
     input: String,
+    attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(sm, filename, input, &krate.attrs, ann);
+    let mut s = State::new_from_input(sm, filename, input, attrs, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
 
-    s.print_mod(&krate.module(), s.attrs(hir::CRATE_HIR_ID));
+    s.print_mod(krate, (*attrs)(hir::CRATE_HIR_ID));
     s.print_remaining_comments();
     s.s.eof()
 }
@@ -166,7 +166,7 @@ impl<'a> State<'a> {
         sm: &'a SourceMap,
         filename: FileName,
         input: String,
-        attrs: &'a BTreeMap<hir::HirId, &[ast::Attribute]>,
+        attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
         State {
@@ -178,7 +178,7 @@ impl<'a> State<'a> {
     }
 
     fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
-        self.attrs.get(&id).map_or(&[], |la| *la)
+        (self.attrs)(id)
     }
 }
 
@@ -186,8 +186,7 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
 where
     F: FnOnce(&mut State<'_>),
 {
-    let mut printer =
-        State { s: pp::mk_printer(), comments: None, attrs: &BTreeMap::default(), ann };
+    let mut printer = State { s: pp::mk_printer(), comments: None, attrs: &|_| &[], ann };
     f(&mut printer);
     printer.s.eof()
 }

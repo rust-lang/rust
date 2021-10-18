@@ -54,13 +54,14 @@ use rustc_middle::hir::exports::ExportMap;
 use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, ResolverOutputs};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::source_map::{CachingSourceMapView, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -930,7 +931,7 @@ pub struct Resolver<'a> {
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     export_map: ExportMap,
-    trait_map: Option<NodeMap<Vec<TraitCandidate>>>,
+    trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1177,6 +1178,10 @@ impl ResolverAstLowering for Resolver<'_> {
         &mut self.definitions
     }
 
+    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
+        StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
+    }
+
     fn lint_buffer(&mut self) -> &mut LintBuffer {
         &mut self.lint_buffer
     }
@@ -1185,8 +1190,8 @@ impl ResolverAstLowering for Resolver<'_> {
         self.next_node_id()
     }
 
-    fn take_trait_map(&mut self) -> NodeMap<Vec<TraitCandidate>> {
-        std::mem::replace(&mut self.trait_map, None).unwrap()
+    fn take_trait_map(&mut self, node: NodeId) -> Option<Vec<TraitCandidate>> {
+        self.trait_map.remove(&node)
     }
 
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
@@ -1242,37 +1247,6 @@ impl ResolverAstLowering for Resolver<'_> {
         assert_eq!(self.def_id_to_node_id.push(node_id), def_id);
 
         def_id
-    }
-}
-
-struct ExpandHasher<'a, 'b> {
-    source_map: CachingSourceMapView<'a>,
-    resolver: &'a Resolver<'b>,
-}
-
-impl<'a, 'b> rustc_span::HashStableContext for ExpandHasher<'a, 'b> {
-    #[inline]
-    fn hash_spans(&self) -> bool {
-        true
-    }
-
-    #[inline]
-    fn def_span(&self, id: LocalDefId) -> Span {
-        self.resolver.def_span(id)
-    }
-
-    #[inline]
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-        self.resolver.def_path_hash(def_id)
-    }
-
-    #[inline]
-    fn span_data_to_lines_and_cols(
-        &mut self,
-        span: &rustc_span::SpanData,
-    ) -> Option<(Lrc<rustc_span::SourceFile>, usize, rustc_span::BytePos, usize, rustc_span::BytePos)>
-    {
-        self.source_map.span_data_to_lines_and_cols(span)
     }
 }
 
@@ -1363,7 +1337,7 @@ impl<'a> Resolver<'a> {
             label_res_map: Default::default(),
             extern_crate_map: Default::default(),
             export_map: FxHashMap::default(),
-            trait_map: Some(NodeMap::default()),
+            trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
             empty_module,
             module_map,
@@ -1454,13 +1428,6 @@ impl<'a> Resolver<'a> {
     ) -> Module<'a> {
         let module_map = &mut self.module_map;
         self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude, module_map)
-    }
-
-    fn create_stable_hashing_context(&self) -> ExpandHasher<'_, 'a> {
-        ExpandHasher {
-            source_map: CachingSourceMapView::new(self.session.source_map()),
-            resolver: self,
-        }
     }
 
     pub fn next_node_id(&mut self) -> NodeId {

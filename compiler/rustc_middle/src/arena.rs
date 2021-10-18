@@ -92,12 +92,6 @@ macro_rules! arena_types {
             [] tys: rustc_middle::ty::TyS<$tcx>,
             [] predicates: rustc_middle::ty::PredicateInner<$tcx>,
 
-            // HIR query types
-            [few] indexed_hir: rustc_middle::hir::IndexedHir<$tcx>,
-            [few] hir_definitions: rustc_hir::definitions::Definitions,
-            [] hir_owner: rustc_middle::hir::Owner<$tcx>,
-            [] hir_owner_nodes: rustc_middle::hir::OwnerNodes<$tcx>,
-
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena
             // (during lowering) and the `librustc_middle` arena (for decoding MIR)
