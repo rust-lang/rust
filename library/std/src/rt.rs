@@ -19,8 +19,8 @@
 use crate::ffi::CString;
 
 // Re-export some of our utilities which are expected by other crates.
-pub use crate::panicking::{begin_panic, begin_panic_fmt, panic_count};
-pub use core::panicking::panic_display;
+pub use crate::panicking::{begin_panic, panic_count};
+pub use core::panicking::{panic_display, panic_fmt};
 
 use crate::sync::Once;
 use crate::sys;

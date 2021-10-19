@@ -72,9 +72,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
             let span = self.find_closest_untracked_caller_location();
             let (file, line, col) = self.location_triple_for_span(span);
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
-        } else if Some(def_id) == self.tcx.lang_items().panic_fmt()
-            || Some(def_id) == self.tcx.lang_items().begin_panic_fmt()
-        {
+        } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
             // For panic_fmt, call const_panic_fmt instead.
             if let Some(const_panic_fmt) = self.tcx.lang_items().const_panic_fmt() {
                 return Ok(Some(
