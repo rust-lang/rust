@@ -355,7 +355,7 @@ mod tabs_in_doc_comments;
 mod temporary_assignment;
 mod to_digit_is_some;
 mod to_string_in_display;
-mod trailing_zero_sized_array_without_repr;
+mod trailing_empty_array;
 mod trait_bounds;
 mod transmute;
 mod transmuting_null;
@@ -778,7 +778,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::default()));
     store.register_late_pass(|| Box::new(match_str_case_mismatch::MatchStrCaseMismatch));
     store.register_late_pass(move || Box::new(format_args::FormatArgs));
-    store.register_late_pass(|| Box::new(trailing_zero_sized_array_without_repr::TrailingZeroSizedArrayWithoutRepr));
+    store.register_late_pass(|| Box::new(trailing_empty_array::TrailingEmptyArray));
 
 }
 
