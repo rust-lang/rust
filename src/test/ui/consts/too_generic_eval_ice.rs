@@ -8,7 +8,6 @@ impl<A, B> Foo<A, B> {
         //~^ ERROR constant expression depends on a generic parameter
         //~| ERROR constant expression depends on a generic parameter
         //~| ERROR can't compare `[{integer}; _]` with `[{integer}; 0]`
-        //~| ERROR can't compare `[{integer}; _]` with `[{integer}; 0]`
     }
 }
 

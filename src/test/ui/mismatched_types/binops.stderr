@@ -1,11 +1,3 @@
-error[E0277]: cannot add `Option<{integer}>` to `{integer}`
-  --> $DIR/binops.rs:2:7
-   |
-LL |     1 + Some(1);
-   |       ^ no implementation for `{integer} + Option<{integer}>`
-   |
-   = help: the trait `Add<Option<{integer}>>` is not implemented for `{integer}`
-
 error[E0369]: cannot add `Option<{integer}>` to `{integer}`
   --> $DIR/binops.rs:2:7
    |
@@ -14,16 +6,8 @@ LL |     1 + Some(1);
    |     |
    |     {integer}
 
-error[E0277]: cannot subtract `Option<{integer}>` from `usize`
-  --> $DIR/binops.rs:5:16
-   |
-LL |     2 as usize - Some(1);
-   |                ^ no implementation for `usize - Option<{integer}>`
-   |
-   = help: the trait `Sub<Option<{integer}>>` is not implemented for `usize`
-
 error[E0369]: cannot subtract `Option<{integer}>` from `usize`
-  --> $DIR/binops.rs:5:16
+  --> $DIR/binops.rs:4:16
    |
 LL |     2 as usize - Some(1);
    |     ---------- ^ ------- Option<{integer}>
@@ -31,7 +15,7 @@ LL |     2 as usize - Some(1);
    |     usize
 
 error[E0369]: cannot multiply `{integer}` by `()`
-  --> $DIR/binops.rs:8:7
+  --> $DIR/binops.rs:6:7
    |
 LL |     3 * ();
    |     - ^ -- ()
@@ -39,46 +23,29 @@ LL |     3 * ();
    |     {integer}
 
 error[E0369]: cannot divide `{integer}` by `&str`
-  --> $DIR/binops.rs:10:7
+  --> $DIR/binops.rs:8:7
    |
 LL |     4 / "";
    |     - ^ -- &str
    |     |
    |     {integer}
 
-error[E0277]: can't compare `{integer}` with `String`
-  --> $DIR/binops.rs:12:7
-   |
-LL |     5 < String::new();
-   |       ^ no implementation for `{integer} == String`
-   |
-   = help: the trait `PartialEq<String>` is not implemented for `{integer}`
-
 error[E0369]: can't compare `{integer}` with `String`
-  --> $DIR/binops.rs:12:7
+  --> $DIR/binops.rs:10:7
    |
 LL |     5 < String::new();
    |     - ^ ------------- String
    |     |
    |     {integer}
 
-error[E0277]: can't compare `{integer}` with `Result<{integer}, _>`
-  --> $DIR/binops.rs:15:7
-   |
-LL |     6 == Ok(1);
-   |       ^^ no implementation for `{integer} == Result<{integer}, _>`
-   |
-   = help: the trait `PartialEq<Result<{integer}, _>>` is not implemented for `{integer}`
-
 error[E0369]: can't compare `{integer}` with `Result<{integer}, _>`
-  --> $DIR/binops.rs:15:7
+  --> $DIR/binops.rs:12:7
    |
 LL |     6 == Ok(1);
    |     - ^^ ----- Result<{integer}, _>
    |     |
    |     {integer}
 
-error: aborting due to 10 previous errors
+error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0277, E0369.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0369`.

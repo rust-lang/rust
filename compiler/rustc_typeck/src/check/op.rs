@@ -206,7 +206,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // see `NB` above
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
-        let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
+        let rhs_ty = self.resolve_vars_with_obligations_and_mutate_fulfillment(rhs_ty, |errors| {
+            if let Ok(method) = result {
+                errors.retain(|e| match e.obligation.predicate.kind().skip_binder() {
+                    ty::PredicateKind::Trait(predicate) => {
+                        // Skip the obligations coming from the binop, we want to emit E0369 instead
+                        // of E0277.
+                        method.trait_def_id != predicate.def_id()
+                    }
+                    _ => true,
+                });
+            }
+        });
 
         // Run again with more accurate types for better diagnostics. Even if `result` was `Ok`,
         // we can rerun with a more accurate rhs type for eager obligation errors.
@@ -221,11 +232,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Ok(_) => Ok(method),
                     Err(err) => {
                         self.select_obligations_where_possible(false, |errors| {
+                            let eq_trait = self.tcx.lang_items().eq_trait();
                             errors.retain(|e| match e.obligation.predicate.kind().skip_binder() {
                                 ty::PredicateKind::Trait(predicate) => {
                                     // Skip the obligations coming from the binop, we want to emit E0369 instead
                                     // of E0277.
-                                    method.trait_def_id != predicate.def_id()
+                                    let def_id = predicate.def_id();
+                                    // We also remove obligations for `PartialEq` because
+                                    // `PartialOrd` introduces them and this way we don't get
+                                    // duplicated output.
+                                    method.trait_def_id != def_id && eq_trait != Some(def_id)
                                 }
                                 _ => true,
                             });
