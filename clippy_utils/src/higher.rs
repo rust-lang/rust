@@ -619,7 +619,6 @@ impl PanicExpn<'tcx> {
             if let Some(init) = block.expr;
             if let ExprKind::Call(_, [format_args]) = init.kind;
             let expn_data = expr.span.ctxt().outer_expn_data();
-            if let ExprKind::AddrOf(_, _, format_args) = format_args.kind;
             if let Some(format_args) = FormatArgsExpn::parse(format_args);
             then {
                 Some(PanicExpn {
