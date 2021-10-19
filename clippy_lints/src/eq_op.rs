@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::{multispan_sugg, span_lint, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{ast_utils::is_useless_with_eq_exprs, eq_expr_value, higher, in_macro, is_expn_of};
+use clippy_utils::{
+    ast_utils::is_useless_with_eq_exprs, eq_expr_value, higher, in_macro, is_expn_of, is_in_test_function,
+};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, StmtKind};
@@ -81,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                         if macro_args.len() == 2;
                         let (lhs, rhs) = (macro_args[0], macro_args[1]);
                         if eq_expr_value(cx, lhs, rhs);
-
+                        if !is_in_test_function(cx.tcx, e.hir_id);
                         then {
                             span_lint(
                                 cx,
@@ -108,7 +110,10 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
             if macro_with_not_op(&left.kind) || macro_with_not_op(&right.kind) {
                 return;
             }
-            if is_useless_with_eq_exprs(op.node.into()) && eq_expr_value(cx, left, right) {
+            if is_useless_with_eq_exprs(op.node.into())
+                && eq_expr_value(cx, left, right)
+                && !is_in_test_function(cx.tcx, e.hir_id)
+            {
                 span_lint(
                     cx,
                     EQ_OP,
