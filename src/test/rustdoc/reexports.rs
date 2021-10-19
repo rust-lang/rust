@@ -4,21 +4,21 @@
 
 extern crate reexports;
 
-// @has 'foo/macro.addr_of.html' '//*[@class="docblock type-decl"]' 'pub macro addr_of($place : expr) {'
+// @has 'foo/macro.addr_of.html' '//*[@class="docblock item-decl"]' 'pub macro addr_of($place : expr) {'
 pub use reexports::addr_of;
 // @!has 'foo/macro.addr_of_crate.html'
 pub(crate) use reexports::addr_of_crate;
 // @!has 'foo/macro.addr_of_self.html'
 pub(self) use reexports::addr_of_self;
 
-// @has 'foo/struct.Foo.html' '//*[@class="docblock type-decl"]' 'pub struct Foo;'
+// @has 'foo/struct.Foo.html' '//*[@class="docblock item-decl"]' 'pub struct Foo;'
 pub use reexports::Foo;
 // @!has 'foo/struct.FooCrate.html'
 pub(crate) use reexports::FooCrate;
 // @!has 'foo/struct.FooSelf.html'
 pub(self) use reexports::FooSelf;
 
-// @has 'foo/enum.Bar.html' '//*[@class="docblock type-decl"]' 'pub enum Bar {'
+// @has 'foo/enum.Bar.html' '//*[@class="docblock item-decl"]' 'pub enum Bar {'
 pub use reexports::Bar;
 // @!has 'foo/enum.BarCrate.html'
 pub(crate) use reexports::BarCrate;
@@ -39,7 +39,7 @@ pub(crate) use reexports::TypeCrate;
 // @!has 'foo/type.TypeSelf.html'
 pub(self) use reexports::TypeSelf;
 
-// @has 'foo/union.Union.html' '//*[@class="docblock type-decl"]' 'pub union Union {'
+// @has 'foo/union.Union.html' '//*[@class="docblock item-decl"]' 'pub union Union {'
 pub use reexports::Union;
 // @!has 'foo/union.UnionCrate.html'
 pub(crate) use reexports::UnionCrate;
