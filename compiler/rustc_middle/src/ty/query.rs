@@ -15,7 +15,7 @@ use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::mir::interpret::{ConstAlloc, LitToConstError, LitToConstInput};
 use crate::mir::interpret::{ConstValue, EvalToAllocationRawResult, EvalToConstValueResult};
-use crate::mir::mono::CodegenUnit;
+use crate::mir::mono::{CodegenUnit, MonoItemMap};
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,

@@ -188,13 +188,14 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::mir::interpret::{AllocId, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
-use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
+use rustc_middle::mir::mono::{InstantiationMode, MonoItem, MonoItemMap};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Local, Location};
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
-use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable, VtblEntry};
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, VtblEntry};
 use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
 use rustc_session::config::EntryFnType;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
@@ -210,6 +211,82 @@ use std::path::PathBuf;
 pub enum MonoItemCollectionMode {
     Eager,
     Lazy,
+}
+
+pub struct Visited<'tcx> {
+    map: MonoItemMap<'tcx>,
+    /// We can eagerly insert trivially concrete items
+    /// into our map, so we only care about cycles for
+    /// generic stuff.
+    in_progress_fns: Vec<Instance<'tcx>>,
+}
+
+impl Visited<'tcx> {
+    fn new() -> Visited<'tcx> {
+        Visited { map: Default::default(), in_progress_fns: Default::default() }
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn start_item(&mut self, item: MonoItem<'tcx>) -> Option<MonoItem<'tcx>> {
+        match item {
+            MonoItem::Fn(instance) if item.is_generic_fn() => {
+                if self.in_progress_fns.contains(&instance) {
+                    // We encountered a cycle. For now, we return the fully concrete instance
+                    // without adding it to the map. While this might seem dangerous,
+                    // we will add a polymorphized instance of this item to the map
+                    // later when finishing that item.
+                    debug!("cycle");
+                    return Some(item);
+                }
+
+                debug!("fresh: {:?}", instance);
+
+                for &mut substs in self.map.item_map.entry(instance.def).or_default() {
+                    // FIXME(polymorphization): Don't just compare stuff here.
+                    if substs == instance.substs {
+                        debug!("found generic");
+                        return Some(item);
+                    }
+                }
+                self.in_progress_fns.push(instance);
+                None
+            }
+            MonoItem::Fn(_) | MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {
+                if self.map.trivially_concrete.insert(item) {
+                    debug!("insert concrete");
+                    None
+                } else {
+                    debug!("old concrete");
+                    Some(item)
+                }
+            }
+        }
+    }
+
+    fn finish_item(&mut self, item: MonoItem<'tcx>) -> MonoItem<'tcx> {
+        match item {
+            MonoItem::Fn(instance) if item.is_generic_fn() => {
+                assert_eq!(Some(instance.def), self.in_progress_fns.pop().map(|i| i.def));
+
+                let item_substs = self.map.item_map.entry(instance.def).or_default();
+                for &substs in item_substs.iter() {
+                    // FIXME(polymorphization): Don't just compare stuff here.
+                    if substs == instance.substs {
+                        return item;
+                    }
+                }
+                item_substs.push(instance.substs);
+
+                item
+            }
+            MonoItem::Fn(_) | MonoItem::Static(_) | MonoItem::GlobalAsm(_) => item, // Inserted in `start_item`.
+        }
+    }
+
+    fn finish(self) -> MonoItemMap<'tcx> {
+        assert!(self.in_progress_fns.is_empty());
+        self.map
+    }
 }
 
 /// Maps every mono item to all mono items it references in its
@@ -283,7 +360,7 @@ impl<'tcx> InliningMap<'tcx> {
 pub fn collect_crate_mono_items(
     tcx: TyCtxt<'_>,
     mode: MonoItemCollectionMode,
-) -> (FxHashSet<MonoItem<'_>>, InliningMap<'_>) {
+) -> (MonoItemMap<'_>, InliningMap<'_>) {
     let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
     let roots =
@@ -291,7 +368,7 @@ pub fn collect_crate_mono_items(
 
     debug!("building mono item graph, beginning at roots");
 
-    let mut visited = MTLock::new(FxHashSet::default());
+    let mut visited = MTLock::new(Visited::new());
     let mut inlining_map = MTLock::new(InliningMap::new());
     let recursion_limit = tcx.recursion_limit();
 
@@ -314,7 +391,7 @@ pub fn collect_crate_mono_items(
         });
     }
 
-    (visited.into_inner(), inlining_map.into_inner())
+    (visited.into_inner().finish(), inlining_map.into_inner())
 }
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
@@ -349,16 +426,14 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_point: Spanned<MonoItem<'tcx>>,
-    visited: MTRef<'_, MTLock<FxHashSet<MonoItem<'tcx>>>>,
+    visited: MTRef<'_, MTLock<Visited<'tcx>>>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
     inlining_map: MTRef<'_, MTLock<InliningMap<'tcx>>>,
-) {
-    if !visited.lock_mut().insert(starting_point.node) {
-        // We've been here already, no need to search again.
-        return;
+) -> MonoItem<'tcx> {
+    if let Some(item) = visited.lock_mut().start_item(starting_point.node) {
+        return item;
     }
-    debug!("BEGIN collect_items_rec({})", starting_point.node);
 
     let mut neighbors = Vec::new();
     let recursion_depth_reset;
@@ -461,26 +536,33 @@ fn collect_items_rec<'tcx>(
         );
     }
 
-    record_accesses(tcx, starting_point.node, neighbors.iter().map(|i| &i.node), inlining_map);
-
-    for neighbour in neighbors {
-        collect_items_rec(tcx, neighbour, visited, recursion_depths, recursion_limit, inlining_map);
+    for neighbour in neighbors.iter_mut() {
+        neighbour.node = collect_items_rec(
+            tcx,
+            *neighbour,
+            visited,
+            recursion_depths,
+            recursion_limit,
+            inlining_map,
+        );
     }
+
+    record_accesses(tcx, starting_point.node, neighbors.iter().map(|i| i.node), inlining_map);
 
     if let Some((def_id, depth)) = recursion_depth_reset {
         recursion_depths.insert(def_id, depth);
     }
 
-    debug!("END collect_items_rec({})", starting_point.node);
+    visited.lock_mut().finish_item(starting_point.node)
 }
 
 fn record_accesses<'a, 'tcx: 'a>(
     tcx: TyCtxt<'tcx>,
     caller: MonoItem<'tcx>,
-    callees: impl Iterator<Item = &'a MonoItem<'tcx>>,
+    callees: impl Iterator<Item = MonoItem<'tcx>>,
     inlining_map: MTRef<'_, MTLock<InliningMap<'tcx>>>,
 ) {
-    let is_inlining_candidate = |mono_item: &MonoItem<'tcx>| {
+    let is_inlining_candidate = |mono_item: MonoItem<'tcx>| {
         mono_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
     };
 
@@ -488,7 +570,7 @@ fn record_accesses<'a, 'tcx: 'a>(
     // FIXME: Call `is_inlining_candidate` when pushing to `neighbors` in `collect_items_rec`
     // instead to avoid creating this `SmallVec`.
     let accesses: SmallVec<[_; 128]> =
-        callees.map(|mono_item| (*mono_item, is_inlining_candidate(mono_item))).collect();
+        callees.map(|mono_item| (mono_item, is_inlining_candidate(mono_item))).collect();
 
     inlining_map.lock_mut().record_accesses(caller, &accesses);
 }

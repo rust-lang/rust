@@ -893,9 +893,9 @@ pub fn provide(providers: &mut Providers) {
             config::OptLevel::SizeMin => config::OptLevel::Default,
         };
 
-        let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
-        for id in &*defids {
-            let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
+        let (mono_items, _) = tcx.collect_and_partition_mono_items(cratenum);
+        for did in mono_items.def_id_iter() {
+            let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(did);
             match optimize {
                 attr::OptimizeAttr::None => continue,
                 attr::OptimizeAttr::Size => continue,

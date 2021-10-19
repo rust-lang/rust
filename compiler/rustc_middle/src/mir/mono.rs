@@ -1,9 +1,10 @@
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
-use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
+use crate::ty::subst::{InternalSubsts, SubstsRef};
+use crate::ty::{Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::{HirId, ItemId};
@@ -233,6 +234,47 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
                 write!(f, "static {}", Instance::new(def_id, InternalSubsts::empty()))
             }
             MonoItem::GlobalAsm(..) => write!(f, "global_asm"),
+        }
+    }
+}
+
+/// A map containing all monomorphized items of the current crate.
+#[derive(Default, Debug, HashStable)]
+pub struct MonoItemMap<'tcx> {
+    /// Items which are not generic functions.
+    ///
+    /// we don't care about these wrt polymorphization,
+    /// so we can treat them in a far simpler way.
+    pub trivially_concrete: FxIndexSet<MonoItem<'tcx>>,
+    pub item_map: FxIndexMap<InstanceDef<'tcx>, Vec<SubstsRef<'tcx>>>,
+}
+
+impl MonoItemMap<'tcx> {
+    pub fn all_items<'a>(&'a self) -> impl Iterator<Item = MonoItem<'tcx>> + 'a {
+        self.trivially_concrete.iter().copied().chain(self.item_map.iter().flat_map(
+            |(&def, substs)| {
+                substs.iter().map(move |&substs| MonoItem::Fn(Instance { def, substs }))
+            },
+        ))
+    }
+
+    pub fn def_id_iter<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
+        self.all_items().filter_map(|mono_item| match mono_item {
+            MonoItem::Fn(instance) => Some(instance.def_id()),
+            MonoItem::Static(def_id) => Some(def_id),
+            _ => None,
+        })
+    }
+
+    pub fn contains(&self, item: MonoItem<'tcx>) -> bool {
+        match item {
+            MonoItem::Fn(instance) if item.is_generic_fn() => self
+                .item_map
+                .get(&instance.def)
+                .map_or(false, |substs| substs.contains(&instance.substs)),
+            MonoItem::Static(_) | MonoItem::GlobalAsm(_) | MonoItem::Fn(_) => {
+                self.trivially_concrete.contains(&item)
+            }
         }
     }
 }

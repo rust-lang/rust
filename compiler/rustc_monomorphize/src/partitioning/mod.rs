@@ -98,11 +98,11 @@ mod merging;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
 use rustc_hir::def_id::DefIdSet;
-use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
+use rustc_middle::mir::mono::{MonoItem, MonoItemMap};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
@@ -275,7 +275,7 @@ where
 #[inline(never)] // give this a place in the profiler
 fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I)
 where
-    I: Iterator<Item = &'a MonoItem<'tcx>>,
+    I: Iterator<Item = MonoItem<'tcx>>,
     'tcx: 'a,
 {
     let _prof_timer = tcx.prof.generic_activity("assert_symbols_are_distinct");
@@ -312,7 +312,7 @@ where
 fn collect_and_partition_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
+) -> (&'tcx MonoItemMap<'tcx>, &'tcx [CodegenUnit<'tcx>]) {
     let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
         Some(ref s) => {
             let mode_string = s.to_lowercase();
@@ -341,7 +341,7 @@ fn collect_and_partition_mono_items<'tcx>(
         }
     };
 
-    let (items, inlining_map) = collector::collect_crate_mono_items(tcx, collection_mode);
+    let (mono_items, inlining_map) = collector::collect_crate_mono_items(tcx, collection_mode);
 
     tcx.sess.abort_if_errors();
 
@@ -350,25 +350,16 @@ fn collect_and_partition_mono_items<'tcx>(
             || {
                 let mut codegen_units = partition(
                     tcx,
-                    &mut items.iter().cloned(),
+                    &mut mono_items.all_items(),
                     tcx.sess.codegen_units(),
                     &inlining_map,
                 );
                 codegen_units[0].make_primary();
                 &*tcx.arena.alloc_from_iter(codegen_units)
             },
-            || assert_symbols_are_distinct(tcx, items.iter()),
+            || assert_symbols_are_distinct(tcx, mono_items.all_items()),
         )
     });
-
-    let mono_items: DefIdSet = items
-        .iter()
-        .filter_map(|mono_item| match *mono_item {
-            MonoItem::Fn(ref instance) => Some(instance.def_id()),
-            MonoItem::Static(def_id) => Some(def_id),
-            _ => None,
-        })
-        .collect();
 
     if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
         let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
@@ -379,13 +370,13 @@ fn collect_and_partition_mono_items<'tcx>(
             }
         }
 
-        let mut item_keys: Vec<_> = items
-            .iter()
+        let mut item_keys: Vec<_> = mono_items
+            .all_items()
             .map(|i| {
                 let mut output = with_no_trimmed_paths(|| i.to_string());
                 output.push_str(" @@");
                 let mut empty = Vec::new();
-                let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
+                let cgus = item_to_cgus.get_mut(&i).unwrap_or(&mut empty);
                 cgus.sort_by_key(|(name, _)| *name);
                 cgus.dedup();
                 for &(ref cgu_name, (linkage, _)) in cgus.iter() {
@@ -427,7 +418,7 @@ fn collect_and_partition_mono_items<'tcx>(
 fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSet {
     let (items, cgus) = tcx.collect_and_partition_mono_items(());
     let mut visited = DefIdSet::default();
-    let mut result = items.clone();
+    let mut result = items.def_id_iter().collect::<DefIdSet>();
 
     for cgu in cgus {
         for (item, _) in cgu.items() {
@@ -454,7 +445,11 @@ pub fn provide(providers: &mut Providers) {
 
     providers.is_codegened_item = |tcx, def_id| {
         let (all_mono_items, _) = tcx.collect_and_partition_mono_items(());
-        all_mono_items.contains(&def_id)
+        if tcx.is_static(def_id) {
+            all_mono_items.contains(MonoItem::Static(def_id))
+        } else {
+            all_mono_items.contains(MonoItem::Fn(Instance::mono(tcx, def_id)))
+        }
     };
 
     providers.codegen_unit = |tcx, name| {
