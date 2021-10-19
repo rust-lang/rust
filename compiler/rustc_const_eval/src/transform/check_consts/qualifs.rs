@@ -21,7 +21,8 @@ pub fn in_any_value_of_ty(
 ) -> ConstQualifs {
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
-        needs_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
+        needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
+        needs_non_const_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
         custom_eq: CustomEq::in_any_value_of_ty(cx, ty),
         error_occured,
     }
@@ -98,9 +99,31 @@ impl Qualif for HasMutInterior {
 }
 
 /// Constant containing an ADT that implements `Drop`.
-/// This must be ruled out (a) because we cannot run `Drop` during compile-time
-/// as that might not be a `const fn`, and (b) because implicit promotion would
-/// remove side-effects that occur as part of dropping that value.
+/// This must be ruled out because implicit promotion would remove side-effects
+/// that occur as part of dropping that value. N.B., the implicit promotion has
+/// to reject const Drop implementations because even if side-effects are ruled
+/// out through other means, the execution of the drop could diverge.
+pub struct NeedsDrop;
+
+impl Qualif for NeedsDrop {
+    const ANALYSIS_NAME: &'static str = "flow_needs_drop";
+    const IS_CLEARED_ON_MOVE: bool = true;
+
+    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
+        qualifs.needs_drop
+    }
+
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+        ty.needs_drop(cx.tcx, cx.param_env)
+    }
+
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
+        adt.has_dtor(cx.tcx)
+    }
+}
+
+/// Constant containing an ADT that implements non-const `Drop`.
+/// This must be ruled out because we cannot run `Drop` during compile-time.
 pub struct NeedsNonConstDrop;
 
 impl Qualif for NeedsNonConstDrop {
@@ -108,7 +131,7 @@ impl Qualif for NeedsNonConstDrop {
     const IS_CLEARED_ON_MOVE: bool = true;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
-        qualifs.needs_drop
+        qualifs.needs_non_const_drop
     }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, mut ty: Ty<'tcx>) -> bool {

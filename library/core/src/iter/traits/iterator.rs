@@ -2837,12 +2837,12 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// let a = [(1, 2), (3, 4)];
+    /// let a = [(1, 2), (3, 4), (5, 6)];
     ///
     /// let (left, right): (Vec<_>, Vec<_>) = a.iter().cloned().unzip();
     ///
-    /// assert_eq!(left, [1, 3]);
-    /// assert_eq!(right, [2, 4]);
+    /// assert_eq!(left, [1, 3, 5]);
+    /// assert_eq!(right, [2, 4, 6]);
     ///
     /// // you can also unzip multiple nested tuples at once
     /// let a = [(1, (2, 3)), (4, (5, 6))];
