@@ -1957,7 +1957,7 @@ declare_lint! {
     /// [issue #50504]: https://github.com/rust-lang/rust/issues/50504
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-    Warn,
+    Deny,
     "detects proc macro derives using inaccessible names from parent modules",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #83583 <https://github.com/rust-lang/rust/issues/83583>",
@@ -3253,7 +3253,7 @@ declare_lint! {
     /// [issue #83125]: https://github.com/rust-lang/rust/issues/83125
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub PROC_MACRO_BACK_COMPAT,
-    Warn,
+    Deny,
     "detects usage of old versions of certain proc-macro crates",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #83125 <https://github.com/rust-lang/rust/issues/83125>",
