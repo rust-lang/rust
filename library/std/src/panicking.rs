@@ -437,31 +437,9 @@ pub fn panicking() -> bool {
     !panic_count::count_is_zero()
 }
 
-/// The entry point for panicking with a formatted message.
-///
-/// This is designed to reduce the amount of code required at the call
-/// site as much as possible (so that `panic!()` has as low an impact
-/// on (e.g.) the inlining of other functions as possible), by moving
-/// the actual formatting into this shared place.
-#[unstable(feature = "libstd_sys_internals", reason = "used by the panic! macro", issue = "none")]
-#[cold]
-// If panic_immediate_abort, inline the abort call,
-// otherwise avoid inlining because of it is cold path.
-#[cfg_attr(not(feature = "panic_immediate_abort"), track_caller)]
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[cfg_attr(not(test), lang = "begin_panic_fmt")]
-pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
-        intrinsics::abort()
-    }
-
-    let info = PanicInfo::internal_constructor(Some(msg), Location::caller());
-    begin_panic_handler(&info)
-}
-
 /// Entry point of panics from the libcore crate (`panic_impl` lang item).
-#[cfg_attr(not(test), panic_handler)]
+#[cfg(not(test))]
+#[panic_handler]
 pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     struct PanicPayload<'a> {
         inner: &'a fmt::Arguments<'a>,

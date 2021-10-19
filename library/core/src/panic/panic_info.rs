@@ -121,7 +121,7 @@ impl<'a> PanicInfo<'a> {
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn location(&self) -> Option<&Location<'_>> {
         // NOTE: If this is changed to sometimes return None,
-        // deal with that case in std::panicking::default_hook and std::panicking::begin_panic_fmt.
+        // deal with that case in std::panicking::default_hook and core::panicking::panic_fmt.
         Some(&self.location)
     }
 }

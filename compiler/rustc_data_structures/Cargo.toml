@@ -23,7 +23,7 @@ rustc-hash = "1.1.0"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
 bitflags = "1.2.1"
-measureme = "9.1.0"
+measureme = "10.0.0"
 libc = "0.2"
 stacker = "0.1.14"
 tempfile = "3.2"

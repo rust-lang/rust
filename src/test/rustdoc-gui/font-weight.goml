@@ -1,6 +1,6 @@
 goto: file://|DOC_PATH|/lib2/struct.Foo.html
 // This test checks that the font weight is correctly applied.
-assert-css: ("//*[@class='docblock type-decl']//a[text()='Alias']", {"font-weight": "400"})
+assert-css: ("//*[@class='docblock item-decl']//a[text()='Alias']", {"font-weight": "400"})
 assert-css: ("//*[@class='structfield small-section-header']//a[text()='Alias']", {"font-weight": "400"})
 assert-css: ("#method\.a_method > .code-header", {"font-weight": "600"})
 assert-css: ("#associatedtype\.X > .code-header", {"font-weight": "600"})
@@ -16,7 +16,7 @@ goto: file://|DOC_PATH|/lib2/trait.Trait.html
 
 // This is a complex selector, so here's how it works:
 //
-// * //*[@class='docblock type-decl'] — selects element of any tag with classes docblock and type-decl
+// * //*[@class='docblock item-decl'] — selects element of any tag with classes docblock and item-decl
 // * /pre[@class='rust trait'] — selects immediate child with tag pre and classes rust and trait
 // * /code — selects immediate child with tag code
 // * /a[@class='constant'] — selects immediate child with tag a and class constant
@@ -25,8 +25,8 @@ goto: file://|DOC_PATH|/lib2/trait.Trait.html
 //
 // This uses '/parent::*' as a proxy for the style of the text node.
 // We can't just select the '<a>' because intermediate tags could be added.
-assert-count: ("//*[@class='docblock type-decl']/pre[@class='rust trait']/code/a[@class='constant']//text()/parent::*", 1)
-assert-css: ("//*[@class='docblock type-decl']/pre[@class='rust trait']/code/a[@class='constant']//text()/parent::*", {"font-weight": "400"})
+assert-count: ("//*[@class='docblock item-decl']/pre[@class='rust trait']/code/a[@class='constant']//text()/parent::*", 1)
+assert-css: ("//*[@class='docblock item-decl']/pre[@class='rust trait']/code/a[@class='constant']//text()/parent::*", {"font-weight": "400"})
 
 assert-count: (".methods .type", 1)
 assert-css: (".methods .type", {"font-weight": "600"})

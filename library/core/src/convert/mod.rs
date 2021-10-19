@@ -545,7 +545,8 @@ where
 
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> From<T> for T {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T> const From<T> for T {
     fn from(t: T) -> T {
         t
     }
@@ -560,7 +561,8 @@ impl<T> From<T> for T {
 #[allow(unused_attributes)] // FIXME(#58633): do a principled fix instead.
 #[rustc_reservation_impl = "permitting this impl would forbid us from adding \
                             `impl<T> From<!> for T` later; see rust-lang/rust#64715 for details"]
-impl<T> From<!> for T {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T> const From<!> for T {
     fn from(t: !) -> T {
         t
     }
@@ -726,7 +728,8 @@ impl Ord for Infallible {
 }
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-impl From<!> for Infallible {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl const From<!> for Infallible {
     fn from(x: !) -> Self {
         x
     }

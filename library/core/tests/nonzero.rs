@@ -214,6 +214,9 @@ fn nonzero_const() {
 
     const ONE: Option<NonZeroU8> = NonZeroU8::new(1);
     assert!(ONE.is_some());
+
+    const FROM_NONZERO: u8 = u8::from(NONZERO);
+    assert_eq!(FROM_NONZERO, 5);
 }
 
 #[test]

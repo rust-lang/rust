@@ -11,7 +11,7 @@ doctest = false
 bitflags = "1.0"
 cstr = "0.2"
 libc = "0.2"
-measureme = "9.1.0"
+measureme = "10.0.0"
 snap = "1"
 tracing = "0.1"
 rustc_middle = { path = "../rustc_middle" }

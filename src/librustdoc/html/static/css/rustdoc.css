@@ -129,8 +129,13 @@ h3 {
 }
 h1, h2, h3, h4, h5, h6 {
 	font-weight: 500;
+}
+h1, h2, h3, h4 {
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
+}
+h5, h6 {
+	margin: 15px 0 5px 0;
 }
 h1.fqn {
 	display: flex;
@@ -254,7 +259,10 @@ code, pre, a.test-arrow, .code-header {
 pre {
 	padding: 14px;
 }
-.type-decl pre {
+.docblock.item-decl {
+	margin-left: 0;
+}
+.item-decl pre {
 	overflow-x: auto;
 }
 
@@ -502,14 +510,12 @@ nav.sub {
 	white-space: pre-wrap;
 }
 
-.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
-	border-bottom: 1px solid;
-}
-
 .top-doc .docblock h2 { font-size: 1.3em; }
 .top-doc .docblock h3 { font-size: 1.15em; }
 .top-doc .docblock h4,
-.top-doc .docblock h5,
+.top-doc .docblock h5 {
+	font-size: 1.1em;
+}
 .top-doc .docblock h6 {
 	font-size: 1em;
 }
@@ -550,6 +556,7 @@ nav.sub {
 	flex-grow: 1;
 	margin: 0px;
 	padding: 0px;
+	overflow-wrap: anywhere;
 }
 
 .in-band > code, .in-band > .code-header {

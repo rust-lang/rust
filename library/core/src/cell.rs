@@ -308,7 +308,8 @@ impl<T: Ord + Copy> Ord for Cell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-impl<T> From<T> for Cell<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T> const From<T> for Cell<T> {
     fn from(t: T) -> Cell<T> {
         Cell::new(t)
     }
@@ -1236,7 +1237,8 @@ impl<T: ?Sized + Ord> Ord for RefCell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-impl<T> From<T> for RefCell<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T> const From<T> for RefCell<T> {
     fn from(t: T) -> RefCell<T> {
         RefCell::new(t)
     }
@@ -1976,7 +1978,8 @@ impl<T: Default> Default for UnsafeCell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-impl<T> From<T> for UnsafeCell<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T> const From<T> for UnsafeCell<T> {
     fn from(t: T) -> UnsafeCell<T> {
         UnsafeCell::new(t)
     }

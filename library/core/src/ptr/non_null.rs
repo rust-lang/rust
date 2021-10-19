@@ -698,7 +698,8 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T: ?Sized> const From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
         // SAFETY: A Unique pointer cannot be null, so the conditions for
@@ -708,7 +709,8 @@ impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> From<&mut T> for NonNull<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T: ?Sized> const From<&mut T> for NonNull<T> {
     #[inline]
     fn from(reference: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null.
@@ -717,7 +719,8 @@ impl<T: ?Sized> From<&mut T> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> From<&T> for NonNull<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T: ?Sized> const From<&T> for NonNull<T> {
     #[inline]
     fn from(reference: &T) -> Self {
         // SAFETY: A reference cannot be null, so the conditions for
