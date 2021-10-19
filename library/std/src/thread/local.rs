@@ -8,6 +8,7 @@ mod tests;
 #[cfg(test)]
 mod dynamic_tests;
 
+use crate::cell::{Cell, RefCell};
 use crate::error::Error;
 use crate::fmt;
 
@@ -108,7 +109,7 @@ pub struct LocalKey<T: 'static> {
     // trivially devirtualizable by LLVM because the value of `inner` never
     // changes and the constant should be readonly within a crate. This mainly
     // only runs into problems when TLS statics are exported across crates.
-    inner: unsafe fn() -> Option<&'static T>,
+    inner: unsafe fn(Option<&mut Option<T>>) -> Option<&'static T>,
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -178,7 +179,9 @@ macro_rules! __thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, const $init:expr) => {{
         #[cfg_attr(not(windows), inline(always))] // see comments below
-        unsafe fn __getit() -> $crate::option::Option<&'static $t> {
+        unsafe fn __getit(
+            _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
+        ) -> $crate::option::Option<&'static $t> {
             const INIT_EXPR: $t = $init;
 
             // wasm without atomics maps directly to `static mut`, and dtors
@@ -260,7 +263,16 @@ macro_rules! __thread_local_inner {
                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                     $crate::thread::__OsLocalKeyInner::new();
                 #[allow(unused_unsafe)]
-                unsafe { __KEY.get(__init) }
+                unsafe {
+                    __KEY.get(move || {
+                        if let $crate::option::Option::Some(init) = _init {
+                            if let $crate::option::Option::Some(value) = init.take() {
+                                return value;
+                            }
+                        }
+                        __init()
+                    })
+                }
             }
         }
 
@@ -298,7 +310,9 @@ macro_rules! __thread_local_inner {
             //
             // The issue of "should enable on Windows sometimes" is #84933
             #[cfg_attr(not(windows), inline(always))]
-            unsafe fn __getit() -> $crate::option::Option<&'static $t> {
+            unsafe fn __getit(
+                init: $crate::option::Option<&mut $crate::option::Option<$t>>,
+            ) -> $crate::option::Option<&'static $t> {
                 #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
                 static __KEY: $crate::thread::__StaticLocalKeyInner<$t> =
                     $crate::thread::__StaticLocalKeyInner::new();
@@ -322,7 +336,16 @@ macro_rules! __thread_local_inner {
                 // raise warning for missing/extraneous unsafe blocks anymore.
                 // See https://github.com/rust-lang/rust/issues/74838.
                 #[allow(unused_unsafe)]
-                unsafe { __KEY.get(__init) }
+                unsafe {
+                    __KEY.get(move || {
+                        if let $crate::option::Option::Some(init) = init {
+                            if let $crate::option::Option::Some(value) = init.take() {
+                                return value;
+                            }
+                        }
+                        __init()
+                    })
+                }
             }
 
             unsafe {
@@ -367,7 +390,9 @@ impl<T: 'static> LocalKey<T> {
         issue = "none"
     )]
     #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
-    pub const unsafe fn new(inner: unsafe fn() -> Option<&'static T>) -> LocalKey<T> {
+    pub const unsafe fn new(
+        inner: unsafe fn(Option<&mut Option<T>>) -> Option<&'static T>,
+    ) -> LocalKey<T> {
         LocalKey { inner }
     }
 
@@ -409,9 +434,321 @@ impl<T: 'static> LocalKey<T> {
         F: FnOnce(&T) -> R,
     {
         unsafe {
-            let thread_local = (self.inner)().ok_or(AccessError)?;
+            let thread_local = (self.inner)(None).ok_or(AccessError)?;
             Ok(f(thread_local))
         }
+    }
+
+    fn initialize_with<F, R>(&'static self, init: T, f: F) -> R
+    where
+        F: FnOnce(Option<T>, &T) -> R,
+    {
+        unsafe {
+            let mut init = Some(init);
+            let reference = (self.inner)(Some(&mut init)).expect(
+                "cannot access a Thread Local Storage value \
+                 during or after destruction",
+            );
+            f(init, reference)
+        }
+    }
+}
+
+impl<T: 'static> LocalKey<Cell<T>> {
+    /// Sets or initializes the contained value.
+    ///
+    /// Unlike the other methods, this will *not* run the lazy initializer of
+    /// the thread local. Instead, it will be directly initialized with the
+    /// given value if it wasn't initialized yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(local_key_cell_methods)]
+    /// use std::cell::Cell;
+    ///
+    /// thread_local! {
+    ///     static X: Cell<i32> = panic!("!");
+    /// }
+    ///
+    /// // Calling X.get() here would result in a panic.
+    ///
+    /// X.set(123); // But X.set() is fine, as it skips the initializer above.
+    ///
+    /// assert_eq!(X.get(), 123);
+    /// ```
+    #[unstable(feature = "local_key_cell_methods", issue = "none")]
+    pub fn set(&'static self, value: T) {
+        self.initialize_with(Cell::new(value), |init, cell| {
+            if let Some(init) = init {
+                cell.set(init.into_inner());
+            }
+        });
+    }
+
+    /// Returns a copy of the contained value.
+    ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(local_key_cell_methods)]
+    /// use std::cell::Cell;
+    ///
+    /// thread_local! {
+    ///     static X: Cell<i32> = Cell::new(1);
+    /// }
+    ///
+    /// assert_eq!(X.get(), 1);
+    /// ```
+    #[unstable(feature = "local_key_cell_methods", issue = "none")]
+    pub fn get(&'static self) -> T
+    where
+        T: Copy,
+    {
+        self.with(|cell| cell.get())
+    }
+
+    /// Takes the contained value, leaving `Default::default()` in its place.
+    ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(local_key_cell_methods)]
+    /// use std::cell::Cell;
+    ///
+    /// thread_local! {
+    ///     static X: Cell<Option<i32>> = Cell::new(Some(1));
+    /// }
+    ///
+    /// assert_eq!(X.take(), Some(1));
+    /// assert_eq!(X.take(), None);
+    /// ```
+    #[unstable(feature = "local_key_cell_methods", issue = "none")]
+    pub fn take(&'static self) -> T
+    where
+        T: Default,
+    {
+        self.with(|cell| cell.take())
+    }
+
+    /// Replaces the contained value, returning the old value.
+    ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(local_key_cell_methods)]
+    /// use std::cell::Cell;
+    ///
+    /// thread_local! {
+    ///     static X: Cell<i32> = Cell::new(1);
+    /// }
+    ///
+    /// assert_eq!(X.replace(2), 1);
+    /// assert_eq!(X.replace(3), 2);
+    /// ```
+    #[unstable(feature = "local_key_cell_methods", issue = "none")]
+    pub fn replace(&'static self, value: T) -> T {
+        self.with(|cell| cell.replace(value))
+    }
+}
+
+impl<T: 'static> LocalKey<RefCell<T>> {
+    /// Acquires a reference to the contained value.
+    ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is currently borrowed.
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(local_key_cell_methods)]
+    /// use std::cell::RefCell;
+    ///
+    /// thread_local! {
+    ///     static X: RefCell<Vec<i32>> = RefCell::new(Vec::new());
+    /// }
+    ///
+    /// X.with_ref(|v| assert!(v.is_empty()));
+    /// ```
+    #[unstable(feature = "local_key_cell_methods", issue = "none")]
+    pub fn with_ref<F, R>(&'static self, f: F) -> R
+    where
+        F: FnOnce(&T) -> R,
+    {
+        self.with(|cell| f(&mut cell.borrow()))
+    }
+
+    /// Acquires a mutable reference to the contained value.
+    ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is currently borrowed.
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(local_key_cell_methods)]
+    /// use std::cell::RefCell;
+    ///
+    /// thread_local! {
+    ///     static X: RefCell<Vec<i32>> = RefCell::new(Vec::new());
+    /// }
+    ///
+    /// X.with_mut(|v| v.push(1));
+    ///
+    /// X.with_ref(|v| assert_eq!(*v, vec![1]));
+    /// ```
+    #[unstable(feature = "local_key_cell_methods", issue = "none")]
+    pub fn with_mut<F, R>(&'static self, f: F) -> R
+    where
+        F: FnOnce(&mut T) -> R,
+    {
+        self.with(|cell| f(&mut cell.borrow_mut()))
+    }
+
+    /// Sets or initializes the contained value.
+    ///
+    /// Unlike the other methods, this will *not* run the lazy initializer of
+    /// the thread local. Instead, it will be directly initialized with the
+    /// given value if it wasn't initialized yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(local_key_cell_methods)]
+    /// use std::cell::RefCell;
+    ///
+    /// thread_local! {
+    ///     static X: RefCell<Vec<i32>> = panic!("!");
+    /// }
+    ///
+    /// // Calling X.with() here would result in a panic.
+    ///
+    /// X.set(vec![1, 2, 3]); // But X.set() is fine, as it skips the initializer above.
+    ///
+    /// X.with_ref(|v| assert_eq!(*v, vec![1, 2, 3]));
+    /// ```
+    #[unstable(feature = "local_key_cell_methods", issue = "none")]
+    pub fn set(&'static self, value: T) {
+        self.initialize_with(RefCell::new(value), |init, cell| {
+            if let Some(init) = init {
+                cell.replace(init.into_inner());
+            }
+        });
+    }
+
+    /// Takes the contained value, leaving `Default::default()` in its place.
+    ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is currently borrowed.
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(local_key_cell_methods)]
+    /// use std::cell::RefCell;
+    ///
+    /// thread_local! {
+    ///     static X: RefCell<Vec<i32>> = RefCell::new(Vec::new());
+    /// }
+    ///
+    /// X.with_mut(|v| v.push(1));
+    ///
+    /// let a = X.take();
+    ///
+    /// assert_eq!(a, vec![1]);
+    ///
+    /// X.with_ref(|v| assert!(v.is_empty()));
+    /// ```
+    #[unstable(feature = "local_key_cell_methods", issue = "none")]
+    pub fn take(&'static self) -> T
+    where
+        T: Default,
+    {
+        self.with(|cell| cell.take())
+    }
+
+    /// Replaces the contained value, returning the old value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is currently borrowed.
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(local_key_cell_methods)]
+    /// use std::cell::RefCell;
+    ///
+    /// thread_local! {
+    ///     static X: RefCell<Vec<i32>> = RefCell::new(Vec::new());
+    /// }
+    ///
+    /// let prev = X.replace(vec![1, 2, 3]);
+    /// assert!(prev.is_empty());
+    ///
+    /// X.with_ref(|v| assert_eq!(*v, vec![1, 2, 3]));
+    /// ```
+    #[unstable(feature = "local_key_cell_methods", issue = "none")]
+    pub fn replace(&'static self, value: T) -> T {
+        self.with(|cell| cell.replace(value))
     }
 }
 
@@ -518,7 +855,7 @@ pub mod statik {
             Key { inner: LazyKeyInner::new() }
         }
 
-        pub unsafe fn get(&self, init: fn() -> T) -> Option<&'static T> {
+        pub unsafe fn get(&self, init: impl FnOnce() -> T) -> Option<&'static T> {
             // SAFETY: The caller must ensure no reference is ever handed out to
             // the inner cell nor mutable reference to the Option<T> inside said
             // cell. This make it safe to hand a reference, though the lifetime
@@ -707,7 +1044,7 @@ pub mod os {
 
         /// It is a requirement for the caller to ensure that no mutable
         /// reference is active when this method is called.
-        pub unsafe fn get(&'static self, init: fn() -> T) -> Option<&'static T> {
+        pub unsafe fn get(&'static self, init: impl FnOnce() -> T) -> Option<&'static T> {
             // SAFETY: See the documentation for this method.
             let ptr = unsafe { self.os.get() as *mut Value<T> };
             if ptr as usize > 1 {
@@ -725,7 +1062,7 @@ pub mod os {
         // `try_initialize` is only called once per os thread local variable,
         // except in corner cases where thread_local dtors reference other
         // thread_local's, or it is being recursively initialized.
-        unsafe fn try_initialize(&'static self, init: fn() -> T) -> Option<&'static T> {
+        unsafe fn try_initialize(&'static self, init: impl FnOnce() -> T) -> Option<&'static T> {
             // SAFETY: No mutable references are ever handed out meaning getting
             // the value is ok.
             let ptr = unsafe { self.os.get() as *mut Value<T> };

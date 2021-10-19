@@ -249,6 +249,7 @@
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
+#![feature(const_mut_refs)]
 #![feature(const_option)]
 #![feature(const_socketaddr)]
 #![feature(const_trait_impl)]
