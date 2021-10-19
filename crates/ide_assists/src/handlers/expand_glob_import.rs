@@ -327,7 +327,6 @@ fn qux() {}
         )
     }
 
-
     #[test]
     fn expanding_glob_import_with_existing_explicit_names() {
         check_assist(
