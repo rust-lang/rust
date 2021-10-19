@@ -1,1 +1,1 @@
-struct S<T: 'a + ?Sized + (Copy)>;
+struct S<T: 'a + ?Sized + (Copy) + ~const Drop>;

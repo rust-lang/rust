@@ -536,6 +536,7 @@ impl Field {
                     "?" => "question_mark",
                     "," => "comma",
                     "|" => "pipe",
+                    "~" => "tilde",
                     _ => name,
                 };
                 format_ident!("{}_token", name)
