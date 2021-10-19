@@ -46,6 +46,14 @@ struct ZeroSizedWithConstFunction {
     last: [usize; compute_zero()],
 }
 
+const fn compute_zero_from_arg(x: usize) -> usize {
+    x - 1
+}
+struct ZeroSizedWithConstFunction2 {
+    field: i32,
+    last: [usize; compute_zero_from_arg(1)],
+}
+
 struct ZeroSizedArrayWrapper([usize; 0]);
 
 struct TupleStruct(i32, [usize; 0]);
