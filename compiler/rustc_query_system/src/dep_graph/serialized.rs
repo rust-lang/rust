@@ -222,7 +222,7 @@ impl<K: DepKind> EncoderState<K> {
         index
     }
 
-    fn finish(self) -> FileEncodeResult {
+    fn finish(self, profiler: &SelfProfilerRef) -> FileEncodeResult {
         let Self { mut encoder, total_node_count, total_edge_count, result, stats: _ } = self;
         let () = result?;
 
@@ -235,7 +235,11 @@ impl<K: DepKind> EncoderState<K> {
         IntEncodedWithFixedSize(edge_count).encode(&mut encoder)?;
         debug!("position: {:?}", encoder.position());
         // Drop the encoder so that nothing is written after the counts.
-        encoder.flush()
+        let result = encoder.flush();
+        // FIXME(rylev): we hardcode the dep graph file name so we don't need a dependency on
+        // rustc_incremental just for that.
+        profiler.artifact_size("dep_graph", "dep-graph.bin", encoder.position() as u64);
+        result
     }
 }
 
@@ -332,6 +336,6 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
 
     pub fn finish(self, profiler: &SelfProfilerRef) -> FileEncodeResult {
         let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
-        self.status.into_inner().finish()
+        self.status.into_inner().finish(profiler)
     }
 }

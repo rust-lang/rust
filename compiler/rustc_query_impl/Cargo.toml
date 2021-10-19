@@ -7,7 +7,7 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-measureme = "9.0.0"
+measureme = "10.0.0"
 rustc-rayon-core = "0.3.1"
 tracing = "0.1"
 rustc_ast = { path = "../rustc_ast" }

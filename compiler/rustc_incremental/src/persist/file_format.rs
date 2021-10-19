@@ -95,6 +95,12 @@ where
         return;
     }
 
+    sess.prof.artifact_size(
+        &name.replace(' ', "_"),
+        path_buf.file_name().unwrap().to_string_lossy(),
+        encoder.position() as u64,
+    );
+
     debug!("save: data written to disk successfully");
 }
 
