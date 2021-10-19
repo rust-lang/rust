@@ -681,10 +681,8 @@ static Optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
     return DIFile::ChecksumKind::CSK_MD5;
   case LLVMRustChecksumKind::SHA1:
     return DIFile::ChecksumKind::CSK_SHA1;
-#if (LLVM_VERSION_MAJOR >= 11)
   case LLVMRustChecksumKind::SHA256:
     return DIFile::ChecksumKind::CSK_SHA256;
-#endif
   default:
     report_fatal_error("bad ChecksumKind.");
   }
@@ -999,14 +997,9 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
     const char *Name, size_t NameLen, LLVMMetadataRef Ty) {
-#if LLVM_VERSION_GE(11, 0)
   bool IsDefault = false; // FIXME: should we ever set this true?
   return wrap(Builder->createTemplateTypeParameter(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty), IsDefault));
-#else
-  return wrap(Builder->createTemplateTypeParameter(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty)));
-#endif
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateNameSpace(
@@ -1246,23 +1239,16 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMArrayTypeKind;
   case Type::PointerTyID:
     return LLVMPointerTypeKind;
-#if LLVM_VERSION_GE(11, 0)
   case Type::FixedVectorTyID:
     return LLVMVectorTypeKind;
-#else
-  case Type::VectorTyID:
-    return LLVMVectorTypeKind;
-#endif
   case Type::X86_MMXTyID:
     return LLVMX86_MMXTypeKind;
   case Type::TokenTyID:
     return LLVMTokenTypeKind;
-#if LLVM_VERSION_GE(11, 0)
   case Type::ScalableVectorTyID:
     return LLVMScalableVectorTypeKind;
   case Type::BFloatTyID:
     return LLVMBFloatTypeKind;
-#endif
 #if LLVM_VERSION_GE(12, 0)
   case Type::X86_AMXTyID:
     return LLVMX86_AMXTypeKind;

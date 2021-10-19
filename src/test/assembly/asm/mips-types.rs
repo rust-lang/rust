@@ -1,4 +1,3 @@
-// min-llvm-version: 10.0.1
 // revisions: mips32 mips64
 // assembly-output: emit-asm
 //[mips32] compile-flags: --target mips-unknown-linux-gnu

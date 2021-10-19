@@ -1,4 +1,3 @@
-// min-llvm-version: 10.0.1
 // revisions: s390x
 // assembly-output: emit-asm
 //[s390x] compile-flags: --target s390x-unknown-linux-gnu

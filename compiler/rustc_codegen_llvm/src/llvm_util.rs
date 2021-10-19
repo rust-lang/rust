@@ -95,8 +95,7 @@ unsafe fn configure_llvm(sess: &Session) {
         // Ref:
         // - https://github.com/rust-lang/rust/issues/85351
         // - https://reviews.llvm.org/D103167
-        let llvm_version = llvm_util::get_version();
-        if llvm_version >= (11, 0, 0) && llvm_version < (13, 0, 0) {
+        if llvm_util::get_version() < (13, 0, 0) {
             add("-enable-machine-outliner=never", false);
         }
 
