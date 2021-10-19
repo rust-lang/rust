@@ -15,17 +15,17 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// struct RarelyUseful {
-    ///     some_field: usize,
-    ///     last: [SomeType; 0],
+    ///     some_field: u32,
+    ///     last: [u32; 0],
     /// }
     /// ```
     ///
-    /// Use instead:
+    /// Use instead:    
     /// ```rust
     /// #[repr(C)]
     /// struct MoreOftenUseful {
     ///     some_field: usize,
-    ///     last: [SomeType; 0],
+    ///     last: [u32; 0],
     /// }
     /// ```
     pub TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR,
