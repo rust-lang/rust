@@ -134,6 +134,23 @@ fn func() -> Option<i32> {
     Some(0)
 }
 
+fn result_func(x: Result<i32, &str>) -> Result<i32, &str> {
+    let _ = if let Ok(x) = x { x } else { return x };
+
+    if x.is_err() {
+        return x;
+    }
+
+    // No warning
+    let y = if let Ok(x) = x {
+        x
+    } else {
+        return Err("some error");
+    };
+
+    Ok(y)
+}
+
 fn main() {
     some_func(Some(42));
     some_func(None);
@@ -153,4 +170,6 @@ fn main() {
     returns_something_similar_to_option(so);
 
     func();
+
+    let _ = result_func(Ok(42));
 }
