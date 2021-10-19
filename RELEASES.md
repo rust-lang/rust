@@ -77,7 +77,7 @@ Cargo
 - [Cargo supports specifying a minimum supported Rust version in Cargo.toml.][`rust-version`]
   This has no effect at present on dependency version selection.
   We encourage crates to specify their minimum supported Rust version, and we encourage CI systems
-  that support Rust code to include a crate's specified minimum version in the text matrix for that
+  that support Rust code to include a crate's specified minimum version in the test matrix for that
   crate by default.
 
 Compatibility notes
