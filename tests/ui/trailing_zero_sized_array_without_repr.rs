@@ -23,8 +23,6 @@ struct OnlyAnotherAttribute {
     last: [usize; 0],
 }
 
-// NOTE: Unfortunately the attribute isn't included in the lint output. I'm not sure how to make it
-// show up.
 #[derive(Debug)]
 struct OnlyADeriveAttribute {
     field: i32,
