@@ -235,8 +235,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let eq_trait = self.tcx.lang_items().eq_trait();
                             errors.retain(|e| match e.obligation.predicate.kind().skip_binder() {
                                 ty::PredicateKind::Trait(predicate) => {
-                                    // Skip the obligations coming from the binop, we want to emit E0369 instead
-                                    // of E0277.
+                                    // Skip the obligations coming from the binop, we want to emit
+                                    // E0369 instead of E0277.
                                     let def_id = predicate.def_id();
                                     // We also remove obligations for `PartialEq` because
                                     // `PartialOrd` introduces them and this way we don't get
