@@ -93,9 +93,10 @@ cargo dev update_lints
 cargo dev new_lint
 # automatically formatting all code before each commit
 cargo dev setup git-hook
-# (experimental) Setup Clippy to work with IntelliJ-Rust. Details here: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#intellij-rust
+# (experimental) Setup Clippy to work with IntelliJ-Rust
 cargo dev setup intellij
 ```
+More about intellij command usage and reasons [here](../CONTRIBUTING.md#intellij-rust)
 
 ## lintcheck
 `cargo lintcheck` will build and run clippy on a fixed set of crates and generate a log of the results.  
