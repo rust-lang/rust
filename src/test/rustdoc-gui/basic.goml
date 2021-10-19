@@ -1,4 +1,4 @@
 goto: file://|DOC_PATH|/test_docs/index.html
 assert: ("#functions")
 goto: ./struct.Foo.html
-assert: ("div.type-decl")
+assert: ("div.item-decl")

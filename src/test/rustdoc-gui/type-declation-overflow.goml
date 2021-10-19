@@ -1,8 +1,25 @@
-// This test ensures that the type declaration content overflow is handled inside the <pre> directly.
+// This test ensures that the items declaration content overflow is handled inside the <pre> directly.
 goto: file://|DOC_PATH|/lib2/long_trait/trait.ALongNameBecauseItHelpsTestingTheCurrentProblem.html
 // We set a fixed size so there is no chance of "random" resize.
 size: (1100, 800)
 // Logically, the <body> scroll width should be the width of the window.
 assert-property: ("body", {"scrollWidth": "1100"})
 // However, since there is overflow in the type declaration, its scroll width is bigger.
-assert-property: (".type-decl pre", {"scrollWidth": "1324"})
+assert-property: (".item-decl pre", {"scrollWidth": "1324"})
+
+// We now make the same check on type declaration...
+goto: file://|DOC_PATH|/lib2/too_long/type.ReallyLongTypeNameLongLongLong.html
+assert-property: ("body", {"scrollWidth": "1100"})
+// We now check that the section width hasn't grown because of it.
+assert-property: ("#main", {"scrollWidth": "840"})
+// And now checking that it has scrollable content.
+assert-property: (".item-decl pre", {"scrollWidth": "1103"})
+
+// ... and constant.
+// On a sidenote, it also checks that the (very) long title isn't changing the docblock width.
+goto: file://|DOC_PATH|/lib2/too_long/constant.ReallyLongTypeNameLongLongLongConstBecauseWhyNotAConstRightGigaGigaSupraLong.html
+assert-property: ("body", {"scrollWidth": "1100"})
+// We now check that the section width hasn't grown because of it.
+assert-property: ("#main", {"scrollWidth": "840"})
+// And now checking that it has scrollable content.
+assert-property: (".item-decl pre", {"scrollWidth": "950"})
