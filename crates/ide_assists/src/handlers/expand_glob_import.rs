@@ -72,7 +72,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
 
             match use_tree.star_token() {
                 Some(star) => {
-                    let needs_braces = use_tree.path().is_some() && names_to_import.len() > 1;
+                    let needs_braces = use_tree.path().is_some() && names_to_import.len() != 1;
                     if needs_braces {
                         ted::replace(star, expanded.syntax())
                     } else {
@@ -290,6 +290,39 @@ use foo::{Baz, Bar, f};
 fn qux(bar: Bar, baz: Baz) {
     f();
 }
+",
+        )
+    }
+
+    #[test]
+    fn expanding_glob_import_unused() {
+        check_assist(
+            expand_glob_import,
+            r"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+    pub struct Qux;
+
+    pub fn f() {}
+}
+
+use foo::*$0;
+
+fn qux() {}
+",
+            r"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+    pub struct Qux;
+
+    pub fn f() {}
+}
+
+use foo::{};
+
+fn qux() {}
 ",
         )
     }
