@@ -75,7 +75,7 @@ impl<T> SsoHashSet<T> {
     /// An iterator visiting all elements in arbitrary order.
     /// The iterator element type is `&'a T`.
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
+    pub fn iter(&'a self) -> impl Iterator<Item = &'a T> {
         self.into_iter()
     }
 

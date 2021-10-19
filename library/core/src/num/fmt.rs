@@ -31,10 +31,8 @@ impl<'a> Part<'a> {
                     } else {
                         3
                     }
-                } else if v < 10_000 {
-                    4
                 } else {
-                    5
+                    if v < 10_000 { 4 } else { 5 }
                 }
             }
             Part::Copy(buf) => buf.len(),
