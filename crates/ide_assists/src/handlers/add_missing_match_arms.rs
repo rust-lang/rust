@@ -6,7 +6,6 @@ use ide_db::helpers::{mod_path_to_ast, FamousDefs};
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use syntax::ast::{self, make, AstNode, HasName, MatchArm, MatchArmList, MatchExpr, Pat};
-use syntax::TextRange;
 
 use crate::{
     utils::{self, render_snippet, Cursor},
@@ -40,21 +39,15 @@ use crate::{
 pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let match_expr = ctx.find_node_at_offset_with_descend::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
-    let target_range: TextRange;
+    let target_range = ctx.sema.original_range(match_expr.syntax()).range;
 
     if let None = cursor_at_trivial_match_arm_list(&ctx, &match_expr, &match_arm_list) {
-        target_range = TextRange::new(
-            ctx.sema.original_range(match_expr.syntax()).range.start(),
-            ctx.sema.original_range(match_arm_list.syntax()).range.start(),
-        );
-
-        let cursor_in_range = target_range.contains_range(ctx.selection_trimmed());
-        if !cursor_in_range {
+        let arm_list_range = ctx.sema.original_range(match_arm_list.syntax()).range;
+        let cursor_in_range = arm_list_range.contains_range(ctx.selection_trimmed());
+        if cursor_in_range {
             cov_mark::hit!(not_applicable_outside_of_range_right);
             return None;
         }
-    } else {
-        target_range = ctx.sema.original_range(match_expr.syntax()).range;
     }
 
     let expr = match_expr.expr()?;
@@ -953,7 +946,9 @@ fn main() {
     }
 }
 "#,
-            "match E::X ",
+            "match E::X {
+        E::X => {}
+    }",
         );
     }
 
