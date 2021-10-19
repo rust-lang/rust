@@ -87,6 +87,10 @@ pub mod default {
     pub trait Default: Sized {
         fn default() -> Self;
     }
+    // region:derive
+    #[rustc_builtin_macro]
+    pub macro Default($item:item) {}
+    // endregion:derive
 }
 // endregion:default
 

@@ -571,85 +571,73 @@ mod derive {
     use super::*;
 
     fn check_derive(ra_fixture: &str, expect: Expect) {
-        let builtin_derives = r#"
-    #[rustc_builtin_macro]
-    pub macro Clone {}
-    #[rustc_builtin_macro]
-    pub macro Copy {}
-    #[rustc_builtin_macro]
-    pub macro Default {}
-    #[rustc_builtin_macro]
-    pub macro Debug {}
-    #[rustc_builtin_macro]
-    pub macro Hash {}
-    #[rustc_builtin_macro]
-    pub macro PartialEq {}
-    #[rustc_builtin_macro]
-    pub macro Eq {}
-    #[rustc_builtin_macro]
-    pub macro PartialOrd {}
-    #[rustc_builtin_macro]
-    pub macro Ord {}
-
-    "#;
-        let actual = completion_list(&format!("{} {}", builtin_derives, ra_fixture));
+        let actual = completion_list(ra_fixture);
         expect.assert_eq(&actual);
     }
 
     #[test]
     fn no_completion_for_incorrect_derive() {
-        check_derive(r#"#[derive{$0)] struct Test;"#, expect![[]])
+        check_derive(
+            r#"
+//- minicore: derive, copy, clone, ord, eq, default, fmt
+#[derive{$0)] struct Test;
+"#,
+            expect![[]],
+        )
     }
 
     #[test]
     fn empty_derive() {
         check_derive(
-            r#"#[derive($0)] struct Test;"#,
+            r#"
+//- minicore: derive, copy, clone, ord, eq, default, fmt
+#[derive($0)] struct Test;
+"#,
             expect![[r#"
-        at PartialEq
-        at Default
-        at PartialEq, Eq
-        at PartialEq, Eq, PartialOrd, Ord
-        at Clone, Copy
-        at Debug
-        at Clone
-        at Hash
-        at PartialEq, PartialOrd
-    "#]],
+                at Default
+                at Clone, Copy
+                at PartialEq
+                at PartialEq, Eq
+                at PartialEq, Eq, PartialOrd, Ord
+                at Clone
+                at PartialEq, PartialOrd
+            "#]],
         );
     }
 
     #[test]
     fn derive_with_input_before() {
         check_derive(
-            r#"#[derive(serde::Serialize, PartialEq, $0)] struct Test;"#,
+            r#"
+//- minicore: derive, copy, clone, ord, eq, default, fmt
+#[derive(serde::Serialize, PartialEq, $0)] struct Test;
+"#,
             expect![[r#"
-            at Default
-            at Eq
-            at Eq, PartialOrd, Ord
-            at Clone, Copy
-            at Debug
-            at Clone
-            at Hash
-            at PartialOrd
-        "#]],
+                at Default
+                at Clone, Copy
+                at Eq
+                at Eq, PartialOrd, Ord
+                at Clone
+                at PartialOrd
+            "#]],
         )
     }
 
     #[test]
     fn derive_with_input_after() {
         check_derive(
-            r#"#[derive($0 serde::Serialize, PartialEq)] struct Test;"#,
+            r#"
+//- minicore: derive, copy, clone, ord, eq, default, fmt
+#[derive($0 serde::Serialize, PartialEq)] struct Test;
+"#,
             expect![[r#"
-            at Default
-            at Eq
-            at Eq, PartialOrd, Ord
-            at Clone, Copy
-            at Debug
-            at Clone
-            at Hash
-            at PartialOrd
-        "#]],
+                at Default
+                at Clone, Copy
+                at Eq
+                at Eq, PartialOrd, Ord
+                at Clone
+                at PartialOrd
+            "#]],
         )
     }
 }
