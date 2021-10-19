@@ -1,4 +1,3 @@
-// min-llvm-version: 10.0.1
 // only-x86_64
 // assembly-output: emit-asm
 // compile-flags: -C llvm-args=--x86-asm-syntax=intel
