@@ -16,7 +16,7 @@ use crate::syntux::parser::{
     Directory, DirectoryOwnership, ModError, ModulePathSuccess, Parser, ParserError,
 };
 use crate::syntux::session::ParseSess;
-use crate::utils::contains_skip;
+use crate::utils::{contains_skip, mk_sp};
 
 mod visitor;
 
@@ -135,10 +135,12 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             self.visit_mod_from_ast(&krate.items)?;
         }
 
+        let snippet_provider = self.parse_sess.snippet_provider(krate.span);
+
         self.file_map.insert(
             root_filename,
             Module::new(
-                krate.span,
+                mk_sp(snippet_provider.start_pos(), snippet_provider.end_pos()),
                 None,
                 Cow::Borrowed(&krate.items),
                 Cow::Borrowed(&krate.attrs),
