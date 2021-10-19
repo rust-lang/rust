@@ -17,10 +17,10 @@ use tracing::debug;
 
 /// Generates and exports the Coverage Map.
 ///
-/// This Coverage Map complies with Coverage Mapping Format version 4 (zero-based encoded as 3),
-/// as defined at [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format)
-/// and published in Rust's November 2020 fork of LLVM. This version is supported by the LLVM
-/// coverage tools (`llvm-profdata` and `llvm-cov`) bundled with Rust's fork of LLVM.
+/// This Coverage Map complies with Coverage Mapping Format version 5 (zero-based encoded as 4),
+/// as defined at [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
+/// This version is supported by the LLVM coverage tools (`llvm-profdata` and `llvm-cov`)
+/// bundled with Rust's fork of LLVM.
 ///
 /// Consequently, Rust's bundled version of Clang also generates Coverage Maps compliant with
 /// the same version. Clang's implementation of Coverage Map generation was referenced when
@@ -30,12 +30,12 @@ use tracing::debug;
 pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     let tcx = cx.tcx;
 
-    // Ensure LLVM supports Coverage Map Version 4 (encoded as a zero-based value: 3).
-    // If not, the LLVM Version must be less than 11.
-    let version = coverageinfo::mapping_version();
-    if version != 3 {
-        tcx.sess.fatal("rustc option `-Z instrument-coverage` requires LLVM 11 or higher.");
-    }
+    // While our bundled LLVM might support Coverage Map Version 6
+    // (encoded as a zero-based value: 5), we clamp that to Version 5,
+    // as Version 6 would require us to use the 0-th filename as a path prefix
+    // for all other relative paths, which we don't take advantage of right now.
+    let _version = coverageinfo::mapping_version();
+    let version = 4;
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
 
