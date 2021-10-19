@@ -573,7 +573,7 @@ TypeBoundList =
 
 TypeBound =
   Lifetime
-| '?'? Type
+| ('?' | '~' 'const')? Type
 
 //************************//
 //        Patterns        //
