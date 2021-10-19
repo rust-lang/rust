@@ -24,7 +24,7 @@ use syntax::{
 use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
-    source_analyzer::{resolve_hir_path, SourceAnalyzer},
+    source_analyzer::{resolve_hir_path, resolve_hir_path_as_macro, SourceAnalyzer},
     Access, AssocItem, Callable, ConstParam, Crate, Field, Function, HasSource, HirFileId, Impl,
     InFile, Label, LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait,
     Type, TypeAlias, TypeParam, VariantDef,
@@ -1133,5 +1133,15 @@ impl<'a> SemanticsScope<'a> {
         let ctx = body::LowerCtx::new(self.db.upcast(), self.file_id);
         let path = Path::from_src(path.clone(), &ctx)?;
         resolve_hir_path(self.db, &self.resolver, &path)
+    }
+
+    /// Resolve a path as-if it was written at the given scope. This is
+    /// necessary a heuristic, as it doesn't take hygiene into account.
+    // FIXME: This special casing solely exists for attributes for now
+    // ideally we should have a path resolution infra that properly knows about overlapping namespaces
+    pub fn speculative_resolve_as_mac(&self, path: &ast::Path) -> Option<MacroDef> {
+        let ctx = body::LowerCtx::new(self.db.upcast(), self.file_id);
+        let path = Path::from_src(path.clone(), &ctx)?;
+        resolve_hir_path_as_macro(self.db, &self.resolver, &path)
     }
 }

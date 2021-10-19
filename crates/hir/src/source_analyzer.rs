@@ -502,6 +502,15 @@ pub(crate) fn resolve_hir_path(
     resolve_hir_path_(db, resolver, path, false)
 }
 
+#[inline]
+pub(crate) fn resolve_hir_path_as_macro(
+    db: &dyn HirDatabase,
+    resolver: &Resolver,
+    path: &Path,
+) -> Option<MacroDef> {
+    resolver.resolve_path_as_macro(db.upcast(), path.mod_path()).map(Into::into)
+}
+
 fn resolve_hir_path_(
     db: &dyn HirDatabase,
     resolver: &Resolver,

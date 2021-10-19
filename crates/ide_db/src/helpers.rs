@@ -53,12 +53,9 @@ pub fn try_resolve_derive_input_at(
         .take_while(|tok| tok.kind() != T!['('] && tok.kind() != T![,])
         .collect();
     let path = ast::Path::parse(&tokens.into_iter().rev().join("")).ok()?;
-    match sema.scope(tt.syntax()).speculative_resolve(&path) {
-        Some(hir::PathResolution::Macro(makro)) if makro.kind() == hir::MacroKind::Derive => {
-            Some(makro)
-        }
-        _ => None,
-    }
+    sema.scope(tt.syntax())
+        .speculative_resolve_as_mac(&path)
+        .filter(|mac| mac.kind() == hir::MacroKind::Derive)
 }
 
 /// Picks the token with the highest rank returned by the passed in function.
