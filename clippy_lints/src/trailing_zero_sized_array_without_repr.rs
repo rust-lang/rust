@@ -73,8 +73,5 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx 
 }
 
 fn has_repr_attr(cx: &LateContext<'tcx>, hir_id: HirId) -> bool {
-    // NOTE: there's at least four other ways to do this but I liked this one the best. (All five agreed
-    // on all testcases.) Happy to use another;
-    // they're in the commit history if you want to look (or I can go find them).
     cx.tcx.hir().attrs(hir_id).iter().any(|attr| attr.has_name(sym::repr))
 }
