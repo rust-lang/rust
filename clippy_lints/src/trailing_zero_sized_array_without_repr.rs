@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// Use instead:    
+    /// Use instead:
     /// ```rust
     /// #[repr(C)]
     /// struct MoreOftenUseful {
