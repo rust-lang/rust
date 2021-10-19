@@ -1271,6 +1271,8 @@ pub struct TypeBound {
 impl TypeBound {
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
+    pub fn tilde_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![~]) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 

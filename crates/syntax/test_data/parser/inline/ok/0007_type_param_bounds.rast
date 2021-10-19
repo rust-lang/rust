@@ -1,17 +1,17 @@
-SOURCE_FILE@0..35
-  STRUCT@0..34
+SOURCE_FILE@0..49
+  STRUCT@0..48
     STRUCT_KW@0..6 "struct"
     WHITESPACE@6..7 " "
     NAME@7..8
       IDENT@7..8 "S"
-    GENERIC_PARAM_LIST@8..33
+    GENERIC_PARAM_LIST@8..47
       L_ANGLE@8..9 "<"
-      TYPE_PARAM@9..32
+      TYPE_PARAM@9..46
         NAME@9..10
           IDENT@9..10 "T"
         COLON@10..11 ":"
         WHITESPACE@11..12 " "
-        TYPE_BOUND_LIST@12..32
+        TYPE_BOUND_LIST@12..46
           TYPE_BOUND@12..14
             LIFETIME@12..14
               LIFETIME_IDENT@12..14 "'a"
@@ -36,6 +36,18 @@ SOURCE_FILE@0..35
                   NAME_REF@27..31
                     IDENT@27..31 "Copy"
             R_PAREN@31..32 ")"
-      R_ANGLE@32..33 ">"
-    SEMICOLON@33..34 ";"
-  WHITESPACE@34..35 "\n"
+          WHITESPACE@32..33 " "
+          PLUS@33..34 "+"
+          WHITESPACE@34..35 " "
+          TYPE_BOUND@35..46
+            TILDE@35..36 "~"
+            CONST_KW@36..41 "const"
+            WHITESPACE@41..42 " "
+            PATH_TYPE@42..46
+              PATH@42..46
+                PATH_SEGMENT@42..46
+                  NAME_REF@42..46
+                    IDENT@42..46 "Drop"
+      R_ANGLE@46..47 ">"
+    SEMICOLON@47..48 ";"
+  WHITESPACE@48..49 "\n"

@@ -100,7 +100,7 @@ fn lifetime_bounds(p: &mut Parser) {
 }
 
 // test type_param_bounds
-// struct S<T: 'a + ?Sized + (Copy)>;
+// struct S<T: 'a + ?Sized + (Copy) + ~const Drop>;
 pub(super) fn bounds(p: &mut Parser) {
     assert!(p.at(T![:]));
     p.bump(T![:]);
@@ -124,14 +124,24 @@ pub(super) fn bounds_without_colon_m(p: &mut Parser, marker: Marker) -> Complete
 fn type_bound(p: &mut Parser) -> bool {
     let m = p.start();
     let has_paren = p.eat(T!['(']);
-    p.eat(T![?]);
     match p.current() {
         LIFETIME_IDENT => lifetime(p),
         T![for] => types::for_type(p, false),
-        _ if paths::is_use_path_start(p) => types::path_type_(p, false),
-        _ => {
-            m.abandon(p);
-            return false;
+        current => {
+            match current {
+                T![?] => p.bump_any(),
+                T![~] => {
+                    p.bump_any();
+                    p.expect(T![const]);
+                }
+                _ => (),
+            }
+            if paths::is_use_path_start(p) {
+                types::path_type_(p, false);
+            } else {
+                m.abandon(p);
+                return false;
+            }
         }
     }
     if has_paren {
