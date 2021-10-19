@@ -2252,7 +2252,6 @@ pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 /// or have any other observable side-effects, the behavior is undefined.
 ///
 /// [referential transparency]: https://en.wikipedia.org/wiki/Referential_transparency
-#[cfg(not(bootstrap))]
 #[unstable(
     feature = "const_eval_select",
     issue = "none",
@@ -2273,7 +2272,6 @@ where
     called_at_rt.call_once(arg)
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(
     feature = "const_eval_select",
     issue = "none",
