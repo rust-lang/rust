@@ -358,9 +358,16 @@ fn option_const() {
     // test that the methods of `Option` are usable in a const context
 
     const OPTION: Option<usize> = Some(32);
+    assert_eq!(OPTION, Some(32));
+
+    const OPTION_FROM: Option<usize> = Option::from(32);
+    assert_eq!(OPTION_FROM, Some(32));
 
     const REF: Option<&usize> = OPTION.as_ref();
     assert_eq!(REF, Some(&32));
+
+    const REF_FROM: Option<&usize> = Option::from(&OPTION);
+    assert_eq!(REF_FROM, Some(&32));
 
     const IS_SOME: bool = OPTION.is_some();
     assert!(IS_SOME);
@@ -385,6 +392,14 @@ const fn option_const_mut() {
         let as_mut = option.as_mut();
         match as_mut {
             Some(v) => *v = 32,
+            None => unreachable!(),
+        }
+    }
+
+    {
+        let as_mut: Option<&mut usize> = Option::from(&mut option);
+        match as_mut {
+            Some(v) => *v = 42,
             None => unreachable!(),
         }
     }
