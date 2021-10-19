@@ -25,7 +25,7 @@ pub macro panic_2015 {
         $crate::rt::panic_display(&$arg)
     }),
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::begin_panic_fmt(&$crate::const_format_args!($fmt, $($arg)+))
+        $crate::rt::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
     }),
 }
 
