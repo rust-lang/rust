@@ -1,3 +1,5 @@
+// gate-test-type_changing_struct_update
+
 #[derive(Debug)]
 struct Machine<S> {
     state: S,
