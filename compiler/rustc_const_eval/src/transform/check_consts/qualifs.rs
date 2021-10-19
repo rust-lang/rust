@@ -309,8 +309,9 @@ where
 
     // Check the qualifs of the value of `const` items.
     if let Some(ct) = constant.literal.const_for_ty() {
-        if let ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs_: _, promoted }) = ct.val {
-            assert!(promoted.is_none());
+        if let ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs_: _, promoted: None }) =
+            ct.val
+        {
             // Don't peek inside trait associated constants.
             if cx.tcx.trait_of_item(def.did).is_none() {
                 let qualifs = if let Some((did, param_did)) = def.as_const_arg() {
