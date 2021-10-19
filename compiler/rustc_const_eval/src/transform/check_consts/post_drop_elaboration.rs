@@ -97,7 +97,7 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
                 // `src/test/ui/consts/control-flow/drop-pass.rs`; e.g., when an `Option<Vec<T>>` is
                 // initialized with `None` and never changed, it still emits drop glue.
                 // Hence we additionally check the qualifs here to allow more code to pass.
-                if self.qualifs.needs_drop(self.ccx, dropped_place.local, location) {
+                if self.qualifs.needs_non_const_drop(self.ccx, dropped_place.local, location) {
                     // Use the span where the dropped local was declared for the error.
                     let span = self.body.local_decls[dropped_place.local].source_info.span;
                     self.check_live_drop(span);
