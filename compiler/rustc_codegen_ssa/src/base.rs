@@ -874,7 +874,7 @@ impl CrateInfo {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.backend_optimization_level = |tcx, cratenum| {
+    providers.backend_optimization_level = |tcx, ()| {
         let for_speed = match tcx.sess.opts.optimize {
             // If globally no optimisation is done, #[optimize] has no effect.
             //
@@ -893,7 +893,7 @@ pub fn provide(providers: &mut Providers) {
             config::OptLevel::SizeMin => config::OptLevel::Default,
         };
 
-        let (mono_items, _) = tcx.collect_and_partition_mono_items(cratenum);
+        let (mono_items, _) = tcx.collect_and_partition_mono_items(());
         for did in mono_items.def_id_iter() {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(did);
             match optimize {
