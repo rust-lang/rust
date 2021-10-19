@@ -219,10 +219,12 @@ impl<'tcx> AbstractConst<'tcx> {
     #[inline]
     pub fn root(self, tcx: TyCtxt<'tcx>) -> Node<'tcx> {
         let node = self.inner.last().copied().unwrap();
-        if let Node::Leaf(leaf) = node {
-            return Node::Leaf(leaf.subst(tcx, self.substs));
+        match node {
+            Node::Leaf(leaf) => Node::Leaf(leaf.subst(tcx, self.substs)),
+            Node::Cast(kind, operand, ty) => Node::Cast(kind, operand, ty.subst(tcx, self.substs)),
+            // Don't perform substitution on the following as they can't directly contain generic params
+            Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => node,
         }
-        node
     }
 }
 
