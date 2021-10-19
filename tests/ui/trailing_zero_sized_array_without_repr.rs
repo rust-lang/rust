@@ -1,6 +1,8 @@
 #![warn(clippy::trailing_zero_sized_array_without_repr)]
 #![feature(const_generics_defaults)]
 
+// ICE note: All of these are fine
+
 // Do lint:
 
 struct RarelyUseful {
@@ -23,8 +25,6 @@ struct OnlyAnotherAttribute {
     last: [usize; 0],
 }
 
-// NOTE: Unfortunately the attribute isn't included in the lint output. I'm not sure how to make it
-// show up.
 #[derive(Debug)]
 struct OnlyADeriveAttribute {
     field: i32,
@@ -150,11 +150,15 @@ struct TupleStructReprC(i32, [usize; 0]);
 
 type NamedTuple = (i32, [usize; 0]);
 
+// ICE note: and then this one crashes
+
 #[rustfmt::skip] // [rustfmt#4995](https://github.com/rust-lang/rustfmt/issues/4995)
 struct ConstParamZeroDefault<const N: usize = 0> {
     field: i32,
     last: [usize; N],
 }
+
+// ICE notes: presumably these as well but I'm not sure
 
 struct ConstParamNoDefault<const N: usize> {
     field: i32,

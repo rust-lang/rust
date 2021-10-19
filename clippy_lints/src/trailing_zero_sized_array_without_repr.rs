@@ -1,11 +1,6 @@
-use clippy_utils::{
-    diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then},
-    source::{indent_of, snippet},
-};
-use rustc_errors::Applicability;
+use clippy_utils::{consts::miri_to_const, consts::Constant, diagnostics::span_lint_and_help};
 use rustc_hir::{HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{Const, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
@@ -42,27 +37,15 @@ impl<'tcx> LateLintPass<'tcx> for TrailingZeroSizedArrayWithoutRepr {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         dbg!(item.ident);
         if is_struct_with_trailing_zero_sized_array(cx, item) && !has_repr_attr(cx, item.hir_id()) {
-            let help_msg = format!(
-                "consider annotating {} with `#[repr(C)]` or another `repr` attribute",
-                cx.tcx
-                    .type_of(item.def_id)
-                    .ty_adt_def()
-                    .map(|adt_def| cx.tcx.def_path_str(adt_def.did))
-                    .unwrap_or_else(
-                        // I don't think this will ever be the case, since we made it through
-                        // `is_struct_with_trailing_zero_sized_array`, but I don't feel comfortable putting an `unwrap`
-                        || "the struct definition".to_string()
-                    )
-            );
-
-            span_lint_and_help(
-                cx,
-                TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR,
-                item.span,
-                "trailing zero-sized array in a struct which is not marked with a `repr` attribute",
-                None,
-                &help_msg,
-            );
+            // span_lint_and_help(
+            //     cx,
+            //     TRAILING_ZERO_SIZED_ARRAY_WITHOUT_REPR,
+            //     item.span,
+            //     "trailing zero-sized array in a struct which is not marked with a `repr` attribute",
+            //     None,
+            //     "",
+            // );
+            eprintln!("consider yourself linted 😎");
         }
     }
 }
@@ -75,11 +58,19 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx 
     if let ItemKind::Struct(data, _) = &item.kind {
         if let Some(last_field) = data.fields().last() {
             if let rustc_hir::TyKind::Array(_, length) = last_field.ty.kind {
-                // Then check if that that array zero-sized
-                let length_ldid = cx.tcx.hir().local_def_id(length.hir_id);
-                let length = Const::from_anon_const(cx.tcx, length_ldid);
-                let length = length.try_eval_usize(cx.tcx, cx.param_env);
-                length == Some(0)
+                let length_did = cx.tcx.hir().body_owner_def_id(length.body).to_def_id();
+                let ty = cx.tcx.type_of(length_did);
+                let length = cx
+                    .tcx
+                    // ICE happens in `const_eval_poly` according to my backtrace
+                    .const_eval_poly(length_did)
+                    .ok()
+                    .map(|val| rustc_middle::ty::Const::from_value(cx.tcx, val, ty));
+                if let Some(Constant::Int(length)) = length.and_then(miri_to_const){
+                    length == 0
+                } else {
+                    false
+                }
             } else {
                 false
             }
