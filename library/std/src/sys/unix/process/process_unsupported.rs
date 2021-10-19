@@ -1,10 +1,6 @@
 use crate::fmt;
 use crate::io;
-use crate::io::ErrorKind;
 use crate::num::NonZeroI32;
-use crate::sys;
-use crate::sys::cvt;
-use crate::sys::pipe::AnonPipe;
 use crate::sys::process::process_common::*;
 use crate::sys::unix::unsupported::*;
 use core::ffi::NonZero_c_int;
@@ -18,13 +14,13 @@ use libc::{c_int, pid_t};
 impl Command {
     pub fn spawn(
         &mut self,
-        default: Stdio,
-        needs_stdin: bool,
+        _default: Stdio,
+        _needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
         unsupported()
     }
 
-    pub fn exec(&mut self, default: Stdio) -> io::Error {
+    pub fn exec(&mut self, _default: Stdio) -> io::Error {
         unsupported_err()
     }
 }
@@ -34,7 +30,7 @@ impl Command {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Process {
-    handle: pid_t,
+    _handle: pid_t,
 }
 
 impl Process {
@@ -59,6 +55,7 @@ impl Process {
 pub struct ExitStatus(c_int);
 
 impl ExitStatus {
+    #[cfg_attr(target_os = "horizon", allow(unused))]
     pub fn success(&self) -> bool {
         self.code() == Some(0)
     }

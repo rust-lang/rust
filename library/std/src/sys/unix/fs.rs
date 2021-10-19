@@ -395,7 +395,7 @@ impl FileAttr {
 
 #[cfg(not(target_os = "netbsd"))]
 impl FileAttr {
-    #[cfg(all(not(target_os = "vxworks"), not(target_os = "espidf")))]
+    #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
         cfg_has_statx! {
@@ -412,7 +412,12 @@ impl FileAttr {
         Ok(SystemTime::new(self.stat.st_mtime as i64, 0))
     }
 
-    #[cfg(all(not(target_os = "vxworks"), not(target_os = "espidf")))]
+    #[cfg(target_os = "horizon")]
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(self.stat.st_mtim))
+    }
+
+    #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
         cfg_has_statx! {
@@ -424,7 +429,7 @@ impl FileAttr {
         Ok(SystemTime::new(self.stat.st_atime as i64, self.stat.st_atime_nsec as i64))
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "espidf"))]
+    #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::new(self.stat.st_atime as i64, 0))
     }
@@ -707,7 +712,8 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox",
         target_os = "vxworks",
-        target_os = "espidf"
+        target_os = "espidf",
+        target_os = "horizon"
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -1251,7 +1257,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     let original = cstr(original)?;
     let link = cstr(link)?;
     cfg_if::cfg_if! {
-        if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf"))] {
+        if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon"))] {
             // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead. POSIX leaves
             // it implementation-defined whether `link` follows symlinks, so rely on the
             // `symlink_hard_link` test in library/std/src/fs/tests.rs to check the behavior.
@@ -1549,14 +1555,14 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
 
 pub use remove_dir_impl::remove_dir_all;
 
-// Fallback for REDOX and ESP-IDF (and Miri)
-#[cfg(any(target_os = "redox", target_os = "espidf", miri))]
+// Fallback for REDOX, ESP-ID, Horizon, and Miri
+#[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", miri))]
 mod remove_dir_impl {
     pub use crate::sys_common::fs::remove_dir_all;
 }
 
 // Modern implementation using openat(), unlinkat() and fdopendir()
-#[cfg(not(any(target_os = "redox", target_os = "espidf", miri)))]
+#[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon", miri)))]
 mod remove_dir_impl {
     use super::{cstr, lstat, Dir, DirEntry, InnerReadDir, ReadDir};
     use crate::ffi::CStr;

@@ -399,7 +399,12 @@ impl TcpListener {
         cvt(unsafe { c::bind(sock.as_raw(), addrp, len as _) })?;
 
         // Start listening
+        #[cfg(not(target_os = "horizon"))]
         cvt(unsafe { c::listen(sock.as_raw(), 128) })?;
+        // 40 is the maximum for Horizon OS
+        #[cfg(target_os = "horizon")]
+        cvt(unsafe { c::listen(sock.as_raw(), 40) })?;
+
         Ok(TcpListener { inner: sock })
     }
 
