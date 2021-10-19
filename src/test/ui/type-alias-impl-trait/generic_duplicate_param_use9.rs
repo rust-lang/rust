@@ -5,7 +5,7 @@ use std::fmt::Debug;
 fn main() {}
 
 type Two<A, B> = impl Debug;
-//~^ ERROR the trait bound `A: Foo` is not satisfied
+//~^ ERROR the trait bound `A: Foo` is not satisfied in `(A, B, <A as Foo>::Bar)`
 //~| ERROR `A` doesn't implement `Debug`
 //~| ERROR `B` doesn't implement `Debug`
 
