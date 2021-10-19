@@ -117,6 +117,14 @@ impl<'a> FnKind<'a> {
             FnKind::Closure => None,
         }
     }
+
+    pub fn constness(self) -> Constness {
+        self.header().map_or(Constness::NotConst, |header| header.constness)
+    }
+
+    pub fn asyncness(self) -> IsAsync {
+        self.header().map_or(IsAsync::NotAsync, |header| header.asyncness)
+    }
 }
 
 /// An abstract representation of the HIR `rustc_middle::hir::map::Map`.
