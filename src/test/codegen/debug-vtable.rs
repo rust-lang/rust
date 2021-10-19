@@ -51,7 +51,7 @@ pub fn foo(x: &Foo) -> (u32, (u64, i8), &dyn Send) {
 
 // Constructing the debuginfo name for the FnOnce vtable below initially caused an ICE on MSVC
 // because the trait type contains a late bound region that needed to be erased before the type
-// layout for the niche enum `Option<&dyn Fn()>` could can be computed.
+// layout for the niche enum `Option<&dyn Fn()>` could be computed.
 pub fn bar() -> Box<dyn FnOnce(Option<&dyn Fn()>)> {
     Box::new(|_x: Option<&dyn Fn()>| {})
 }
