@@ -214,9 +214,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // means that we disallow passing a value in/out of the asm and
                 // require that the operand name an explicit register, not a
                 // register class.
-                if reg_class.is_clobber_only(asm_arch.unwrap())
-                    && !(op.is_clobber() && matches!(reg, asm::InlineAsmRegOrRegClass::Reg(_)))
-                {
+                if reg_class.is_clobber_only(asm_arch.unwrap()) && !op.is_clobber() {
                     let msg = format!(
                         "register class `{}` can only be used as a clobber, \
                              not as an input or output",
