@@ -1,4 +1,5 @@
 use ide_db::helpers::{for_each_tail_expr, node_ext::walk_expr, FamousDefs};
+use itertools::Itertools;
 use syntax::{
     ast::{self, Expr},
     match_ast, AstNode, TextRange, TextSize,
@@ -73,7 +74,7 @@ pub(crate) fn unwrap_result_return_type(acc: &mut Assists, ctx: &AssistContext) 
                         ret_type.syntax().text_range().start(),
                         ret_type.syntax().text_range().end() + TextSize::from(1u32),
                     );
-                    builder.replace(text_range, "")
+                    builder.delete(text_range)
                 } else {
                     builder.replace(
                         type_ref.syntax().text_range(),
@@ -88,14 +89,24 @@ pub(crate) fn unwrap_result_return_type(acc: &mut Assists, ctx: &AssistContext) 
                     let arg_list = ret_expr_arg.syntax().children().find_map(ast::ArgList::cast);
                     if let Some(arg_list) = arg_list {
                         if is_unit_type {
-                            builder.replace(ret_expr_arg.syntax().text_range(), "");
+                            match ret_expr_arg.syntax().prev_sibling_or_token() {
+                                // Useful to delete the entire line without leaving trailing whitespaces
+                                Some(whitespace) => {
+                                    let new_range = TextRange::new(
+                                        whitespace.text_range().start(),
+                                        ret_expr_arg.syntax().text_range().end(),
+                                    );
+                                    builder.delete(new_range);
+                                }
+                                None => {
+                                    builder.delete(ret_expr_arg.syntax().text_range());
+                                }
+                            }
                         } else {
-                            let new_ret_expr = arg_list
-                                .args()
-                                .map(|arg| arg.to_string())
-                                .collect::<Vec<String>>()
-                                .join(", ");
-                            builder.replace(ret_expr_arg.syntax().text_range(), new_ret_expr);
+                            builder.replace(
+                                ret_expr_arg.syntax().text_range(),
+                                arg_list.args().join(", "),
+                            );
                         }
                     }
                 }
@@ -158,7 +169,6 @@ fn foo() -> Result<(), Box<dyn Error$0>> {
 "#,
             r#"
 fn foo() {
-    
 }
 "#,
         );
