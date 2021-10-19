@@ -124,13 +124,6 @@ pub struct DepKindStruct {
     /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
     /// is actually a `DefPathHash`, and can therefore just look up the corresponding
     /// `DefId` in `tcx.def_path_hash_to_def_id`.
-    ///
-    /// When you implement a new query, it will likely have a corresponding new
-    /// `DepKind`, and you'll have to support it here in `force_from_dep_node()`. As
-    /// a rule of thumb, if your query takes a `DefId` or `LocalDefId` as sole parameter,
-    /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
-    /// add it to the "We don't have enough information to reconstruct..." group in
-    /// the match below.
     pub force_from_dep_node: Option<fn(tcx: TyCtxt<'_>, dep_node: DepNode) -> bool>,
 
     /// Invoke a query to put the on-disk cached value in memory.

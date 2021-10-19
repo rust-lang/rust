@@ -713,7 +713,7 @@ where
     Q::Key: DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    debug_assert!(!Q::ANON);
+    assert!(!Q::ANON);
 
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
