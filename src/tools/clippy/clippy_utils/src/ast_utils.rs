@@ -279,20 +279,8 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (ForeignMod(l), ForeignMod(r)) => {
             both(&l.abi, &r.abi, eq_str_lit) && over(&l.items, &r.items, |l, r| eq_item(l, r, eq_foreign_item_kind))
         },
-        (
-            TyAlias(box ast::TyAlias {
-                defaultness: ld,
-                generics: lg,
-                bounds: lb,
-                ty: lt,
-            }),
-            TyAlias(box ast::TyAlias {
-                defaultness: rd,
-                generics: rg,
-                bounds: rb,
-                ty: rt,
-            }),
-        ) => {
+        (TyAlias(box ast::TyAlias { defaultness: ld, generics: lg, bounds: lb, ty: lt, .. }),
+         TyAlias(box ast::TyAlias { defaultness: rd, generics: rg, bounds: rb, ty: rt, .. })) => {
             eq_defaultness(*ld, *rd)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)
@@ -382,20 +370,8 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
         ) => {
             eq_defaultness(*ld, *rd) && eq_fn_sig(lf, rf) && eq_generics(lg, rg) && both(lb, rb, |l, r| eq_block(l, r))
         },
-        (
-            TyAlias(box ast::TyAlias {
-                defaultness: ld,
-                generics: lg,
-                bounds: lb,
-                ty: lt,
-            }),
-            TyAlias(box ast::TyAlias {
-                defaultness: rd,
-                generics: rg,
-                bounds: rb,
-                ty: rt,
-            }),
-        ) => {
+        (TyAlias(box ast::TyAlias { defaultness: ld, generics: lg, bounds: lb, ty: lt, .. }),
+         TyAlias(box ast::TyAlias { defaultness: rd, generics: rg, bounds: rb, ty: rt, .. })) => {
             eq_defaultness(*ld, *rd)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)
@@ -426,20 +402,8 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
         ) => {
             eq_defaultness(*ld, *rd) && eq_fn_sig(lf, rf) && eq_generics(lg, rg) && both(lb, rb, |l, r| eq_block(l, r))
         },
-        (
-            TyAlias(box ast::TyAlias {
-                defaultness: ld,
-                generics: lg,
-                bounds: lb,
-                ty: lt,
-            }),
-            TyAlias(box ast::TyAlias {
-                defaultness: rd,
-                generics: rg,
-                bounds: rb,
-                ty: rt,
-            }),
-        ) => {
+        (TyAlias(box ast::TyAlias { defaultness: ld, generics: lg, bounds: lb, ty: lt, .. }),
+         TyAlias(box ast::TyAlias { defaultness: rd, generics: rg, bounds: rb, ty: rt, .. })) => {
             eq_defaultness(*ld, *rd)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)

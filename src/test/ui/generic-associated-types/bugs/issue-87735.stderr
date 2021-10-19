@@ -1,9 +1,21 @@
+error: where clause not allowed here
+  --> $DIR/issue-87735.rs:15:19
+   |
+LL |   type Output<'a> where Self: 'a = &'a [T];
+   |                   ^^^^^^^^^^^^^^          - help: move it here: `where Self: 'a`
+
+error: where clause not allowed here
+  --> $DIR/issue-87735.rs:36:19
+   |
+LL |   type Output<'a> where Self: 'a = FooRef<'a, U>;
+   |                   ^^^^^^^^^^^^^^                - help: move it here: `where Self: 'a`
+
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
   --> $DIR/issue-87735.rs:27:13
    |
 LL | impl<'b, T, U> AsRef2 for Foo<T>
    |             ^ unconstrained type parameter
 
-error: aborting due to previous error
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0207`.

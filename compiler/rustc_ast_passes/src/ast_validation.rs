@@ -11,7 +11,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast::*;
-use rustc_ast_pretty::pprust;
+use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
@@ -118,6 +118,40 @@ impl<'a> AstValidator<'a> {
         } else {
             sess.struct_span_err(expr.span, "expected expression, found statement (`let`)")
                 .note("variable declaration using `let` is a statement")
+                .emit();
+        }
+    }
+
+    fn check_gat_where(
+        &self,
+        before_predicates: &[WherePredicate],
+        where_clauses: (ast::TyAliasWhereClause, ast::TyAliasWhereClause),
+    ) {
+        let sess = &self.session;
+        if !before_predicates.is_empty() {
+            let mut state = State::new();
+            if !where_clauses.1.0 {
+                state.space();
+                state.word_space("where");
+            } else {
+                state.word_space(",");
+            }
+            let mut first = true;
+            for p in before_predicates.iter() {
+                if !first {
+                    state.word_space(",");
+                }
+                first = false;
+                state.print_where_predicate(p);
+            }
+            let suggestion = state.s.eof();
+            sess.struct_span_err(where_clauses.0.1, "where clause not allowed here")
+                .span_suggestion(
+                    where_clauses.1.1.shrink_to_hi(),
+                    "move it here",
+                    suggestion,
+                    Applicability::MachineApplicable,
+                )
                 .emit();
         }
     }
@@ -454,7 +488,7 @@ impl<'a> AstValidator<'a> {
             .emit();
     }
 
-    fn check_foreign_ty_genericless(&self, generics: &Generics) {
+    fn check_foreign_ty_genericless(&self, generics: &Generics, where_span: Span) {
         let cannot_have = |span, descr, remove_descr| {
             self.err_handler()
                 .struct_span_err(
@@ -477,7 +511,7 @@ impl<'a> AstValidator<'a> {
         }
 
         if !generics.where_clause.predicates.is_empty() {
-            cannot_have(generics.where_clause.span, "`where` clauses", "`where` clause");
+            cannot_have(where_span, "`where` clauses", "`where` clause");
         }
     }
 
@@ -1223,13 +1257,25 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 let msg = "free static item without body";
                 self.error_item_without_body(item.span, "static", msg, " = <expr>;");
             }
-            ItemKind::TyAlias(box TyAlias { defaultness, ref bounds, ref ty, .. }) => {
+            ItemKind::TyAlias(box TyAlias {
+                defaultness,
+                where_clauses,
+                ref bounds,
+                ref ty,
+                ..
+            }) => {
                 self.check_defaultness(item.span, defaultness);
                 if ty.is_none() {
                     let msg = "free type alias without body";
                     self.error_item_without_body(item.span, "type", msg, " = <type>;");
                 }
                 self.check_type_no_bounds(bounds, "this context");
+                if where_clauses.1.0 {
+                    self.err_handler().span_err(
+                        where_clauses.1.1,
+                        "where clauses are not allowed after the type for type aliases",
+                    )
+                }
             }
             _ => {}
         }
@@ -1245,11 +1291,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
-            ForeignItemKind::TyAlias(box TyAlias { defaultness, generics, bounds, ty, .. }) => {
+            ForeignItemKind::TyAlias(box TyAlias {
+                defaultness,
+                generics,
+                where_clauses,
+                bounds,
+                ty,
+                ..
+            }) => {
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_kind_bodyless(fi.ident, "type", ty.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
-                self.check_foreign_ty_genericless(generics);
+                self.check_foreign_ty_genericless(generics, where_clauses.0.1);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::Static(_, _, body) => {
@@ -1503,9 +1556,22 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 AssocItemKind::Fn(box Fn { body, .. }) => {
                     self.check_impl_item_provided(item.span, body, "function", " { <body> }");
                 }
-                AssocItemKind::TyAlias(box TyAlias { bounds, ty, .. }) => {
+                AssocItemKind::TyAlias(box TyAlias {
+                    generics,
+                    where_clauses,
+                    where_predicates_split,
+                    bounds,
+                    ty,
+                    ..
+                }) => {
                     self.check_impl_item_provided(item.span, ty, "type", " = <type>;");
                     self.check_type_no_bounds(bounds, "`impl`s");
+                    if ty.is_some() {
+                        self.check_gat_where(
+                            generics.where_clause.predicates.split_at(*where_predicates_split).0,
+                            *where_clauses,
+                        );
+                    }
                 }
                 _ => {}
             }

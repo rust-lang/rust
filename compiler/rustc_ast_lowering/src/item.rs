@@ -277,7 +277,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::GlobalAsm(ref asm) => {
                 hir::ItemKind::GlobalAsm(self.lower_inline_asm(span, asm))
             }
-            ItemKind::TyAlias(box TyAlias { ref generics, ty: Some(ref ty), .. }) => {
+            ItemKind::TyAlias(box TyAlias {
+                ref generics,
+                where_clauses,
+                ty: Some(ref ty),
+                ..
+            }) => {
                 // We lower
                 //
                 // type Foo = impl Trait
@@ -292,16 +297,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         capturable_lifetimes: &mut FxHashSet::default(),
                     },
                 );
+                let mut generics = generics.clone();
+                generics.where_clause.has_where_token = where_clauses.0.0;
+                generics.where_clause.span = where_clauses.0.1;
                 let generics = self.lower_generics(
-                    generics,
+                    &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                 );
                 hir::ItemKind::TyAlias(ty, generics)
             }
-            ItemKind::TyAlias(box TyAlias { ref generics, ty: None, .. }) => {
+            ItemKind::TyAlias(box TyAlias {
+                ref generics, ref where_clauses, ty: None, ..
+            }) => {
                 let ty = self.arena.alloc(self.ty(span, hir::TyKind::Err));
+                let mut generics = generics.clone();
+                generics.where_clause.has_where_token = where_clauses.0.0;
+                generics.where_clause.span = where_clauses.0.1;
                 let generics = self.lower_generics(
-                    generics,
+                    &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                 );
                 hir::ItemKind::TyAlias(ty, generics)
@@ -832,18 +845,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)))
             }
-            AssocItemKind::TyAlias(box TyAlias { ref generics, ref bounds, ref ty, .. }) => {
+            AssocItemKind::TyAlias(box TyAlias {
+                ref generics,
+                where_clauses,
+                ref bounds,
+                ref ty,
+                ..
+            }) => {
                 let ty = ty.as_ref().map(|x| {
                     self.lower_ty(x, ImplTraitContext::Disallowed(ImplTraitPosition::Type))
                 });
+                let mut generics = generics.clone();
+                generics.where_clause.has_where_token = where_clauses.1.0;
+                generics.where_clause.span = where_clauses.1.1;
                 let generics = self.lower_generics(
-                    generics,
+                    &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                 );
                 let kind = hir::TraitItemKind::Type(
                     self.lower_param_bounds(
                         bounds,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     ),
                     ty,
                 );
@@ -917,9 +939,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
             }
-            AssocItemKind::TyAlias(box TyAlias { generics, ty, .. }) => {
+            AssocItemKind::TyAlias(box TyAlias { generics, where_clauses, ty, .. }) => {
+                let mut generics = generics.clone();
+                generics.where_clause.has_where_token = where_clauses.1.0;
+                generics.where_clause.span = where_clauses.1.1;
                 let generics = self.lower_generics(
-                    generics,
+                    &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                 );
                 let kind = match ty {

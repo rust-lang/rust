@@ -2662,10 +2662,23 @@ pub struct Trait {
     pub items: Vec<P<AssocItem>>,
 }
 
+/// The location of a where clause on a `TyAlias` (`Span`) and whether there was
+/// a `where` keyword (`bool`). This is split out from `WhereClause`, since there
+/// are two locations for where clause on type aliases, but their predicates
+/// are concatenated together.
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Default)]
+pub struct TyAliasWhereClause(pub bool, pub Span);
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct TyAlias {
     pub defaultness: Defaultness,
     pub generics: Generics,
+    /// The span information for the two where clauses (before equals, after equals)
+    pub where_clauses: (TyAliasWhereClause, TyAliasWhereClause),
+    /// The index in `generics.where_clause.predicates` that would split into
+    /// predicates from the where clause before the equals and the predicates
+    /// from the where clause after the equals
+    pub where_predicates_split: usize,
     pub bounds: GenericBounds,
     pub ty: Option<P<Ty>>,
 }

@@ -1,3 +1,9 @@
+error: where clause not allowed here
+  --> $DIR/issue-87748.rs:16:24
+   |
+LL |     type Assoc<'a, 'b> where 'b: 'a = u32;
+   |                        ^^^^^^^^^^^^      - help: move it here: `where 'b: 'a`
+
 error[E0478]: lifetime bound not satisfied
   --> $DIR/issue-87748.rs:18:5
    |
@@ -15,6 +21,6 @@ note: but lifetime parameter must outlive the anonymous lifetime #1 defined here
 LL |     fn do_sth(_: u32) {}
    |     ^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0478`.
