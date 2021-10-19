@@ -74,7 +74,7 @@ impl<T: PartialEq> PartialEq for OnceCell<T> {
 impl<T: Eq> Eq for OnceCell<T> {}
 
 #[unstable(feature = "once_cell", issue = "74465")]
-impl<T> From<T> for OnceCell<T> {
+impl<T> const From<T> for OnceCell<T> {
     fn from(value: T) -> Self {
         OnceCell { inner: UnsafeCell::new(Some(value)) }
     }
