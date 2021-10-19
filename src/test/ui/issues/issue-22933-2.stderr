@@ -5,7 +5,10 @@ LL | enum Delicious {
    | -------------- variant or associated item `PIE` not found here
 ...
 LL |     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
-   |                                                       ^^^ variant or associated item not found in `Delicious`
+   |                                                       ^^^
+   |                                                       |
+   |                                                       variant or associated item not found in `Delicious`
+   |                                                       help: there is a variant with a similar name: `Pie`
 
 error: aborting due to previous error
 
