@@ -221,15 +221,13 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
             let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
             let closure_span = tcx.hir().span(closure_hir_id);
 
-            let (capture_index, capture) = if let Some(capture_details) =
+            let Some((capture_index, capture)) =
                 find_capture_matching_projections(
                     typeck_results,
                     var_hir_id,
                     closure_def_id,
                     &from_builder.projection,
-                ) {
-                capture_details
-            } else {
+                ) else {
                 if !enable_precise_capture(tcx, closure_span) {
                     bug!(
                         "No associated capture found for {:?}[{:#?}] even though \

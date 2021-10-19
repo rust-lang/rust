@@ -39,6 +39,7 @@
 #![feature(new_uninit)]
 #![feature(nll)]
 #![feature(once_cell)]
+#![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(in_band_lifetimes)]

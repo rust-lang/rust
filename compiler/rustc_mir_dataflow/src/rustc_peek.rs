@@ -290,9 +290,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeMutBorrowedLocals<'_, 'tcx> {
         call: PeekCall,
     ) {
         info!(?place, "peek_at");
-        let local = if let Some(l) = place.as_local() {
-            l
-        } else {
+        let Some(local) = place.as_local() else {
             tcx.sess.span_err(call.span, "rustc_peek: argument was not a local");
             return;
         };
@@ -312,9 +310,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
         call: PeekCall,
     ) {
         info!(?place, "peek_at");
-        let local = if let Some(l) = place.as_local() {
-            l
-        } else {
+        let Some(local) = place.as_local() else {
             tcx.sess.span_err(call.span, "rustc_peek: argument was not a local");
             return;
         };

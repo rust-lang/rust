@@ -145,9 +145,7 @@ impl Qualif for NeedsNonConstDrop {
             Ok([..]) => {}
         }
 
-        let drop_trait = if let Some(did) = cx.tcx.lang_items().drop_trait() {
-            did
-        } else {
+        let Some(drop_trait) = cx.tcx.lang_items().drop_trait() else {
             // there is no way to define a type that needs non-const drop
             // without having the lang item present.
             return false;

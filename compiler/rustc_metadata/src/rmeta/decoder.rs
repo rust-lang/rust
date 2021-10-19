@@ -472,9 +472,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         let len = BytePos::decode(decoder)?;
         let hi = lo + len;
 
-        let sess = if let Some(sess) = decoder.sess {
-            sess
-        } else {
+        let Some(sess) = decoder.sess else {
             bug!("Cannot decode Span without Session.")
         };
 

@@ -1471,9 +1471,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         module: ModuleOrUniformRoot<'b>,
         ident: Ident,
     ) -> Option<(Option<Suggestion>, Vec<String>)> {
-        let mut crate_module = if let ModuleOrUniformRoot::Module(module) = module {
-            module
-        } else {
+        let ModuleOrUniformRoot::Module(mut crate_module) = module else {
             return None;
         };
 

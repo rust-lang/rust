@@ -1000,11 +1000,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
-        let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
-            min_captures.and_then(|m| m.get(&var_hir_id))
-        {
-            root_var_min_capture_list
-        } else {
+        let Some(root_var_min_capture_list) = min_captures.and_then(|m| m.get(&var_hir_id)) else {
             // The upvar is mentioned within the closure but no path starting from it is
             // used.
 
@@ -1077,9 +1073,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_clause: hir::CaptureBy,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
     ) -> (Vec<MigrationDiagnosticInfo>, String) {
-        let upvars = if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
-            upvars
-        } else {
+        let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) else {
             return (Vec::new(), format!(""));
         };
 
@@ -1684,9 +1678,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         diag_expr_id: hir::HirId,
     ) {
         let tcx = self.fcx.tcx;
-        let upvar_id = if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
-            upvar_id
-        } else {
+        let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else {
             return;
         };
 

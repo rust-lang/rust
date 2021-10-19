@@ -449,11 +449,7 @@ pub trait Emitter {
         span: &mut MultiSpan,
         children: &mut Vec<SubDiagnostic>,
     ) {
-        let source_map = if let Some(ref sm) = source_map {
-            sm
-        } else {
-            return;
-        };
+        let Some(source_map) = source_map else { return };
         debug!("fix_multispans_in_extern_macros: before: span={:?} children={:?}", span, children);
         self.fix_multispan_in_extern_macros(source_map, span);
         for child in children.iter_mut() {

@@ -221,9 +221,7 @@ pub fn suggest_constraining_type_param(
 ) -> bool {
     let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
 
-    let param = if let Some(param) = param {
-        param
-    } else {
+    let Some(param) = param else {
         return false;
     };
 

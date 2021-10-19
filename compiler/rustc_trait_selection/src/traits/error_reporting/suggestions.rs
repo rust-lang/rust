@@ -1038,13 +1038,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
         let node = hir.find(parent_node);
-        let (sig, body_id) = if let Some(hir::Node::Item(hir::Item {
+        let Some(hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(sig, _, body_id),
             ..
         })) = node
-        {
-            (sig, body_id)
-        } else {
+        else {
             return false;
         };
         let body = hir.body(*body_id);

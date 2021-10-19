@@ -315,9 +315,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         //    TEMP = &foo
         //
         // so extract `temp`.
-        let temp = if let Some(temp) = assigned_place.as_local() {
-            temp
-        } else {
+        let Some(temp) = assigned_place.as_local() else {
             span_bug!(
                 self.body.source_info(start_location).span,
                 "expected 2-phase borrow to assign to a local, not `{:?}`",

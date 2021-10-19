@@ -458,9 +458,7 @@ fn mono_item_visibility(
     let is_generic = instance.substs.non_erasable_generics().next().is_some();
 
     // Upstream `DefId` instances get different handling than local ones.
-    let def_id = if let Some(def_id) = def_id.as_local() {
-        def_id
-    } else {
+    let Some(def_id) = def_id.as_local() else {
         return if export_generics && is_generic {
             // If it is an upstream monomorphization and we export generics, we must make
             // it available to downstream crates.

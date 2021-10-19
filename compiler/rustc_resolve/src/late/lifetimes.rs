@@ -1057,9 +1057,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     match param.kind {
                         GenericParamKind::Lifetime { .. } => {
                             let (name, reg) = Region::early(&self.tcx.hir(), &mut index, &param);
-                            let def_id = if let Region::EarlyBound(_, def_id, _) = reg {
-                                def_id
-                            } else {
+                            let Region::EarlyBound(_, def_id, _) = reg else {
                                 bug!();
                             };
                             // We cannot predict what lifetimes are unused in opaque type.

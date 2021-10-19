@@ -673,9 +673,7 @@ impl Inliner<'tcx> {
             assert!(args.next().is_none());
 
             let tuple = Place::from(tuple);
-            let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_body, tcx).ty.kind() {
-                s
-            } else {
+            let ty::Tuple(tuple_tys) = tuple.ty(caller_body, tcx).ty.kind() else {
                 bug!("Closure arguments are not passed as a tuple");
             };
 

@@ -7,6 +7,7 @@
 #![feature(format_args_capture)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
+#![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
