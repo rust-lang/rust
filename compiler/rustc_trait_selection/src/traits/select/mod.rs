@@ -1129,8 +1129,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates.retain(|candidate| {
             if let ImplCandidate(def_id) = candidate {
                 ty::ImplPolarity::Reservation == tcx.impl_polarity(*def_id)
-                    || !self.allow_negative_impls
-                        && stack.obligation.polarity() == tcx.impl_polarity(*def_id)
+                    || stack.obligation.polarity() == tcx.impl_polarity(*def_id)
+                    || self.allow_negative_impls
             } else {
                 true
             }
