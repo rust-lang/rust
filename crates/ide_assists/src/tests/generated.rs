@@ -951,11 +951,26 @@ fn doctest_generate_getter() {
     check_doc_test(
         "generate_getter",
         r#####"
+//- minicore: as_ref
+pub struct String;
+impl AsRef<str> for String {
+    fn as_ref(&self) -> &str {
+        ""
+    }
+}
+
 struct Person {
     nam$0e: String,
 }
 "#####,
         r#####"
+pub struct String;
+impl AsRef<str> for String {
+    fn as_ref(&self) -> &str {
+        ""
+    }
+}
+
 struct Person {
     name: String,
 }
@@ -963,7 +978,7 @@ struct Person {
 impl Person {
     /// Get a reference to the person's name.
     fn $0name(&self) -> &str {
-        self.name.as_str()
+        self.name.as_ref()
     }
 }
 "#####,

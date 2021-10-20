@@ -97,6 +97,10 @@ impl TyBuilder<()> {
         }
     }
 
+    pub fn slice(argument: Ty) -> Ty {
+        TyKind::Slice(argument).intern(&Interner)
+    }
+
     pub fn type_params_subst(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substitution {
         let params = generics(db.upcast(), def.into());
         params.type_params_subst(db)

@@ -1574,6 +1574,10 @@ pub struct BuiltinType {
 }
 
 impl BuiltinType {
+    pub fn str() -> BuiltinType {
+        BuiltinType { inner: hir_def::builtin_type::BuiltinType::Str }
+    }
+
     pub fn ty(self, db: &dyn HirDatabase, module: Module) -> Type {
         let resolver = module.id.resolver(db.upcast());
         Type::new_with_resolver(db, &resolver, TyBuilder::builtin(self.inner))
@@ -2261,6 +2265,10 @@ impl Type {
     ) -> Type {
         let ty = TyBuilder::def_ty(db, def.into()).fill_with_unknown().build();
         Type::new(db, krate, def, ty)
+    }
+
+    pub fn new_slice(ty: Type) -> Type {
+        Type { krate: ty.krate, env: ty.env, ty: TyBuilder::slice(ty.ty) }
     }
 
     pub fn is_unit(&self) -> bool {
