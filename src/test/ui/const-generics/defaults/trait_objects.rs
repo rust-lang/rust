@@ -39,7 +39,7 @@ fn bar<const N: u8>(arg: &dyn Traitor<N>) -> u8 {
 fn main() {
     assert_eq!(foo(&10_u32), 12);
     assert_eq!(foo(&3_u64), 3);
-    
+
     assert_eq!(bar(&true), 2);
     assert_eq!(bar(&1_u8), 1);
 }
