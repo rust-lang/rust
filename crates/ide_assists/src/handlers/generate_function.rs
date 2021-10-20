@@ -1,6 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use hir::{HasSource, HirDisplay, Module, ModuleDef, Semantics, TypeInfo};
+use ide_db::helpers::FamousDefs;
 use ide_db::{
     base_db::FileId,
     defs::{Definition, NameRefClass},
@@ -512,13 +513,10 @@ fn fn_arg_type(ctx: &AssistContext, target_module: hir::Module, fn_arg: &ast::Ex
         }
 
         if ty.is_reference() || ty.is_mutable_reference() {
-            convert_reference_type(
-                ty.strip_references(),
-                ctx,
-                ctx.sema.scope(fn_arg.syntax()).krate(),
-            )
-            .map(|conversion| conversion.convert_type(ctx.db()))
-            .or_else(|| ty.display_source_code(ctx.db(), target_module.into()).ok())
+            let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax()).krate());
+            convert_reference_type(ty.strip_references(), ctx.db(), famous_defs)
+                .map(|conversion| conversion.convert_type(ctx.db()))
+                .or_else(|| ty.display_source_code(ctx.db(), target_module.into()).ok())
         } else {
             ty.display_source_code(ctx.db(), target_module.into()).ok()
         }

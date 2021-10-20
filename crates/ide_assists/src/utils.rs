@@ -5,10 +5,10 @@ use std::ops;
 use itertools::Itertools;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
-use hir::db::HirDatabase;
-use hir::{Crate, HasSource, HirDisplay};
-use ide_db::helpers::FamousDefs;
-use ide_db::{helpers::SnippetCap, path_transform::PathTransform, RootDatabase};
+use hir::{db::HirDatabase, HasSource, HirDisplay};
+use ide_db::{
+    helpers::FamousDefs, helpers::SnippetCap, path_transform::PathTransform, RootDatabase,
+};
 use stdx::format_to;
 use syntax::{
     ast::{
@@ -577,19 +577,13 @@ impl ReferenceConversion {
 // FIXME: It should return a new hir::Type, but currently constructing new types is too cumbersome
 //        and all users of this function operate on string type names, so they can do the conversion
 //        itself themselves.
-//        Another problem is that it probably shouldn't take AssistContext as a parameter, as
-//        it should be usable not only in assists.
 pub(crate) fn convert_reference_type(
     ty: hir::Type,
-    ctx: &AssistContext,
-    krate: Option<Crate>,
+    db: &RootDatabase,
+    famous_defs: &FamousDefs,
 ) -> Option<ReferenceConversion> {
-    let sema = &ctx.sema;
-    let db = sema.db;
-    let famous_defs = &FamousDefs(sema, krate);
-
     handle_copy(&ty, db)
-        .or_else(|| handle_as_ref_str(&ty, db, famous_defs, ctx))
+        .or_else(|| handle_as_ref_str(&ty, db, famous_defs))
         .or_else(|| handle_as_ref_slice(&ty, db, famous_defs))
         .or_else(|| handle_dereferenced(&ty, db, famous_defs))
         .or_else(|| handle_option_as_ref(&ty, db, famous_defs))
@@ -605,9 +599,8 @@ fn handle_as_ref_str(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs,
-    ctx: &AssistContext,
 ) -> Option<ReferenceConversionType> {
-    let module = ctx.sema.to_module_def(ctx.file_id())?;
+    let module = famous_defs.1?.root_module(db);
     let str_type = hir::BuiltinType::str().ty(db, module);
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type])

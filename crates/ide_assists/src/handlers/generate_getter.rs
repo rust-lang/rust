@@ -1,3 +1,4 @@
+use ide_db::helpers::FamousDefs;
 use stdx::{format_to, to_lower_snake_case};
 use syntax::ast::{self, AstNode, HasName, HasVisibility};
 
@@ -112,16 +113,12 @@ pub(crate) fn generate_getter_impl(
 
             let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
             let (ty, body) = if mutable {
-                (
-                    format!("&mut {}", field_ty.to_string()),
-                    format!("&mut self.{}", field_name.to_string()),
-                )
+                (format!("&mut {}", field_ty), format!("&mut self.{}", field_name))
             } else {
+                let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(field_ty.syntax()).krate());
                 ctx.sema
                     .resolve_type(&field_ty)
-                    .and_then(|ty| {
-                        convert_reference_type(ty, ctx, ctx.sema.scope(field_ty.syntax()).krate())
-                    })
+                    .and_then(|ty| convert_reference_type(ty, ctx.db(), famous_defs))
                     .map(|conversion| {
                         cov_mark::hit!(convert_reference_type);
                         (
