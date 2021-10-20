@@ -1,4 +1,6 @@
 //! Transforms markdown
+use std::borrow::Cow;
+
 use ide_db::helpers::rust_doc::is_rust_fence;
 
 const RUSTDOC_FENCE: &str = "```";
@@ -8,8 +10,9 @@ pub(crate) fn format_docs(src: &str) -> String {
     let mut in_code_block = false;
     let mut is_rust = false;
 
-    for mut line in src.lines() {
-        if in_code_block && is_rust && code_line_ignored_by_rustdoc(line) {
+    for line in src.lines() {
+        let mut line = Cow::from(line);
+        if in_code_block && is_rust && code_line_ignored_by_rustdoc(&line) {
             continue;
         }
 
@@ -20,8 +23,15 @@ pub(crate) fn format_docs(src: &str) -> String {
                 is_rust = is_rust_fence(header);
 
                 if is_rust {
-                    line = "```rust";
+                    line = Cow::Borrowed("```rust");
                 }
+            }
+        }
+
+        if in_code_block {
+            let trimmed = line.trim();
+            if trimmed.starts_with("##") {
+                line = Cow::Owned(line.replacen("##", "#", 1));
             }
         }
 
@@ -135,5 +145,15 @@ let a = 1;
             format_docs(comment),
             "```text\nfiller\ntext\n```\nSome comment.\n```rust\nlet a = 1;\n```"
         );
+    }
+
+    #[test]
+    fn test_format_docs_handles_escape_double_hashes() {
+        let comment = r#"```rust
+let s = "foo
+## bar # baz";
+```"#;
+
+        assert_eq!(format_docs(comment), "```rust\nlet s = \"foo\n# bar # baz\";\n```");
     }
 }
