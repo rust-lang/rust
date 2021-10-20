@@ -125,6 +125,19 @@ pub enum ImportGranularity {
     Module,
     /// Use one `use` statement per imported item.
     Item,
+    /// Use one `use` statement including all items.
+    One,
+}
+
+/// Controls how rustfmt should handle case in hexadecimal literals.
+#[config_type]
+pub enum HexLiteralCase {
+    /// Leave the literal as-is
+    Preserve,
+    /// Ensure all literals use uppercase lettering
+    Upper,
+    /// Ensure all literals use lowercase lettering
+    Lower,
 }
 
 #[config_type]

@@ -175,6 +175,12 @@ impl ParseSess {
         self.parse_sess.source_map().span_to_filename(span).into()
     }
 
+    pub(crate) fn span_to_file_contents(&self, span: Span) -> Lrc<rustc_span::SourceFile> {
+        self.parse_sess
+            .source_map()
+            .lookup_source_file(span.data().lo)
+    }
+
     pub(crate) fn span_to_first_line_string(&self, span: Span) -> String {
         let file_lines = self.parse_sess.source_map().span_to_lines(span).ok();
 
