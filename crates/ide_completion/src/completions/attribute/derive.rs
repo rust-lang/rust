@@ -14,60 +14,57 @@ use crate::{
 pub(super) fn complete_derive(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    derive_input: ast::TokenTree,
+    existing_derives: &[ast::Path],
 ) {
-    if let Some(existing_derives) = super::parse_comma_sep_paths(derive_input.clone()) {
-        let core = FamousDefs(&ctx.sema, ctx.krate).core();
-        let existing_derives: FxHashSet<_> = existing_derives
-            .into_iter()
-            .filter_map(|path| ctx.scope.speculative_resolve_as_mac(&path))
-            .filter(|mac| mac.kind() == MacroKind::Derive)
-            .collect();
+    let core = FamousDefs(&ctx.sema, ctx.krate).core();
+    let existing_derives: FxHashSet<_> = existing_derives
+        .into_iter()
+        .filter_map(|path| ctx.scope.speculative_resolve_as_mac(&path))
+        .filter(|mac| mac.kind() == MacroKind::Derive)
+        .collect();
 
-        for (name, mac) in get_derives_in_scope(ctx) {
-            if existing_derives.contains(&mac) {
-                continue;
-            }
-
-            let name = name.to_smol_str();
-            let label;
-            let (label, lookup) = match core.zip(mac.module(ctx.db).map(|it| it.krate())) {
-                // show derive dependencies for `core`/`std` derives
-                Some((core, mac_krate)) if core == mac_krate => {
-                    if let Some(derive_completion) = DEFAULT_DERIVE_DEPENDENCIES
-                        .iter()
-                        .find(|derive_completion| derive_completion.label == name)
-                    {
-                        let mut components = vec![derive_completion.label];
-                        components.extend(derive_completion.dependencies.iter().filter(
-                            |&&dependency| {
-                                !existing_derives
-                                    .iter()
-                                    .filter_map(|it| it.name(ctx.db))
-                                    .any(|it| it.to_smol_str() == dependency)
-                            },
-                        ));
-                        let lookup = components.join(", ");
-                        label = components.iter().rev().join(", ");
-                        (label.as_str(), Some(lookup))
-                    } else {
-                        (&*name, None)
-                    }
-                }
-                _ => (&*name, None),
-            };
-
-            let mut item =
-                CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label);
-            item.kind(CompletionItemKind::Attribute);
-            if let Some(docs) = mac.docs(ctx.db) {
-                item.documentation(docs);
-            }
-            if let Some(lookup) = lookup {
-                item.lookup_by(lookup);
-            }
-            item.add_to(acc);
+    for (name, mac) in get_derives_in_scope(ctx) {
+        if existing_derives.contains(&mac) {
+            continue;
         }
+
+        let name = name.to_smol_str();
+        let label;
+        let (label, lookup) = match core.zip(mac.module(ctx.db).map(|it| it.krate())) {
+            // show derive dependencies for `core`/`std` derives
+            Some((core, mac_krate)) if core == mac_krate => {
+                if let Some(derive_completion) = DEFAULT_DERIVE_DEPENDENCIES
+                    .iter()
+                    .find(|derive_completion| derive_completion.label == name)
+                {
+                    let mut components = vec![derive_completion.label];
+                    components.extend(derive_completion.dependencies.iter().filter(
+                        |&&dependency| {
+                            !existing_derives
+                                .iter()
+                                .filter_map(|it| it.name(ctx.db))
+                                .any(|it| it.to_smol_str() == dependency)
+                        },
+                    ));
+                    let lookup = components.join(", ");
+                    label = components.iter().rev().join(", ");
+                    (label.as_str(), Some(lookup))
+                } else {
+                    (&*name, None)
+                }
+            }
+            _ => (&*name, None),
+        };
+
+        let mut item = CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label);
+        item.kind(CompletionItemKind::Attribute);
+        if let Some(docs) = mac.docs(ctx.db) {
+            item.documentation(docs);
+        }
+        if let Some(lookup) = lookup {
+            item.lookup_by(lookup);
+        }
+        item.add_to(acc);
     }
 }
 

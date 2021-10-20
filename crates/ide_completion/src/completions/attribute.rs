@@ -4,7 +4,7 @@
 //! for built-in attributes.
 
 use hir::HasAttrs;
-use ide_db::helpers::generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES};
+use ide_db::helpers::generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
@@ -29,12 +29,16 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
     };
     match (name_ref, attribute.token_tree()) {
         (Some(path), Some(token_tree)) => match path.text().as_str() {
-            "derive" => derive::complete_derive(acc, ctx, token_tree),
             "repr" => repr::complete_repr(acc, ctx, token_tree),
-            "feature" => lint::complete_lint(acc, ctx, token_tree, FEATURES),
+            "derive" => derive::complete_derive(acc, ctx, &parse_comma_sep_paths(token_tree)?),
+            "feature" => {
+                lint::complete_lint(acc, ctx, &parse_comma_sep_paths(token_tree)?, FEATURES)
+            }
             "allow" | "warn" | "deny" | "forbid" => {
-                lint::complete_lint(acc, ctx, token_tree.clone(), DEFAULT_LINTS);
-                lint::complete_lint(acc, ctx, token_tree, CLIPPY_LINTS);
+                let existing_lints = parse_comma_sep_paths(token_tree)?;
+                lint::complete_lint(acc, ctx, &existing_lints, DEFAULT_LINTS);
+                lint::complete_lint(acc, ctx, &existing_lints, CLIPPY_LINTS);
+                lint::complete_lint(acc, ctx, &existing_lints, RUSTDOC_LINTS);
             }
             "cfg" => {
                 cfg::complete_cfg(acc, ctx);
