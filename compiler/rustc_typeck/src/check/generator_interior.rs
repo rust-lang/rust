@@ -3,7 +3,10 @@
 //! is calculated in `rustc_const_eval::transform::generator` and may be a subset of the
 //! types computed here.
 
+use crate::expr_use_visitor::{self, ExprUseVisitor};
+
 use super::FnCtxt;
+use hir::HirIdMap;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -34,6 +37,7 @@ struct InteriorVisitor<'a, 'tcx> {
     guard_bindings: SmallVec<[SmallVec<[HirId; 4]>; 1]>,
     guard_bindings_set: HirIdSet,
     linted_values: HirIdSet,
+    drop_ranges: HirIdMap<DropRange>,
 }
 
 impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
@@ -48,9 +52,11 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
     ) {
         use rustc_span::DUMMY_SP;
 
+        let ty = self.fcx.resolve_vars_if_possible(ty);
+
         debug!(
-            "generator_interior: attempting to record type {:?} {:?} {:?} {:?}",
-            ty, scope, expr, source_span
+            "attempting to record type ty={:?}; hir_id={:?}; scope={:?}; expr={:?}; source_span={:?}; expr_count={:?}",
+            ty, hir_id, scope, expr, source_span, self.expr_count,
         );
 
         let live_across_yield = scope
@@ -67,6 +73,14 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         "comparing counts yield: {} self: {}, source_span = {:?}",
                         yield_data.expr_and_pat_count, self.expr_count, source_span
                     );
+
+                    match self.drop_ranges.get(&hir_id) {
+                        Some(range) if range.contains(yield_data.expr_and_pat_count) => {
+                            debug!("value is dropped at yield point; not recording");
+                            return None
+                        }
+                        _ => (),
+                    }
 
                     // If it is a borrowing happening in the guard,
                     // it needs to be recorded regardless because they
@@ -85,7 +99,6 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             });
 
         if let Some(yield_data) = live_across_yield {
-            let ty = self.fcx.resolve_vars_if_possible(ty);
             debug!(
                 "type in expr = {:?}, scope = {:?}, type = {:?}, count = {}, yield_span = {:?}",
                 expr, scope, ty, self.expr_count, yield_data.span
@@ -154,7 +167,6 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 self.expr_count,
                 expr.map(|e| e.span)
             );
-            let ty = self.fcx.resolve_vars_if_possible(ty);
             if let Some((unresolved_type, unresolved_type_span)) =
                 self.fcx.unresolved_type_vars(&ty)
             {
@@ -164,6 +176,39 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 );
                 self.prev_unresolved_span = unresolved_type_span;
             }
+        }
+    }
+
+    fn visit_call(
+        &mut self,
+        call_expr: &'tcx Expr<'tcx>,
+        callee: &'tcx Expr<'tcx>,
+        args: &'tcx [Expr<'tcx>],
+    ) {
+        match &callee.kind {
+            ExprKind::Path(qpath) => {
+                let res = self.fcx.typeck_results.borrow().qpath_res(qpath, callee.hir_id);
+                match res {
+                    // Direct calls never need to keep the callee `ty::FnDef`
+                    // ZST in a temporary, so skip its type, just in case it
+                    // can significantly complicate the generator type.
+                    Res::Def(
+                        DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn),
+                        _,
+                    ) => {
+                        // NOTE(eddyb) this assumes a path expression has
+                        // no nested expressions to keep track of.
+                        self.expr_count += 1;
+
+                        // Record the rest of the call expression normally.
+                        for arg in args {
+                            self.visit_expr(arg);
+                        }
+                    }
+                    _ => intravisit::walk_expr(self, call_expr),
+                }
+            }
+            _ => intravisit::walk_expr(self, call_expr),
         }
     }
 }
@@ -176,6 +221,20 @@ pub fn resolve_interior<'a, 'tcx>(
     kind: hir::GeneratorKind,
 ) {
     let body = fcx.tcx.hir().body(body_id);
+
+    let mut drop_range_visitor = DropRangeVisitor::default();
+
+    // Run ExprUseVisitor to find where values are consumed.
+    ExprUseVisitor::new(
+        &mut drop_range_visitor,
+        &fcx.infcx,
+        def_id.expect_local(),
+        fcx.param_env,
+        &fcx.typeck_results.borrow(),
+    )
+    .consume_body(body);
+    intravisit::walk_body(&mut drop_range_visitor, body);
+
     let mut visitor = InteriorVisitor {
         fcx,
         types: FxIndexSet::default(),
@@ -186,6 +245,7 @@ pub fn resolve_interior<'a, 'tcx>(
         guard_bindings: <_>::default(),
         guard_bindings_set: <_>::default(),
         linted_values: <_>::default(),
+        drop_ranges: drop_range_visitor.drop_ranges,
     };
     intravisit::walk_body(&mut visitor, body);
 
@@ -313,32 +373,9 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         let mut guard_borrowing_from_pattern = false;
-        match &expr.kind {
-            ExprKind::Call(callee, args) => match &callee.kind {
-                ExprKind::Path(qpath) => {
-                    let res = self.fcx.typeck_results.borrow().qpath_res(qpath, callee.hir_id);
-                    match res {
-                        // Direct calls never need to keep the callee `ty::FnDef`
-                        // ZST in a temporary, so skip its type, just in case it
-                        // can significantly complicate the generator type.
-                        Res::Def(
-                            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn),
-                            _,
-                        ) => {
-                            // NOTE(eddyb) this assumes a path expression has
-                            // no nested expressions to keep track of.
-                            self.expr_count += 1;
 
-                            // Record the rest of the call expression normally.
-                            for arg in *args {
-                                self.visit_expr(arg);
-                            }
-                        }
-                        _ => intravisit::walk_expr(self, expr),
-                    }
-                }
-                _ => intravisit::walk_expr(self, expr),
-            },
+        match &expr.kind {
+            ExprKind::Call(callee, args) => self.visit_call(expr, callee, args),
             ExprKind::Path(qpath) => {
                 intravisit::walk_expr(self, expr);
                 let res = self.fcx.typeck_results.borrow().qpath_res(qpath, expr.hir_id);
@@ -616,4 +653,99 @@ fn check_must_not_suspend_def(
         }
     }
     false
+}
+
+/// This struct facilitates computing the ranges for which a place is uninitialized.
+#[derive(Default)]
+struct DropRangeVisitor {
+    consumed_places: HirIdSet,
+    drop_ranges: HirIdMap<DropRange>,
+    expr_count: usize,
+}
+
+impl DropRangeVisitor {
+    fn record_drop(&mut self, hir_id: HirId) {
+        debug!("marking {:?} as dropped at {}", hir_id, self.expr_count);
+        self.drop_ranges.insert(hir_id, DropRange { dropped_at: self.expr_count });
+    }
+
+    /// ExprUseVisitor's consume callback doesn't go deep enough for our purposes in all
+    /// expressions. This method consumes a little deeper into the expression when needed.
+    fn consume_expr(&mut self, expr: &hir::Expr<'_>) {
+        self.record_drop(expr.hir_id);
+        match expr.kind {
+            hir::ExprKind::Path(hir::QPath::Resolved(
+                _,
+                hir::Path { res: hir::def::Res::Local(hir_id), .. },
+            )) => {
+                self.record_drop(*hir_id);
+            }
+            _ => (),
+        }
+    }
+}
+
+impl<'tcx> expr_use_visitor::Delegate<'tcx> for DropRangeVisitor {
+    fn consume(
+        &mut self,
+        place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
+        diag_expr_id: hir::HirId,
+    ) {
+        debug!("consume {:?}; diag_expr_id={:?}", place_with_id, diag_expr_id);
+        self.consumed_places.insert(place_with_id.hir_id);
+    }
+
+    fn borrow(
+        &mut self,
+        _place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
+        _diag_expr_id: hir::HirId,
+        _bk: rustc_middle::ty::BorrowKind,
+    ) {
+    }
+
+    fn mutate(
+        &mut self,
+        _assignee_place: &expr_use_visitor::PlaceWithHirId<'tcx>,
+        _diag_expr_id: hir::HirId,
+    ) {
+    }
+
+    fn fake_read(
+        &mut self,
+        _place: expr_use_visitor::Place<'tcx>,
+        _cause: rustc_middle::mir::FakeReadCause,
+        _diag_expr_id: hir::HirId,
+    ) {
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for DropRangeVisitor {
+    type Map = intravisit::ErasedMap<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_expr(&mut self, expr: &Expr<'_>) {
+        intravisit::walk_expr(self, expr);
+
+        self.expr_count += 1;
+
+        if self.consumed_places.contains(&expr.hir_id) {
+            self.consume_expr(expr);
+        }
+    }
+}
+
+struct DropRange {
+    /// The post-order id of the point where this expression is dropped.
+    ///
+    /// We can consider the value dropped at any post-order id greater than dropped_at.
+    dropped_at: usize,
+}
+
+impl DropRange {
+    fn contains(&self, id: usize) -> bool {
+        id >= self.dropped_at
+    }
 }

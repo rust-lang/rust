@@ -1,3 +1,5 @@
+// check-pass
+
 #![feature(negative_impls, generators)]
 
 struct Foo;
