@@ -20,8 +20,6 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use std::collections::VecDeque;
 
-pub mod blocks;
-
 fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
     match node {
         Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })

@@ -143,9 +143,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // similar to the asyncness fn in rustc_ty_utils::ty
         let hir_id = self.tcx().hir().local_def_id_to_hir_id(local_def_id);
         let node = self.tcx().hir().get(hir_id);
-        let fn_like = rustc_middle::hir::map::blocks::FnLikeNode::from_node(node)?;
-
-        Some(fn_like.asyncness())
+        let fn_kind = node.fn_kind()?;
+        Some(fn_kind.asyncness())
     }
 
     // Here, we check for the case where the anonymous region
