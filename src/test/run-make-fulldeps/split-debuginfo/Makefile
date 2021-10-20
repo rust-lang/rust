@@ -1,6 +1,9 @@
 -include ../tools.mk
 
-# min-llvm-version: 11.0
+# Needs commit 6ffcb2937c96bd0d7a55b984b5eb8f381b68e322,
+# "[llvm-dwp] Join dwo paths correctly when DWOPath is absolute",
+# backported to 12.x in b1106a5b3bc94f6da11682007d101823f81bad30.
+# min-llvm-version: 12.0
 
 all: off packed unpacked
 

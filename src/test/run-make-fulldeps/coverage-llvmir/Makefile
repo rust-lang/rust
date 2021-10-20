@@ -1,5 +1,4 @@
 # needs-profiler-support
-# min-llvm-version: 11.0
 
 -include ../coverage/coverage_tools.mk
 

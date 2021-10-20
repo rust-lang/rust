@@ -1,5 +1,4 @@
 // compile-flags: -O
-// min-llvm-version: 11.0
 
 #![crate_type = "lib"]
 

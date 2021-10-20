@@ -1,4 +1,3 @@
-// min-llvm-version: 10.0.1
 // assembly-output: emit-asm
 // compile-flags: --target armv7-unknown-linux-gnueabihf
 // compile-flags: -C target-feature=+neon

@@ -1,4 +1,3 @@
-// min-llvm-version: 10.0.1
 // assembly-output: emit-asm
 // compile-flags: -O
 // compile-flags: --target aarch64-unknown-linux-gnu
