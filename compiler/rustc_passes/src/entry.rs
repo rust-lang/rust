@@ -152,11 +152,10 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(De
             if let Some(def_id) = main_def.opt_fn_def_id() {
                 // non-local main imports are handled below
                 if let Some(def_id) = def_id.as_local() {
-                    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-                    if matches!(tcx.hir().find(hir_id), Some(Node::ForeignItem(_))) {
+                    if matches!(tcx.hir().find_by_def_id(def_id), Some(Node::ForeignItem(_))) {
                         tcx.sess
                             .struct_span_err(
-                                tcx.hir().span(hir_id),
+                                tcx.def_span(def_id),
                                 "the `main` function cannot be declared in an `extern` block",
                             )
                             .emit();

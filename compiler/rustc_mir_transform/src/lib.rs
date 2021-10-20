@@ -366,8 +366,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         tcx.ensure().mir_borrowck(def.did);
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-    let is_fn_like = tcx.hir().get(hir_id).fn_kind().is_some();
+    let is_fn_like = tcx.hir().get_by_def_id(def.did).fn_kind().is_some();
     if is_fn_like {
         let did = def.did.to_def_id();
         let def = ty::WithOptConstParam::unknown(did);

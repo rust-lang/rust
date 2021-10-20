@@ -1,5 +1,5 @@
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
@@ -15,7 +15,8 @@ pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
     }
 }
 
-pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
+pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let parent_id = tcx.hir().get_parent_node(hir_id);
     matches!(
         tcx.hir().get(parent_id),
@@ -29,15 +30,15 @@ pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
 /// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
 /// said intrinsic has a `rustc_const_{un,}stable` attribute.
 fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-
-    let node = tcx.hir().get(hir_id);
+    let def_id = def_id.expect_local();
+    let node = tcx.hir().get_by_def_id(def_id);
 
     if let hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) =
         node
     {
         // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
         // foreign items cannot be evaluated at compile-time.
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = tcx.hir().get_foreign_abi(hir_id) {
             tcx.lookup_const_stability(def_id).is_some()
         } else {
@@ -50,7 +51,7 @@ fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
         // If the function itself is not annotated with `const`, it may still be a `const fn`
         // if it resides in a const trait impl.
-        is_parent_const_impl_raw(tcx, hir_id)
+        is_parent_const_impl_raw(tcx, def_id)
     } else {
         matches!(node, hir::Node::Ctor(_))
     }

@@ -221,8 +221,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             // Prevent const trait methods from being annotated as `stable`.
             // FIXME: Do this as part of stability checking.
             if self.is_const_stable_const_fn() {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-                if crate::const_eval::is_parent_const_impl_raw(tcx, hir_id) {
+                if crate::const_eval::is_parent_const_impl_raw(tcx, def_id) {
                     self.ccx
                         .tcx
                         .sess

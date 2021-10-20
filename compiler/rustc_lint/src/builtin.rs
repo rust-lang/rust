@@ -610,8 +610,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
                 let Some(def_id) = real_trait.as_local() else { return };
-                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
-                let Some(Node::Item(item)) = cx.tcx.hir().find(hir_id) else { return };
+                let Some(Node::Item(item)) = cx.tcx.hir().find_by_def_id(def_id) else { return };
                 if let hir::VisibilityKind::Inherited = item.vis.node {
                     for impl_item_ref in items {
                         self.private_traits.insert(impl_item_ref.id.hir_id());
@@ -1212,7 +1211,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
                                 Some(generics),
-                                cx.tcx.hir().get_generics(it.id.def_id.to_def_id()).unwrap(),
+                                cx.tcx.hir().get_generics(it.id.def_id).unwrap(),
                                 it.span,
                             );
                         }

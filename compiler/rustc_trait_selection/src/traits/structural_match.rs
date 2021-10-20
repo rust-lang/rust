@@ -48,7 +48,6 @@ pub enum NonStructuralMatchTy<'tcx> {
 /// that arose when the requirement was not enforced completely, see
 /// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
 pub fn search_for_structural_match_violation<'tcx>(
-    _id: hir::HirId,
     span: Span,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,

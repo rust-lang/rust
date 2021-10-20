@@ -787,9 +787,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                 }
             };
 
-            if traits::search_for_structural_match_violation(param.hir_id, param.span, tcx, ty)
-                .is_some()
-            {
+            if traits::search_for_structural_match_violation(param.span, tcx, ty).is_some() {
                 // We use the same error code in both branches, because this is really the same
                 // issue: we just special-case the message for type parameters to make it
                 // clearer.

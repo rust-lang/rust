@@ -361,8 +361,7 @@ impl<'hir> Map<'hir> {
         id.as_local().and_then(|id| self.find(self.local_def_id_to_hir_id(id)))
     }
 
-    pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics<'hir>> {
-        let id = id.as_local()?;
+    pub fn get_generics(&self, id: LocalDefId) -> Option<&'hir Generics<'hir>> {
         let node = self.tcx.hir_owner(id)?;
         match node.node {
             OwnerNode::ImplItem(impl_item) => Some(&impl_item.generics),

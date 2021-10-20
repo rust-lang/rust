@@ -76,7 +76,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
             //
             // As a result, if this id is an FFI item (foreign item) then we only
             // let it through if it's included statically.
-            match tcx.hir().get(tcx.hir().local_def_id_to_hir_id(def_id)) {
+            match tcx.hir().get_by_def_id(def_id) {
                 Node::ForeignItem(..) => {
                     tcx.is_statically_included_foreign_item(def_id).then_some(def_id)
                 }

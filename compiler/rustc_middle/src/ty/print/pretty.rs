@@ -671,8 +671,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!("generator");
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
-                        let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
-                        let span = self.tcx().hir().span(hir_id);
+                        let span = self.tcx().def_span(did);
                         p!(write(
                             "@{}",
                             // This may end up in stderr diagnostics but it may also be emitted
@@ -708,11 +707,10 @@ pub trait PrettyPrinter<'tcx>:
                     p!(write("closure"));
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
-                        let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
                         if self.tcx().sess.opts.debugging_opts.span_free_formats {
                             p!("@", print_def_path(did.to_def_id(), substs));
                         } else {
-                            let span = self.tcx().hir().span(hir_id);
+                            let span = self.tcx().def_span(did);
                             p!(write(
                                 "@{}",
                                 // This may end up in stderr diagnostics but it may also be emitted

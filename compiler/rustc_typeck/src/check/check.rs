@@ -1314,7 +1314,7 @@ fn check_enum<'tcx>(
             let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
             let i_span = match variant_i.disr_expr {
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
-                None => tcx.hir().span(variant_i_hir_id),
+                None => tcx.def_span(variant_did),
             };
             let span = match v.disr_expr {
                 Some(ref expr) => tcx.hir().span(expr.hir_id),

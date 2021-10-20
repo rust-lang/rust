@@ -2082,8 +2082,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// with the name of the crate containing the impl.
     pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, Symbol> {
         if let Some(impl_did) = impl_did.as_local() {
-            let hir_id = self.hir().local_def_id_to_hir_id(impl_did);
-            Ok(self.hir().span(hir_id))
+            Ok(self.def_span(impl_did))
         } else {
             Err(self.crate_name(impl_did.krate))
         }
@@ -2130,7 +2129,7 @@ impl<'tcx> TyCtxt<'tcx> {
 /// Yields the parent function's `LocalDefId` if `def_id` is an `impl Trait` definition.
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<LocalDefId> {
     let def_id = def_id.as_local()?;
-    if let Node::Item(item) = tcx.hir().get(tcx.hir().local_def_id_to_hir_id(def_id)) {
+    if let Node::Item(item) = tcx.hir().get_by_def_id(def_id) {
         if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.kind {
             return match opaque_ty.origin {
                 hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent) => {

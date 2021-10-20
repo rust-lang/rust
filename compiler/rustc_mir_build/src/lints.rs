@@ -11,9 +11,8 @@ use std::ops::ControlFlow;
 
 crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
-    if let Some(fn_kind) = tcx.hir().get(hir_id).fn_kind() {
+    if let Some(fn_kind) = tcx.hir().get_by_def_id(def_id).fn_kind() {
         if let FnKind::Closure = fn_kind {
             // closures can't recur, so they don't matter.
             return;
