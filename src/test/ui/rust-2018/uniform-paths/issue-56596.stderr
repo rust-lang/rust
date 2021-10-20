@@ -1,9 +1,10 @@
-error[E0659]: `issue_56596` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `issue_56596` is ambiguous
   --> $DIR/issue-56596.rs:12:5
    |
 LL | use issue_56596;
    |     ^^^^^^^^^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
    = note: `issue_56596` could refer to a crate passed with `--extern`
    = help: use `::issue_56596` to refer to this crate unambiguously
 note: `issue_56596` could also refer to the module imported here

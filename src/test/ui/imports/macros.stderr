@@ -1,9 +1,10 @@
-error[E0659]: `m` is ambiguous (glob import vs macro-expanded name in the same module during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:16:5
    |
 LL |     m! {
    |     ^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a name from a glob import and a macro-expanded name in the same module during import or macro resolution
 note: `m` could refer to the macro imported here
   --> $DIR/macros.rs:18:13
    |
@@ -16,12 +17,13 @@ LL |     use two_macros::*;
    |         ^^^^^^^^^^^^^
    = help: consider adding an explicit import of `m` to disambiguate
 
-error[E0659]: `m` is ambiguous (glob import vs macro-expanded name in the same module during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:16:5
    |
 LL |     m! {
    |     ^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a name from a glob import and a macro-expanded name in the same module during import or macro resolution
 note: `m` could refer to the macro imported here
   --> $DIR/macros.rs:18:13
    |
@@ -34,12 +36,13 @@ LL |     use two_macros::*;
    |         ^^^^^^^^^^^^^
    = help: consider adding an explicit import of `m` to disambiguate
 
-error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:30:9
    |
 LL |         m! {
    |         ^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `m` could refer to the macro imported here
   --> $DIR/macros.rs:31:17
    |

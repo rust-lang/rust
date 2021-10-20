@@ -1,9 +1,10 @@
-error[E0659]: `env` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
+error[E0659]: `env` is ambiguous
   --> $DIR/glob-shadowing.rs:11:17
    |
 LL |         let x = env!("PATH");
    |                 ^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
    = note: `env` could refer to a macro from prelude
 note: `env` could also refer to the macro imported here
   --> $DIR/glob-shadowing.rs:9:9
@@ -13,12 +14,13 @@ LL |     use m::*;
    = help: consider adding an explicit import of `env` to disambiguate
    = help: or use `self::env` to refer to this macro unambiguously
 
-error[E0659]: `env` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
+error[E0659]: `env` is ambiguous
   --> $DIR/glob-shadowing.rs:19:21
    |
 LL |             let x = env!("PATH");
    |                     ^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
    = note: `env` could refer to a macro from prelude
 note: `env` could also refer to the macro imported here
   --> $DIR/glob-shadowing.rs:17:13
@@ -27,12 +29,13 @@ LL |         use m::*;
    |             ^^^^
    = help: consider adding an explicit import of `env` to disambiguate
 
-error[E0659]: `fenv` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
+error[E0659]: `fenv` is ambiguous
   --> $DIR/glob-shadowing.rs:29:21
    |
 LL |             let x = fenv!();
    |                     ^^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
 note: `fenv` could refer to the macro imported here
   --> $DIR/glob-shadowing.rs:27:13
    |

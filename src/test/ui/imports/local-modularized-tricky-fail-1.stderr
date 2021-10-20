@@ -1,9 +1,10 @@
-error[E0659]: `exported` is ambiguous (glob import vs macro-expanded name in the same module during import/macro resolution)
+error[E0659]: `exported` is ambiguous
   --> $DIR/local-modularized-tricky-fail-1.rs:28:1
    |
 LL | exported!();
    | ^^^^^^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a name from a glob import and a macro-expanded name in the same module during import or macro resolution
 note: `exported` could refer to the macro defined here
   --> $DIR/local-modularized-tricky-fail-1.rs:5:5
    |
@@ -22,12 +23,13 @@ LL | use inner1::*;
    = help: consider adding an explicit import of `exported` to disambiguate
    = note: this error originates in the macro `define_exported` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `exported` is ambiguous (glob import vs macro-expanded name in the same module during import/macro resolution)
+error[E0659]: `exported` is ambiguous
   --> $DIR/local-modularized-tricky-fail-1.rs:28:1
    |
 LL | exported!();
    | ^^^^^^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a name from a glob import and a macro-expanded name in the same module during import or macro resolution
 note: `exported` could refer to the macro defined here
   --> $DIR/local-modularized-tricky-fail-1.rs:5:5
    |
@@ -46,12 +48,13 @@ LL | use inner1::*;
    = help: consider adding an explicit import of `exported` to disambiguate
    = note: this error originates in the macro `define_exported` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `panic` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `panic` is ambiguous
   --> $DIR/local-modularized-tricky-fail-1.rs:36:5
    |
 LL |     panic!();
    |     ^^^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
    = note: `panic` could refer to a macro from prelude
 note: `panic` could also refer to the macro defined here
   --> $DIR/local-modularized-tricky-fail-1.rs:11:5
@@ -66,12 +69,13 @@ LL |       define_panic!();
    = help: use `crate::panic` to refer to this macro unambiguously
    = note: this error originates in the macro `define_panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `include` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `include` is ambiguous
   --> $DIR/local-modularized-tricky-fail-1.rs:47:1
    |
 LL | include!();
    | ^^^^^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
    = note: `include` could refer to a macro from prelude
 note: `include` could also refer to the macro defined here
   --> $DIR/local-modularized-tricky-fail-1.rs:17:5

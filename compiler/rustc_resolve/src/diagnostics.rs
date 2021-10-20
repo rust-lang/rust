@@ -1165,14 +1165,9 @@ impl<'a> Resolver<'a> {
             (b1, b2, misc1, misc2, false)
         };
 
-        let mut err = struct_span_err!(
-            self.session,
-            ident.span,
-            E0659,
-            "`{ident}` is ambiguous ({why})",
-            why = kind.descr()
-        );
+        let mut err = struct_span_err!(self.session, ident.span, E0659, "`{ident}` is ambiguous");
         err.span_label(ident.span, "ambiguous name");
+        err.note(&format!("ambiguous because of {}", kind.descr()));
 
         let mut could_refer_to = |b: &NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
             let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);

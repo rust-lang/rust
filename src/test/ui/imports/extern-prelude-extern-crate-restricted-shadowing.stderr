@@ -9,12 +9,13 @@ LL | define_other_core!();
    |
    = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `Vec` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `Vec` is ambiguous
   --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:13:9
    |
 LL |         Vec::panic!();
    |         ^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `Vec` could refer to the crate imported here
   --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:5:9
    |

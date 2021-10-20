@@ -1,9 +1,10 @@
-error[E0659]: `Foo` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `Foo` is ambiguous
   --> $DIR/block-scoped-shadow.rs:11:9
    |
 LL |     use Foo::*;
    |         ^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
 note: `Foo` could refer to the enum defined here
   --> $DIR/block-scoped-shadow.rs:10:5
    |
@@ -16,12 +17,13 @@ LL | enum Foo {}
    | ^^^^^^^^^^^
    = help: use `crate::Foo` to refer to this enum unambiguously
 
-error[E0659]: `std` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `std` is ambiguous
   --> $DIR/block-scoped-shadow.rs:18:9
    |
 LL |     use std as foo;
    |         ^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
 note: `std` could refer to the enum defined here
   --> $DIR/block-scoped-shadow.rs:17:5
    |
@@ -34,12 +36,13 @@ LL | struct std;
    | ^^^^^^^^^^^
    = help: use `crate::std` to refer to this struct unambiguously
 
-error[E0659]: `std` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `std` is ambiguous
   --> $DIR/block-scoped-shadow.rs:18:9
    |
 LL |     use std as foo;
    |         ^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
 note: `std` could refer to the function defined here
   --> $DIR/block-scoped-shadow.rs:16:5
    |

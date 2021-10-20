@@ -1,9 +1,10 @@
-error[E0659]: `empty_helper` is ambiguous (derive helper attribute vs any other name)
+error[E0659]: `empty_helper` is ambiguous
   --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:3
    |
 LL | #[empty_helper]
    |   ^^^^^^^^^^^^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a derive helper attribute
 note: `empty_helper` could refer to the derive helper attribute defined here
   --> $DIR/helper-attr-blocked-by-import-ambig.rs:10:10
    |
