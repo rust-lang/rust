@@ -6,7 +6,7 @@ LL | |
 LL | | /// Some docs.
 LL | |
 ...  |
-LL | |     pub fn bar() {}
+LL | |     }
 LL | | }
    | |_^
    |

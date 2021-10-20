@@ -11,3 +11,12 @@ pub mod foo {
     //~^ ERROR missing code example in this documentation
     pub fn bar() {}
 }
+
+// This impl is here to ensure the lint isn't emitted for foreign traits implementations.
+impl std::ops::Neg for Foo {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self
+    }
+}
