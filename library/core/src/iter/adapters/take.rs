@@ -1,5 +1,7 @@
 use crate::cmp;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
+use crate::iter::{
+    adapters::SourceIter, traits::EndlessOrExact, FusedIterator, InPlaceIterable, TrustedLen,
+};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
@@ -234,7 +236,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
+impl<I> ExactSizeIterator for Take<I> where I: EndlessOrExact {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Take<I> where I: FusedIterator {}

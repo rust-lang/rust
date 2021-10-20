@@ -1,5 +1,5 @@
 use crate::intrinsics::unlikely;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
+use crate::iter::{adapters::SourceIter, traits::EndlessIterator, FusedIterator, InPlaceIterable};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that skips over `n` elements of `iter`.
@@ -237,3 +237,6 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Skip<I> {}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I: EndlessIterator> EndlessIterator for Skip<I> {}

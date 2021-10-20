@@ -1,4 +1,5 @@
 use crate::fmt;
+use crate::iter::traits::EndlessIterator;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
 use crate::ops::Try;
 
@@ -120,6 +121,12 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable, F> InPlaceIterable for SkipWhile<I, F> where
+    F: FnMut(&I::Item) -> bool
+{
+}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I: EndlessIterator, F> EndlessIterator for SkipWhile<I, F> where
     F: FnMut(&I::Item) -> bool
 {
 }

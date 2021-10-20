@@ -1,4 +1,4 @@
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::{traits::EndlessIterator, FusedIterator, TrustedLen};
 
 /// Creates a new iterator that endlessly repeats a single element.
 ///
@@ -127,3 +127,6 @@ impl<A: Clone> FusedIterator for Repeat<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<A: Clone> EndlessIterator for Repeat<A> {}

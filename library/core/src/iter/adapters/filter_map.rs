@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
+use crate::iter::{adapters::SourceIter, traits::EndlessIterator, FusedIterator, InPlaceIterable};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that uses `f` to both filter and map elements from `iter`.
@@ -144,6 +144,12 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<B, I: InPlaceIterable, F> InPlaceIterable for FilterMap<I, F> where
+    F: FnMut(I::Item) -> Option<B>
+{
+}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<B, I: EndlessIterator, F> EndlessIterator for FilterMap<I, F> where
     F: FnMut(I::Item) -> Option<B>
 {
 }

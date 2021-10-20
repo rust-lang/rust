@@ -1,5 +1,6 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
+use crate::iter::traits::EndlessIterator;
 use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
 use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
 
@@ -434,6 +435,12 @@ where
 // An additional method returning the number of times the source has been logically advanced
 // (without calling next()) would be needed to properly drop the remainder of the source.
 unsafe impl<A: InPlaceIterable, B: Iterator> InPlaceIterable for Zip<A, B> where A::Item: Copy {}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<A: EndlessIterator, B: Iterator> EndlessIterator for Zip<A, B> {}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<A: Iterator, B: EndlessIterator> EndlessIterator for Zip<A, B> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Debug, B: Debug> Debug for Zip<A, B> {

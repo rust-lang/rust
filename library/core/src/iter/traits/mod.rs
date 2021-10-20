@@ -11,6 +11,10 @@ pub use self::double_ended::DoubleEndedIterator;
 pub use self::exact_size::ExactSizeIterator;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::iterator::Iterator;
+#[unstable(issue = "none", feature = "endless")]
+pub use self::marker::EndlessIterator;
+#[unstable(issue = "none", feature = "endless")]
+pub(super) use self::marker::EndlessOrExact;
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub use self::marker::InPlaceIterable;
 #[unstable(feature = "trusted_step", issue = "85731")]

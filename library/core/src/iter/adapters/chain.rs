@@ -1,3 +1,4 @@
+use crate::iter::traits::EndlessIterator;
 use crate::iter::{DoubleEndedIterator, FusedIterator, Iterator, TrustedLen};
 use crate::ops::Try;
 
@@ -324,3 +325,9 @@ where
     B: TrustedLen<Item = A::Item>,
 {
 }
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<A: EndlessIterator, B> EndlessIterator for Chain<A, B> where B: Iterator<Item = A::Item> {}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<A, B: EndlessIterator> EndlessIterator for Chain<A, B> where A: Iterator<Item = B::Item> {}

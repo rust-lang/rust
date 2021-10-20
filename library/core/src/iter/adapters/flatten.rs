@@ -1,4 +1,5 @@
 use crate::fmt;
+use crate::iter::traits::{EndlessIterator, EndlessOrExact};
 use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map, TrustedLen};
 use crate::ops::Try;
 
@@ -138,6 +139,26 @@ where
 {
 }
 
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I, U, F> EndlessIterator for FlatMap<I, U, F>
+where
+    I: EndlessIterator,
+    U: IntoIterator,
+    U::IntoIter: EndlessOrExact,
+    F: FnMut(I::Item) -> U,
+{
+}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I, U, F> EndlessIterator for FlatMap<I, U, F>
+where
+    I: EndlessOrExact,
+    U: IntoIterator,
+    U::IntoIter: EndlessIterator,
+    F: FnMut(I::Item) -> U,
+{
+}
+
 /// An iterator that flattens one level of nesting in an iterator of things
 /// that can be turned into iterators.
 ///
@@ -259,6 +280,22 @@ unsafe impl<I> TrustedLen for Flatten<I>
 where
     I: TrustedLen,
     <I as Iterator>::Item: TrustedConstSize,
+{
+}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I> EndlessIterator for Flatten<I>
+where
+    I: EndlessIterator,
+    I::Item: EndlessOrExact,
+{
+}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I> EndlessIterator for Flatten<I>
+where
+    I: EndlessOrExact,
+    I::Item: EndlessIterator,
 {
 }
 

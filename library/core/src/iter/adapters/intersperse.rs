@@ -1,3 +1,5 @@
+use crate::iter::traits::EndlessIterator;
+
 use super::Peekable;
 
 /// An iterator adapter that places a separator between all elements.
@@ -56,6 +58,9 @@ where
         intersperse_size_hint(&self.iter, self.needs_sep)
     }
 }
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I: EndlessIterator> EndlessIterator for Intersperse<I> where I::Item: Clone {}
 
 /// An iterator adapter that places a separator between all elements.
 ///
@@ -185,3 +190,6 @@ where
         accum
     })
 }
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I: EndlessIterator, G: FnMut() -> I::Item> EndlessIterator for IntersperseWith<I, G> {}

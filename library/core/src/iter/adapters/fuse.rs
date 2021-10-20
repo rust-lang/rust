@@ -1,5 +1,6 @@
 use crate::intrinsics;
 use crate::iter::adapters::zip::try_get_unchecked;
+use crate::iter::traits::EndlessIterator;
 use crate::iter::{
     DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess,
     TrustedRandomAccessNoCoerce,
@@ -232,6 +233,9 @@ where
 {
     const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
 }
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I: EndlessIterator> EndlessIterator for Fuse<I> {}
 
 /// Fuse specialization trait
 ///

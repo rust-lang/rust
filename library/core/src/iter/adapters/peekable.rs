@@ -1,3 +1,4 @@
+use crate::iter::traits::EndlessIterator;
 use crate::iter::{adapters::SourceIter, FusedIterator, TrustedLen};
 use crate::ops::{ControlFlow, Try};
 
@@ -333,3 +334,6 @@ where
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I: EndlessIterator> EndlessIterator for Peekable<I> {}

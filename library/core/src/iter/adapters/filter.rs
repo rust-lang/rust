@@ -1,4 +1,5 @@
 use crate::fmt;
+use crate::iter::traits::EndlessIterator;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
 use crate::ops::Try;
 
@@ -150,3 +151,6 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable, P> InPlaceIterable for Filter<I, P> where P: FnMut(&I::Item) -> bool {}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I: EndlessIterator, P> EndlessIterator for Filter<I, P> where P: FnMut(&I::Item) -> bool {}

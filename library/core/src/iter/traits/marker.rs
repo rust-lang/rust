@@ -72,3 +72,26 @@ pub unsafe trait InPlaceIterable: Iterator {}
 #[unstable(feature = "trusted_step", issue = "85731")]
 #[rustc_specialization_trait]
 pub unsafe trait TrustedStep: Step {}
+
+/// An iterator that is either empty or endless.
+///
+/// The iterator reports a size hint that is either `0, Some(0)` or `usize::MAX, None`.
+/// Since this is used to implement `ExactSizeIterator` for some adapters, iterators that
+/// are only empty should not implement this.
+///
+/// # Safety
+///
+/// The implementation must either be endless or empty.
+#[unstable(issue = "none", feature = "endless")]
+#[marker]
+pub unsafe trait EndlessIterator: Iterator {}
+
+#[unstable(issue = "none", feature = "endless")]
+#[marker]
+pub trait EndlessOrExact: Iterator {}
+
+#[unstable(issue = "none", feature = "endless")]
+impl<T: EndlessIterator> EndlessOrExact for T {}
+
+#[unstable(issue = "none", feature = "endless")]
+impl<T: ExactSizeIterator> EndlessOrExact for T {}

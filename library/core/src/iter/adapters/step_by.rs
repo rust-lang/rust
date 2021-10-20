@@ -1,4 +1,8 @@
-use crate::{intrinsics, iter::from_fn, ops::Try};
+use crate::{
+    intrinsics,
+    iter::{from_fn, traits::EndlessIterator},
+    ops::Try,
+};
 
 /// An iterator for stepping iterators by a custom amount.
 ///
@@ -233,3 +237,6 @@ where
 // StepBy can only make the iterator shorter, so the len will still fit.
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I: EndlessIterator> EndlessIterator for StepBy<I> {}

@@ -2,6 +2,7 @@ use crate::fmt;
 use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
+use crate::iter::traits::EndlessIterator;
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
 use crate::ops::Try;
 
@@ -216,3 +217,11 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<B, I: InPlaceIterable, F> InPlaceIterable for Map<I, F> where F: FnMut(I::Item) -> B {}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<B, I, F> EndlessIterator for Map<I, F>
+where
+    I: EndlessIterator,
+    F: FnMut(I::Item) -> B,
+{
+}

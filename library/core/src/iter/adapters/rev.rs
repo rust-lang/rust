@@ -1,3 +1,4 @@
+use crate::iter::traits::EndlessIterator;
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::ops::Try;
 
@@ -135,3 +136,6 @@ impl<I> FusedIterator for Rev<I> where I: FusedIterator + DoubleEndedIterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I> TrustedLen for Rev<I> where I: TrustedLen + DoubleEndedIterator {}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<I> EndlessIterator for Rev<I> where I: EndlessIterator + DoubleEndedIterator {}

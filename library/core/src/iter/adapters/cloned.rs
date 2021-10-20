@@ -1,6 +1,7 @@
 use crate::iter::adapters::{
     zip::try_get_unchecked, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
+use crate::iter::traits::EndlessIterator;
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::ops::Try;
 
@@ -138,6 +139,14 @@ where
 unsafe impl<'a, I, T: 'a> TrustedLen for Cloned<I>
 where
     I: TrustedLen<Item = &'a T>,
+    T: Clone,
+{
+}
+
+#[unstable(issue = "none", feature = "endless")]
+unsafe impl<'a, I, T: 'a> EndlessIterator for Cloned<I>
+where
+    I: EndlessIterator<Item = &'a T>,
     T: Clone,
 {
 }

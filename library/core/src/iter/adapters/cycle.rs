@@ -1,4 +1,10 @@
-use crate::{iter::FusedIterator, ops::Try};
+use crate::{
+    iter::{
+        traits::{EndlessIterator, EndlessOrExact},
+        FusedIterator,
+    },
+    ops::Try,
+};
 
 /// An iterator that repeats endlessly.
 ///
@@ -106,3 +112,6 @@ where
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
+
+#[unstable(issue = "none", feature = "none")]
+unsafe impl<I> EndlessIterator for Cycle<I> where I: Clone + EndlessOrExact {}
