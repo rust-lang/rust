@@ -883,8 +883,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.get_diagnostic_item(sym::unwind_safe_trait),
             self.tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),
         ];
-        let auto_traits =
-            vec!["`Clone`", "`Sync`", "`Send`", "`Unpin`", "`UnwindSafe`", "`RefUnwindSafe`"];
+        const AUTO_TRAITS: [&str; 6] =
+            ["`Clone`", "`Sync`", "`Send`", "`Unpin`", "`UnwindSafe`", "`RefUnwindSafe`"];
 
         let root_var_min_capture_list = min_captures.and_then(|m| m.get(&var_hir_id))?;
 
@@ -957,7 +957,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // by the root variable but not by the capture
             for (idx, _) in obligations_should_hold.iter().enumerate() {
                 if !obligations_holds_for_capture[idx] && obligations_should_hold[idx] {
-                    capture_problems.insert(auto_traits[idx]);
+                    capture_problems.insert(AUTO_TRAITS[idx]);
                 }
             }
 
@@ -1074,7 +1074,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
     ) -> (Vec<MigrationDiagnosticInfo>, String) {
         let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) else {
-            return (Vec::new(), format!(""));
+            return (Vec::new(), String::new());
         };
 
         let mut need_migrations = Vec::new();
