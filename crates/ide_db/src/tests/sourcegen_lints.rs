@@ -1,6 +1,7 @@
 //! Generates descriptors structure for unstable feature from Unstable Book
 use std::{borrow::Cow, fs, path::Path};
 
+use itertools::Itertools;
 use stdx::format_to;
 use test_utils::project_root;
 use xshell::cmd;
@@ -43,39 +44,62 @@ pub struct Lint {
 }
 
 fn generate_lint_descriptor(buf: &mut String) {
-    let stdout = cmd!("rustc -W help").read().unwrap();
+    // FIXME: rustdoc currently requires an input file for -Whelp cc https://github.com/rust-lang/rust/pull/88831
+    let file = project_root().join(file!());
+    let stdout = cmd!("rustdoc -W help {file}").read().unwrap();
     let start_lints = stdout.find("----  -------  -------").unwrap();
     let start_lint_groups = stdout.find("----  ---------").unwrap();
-    let end_lints = stdout.find("Lint groups provided by rustc:").unwrap();
-    let end_lint_groups = stdout
-        .find("Lint tools like Clippy can provide additional lints and lint groups.")
-        .unwrap();
+    let start_lints_rustdoc =
+        stdout.find("Lint checks provided by plugins loaded by this crate:").unwrap();
+    let start_lint_groups_rustdoc =
+        stdout.find("Lint groups provided by plugins loaded by this crate:").unwrap();
+
     buf.push_str(r#"pub const DEFAULT_LINTS: &[Lint] = &["#);
     buf.push('\n');
-    let mut lints = stdout[start_lints..end_lints]
-        .lines()
-        .skip(1)
-        .filter(|l| !l.is_empty())
-        .map(|line| {
+
+    let lints = stdout[start_lints..].lines().skip(1).take_while(|l| !l.is_empty()).map(|line| {
+        let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
+        let (_default_level, description) = rest.trim().split_once(char::is_whitespace).unwrap();
+        (name.trim(), Cow::Borrowed(description.trim()))
+    });
+    let lint_groups =
+        stdout[start_lint_groups..].lines().skip(1).take_while(|l| !l.is_empty()).map(|line| {
+            let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
+            (name.trim(), format!("lint group for: {}", lints.trim()).into())
+        });
+
+    lints.chain(lint_groups).sorted_by(|(ident, _), (ident2, _)| ident.cmp(ident2)).for_each(
+        |(name, description)| push_lint_completion(buf, &name.replace("-", "_"), &description),
+    );
+    buf.push_str("];\n");
+
+    // rustdoc
+
+    buf.push('\n');
+    buf.push_str(r#"pub const RUSTDOC_LINTS: &[Lint] = &["#);
+    buf.push('\n');
+
+    let lints_rustdoc =
+        stdout[start_lints_rustdoc..].lines().skip(2).take_while(|l| !l.is_empty()).map(|line| {
             let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
             let (_default_level, description) =
                 rest.trim().split_once(char::is_whitespace).unwrap();
             (name.trim(), Cow::Borrowed(description.trim()))
-        })
-        .collect::<Vec<_>>();
-    lints.extend(
-        stdout[start_lint_groups..end_lint_groups].lines().skip(1).filter(|l| !l.is_empty()).map(
+        });
+    let lint_groups_rustdoc =
+        stdout[start_lint_groups_rustdoc..].lines().skip(2).take_while(|l| !l.is_empty()).map(
             |line| {
                 let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
                 (name.trim(), format!("lint group for: {}", lints.trim()).into())
             },
-        ),
-    );
+        );
 
-    lints.sort_by(|(ident, _), (ident2, _)| ident.cmp(ident2));
-    lints.into_iter().for_each(|(name, description)| {
-        push_lint_completion(buf, &name.replace("-", "_"), &description)
-    });
+    lints_rustdoc
+        .chain(lint_groups_rustdoc)
+        .sorted_by(|(ident, _), (ident2, _)| ident.cmp(ident2))
+        .for_each(|(name, description)| {
+            push_lint_completion(buf, &name.replace("-", "_"), &description)
+        });
     buf.push_str("];\n");
 }
 
@@ -126,8 +150,13 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
             clippy_lints.push(clippy_lint)
         } else if let Some(line) = line.strip_prefix(r#""docs": ""#) {
             let prefix_to_strip = r#" ### What it does"#;
-            // FIXME: replace unwrap_or with expect again, currently there is one lint that uses a different format in the json...
-            let line = line.strip_prefix(prefix_to_strip).unwrap_or(line);
+            let line = match line.strip_prefix(prefix_to_strip) {
+                Some(line) => line,
+                None => {
+                    eprintln!("unexpected clippy prefix for {}", clippy_lints.last().unwrap().id);
+                    continue;
+                }
+            };
             // Only take the description, any more than this is a lot of additional data we would embed into the exe
             // which seems unnecessary
             let up_to = line.find(r#"###"#).expect("no second section found?");

@@ -502,6 +502,46 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
 ];
 
+pub const RUSTDOC_LINTS: &[Lint] = &[
+    Lint {
+        label: "rustdoc::all",
+        description: r##"lint group for: rustdoc::broken-intra-doc-links, rustdoc::private-intra-doc-links, rustdoc::missing-doc-code-examples, rustdoc::private-doc-tests, rustdoc::invalid-codeblock-attributes, rustdoc::invalid-rust-codeblocks, rustdoc::invalid-html-tags, rustdoc::bare-urls, rustdoc::missing-crate-level-docs"##,
+    },
+    Lint { label: "rustdoc::bare_urls", description: r##"detects URLs that are not hyperlinks"## },
+    Lint {
+        label: "rustdoc::broken_intra_doc_links",
+        description: r##"failures in resolving intra-doc link targets"##,
+    },
+    Lint {
+        label: "rustdoc::invalid_codeblock_attributes",
+        description: r##"codeblock attribute looks a lot like a known one"##,
+    },
+    Lint {
+        label: "rustdoc::invalid_html_tags",
+        description: r##"detects invalid HTML tags in doc comments"##,
+    },
+    Lint {
+        label: "rustdoc::invalid_rust_codeblocks",
+        description: r##"codeblock could not be parsed as valid Rust or is empty"##,
+    },
+    Lint {
+        label: "rustdoc::missing_crate_level_docs",
+        description: r##"detects crates with no crate-level documentation"##,
+    },
+    Lint {
+        label: "rustdoc::missing_doc_code_examples",
+        description: r##"detects publicly-exported items without code samples in their documentation"##,
+    },
+    Lint {
+        label: "rustdoc::private_doc_tests",
+        description: r##"detects code samples in docs of private items not documented by rustdoc"##,
+    },
+    Lint {
+        label: "rustdoc::private_intra_doc_links",
+        description: r##"linking from a public item to a private one"##,
+    },
+];
+
 pub const FEATURES: &[Lint] = &[
     Lint {
         label: "abi_c_cmse_nonsecure_call",
@@ -5572,11 +5612,9 @@ outside ticks in documentation."##,
     },
     Lint {
         label: "clippy::double_must_use",
-        description: r##"Checks for a [`#[must_use]`] attribute without
+        description: r##"Checks for a `#[must_use]` attribute without
 further information on functions and methods that return a type already
-marked as `#[must_use]`.
-
-[`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"##,
+marked as `#[must_use]`."##,
     },
     Lint {
         label: "clippy::double_neg",
@@ -5821,6 +5859,12 @@ derives the Copy trait"##,
         label: "clippy::forget_ref",
         description: r##"Checks for calls to `std::mem::forget` with a reference
 instead of an owned value."##,
+    },
+    Lint {
+        label: "clippy::format_in_format_args",
+        description: r##"Detects `format!` within the arguments of another macro that does
+formatting such as `format!` itself, `write!` or `println!`. Suggests
+inlining the `format!` call."##,
     },
     Lint {
         label: "clippy::from_iter_instead_of_collect",
@@ -6120,8 +6164,7 @@ where expr has a type that implements `Drop`"##,
     },
     Lint {
         label: "clippy::let_underscore_must_use",
-        description: r##"Checks for `let _ = <expr>`
-where expr is #[must_use]"##,
+        description: r##"Checks for `let _ = <expr>` where expr is `#[must_use]`"##,
     },
     Lint { label: "clippy::let_unit_value", description: r##"Checks for binding a unit value."## },
     Lint {
@@ -6194,23 +6237,7 @@ be more readably expressed as `(3..8).contains(x)`."##,
     },
     Lint {
         label: "clippy::manual_split_once",
-        description: r##"**What it does:** Checks for usages of `str::splitn(2, _)`
-
-**Why is this bad?** `split_once` is both clearer in intent and slightly more efficient.
-
-**Known problems:** None.
-
-**Example:**
-
-```rust
-// Bad
- let (key, value) = _.splitn(2, '=').next_tuple()?;
- let value = _.splitn(2, '=').nth(1)?;
-
-// Good
-let (key, value) = _.split_once('=')?;
-let value = _.split_once('=')?.1;
-```"##,
+        description: r##"Checks for usages of `str::splitn(2, _)`"##,
     },
     Lint {
         label: "clippy::manual_str_repeat",
@@ -6303,6 +6330,10 @@ instead. It also checks for `if let &foo = bar` blocks."##,
     Lint {
         label: "clippy::match_single_binding",
         description: r##"Checks for useless match that binds to only one value."##,
+    },
+    Lint {
+        label: "clippy::match_str_case_mismatch",
+        description: r##"Checks for `match` expressions modifying the case of a string with non-compliant arms"##,
     },
     Lint {
         label: "clippy::match_wild_err_arm",
@@ -6433,17 +6464,13 @@ used."##,
     Lint {
         label: "clippy::must_use_candidate",
         description: r##"Checks for public functions that have no
-[`#[must_use]`] attribute, but return something not already marked
-must-use, have no mutable arg and mutate no statics.
-
-[`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"##,
+`#[must_use]` attribute, but return something not already marked
+must-use, have no mutable arg and mutate no statics."##,
     },
     Lint {
         label: "clippy::must_use_unit",
-        description: r##"Checks for a [`#[must_use]`] attribute on
-unit-returning functions and methods.
-
-[`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"##,
+        description: r##"Checks for a `#[must_use]` attribute on
+unit-returning functions and methods."##,
     },
     Lint {
         label: "clippy::mut_from_ref",
@@ -6590,6 +6617,10 @@ implementation of
     Lint {
         label: "clippy::no_effect",
         description: r##"Checks for statements which have no effect."##,
+    },
+    Lint {
+        label: "clippy::no_effect_underscore_binding",
+        description: r##"Checks for binding to underscore prefixed variable without side-effects."##,
     },
     Lint {
         label: "clippy::non_ascii_literal",
@@ -7155,6 +7186,12 @@ assign a value in it."##,
         label: "clippy::to_string_in_display",
         description: r##"Checks for uses of `to_string()` in `Display` traits."##,
     },
+    Lint {
+        label: "clippy::to_string_in_format_args",
+        description: r##"Checks for [`ToString::to_string`](https://doc.rust-lang.org/std/string/trait.ToString.html#tymethod.to_string)
+applied to a type that implements [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
+in a macro that does formatting."##,
+    },
     Lint { label: "clippy::todo", description: r##"Checks for usage of `todo!`."## },
     Lint {
         label: "clippy::too_many_arguments",
@@ -7194,6 +7231,7 @@ syntax specifications for trait bounds are used simultaneously."##,
         label: "clippy::transmute_int_to_float",
         description: r##"Checks for transmutes from an integer to a float."##,
     },
+    Lint { label: "clippy::transmute_num_to_bytes", description: r##""## },
     Lint {
         label: "clippy::transmute_ptr_to_ptr",
         description: r##"Checks for transmutes from a pointer to a pointer, or
@@ -7255,6 +7293,12 @@ that is not equal to its
     Lint {
         label: "clippy::uninit_assumed_init",
         description: r##"Checks for `MaybeUninit::uninit().assume_init()`."##,
+    },
+    Lint {
+        label: "clippy::uninit_vec",
+        description: r##"Checks for `set_len()` call that creates `Vec` with uninitialized elements.
+This is commonly caused by calling `set_len()` right after allocating or
+reserving a buffer with `new()`, `default()`, `with_capacity()`, or `reserve()`."##,
     },
     Lint {
         label: "clippy::unit_arg",
