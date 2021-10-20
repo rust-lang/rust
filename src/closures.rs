@@ -160,6 +160,7 @@ fn rewrite_closure_with_block(
             .first()
             .map(|attr| attr.span.to(body.span))
             .unwrap_or(body.span),
+        could_be_bare_literal: false,
     };
     let block = crate::expr::rewrite_block_with_visitor(
         context,

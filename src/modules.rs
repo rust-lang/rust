@@ -27,7 +27,6 @@ type FileModMap<'ast> = BTreeMap<FileName, Module<'ast>>;
 pub(crate) struct Module<'a> {
     ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
     pub(crate) items: Cow<'a, Vec<rustc_ast::ptr::P<ast::Item>>>,
-    attrs: Cow<'a, Vec<ast::Attribute>>,
     inner_attr: Vec<ast::Attribute>,
     pub(crate) span: Span,
 }
@@ -46,7 +45,6 @@ impl<'a> Module<'a> {
             .collect();
         Module {
             items: mod_items,
-            attrs: mod_attrs,
             inner_attr,
             span: mod_span,
             ast_mod_kind,

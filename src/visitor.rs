@@ -36,7 +36,7 @@ pub(crate) struct SnippetProvider {
     big_snippet: Lrc<String>,
     /// A position of the start of `big_snippet`, used as an offset.
     start_pos: usize,
-    /// A end position of the file that this snippet lives.
+    /// An end position of the file that this snippet lives.
     end_pos: usize,
 }
 

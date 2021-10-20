@@ -1,7 +1,6 @@
 [package]
 name = "rustfmt-config_proc_macro"
 version = "0.2.0"
-authors = ["topecongiro <seuchida@gmail.com>"]
 edition = "2018"
 description = "A collection of procedural macros for rustfmt"
 license = "Apache-2.0/MIT"
