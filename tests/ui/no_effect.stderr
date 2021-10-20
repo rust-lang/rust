@@ -156,5 +156,31 @@ error: statement with no effect
 LL |     FooString { s: s };
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 26 previous errors
+error: binding to `_` prefixed variable with no side-effect
+  --> $DIR/no_effect.rs:93:5
+   |
+LL |     let _unused = 1;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::no-effect-underscore-binding` implied by `-D warnings`
+
+error: binding to `_` prefixed variable with no side-effect
+  --> $DIR/no_effect.rs:94:5
+   |
+LL |     let _penguin = || println!("Some helpful closure");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: binding to `_` prefixed variable with no side-effect
+  --> $DIR/no_effect.rs:95:5
+   |
+LL |     let _duck = Struct { field: 0 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: binding to `_` prefixed variable with no side-effect
+  --> $DIR/no_effect.rs:96:5
+   |
+LL |     let _cat = [2, 4, 6, 8][2];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 30 previous errors
 

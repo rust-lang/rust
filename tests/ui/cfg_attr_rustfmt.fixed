@@ -1,7 +1,7 @@
 // run-rustfix
 #![feature(stmt_expr_attributes)]
 
-#![allow(unused, clippy::no_effect)]
+#![allow(unused, clippy::no_effect, clippy::unnecessary_operation)]
 #![warn(clippy::deprecated_cfg_attr)]
 
 // This doesn't get linted, see known problems

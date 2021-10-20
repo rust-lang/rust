@@ -364,6 +364,7 @@ store.register_lints(&[
     neg_multiply::NEG_MULTIPLY,
     new_without_default::NEW_WITHOUT_DEFAULT,
     no_effect::NO_EFFECT,
+    no_effect::NO_EFFECT_UNDERSCORE_BINDING,
     no_effect::UNNECESSARY_OPERATION,
     non_copy_const::BORROW_INTERIOR_MUTABLE_CONST,
     non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST,

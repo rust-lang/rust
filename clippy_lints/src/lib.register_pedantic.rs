@@ -72,6 +72,7 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(needless_continue::NEEDLESS_CONTINUE),
     LintId::of(needless_for_each::NEEDLESS_FOR_EACH),
     LintId::of(needless_pass_by_value::NEEDLESS_PASS_BY_VALUE),
+    LintId::of(no_effect::NO_EFFECT_UNDERSCORE_BINDING),
     LintId::of(non_expressive_names::MANY_SINGLE_CHAR_NAMES),
     LintId::of(non_expressive_names::SIMILAR_NAMES),
     LintId::of(pass_by_ref_or_value::LARGE_TYPES_PASSED_BY_VALUE),

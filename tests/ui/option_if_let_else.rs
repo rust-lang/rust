@@ -1,8 +1,7 @@
 // edition:2018
 // run-rustfix
 #![warn(clippy::option_if_let_else)]
-#![allow(clippy::redundant_closure)]
-#![allow(clippy::ref_option_ref, clippy::equatable_if_let)]
+#![allow(clippy::redundant_closure, clippy::ref_option_ref, clippy::equatable_if_let)]
 
 fn bad1(string: Option<&str>) -> (bool, &str) {
     if let Some(x) = string {
