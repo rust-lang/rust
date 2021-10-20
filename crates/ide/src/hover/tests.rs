@@ -4125,20 +4125,20 @@ foo_macro!(
 );
 "#,
         expect![[r#"
-                *[`Foo`]*
+            *[`Foo`]*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub struct Foo
-                ```
+            ```rust
+            pub struct Foo
+            ```
 
-                ---
+            ---
 
-                Doc comment for [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
-            "#]],
+            Doc comment for [`Foo`](https://doc.rust-lang.org/nightly/test/struct.Foo.html)
+        "#]],
     );
 }
 
@@ -4150,19 +4150,19 @@ fn hover_intra_in_attr() {
 pub struct Foo;
 "#,
         expect![[r#"
-                *[`Foo`]*
+            *[`Foo`]*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub struct Foo
-                ```
+            ```rust
+            pub struct Foo
+            ```
 
-                ---
+            ---
 
-                Doc comment for [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
-            "#]],
+            Doc comment for [`Foo`](https://doc.rust-lang.org/nightly/test/struct.Foo.html)
+        "#]],
     );
 }
