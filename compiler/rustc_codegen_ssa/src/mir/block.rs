@@ -845,6 +845,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         options: ast::InlineAsmOptions,
         line_spans: &[Span],
         destination: Option<mir::BasicBlock>,
+        instance: Instance<'_>,
     ) {
         let span = terminator.source_info.span;
 
@@ -898,7 +899,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             })
             .collect();
 
-        bx.codegen_inline_asm(template, &operands, options, line_spans);
+        bx.codegen_inline_asm(template, &operands, options, line_spans, instance);
 
         if let Some(target) = destination {
             helper.funclet_br(self, &mut bx, target);
@@ -1029,6 +1030,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     options,
                     line_spans,
                     destination,
+                    self.instance,
                 );
             }
         }

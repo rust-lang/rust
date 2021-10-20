@@ -58,6 +58,7 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
         operands: &[InlineAsmOperandRef<'tcx, Self>],
         options: InlineAsmOptions,
         line_spans: &[Span],
+        instance: Instance<'_>,
     );
 }
 
