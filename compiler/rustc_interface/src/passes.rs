@@ -838,6 +838,7 @@ pub fn create_global_ctxt<'tcx>(
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
                 queries.as_dyn(),
+                rustc_query_impl::query_callbacks(arena),
                 crate_name,
                 outputs,
             )

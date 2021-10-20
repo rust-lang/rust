@@ -224,7 +224,7 @@ pub(crate) fn run_aot(
                     tcx,
                     (backend_config.clone(), cgu.name()),
                     module_codegen,
-                    rustc_middle::dep_graph::hash_result,
+                    Some(rustc_middle::dep_graph::hash_result),
                 );
 
                 if let Some((id, product)) = work_product {

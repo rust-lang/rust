@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
+use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
 use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
 use crate::query::job::{
@@ -382,7 +382,6 @@ fn try_execute_query<CTX, C>(
     lookup: QueryLookup,
     dep_node: Option<DepNode<CTX::DepKind>>,
     query: &QueryVtable<CTX, C::Key, C::Value>,
-    compute: fn(CTX::DepContext, C::Key) -> C::Value,
 ) -> (C::Stored, Option<DepNodeIndex>)
 where
     C: QueryCache,
@@ -398,7 +397,7 @@ where
         query.dep_kind,
     ) {
         TryGetJob::NotYetStarted(job) => {
-            let (result, dep_node_index) = execute_job(tcx, key, dep_node, query, job.id, compute);
+            let (result, dep_node_index) = execute_job(tcx, key, dep_node, query, job.id);
             let result = job.complete(cache, result, dep_node_index);
             (result, Some(dep_node_index))
         }
@@ -429,7 +428,6 @@ fn execute_job<CTX, K, V>(
     mut dep_node_opt: Option<DepNode<CTX::DepKind>>,
     query: &QueryVtable<CTX, K, V>,
     job_id: QueryJobId<CTX::DepKind>,
-    compute: fn(CTX::DepContext, K) -> V,
 ) -> (V, DepNodeIndex)
 where
     K: Clone + DepNodeParams<CTX::DepContext>,
@@ -441,7 +439,7 @@ where
     // Fast path for when incr. comp. is off.
     if !dep_graph.is_fully_enabled() {
         let prof_timer = tcx.dep_context().profiler().query_provider();
-        let result = tcx.start_query(job_id, None, || compute(*tcx.dep_context(), key));
+        let result = tcx.start_query(job_id, None, || query.compute(*tcx.dep_context(), key));
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
         return (result, dep_node_index);
@@ -455,7 +453,7 @@ where
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = tcx.start_query(job_id, None, || {
-            try_load_from_disk_and_cache_in_memory(tcx, &key, &dep_node, query, compute)
+            try_load_from_disk_and_cache_in_memory(tcx, &key, &dep_node, query)
         }) {
             return ret;
         }
@@ -467,14 +465,14 @@ where
     let (result, dep_node_index) = tcx.start_query(job_id, Some(&diagnostics), || {
         if query.anon {
             return dep_graph.with_anon_task(*tcx.dep_context(), query.dep_kind, || {
-                compute(*tcx.dep_context(), key)
+                query.compute(*tcx.dep_context(), key)
             });
         }
 
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node = dep_node_opt.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
 
-        dep_graph.with_task(dep_node, *tcx.dep_context(), key, compute, query.hash_result)
+        dep_graph.with_task(dep_node, *tcx.dep_context(), key, query.compute, query.hash_result)
     });
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -498,7 +496,6 @@ fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
     key: &K,
     dep_node: &DepNode<CTX::DepKind>,
     query: &QueryVtable<CTX, K, V>,
-    compute: fn(CTX::DepContext, K) -> V,
 ) -> Option<(V, DepNodeIndex)>
 where
     K: Clone,
@@ -520,14 +517,6 @@ where
         let result = query.try_load_from_disk(tcx, prev_dep_node_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-        // We always expect to find a cached result for things that
-        // can be forced from `DepNode`.
-        debug_assert!(
-            !dep_node.kind.fingerprint_style().reconstructible() || result.is_some(),
-            "missing on-disk cache entry for {:?}",
-            dep_node
-        );
-
         if let Some(result) = result {
             // If `-Zincremental-verify-ich` is specified, re-hash results from
             // the cache and make sure that they have the expected fingerprint.
@@ -537,6 +526,14 @@ where
 
             return Some((result, dep_node_index));
         }
+
+        // We always expect to find a cached result for things that
+        // can be forced from `DepNode`.
+        debug_assert!(
+            !tcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
+            "missing on-disk cache entry for {:?}",
+            dep_node
+        );
     }
 
     // We could not load a result from the on-disk cache, so
@@ -544,7 +541,7 @@ where
     let prof_timer = tcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = dep_graph.with_ignore(|| compute(*tcx.dep_context(), key.clone()));
+    let result = dep_graph.with_ignore(|| query.compute(*tcx.dep_context(), key.clone()));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -577,12 +574,12 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
     );
 
     debug!("BEGIN verify_ich({:?})", dep_node);
-    let mut hcx = tcx.create_stable_hashing_context();
-
-    let new_hash = query.hash_result(&mut hcx, result).unwrap_or(Fingerprint::ZERO);
-    debug!("END verify_ich({:?})", dep_node);
-
+    let new_hash = query.hash_result.map_or(Fingerprint::ZERO, |f| {
+        let mut hcx = tcx.create_stable_hashing_context();
+        f(&mut hcx, result)
+    });
     let old_hash = tcx.dep_graph().prev_fingerprint_of(dep_node);
+    debug!("END verify_ich({:?})", dep_node);
 
     if Some(new_hash) != old_hash {
         let run_cmd = if let Some(crate_name) = &tcx.sess().opts.crate_name {
@@ -665,41 +662,6 @@ where
     }
 }
 
-#[inline(never)]
-fn force_query_impl<CTX, C>(
-    tcx: CTX,
-    state: &QueryState<CTX::DepKind, C::Key>,
-    cache: &QueryCacheStore<C>,
-    key: C::Key,
-    dep_node: DepNode<CTX::DepKind>,
-    query: &QueryVtable<CTX, C::Key, C::Value>,
-    compute: fn(CTX::DepContext, C::Key) -> C::Value,
-) -> bool
-where
-    C: QueryCache,
-    C::Key: DepNodeParams<CTX::DepContext>,
-    CTX: QueryContext,
-{
-    debug_assert!(!query.anon);
-
-    // We may be concurrently trying both execute and force a query.
-    // Ensure that only one of them runs the query.
-    let cached = cache.cache.lookup(cache, &key, |_, index| {
-        if unlikely!(tcx.dep_context().profiler().enabled()) {
-            tcx.dep_context().profiler().query_cache_hit(index.into());
-        }
-    });
-
-    let lookup = match cached {
-        Ok(()) => return true,
-        Err(lookup) => lookup,
-    };
-
-    let _ =
-        try_execute_query(tcx, state, cache, DUMMY_SP, key, lookup, Some(dep_node), query, compute);
-    true
-}
-
 pub enum QueryMode {
     Get,
     Ensure,
@@ -717,9 +679,9 @@ where
     Q::Key: DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    let query = &Q::VTABLE;
+    let query = Q::make_vtable(tcx, &key);
     let dep_node = if let QueryMode::Ensure = mode {
-        let (must_run, dep_node) = ensure_must_run(tcx, &key, query);
+        let (must_run, dep_node) = ensure_must_run(tcx, &key, &query);
         if !must_run {
             return None;
         }
@@ -729,7 +691,6 @@ where
     };
 
     debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
-    let compute = Q::compute_fn(tcx, &key);
     let (result, dep_node_index) = try_execute_query(
         tcx,
         Q::query_state(tcx),
@@ -738,8 +699,7 @@ where
         key,
         lookup,
         dep_node,
-        query,
-        compute,
+        &query,
     );
     if let Some(dep_node_index) = dep_node_index {
         tcx.dep_context().dep_graph().read_index(dep_node_index)
@@ -747,34 +707,29 @@ where
     Some(result)
 }
 
-pub fn force_query<Q, CTX>(tcx: CTX, dep_node: &DepNode<CTX::DepKind>) -> bool
+pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, dep_node: DepNode<CTX::DepKind>)
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    if Q::ANON {
-        return false;
-    }
+    assert!(!Q::ANON);
 
-    if !<Q::Key as DepNodeParams<CTX::DepContext>>::fingerprint_style().reconstructible() {
-        return false;
-    }
+    // We may be concurrently trying both execute and force a query.
+    // Ensure that only one of them runs the query.
+    let cache = Q::query_cache(tcx);
+    let cached = cache.cache.lookup(cache, &key, |_, index| {
+        if unlikely!(tcx.dep_context().profiler().enabled()) {
+            tcx.dep_context().profiler().query_cache_hit(index.into());
+        }
+    });
 
-    let Some(key) =
-        <Q::Key as DepNodeParams<CTX::DepContext>>::recover(*tcx.dep_context(), &dep_node)
-    else {
-        return false;
+    let lookup = match cached {
+        Ok(()) => return,
+        Err(lookup) => lookup,
     };
 
-    let compute = Q::compute_fn(tcx, &key);
-    force_query_impl(
-        tcx,
-        Q::query_state(tcx),
-        Q::query_cache(tcx),
-        key,
-        *dep_node,
-        &Q::VTABLE,
-        compute,
-    )
+    let query = Q::make_vtable(tcx, &key);
+    let state = Q::query_state(tcx);
+    try_execute_query(tcx, state, cache, DUMMY_SP, key, lookup, Some(dep_node), &query);
 }

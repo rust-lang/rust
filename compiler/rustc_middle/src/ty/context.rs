@@ -1,7 +1,7 @@
 //! Type context book-keeping.
 
 use crate::arena::Arena;
-use crate::dep_graph::DepGraph;
+use crate::dep_graph::{DepGraph, DepKind, DepKindStruct};
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
@@ -78,11 +78,6 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     fn new_empty(source_map: &'tcx SourceMap) -> Self
     where
         Self: Sized;
-
-    /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
-    /// session, if it still exists. This is used during incremental compilation to
-    /// turn a deserialized `DefPathHash` into its current `DefId`.
-    fn def_path_hash_to_def_id(&self, tcx: TyCtxt<'tcx>, def_path_hash: DefPathHash) -> DefId;
 
     fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>);
 
@@ -1016,6 +1011,7 @@ pub struct GlobalCtxt<'tcx> {
 
     pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
+    query_kinds: &'tcx [DepKindStruct],
 
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1149,6 +1145,7 @@ impl<'tcx> TyCtxt<'tcx> {
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
+        query_kinds: &'tcx [DepKindStruct],
         crate_name: &str,
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
@@ -1175,6 +1172,7 @@ impl<'tcx> TyCtxt<'tcx> {
             on_disk_cache,
             queries,
             query_caches: query::QueryCaches::default(),
+            query_kinds,
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),
             selection_cache: Default::default(),
@@ -1186,6 +1184,10 @@ impl<'tcx> TyCtxt<'tcx> {
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames),
         }
+    }
+
+    crate fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct {
+        &self.query_kinds[k as usize]
     }
 
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
@@ -1298,6 +1300,27 @@ impl<'tcx> TyCtxt<'tcx> {
             LOCAL_CRATE
         } else {
             self.untracked_resolutions.cstore.stable_crate_id_to_crate_num(stable_crate_id)
+        }
+    }
+
+    /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
+    /// session, if it still exists. This is used during incremental compilation to
+    /// turn a deserialized `DefPathHash` into its current `DefId`.
+    pub fn def_path_hash_to_def_id(self, hash: DefPathHash) -> DefId {
+        debug!("def_path_hash_to_def_id({:?})", hash);
+
+        let stable_crate_id = hash.stable_crate_id();
+
+        // If this is a DefPathHash from the local crate, we can look up the
+        // DefId in the tcx's `Definitions`.
+        if stable_crate_id == self.sess.local_stable_crate_id() {
+            self.untracked_resolutions.definitions.local_def_path_hash_to_def_id(hash).to_def_id()
+        } else {
+            // If this is a DefPathHash from an upstream crate, let the CrateStore map
+            // it to a DefId.
+            let cstore = &self.untracked_resolutions.cstore;
+            let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
+            cstore.def_path_hash_to_def_id(cnum, hash)
         }
     }
 

@@ -9,7 +9,6 @@ doctest = false
 [dependencies]
 measureme = "10.0.0"
 rustc-rayon-core = "0.3.1"
-tracing = "0.1"
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }

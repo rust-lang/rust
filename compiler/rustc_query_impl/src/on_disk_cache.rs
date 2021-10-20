@@ -219,7 +219,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         // Do this *before* we clone 'latest_foreign_def_path_hashes', since
         // loading existing queries may cause us to create new DepNodes, which
         // may in turn end up invoking `store_foreign_def_id_hash`
-        tcx.dep_graph.exec_cache_promotions(QueryCtxt::from_tcx(tcx));
+        tcx.dep_graph.exec_cache_promotions(tcx);
 
         *self.serialized_data.write() = None;
     }
@@ -357,23 +357,6 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
 
             Ok(())
         })
-    }
-
-    fn def_path_hash_to_def_id(&self, tcx: TyCtxt<'tcx>, hash: DefPathHash) -> DefId {
-        debug!("def_path_hash_to_def_id({:?})", hash);
-
-        let stable_crate_id = hash.stable_crate_id();
-
-        // If this is a DefPathHash from the local crate, we can look up the
-        // DefId in the tcx's `Definitions`.
-        if stable_crate_id == tcx.sess.local_stable_crate_id() {
-            tcx.definitions_untracked().local_def_path_hash_to_def_id(hash).to_def_id()
-        } else {
-            // If this is a DefPathHash from an upstream crate, let the CrateStore map
-            // it to a DefId.
-            let cnum = tcx.cstore_untracked().stable_crate_id_to_crate_num(stable_crate_id);
-            tcx.cstore_untracked().def_path_hash_to_def_id(cnum, hash)
-        }
     }
 }
 
@@ -764,7 +747,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
         // If we get to this point, then all of the query inputs were green,
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
-        Ok(d.tcx().on_disk_cache.as_ref().unwrap().def_path_hash_to_def_id(d.tcx(), def_path_hash))
+        Ok(d.tcx().def_path_hash_to_def_id(def_path_hash))
     }
 }
 

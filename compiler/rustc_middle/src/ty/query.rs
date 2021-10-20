@@ -102,6 +102,10 @@ impl TyCtxt<'tcx> {
     }
 }
 
+/// Helper for `TyCtxtEnsure` to avoid a closure.
+#[inline(always)]
+fn noop<T>(_: &T) {}
+
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
     ($K:ty) => { $K };
@@ -165,7 +169,7 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
                 let key = key.into_query_param();
-                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, |_| {});
+                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, noop);
 
                 let lookup = match cached {
                     Ok(()) => return,
@@ -192,9 +196,7 @@ macro_rules! define_callbacks {
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
             {
                 let key = key.into_query_param();
-                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, |value| {
-                    value.clone()
-                });
+                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, Clone::clone);
 
                 let lookup = match cached {
                     Ok(value) => return value,

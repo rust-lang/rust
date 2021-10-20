@@ -33,12 +33,6 @@ pub struct DepGraph<K: DepKind> {
     /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
     /// ID is used for self-profiling.
     virtual_dep_node_index: Lrc<AtomicU32>,
-
-    /// The cached event id for profiling node interning. This saves us
-    /// from having to look up the event id every time we intern a node
-    /// which may incur too much overhead.
-    /// This will be None if self-profiling is disabled.
-    node_intern_event_id: Option<EventId>,
 }
 
 rustc_index::newtype_index! {
@@ -96,14 +90,13 @@ struct DepGraphData<K: DepKind> {
     dep_node_debug: Lock<FxHashMap<DepNode<K>, String>>,
 }
 
-pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Option<Fingerprint>
+pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Fingerprint
 where
     R: for<'a> HashStable<StableHashingContext<'a>>,
 {
     let mut stable_hasher = StableHasher::new();
     result.hash_stable(hcx, &mut stable_hasher);
-
-    Some(stable_hasher.finish())
+    stable_hasher.finish()
 }
 
 impl<K: DepKind> DepGraph<K> {
@@ -117,8 +110,13 @@ impl<K: DepKind> DepGraph<K> {
     ) -> DepGraph<K> {
         let prev_graph_node_count = prev_graph.node_count();
 
-        let current =
-            CurrentDepGraph::new(prev_graph_node_count, encoder, record_graph, record_stats);
+        let current = CurrentDepGraph::new(
+            profiler,
+            prev_graph_node_count,
+            encoder,
+            record_graph,
+            record_stats,
+        );
 
         // Instantiate a dependy-less node only once for anonymous queries.
         let _green_node_index = current.intern_new_node(
@@ -128,10 +126,6 @@ impl<K: DepKind> DepGraph<K> {
             Fingerprint::ZERO,
         );
         debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
-
-        let node_intern_event_id = profiler
-            .get_or_alloc_cached_string("incr_comp_intern_dep_graph_node")
-            .map(EventId::from_label);
 
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
@@ -143,16 +137,11 @@ impl<K: DepKind> DepGraph<K> {
                 colors: DepNodeColorMap::new(prev_graph_node_count),
             })),
             virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
-            node_intern_event_id,
         }
     }
 
     pub fn new_disabled() -> DepGraph<K> {
-        DepGraph {
-            data: None,
-            virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
-            node_intern_event_id: None,
-        }
+        DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU32::new(0)) }
     }
 
     /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.
@@ -215,7 +204,7 @@ impl<K: DepKind> DepGraph<K> {
         cx: Ctxt,
         arg: A,
         task: fn(Ctxt, A) -> R,
-        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         if self.is_fully_enabled() {
             self.with_task_impl(key, cx, arg, task, hash_result)
@@ -234,7 +223,7 @@ impl<K: DepKind> DepGraph<K> {
         cx: Ctxt,
         arg: A,
         task: fn(Ctxt, A) -> R,
-        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         // This function is only called when the graph is enabled.
         let data = self.data.as_ref().unwrap();
@@ -253,7 +242,7 @@ impl<K: DepKind> DepGraph<K> {
             key
         );
 
-        let task_deps = if key.kind.is_eval_always() {
+        let task_deps = if cx.dep_context().is_eval_always(key.kind) {
             None
         } else {
             Some(Lock::new(TaskDeps {
@@ -268,15 +257,14 @@ impl<K: DepKind> DepGraph<K> {
         let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
         let dcx = cx.dep_context();
-        let mut hcx = dcx.create_stable_hashing_context();
         let hashing_timer = dcx.profiler().incr_result_hashing();
-        let current_fingerprint = hash_result(&mut hcx, &result);
+        let current_fingerprint = hash_result.map(|f| {
+            let mut hcx = dcx.create_stable_hashing_context();
+            f(&mut hcx, &result)
+        });
 
         let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
 
-        // Get timer for profiling `DepNode` interning
-        let node_intern_timer =
-            self.node_intern_event_id.map(|eid| dcx.profiler().generic_activity_with_event_id(eid));
         // Intern the new `DepNode`.
         let (dep_node_index, prev_and_color) = data.current.intern_node(
             dcx.profiler(),
@@ -286,7 +274,6 @@ impl<K: DepKind> DepGraph<K> {
             current_fingerprint,
             print_status,
         );
-        drop(node_intern_timer);
 
         hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -315,7 +302,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        debug_assert!(!dep_kind.is_eval_always());
+        debug_assert!(!cx.is_eval_always(dep_kind));
 
         if let Some(ref data) = self.data {
             let task_deps = Lock::new(TaskDeps::default());
@@ -492,7 +479,7 @@ impl<K: DepKind> DepGraph<K> {
         tcx: Ctxt,
         dep_node: &DepNode<K>,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
-        debug_assert!(!dep_node.kind.is_eval_always());
+        debug_assert!(!tcx.dep_context().is_eval_always(dep_node.kind));
 
         // Return None if the dep graph is disabled
         let data = self.data.as_ref()?;
@@ -552,7 +539,7 @@ impl<K: DepKind> DepGraph<K> {
 
         // We don't know the state of this dependency. If it isn't
         // an eval_always node, let's try to mark it green recursively.
-        if !dep_dep_node.kind.is_eval_always() {
+        if !tcx.dep_context().is_eval_always(dep_dep_node.kind) {
             debug!(
                 "try_mark_previous_green({:?}) --- state of dependency {:?} ({}) \
                                  is unknown, trying to mark it green",
@@ -575,7 +562,7 @@ impl<K: DepKind> DepGraph<K> {
             "try_mark_previous_green({:?}) --- trying to force dependency {:?}",
             dep_node, dep_dep_node
         );
-        if !tcx.try_force_from_dep_node(dep_dep_node) {
+        if !tcx.dep_context().try_force_from_dep_node(*dep_dep_node) {
             // The DepNode could not be forced.
             debug!(
                 "try_mark_previous_green({:?}) - END - dependency {:?} could not be forced",
@@ -642,7 +629,7 @@ impl<K: DepKind> DepGraph<K> {
         }
 
         // We never try to mark eval_always nodes as green
-        debug_assert!(!dep_node.kind.is_eval_always());
+        debug_assert!(!tcx.dep_context().is_eval_always(dep_node.kind));
 
         debug_assert_eq!(data.previous.index_to_node(prev_dep_node_index), *dep_node);
 
@@ -740,8 +727,7 @@ impl<K: DepKind> DepGraph<K> {
     //
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
-    pub fn exec_cache_promotions<Ctxt: QueryContext<DepKind = K>>(&self, qcx: Ctxt) {
-        let tcx = qcx.dep_context();
+    pub fn exec_cache_promotions<Ctxt: DepContext<DepKind = K>>(&self, tcx: Ctxt) {
         let _prof_timer = tcx.profiler().generic_activity("incr_comp_query_cache_promotion");
 
         let data = self.data.as_ref().unwrap();
@@ -749,7 +735,7 @@ impl<K: DepKind> DepGraph<K> {
             match data.colors.get(prev_index) {
                 Some(DepNodeColor::Green(_)) => {
                     let dep_node = data.previous.index_to_node(prev_index);
-                    qcx.try_load_from_on_disk_cache(&dep_node);
+                    tcx.try_load_from_on_disk_cache(dep_node);
                 }
                 None | Some(DepNodeColor::Red) => {
                     // We can skip red nodes because a node can only be marked
@@ -876,10 +862,17 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
     /// debugging and only active with `debug_assertions`.
     total_read_count: AtomicU64,
     total_duplicate_read_count: AtomicU64,
+
+    /// The cached event id for profiling node interning. This saves us
+    /// from having to look up the event id every time we intern a node
+    /// which may incur too much overhead.
+    /// This will be None if self-profiling is disabled.
+    node_intern_event_id: Option<EventId>,
 }
 
 impl<K: DepKind> CurrentDepGraph<K> {
     fn new(
+        profiler: &SelfProfilerRef,
         prev_graph_node_count: usize,
         encoder: FileEncoder,
         record_graph: bool,
@@ -908,6 +901,10 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 
+        let node_intern_event_id = profiler
+            .get_or_alloc_cached_string("incr_comp_intern_dep_graph_node")
+            .map(EventId::from_label);
+
         CurrentDepGraph {
             encoder: Steal::new(GraphEncoder::new(
                 encoder,
@@ -927,6 +924,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             forbidden_edge,
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
+            node_intern_event_id,
         }
     }
 
@@ -969,6 +967,10 @@ impl<K: DepKind> CurrentDepGraph<K> {
         print_status: bool,
     ) -> (DepNodeIndex, Option<(SerializedDepNodeIndex, DepNodeColor)>) {
         let print_status = cfg!(debug_assertions) && print_status;
+
+        // Get timer for profiling `DepNode` interning
+        let _node_intern_timer =
+            self.node_intern_event_id.map(|eid| profiler.generic_activity_with_event_id(eid));
 
         if let Some(prev_index) = prev_graph.node_to_index_opt(&key) {
             // Determine the color and index of the new `DepNode`.
