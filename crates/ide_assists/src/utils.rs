@@ -613,7 +613,7 @@ fn handle_as_ref_slice(
     famous_defs: &FamousDefs,
 ) -> Option<ReferenceConversionType> {
     let type_argument = ty.type_arguments().next()?;
-    let slice_type = type_argument.make_slice_of();
+    let slice_type = hir::Type::new_slice(type_argument);
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type])
         .then(|| ReferenceConversionType::AsRefSlice)

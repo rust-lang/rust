@@ -1574,7 +1574,6 @@ pub struct BuiltinType {
 }
 
 impl BuiltinType {
-    // FIXME: I'm not sure if it's the best place to put it
     pub fn str() -> BuiltinType {
         BuiltinType { inner: hir_def::builtin_type::BuiltinType::Str }
     }
@@ -2268,9 +2267,8 @@ impl Type {
         Type::new(db, krate, def, ty)
     }
 
-    // FIXME: No idea where to put it
-    pub fn make_slice_of(self) -> Type {
-        Type { krate: self.krate, env: self.env, ty: TyBuilder::slice(self.ty) }
+    pub fn new_slice(ty: Type) -> Type {
+        Type { krate: ty.krate, env: ty.env, ty: TyBuilder::slice(ty.ty) }
     }
 
     pub fn is_unit(&self) -> bool {
