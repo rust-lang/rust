@@ -205,7 +205,7 @@ pub(crate) fn type_uninhabited_from<'tcx>(
     match *ty.kind() {
         Adt(def, substs) => def.uninhabited_from(tcx, substs, param_env),
 
-        Never => DefIdForest::full(tcx),
+        Never => DefIdForest::full(),
 
         Tuple(ref tys) => DefIdForest::union(
             tcx,

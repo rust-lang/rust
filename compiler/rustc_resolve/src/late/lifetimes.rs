@@ -1676,13 +1676,10 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
                     if let Some(def) =
                         lifetimes.get(&hir::ParamName::Plain(label.normalize_to_macros_2_0()))
                     {
-                        let hir_id =
-                            tcx.hir().local_def_id_to_hir_id(def.id().unwrap().expect_local());
-
                         signal_shadowing_problem(
                             tcx,
                             label.name,
-                            original_lifetime(tcx.hir().span(hir_id)),
+                            original_lifetime(tcx.def_span(def.id().unwrap().expect_local())),
                             shadower_label(label.span),
                         );
                         return;
@@ -1910,6 +1907,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let remove_decl = self
             .tcx
             .parent(def_id)
+            .and_then(|parent_def_id| parent_def_id.as_local())
             .and_then(|parent_def_id| self.tcx.hir().get_generics(parent_def_id))
             .and_then(|generics| self.lifetime_deletion_span(name, generics));
 
@@ -2142,7 +2140,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     .build(&format!("lifetime parameter `{}` never used", name));
                                 if let Some(parent_def_id) = self.tcx.parent(def_id) {
                                     if let Some(generics) =
-                                        self.tcx.hir().get_generics(parent_def_id)
+                                        self.tcx.hir().get_generics(parent_def_id.expect_local())
                                     {
                                         let unused_lt_span =
                                             self.lifetime_deletion_span(name, generics);
@@ -3416,13 +3414,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::Binder { ref lifetimes, s, .. } => {
                     if let Some(&def) = lifetimes.get(&param.name.normalize_to_macros_2_0()) {
-                        let hir_id =
-                            self.tcx.hir().local_def_id_to_hir_id(def.id().unwrap().expect_local());
-
                         signal_shadowing_problem(
                             self.tcx,
                             param.name.ident().name,
-                            original_lifetime(self.tcx.hir().span(hir_id)),
+                            original_lifetime(self.tcx.def_span(def.id().unwrap())),
                             shadower_lifetime(&param),
                         );
                         return;

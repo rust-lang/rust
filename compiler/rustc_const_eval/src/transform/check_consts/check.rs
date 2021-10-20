@@ -1,8 +1,8 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
 use rustc_errors::{Applicability, Diagnostic, ErrorReported};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, LangItem};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
@@ -259,8 +259,7 @@ impl Checker<'mir, 'tcx> {
             // Prevent const trait methods from being annotated as `stable`.
             // FIXME: Do this as part of stability checking.
             if self.is_const_stable_const_fn() {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-                if crate::const_eval::is_parent_const_impl_raw(tcx, hir_id) {
+                if crate::const_eval::is_parent_const_impl_raw(tcx, def_id) {
                     self.ccx
                         .tcx
                         .sess
@@ -298,8 +297,7 @@ impl Checker<'mir, 'tcx> {
             && !tcx.is_thread_local_static(def_id.to_def_id());
 
         if should_check_for_sync {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-            check_return_ty_is_sync(tcx, &body, hir_id);
+            check_return_ty_is_sync(tcx, &body, def_id);
         }
 
         // If we got through const-checking without emitting any "primary" errors, emit any
@@ -1088,9 +1086,10 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
     }
 }
 
-fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, hir_id: HirId) {
+fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: LocalDefId) {
     let ty = body.return_ty();
     tcx.infer_ctxt().enter(|infcx| {
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let cause = traits::ObligationCause::new(body.span, hir_id, traits::SharedStatic);
         let mut fulfillment_cx = traits::FulfillmentContext::new();
         let sync_def_id = tcx.require_lang_item(LangItem::Sync, Some(body.span));

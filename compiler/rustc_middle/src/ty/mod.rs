@@ -1998,8 +1998,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// with the name of the crate containing the impl.
     pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, Symbol> {
         if let Some(impl_did) = impl_did.as_local() {
-            let hir_id = self.hir().local_def_id_to_hir_id(impl_did);
-            Ok(self.hir().span(hir_id))
+            Ok(self.def_span(impl_did))
         } else {
             Err(self.crate_name(impl_did.krate))
         }

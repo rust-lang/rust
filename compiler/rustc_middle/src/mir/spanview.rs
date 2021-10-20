@@ -665,9 +665,7 @@ fn trim_span_hi(span: Span, to_pos: BytePos) -> Span {
 }
 
 fn fn_span<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Span {
-    let hir_id =
-        tcx.hir().local_def_id_to_hir_id(def_id.as_local().expect("expected DefId is local"));
-    let fn_decl_span = tcx.hir().span(hir_id);
+    let fn_decl_span = tcx.def_span(def_id);
     if let Some(body_span) = hir_body(tcx, def_id).map(|hir_body| hir_body.value.span) {
         if fn_decl_span.ctxt() == body_span.ctxt() { fn_decl_span.to(body_span) } else { body_span }
     } else {

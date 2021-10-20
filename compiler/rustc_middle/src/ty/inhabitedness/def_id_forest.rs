@@ -1,6 +1,6 @@
 use crate::ty::context::TyCtxt;
 use crate::ty::{DefId, DefIdTree};
-use rustc_hir::CRATE_HIR_ID;
+use rustc_span::def_id::CRATE_DEF_ID;
 use smallvec::SmallVec;
 use std::mem;
 use std::sync::Arc;
@@ -43,8 +43,8 @@ impl<'tcx> DefIdForest {
     /// Creates a forest consisting of a single tree representing the entire
     /// crate.
     #[inline]
-    pub fn full(tcx: TyCtxt<'tcx>) -> DefIdForest {
-        DefIdForest::from_id(tcx.hir().local_def_id(CRATE_HIR_ID).to_def_id())
+    pub fn full() -> DefIdForest {
+        DefIdForest::from_id(CRATE_DEF_ID.to_def_id())
     }
 
     /// Creates a forest containing a `DefId` and all its descendants.
@@ -96,7 +96,7 @@ impl<'tcx> DefIdForest {
         let mut ret: SmallVec<[_; 1]> = if let Some(first) = iter.next() {
             SmallVec::from_slice(first.as_slice())
         } else {
-            return DefIdForest::full(tcx);
+            return DefIdForest::full();
         };
 
         let mut next_ret: SmallVec<[_; 1]> = SmallVec::new();

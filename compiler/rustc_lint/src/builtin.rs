@@ -1212,7 +1212,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
                                 Some(generics),
-                                cx.tcx.hir().get_generics(it.id.def_id.to_def_id()).unwrap(),
+                                cx.tcx.hir().get_generics(it.id.def_id).unwrap(),
                                 it.span,
                             );
                         }
