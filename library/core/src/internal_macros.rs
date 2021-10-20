@@ -9,6 +9,7 @@ macro_rules! forward_ref_unop {
         forward_ref_unop!(impl const $imp, $method for $t,
                 #[stable(feature = "rust1", since = "1.0.0")]);
     };
+    // Equivalent to the non-const version, with the addition of `rustc_const_unstable`
     (impl const $imp:ident, $method:ident for $t:ty, #[$attr:meta]) => {
         #[$attr]
         #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
@@ -45,6 +46,7 @@ macro_rules! forward_ref_binop {
         forward_ref_binop!(impl const $imp, $method for $t, $u,
                 #[stable(feature = "rust1", since = "1.0.0")]);
     };
+    // Equivalent to the non-const version, with the addition of `rustc_const_unstable`
     (impl const $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
         #[$attr]
         #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
@@ -123,6 +125,7 @@ macro_rules! forward_ref_op_assign {
         forward_ref_op_assign!(impl const $imp, $method for $t, $u,
                 #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]);
     };
+    // Equivalent to the non-const version, with the addition of `rustc_const_unstable`
     (impl const $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
         #[$attr]
         #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
