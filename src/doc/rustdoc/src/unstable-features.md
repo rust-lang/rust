@@ -462,7 +462,7 @@ This option, combined with `--scrape-examples-target-crate` and `--scrape-exampl
 
 ```bash
 $ rustdoc examples/ex.rs -Z unstable-options \
-    --extern foobar=target/deps/libfoobar.rmeta
+    --extern foobar=target/deps/libfoobar.rmeta \
     --scrape-examples-target-crate foobar \
     --scrape-examples-output-path output.calls
 $ rustdoc src/lib.rs -Z unstable-options --with-examples output.calls
