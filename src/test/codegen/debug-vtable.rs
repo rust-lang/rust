@@ -18,6 +18,9 @@
 // MSVC-LABEL: !DIGlobalVariable(name: "impl$<debug_vtable::Foo, _>::vtable$"
 // CHECK: !DISubrange(count: 3
 
+// NONMSVC-LABEL: !DIGlobalVariable(name: "<debug_vtable::bar::{closure#0} as core::ops::function::FnOnce<(core::option::Option<&dyn core::ops::function::Fn<(), Output=()>>)>>::{vtable}"
+// MSVC-LABEL: !DIGlobalVariable(name: "impl$<debug_vtable::bar::closure$0, core::ops::function::FnOnce<tuple$<enum$<core::option::Option<ref$<dyn$<core::ops::function::Fn<tuple$<>,assoc$<Output,tuple$<> > > > > >, {{.*}}, {{.*}}, Some> > > >::vtable$"
+
 #![crate_type = "lib"]
 
 pub struct Foo;
@@ -44,4 +47,11 @@ pub fn foo(x: &Foo) -> (u32, (u64, i8), &dyn Send) {
     let y: &dyn SomeTrait = x;
     let z: &dyn SomeTraitWithGenerics<u64, i8> = x;
     (y.method1(), z.method1(), x as &dyn Send)
+}
+
+// Constructing the debuginfo name for the FnOnce vtable below initially caused an ICE on MSVC
+// because the trait type contains a late bound region that needed to be erased before the type
+// layout for the niche enum `Option<&dyn Fn()>` could be computed.
+pub fn bar() -> Box<dyn FnOnce(Option<&dyn Fn()>)> {
+    Box::new(|_x: Option<&dyn Fn()>| {})
 }
