@@ -120,6 +120,15 @@ pub struct CrateDisplayName {
     canonical_name: String,
 }
 
+impl CrateDisplayName {
+    pub fn canonical_name(&self) -> &str {
+        &self.canonical_name
+    }
+    pub fn crate_name(&self) -> &CrateName {
+        &self.crate_name
+    }
+}
+
 impl From<CrateName> for CrateDisplayName {
     fn from(crate_name: CrateName) -> CrateDisplayName {
         let canonical_name = crate_name.to_string();

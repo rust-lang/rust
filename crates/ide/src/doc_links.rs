@@ -467,17 +467,24 @@ fn map_links<'e>(
 /// ```
 fn get_doc_base_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
     let display_name = krate.display_name(db)?;
-    krate
-        .get_html_root_url(db)
-        .or_else(|| {
-            // Fallback to docs.rs. This uses `display_name` and can never be
-            // correct, but that's what fallbacks are about.
-            //
-            // FIXME: clicking on the link should just open the file in the editor,
-            // instead of falling back to external urls.
-            Some(format!("https://docs.rs/{krate}/*/", krate = display_name))
-        })
-        .and_then(|s| Url::parse(&s).ok()?.join(&format!("{}/", display_name)).ok())
+    let base = match &**display_name.crate_name() {
+        // std and co do not specify `html_root_url` any longer so we gotta handwrite this ourself.
+        // FIXME: Use the toolchains channel instead of nightly
+        name @ ("core" | "std" | "alloc" | "proc_macro" | "test") => {
+            format!("https://doc.rust-lang.org/nightly/{}", name)
+        }
+        _ => {
+            krate.get_html_root_url(db).or_else(|| {
+                // Fallback to docs.rs. This uses `display_name` and can never be
+                // correct, but that's what fallbacks are about.
+                //
+                // FIXME: clicking on the link should just open the file in the editor,
+                // instead of falling back to external urls.
+                Some(format!("https://docs.rs/{krate}/*/", krate = display_name))
+            })?
+        }
+    };
+    Url::parse(&base).ok()?.join(&format!("{}/", display_name)).ok()
 }
 
 /// Get the filename and extension generated for a symbol by rustdoc.
@@ -555,12 +562,23 @@ mod tests {
     fn external_docs_doc_url_crate() {
         check_external_docs(
             r#"
-//- /main.rs crate:main deps:test
-use test$0::Foo;
-//- /lib.rs crate:test
+//- /main.rs crate:main deps:foo
+use foo$0::Foo;
+//- /lib.rs crate:foo
 pub struct Foo;
 "#,
-            expect![[r#"https://docs.rs/test/*/test/index.html"#]],
+            expect![[r#"https://docs.rs/foo/*/foo/index.html"#]],
+        );
+    }
+
+    #[test]
+    fn external_docs_doc_url_std_crate() {
+        check_external_docs(
+            r#"
+//- /main.rs crate:std
+use self$0;
+"#,
+            expect![[r#"https://doc.rust-lang.org/nightly/std/index.html"#]],
         );
     }
 
@@ -568,9 +586,10 @@ pub struct Foo;
     fn external_docs_doc_url_struct() {
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub struct Fo$0o;
 "#,
-            expect![[r#"https://docs.rs/test/*/test/struct.Foo.html"#]],
+            expect![[r#"https://docs.rs/foo/*/foo/struct.Foo.html"#]],
         );
     }
 
@@ -578,11 +597,12 @@ pub struct Fo$0o;
     fn external_docs_doc_url_struct_field() {
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub struct Foo {
     field$0: ()
 }
 "#,
-            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#structfield.field"##]],
+            expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#structfield.field"##]],
         );
     }
 
@@ -590,9 +610,10 @@ pub struct Foo {
     fn external_docs_doc_url_fn() {
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub fn fo$0o() {}
 "#,
-            expect![[r##"https://docs.rs/test/*/test/fn.foo.html"##]],
+            expect![[r#"https://docs.rs/foo/*/foo/fn.foo.html"#]],
         );
     }
 
@@ -600,21 +621,23 @@ pub fn fo$0o() {}
     fn external_docs_doc_url_impl_assoc() {
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub struct Foo;
 impl Foo {
     pub fn method$0() {}
 }
 "#,
-            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#method.method"##]],
+            expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#method.method"##]],
         );
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub struct Foo;
 impl Foo {
     const CONST$0: () = ();
 }
 "#,
-            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#associatedconstant.CONST"##]],
+            expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#associatedconstant.CONST"##]],
         );
     }
 
@@ -622,6 +645,7 @@ impl Foo {
     fn external_docs_doc_url_impl_trait_assoc() {
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub struct Foo;
 pub trait Trait {
     fn method() {}
@@ -630,10 +654,11 @@ impl Trait for Foo {
     pub fn method$0() {}
 }
 "#,
-            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#method.method"##]],
+            expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#method.method"##]],
         );
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub struct Foo;
 pub trait Trait {
     const CONST: () = ();
@@ -642,10 +667,11 @@ impl Trait for Foo {
     const CONST$0: () = ();
 }
 "#,
-            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#associatedconstant.CONST"##]],
+            expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#associatedconstant.CONST"##]],
         );
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub struct Foo;
 pub trait Trait {
     type Type;
@@ -654,7 +680,7 @@ impl Trait for Foo {
     type Type$0 = ();
 }
 "#,
-            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#associatedtype.Type"##]],
+            expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#associatedtype.Type"##]],
         );
     }
 
@@ -662,27 +688,30 @@ impl Trait for Foo {
     fn external_docs_doc_url_trait_assoc() {
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub trait Foo {
     fn method$0();
 }
 "#,
-            expect![[r##"https://docs.rs/test/*/test/trait.Foo.html#tymethod.method"##]],
+            expect![[r##"https://docs.rs/foo/*/foo/trait.Foo.html#tymethod.method"##]],
         );
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub trait Foo {
     const CONST$0: ();
 }
 "#,
-            expect![[r##"https://docs.rs/test/*/test/trait.Foo.html#associatedconstant.CONST"##]],
+            expect![[r##"https://docs.rs/foo/*/foo/trait.Foo.html#associatedconstant.CONST"##]],
         );
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub trait Foo {
     type Type$0;
 }
 "#,
-            expect![[r##"https://docs.rs/test/*/test/trait.Foo.html#associatedtype.Type"##]],
+            expect![[r##"https://docs.rs/foo/*/foo/trait.Foo.html#associatedtype.Type"##]],
         );
     }
 
@@ -690,9 +719,10 @@ pub trait Foo {
     fn external_docs_trait() {
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 trait Trait$0 {}
 "#,
-            expect![[r#"https://docs.rs/test/*/test/trait.Trait.html"#]],
+            expect![[r#"https://docs.rs/foo/*/foo/trait.Trait.html"#]],
         )
     }
 
@@ -700,11 +730,12 @@ trait Trait$0 {}
     fn external_docs_module() {
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub mod foo {
     pub mod ba$0r {}
 }
 "#,
-            expect![[r#"https://docs.rs/test/*/test/foo/bar/index.html"#]],
+            expect![[r#"https://docs.rs/foo/*/foo/foo/bar/index.html"#]],
         )
     }
 
@@ -712,6 +743,7 @@ pub mod foo {
     fn external_docs_reexport_order() {
         check_external_docs(
             r#"
+//- /main.rs crate:foo
 pub mod wrapper {
     pub use module::Item;
 
@@ -724,7 +756,7 @@ fn foo() {
     let bar: wrapper::It$0em;
 }
         "#,
-            expect![[r#"https://docs.rs/test/*/test/wrapper/module/struct.Item.html"#]],
+            expect![[r#"https://docs.rs/foo/*/foo/wrapper/module/struct.Item.html"#]],
         )
     }
 
@@ -753,6 +785,7 @@ trait Trait$0 {
     fn rewrite_html_root_url() {
         check_rewrite(
             r#"
+//- /main.rs crate:foo
 #![doc(arbitrary_attribute = "test", html_root_url = "https:/example.com", arbitrary_attribute2)]
 
 pub mod foo {
@@ -761,7 +794,7 @@ pub mod foo {
 /// [Foo](foo::Foo)
 pub struct B$0ar
 "#,
-            expect![[r#"[Foo](https://example.com/test/foo/struct.Foo.html)"#]],
+            expect![[r#"[Foo](https://example.com/foo/foo/struct.Foo.html)"#]],
         );
     }
 
@@ -771,6 +804,7 @@ pub struct B$0ar
         //  [Foo](https://docs.rs/test/*/test/struct.Foo.html)
         check_rewrite(
             r#"
+//- /main.rs crate:foo
 pub struct Foo {
     /// [Foo](struct.Foo.html)
     fie$0ld: ()
@@ -784,40 +818,45 @@ pub struct Foo {
     fn rewrite_struct() {
         check_rewrite(
             r#"
+//- /main.rs crate:foo
 /// [Foo]
 pub struct $0Foo;
 "#,
-            expect![[r#"[Foo](https://docs.rs/test/*/test/struct.Foo.html)"#]],
+            expect![[r#"[Foo](https://docs.rs/foo/*/foo/struct.Foo.html)"#]],
         );
         check_rewrite(
             r#"
+//- /main.rs crate:foo
 /// [`Foo`]
 pub struct $0Foo;
 "#,
-            expect![[r#"[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"#]],
+            expect![[r#"[`Foo`](https://docs.rs/foo/*/foo/struct.Foo.html)"#]],
         );
         check_rewrite(
             r#"
+//- /main.rs crate:foo
 /// [Foo](struct.Foo.html)
 pub struct $0Foo;
 "#,
-            expect![[r#"[Foo](https://docs.rs/test/*/test/struct.Foo.html)"#]],
+            expect![[r#"[Foo](https://docs.rs/foo/*/foo/struct.Foo.html)"#]],
         );
         check_rewrite(
             r#"
+//- /main.rs crate:foo
 /// [struct Foo](struct.Foo.html)
 pub struct $0Foo;
 "#,
-            expect![[r#"[struct Foo](https://docs.rs/test/*/test/struct.Foo.html)"#]],
+            expect![[r#"[struct Foo](https://docs.rs/foo/*/foo/struct.Foo.html)"#]],
         );
         check_rewrite(
             r#"
+//- /main.rs crate:foo
 /// [my Foo][foo]
 ///
 /// [foo]: Foo
 pub struct $0Foo;
 "#,
-            expect![[r#"[my Foo](https://docs.rs/test/*/test/struct.Foo.html)"#]],
+            expect![[r#"[my Foo](https://docs.rs/foo/*/foo/struct.Foo.html)"#]],
         );
     }
 
