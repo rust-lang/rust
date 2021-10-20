@@ -340,7 +340,7 @@ unsafe {
 assert_eq!(x, 0xabab);
 ```
 
-In this example, we use the `reg_abcd` register class to restrict the register allocator to the 4 legacy x86 register (`ax`, `bx`, `cx`, `dx`) of which the first two bytes can be addressed independently.
+In this example, we use the `reg_abcd` register class to restrict the register allocator to the 4 legacy x86 registers (`ax`, `bx`, `cx`, `dx`), of which the first two bytes can be addressed independently.
 
 Let us assume that the register allocator has chosen to allocate `x` in the `ax` register.
 The `h` modifier will emit the register name for the high byte of that register and the `l` modifier will emit the register name for the low byte. The asm code will therefore be expanded as `mov ah, al` which copies the low byte of the value into the high byte.
@@ -351,7 +351,7 @@ If you use a smaller data type (e.g. `u16`) with an operand and forget the use t
 
 Sometimes assembly instructions require operands passed via memory addresses/memory locations.
 You have to manually use the memory address syntax specified by the target architecture.
-For example, on x86/x86_64 using intel assembly syntax, you should wrap inputs/outputs in `[]` to indicate they are memory operands:
+For example, on x86/x86_64 using Intel assembly syntax, you should wrap inputs/outputs in `[]` to indicate they are memory operands:
 
 ```rust,allow_fail
 #![feature(asm, llvm_asm)]
@@ -367,15 +367,15 @@ unsafe {
 
 ## Labels
 
-Any reuse of a named label, local or otherwise, can result in a assembler or linker error or may cause other strange behavior. Reuse of a named label can happen in a variety of ways including:
+Any reuse of a named label, local or otherwise, can result in an assembler or linker error or may cause other strange behavior. Reuse of a named label can happen in a variety of ways including:
 
--   explicitly: using a label more than once in one `asm!` block, or multiple times across blocks
+-   explicitly: using a label more than once in one `asm!` block, or multiple times across blocks.
 -   implicitly via inlining: the compiler is allowed to instantiate multiple copies of an `asm!` block, for example when the function containing it is inlined in multiple places.
--   implicitly via LTO: LTO can cause code from *other crates* to be placed in the same codegen unit, and so could bring in arbitrary labels
+-   implicitly via LTO: LTO can cause code from *other crates* to be placed in the same codegen unit, and so could bring in arbitrary labels.
 
 As a consequence, you should only use GNU assembler **numeric** [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
 
-Moreover, on x86 when using the default intel syntax, due to [an llvm bug], you shouldn't use labels exclusively made of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values. Using `options(att_syntax)` will avoid any ambiguity, but that affects the syntax of the _entire_ `asm!` block.
+Moreover, on x86 when using the default Intel syntax, due to [an LLVM bug], you shouldn't use labels exclusively made of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values. Using `options(att_syntax)` will avoid any ambiguity, but that affects the syntax of the _entire_ `asm!` block. (See [Options](#Options), below, for more on `options`.)
 
 ```rust,allow_fail
 #![feature(asm)]
@@ -401,9 +401,8 @@ This will decrement the `{0}` register value from 10 to 3, then add 2 and store 
 
 This example shows a few things:
 
-First that the same number can be used as a label multiple times in the same inline block.
-
-Second, that when a numeric label is used as a reference (as an instruction operand, for example), the suffixes b (“backward”) or f (“forward”) should be added to the numeric label. It will then refer to the nearest label defined by this number in this direction.
+-   First, that the same number can be used as a label multiple times in the same inline block.
+-   Second, that when a numeric label is used as a reference (as an instruction operand, for example), the suffixes “b” (“backward”) or ”f” (“forward”) should be added to the numeric label. It will then refer to the nearest label defined by this number in this direction.
 
 [local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
 [an llvm bug]: https://bugs.llvm.org/show_bug.cgi?id=36144
@@ -503,7 +502,7 @@ Several types of operands are supported:
 * `out(<reg>) <expr>`
   - `<reg>` can refer to a register class or an explicit register. The allocated register name is substituted into the asm template string.
   - The allocated register will contain an undefined value at the start of the asm code.
-  - `<expr>` must be a (possibly uninitialized) place expression, to which the contents of the allocated register is written to at the end of the asm code.
+  - `<expr>` must be a (possibly uninitialized) place expression, to which the contents of the allocated register are written at the end of the asm code.
   - An underscore (`_`) may be specified instead of an expression, which will cause the contents of the register to be discarded at the end of the asm code (effectively acting as a clobber).
 * `lateout(<reg>) <expr>`
   - Identical to `out` except that the register allocator can reuse a register allocated to an `in`.
@@ -511,10 +510,10 @@ Several types of operands are supported:
 * `inout(<reg>) <expr>`
   - `<reg>` can refer to a register class or an explicit register. The allocated register name is substituted into the asm template string.
   - The allocated register will contain the value of `<expr>` at the start of the asm code.
-  - `<expr>` must be a mutable initialized place expression, to which the contents of the allocated register is written to at the end of the asm code.
+  - `<expr>` must be a mutable initialized place expression, to which the contents of the allocated register are written at the end of the asm code.
 * `inout(<reg>) <in expr> => <out expr>`
   - Same as `inout` except that the initial value of the register is taken from the value of `<in expr>`.
-  - `<out expr>` must be a (possibly uninitialized) place expression, to which the contents of the allocated register is written to at the end of the asm code.
+  - `<out expr>` must be a (possibly uninitialized) place expression, to which the contents of the allocated register are written at the end of the asm code.
   - An underscore (`_`) may be specified instead of an expression for `<out expr>`, which will cause the contents of the register to be discarded at the end of the asm code (effectively acting as a clobber).
   - `<in expr>` and `<out expr>` may have different types.
 * `inlateout(<reg>) <expr>` / `inlateout(<reg>) <in expr> => <out expr>`
@@ -730,7 +729,8 @@ Some registers cannot be used for input or output operands:
 | RISC-V | `gp`, `tp` | These registers are reserved and cannot be used as inputs or outputs. |
 | Hexagon | `lr` | This is the link register which cannot be used as an input or output. |
 
-In some cases LLVM will allocate a "reserved register" for `reg` operands even though this register cannot be explicitly specified. Assembly code making use of reserved registers should be careful since `reg` operands may alias with those registers. Reserved registers are the frame pointer and base pointer
+In some cases LLVM will allocate a "reserved register" for `reg` operands even though this register cannot be explicitly specified. Assembly code making use of reserved registers should be careful since `reg` operands may alias with those registers. Reserved registers are the frame pointer and base pointer.
+
 - The frame pointer and LLVM base pointer on all architectures.
 - `r9` on ARM.
 - `x18` on AArch64.
