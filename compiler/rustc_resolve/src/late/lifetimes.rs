@@ -2009,7 +2009,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
 
-        let mut def_ids: Vec<_> = defined_by
+        let def_ids: Vec<_> = defined_by
             .values()
             .flat_map(|region| match region {
                 Region::EarlyBound(_, def_id, _)
@@ -2019,9 +2019,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Region::LateBoundAnon(..) | Region::Static => None,
             })
             .collect();
-
-        // ensure that we issue lints in a repeatable order
-        def_ids.sort_by_cached_key(|&def_id| self.tcx.def_path_hash(def_id));
 
         'lifetimes: for def_id in def_ids {
             debug!("check_uses_for_lifetimes_defined_by_scope: def_id = {:?}", def_id);

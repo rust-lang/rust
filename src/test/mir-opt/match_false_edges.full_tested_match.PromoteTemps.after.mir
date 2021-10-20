@@ -57,7 +57,7 @@ fn full_tested_match() -> () {
                                          // + val: Unevaluated(full_tested_match, [], Some(promoted[0]))
                                          // mir::Constant
                                          // + span: $DIR/match_false_edges.rs:16:14: 16:15
-                                         // + literal: Const { ty: &std::option::Option<i32>, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:5 ~ match_false_edges[4011]::full_tested_match), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
+                                         // + literal: Const { ty: &std::option::Option<i32>, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:5 ~ match_false_edges[HASH]::full_tested_match), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
         _6 = &(((*_11) as Some).0: i32); // scope 0 at $DIR/match_false_edges.rs:16:14: 16:15
         _4 = &shallow _2;                // scope 0 at $DIR/match_false_edges.rs:15:19: 15:27
         StorageLive(_7);                 // scope 0 at $DIR/match_false_edges.rs:16:20: 16:27

@@ -22,7 +22,7 @@
                                            // + val: Unevaluated(FOO, [], None)
                                            // mir::Constant
                                            // + span: $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
-                                           // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:5 ~ const_prop_fails_gracefully[2706]::main::FOO), const_param_did: None }, substs_: Some([]), promoted: None }) }
+                                           // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:5 ~ const_prop_fails_gracefully[HASH]::main::FOO), const_param_did: None }, substs_: Some([]), promoted: None }) }
           _2 = &raw const (*_3);           // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
           _1 = move _2 as usize (Misc);    // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:39
           StorageDead(_2);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:38: 7:39
