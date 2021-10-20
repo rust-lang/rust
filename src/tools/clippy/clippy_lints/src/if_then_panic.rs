@@ -61,9 +61,7 @@ impl LateLintPass<'_> for IfThenPanic {
                     }
                 } else {
                     if_chain! {
-                        if let ExprKind::Block(block, _) = semi.kind;
-                        if let Some(init) = block.expr;
-                        if let ExprKind::Call(_, [format_args]) = init.kind;
+                        if let ExprKind::Call(_, [format_args]) = semi.kind;
 
                         then {
                             format_args.span

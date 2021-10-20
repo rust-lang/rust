@@ -19,6 +19,7 @@ pub struct ByteView<'a> {
     backing: Arc<ByteViewBacking<'a>>,
 }
 
+#[allow(clippy::diverging_sub_expression)]
 fn main() {
     byte_view(panic!());
     group_entries(panic!());
