@@ -128,7 +128,7 @@ pub(crate) fn unify(
     Some(Substitution::from_iter(
         &Interner,
         vars.iter(&Interner)
-            .map(|v| table.resolve_with_fallback(v.assert_ty_ref(&Interner).clone(), fallback)),
+            .map(|v| table.resolve_with_fallback(v.assert_ty_ref(&Interner).clone(), &fallback)),
     ))
 }
 
@@ -291,7 +291,7 @@ impl<'a> InferenceTable<'a> {
     pub(crate) fn resolve_with_fallback<T>(
         &mut self,
         t: T,
-        fallback: impl Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
+        fallback: &dyn Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
     ) -> T::Result
     where
         T: HasInterner<Interner = Interner> + Fold<Interner>,
@@ -303,7 +303,7 @@ impl<'a> InferenceTable<'a> {
         &mut self,
         var_stack: &mut Vec<InferenceVar>,
         t: T,
-        fallback: &impl Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
+        fallback: &dyn Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
     ) -> T::Result
     where
         T: HasInterner<Interner = Interner> + Fold<Interner>,
@@ -319,7 +319,7 @@ impl<'a> InferenceTable<'a> {
     where
         T: HasInterner<Interner = Interner> + Fold<Interner>,
     {
-        self.resolve_with_fallback(t, |_, _, d, _| d)
+        self.resolve_with_fallback(t, &|_, _, d, _| d)
     }
 
     /// Unify two types and register new trait goals that arise from that.

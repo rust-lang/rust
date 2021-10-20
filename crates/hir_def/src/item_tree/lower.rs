@@ -645,7 +645,7 @@ impl<'a> Ctx<'a> {
     fn lower_generic_params_and_inner_items(
         &mut self,
         owner: GenericsOwner<'_>,
-        node: &impl ast::HasGenericParams,
+        node: &dyn ast::HasGenericParams,
     ) -> Interned<GenericParams> {
         // Generics are part of item headers and may contain inner items we need to collect.
         if let Some(params) = node.generic_param_list() {
@@ -661,7 +661,7 @@ impl<'a> Ctx<'a> {
     fn lower_generic_params(
         &mut self,
         owner: GenericsOwner<'_>,
-        node: &impl ast::HasGenericParams,
+        node: &dyn ast::HasGenericParams,
     ) -> Interned<GenericParams> {
         let mut generics = GenericParams::default();
         match owner {
@@ -697,7 +697,7 @@ impl<'a> Ctx<'a> {
         Interned::new(generics)
     }
 
-    fn lower_type_bounds(&mut self, node: &impl ast::HasTypeBounds) -> Vec<Interned<TypeBound>> {
+    fn lower_type_bounds(&mut self, node: &dyn ast::HasTypeBounds) -> Vec<Interned<TypeBound>> {
         match node.type_bound_list() {
             Some(bound_list) => bound_list
                 .bounds()
@@ -707,7 +707,7 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn lower_visibility(&mut self, item: &impl ast::HasVisibility) -> RawVisibilityId {
+    fn lower_visibility(&mut self, item: &dyn ast::HasVisibility) -> RawVisibilityId {
         let vis = match self.forced_visibility {
             Some(vis) => return vis,
             None => RawVisibility::from_ast_with_hygiene(self.db, item.visibility(), &self.hygiene),
