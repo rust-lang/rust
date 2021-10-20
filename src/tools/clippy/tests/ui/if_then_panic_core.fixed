@@ -1,0 +1,42 @@
+// run-rustfix
+#![crate_type = "lib"]
+#![no_std]
+#![warn(clippy::if_then_panic)]
+
+pub fn main() {
+    let a = &[1, 2, 3];
+    let c = Some(2);
+    if !a.is_empty()
+        && a.len() == 3
+        && c != None
+        && !a.is_empty()
+        && a.len() == 3
+        && !a.is_empty()
+        && a.len() == 3
+        && !a.is_empty()
+        && a.len() == 3
+    {
+        panic!("qaqaq{:?}", a);
+    }
+    assert!(a.is_empty(), "qaqaq{:?}", a);
+    assert!(a.is_empty(), "qwqwq");
+    if a.len() == 3 {
+        format_args!("qwq");
+        format_args!("qwq");
+        format_args!("qwq");
+    }
+    if let Some(b) = c {
+        panic!("orz {}", b);
+    }
+    if a.len() == 3 {
+        panic!("qaqaq");
+    } else {
+        format_args!("qwq");
+    }
+    let b = &[1, 2, 3];
+    assert!(!b.is_empty(), "panic1");
+    assert!(!(b.is_empty() && a.is_empty()), "panic2");
+    assert!(!(a.is_empty() && !b.is_empty()), "panic3");
+    assert!(!(b.is_empty() || a.is_empty()), "panic4");
+    assert!(!(a.is_empty() || !b.is_empty()), "panic5");
+}
