@@ -90,7 +90,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // FEAT_FRINTTS
     ("frintts", Some(sym::aarch64_target_feature)),
     // FEAT_I8MM
-    // ("i8mm", Some(sym::aarch64_target_feature)),
+    ("i8mm", Some(sym::aarch64_target_feature)),
     // FEAT_F32MM
     // ("f32mm", Some(sym::aarch64_target_feature)),
     // FEAT_F64MM
