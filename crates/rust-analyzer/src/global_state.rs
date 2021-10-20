@@ -8,7 +8,7 @@ use std::{sync::Arc, time::Instant};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
-use ide_db::base_db::CrateId;
+use ide_db::base_db::{CrateId, FileLoader, SourceDatabase};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use proc_macro_api::ProcMacroServer;
@@ -58,6 +58,7 @@ pub(crate) struct GlobalState {
     pub(crate) mem_docs: MemDocs,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     pub(crate) shutdown_requested: bool,
+    pub(crate) proc_macro_changed: bool,
     pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_client: Option<ProcMacroServer>,
@@ -147,6 +148,7 @@ impl GlobalState {
             mem_docs: MemDocs::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             shutdown_requested: false,
+            proc_macro_changed: false,
             last_reported_status: None,
             source_root_config: SourceRootConfig::default(),
             proc_macro_client: None,
@@ -187,6 +189,15 @@ impl GlobalState {
             }
 
             for file in changed_files {
+                if !file.is_created_or_deleted() {
+                    let crates = self.analysis_host.raw_database().relevant_crates(file.file_id);
+                    let crate_graph = self.analysis_host.raw_database().crate_graph();
+
+                    if crates.iter().any(|&krate| !crate_graph[krate].proc_macro.is_empty()) {
+                        self.proc_macro_changed = true;
+                    }
+                }
+
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.change_kind) {
