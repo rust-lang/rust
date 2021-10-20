@@ -1,6 +1,6 @@
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
-use crate::ty::subst::{InternalSubsts, SubstsRef};
-use crate::ty::{Instance, InstanceDef, SymbolName, TyCtxt};
+use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
+use crate::ty::{self, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -275,6 +275,31 @@ impl MonoItemMap<'tcx> {
             MonoItem::Static(_) | MonoItem::GlobalAsm(_) | MonoItem::Fn(_) => {
                 self.trivially_concrete.contains(&item)
             }
+        }
+    }
+
+    pub fn get_polymorphic_instance(&self, instance: Instance<'tcx>) -> Option<Instance<'tcx>> {
+        if instance.substs.non_erasable_generics().next().is_some() {
+            let is_param = |a: GenericArg<'_>| match a.unpack() {
+                GenericArgKind::Lifetime(_) => false,
+                GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
+                GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
+            };
+
+            for substs in self.item_map.get(&instance.def).into_iter().flat_map(|v| v).copied() {
+                // FIXME(polymorphization): Deal with more complex polymorphized stuff.
+                if substs == instance.substs
+                    || substs.iter().zip(instance.substs).all(|(a, b)| a == b || is_param(a))
+                {
+                    return Some(Instance { def: instance.def, substs });
+                }
+            }
+
+            None
+        } else if self.trivially_concrete.contains(&MonoItem::Fn(instance)) {
+            Some(instance)
+        } else {
+            None
         }
     }
 }

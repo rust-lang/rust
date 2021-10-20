@@ -127,6 +127,8 @@ impl<'tcx> Instance<'tcx> {
         self.substs.non_erasable_generics().next()?;
 
         match self.def {
+            // FIXME(polymorphization): Deal with this. Can't use
+            // `polymorphize` as that causes cycles.
             InstanceDef::Item(def) => tcx
                 .upstream_monomorphizations_for(def.did)
                 .and_then(|monos| monos.get(&self.substs).cloned()),
@@ -577,114 +579,24 @@ impl<'tcx> Instance<'tcx> {
 
     /// Returns a new `Instance` where generic parameters in `instance.substs` are replaced by
     /// identity parameters if they are determined to be unused in `instance.def`.
+    ///
+    /// This must only be used after mono item collection.
     pub fn polymorphize(self, tcx: TyCtxt<'tcx>) -> Self {
         debug!("polymorphize: running polymorphization analysis");
         if !tcx.sess.opts.debugging_opts.polymorphize {
             return self;
         }
 
-        let polymorphized_substs = polymorphize(tcx, self.def, self.substs);
-        debug!("polymorphize: self={:?} polymorphized_substs={:?}", self, polymorphized_substs);
-        Self { def: self.def, substs: polymorphized_substs }
-    }
-}
-
-fn polymorphize<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance: ty::InstanceDef<'tcx>,
-    substs: SubstsRef<'tcx>,
-) -> SubstsRef<'tcx> {
-    debug!("polymorphize({:?}, {:?})", instance, substs);
-    let unused = tcx.unused_generic_params(instance);
-    debug!("polymorphize: unused={:?}", unused);
-
-    // If this is a closure or generator then we need to handle the case where another closure
-    // from the function is captured as an upvar and hasn't been polymorphized. In this case,
-    // the unpolymorphized upvar closure would result in a polymorphized closure producing
-    // multiple mono items (and eventually symbol clashes).
-    let def_id = instance.def_id();
-    let upvars_ty = if tcx.is_closure(def_id) {
-        Some(substs.as_closure().tupled_upvars_ty())
-    } else if tcx.type_of(def_id).is_generator() {
-        Some(substs.as_generator().tupled_upvars_ty())
-    } else {
-        None
-    };
-    let has_upvars = upvars_ty.map_or(false, |ty| ty.tuple_fields().count() > 0);
-    debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
-
-    struct PolymorphizationFolder<'tcx> {
-        tcx: TyCtxt<'tcx>,
-    }
-
-    impl ty::TypeFolder<'tcx> for PolymorphizationFolder<'tcx> {
-        fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
-            self.tcx
-        }
-
-        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-            debug!("fold_ty: ty={:?}", ty);
-            match ty.kind {
-                ty::Closure(def_id, substs) => {
-                    let polymorphized_substs = polymorphize(
-                        self.tcx,
-                        ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
-                        substs,
-                    );
-                    if substs == polymorphized_substs {
-                        ty
-                    } else {
-                        self.tcx.mk_closure(def_id, polymorphized_substs)
-                    }
-                }
-                ty::Generator(def_id, substs, movability) => {
-                    let polymorphized_substs = polymorphize(
-                        self.tcx,
-                        ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
-                        substs,
-                    );
-                    if substs == polymorphized_substs {
-                        ty
-                    } else {
-                        self.tcx.mk_generator(def_id, polymorphized_substs, movability)
-                    }
-                }
-                _ => ty.super_fold_with(self),
-            }
+        let (mono_item_map, _) = tcx.collect_and_partition_mono_items(());
+        match mono_item_map.get_polymorphic_instance(self) {
+            Some(instance) => instance,
+            // FIXME(polymorphization): We currently do not use
+            // polymorphic instances from separate crates,
+            // and assume that we just have a mono item for this
+            // instance in some other crate.
+            None => self,
         }
     }
-
-    InternalSubsts::for_item(tcx, def_id, |param, _| {
-        let is_unused = unused.contains(param.index).unwrap_or(false);
-        debug!("polymorphize: param={:?} is_unused={:?}", param, is_unused);
-        match param.kind {
-            // Upvar case: If parameter is a type parameter..
-            ty::GenericParamDefKind::Type { .. } if
-                // ..and has upvars..
-                has_upvars &&
-                // ..and this param has the same type as the tupled upvars..
-                upvars_ty == Some(substs[param.index as usize].expect_ty()) => {
-                    // ..then double-check that polymorphization marked it used..
-                    debug_assert!(!is_unused);
-                    // ..and polymorphize any closures/generators captured as upvars.
-                    let upvars_ty = upvars_ty.unwrap();
-                    let polymorphized_upvars_ty = upvars_ty.fold_with(
-                        &mut PolymorphizationFolder { tcx });
-                    debug!("polymorphize: polymorphized_upvars_ty={:?}", polymorphized_upvars_ty);
-                    ty::GenericArg::from(polymorphized_upvars_ty)
-                },
-
-            // Simple case: If parameter is a const or type parameter..
-            ty::GenericParamDefKind::Const { .. } | ty::GenericParamDefKind::Type { .. } if
-                // ..and is within range and unused..
-                unused.contains(param.index).unwrap_or(false) =>
-                    // ..then use the identity for this parameter.
-                    tcx.mk_param_from_def(param),
-
-            // Otherwise, use the parameter as before.
-            _ => substs[param.index as usize],
-        }
-    })
 }
 
 fn needs_fn_once_adapter_shim(

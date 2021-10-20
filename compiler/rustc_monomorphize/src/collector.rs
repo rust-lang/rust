@@ -178,6 +178,7 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
+use crate::polymorphize;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
 use rustc_errors::{ErrorReported, FatalError};
@@ -241,13 +242,10 @@ impl Visited<'tcx> {
 
                 debug!("fresh: {:?}", instance);
 
-                for &mut substs in self.map.item_map.entry(instance.def).or_default() {
-                    // FIXME(polymorphization): Don't just compare stuff here.
-                    if substs == instance.substs {
-                        debug!("found generic");
-                        return Some(item);
-                    }
+                if let Some(instance) = self.map.get_polymorphic_instance(instance) {
+                    return Some(MonoItem::Fn(instance));
                 }
+
                 self.in_progress_fns.push(instance);
                 None
             }
@@ -267,14 +265,9 @@ impl Visited<'tcx> {
         match item {
             MonoItem::Fn(instance) if item.is_generic_fn() => {
                 assert_eq!(Some(instance.def), self.in_progress_fns.pop().map(|i| i.def));
+                debug_assert_eq!(self.map.get_polymorphic_instance(instance), None);
 
                 let item_substs = self.map.item_map.entry(instance.def).or_default();
-                for &substs in item_substs.iter() {
-                    // FIXME(polymorphization): Don't just compare stuff here.
-                    if substs == instance.substs {
-                        return item;
-                    }
-                }
                 item_substs.push(instance.substs);
 
                 item
@@ -425,7 +418,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 /// post-monorphization error is encountered during a collection step.
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
-    starting_point: Spanned<MonoItem<'tcx>>,
+    mut starting_point: Spanned<MonoItem<'tcx>>,
     visited: MTRef<'_, MTLock<Visited<'tcx>>>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
@@ -551,6 +544,19 @@ fn collect_items_rec<'tcx>(
 
     if let Some((def_id, depth)) = recursion_depth_reset {
         recursion_depths.insert(def_id, depth);
+    }
+
+    if tcx.sess.opts.debugging_opts.polymorphize {
+        // FIXME(polymorphization): Clean this up.
+        match starting_point.node {
+            MonoItem::Fn(ref mut instance) => {
+                let unused =
+                    polymorphize::polymorphize_collector_substs(tcx, instance.def, instance.substs);
+
+                instance.substs = unused;
+            }
+            _ => {}
+        }
     }
 
     visited.lock_mut().finish_item(starting_point.node)
@@ -1037,9 +1043,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
         return true;
     }
 
-    if tcx.is_reachable_non_generic(def_id)
-        || instance.polymorphize(tcx).upstream_monomorphization(tcx).is_some()
-    {
+    if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(tcx).is_some() {
         // We can link to the item in question, no instance needed in this crate.
         return false;
     }
@@ -1162,7 +1166,7 @@ fn create_fn_mono_item<'tcx>(
         crate::util::dump_closure_profile(tcx, instance);
     }
 
-    respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
+    respan(source, MonoItem::Fn(instance))
 }
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
