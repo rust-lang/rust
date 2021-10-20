@@ -263,7 +263,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// # What it does
+    /// ### What it does
     /// Checks for transmutes from a number to an array of `u8`
     ///
     /// ### Why this is bad?
