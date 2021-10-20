@@ -100,6 +100,13 @@ fn overlapping() {
         _ => (),
     }
 
+    // Issue #7829
+    match 0 {
+        -1..=1 => (),
+        -2..=2 => (),
+        _ => (),
+    }
+
     if let None = Some(42) {
         // nothing
     } else if let None = Some(42) {
