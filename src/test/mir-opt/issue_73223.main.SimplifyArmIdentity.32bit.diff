@@ -87,7 +87,7 @@
                                            // + val: Unevaluated(main, [], Some(promoted[0]))
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                           // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:3 ~ issue_73223[2d0f]::main), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
+                                           // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:3 ~ issue_73223[HASH]::main), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
           _11 = _28;                       // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           (_9.0: &i32) = move _10;         // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           (_9.1: &i32) = move _11;         // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

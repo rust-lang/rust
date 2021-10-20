@@ -126,12 +126,12 @@ impl Borrow<Fingerprint> for DefPathHash {
     }
 }
 
-/// A [StableCrateId] is a 64 bit hash of the crate name combined with all
-/// `-Cmetadata` arguments. It is to [CrateNum] what [DefPathHash] is to
-/// [DefId]. It is stable across compilation sessions.
+/// A [`StableCrateId`] is a 64 bit hash of the crate name combined with all
+/// `-Cmetadata` arguments. It is to [`CrateNum`] what [`DefPathHash`] is to
+/// [`DefId`]. It is stable across compilation sessions.
 ///
 /// Since the ID is a hash value there is a (very small) chance that two crates
-/// end up with the same [StableCrateId]. The compiler will check for such
+/// end up with the same [`StableCrateId`]. The compiler will check for such
 /// collisions when loading crates and abort compilation in order to avoid
 /// further trouble.
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -152,7 +152,7 @@ impl StableCrateId {
         let mut hasher = StableHasher::new();
         crate_name.hash(&mut hasher);
 
-        // We don't want the stable crate id to dependent on the order
+        // We don't want the stable crate ID to depend on the order of
         // -C metadata arguments, so sort them:
         metadata.sort();
         // Every distinct -C metadata value is only incorporated once:
@@ -170,6 +170,12 @@ impl StableCrateId {
         // Also incorporate crate type, so that we don't get symbol conflicts when
         // linking against a library of the same name, if this is an executable.
         hasher.write(if is_exe { b"exe" } else { b"lib" });
+
+        // Also incorporate the rustc version. Otherwise, with -Zsymbol-mangling-version=v0
+        // and no -Cmetadata, symbols from the same crate compiled with different versions of
+        // rustc are named the same.
+        let rustc_version = option_env!("CFG_VERSION").unwrap_or("unknown version").as_bytes();
+        hasher.write(rustc_version);
 
         StableCrateId(hasher.finish())
     }
