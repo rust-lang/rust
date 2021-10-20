@@ -51,6 +51,14 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub(crate) fn format_missing_with_indent(&mut self, end: BytePos) {
+        self.format_missing_indent(end, true)
+    }
+
+    pub(crate) fn format_missing_no_indent(&mut self, end: BytePos) {
+        self.format_missing_indent(end, false)
+    }
+
+    fn format_missing_indent(&mut self, end: BytePos, should_indent: bool) {
         let config = self.config;
         self.format_missing_inner(end, |this, last_snippet, snippet| {
             this.push_str(last_snippet.trim_end());
@@ -58,14 +66,10 @@ impl<'a> FmtVisitor<'a> {
                 // No new lines in the snippet.
                 this.push_str("\n");
             }
-            let indent = this.block_indent.to_string(config);
-            this.push_str(&indent);
-        })
-    }
-
-    pub(crate) fn format_missing_no_indent(&mut self, end: BytePos) {
-        self.format_missing_inner(end, |this, last_snippet, _| {
-            this.push_str(last_snippet.trim_end());
+            if should_indent {
+                let indent = this.block_indent.to_string(config);
+                this.push_str(&indent);
+            }
         })
     }
 
