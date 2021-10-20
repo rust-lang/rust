@@ -145,7 +145,7 @@
 
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
 pub use self::c_str::FromBytesWithNulError;
-#[stable(feature = "cstring_from_vec_with_nul", since = "1.57.0")]
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
 pub use self::c_str::FromVecWithNulError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::c_str::{CStr, CString, IntoStringError, NulError};
