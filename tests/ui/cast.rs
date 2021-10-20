@@ -92,4 +92,12 @@ fn main() {
     (1i64).checked_rem_euclid(-1i64).unwrap() as u64;
     (1i64).checked_rem_euclid(-1i64).unwrap() as u128;
     (1isize).checked_rem_euclid(-1isize).unwrap() as usize;
+
+    // no lint for `cast_possible_truncation`
+    // with `signum` method call (see issue #5395)
+    let x: i64 = 5;
+    let _ = x.signum() as i32;
+
+    let s = x.signum();
+    let _ = s as i32;
 }
