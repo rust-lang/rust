@@ -38,9 +38,6 @@ use crate::{
     proc_macro::ProcMacroExpander,
 };
 
-#[cfg(test)]
-mod test_db;
-
 /// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in
 /// Rust are macros: each macro can be thought of as producing a "temporary
