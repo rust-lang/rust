@@ -6,6 +6,51 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use std::ops::ControlFlow;
 
+/// Convenience method for creating a `Visitor` with just `visit_expr` overridden and nested
+/// bodies (i.e. closures) are visited.
+/// If the callback returns `true`, the expr just provided to the callback is walked.
+#[must_use]
+pub fn expr_visitor<'tcx>(cx: &LateContext<'tcx>, f: impl FnMut(&'tcx Expr<'tcx>) -> bool) -> impl Visitor<'tcx> {
+    struct V<'tcx, F> {
+        hir: Map<'tcx>,
+        f: F,
+    }
+    impl<'tcx, F: FnMut(&'tcx Expr<'tcx>) -> bool> Visitor<'tcx> for V<'tcx, F> {
+        type Map = Map<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::OnlyBodies(self.hir)
+        }
+
+        fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+            if (self.f)(expr) {
+                walk_expr(self, expr);
+            }
+        }
+    }
+    V { hir: cx.tcx.hir(), f }
+}
+
+/// Convenience method for creating a `Visitor` with just `visit_expr` overridden and nested
+/// bodies (i.e. closures) are not visited.
+/// If the callback returns `true`, the expr just provided to the callback is walked.
+#[must_use]
+pub fn expr_visitor_no_bodies<'tcx>(f: impl FnMut(&'tcx Expr<'tcx>) -> bool) -> impl Visitor<'tcx> {
+    struct V<F>(F);
+    impl<'tcx, F: FnMut(&'tcx Expr<'tcx>) -> bool> Visitor<'tcx> for V<F> {
+        type Map = intravisit::ErasedMap<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::None
+        }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            if (self.0)(e) {
+                walk_expr(self, e);
+            }
+        }
+    }
+    V(f)
+}
+
 /// returns `true` if expr contains match expr desugared from try
 fn contains_try(expr: &hir::Expr<'_>) -> bool {
     struct TryFinder {
