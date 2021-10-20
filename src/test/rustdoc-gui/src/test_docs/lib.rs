@@ -124,3 +124,10 @@ pub mod huge_amount_of_consts {
 
 /// Very long code text `hereIgoWithLongTextBecauseWhyNotAndWhyWouldntI`.
 pub mod long_code_block {}
+
+#[macro_export]
+macro_rules! repro {
+    () => {};
+}
+
+pub use crate::repro as repro2;
