@@ -226,7 +226,7 @@ impl DerefDelegate<'_, 'tcx> {
         format!("{}{}", self.suggestion_start, end_snip)
     }
 
-    fn func_takes_arg_by_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
+    fn func_takes_arg_by_double_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
         let (call_args, inputs) = match parent_expr.kind {
             ExprKind::MethodCall(_, _, call_args, _) => {
                 if let Some(method_did) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
@@ -277,16 +277,18 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 
                         if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
-                            // suggest ampersand if call function is taking args by ref
-                            let takes_arg_by_ref = self.func_takes_arg_by_ref(parent_expr, cmt.hir_id);
+                            // suggest ampersand if call function is taking args by double reference
+                            let takes_arg_by_double_ref = self.func_takes_arg_by_double_ref(parent_expr, cmt.hir_id);
 
                             // do not suggest ampersand if the ident is the method caller
-                            let ident_sugg =
-                                if !call_args.is_empty() && call_args[0].hir_id == cmt.hir_id && !takes_arg_by_ref {
-                                    format!("{}{}", start_snip, ident_str)
-                                } else {
-                                    format!("{}&{}", start_snip, ident_str)
-                                };
+                            let ident_sugg = if !call_args.is_empty()
+                                && call_args[0].hir_id == cmt.hir_id
+                                && !takes_arg_by_double_ref
+                            {
+                                format!("{}{}", start_snip, ident_str)
+                            } else {
+                                format!("{}&{}", start_snip, ident_str)
+                            };
                             self.suggestion_start.push_str(&ident_sugg);
                             self.next_pos = span.hi();
                             return;
