@@ -693,9 +693,27 @@ mod lint {
     #[test]
     fn lint_clippy_qualified() {
         check_edit(
-            "clippy::as_conversions",
+            "as_conversions",
             r#"#[allow(clippy::$0)] struct Test;"#,
             r#"#[allow(clippy::as_conversions)] struct Test;"#,
+        );
+    }
+
+    #[test]
+    fn lint_rustdoc_unqualified() {
+        check_edit(
+            "rustdoc::bare_urls",
+            r#"#[allow($0)] struct Test;"#,
+            r#"#[allow(rustdoc::bare_urls)] struct Test;"#,
+        );
+    }
+
+    #[test]
+    fn lint_rustdoc_qualified() {
+        check_edit(
+            "bare_urls",
+            r#"#[allow(rustdoc::$0)] struct Test;"#,
+            r#"#[allow(rustdoc::bare_urls)] struct Test;"#,
         );
     }
 }
