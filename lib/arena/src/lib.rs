@@ -7,7 +7,7 @@ use std::{
     hash::{Hash, Hasher},
     iter::FromIterator,
     marker::PhantomData,
-    ops::{Index, IndexMut},
+    ops::{Index, IndexMut, Range, RangeInclusive},
 };
 
 mod map;
@@ -88,6 +88,101 @@ impl<T> Idx<T> {
         self.raw
     }
 }
+
+/// A range of densely allocated arena values.
+pub struct IdxRange<T> {
+    range: Range<u32>,
+    _p: PhantomData<T>,
+}
+
+impl<T> IdxRange<T> {
+    /// Creates a new index range
+    /// inclusive of the start value and exclusive of the end value.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// let a = arena.alloc("a");
+    /// let b = arena.alloc("b");
+    /// let c = arena.alloc("c");
+    /// let d = arena.alloc("d");
+    ///
+    /// let range = la_arena::IdxRange::new(b..d);
+    /// assert_eq!(&arena[range], &["b", "c"]);
+    /// ```
+    pub fn new(range: Range<Idx<T>>) -> Self {
+        Self { range: range.start.into_raw().into()..range.end.into_raw().into(), _p: PhantomData }
+    }
+
+    /// Creates a new index range
+    /// inclusive of the start value and end value.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// let foo = arena.alloc("foo");
+    /// let bar = arena.alloc("bar");
+    /// let baz = arena.alloc("baz");
+    ///
+    /// let range = la_arena::IdxRange::new_inclusive(foo..=baz);
+    /// assert_eq!(&arena[range], &["foo", "bar", "baz"]);
+    ///
+    /// let range = la_arena::IdxRange::new_inclusive(foo..=foo);
+    /// assert_eq!(&arena[range], &["foo"]);
+    /// ```
+    pub fn new_inclusive(range: RangeInclusive<Idx<T>>) -> Self {
+        Self {
+            range: u32::from(range.start().into_raw())..u32::from(range.end().into_raw()) + 1,
+            _p: PhantomData,
+        }
+    }
+
+    /// Returns whether the index range is empty.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// let one = arena.alloc(1);
+    /// let two = arena.alloc(2);
+    ///
+    /// assert!(la_arena::IdxRange::new(one..one).is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.range.is_empty()
+    }
+}
+
+impl<T> Iterator for IdxRange<T> {
+    type Item = Idx<T>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.range.next().map(|raw| Idx::from_raw(raw.into()))
+    }
+}
+
+impl<T> DoubleEndedIterator for IdxRange<T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.range.next_back().map(|raw| Idx::from_raw(raw.into()))
+    }
+}
+
+impl<T> fmt::Debug for IdxRange<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple(&format!("IdxRange::<{}>", std::any::type_name::<T>()))
+            .field(&self.range)
+            .finish()
+    }
+}
+
+impl<T> Clone for IdxRange<T> {
+    fn clone(&self) -> Self {
+        Self { range: self.range.clone(), _p: PhantomData }
+    }
+}
+
+impl<T> PartialEq for IdxRange<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.range == other.range
+    }
+}
+
+impl<T> Eq for IdxRange<T> {}
 
 /// Yet another index-based arena.
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -170,9 +265,9 @@ impl<T> Arena<T> {
     /// assert_eq!(arena[idx], 50);
     /// ```
     pub fn alloc(&mut self, value: T) -> Idx<T> {
-        let idx = RawIdx(self.data.len() as u32);
+        let idx = self.next_idx();
         self.data.push(value);
-        Idx::from_raw(idx)
+        idx
     }
 
     /// Returns an iterator over the arena’s elements.
@@ -221,6 +316,13 @@ impl<T> Arena<T> {
     pub fn shrink_to_fit(&mut self) {
         self.data.shrink_to_fit();
     }
+
+    /// Returns the index of the next value allocated on the arena.
+    ///
+    /// This method should remain private to make creating invalid `Idx`s harder.
+    fn next_idx(&self) -> Idx<T> {
+        Idx::from_raw(RawIdx(self.data.len() as u32))
+    }
 }
 
 impl<T> Default for Arena<T> {
@@ -241,6 +343,15 @@ impl<T> IndexMut<Idx<T>> for Arena<T> {
     fn index_mut(&mut self, idx: Idx<T>) -> &mut T {
         let idx = idx.into_raw().0 as usize;
         &mut self.data[idx]
+    }
+}
+
+impl<T> Index<IdxRange<T>> for Arena<T> {
+    type Output = [T];
+    fn index(&self, range: IdxRange<T>) -> &[T] {
+        let start = range.range.start as usize;
+        let end = range.range.end as usize;
+        &self.data[start..end]
     }
 }
 

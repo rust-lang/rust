@@ -20,7 +20,7 @@ scoped-tls = "1"
 chalk-solve = { version = "0.71", default-features = false }
 chalk-ir = "0.71"
 chalk-recursive = { version = "0.71", default-features = false }
-la-arena = { version = "0.2.0", path = "../../lib/arena" }
+la-arena = { version = "0.3.0", path = "../../lib/arena" }
 once_cell = { version = "1.5.0" }
 
 stdx = { path = "../stdx", version = "0.0.0" }

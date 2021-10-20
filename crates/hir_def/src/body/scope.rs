@@ -174,7 +174,7 @@ fn compute_block_scopes(
 
 fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope: ScopeId) {
     let make_label =
-        |label: &Option<_>| label.map(|label| (label, body.labels[label].name.clone()));
+        |label: &Option<LabelId>| label.map(|label| (label, body.labels[label].name.clone()));
 
     scopes.set_scope(expr, scope);
     match &body[expr] {

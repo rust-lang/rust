@@ -229,7 +229,7 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn lower_record_fields(&mut self, fields: &ast::RecordFieldList) -> IdRange<Field> {
+    fn lower_record_fields(&mut self, fields: &ast::RecordFieldList) -> IdxRange<Field> {
         let start = self.next_field_idx();
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
@@ -238,7 +238,7 @@ impl<'a> Ctx<'a> {
             }
         }
         let end = self.next_field_idx();
-        IdRange::new(start..end)
+        IdxRange::new(start..end)
     }
 
     fn lower_record_field(&mut self, field: &ast::RecordField) -> Option<Field> {
@@ -249,7 +249,7 @@ impl<'a> Ctx<'a> {
         Some(res)
     }
 
-    fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldList) -> IdRange<Field> {
+    fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldList) -> IdxRange<Field> {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
             let data = self.lower_tuple_field(i, &field);
@@ -257,7 +257,7 @@ impl<'a> Ctx<'a> {
             self.add_attrs(idx.into(), RawAttrs::new(self.db, &field, &self.hygiene));
         }
         let end = self.next_field_idx();
-        IdRange::new(start..end)
+        IdxRange::new(start..end)
     }
 
     fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleField) -> Field {
@@ -273,7 +273,7 @@ impl<'a> Ctx<'a> {
         let generic_params = self.lower_generic_params(GenericsOwner::Union, union);
         let fields = match union.record_field_list() {
             Some(record_field_list) => self.lower_fields(&StructKind::Record(record_field_list)),
-            None => Fields::Record(IdRange::new(self.next_field_idx()..self.next_field_idx())),
+            None => Fields::Record(IdxRange::new(self.next_field_idx()..self.next_field_idx())),
         };
         let ast_id = self.source_ast_id_map.ast_id(union);
         let res = Union { name, visibility, generic_params, fields, ast_id };
@@ -287,14 +287,14 @@ impl<'a> Ctx<'a> {
         let variants =
             self.with_inherited_visibility(visibility, |this| match &enum_.variant_list() {
                 Some(variant_list) => this.lower_variants(variant_list),
-                None => IdRange::new(this.next_variant_idx()..this.next_variant_idx()),
+                None => IdxRange::new(this.next_variant_idx()..this.next_variant_idx()),
             });
         let ast_id = self.source_ast_id_map.ast_id(enum_);
         let res = Enum { name, visibility, generic_params, variants, ast_id };
         Some(id(self.data().enums.alloc(res)))
     }
 
-    fn lower_variants(&mut self, variants: &ast::VariantList) -> IdRange<Variant> {
+    fn lower_variants(&mut self, variants: &ast::VariantList) -> IdxRange<Variant> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
@@ -303,7 +303,7 @@ impl<'a> Ctx<'a> {
             }
         }
         let end = self.next_variant_idx();
-        IdRange::new(start..end)
+        IdxRange::new(start..end)
     }
 
     fn lower_variant(&mut self, variant: &ast::Variant) -> Option<Variant> {
@@ -358,7 +358,7 @@ impl<'a> Ctx<'a> {
             }
         }
         let end_param = self.next_param_idx();
-        let params = IdRange::new(start_param..end_param);
+        let params = IdxRange::new(start_param..end_param);
 
         let ret_type = match func.ret_type().and_then(|rt| rt.ty()) {
             Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
