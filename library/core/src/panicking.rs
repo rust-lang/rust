@@ -27,8 +27,10 @@
 )]
 
 use crate::fmt;
-use crate::panic::assert_info::{AssertInfo, Assertion, BinaryAssertion};
-use crate::panic::extra_info::ExtraInfo;
+use crate::panic::assert_info::{
+    AssertInfo, Assertion, BinaryAssertion, BinaryAssertionStaticData,
+};
+use crate::panic::panic_description::PanicDescription;
 use crate::panic::{Location, PanicInfo};
 
 /// The underlying implementation of libcore's `panic!` macro when no formatting is used.
@@ -49,14 +51,14 @@ pub fn panic(expr: &'static str) -> ! {
     // truncation and padding (even though none is used here). Using
     // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
-    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]), None);
+    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]));
 }
 
 #[inline]
 #[track_caller]
 #[lang = "panic_str"] // needed for const-evaluated panics
 pub fn panic_str(expr: &str) -> ! {
-    panic_fmt(format_args!("{}", expr), None);
+    panic_fmt(format_args!("{}", expr));
 }
 
 #[inline]
@@ -84,14 +86,20 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 /// site as much as possible (so that `panic!()` has as low an impact
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
+#[inline]
+#[track_caller]
+#[lang = "panic_fmt"] // needed for const-evaluated panics
+pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
+    panic_description(PanicDescription::Message(&fmt))
+}
+
 #[cold]
 // If panic_immediate_abort, inline the abort call,
 // otherwise avoid inlining because of it is cold path.
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
-#[lang = "panic_fmt"] // needed for const-evaluated panics
-pub fn panic_fmt(fmt: fmt::Arguments<'_>, extra_info: Option<ExtraInfo<'_>>) -> ! {
+fn panic_description(description: PanicDescription<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
@@ -103,8 +111,7 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>, extra_info: Option<ExtraInfo<'_>>) -> 
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
 
-    let mut pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller());
-    pi.set_extra_info(extra_info);
+    let pi = PanicInfo::internal_constructor(Some(description), Location::caller());
 
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }
@@ -123,31 +130,21 @@ pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     }
 }
 
-#[derive(Debug)]
-#[doc(hidden)]
-pub enum AssertKind {
-    Eq,
-    Ne,
-    Match,
-}
-
 /// Internal function for `assert_eq!` and `assert_ne!` macros
 #[cold]
 #[track_caller]
 #[doc(hidden)]
 pub fn assert_failed<T, U>(
-    kind: AssertKind,
-    left_expr: &'static str,
+    static_data: &'static BinaryAssertionStaticData,
     left_val: &T,
-    right_expr: &'static str,
     right_val: &U,
-    args: Option<fmt::Arguments<'_>>,
+    message: Option<fmt::Arguments<'_>>,
 ) -> !
 where
     T: fmt::Debug + ?Sized,
     U: fmt::Debug + ?Sized,
 {
-    assert_failed_inner(kind, left_expr, &left_val, right_expr, &right_val, args)
+    assert_failed_inner(static_data, &left_val, &right_val, message)
 }
 
 /// Internal function for `assert_match!`
@@ -155,10 +152,9 @@ where
 #[track_caller]
 #[doc(hidden)]
 pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
-    left_expr: &'static str,
+    static_data: &'static BinaryAssertionStaticData,
     left_val: &T,
-    right_pattern: &'static str,
-    args: Option<fmt::Arguments<'_>>,
+    message: Option<fmt::Arguments<'_>>,
 ) -> ! {
     // Use the Display implementation to display the pattern.
     struct Pattern<'a>(&'a str);
@@ -167,70 +163,19 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
             fmt::Display::fmt(self.0, f)
         }
     }
-    assert_failed_inner(
-        AssertKind::Match,
-        left_expr,
-        &left_val,
-        right_pattern,
-        &Pattern(right_pattern),
-        args,
-    );
+    assert_failed_inner(static_data, &left_val, &Pattern(static_data.right_expr), message)
 }
 
 /// Non-generic version of the above functions, to avoid code bloat.
 #[track_caller]
 fn assert_failed_inner(
-    kind: AssertKind,
-    left_expr: &'static str,
+    static_data: &'static BinaryAssertionStaticData,
     left_val: &dyn fmt::Debug,
-    right_expr: &'static str,
     right_val: &dyn fmt::Debug,
-    args: Option<fmt::Arguments<'_>>,
+    message: Option<fmt::Arguments<'_>>,
 ) -> ! {
-    let (op, macro_name) = match kind {
-        AssertKind::Eq => ("==", "assert_eq"),
-        AssertKind::Ne => ("!=", "assert_ne"),
-        AssertKind::Match => ("matches", "assert_matches"),
-    };
-
-    match args {
-        Some(args) => panic_fmt(
-            format_args!(
-                r#"assertion failed: `(left {} right)`
-  left: `{:?}`,
- right: `{:?}`: {}"#,
-                op, left_val, right_val, args
-            ),
-            Some(ExtraInfo::AssertInfo(&AssertInfo {
-                assertion: Assertion::Binary(BinaryAssertion {
-                    op,
-                    left_expr,
-                    right_expr,
-                    left_val,
-                    right_val,
-                }),
-                macro_name,
-                message: Some(args),
-            })),
-        ),
-        None => panic_fmt(
-            format_args!(
-                r#"assertion failed: `(left {} right)`
-  left: `{:?}`,
- right: `{:?}`"#,
-                op, left_val, right_val
-            ),
-            Some(ExtraInfo::AssertInfo(&AssertInfo {
-                assertion: Assertion::Binary(BinaryAssertion {
-                    op,
-                    left_expr,
-                    right_expr,
-                    left_val,
-                    right_val,
-                }),
-                macro_name,
-                message: None,
-            })),
-        ),
-    }
+    panic_description(PanicDescription::AssertInfo(&AssertInfo {
+        assertion: Assertion::Binary(BinaryAssertion { static_data, left_val, right_val }),
+        message,
+    }))
 }

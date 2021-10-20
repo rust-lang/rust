@@ -9,11 +9,10 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use core::panic::extra_info::ExtraInfo;
+use core::panic::panic_description::PanicDescription;
 use core::panic::{BoxMeUp, Location, PanicInfo};
 
 use crate::any::Any;
-use crate::fmt;
 use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
 use crate::process;
@@ -443,12 +442,12 @@ pub fn panicking() -> bool {
 #[panic_handler]
 pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     struct PanicPayload<'a> {
-        inner: &'a fmt::Arguments<'a>,
+        inner: &'a PanicDescription<'a>,
         string: Option<String>,
     }
 
     impl<'a> PanicPayload<'a> {
-        fn new(inner: &'a fmt::Arguments<'a>) -> PanicPayload<'a> {
+        fn new(inner: &'a PanicDescription<'a>) -> PanicPayload<'a> {
             PanicPayload { inner, string: None }
         }
 
@@ -459,7 +458,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
             // Lazily, the first time this gets called, run the actual string formatting.
             self.string.get_or_insert_with(|| {
                 let mut s = String::new();
-                drop(s.write_fmt(*inner));
+                drop(write!(s, "{}", *inner));
                 s
             })
         }
@@ -492,18 +491,18 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     }
 
     let loc = info.location().unwrap(); // The current implementation always returns Some
-    let msg = info.message().unwrap(); // The current implementation always returns Some
+    let descr = info.description().unwrap(); // The current implementation always returns Some
 
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
-        if let Some(msg) = msg.as_str() {
-            rust_panic_with_hook(&mut StrPanicPayload(msg), info.message(), loc, info.extra_info());
+        let descr_str = match descr {
+            PanicDescription::Message(message) => message.as_str(),
+            _ => None,
+        };
+
+        if let Some(descr_str) = descr_str {
+            rust_panic_with_hook(&mut StrPanicPayload(descr_str), info.description(), loc);
         } else {
-            rust_panic_with_hook(
-                &mut PanicPayload::new(msg),
-                info.message(),
-                loc,
-                info.extra_info(),
-            );
+            rust_panic_with_hook(&mut PanicPayload::new(&descr), info.description(), loc);
         }
     })
 }
@@ -526,7 +525,7 @@ pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
 
     let loc = Location::caller();
     return crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
-        rust_panic_with_hook(&mut PanicPayload::new(msg), None, loc, None)
+        rust_panic_with_hook(&mut PanicPayload::new(msg), None, loc)
     });
 
     struct PanicPayload<A> {
@@ -569,9 +568,8 @@ pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
 /// abort or unwind.
 fn rust_panic_with_hook(
     payload: &mut dyn BoxMeUp,
-    message: Option<&fmt::Arguments<'_>>,
+    description: Option<PanicDescription<'_>>,
     location: &Location<'_>,
-    extra_info: Option<ExtraInfo<'_>>,
 ) -> ! {
     let (must_abort, panics) = panic_count::increase();
 
@@ -588,14 +586,14 @@ fn rust_panic_with_hook(
         } else {
             // Unfortunately, this does not print a backtrace, because creating
             // a `Backtrace` will allocate, which we must to avoid here.
-            let panicinfo = PanicInfo::internal_constructor(message, location);
+            let panicinfo = PanicInfo::internal_constructor(description, location);
             rtprintpanic!("{}\npanicked after panic::always_abort(), aborting.\n", panicinfo);
         }
         intrinsics::abort()
     }
 
     unsafe {
-        let mut info = PanicInfo::internal_constructor(message, location);
+        let mut info = PanicInfo::internal_constructor(description, location);
         let _guard = HOOK_LOCK.read();
         match HOOK {
             // Some platforms (like wasm) know that printing to stderr won't ever actually
@@ -607,12 +605,10 @@ fn rust_panic_with_hook(
             Hook::Default if panic_output().is_none() => {}
             Hook::Default => {
                 info.set_payload(payload.get());
-                info.set_extra_info(extra_info);
                 default_hook(&info);
             }
             Hook::Custom(ptr) => {
                 info.set_payload(payload.get());
-                info.set_extra_info(extra_info);
                 (*ptr)(&info);
             }
         };

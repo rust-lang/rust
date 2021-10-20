@@ -1,7 +1,7 @@
 use crate::any::Any;
 use crate::fmt;
 use crate::panic::assert_info::AssertInfo;
-use crate::panic::extra_info::ExtraInfo;
+use crate::panic::panic_description::PanicDescription;
 use crate::panic::Location;
 
 /// A struct providing information about a panic.
@@ -31,9 +31,8 @@ use crate::panic::Location;
 #[derive(Debug)]
 pub struct PanicInfo<'a> {
     payload: &'a (dyn Any + Send),
-    message: Option<&'a fmt::Arguments<'a>>,
+    description: Option<PanicDescription<'a>>,
     location: &'a Location<'a>,
-    extra_info: Option<ExtraInfo<'a>>,
 }
 
 impl<'a> PanicInfo<'a> {
@@ -45,11 +44,11 @@ impl<'a> PanicInfo<'a> {
     #[doc(hidden)]
     #[inline]
     pub fn internal_constructor(
-        message: Option<&'a fmt::Arguments<'a>>,
+        description: Option<PanicDescription<'a>>,
         location: &'a Location<'a>,
     ) -> Self {
         struct NoPayload;
-        PanicInfo { location, message, payload: &NoPayload, extra_info: None }
+        PanicInfo { location, description, payload: &NoPayload }
     }
 
     #[unstable(
@@ -89,12 +88,27 @@ impl<'a> PanicInfo<'a> {
         self.payload
     }
 
+    /// Get the description of the cause of the panic.
+    ///
+    /// Returns `None` if no description was provided.
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` and related macros",
+        issue = "none"
+    )]
+    pub fn description(&self) -> Option<PanicDescription<'_>> {
+        self.description
+    }
+
     /// If the `panic!` macro from the `core` crate (not from `std`)
     /// was used with a formatting string and some additional arguments,
     /// returns that message ready to be used for example with [`fmt::write`]
     #[unstable(feature = "panic_info_message", issue = "66745")]
     pub fn message(&self) -> Option<&fmt::Arguments<'_>> {
-        self.message
+        match self.description {
+            Some(PanicDescription::Message(message)) => Some(message),
+            _ => None,
+        }
     }
 
     /// Returns information about the location from which the panic originated,
@@ -128,28 +142,6 @@ impl<'a> PanicInfo<'a> {
         Some(&self.location)
     }
 
-    #[unstable(
-        feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` and related macros",
-        issue = "none"
-    )]
-    #[doc(hidden)]
-    #[inline]
-    pub fn set_extra_info(&mut self, info: Option<ExtraInfo<'a>>) {
-        self.extra_info = info;
-    }
-
-    #[unstable(
-        feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` and related macros",
-        issue = "none"
-    )]
-    #[doc(hidden)]
-    #[inline]
-    pub fn extra_info(&self) -> Option<ExtraInfo<'_>> {
-        self.extra_info
-    }
-
     /// Get the information about the assertion that caused the panic.
     ///
     /// Returns `None` if the panic was not caused by an assertion.
@@ -159,7 +151,10 @@ impl<'a> PanicInfo<'a> {
         issue = "none"
     )]
     pub fn assert_info(&self) -> Option<&AssertInfo<'_>> {
-        if let Some(ExtraInfo::AssertInfo(x)) = &self.extra_info { Some(x) } else { None }
+        match self.description {
+            Some(PanicDescription::AssertInfo(info)) => Some(info),
+            _ => None,
+        }
     }
 }
 
@@ -167,8 +162,8 @@ impl<'a> PanicInfo<'a> {
 impl fmt::Display for PanicInfo<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("panicked at ")?;
-        if let Some(message) = self.message {
-            write!(formatter, "'{}', ", message)?
+        if let Some(description) = self.description {
+            write!(formatter, "'{}', ", description)?
         } else if let Some(payload) = self.payload.downcast_ref::<&'static str>() {
             write!(formatter, "'{}', ", payload)?
         }

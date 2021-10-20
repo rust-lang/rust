@@ -31,21 +31,22 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic, panic_internals)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
-                    let kind = $crate::panicking::AssertKind::Eq;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
                     $crate::panicking::assert_failed(
-                        kind,
-                        $crate::stringify!($left),
+                        &$crate::panic::assert_info::BinaryAssertionStaticData {
+                            kind: $crate::panic::assert_info::BinaryAssertKind::Eq,
+                            left_expr: $crate::stringify!($left),
+                            right_expr: $crate::stringify!($right),
+                        },
                         &*left_val,
-                        $crate::stringify!($right),
                         &*right_val,
                         $crate::option::Option::None,
                     );
@@ -57,15 +58,16 @@ macro_rules! assert_eq {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
-                    let kind = $crate::panicking::AssertKind::Eq;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
                     $crate::panicking::assert_failed(
-                        kind,
-                        $crate::stringify!($left),
+                        &$crate::panic::assert_info::BinaryAssertionStaticData {
+                            kind: $crate::panic::assert_info::BinaryAssertKind::Eq,
+                            left_expr: $crate::stringify!($left),
+                            right_expr: $crate::stringify!($right),
+                        },
                         &*left_val,
-                        $crate::stringify!($right),
                         &*right_val,
                         $crate::option::Option::Some($crate::format_args!($($arg)+)),
                     );
@@ -94,21 +96,22 @@ macro_rules! assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic, panic_internals)]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
-                    let kind = $crate::panicking::AssertKind::Ne;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
                     $crate::panicking::assert_failed(
-                        kind,
-                        $crate::stringify!($left),
+                        &$crate::panic::assert_info::BinaryAssertionStaticData {
+                            kind: $crate::panic::assert_info::BinaryAssertKind::Ne,
+                            left_expr: $crate::stringify!($left),
+                            right_expr: $crate::stringify!($right),
+                        },
                         &*left_val,
-                        $crate::stringify!($right),
                         &*right_val,
                         $crate::option::Option::None,
                     );
@@ -120,15 +123,16 @@ macro_rules! assert_ne {
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
-                    let kind = $crate::panicking::AssertKind::Ne;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
                     $crate::panicking::assert_failed(
-                        kind,
-                        $crate::stringify!($left),
+                        &$crate::panic::assert_info::BinaryAssertionStaticData {
+                            kind: $crate::panic::assert_info::BinaryAssertKind::Ne,
+                            left_expr: $crate::stringify!($left),
+                            right_expr: $crate::stringify!($right),
+                        },
                         &*left_val,
-                        $crate::stringify!($right),
                         &*right_val,
                         $crate::option::Option::Some($crate::format_args!($($arg)+)),
                     );
@@ -165,7 +169,7 @@ macro_rules! assert_ne {
 /// assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
 #[unstable(feature = "assert_matches", issue = "82775")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic, panic_internals)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro assert_matches {
     ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => ({
@@ -173,9 +177,12 @@ pub macro assert_matches {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
                 $crate::panicking::assert_matches_failed(
-                    $crate::stringify!($left),
+                    &$crate::panic::assert_info::BinaryAssertionStaticData {
+                        kind: $crate::panic::assert_info::BinaryAssertKind::Match,
+                        left_expr: $crate::stringify!($left),
+                        right_expr: $crate::stringify!($($pattern)|+ $(if $guard)?),
+                    },
                     left_val,
-                    $crate::stringify!($($pattern)|+ $(if $guard)?),
                     $crate::option::Option::None
                 );
             }
@@ -186,9 +193,12 @@ pub macro assert_matches {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
                 $crate::panicking::assert_matches_failed(
-                    $crate::stringify!($left),
+                    &$crate::panic::assert_info::BinaryAssertionStaticData {
+                        kind: $crate::panic::assert_info::BinaryAssertKind::Match,
+                        left_expr: $crate::stringify!($left),
+                        right_expr: $crate::stringify!($($pattern)|+ $(if $guard)?),
+                    },
                     left_val,
-                    $crate::stringify!($($pattern)|+ $(if $guard)?),
                     $crate::option::Option::Some($crate::format_args!($($arg)+))
                 );
             }
