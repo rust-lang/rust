@@ -60,13 +60,8 @@ impl QuestionMark {
             if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr);
             if let ExprKind::MethodCall(segment, _, args, _) = &cond.kind;
             if let Some(subject) = args.get(0);
-            if (Self::is_option(cx, subject)
-                && Self::expression_returns_none(cx, then)
-                && segment.ident.name == sym!(is_none))
-                ||
-                (Self::is_result(cx, subject)
-                && Self::expression_returns_unmodified_err(cx, then, subject)
-                && segment.ident.name == sym!(is_err));
+            if (Self::option_check_and_early_return(cx, subject, then) && segment.ident.name == sym!(is_none)) ||
+                (Self::result_check_and_early_return(cx, subject, then) && segment.ident.name == sym!(is_err));
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let receiver_str = &Sugg::hir_with_applicability(cx, subject, "..", &mut applicability);
@@ -109,13 +104,8 @@ impl QuestionMark {
             if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: Some(if_else) })
                 = higher::IfLet::hir(cx, expr);
             if let PatKind::TupleStruct(ref path1, fields, None) = let_pat.kind;
-            if (Self::is_option(cx, let_expr)
-                && Self::expression_returns_none(cx, if_else)
-                && is_lang_ctor(cx, path1, OptionSome))
-                ||
-                (Self::is_result(cx, let_expr)
-                 && Self::expression_returns_unmodified_err(cx, if_else, let_expr)
-                 && is_lang_ctor(cx, path1, ResultOk));
+            if (Self::option_check_and_early_return(cx, let_expr, if_else) && is_lang_ctor(cx, path1, OptionSome)) ||
+                (Self::result_check_and_early_return(cx, let_expr, if_else) && is_lang_ctor(cx, path1, ResultOk));
 
             if let PatKind::Binding(annot, bind_id, _, _) = fields[0].kind;
             let by_ref = matches!(annot, BindingAnnotation::Ref | BindingAnnotation::RefMut);
@@ -139,6 +129,14 @@ impl QuestionMark {
                 );
             }
         }
+    }
+
+    fn result_check_and_early_return(cx: &LateContext<'_>, expr: &Expr<'_>, nested_expr: &Expr<'_>) -> bool {
+        Self::is_result(cx, expr) && Self::expression_returns_unmodified_err(cx, nested_expr, expr)
+    }
+
+    fn option_check_and_early_return(cx: &LateContext<'_>, expr: &Expr<'_>, nested_expr: &Expr<'_>) -> bool {
+        Self::is_option(cx, expr) && Self::expression_returns_none(cx, nested_expr)
     }
 
     fn moves_by_default(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
