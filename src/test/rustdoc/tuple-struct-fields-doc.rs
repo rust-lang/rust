@@ -20,10 +20,10 @@ pub struct Foo(
 
 // @has foo/enum.Bar.html
 // @has - '//pre[@class="rust enum"]' 'BarVariant(String),'
-// @matches - '//*[@id="variant.BarVariant.fields"]/h3' '^Tuple Fields of BarVariant$'
+// @matches - '//*[@id="variant.BarVariant.fields"]/h4' '^Tuple Fields$'
 // @has - '//*[@id="variant.BarVariant.field.0"]' '0: String'
 // @has - '//*[@id="variant.BarVariant.fields"]//*[@class="docblock"]' 'Hello docs'
-// @matches - '//*[@id="variant.FooVariant.fields"]/h3' '^Fields of FooVariant$'
+// @matches - '//*[@id="variant.FooVariant.fields"]/h4' '^Fields$'
 pub enum Bar {
     BarVariant(
         /// Hello docs
