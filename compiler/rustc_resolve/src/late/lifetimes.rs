@@ -445,7 +445,7 @@ fn do_resolve(
     trait_definition_only: bool,
     with_scope_for_path: bool,
 ) -> NamedRegionMap {
-    let item = tcx.hir().expect_item(tcx.hir().local_def_id_to_hir_id(local_def_id));
+    let item = tcx.hir().expect_item(local_def_id);
     let mut named_region_map = NamedRegionMap {
         defs: Default::default(),
         late_bound: Default::default(),
@@ -1134,7 +1134,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.missing_named_lifetime_spots.push((&trait_item.generics).into());
                 let tcx = self.tcx;
                 self.visit_early_late(
-                    Some(tcx.hir().get_parent_item(trait_item.hir_id())),
+                    Some(tcx.hir().get_parent_did(trait_item.hir_id())),
                     trait_item.hir_id(),
                     &sig.decl,
                     &trait_item.generics,
@@ -1203,7 +1203,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.missing_named_lifetime_spots.push((&impl_item.generics).into());
                 let tcx = self.tcx;
                 self.visit_early_late(
-                    Some(tcx.hir().get_parent_item(impl_item.hir_id())),
+                    Some(tcx.hir().get_parent_did(impl_item.hir_id())),
                     impl_item.hir_id(),
                     &sig.decl,
                     &impl_item.generics,
@@ -2176,7 +2176,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     /// ordering is not important there.
     fn visit_early_late<F>(
         &mut self,
-        parent_id: Option<hir::HirId>,
+        parent_id: Option<LocalDefId>,
         hir_id: hir::HirId,
         decl: &'tcx hir::FnDecl<'tcx>,
         generics: &'tcx hir::Generics<'tcx>,
@@ -2758,7 +2758,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             Node::TraitItem(&hir::TraitItem { kind: hir::TraitItemKind::Fn(_, ref m), .. }) => {
                 if let hir::ItemKind::Trait(.., ref trait_items) =
-                    self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
+                    self.tcx.hir().expect_item(self.tcx.hir().get_parent_did(parent)).kind
                 {
                     assoc_item_kind =
                         trait_items.iter().find(|ti| ti.id.hir_id() == parent).map(|ti| ti.kind);
@@ -2771,7 +2771,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body), .. }) => {
                 if let hir::ItemKind::Impl(hir::Impl { ref self_ty, ref items, .. }) =
-                    self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
+                    self.tcx.hir().expect_item(self.tcx.hir().get_parent_did(parent)).kind
                 {
                     impl_self = Some(self_ty);
                     assoc_item_kind =

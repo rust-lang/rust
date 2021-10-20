@@ -123,7 +123,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
     let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let parent_id = tcx.hir().get_parent_item(id);
     let parent_def_id = tcx.hir().local_def_id(parent_id);
-    let parent_item = tcx.hir().expect_item(parent_id);
+    let parent_item = tcx.hir().expect_item(parent_def_id);
     match parent_item.kind {
         hir::ItemKind::Impl(ref impl_) => {
             if let Some(impl_item_ref) =
@@ -158,8 +158,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
 }
 
 fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let item = tcx.hir().expect_item(hir_id);
+    let item = tcx.hir().expect_item(def_id.expect_local());
     if let hir::ItemKind::Impl(impl_) = &item.kind {
         impl_.defaultness
     } else {
@@ -168,8 +167,7 @@ fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
 }
 
 fn impl_constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let item = tcx.hir().expect_item(hir_id);
+    let item = tcx.hir().expect_item(def_id.expect_local());
     if let hir::ItemKind::Impl(impl_) = &item.kind {
         impl_.constness
     } else {
@@ -202,8 +200,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstrain
 }
 
 fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
-    let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let item = tcx.hir().expect_item(id);
+    let item = tcx.hir().expect_item(def_id.expect_local());
     match item.kind {
         hir::ItemKind::Trait(.., ref trait_item_refs) => tcx.arena.alloc_from_iter(
             trait_item_refs.iter().map(|trait_item_ref| trait_item_ref.id.def_id.to_def_id()),

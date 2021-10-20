@@ -559,8 +559,7 @@ impl EmbargoVisitor<'tcx> {
             // have normal  hygine, so we can treat them like other items without type
             // privacy and mark them reachable.
             DefKind::Macro(_) => {
-                let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                let item = self.tcx.hir().expect_item(hir_id);
+                let item = self.tcx.hir().expect_item(def_id);
                 if let hir::ItemKind::Macro(MacroDef { macro_rules: false, .. }) = item.kind {
                     if vis.is_accessible_from(module.to_def_id(), self.tcx) {
                         self.update(def_id, level);
@@ -581,8 +580,7 @@ impl EmbargoVisitor<'tcx> {
             DefKind::Struct | DefKind::Union => {
                 // While structs and unions have type privacy, their fields do not.
                 if vis.is_public() {
-                    let item =
-                        self.tcx.hir().expect_item(self.tcx.hir().local_def_id_to_hir_id(def_id));
+                    let item = self.tcx.hir().expect_item(def_id);
                     if let hir::ItemKind::Struct(ref struct_def, _)
                     | hir::ItemKind::Union(ref struct_def, _) = item.kind
                     {
@@ -653,9 +651,7 @@ impl EmbargoVisitor<'tcx> {
                 // If the module is `self`, i.e. the current crate,
                 // there will be no corresponding item.
                 .filter(|def_id| def_id.index != CRATE_DEF_INDEX || def_id.krate != LOCAL_CRATE)
-                .and_then(|def_id| {
-                    def_id.as_local().map(|def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
-                })
+                .and_then(|def_id| def_id.as_local())
                 .map(|module_hir_id| self.tcx.hir().expect_item(module_hir_id))
             {
                 if let hir::ItemKind::Mod(m) = &item.kind {

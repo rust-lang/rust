@@ -359,13 +359,10 @@ crate fn build_impl(
     }
 
     let impl_item = match did.as_local() {
-        Some(did) => {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(did);
-            match &tcx.hir().expect_item(hir_id).kind {
-                hir::ItemKind::Impl(impl_) => Some(impl_),
-                _ => panic!("`DefID` passed to `build_impl` is not an `impl"),
-            }
-        }
+        Some(did) => match &tcx.hir().expect_item(did).kind {
+            hir::ItemKind::Impl(impl_) => Some(impl_),
+            _ => panic!("`DefID` passed to `build_impl` is not an `impl"),
+        },
         None => None,
     };
 

@@ -869,24 +869,24 @@ impl<'hir> Map<'hir> {
         bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
     }
 
-    pub fn expect_item(&self, id: HirId) -> &'hir Item<'hir> {
-        match self.tcx.hir_owner(id.expect_owner()) {
+    pub fn expect_item(&self, id: LocalDefId) -> &'hir Item<'hir> {
+        match self.tcx.hir_owner(id) {
             Some(Owner { node: OwnerNode::Item(item), .. }) => item,
-            _ => bug!("expected item, found {}", self.node_to_string(id)),
+            _ => bug!("expected item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
-    pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem<'hir> {
-        match self.tcx.hir_owner(id.expect_owner()) {
+    pub fn expect_impl_item(&self, id: LocalDefId) -> &'hir ImplItem<'hir> {
+        match self.tcx.hir_owner(id) {
             Some(Owner { node: OwnerNode::ImplItem(item), .. }) => item,
-            _ => bug!("expected impl item, found {}", self.node_to_string(id)),
+            _ => bug!("expected impl item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
-    pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem<'hir> {
-        match self.tcx.hir_owner(id.expect_owner()) {
+    pub fn expect_trait_item(&self, id: LocalDefId) -> &'hir TraitItem<'hir> {
+        match self.tcx.hir_owner(id) {
             Some(Owner { node: OwnerNode::TraitItem(item), .. }) => item,
-            _ => bug!("expected trait item, found {}", self.node_to_string(id)),
+            _ => bug!("expected trait item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
@@ -897,10 +897,12 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem<'hir> {
-        match self.tcx.hir_owner(id.expect_owner()) {
+    pub fn expect_foreign_item(&self, id: LocalDefId) -> &'hir ForeignItem<'hir> {
+        match self.tcx.hir_owner(id) {
             Some(Owner { node: OwnerNode::ForeignItem(item), .. }) => item,
-            _ => bug!("expected foreign item, found {}", self.node_to_string(id)),
+            _ => {
+                bug!("expected foreign item, found {}", self.node_to_string(HirId::make_owner(id)))
+            }
         }
     }
 
