@@ -1117,8 +1117,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         (result, dep_node)
     }
 
+    /// filter_impls filters candidates that have a positive impl for a negative goal and a
+    /// negative impl for a positive goal
     #[instrument(level = "debug", skip(self))]
     fn filter_impls(
+        &mut self,
+        candidates: &mut Vec<SelectionCandidate<'tcx>>,
+        stack: &TraitObligationStack<'o, 'tcx>,
+    ) {
+        let tcx = self.tcx();
+        candidates.retain(|candidate| {
+            if let ImplCandidate(def_id) = candidate {
+                ty::ImplPolarity::Reservation == tcx.impl_polarity(*def_id)
+                    || !self.allow_negative_impls
+                        && stack.obligation.predicate.skip_binder().polarity
+                            == tcx.impl_polarity(*def_id)
+            } else {
+                true
+            }
+        });
+    }
+
+    /// filter_reservation_impls filter reservation impl for any goal as ambiguous
+    #[instrument(level = "debug", skip(self))]
+    fn filter_reservation_impls(
         &mut self,
         candidate: SelectionCandidate<'tcx>,
         obligation: &TraitObligation<'tcx>,
@@ -1148,7 +1170,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
         }
-        // Treat negative impls as unimplemented, and reservation impls as ambiguity.
+        // Treat reservation impls as ambiguity.
         if let ImplCandidate(def_id) = candidate {
             if let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id) {
                 if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
@@ -1169,12 +1191,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
                 return Ok(None);
-            }
-
-            if !self.allow_negative_impls {
-                if obligation.predicate.skip_binder().polarity != tcx.impl_polarity(def_id) {
-                    return Err(Unimplemented);
-                }
             }
         }
         Ok(Some(candidate))
