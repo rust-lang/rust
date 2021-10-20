@@ -712,7 +712,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let Some(result) = self.check_evaluation_cache(
             obligation.param_env,
             fresh_trait_ref,
-            obligation.predicate.skip_binder().polarity,
+            obligation.polarity(),
         ) {
             debug!(?result, "CACHE HIT");
             return Ok(result);
@@ -746,7 +746,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.insert_evaluation_cache(
                 obligation.param_env,
                 fresh_trait_ref,
-                obligation.predicate.skip_binder().polarity,
+                obligation.polarity(),
                 dep_node,
                 result,
             );
@@ -755,7 +755,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.insert_evaluation_cache(
                     obligation.param_env,
                     fresh_trait_ref,
-                    obligation.predicate.skip_binder().polarity,
+                    obligation.polarity(),
                     dep_node,
                     provisional_result.max(result),
                 );
@@ -867,7 +867,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let unbound_input_types =
             stack.fresh_trait_ref.value.skip_binder().substs.types().any(|ty| ty.is_fresh());
 
-        if stack.obligation.predicate.skip_binder().polarity != ty::ImplPolarity::Negative {
+        if stack.obligation.polarity() != ty::ImplPolarity::Negative {
             // This check was an imperfect workaround for a bug in the old
             // intercrate mode; it should be removed when that goes away.
             if unbound_input_types && self.intercrate {
@@ -1130,8 +1130,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             if let ImplCandidate(def_id) = candidate {
                 ty::ImplPolarity::Reservation == tcx.impl_polarity(*def_id)
                     || !self.allow_negative_impls
-                        && stack.obligation.predicate.skip_binder().polarity
-                            == tcx.impl_polarity(*def_id)
+                        && stack.obligation.polarity() == tcx.impl_polarity(*def_id)
             } else {
                 true
             }
@@ -1199,9 +1198,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Option<Conflict> {
         debug!("is_knowable(intercrate={:?})", self.intercrate);
 
-        if !self.intercrate
-            || stack.obligation.predicate.skip_binder().polarity == ty::ImplPolarity::Negative
-        {
+        if !self.intercrate || stack.obligation.polarity() == ty::ImplPolarity::Negative {
             return None;
         }
 

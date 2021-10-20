@@ -256,7 +256,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
 
-        if obligation.predicate.skip_binder().polarity == ty::ImplPolarity::Negative {
+        if obligation.polarity() == ty::ImplPolarity::Negative {
             self.assemble_candidates_from_impls(obligation, &mut candidates);
         } else {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
@@ -382,10 +382,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for bound in matching_bounds {
             let wc = self.evaluate_where_clause(stack, bound.value)?;
             if wc.may_apply() {
-                candidates.vec.push(ParamCandidate((
-                    bound,
-                    stack.obligation.predicate.skip_binder().polarity,
-                )));
+                candidates.vec.push(ParamCandidate((bound, stack.obligation.polarity())));
             }
         }
 

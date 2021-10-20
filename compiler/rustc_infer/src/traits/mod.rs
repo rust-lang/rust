@@ -140,6 +140,10 @@ impl<'tcx> FulfillmentError<'tcx> {
 }
 
 impl<'tcx> TraitObligation<'tcx> {
+    pub fn polarity(&self) -> ty::ImplPolarity {
+        self.predicate.skip_binder().polarity
+    }
+
     pub fn self_ty(&self) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.predicate.map_bound(|p| p.self_ty())
     }
