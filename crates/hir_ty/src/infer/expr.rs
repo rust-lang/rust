@@ -1037,7 +1037,7 @@ impl<'a> InferenceContext<'a> {
         if let Some(expected_ty) = expected_output.to_option(&mut self.table) {
             self.table.fudge_inference(|table| {
                 if table.try_unify(&expected_ty, &output).is_ok() {
-                    table.resolve_with_fallback(inputs, |var, kind, _, _| match kind {
+                    table.resolve_with_fallback(inputs, &|var, kind, _, _| match kind {
                         chalk_ir::VariableKind::Ty(tk) => var.to_ty(&Interner, tk).cast(&Interner),
                         chalk_ir::VariableKind::Lifetime => {
                             var.to_lifetime(&Interner).cast(&Interner)
