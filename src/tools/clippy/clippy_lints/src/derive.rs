@@ -3,7 +3,6 @@ use clippy_utils::paths;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::{get_trait_def_id, is_automatically_derived, is_lint_allowed, match_def_path};
 use if_chain::if_chain;
-use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Impl, Item, ItemKind, TraitRef, UnsafeSource, Unsafety,
@@ -343,11 +342,6 @@ fn check_unsafe_derive_deserialize<'tcx>(
     trait_ref: &TraitRef<'_>,
     ty: Ty<'tcx>,
 ) {
-    fn item_from_def_id<'tcx>(cx: &LateContext<'tcx>, def_id: DefId) -> &'tcx Item<'tcx> {
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        cx.tcx.hir().expect_item(hir_id)
-    }
-
     fn has_unsafe<'tcx>(cx: &LateContext<'tcx>, item: &'tcx Item<'_>) -> bool {
         let mut visitor = UnsafeVisitor { cx, has_unsafe: false };
         walk_item(&mut visitor, item);
@@ -363,7 +357,7 @@ fn check_unsafe_derive_deserialize<'tcx>(
         if !is_lint_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id);
         if cx.tcx.inherent_impls(def.did)
             .iter()
-            .map(|imp_did| item_from_def_id(cx, *imp_did))
+            .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp));
         then {
             span_lint_and_help(

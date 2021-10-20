@@ -1939,7 +1939,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
         let name = impl_item.ident.name.as_str();
-        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
+        let parent = cx.tcx.hir().get_parent_did(impl_item.hir_id());
         let item = cx.tcx.hir().expect_item(parent);
         let self_ty = cx.tcx.type_of(item.def_id);
 

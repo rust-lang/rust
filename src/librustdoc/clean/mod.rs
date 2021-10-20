@@ -981,7 +981,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
 
             let what_rustc_thinks =
                 Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-            let parent_item = cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(self.hir_id()));
+            let parent_item = cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_did(self.hir_id()));
             if let hir::ItemKind::Impl(impl_) = &parent_item.kind {
                 if impl_.of_trait.is_some() {
                     // Trait impl items always inherit the impl's visibility --
@@ -1172,9 +1172,8 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             if let Res::Def(DefKind::TyAlias, def_id) = path.res {
                 // Substitute private type aliases
                 if let Some(def_id) = def_id.as_local() {
-                    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
                     if !cx.cache.access_levels.is_exported(def_id.to_def_id()) {
-                        alias = Some(&cx.tcx.hir().expect_item(hir_id).kind);
+                        alias = Some(&cx.tcx.hir().expect_item(def_id).kind);
                     }
                 }
             };

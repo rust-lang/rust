@@ -780,31 +780,28 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                     // }
                     // ```
                     if let Some(def_id) = def_id.as_local() {
-                        let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                         let parent_def_id = self.infcx.defining_use_anchor;
                         let def_scope_default = || {
+                            let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                             let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
                             parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
                         };
-                        let (in_definition_scope, origin) =
-                            match tcx.hir().expect_item(opaque_hir_id).kind {
-                                // Anonymous `impl Trait`
-                                hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                                    impl_trait_fn: Some(parent),
-                                    origin,
-                                    ..
-                                }) => (parent == parent_def_id.to_def_id(), origin),
-                                // Named `type Foo = impl Bar;`
-                                hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                                    impl_trait_fn: None,
-                                    origin,
-                                    ..
-                                }) => (
-                                    may_define_opaque_type(tcx, parent_def_id, opaque_hir_id),
-                                    origin,
-                                ),
-                                _ => (def_scope_default(), hir::OpaqueTyOrigin::TyAlias),
-                            };
+                        let (in_definition_scope, origin) = match tcx.hir().expect_item(def_id).kind
+                        {
+                            // Anonymous `impl Trait`
+                            hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                                impl_trait_fn: Some(parent),
+                                origin,
+                                ..
+                            }) => (parent == parent_def_id.to_def_id(), origin),
+                            // Named `type Foo = impl Bar;`
+                            hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                                impl_trait_fn: None,
+                                origin,
+                                ..
+                            }) => (may_define_opaque_type(tcx, parent_def_id, def_id), origin),
+                            _ => (def_scope_default(), hir::OpaqueTyOrigin::TyAlias),
+                        };
                         if in_definition_scope {
                             let opaque_type_key =
                                 OpaqueTypeKey { def_id: def_id.to_def_id(), substs };
@@ -937,8 +934,9 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 /// Here, `def_id` is the `LocalDefId` of the defining use of the opaque type (e.g., `f1` or `f2`),
 /// and `opaque_hir_id` is the `HirId` of the definition of the opaque type `Baz`.
 /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
-fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hir::HirId) -> bool {
+fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_def_id: LocalDefId) -> bool {
     let mut hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(opaque_def_id);
 
     // Named opaque types can be defined by any siblings or children of siblings.
     let scope = tcx.hir().get_defining_scope(opaque_hir_id);
