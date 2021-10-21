@@ -5,5 +5,5 @@
 PATH=$(SYSTEMROOT)/system32
 
 all:
-	$(RUSTC) hello.rs
+	$(RUSTC) hello.rs -C target-feature=+crt-static
 	$(TMPDIR)/hello.exe
