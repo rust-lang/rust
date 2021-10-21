@@ -709,7 +709,7 @@ impl SyntaxContext {
     ///         pub fn f() {} // `f`'s `SyntaxContext` has a single `ExpnId` from `m`.
     ///         pub fn $i() {} // `$i`'s `SyntaxContext` is empty.
     ///     }
-    ///     n(f);
+    ///     n!(f);
     ///     macro n($j:ident) {
     ///         use foo::*;
     ///         f(); // `f`'s `SyntaxContext` has a mark from `m` and a mark from `n`
