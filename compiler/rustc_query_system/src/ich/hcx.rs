@@ -1,12 +1,12 @@
 use crate::ich;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathHash, Definitions};
-use rustc_index::vec::IndexVec;
 use rustc_session::cstore::CrateStore;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
@@ -51,7 +51,7 @@ pub(super) enum BodyResolver<'tcx> {
     Traverse {
         hash_bodies: bool,
         owner: LocalDefId,
-        bodies: &'tcx IndexVec<hir::ItemLocalId, Option<&'tcx hir::Body<'tcx>>>,
+        bodies: &'tcx SortedMap<hir::ItemLocalId, &'tcx hir::Body<'tcx>>,
     },
 }
 
@@ -122,7 +122,7 @@ impl<'a> StableHashingContext<'a> {
         &mut self,
         hash_bodies: bool,
         owner: LocalDefId,
-        bodies: &'a IndexVec<hir::ItemLocalId, Option<&'a hir::Body<'a>>>,
+        bodies: &'a SortedMap<hir::ItemLocalId, &'a hir::Body<'a>>,
         f: impl FnOnce(&mut Self),
     ) {
         let prev = self.body_resolver;

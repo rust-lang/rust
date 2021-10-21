@@ -376,7 +376,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies[id.hir_id.local_id].unwrap()
+        self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies[&id.hir_id.local_id]
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
@@ -495,13 +495,10 @@ impl<'hir> Map<'hir> {
             .iter_enumerated()
             .flat_map(move |(owner, owner_info)| {
                 let bodies = &owner_info.as_ref()?.nodes.bodies;
-                Some(bodies.iter_enumerated().filter_map(move |(local_id, body)| {
-                    if body.is_none() {
-                        return None;
-                    }
+                Some(bodies.iter().map(move |&(local_id, _)| {
                     let hir_id = HirId { owner, local_id };
                     let body_id = BodyId { hir_id };
-                    Some(self.body_owner_def_id(body_id))
+                    self.body_owner_def_id(body_id)
                 }))
             })
             .flatten()
@@ -515,13 +512,10 @@ impl<'hir> Map<'hir> {
         par_iter(&self.krate().owners.raw).enumerate().for_each(|(owner, owner_info)| {
             let owner = LocalDefId::new(owner);
             if let Some(owner_info) = owner_info {
-                par_iter(&owner_info.nodes.bodies.raw).enumerate().for_each(|(local_id, body)| {
-                    if body.is_some() {
-                        let local_id = ItemLocalId::new(local_id);
-                        let hir_id = HirId { owner, local_id };
-                        let body_id = BodyId { hir_id };
-                        f(self.body_owner_def_id(body_id))
-                    }
+                par_iter(owner_info.nodes.bodies.range(..)).for_each(|(local_id, _)| {
+                    let hir_id = HirId { owner, local_id: *local_id };
+                    let body_id = BodyId { hir_id };
+                    f(self.body_owner_def_id(body_id))
                 })
             }
         });
@@ -578,8 +572,8 @@ impl<'hir> Map<'hir> {
         let krate = self.krate();
         for (owner, info) in krate.owners.iter_enumerated() {
             if let Some(info) = info {
-                for (&local_id, attrs) in info.attrs.map.iter() {
-                    let id = HirId { owner, local_id };
+                for (local_id, attrs) in info.attrs.map.iter() {
+                    let id = HirId { owner, local_id: *local_id };
                     for a in *attrs {
                         visitor.visit_attribute(id, a)
                     }

@@ -12,6 +12,7 @@ pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::Spanned;
@@ -22,7 +23,6 @@ use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
 use std::fmt;
 
 #[derive(Copy, Clone, Encodable, HashStable_Generic)]
@@ -676,13 +676,13 @@ pub struct ParentedNode<'tcx> {
 /// Attributes owned by a HIR owner.
 #[derive(Debug)]
 pub struct AttributeMap<'tcx> {
-    pub map: BTreeMap<ItemLocalId, &'tcx [Attribute]>,
+    pub map: SortedMap<ItemLocalId, &'tcx [Attribute]>,
     pub hash: Fingerprint,
 }
 
 impl<'tcx> AttributeMap<'tcx> {
     pub const EMPTY: &'static AttributeMap<'static> =
-        &AttributeMap { map: BTreeMap::new(), hash: Fingerprint::ZERO };
+        &AttributeMap { map: SortedMap::new(), hash: Fingerprint::ZERO };
 
     #[inline]
     pub fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
@@ -705,7 +705,7 @@ pub struct OwnerNodes<'tcx> {
     // used.
     pub nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
     /// Content of local bodies.
-    pub bodies: IndexVec<ItemLocalId, Option<&'tcx Body<'tcx>>>,
+    pub bodies: SortedMap<ItemLocalId, &'tcx Body<'tcx>>,
 }
 
 /// Full information resulting from lowering an AST node.

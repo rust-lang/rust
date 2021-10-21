@@ -33,7 +33,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
             BodyResolver::Traverse { hash_bodies: false, .. } => {}
             BodyResolver::Traverse { hash_bodies: true, owner, bodies } => {
                 assert_eq!(id.hir_id.owner, owner);
-                bodies[id.hir_id.local_id].unwrap().hash_stable(hcx, hasher);
+                bodies[&id.hir_id.local_id].hash_stable(hcx, hasher);
             }
         }
     }
