@@ -7,13 +7,12 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use crate::ty::TyCtxt;
-use rustc_hir as hir;
-use rustc_hir::Node;
-use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir as hir;
+use rustc_hir::Node;
 use rustc_macros::HashStable;
+use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
@@ -209,11 +208,6 @@ pub type ScopeDepth = u32;
 pub struct ScopeTree {
     /// If not empty, this body is the root of this region hierarchy.
     pub root_body: Option<hir::HirId>,
-
-    /// The parent of the root body owner, if the latter is an
-    /// an associated const or method, as impls/traits can also
-    /// have lifetime parameters free in this body.
-    pub root_parent: Option<hir::HirId>,
 
     /// Maps from a scope ID to the enclosing scope id;
     /// this is usually corresponding to the lexical nesting, though
@@ -445,7 +439,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ScopeTree {
             root_body,
-            root_parent,
             ref body_expr_count,
             ref parent_map,
             ref var_map,
@@ -455,8 +448,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            root_body.hash_stable(hcx, hasher);
-            root_parent.hash_stable(hcx, hasher);
+            root_body.hash_stable(hcx, hasher)
         });
 
         body_expr_count.hash_stable(hcx, hasher);
