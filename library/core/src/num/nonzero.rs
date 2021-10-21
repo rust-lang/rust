@@ -82,7 +82,7 @@ macro_rules! nonzero_integers {
             }
 
             #[stable(feature = "from_nonzero", since = "1.31.0")]
-            #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+            #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
             impl const From<$Ty> for $Int {
                 #[doc = concat!("Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`")]
                 #[inline]
