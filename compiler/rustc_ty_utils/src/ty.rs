@@ -289,17 +289,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
 
     let constness = match hir_id {
-        Some(hir_id) => match tcx.hir().opt_body_owner_kind(hir_id) {
-            Err(hir::Node::Item(&hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
-                ..
-            })) => constness,
-            Err(_) => hir::Constness::NotConst,
-            Ok(_) => match tcx.hir().body_const_context(local_did.unwrap()) {
-                Some(_) => hir::Constness::Const,
-                None => hir::Constness::NotConst,
-            },
-        },
+        Some(hir_id) => tcx.hir().get(hir_id).constness_for_typeck(),
         None => hir::Constness::NotConst,
     };
 

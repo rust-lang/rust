@@ -454,30 +454,18 @@ impl<'hir> Map<'hir> {
     ///
     /// Panics if `LocalDefId` does not have an associated body.
     pub fn body_owner_kind(&self, id: HirId) -> BodyOwnerKind {
-        match self.opt_body_owner_kind(id) {
-            Ok(kind) => kind,
-            Err(node) => bug!("{:#?} is not a body node", node),
-        }
-    }
-
-    /// Returns the `BodyOwnerKind` of this `LocalDefId`.
-    ///
-    /// Returns the `Node` if `LocalDefId` does not have an associated body.
-    pub fn opt_body_owner_kind(&self, id: HirId) -> Result<BodyOwnerKind, Node<'_>> {
         match self.get(id) {
             Node::Item(&Item { kind: ItemKind::Const(..), .. })
             | Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. })
             | Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. })
-            | Node::AnonConst(_) => Ok(BodyOwnerKind::Const),
+            | Node::AnonConst(_) => BodyOwnerKind::Const,
             Node::Ctor(..)
             | Node::Item(&Item { kind: ItemKind::Fn(..), .. })
             | Node::TraitItem(&TraitItem { kind: TraitItemKind::Fn(..), .. })
-            | Node::ImplItem(&ImplItem { kind: ImplItemKind::Fn(..), .. }) => Ok(BodyOwnerKind::Fn),
-            Node::Item(&Item { kind: ItemKind::Static(_, m, _), .. }) => {
-                Ok(BodyOwnerKind::Static(m))
-            }
-            Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => Ok(BodyOwnerKind::Closure),
-            node => Err(node),
+            | Node::ImplItem(&ImplItem { kind: ImplItemKind::Fn(..), .. }) => BodyOwnerKind::Fn,
+            Node::Item(&Item { kind: ItemKind::Static(_, m, _), .. }) => BodyOwnerKind::Static(m),
+            Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => BodyOwnerKind::Closure,
+            node => bug!("{:#?} is not a body node", node),
         }
     }
 
