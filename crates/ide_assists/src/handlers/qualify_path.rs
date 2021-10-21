@@ -37,7 +37,6 @@ use crate::{
 // ```
 pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
-
     let mut proposed_imports = import_assets.search_for_relative_paths(&ctx.sema);
     if proposed_imports.is_empty() {
         return None;
@@ -92,7 +91,6 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     }
     Some(())
 }
-#[derive(Debug)]
 pub(crate) enum QualifyCandidate<'db> {
     QualifierStart(ast::PathSegment, Option<ast::GenericArgList>),
     UnqualifiedName(Option<ast::GenericArgList>),
