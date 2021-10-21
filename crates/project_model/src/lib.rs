@@ -28,7 +28,6 @@ mod build_scripts;
 mod tests;
 
 use std::{
-    convert::{TryFrom, TryInto},
     fs::{self, read_dir, ReadDir},
     io,
     process::Command,

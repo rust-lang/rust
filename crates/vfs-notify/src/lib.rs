@@ -6,7 +6,7 @@
 //!
 //! Hopefully, one day a reliable file watching/walking crate appears on
 //! crates.io, and we can reduce this to trivial glue code.
-use std::{convert::TryFrom, fs};
+use std::fs;
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};

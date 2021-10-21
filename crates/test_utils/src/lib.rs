@@ -12,7 +12,6 @@ mod assert_linear;
 
 use std::{
     collections::BTreeMap,
-    convert::{TryFrom, TryInto},
     env, fs,
     path::{Path, PathBuf},
 };

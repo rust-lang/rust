@@ -2,7 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, convert::TryFrom, fmt, fs, process::Command};
+use std::{collections::VecDeque, fmt, fs, process::Command};
 
 use anyhow::{format_err, Context, Result};
 use base_db::{

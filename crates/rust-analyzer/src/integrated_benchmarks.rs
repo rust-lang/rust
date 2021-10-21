@@ -10,7 +10,7 @@
 //! in release mode in VS Code. There's however "Rust Analyzer: Copy Run Command Line"
 //! which you can use to paste the command in terminal and add `--release` manually.
 
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 use ide::{Change, CompletionConfig, FilePosition, TextSize};
 use ide_db::helpers::{

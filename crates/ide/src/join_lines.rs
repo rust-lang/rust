@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use ide_assists::utils::extract_trivial_expression;
 use ide_db::helpers::node_ext::expr_as_name_ref;
 use itertools::Itertools;

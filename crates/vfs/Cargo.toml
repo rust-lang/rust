@@ -3,7 +3,7 @@ name = "vfs"
 version = "0.0.0"
 description = "TBD"
 license = "MIT OR Apache-2.0"
-edition = "2018"
+edition = "2021"
 
 [lib]
 doctest = false

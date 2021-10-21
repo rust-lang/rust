@@ -4,7 +4,7 @@
 //! but we can't process `.rlib` and need source code instead. The source code
 //! is typically installed with `rustup component add rust-src` command.
 
-use std::{convert::TryFrom, env, fs, iter, ops, path::PathBuf, process::Command};
+use std::{env, fs, iter, ops, path::PathBuf, process::Command};
 
 use anyhow::{format_err, Result};
 use la_arena::{Arena, Idx};

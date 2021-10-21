@@ -4,7 +4,7 @@ version = "0.0.0"
 description = "Structural search and replace of Rust code"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-analyzer/rust-analyzer"
-edition = "2018"
+edition = "2021"
 
 [lib]
 doctest = false

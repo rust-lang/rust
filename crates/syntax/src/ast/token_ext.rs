@@ -1,9 +1,6 @@
 //! There are many AstNodes, but only a few tokens, so we hand-write them here.
 
-use std::{
-    borrow::Cow,
-    convert::{TryFrom, TryInto},
-};
+use std::borrow::Cow;
 
 use rustc_lexer::unescape::{unescape_literal, Mode};
 
