@@ -189,7 +189,6 @@ fn make_win_dist(
         "libmoldname.a",
         "libpthread.a",
         //Windows import libs
-        "libadvapi32.a",
         "libbcrypt.a",
         "libcomctl32.a",
         "libcomdlg32.a",

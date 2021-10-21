@@ -676,17 +676,8 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
-    pub const TOKEN_READ: DWORD = 0x20008;
-
-    #[link(name = "advapi32")]
-    extern "system" {
-        // Allowed but unused by UWP
-        pub fn OpenProcessToken(
-            ProcessHandle: HANDLE,
-            DesiredAccess: DWORD,
-            TokenHandle: *mut HANDLE,
-        ) -> BOOL;
-    }
+    // This value is hardcoded in processthreadsapi.h GetCurrentProcessToken()
+    pub const CURRENT_PROCESS_TOKEN: HANDLE = (-4isize) as HANDLE;
 
     #[link(name = "userenv")]
     extern "system" {

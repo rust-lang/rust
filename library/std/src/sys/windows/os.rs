@@ -281,17 +281,9 @@ pub fn temp_dir() -> PathBuf {
 #[cfg(not(target_vendor = "uwp"))]
 fn home_dir_crt() -> Option<PathBuf> {
     unsafe {
-        use crate::sys::handle::Handle;
-
-        let me = c::GetCurrentProcess();
-        let mut token = ptr::null_mut();
-        if c::OpenProcessToken(me, c::TOKEN_READ, &mut token) == 0 {
-            return None;
-        }
-        let _handle = Handle::from_raw_handle(token);
         super::fill_utf16_buf(
             |buf, mut sz| {
-                match c::GetUserProfileDirectoryW(token, buf, &mut sz) {
+                match c::GetUserProfileDirectoryW(c::CURRENT_PROCESS_TOKEN, buf, &mut sz) {
                     0 if c::GetLastError() != c::ERROR_INSUFFICIENT_BUFFER => 0,
                     0 => sz,
                     _ => sz - 1, // sz includes the null terminator
