@@ -306,6 +306,13 @@ impl MacroDefId {
     pub fn is_proc_macro(&self) -> bool {
         matches!(self.kind, MacroDefKind::ProcMacro(..))
     }
+
+    pub fn is_attribute(&self) -> bool {
+        matches!(
+            self.kind,
+            MacroDefKind::BuiltInAttr(..) | MacroDefKind::ProcMacro(_, ProcMacroKind::Attr, _)
+        )
+    }
 }
 
 // FIXME: attribute indices do not account for `cfg_attr`, which means that we'll strip the whole

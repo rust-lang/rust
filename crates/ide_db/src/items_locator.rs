@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// A value to use, when uncertain which limit to pick.
-pub const DEFAULT_QUERY_SEARCH_LIMIT: Limit = Limit::new(40);
+pub static DEFAULT_QUERY_SEARCH_LIMIT: Limit = Limit::new(40);
 
 /// Three possible ways to search for the name in associated and/or other items.
 #[derive(Debug, Clone, Copy)]
