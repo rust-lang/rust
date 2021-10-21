@@ -698,7 +698,11 @@ fn receiver_is_dispatchable<'tcx>(
             .chain(array::IntoIter::new([unsize_predicate, trait_predicate]))
             .collect();
 
-        ty::ParamEnv::new(tcx.intern_predicates(&caller_bounds), param_env.reveal())
+        ty::ParamEnv::new(
+            tcx.intern_predicates(&caller_bounds),
+            param_env.reveal(),
+            param_env.constness(),
+        )
     };
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>

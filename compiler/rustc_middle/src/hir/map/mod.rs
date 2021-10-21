@@ -454,18 +454,30 @@ impl<'hir> Map<'hir> {
     ///
     /// Panics if `LocalDefId` does not have an associated body.
     pub fn body_owner_kind(&self, id: HirId) -> BodyOwnerKind {
+        match self.opt_body_owner_kind(id) {
+            Ok(kind) => kind,
+            Err(node) => bug!("{:#?} is not a body node", node),
+        }
+    }
+
+    /// Returns the `BodyOwnerKind` of this `LocalDefId`.
+    ///
+    /// Returns the `Node` if `LocalDefId` does not have an associated body.
+    pub fn opt_body_owner_kind(&self, id: HirId) -> Result<BodyOwnerKind, Node<'_>> {
         match self.get(id) {
             Node::Item(&Item { kind: ItemKind::Const(..), .. })
             | Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. })
             | Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. })
-            | Node::AnonConst(_) => BodyOwnerKind::Const,
+            | Node::AnonConst(_) => Ok(BodyOwnerKind::Const),
             Node::Ctor(..)
             | Node::Item(&Item { kind: ItemKind::Fn(..), .. })
             | Node::TraitItem(&TraitItem { kind: TraitItemKind::Fn(..), .. })
-            | Node::ImplItem(&ImplItem { kind: ImplItemKind::Fn(..), .. }) => BodyOwnerKind::Fn,
-            Node::Item(&Item { kind: ItemKind::Static(_, m, _), .. }) => BodyOwnerKind::Static(m),
-            Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => BodyOwnerKind::Closure,
-            node => bug!("{:#?} is not a body node", node),
+            | Node::ImplItem(&ImplItem { kind: ImplItemKind::Fn(..), .. }) => Ok(BodyOwnerKind::Fn),
+            Node::Item(&Item { kind: ItemKind::Static(_, m, _), .. }) => {
+                Ok(BodyOwnerKind::Static(m))
+            }
+            Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => Ok(BodyOwnerKind::Closure),
+            node => Err(node),
         }
     }
 
@@ -474,7 +486,8 @@ impl<'hir> Map<'hir> {
     /// Panics if `LocalDefId` does not have an associated body.
     ///
     /// This should only be used for determining the context of a body, a return
-    /// value of `Some` does not always suggest that the owner of the body is `const`.
+    /// value of `Some` does not always suggest that the owner of the body is `const`,
+    /// just that it has to be checked as if it were.
     pub fn body_const_context(&self, did: LocalDefId) -> Option<ConstContext> {
         let hir_id = self.local_def_id_to_hir_id(did);
         let ccx = match self.body_owner_kind(hir_id) {

@@ -285,16 +285,33 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // issue #89334
     predicates = tcx.expose_default_const_substs(predicates);
 
-    let unnormalized_env =
-        ty::ParamEnv::new(tcx.intern_predicates(&predicates), traits::Reveal::UserFacing);
+    let local_did = def_id.as_local();
+    let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
 
-    debug!("unnormalized_env caller bounds: {:?}", unnormalized_env.caller_bounds());
-    let body_id = def_id
-        .as_local()
-        .map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
-        .map_or(hir::CRATE_HIR_ID, |id| {
-            tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
-        });
+    let constness = match hir_id {
+        Some(hir_id) => match tcx.hir().opt_body_owner_kind(hir_id) {
+            Err(hir::Node::Item(&hir::Item {
+                kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
+                ..
+            })) => constness,
+            Err(_) => hir::Constness::NotConst,
+            Ok(_) => match tcx.hir().body_const_context(local_did.unwrap()) {
+                Some(_) => hir::Constness::Const,
+                None => hir::Constness::NotConst,
+            },
+        },
+        None => hir::Constness::NotConst,
+    };
+
+    let unnormalized_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&predicates),
+        traits::Reveal::UserFacing,
+        constness,
+    );
+
+    let body_id = hir_id.map_or(hir::CRATE_HIR_ID, |id| {
+        tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
+    });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
 }
