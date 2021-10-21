@@ -1,0 +1,22 @@
+// Checks that the setting "line numbers" is working as expected.
+goto: file://|DOC_PATH|/test_docs/fn.foo.html
+
+// We check that without this setting, there is no line number displayed.
+assert-false: "pre.line-number"
+
+// We now set the setting to show the line numbers on code examples.
+local-storage: {"rustdoc-line-numbers": "true" }
+// We reload to make the line numbers appear.
+reload:
+
+// We wait for them to be added into the DOM by the JS...
+wait-for: "pre.line-number"
+// If the test didn't fail, it means that it was found!
+// Let's now check some CSS properties...
+assert-css: ("pre.line-number", {
+    "margin": "0px",
+    "padding": "13px 8px",
+    "text-align": "right"
+})
+// The first code block has two lines so let's check its `<pre>` elements lists both of them.
+assert-text: ("pre.line-number", "1\n2")
