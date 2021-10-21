@@ -28,6 +28,7 @@ declare_clippy_lint! {
     ///     last: [u32; 0],
     /// }
     /// ```
+    #[clippy::version = "1.58.0"]
     pub TRAILING_EMPTY_ARRAY,
     nursery,
     "struct with a trailing zero-sized array but without `#[repr(C)]` or another `repr` attribute"

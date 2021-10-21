@@ -34,6 +34,7 @@ declare_clippy_lint! {
     ///     x
     /// }
     /// ```
+    #[clippy::version = "1.51.0"]
     pub REDUNDANT_SLICING,
     complexity,
     "redundant slicing of the whole range of a type"

@@ -36,6 +36,7 @@ declare_clippy_lint! {
     ///     todo!();
     /// }
     /// ```
+    #[clippy::version = "1.50.0"]
     pub ZERO_SIZED_MAP_VALUES,
     pedantic,
     "usage of map with zero-sized value type"

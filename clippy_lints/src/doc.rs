@@ -67,6 +67,7 @@ declare_clippy_lint! {
     /// /// [SmallVec]: SmallVec
     /// fn main() {}
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DOC_MARKDOWN,
     pedantic,
     "presence of `_`, `::` or camel-case outside backticks in documentation"
@@ -101,6 +102,7 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
+    #[clippy::version = "1.39.0"]
     pub MISSING_SAFETY_DOC,
     style,
     "`pub unsafe fn` without `# Safety` docs"
@@ -129,6 +131,7 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
+    #[clippy::version = "1.41.0"]
     pub MISSING_ERRORS_DOC,
     pedantic,
     "`pub fn` returns `Result` without `# Errors` in doc comment"
@@ -159,6 +162,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.52.0"]
     pub MISSING_PANICS_DOC,
     pedantic,
     "`pub fn` may panic without `# Panics` in doc comment"
@@ -187,6 +191,7 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ``````
+    #[clippy::version = "1.40.0"]
     pub NEEDLESS_DOCTEST_MAIN,
     style,
     "presence of `fn main() {` in code examples"

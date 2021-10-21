@@ -55,6 +55,7 @@ declare_clippy_lint! {
     /// # let y = 2;
     /// Foo { x, y };
     /// ```
+    #[clippy::version = "1.52.0"]
     pub INCONSISTENT_STRUCT_CONSTRUCTOR,
     pedantic,
     "the order of the field init shorthand is inconsistent with the order in the struct definition"

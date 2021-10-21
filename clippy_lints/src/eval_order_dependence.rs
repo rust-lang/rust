@@ -40,6 +40,7 @@ declare_clippy_lint! {
     /// };
     /// let a = tmp + x;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EVAL_ORDER_DEPENDENCE,
     suspicious,
     "whether a variable read occurs before a write depends on sub-expression evaluation order"
@@ -67,6 +68,7 @@ declare_clippy_lint! {
     /// let x = (a, b, c, panic!());
     /// // can simply be replaced by `panic!()`
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DIVERGING_SUB_EXPRESSION,
     complexity,
     "whether an expression contains a diverging sub expression"

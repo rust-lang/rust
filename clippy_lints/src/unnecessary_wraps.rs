@@ -49,6 +49,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.50.0"]
     pub UNNECESSARY_WRAPS,
     pedantic,
     "functions that only return `Ok` or `Some`"

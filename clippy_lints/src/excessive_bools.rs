@@ -37,6 +37,7 @@ declare_clippy_lint! {
     ///     Finished,
     /// }
     /// ```
+    #[clippy::version = "1.43.0"]
     pub STRUCT_EXCESSIVE_BOOLS,
     pedantic,
     "using too many bools in a struct"
@@ -75,6 +76,7 @@ declare_clippy_lint! {
     ///
     /// fn f(shape: Shape, temperature: Temperature) { ... }
     /// ```
+    #[clippy::version = "1.43.0"]
     pub FN_PARAMS_EXCESSIVE_BOOLS,
     pedantic,
     "using too many bools in function parameters"

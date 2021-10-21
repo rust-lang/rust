@@ -39,6 +39,7 @@ declare_clippy_lint! {
     /// // Safety: references are guaranteed to be non-null.
     /// let ptr = unsafe { NonNull::new_unchecked(a) };
     /// ```
+    #[clippy::version = "1.58.0"]
     pub UNDOCUMENTED_UNSAFE_BLOCKS,
     restriction,
     "creating an unsafe block without explaining why it is safe"

@@ -65,6 +65,7 @@ declare_clippy_lint! {
     /// // Better
     /// fn foo(v: u32) {}
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TRIVIALLY_COPY_PASS_BY_REF,
     pedantic,
     "functions taking small copyable arguments by reference"
@@ -98,6 +99,7 @@ declare_clippy_lint! {
     /// // Good
     /// fn foo(v: &TooLarge) {}
     /// ```
+    #[clippy::version = "1.49.0"]
     pub LARGE_TYPES_PASSED_BY_VALUE,
     pedantic,
     "functions taking large arguments by value"

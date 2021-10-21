@@ -24,6 +24,7 @@ declare_clippy_lint! {
     /// #[macro_use]
     /// use some_macro;
     /// ```
+    #[clippy::version = "1.44.0"]
     pub MACRO_USE_IMPORTS,
     pedantic,
     "#[macro_use] is no longer needed"

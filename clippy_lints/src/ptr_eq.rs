@@ -29,6 +29,7 @@ declare_clippy_lint! {
     ///
     /// assert!(std::ptr::eq(a, b));
     /// ```
+    #[clippy::version = "1.49.0"]
     pub PTR_EQ,
     style,
     "use `std::ptr::eq` when comparing raw pointers"

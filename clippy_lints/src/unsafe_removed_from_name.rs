@@ -21,6 +21,7 @@ declare_clippy_lint! {
     /// extern crate crossbeam;
     /// use crossbeam::{spawn_unsafe as spawn};
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNSAFE_REMOVED_FROM_NAME,
     style,
     "`unsafe` removed from API names on import"

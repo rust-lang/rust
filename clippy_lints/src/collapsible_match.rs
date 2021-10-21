@@ -41,6 +41,7 @@ declare_clippy_lint! {
     ///     };
     /// }
     /// ```
+    #[clippy::version = "1.50.0"]
     pub COLLAPSIBLE_MATCH,
     style,
     "Nested `match` or `if let` expressions where the patterns may be \"collapsed\" together."

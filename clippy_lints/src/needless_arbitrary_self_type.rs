@@ -52,6 +52,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.47.0"]
     pub NEEDLESS_ARBITRARY_SELF_TYPE,
     complexity,
     "type of `self` parameter is already by default `Self`"

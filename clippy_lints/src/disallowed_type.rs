@@ -42,6 +42,7 @@ declare_clippy_lint! {
     /// // A similar type that is allowed by the config
     /// use std::collections::HashMap;
     /// ```
+    #[clippy::version = "1.55.0"]
     pub DISALLOWED_TYPE,
     nursery,
     "use of a disallowed type"

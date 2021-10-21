@@ -37,6 +37,7 @@ declare_clippy_lint! {
     /// let x: &i32 = &5;
     /// fun(x);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_BORROW,
     style,
     "taking a reference that is going to be automatically dereferenced"
@@ -63,6 +64,7 @@ declare_clippy_lint! {
     ///     // use `&x` here
     /// }
     /// ```
+    #[clippy::version = "1.54.0"]
     pub REF_BINDING_TO_REFERENCE,
     pedantic,
     "`ref` binding to a reference"

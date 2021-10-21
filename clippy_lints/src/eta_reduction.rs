@@ -39,6 +39,7 @@ declare_clippy_lint! {
     /// ```
     /// where `foo(_)` is a plain function that takes the exact argument type of
     /// `x`.
+    #[clippy::version = "pre 1.29.0"]
     pub REDUNDANT_CLOSURE,
     style,
     "redundant closures, i.e., `|a| foo(a)` (which can be written as just `foo`)"
@@ -60,6 +61,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// Some('a').map(char::to_uppercase);
     /// ```
+    #[clippy::version = "1.35.0"]
     pub REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
     pedantic,
     "redundant closures for method calls"

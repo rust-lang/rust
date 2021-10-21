@@ -43,6 +43,7 @@ declare_clippy_lint! {
     /// let _ = a.ln_1p();
     /// let _ = a.exp_m1();
     /// ```
+    #[clippy::version = "1.43.0"]
     pub IMPRECISE_FLOPS,
     nursery,
     "usage of imprecise floating point operations"
@@ -99,6 +100,7 @@ declare_clippy_lint! {
     /// let _ = a.abs();
     /// let _ = -a.abs();
     /// ```
+    #[clippy::version = "1.43.0"]
     pub SUBOPTIMAL_FLOPS,
     nursery,
     "usage of sub-optimal floating point operations"

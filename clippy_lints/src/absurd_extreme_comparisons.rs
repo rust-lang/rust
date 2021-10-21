@@ -36,6 +36,7 @@ declare_clippy_lint! {
     /// if vec.len() <= 0 {}
     /// if 100 > i32::MAX {}
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ABSURD_EXTREME_COMPARISONS,
     correctness,
     "a comparison with a maximum or minimum value that is always true or false"

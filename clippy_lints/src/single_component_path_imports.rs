@@ -27,6 +27,7 @@ declare_clippy_lint! {
     ///     regex::Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
     /// }
     /// ```
+    #[clippy::version = "1.43.0"]
     pub SINGLE_COMPONENT_PATH_IMPORTS,
     style,
     "imports with single component path are redundant"

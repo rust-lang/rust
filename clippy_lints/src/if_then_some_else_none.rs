@@ -36,6 +36,7 @@ declare_clippy_lint! {
     ///     42
     /// });
     /// ```
+    #[clippy::version = "1.53.0"]
     pub IF_THEN_SOME_ELSE_NONE,
     restriction,
     "Finds if-else that could be written using `bool::then`"

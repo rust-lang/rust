@@ -31,6 +31,7 @@ declare_clippy_lint! {
     /// if a && true  // should be: if a
     /// if !(a == b)  // should be: if a != b
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NONMINIMAL_BOOL,
     complexity,
     "boolean expressions that can be written more concisely"
@@ -52,6 +53,7 @@ declare_clippy_lint! {
     /// if a && b || a { ... }
     /// ```
     /// The `b` is unnecessary, the expression is equivalent to `if a`.
+    #[clippy::version = "pre 1.29.0"]
     pub LOGIC_BUG,
     correctness,
     "boolean expressions that contain terminals which can be eliminated"

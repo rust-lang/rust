@@ -66,6 +66,7 @@ declare_clippy_lint! {
     /// #[inline(always)]
     /// fn not_quite_hot_code(..) { ... }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INLINE_ALWAYS,
     pedantic,
     "use of `#[inline(always)]`"
@@ -100,6 +101,7 @@ declare_clippy_lint! {
     /// #[macro_use]
     /// extern crate baz;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub USELESS_ATTRIBUTE,
     correctness,
     "use of lint attributes on `extern crate` items"
@@ -119,6 +121,7 @@ declare_clippy_lint! {
     /// #[deprecated(since = "forever")]
     /// fn something_else() { /* ... */ }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DEPRECATED_SEMVER,
     correctness,
     "use of `#[deprecated(since = \"x\")]` where x is not semver"
@@ -156,6 +159,7 @@ declare_clippy_lint! {
     /// #[allow(dead_code)]
     /// fn this_is_fine_too() { }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EMPTY_LINE_AFTER_OUTER_ATTR,
     nursery,
     "empty line after outer attribute"
@@ -179,6 +183,7 @@ declare_clippy_lint! {
     /// ```rust
     /// #![deny(clippy::as_conversions)]
     /// ```
+    #[clippy::version = "1.47.0"]
     pub BLANKET_CLIPPY_RESTRICTION_LINTS,
     suspicious,
     "enabling the complete restriction group"
@@ -210,6 +215,7 @@ declare_clippy_lint! {
     /// #[rustfmt::skip]
     /// fn main() { }
     /// ```
+    #[clippy::version = "1.32.0"]
     pub DEPRECATED_CFG_ATTR,
     complexity,
     "usage of `cfg_attr(rustfmt)` instead of tool attributes"
@@ -242,6 +248,7 @@ declare_clippy_lint! {
     /// fn conditional() { }
     /// ```
     /// Check the [Rust Reference](https://doc.rust-lang.org/reference/conditional-compilation.html#target_os) for more details.
+    #[clippy::version = "1.45.0"]
     pub MISMATCHED_TARGET_OS,
     correctness,
     "usage of `cfg(operating_system)` instead of `cfg(target_os = \"operating_system\")`"

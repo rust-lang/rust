@@ -59,6 +59,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.50.0"]
     pub SUSPICIOUS_OPERATION_GROUPINGS,
     nursery,
     "groupings of binary operations that look suspiciously like typos"

@@ -30,6 +30,7 @@ declare_clippy_lint! {
     /// let cstring = CString::new("foo").expect("CString::new failed");
     /// let len = cstring.as_bytes().len();
     /// ```
+    #[clippy::version = "1.55.0"]
     pub STRLEN_ON_C_STRINGS,
     complexity,
     "using `libc::strlen` on a `CString` or `CStr` value, while `as_bytes().len()` or `to_bytes().len()` respectively can be used instead"

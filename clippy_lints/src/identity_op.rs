@@ -22,6 +22,7 @@ declare_clippy_lint! {
     /// # let x = 1;
     /// x / 1 + 0 * 1 - 0 | 0;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub IDENTITY_OP,
     complexity,
     "using identity operations, e.g., `x + 0` or `y / 1`"
