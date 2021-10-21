@@ -141,7 +141,7 @@ pub struct Config {
     pub rust_verify_llvm_ir: bool,
     pub rust_thin_lto_import_instr_limit: Option<u32>,
     pub rust_remap_debuginfo: bool,
-    pub rust_new_symbol_mangling: bool,
+    pub rust_new_symbol_mangling: Option<bool>,
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
     pub llvm_profile_use: Option<String>,
@@ -874,7 +874,7 @@ impl Config {
             config.rust_run_dsymutil = rust.run_dsymutil.unwrap_or(false);
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
-            set(&mut config.rust_new_symbol_mangling, rust.new_symbol_mangling);
+            config.rust_new_symbol_mangling = rust.new_symbol_mangling;
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
