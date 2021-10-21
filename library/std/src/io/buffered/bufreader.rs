@@ -380,7 +380,7 @@ impl<R: Read> BufRead for BufReader<R> {
 
             let mut readbuf = ReadBuf::uninit(&mut self.buf);
 
-            // SAFETY: `self.init` is either 0 set to `readbuf.initialized_len()`
+            // SAFETY: `self.init` is either 0 or set to `readbuf.initialized_len()`
             // from the last time this function was called
             unsafe {
                 readbuf.assume_init(self.init);

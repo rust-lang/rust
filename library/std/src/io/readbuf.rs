@@ -43,7 +43,7 @@ impl<'a> ReadBuf<'a> {
         let len = buf.len();
 
         ReadBuf {
-            //SAFETY: inintialized data never becoming uninitialized is an invariant of ReadBuf
+            //SAFETY: initialized data never becoming uninitialized is an invariant of ReadBuf
             buf: unsafe { (buf as *mut [u8]).as_uninit_slice_mut().unwrap() },
             filled: 0,
             initialized: len,
@@ -135,10 +135,10 @@ impl<'a> ReadBuf<'a> {
     pub fn initialize_unfilled_to(&mut self, n: usize) -> &mut [u8] {
         assert!(self.remaining() >= n);
 
-        //dont try to do any zeroing if we already have enough initialized
-        if n > (self.initialized - self.filled) {
-            let uninit = (n + self.filled) - self.initialized;
-
+        let extra_init = self.initialized - self.filled;
+        // If we dont have enough initialized, do zeroing
+        if n > extra_init {
+            let uninit = n - extra_init;
             let unfilled = &mut self.uninitialized_mut()[0..uninit];
 
             for byte in unfilled.iter_mut() {

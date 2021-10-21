@@ -371,8 +371,9 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
         }
 
         let mut read_buf = ReadBuf::uninit(buf.spare_capacity_mut());
+
+        // SAFETY: These bytes were initalized but not filled in the previous loop
         unsafe {
-            // add back extra initalized bytes, we don't want to reinitalize initalized bytes
             read_buf.assume_init(initialized);
         }
 
@@ -389,6 +390,8 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
         // store how much was initialized but not filled
         initialized = read_buf.initialized_len() - read_buf.filled_len();
         let new_len = read_buf.filled_len() + buf.len();
+
+        // SAFETY: ReadBuf's invariants mean this much memory is init
         unsafe {
             buf.set_len(new_len);
         }
@@ -2558,11 +2561,17 @@ impl<T: Read> Read for Take<T> {
         let prev_filled = buf.filled_len();
 
         if self.limit <= buf.remaining() as u64 {
-            let extra_init = buf.initialized_len() - buf.filled_len();
-            let ibuf = unsafe { &mut buf.unfilled_mut()[..self.limit as usize] };
+            // if we just use an as cast to convert, limit may wrap around on a 32 bit target
+            let limit = cmp::min(self.limit, usize::MAX as u64) as usize;
+
+            let extra_init = cmp::min(limit as usize, buf.initialized_len() - buf.filled_len());
+
+            // SAFETY: no uninit data is written to ibuf
+            let ibuf = unsafe { &mut buf.unfilled_mut()[..limit] };
 
             let mut sliced_buf = ReadBuf::uninit(ibuf);
 
+            // SAFETY: extra_init bytes of ibuf are known to be initialized
             unsafe {
                 sliced_buf.assume_init(extra_init);
             }
@@ -2574,6 +2583,7 @@ impl<T: Read> Read for Take<T> {
 
             // sliced_buf / ibuf must drop here
 
+            // SAFETY: new_init bytes of buf's unfilled buffer have been initialized
             unsafe {
                 buf.assume_init(new_init);
             }

@@ -167,3 +167,15 @@ fn append() {
     assert_eq!(rbuf.filled_len(), 16);
     assert_eq!(rbuf.filled(), [1; 16]);
 }
+
+#[test]
+fn filled_mut() {
+    let mut buf = [0; 16];
+    let mut rbuf = ReadBuf::new(&mut buf);
+
+    rbuf.add_filled(8);
+
+    let filled = rbuf.filled().to_vec();
+
+    assert_eq!(&*filled, &*rbuf.filled_mut());
+}
