@@ -579,6 +579,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     continue;
                 }
                 headers.safety |= in_heading && text.trim() == "Safety";
+                headers.safety |= in_heading && text.trim() == "Implementation safety";
+                headers.safety |= in_heading && text.trim() == "Implementation Safety";
                 headers.errors |= in_heading && text.trim() == "Errors";
                 headers.panics |= in_heading && text.trim() == "Panics";
                 if in_code {
