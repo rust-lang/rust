@@ -1,6 +1,7 @@
 use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::{HirId, ItemLocalId};
+use crate::intravisit::FnKind;
 use crate::LangItem;
 
 use rustc_ast::util::parser::ExprPrecedence;
@@ -3255,6 +3256,32 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(i) => Some(OwnerNode::TraitItem(i)),
             Node::ImplItem(i) => Some(OwnerNode::ImplItem(i)),
             Node::Crate(i) => Some(OwnerNode::Crate(i)),
+            _ => None,
+        }
+    }
+
+    pub fn fn_kind(self) -> Option<FnKind<'hir>> {
+        match self {
+            Node::Item(i) => match i.kind {
+                ItemKind::Fn(ref sig, ref generics, _) => {
+                    Some(FnKind::ItemFn(i.ident, generics, sig.header, &i.vis))
+                }
+                _ => None,
+            },
+            Node::TraitItem(ti) => match ti.kind {
+                TraitItemKind::Fn(ref sig, TraitFn::Provided(_)) => {
+                    Some(FnKind::Method(ti.ident, sig, None))
+                }
+                _ => None,
+            },
+            Node::ImplItem(ii) => match ii.kind {
+                ImplItemKind::Fn(ref sig, _) => Some(FnKind::Method(ii.ident, sig, Some(&ii.vis))),
+                _ => None,
+            },
+            Node::Expr(e) => match e.kind {
+                ExprKind::Closure(..) => Some(FnKind::Closure),
+                _ => None,
+            },
             _ => None,
         }
     }

@@ -68,6 +68,12 @@ changelog-seen = 2
 # Indicates whether the LLVM assertions are enabled or not
 #assertions = false
 
+# Indicates whether the LLVM testsuite is enabled in the build or not. Does
+# not execute the tests as part of the build as part of x.py build et al,
+# just makes it possible to do `ninja check-llvm` in the staged LLVM build
+# directory when doing LLVM development as part of Rust development.
+#tests = false
+
 # Indicates whether the LLVM plugin is enabled or not
 #plugins = false
 

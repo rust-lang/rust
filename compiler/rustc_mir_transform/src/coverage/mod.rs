@@ -19,7 +19,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir;
-use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::dump_enabled;
@@ -64,7 +63,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
         }
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(mir_source.def_id().expect_local());
-        let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
+        let is_fn_like = tcx.hir().get(hir_id).fn_kind().is_some();
 
         // Only instrument functions, methods, and closures (not constants since they are evaluated
         // at compile time by Miri).
@@ -74,7 +73,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
         // be tricky if const expressions have no corresponding statements in the enclosing MIR.
         // Closures are carved out by their initial `Assign` statement.)
         if !is_fn_like {
-            trace!("InstrumentCoverage skipped for {:?} (not an FnLikeNode)", mir_source.def_id());
+            trace!("InstrumentCoverage skipped for {:?} (not an fn-like)", mir_source.def_id());
             return;
         }
 

@@ -1,7 +1,6 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{
     self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
@@ -478,11 +477,11 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
 
     let node = tcx.hir().get(hir_id);
 
-    let fn_like = hir_map::blocks::FnLikeNode::from_node(node).unwrap_or_else(|| {
+    let fn_kind = node.fn_kind().unwrap_or_else(|| {
         bug!("asyncness: expected fn-like node but got `{:?}`", def_id);
     });
 
-    fn_like.asyncness()
+    fn_kind.asyncness()
 }
 
 /// Don't call this directly: use ``tcx.conservative_is_privately_uninhabited`` instead.
