@@ -1,0 +1,106 @@
+error: casting function pointer `foo` to `i8`
+  --> $DIR/fn_to_numeric_cast_any.rs:23:13
+   |
+LL |     let _ = foo as i8;
+   |             ^^^^^^^^^ help: did you mean to invoke the function?: `foo() as i8`
+   |
+   = note: `-D clippy::fn-to-numeric-cast-any` implied by `-D warnings`
+
+error: casting function pointer `foo` to `i16`
+  --> $DIR/fn_to_numeric_cast_any.rs:24:13
+   |
+LL |     let _ = foo as i16;
+   |             ^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as i16`
+
+error: casting function pointer `foo` to `i32`
+  --> $DIR/fn_to_numeric_cast_any.rs:25:13
+   |
+LL |     let _ = foo as i32;
+   |             ^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as i32`
+
+error: casting function pointer `foo` to `i64`
+  --> $DIR/fn_to_numeric_cast_any.rs:26:13
+   |
+LL |     let _ = foo as i64;
+   |             ^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as i64`
+
+error: casting function pointer `foo` to `i128`
+  --> $DIR/fn_to_numeric_cast_any.rs:27:13
+   |
+LL |     let _ = foo as i128;
+   |             ^^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as i128`
+
+error: casting function pointer `foo` to `isize`
+  --> $DIR/fn_to_numeric_cast_any.rs:28:13
+   |
+LL |     let _ = foo as isize;
+   |             ^^^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as isize`
+
+error: casting function pointer `foo` to `u8`
+  --> $DIR/fn_to_numeric_cast_any.rs:30:13
+   |
+LL |     let _ = foo as u8;
+   |             ^^^^^^^^^ help: did you mean to invoke the function?: `foo() as u8`
+
+error: casting function pointer `foo` to `u16`
+  --> $DIR/fn_to_numeric_cast_any.rs:31:13
+   |
+LL |     let _ = foo as u16;
+   |             ^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as u16`
+
+error: casting function pointer `foo` to `u32`
+  --> $DIR/fn_to_numeric_cast_any.rs:32:13
+   |
+LL |     let _ = foo as u32;
+   |             ^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as u32`
+
+error: casting function pointer `foo` to `u64`
+  --> $DIR/fn_to_numeric_cast_any.rs:33:13
+   |
+LL |     let _ = foo as u64;
+   |             ^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as u64`
+
+error: casting function pointer `foo` to `u128`
+  --> $DIR/fn_to_numeric_cast_any.rs:34:13
+   |
+LL |     let _ = foo as u128;
+   |             ^^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as u128`
+
+error: casting function pointer `foo` to `usize`
+  --> $DIR/fn_to_numeric_cast_any.rs:35:13
+   |
+LL |     let _ = foo as usize;
+   |             ^^^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as usize`
+
+error: casting function pointer `Struct::static_method` to `usize`
+  --> $DIR/fn_to_numeric_cast_any.rs:39:13
+   |
+LL |     let _ = Struct::static_method as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean to invoke the function?: `Struct::static_method() as usize`
+
+error: casting function pointer `f` to `usize`
+  --> $DIR/fn_to_numeric_cast_any.rs:43:5
+   |
+LL |     f as usize
+   |     ^^^^^^^^^^ help: did you mean to invoke the function?: `f() as usize`
+
+error: casting function pointer `T::static_method` to `usize`
+  --> $DIR/fn_to_numeric_cast_any.rs:47:5
+   |
+LL |     T::static_method as usize
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean to invoke the function?: `T::static_method() as usize`
+
+error: casting function pointer `(clos as fn(u32) -> u32)` to `usize`
+  --> $DIR/fn_to_numeric_cast_any.rs:53:13
+   |
+LL |     let _ = (clos as fn(u32) -> u32) as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean to invoke the function?: `(clos as fn(u32) -> u32)() as usize`
+
+error: casting function pointer `foo` to `*const ()`
+  --> $DIR/fn_to_numeric_cast_any.rs:57:13
+   |
+LL |     let _ = foo as *const ();
+   |             ^^^^^^^^^^^^^^^^ help: did you mean to invoke the function?: `foo() as *const ()`
+
+error: aborting due to 17 previous errors
+

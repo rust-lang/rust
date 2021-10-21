@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// }
     ///
     /// if let Ok(value) = iter.next() {
-    ///        vec.push_value)
+    ///        vec.push(value)
     /// }
     /// ```
     pub MATCH_RESULT_OK,

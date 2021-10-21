@@ -107,5 +107,29 @@ note: consider initializing the variable with `WrapperMulti::<i32, i64> { i: 42,
 LL |     let mut a: WrapperMulti<i32, i64> = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> $DIR/field_reassign_with_default.rs:229:13
+   |
+LL |             f.name = name.len();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider initializing the variable with `issue6312::ImplDropAllCopy { name: name.len(), ..Default::default() }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:228:13
+   |
+LL |             let mut f = ImplDropAllCopy::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> $DIR/field_reassign_with_default.rs:245:13
+   |
+LL |             f.name = name.len();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider initializing the variable with `issue6312::NoDropAllCopy { name: name.len(), ..Default::default() }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:244:13
+   |
+LL |             let mut f = NoDropAllCopy::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
 

@@ -33,7 +33,7 @@ pub(super) fn check<'tcx>(
                     diag.span_suggestion(
                         e.span,
                         "consider using",
-                        format!("std::char::from_u32({}).unwrap()", arg.to_string()),
+                        format!("std::char::from_u32({}).unwrap()", arg),
                         Applicability::Unspecified,
                     );
                 },

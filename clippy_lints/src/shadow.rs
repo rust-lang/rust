@@ -162,11 +162,7 @@ fn lint_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, shadowed: HirId, span: Span)
             (SHADOW_SAME, msg)
         },
         Some(expr) if is_local_used(cx, expr, shadowed) => {
-            let msg = format!(
-                "`{}` is shadowed by `{}` which reuses the original value",
-                snippet(cx, pat.span, "_"),
-                snippet(cx, expr.span, "..")
-            );
+            let msg = format!("`{}` is shadowed", snippet(cx, pat.span, "_"));
             (SHADOW_REUSE, msg)
         },
         _ => {

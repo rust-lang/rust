@@ -66,4 +66,13 @@ fn main() {
     if let NotStructuralEq::A = g {}
     if let Some(NotPartialEq::A) = Some(f) {}
     if let Some(NotStructuralEq::A) = Some(g) {}
+
+    macro_rules! m1 {
+        (x) => {
+            "abc"
+        };
+    }
+    if let m1!(x) = "abc" {
+        println!("OK");
+    }
 }

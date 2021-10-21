@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -77,9 +77,9 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
                 let pat_str = match pat.kind {
                     PatKind::Struct(..) => format!(
                         "({})",
-                        snippet_with_applicability(cx, pat.span, "..", &mut applicability),
+                        snippet_with_context(cx, pat.span, expr.span.ctxt(), "..", &mut applicability).0,
                     ),
-                    _ => snippet_with_applicability(cx, pat.span, "..", &mut applicability).to_string(),
+                    _ => snippet_with_context(cx, pat.span, expr.span.ctxt(), "..", &mut applicability).0.to_string(),
                 };
                 span_lint_and_sugg(
                     cx,
@@ -89,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
                     "try",
                     format!(
                         "{} == {}",
-                        snippet_with_applicability(cx, exp.span, "..", &mut applicability),
+                        snippet_with_context(cx, exp.span, expr.span.ctxt(), "..", &mut applicability).0,
                         pat_str,
                     ),
                     applicability,

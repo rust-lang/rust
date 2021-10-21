@@ -72,4 +72,46 @@ mod ice_3719 {
     }
 }
 
+mod issue_7740 {
+    macro_rules! foobar_variant(
+        ($idx:expr) => (FooBar::get($idx).unwrap())
+    );
+
+    enum FooBar {
+        Foo,
+        Bar,
+        FooBar,
+        BarFoo,
+    }
+
+    impl FooBar {
+        fn get(idx: u8) -> Option<&'static Self> {
+            match idx {
+                0 => Some(&FooBar::Foo),
+                1 => Some(&FooBar::Bar),
+                2 => Some(&FooBar::FooBar),
+                3 => Some(&FooBar::BarFoo),
+                _ => None,
+            }
+        }
+    }
+
+    fn issue_7740() {
+        // Issue #7740
+        match foobar_variant!(0) {
+            &FooBar::Foo => println!("Foo"),
+            &FooBar::Bar => println!("Bar"),
+            &FooBar::FooBar => println!("FooBar"),
+            _ => println!("Wild"),
+        }
+
+        // This shouldn't trigger
+        if let &FooBar::BarFoo = foobar_variant!(3) {
+            println!("BarFoo");
+        } else {
+            println!("Wild");
+        }
+    }
+}
+
 fn main() {}
