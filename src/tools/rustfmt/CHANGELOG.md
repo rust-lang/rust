@@ -2,6 +2,73 @@
 
 ## [Unreleased]
 
+## [1.4.38] 2021-10-20
+
+### Changed
+
+- Switched from `rustc-ap-*` crates to `rustc_private` for consumption model of rustc internals
+- `annotate-snippets` updated to v0.8 [PR #4762](https://github.com/rust-lang/rustfmt/pull/4762)
+- Greatly improved the performance of `cargo fmt` in large workspaces utilizing the `--all` flag by updating to a newer version of `cargo_metadata` that leverages updated `cargo` output from v1.51+ [PR #4997](https://github.com/rust-lang/rustfmt/pull/4997)
+- Improved formatting of long slice patterns [#4530](https://github.com/rust-lang/rustfmt/issues/4530)
+  - **Note you must have `version = Two` in your configuration to take advantage of the new formatting**
+- Stabilized `match_block_trailing_comma` configuration option [#3380](https://github.com/rust-lang/rustfmt/issues/3380) - [https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#match_block_trailing_comma](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#match_block_trailing_comma)
+- Stabilized `disable_all_formatting` configuration option [#5026](https://github.com/rust-lang/rustfmt/pull/5026) - [https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#disable_all_formatting](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#disable_all_formatting)
+- Various improvements to the configuration documentation website [https://rust-lang.github.io/rustfmt/?version=v1.4.38]([https://rust-lang.github.io/rustfmt/?version=v1.4.38])
+- Addressed various clippy and rustc warnings
+
+
+### Fixed
+
+- Resolved issue where specious whitespace would be inserted when a block style comment was terminated within string literal processing [#4312](https://github.com/rust-lang/rustfmt/issues/4312)
+- Nested out-of-line mods are again parsed and formatted [#4874](https://github.com/rust-lang/rustfmt/issues/4874)
+- Accepts `2021` for edition value from rustfmt command line [PR #4847](https://github.com/rust-lang/rustfmt/pull/4847)
+- Unstable command line options are no longer displayed in `--help` text on stable [PR #4798](https://github.com/rust-lang/rustfmt/issues/4798)
+- Stopped panicking on patterns in match arms which start with non-ascii characters [#4868](https://github.com/rust-lang/rustfmt/issues/4868)
+- Stopped stripping defaults on const params [#4816](https://github.com/rust-lang/rustfmt/issues/4816)
+- Fixed issue with dropped content with GAT aliases with self bounds in impls [#4911](https://github.com/rust-lang/rustfmt/issues/4911)
+- Stopped removing generic args on associated type constraints [#4943](https://github.com/rust-lang/rustfmt/issues/4943)
+- Stopped dropping visibility on certain trait and impl items [#4960](https://github.com/rust-lang/rustfmt/issues/4960)
+- Fixed dropping of qualified paths in struct patterns [#4908](https://github.com/rust-lang/rustfmt/issues/4908) and [#5005](https://github.com/rust-lang/rustfmt/issues/5005)
+- Fixed bug in line width calculation that was causing specious formatting of certain patterns [#4031](https://github.com/rust-lang/rustfmt/issues/4031)
+  - **Note that this bug fix may cause observable formatting changes in cases where code had been formatted with prior versions of rustfmt that contained the bug**
+- Fixed bug where rustfmt would drop parameter attributes if they were too long in certain cases [#4579](https://github.com/rust-lang/rustfmt/issues/4579)
+- Resolved idempotency issue with extern body elements [#4963](https://github.com/rust-lang/rustfmt/issues/4963)
+- rustfmt will now handle doc-style comments on function parameters, since they could appear with certain macro usage patterns even though it's generally invalid syntax [#4936](https://github.com/rust-lang/rustfmt/issues/4936)
+- Fixed bug in `match_block_trailing_comma` where commas were not added to the blocks of bodies whose arm had a guard that did not fit on the same line as the pattern [#4998](https://github.com/rust-lang/rustfmt/pull/4998)
+- Fixed bug in cases where derive attributes started with a block style comment [#4984](https://github.com/rust-lang/rustfmt/issues/4984)
+- Fixed issue where the struct rest could be lost when `struct_field_align_threshold` was enabled [#4926](https://github.com/rust-lang/rustfmt/issues/4926)
+- Handles cases where certain control flow type expressions have comments between patterns/keywords and the pattern ident contains the keyword [#5009](https://github.com/rust-lang/rustfmt/issues/5009)
+- Handles tuple structs that have explicit visibilities and start with a block style comment [#5011](https://github.com/rust-lang/rustfmt/issues/5011)
+- Handles leading line-style comments in certain types of macro calls [#4615](https://github.com/rust-lang/rustfmt/issues/4615)
+
+
+### Added
+- Granular width heuristic options made available for user control [PR #4782](https://github.com/rust-lang/rustfmt/pull/4782). This includes the following:
+  - [`array_width`](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#array_width)
+  - [`attr_fn_like_width`](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#attr_fn_like_width)
+  - [`chain_width`](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#chain_width)
+  - [`fn_call_width`](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#fn_call_width)
+  - [`single_line_if_else_max_width`](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#single_line_if_else_max_width)
+  - [`struct_lit_width`](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#struct_lit_width)
+  - [`struct_variant_width`](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#struct_variant_width)
+
+Note this hit the rustup distributions prior to the v1.4.38 release as part of an out-of-cycle updates, but is listed in this version because the feature was not in the other v1.4.37 releases. See also the `use_small_heuristics` section on the configuration site for more information
+[https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#use_small_heuristics](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#use_small_heuristics)
+
+- New `One` variant added to `imports_granularity` configuration option which can be used to reformat all imports into a single use statement [#4669](https://github.com/rust-lang/rustfmt/issues/4669)
+- rustfmt will now skip files that are annotated with `@generated` at the top of the file [#3958](https://github.com/rust-lang/rustfmt/issues/3958)
+- New configuration option `hex_literal_case` that allows user to control the casing utilized for hex literals [PR #4903](https://github.com/rust-lang/rustfmt/pull/4903)
+
+See the section on the configuration site for more information
+https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#hex_literal_case
+
+- `cargo fmt` now directly supports the `--check` flag, which means it's now possible to run `cargo fmt --check` instead of the more verbose `cargo fmt -- --check` [#3888](https://github.com/rust-lang/rustfmt/issues/3888)
+
+### Install/Download Options
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.38](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.38)
+- **Build from source** - [Tag v1.4.38](https://github.com/rust-lang/rustfmt/tree/v1.4.38), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.37] 2021-04-03
 
 ### Changed
