@@ -578,9 +578,12 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     // text "http://example.com" by pulldown-cmark
                     continue;
                 }
-                headers.safety |= in_heading && text.trim() == "Safety";
-                headers.errors |= in_heading && text.trim() == "Errors";
-                headers.panics |= in_heading && text.trim() == "Panics";
+                let trimmed_text = text.trim();
+                headers.safety |= in_heading && trimmed_text == "Safety";
+                headers.safety |= in_heading && trimmed_text == "Implementation safety";
+                headers.safety |= in_heading && trimmed_text == "Implementation Safety";
+                headers.errors |= in_heading && trimmed_text == "Errors";
+                headers.panics |= in_heading && trimmed_text == "Panics";
                 if in_code {
                     if is_rust {
                         let edition = edition.unwrap_or_else(|| cx.tcx.sess.edition());
