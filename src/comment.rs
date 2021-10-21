@@ -403,7 +403,7 @@ enum CodeBlockAttribute {
 impl CodeBlockAttribute {
     /// Parse comma separated attributes list. Return rust only if all
     /// attributes are valid rust attributes
-    /// See https://doc.rust-lang.org/rustdoc/print.html#attributes
+    /// See <https://doc.rust-lang.org/rustdoc/print.html#attributes>
     fn new(attributes: &str) -> CodeBlockAttribute {
         for attribute in attributes.split(",") {
             match attribute.trim() {
