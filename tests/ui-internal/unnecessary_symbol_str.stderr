@@ -26,14 +26,14 @@ LL |     Symbol::intern("foo").to_ident_string() != "Self";
 error: unnecessary `Symbol` to string conversion
   --> $DIR/unnecessary_symbol_str.rs:14:5
    |
-LL |     &*Ident::invalid().as_str() == "clippy";
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Ident::invalid().name == rustc_span::sym::clippy`
+LL |     &*Ident::empty().as_str() == "clippy";
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Ident::empty().name == rustc_span::sym::clippy`
 
 error: unnecessary `Symbol` to string conversion
   --> $DIR/unnecessary_symbol_str.rs:15:5
    |
-LL |     "clippy" == Ident::invalid().to_string();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::sym::clippy == Ident::invalid().name`
+LL |     "clippy" == Ident::empty().to_string();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::sym::clippy == Ident::empty().name`
 
 error: aborting due to 5 previous errors
 

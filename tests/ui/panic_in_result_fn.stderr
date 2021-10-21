@@ -13,7 +13,7 @@ note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn.rs:9:9
    |
 LL |         panic!("error");
-   |         ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
@@ -30,7 +30,7 @@ note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn.rs:14:9
    |
 LL |         unimplemented!();
-   |         ^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
@@ -47,7 +47,7 @@ note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn.rs:19:9
    |
 LL |         unreachable!();
-   |         ^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^
    = note: this error originates in the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
@@ -64,7 +64,7 @@ note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn.rs:24:9
    |
 LL |         todo!("Finish this");
-   |         ^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
@@ -81,7 +81,7 @@ note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn.rs:55:5
    |
 LL |     panic!("error");
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
@@ -98,7 +98,7 @@ note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn.rs:69:5
    |
 LL |     todo!("finish main method");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors

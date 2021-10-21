@@ -114,7 +114,7 @@ LL |             unsafe {}
    |             ^^^^^^^^^
 ...
 LL |     t!();
-   |     ----- in this macro invocation
+   |     ---- in this macro invocation
    |
    = help: consider adding a safety comment in the macro definition
    = note: this error originates in the macro `t` (in Nightly builds, run with -Z macro-backtrace for more info)

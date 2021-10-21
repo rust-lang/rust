@@ -1641,7 +1641,6 @@ pub fn match_panic_def_id(cx: &LateContext<'_>, did: DefId) -> bool {
         did,
         &[
             &paths::BEGIN_PANIC,
-            &paths::BEGIN_PANIC_FMT,
             &paths::PANIC_ANY,
             &paths::PANICKING_PANIC,
             &paths::PANICKING_PANIC_FMT,

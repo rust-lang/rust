@@ -107,7 +107,7 @@ LL |         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
    |                                           ^^^^^^^^^^^^^
 ...
 LL | gen!(impl);
-   | ----------- in this macro invocation
+   | ---------- in this macro invocation
    |
    = note: this error originates in the macro `gen` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider adding a type parameter
@@ -126,7 +126,7 @@ LL |         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>)
    |                                 ^^^^^^^^^^^^^^^^^
 ...
 LL | gen!(fn bar);
-   | ------------- in this macro invocation
+   | ------------ in this macro invocation
    |
    = note: this error originates in the macro `gen` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider adding a type parameter
@@ -141,7 +141,7 @@ LL |         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>)
    |                                                               ^^^^^^^^^^^^
 ...
 LL | gen!(fn bar);
-   | ------------- in this macro invocation
+   | ------------ in this macro invocation
    |
    = note: this error originates in the macro `gen` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider adding a type parameter
