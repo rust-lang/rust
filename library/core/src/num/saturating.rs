@@ -273,7 +273,7 @@ macro_rules! saturating_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(saturating_int_impl, saturating_div)]
+        /// #![feature(saturating_int_impl)]
         /// use std::num::Saturating;
         ///
         #[doc = concat!("assert_eq!(Saturating(2", stringify!($t), "), Saturating(5", stringify!($t), ") / Saturating(2));")]
@@ -282,7 +282,7 @@ macro_rules! saturating_impl {
         /// ```
         ///
         /// ```should_panic
-        /// #![feature(saturating_int_impl, saturating_div)]
+        /// #![feature(saturating_int_impl)]
         /// use std::num::Saturating;
         ///
         #[doc = concat!("let _ = Saturating(0", stringify!($t), ") / Saturating(0);")]
