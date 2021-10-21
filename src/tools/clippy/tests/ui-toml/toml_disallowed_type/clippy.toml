@@ -7,5 +7,9 @@ disallowed-types = [
     "std::time::Instant",
     "std::io::Read",
     "std::primitive::usize",
-    "bool"
+    "bool",
+    # can give path and reason with an inline table
+    { path = "std::net::Ipv4Addr", reason = "no IPv4 allowed" },
+    # can use an inline table but omit reason
+    { path = "std::net::TcpListener" },
 ]

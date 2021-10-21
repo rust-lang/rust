@@ -91,10 +91,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for a [`#[must_use]`] attribute on
+    /// Checks for a `#[must_use]` attribute on
     /// unit-returning functions and methods.
-    ///
-    /// [`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
     ///
     /// ### Why is this bad?
     /// Unit values are useless. The attribute is likely
@@ -112,11 +110,9 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for a [`#[must_use]`] attribute without
+    /// Checks for a `#[must_use]` attribute without
     /// further information on functions and methods that return a type already
     /// marked as `#[must_use]`.
-    ///
-    /// [`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
     ///
     /// ### Why is this bad?
     /// The attribute isn't needed. Not using the result
@@ -138,10 +134,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for public functions that have no
-    /// [`#[must_use]`] attribute, but return something not already marked
+    /// `#[must_use]` attribute, but return something not already marked
     /// must-use, have no mutable arg and mutate no statics.
-    ///
-    /// [`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
     ///
     /// ### Why is this bad?
     /// Not bad at all, this lint just shows places where

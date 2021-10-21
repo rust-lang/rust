@@ -1187,7 +1187,7 @@ where
     'b: 'a,
     I: Clone + Iterator<Item = &'a Pat<'b>>,
 {
-    if !has_only_ref_pats(pats.clone()) {
+    if !has_multiple_ref_pats(pats.clone()) {
         return;
     }
 
@@ -1693,12 +1693,12 @@ fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<BindingAnnotat
     None
 }
 
-fn has_only_ref_pats<'a, 'b, I>(pats: I) -> bool
+fn has_multiple_ref_pats<'a, 'b, I>(pats: I) -> bool
 where
     'b: 'a,
     I: Iterator<Item = &'a Pat<'b>>,
 {
-    let mut at_least_one_is_true = false;
+    let mut ref_count = 0;
     for opt in pats.map(|pat| match pat.kind {
         PatKind::Ref(..) => Some(true), // &-patterns
         PatKind::Wild => Some(false),   // an "anything" wildcard is also fine
@@ -1706,13 +1706,13 @@ where
     }) {
         if let Some(inner) = opt {
             if inner {
-                at_least_one_is_true = true;
+                ref_count += 1;
             }
         } else {
             return false;
         }
     }
-    at_least_one_is_true
+    ref_count > 1
 }
 
 pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>

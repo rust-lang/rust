@@ -1,0 +1,36 @@
+error: this `match` arm has a differing case than its expression
+  --> $DIR/match_str_case_mismatch.rs:68:9
+   |
+LL |         "Bar" => {},
+   |         ^^^^^
+   |
+   = note: `-D clippy::match-str-case-mismatch` implied by `-D warnings`
+help: consider changing the case of this arm to respect `to_ascii_lowercase`
+   |
+LL |         "bar" => {},
+   |         ~~~~~
+
+error: this `match` arm has a differing case than its expression
+  --> $DIR/match_str_case_mismatch.rs:78:9
+   |
+LL |         "Bar" => {},
+   |         ^^^^^
+   |
+help: consider changing the case of this arm to respect `to_ascii_lowercase`
+   |
+LL |         "bar" => {},
+   |         ~~~~~
+
+error: this `match` arm has a differing case than its expression
+  --> $DIR/match_str_case_mismatch.rs:93:9
+   |
+LL |         "bAR" => {},
+   |         ^^^^^
+   |
+help: consider changing the case of this arm to respect `to_ascii_uppercase`
+   |
+LL |         "BAR" => {},
+   |         ~~~~~
+
+error: aborting due to 3 previous errors
+

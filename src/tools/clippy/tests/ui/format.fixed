@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(clippy::print_literal, clippy::redundant_clone)]
+#![allow(clippy::print_literal, clippy::redundant_clone, clippy::to_string_in_format_args)]
 #![warn(clippy::useless_format)]
 
 struct Foo(pub String);

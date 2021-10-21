@@ -1777,14 +1777,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usages of `str::splitn(2, _)`
+    /// ### What it does
+    /// Checks for usages of `str::splitn(2, _)`
     ///
-    /// **Why is this bad?** `split_once` is both clearer in intent and slightly more efficient.
+    /// ### Why is this bad?
+    /// `split_once` is both clearer in intent and slightly more efficient.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,ignore
     /// // Bad
     ///  let (key, value) = _.splitn(2, '=').next_tuple()?;

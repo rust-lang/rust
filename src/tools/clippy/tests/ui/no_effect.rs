@@ -1,5 +1,5 @@
 #![feature(box_syntax)]
-#![warn(clippy::no_effect)]
+#![warn(clippy::no_effect_underscore_binding)]
 #![allow(dead_code)]
 #![allow(path_statements)]
 #![allow(clippy::deref_addrof)]
@@ -90,6 +90,10 @@ fn main() {
     || x += 5;
     let s: String = "foo".into();
     FooString { s: s };
+    let _unused = 1;
+    let _penguin = || println!("Some helpful closure");
+    let _duck = Struct { field: 0 };
+    let _cat = [2, 4, 6, 8][2];
 
     #[allow(clippy::no_effect)]
     0;
@@ -97,6 +101,8 @@ fn main() {
     // Do not warn
     get_number();
     unsafe { unsafe_fn() };
+    let _used = get_struct();
+    let _x = vec![1];
     DropUnit;
     DropStruct { field: 0 };
     DropTuple(0);

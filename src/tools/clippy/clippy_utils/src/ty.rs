@@ -367,3 +367,13 @@ pub fn same_type_and_consts(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         _ => a == b,
     }
 }
+
+/// Checks if a given type looks safe to be uninitialized.
+pub fn is_uninit_value_valid_for_ty(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    match ty.kind() {
+        ty::Array(component, _) => is_uninit_value_valid_for_ty(cx, component),
+        ty::Tuple(types) => types.types().all(|ty| is_uninit_value_valid_for_ty(cx, ty)),
+        ty::Adt(adt, _) => cx.tcx.lang_items().maybe_uninit() == Some(adt.did),
+        _ => false,
+    }
+}

@@ -7,6 +7,7 @@ mod cast_ref_to_mut;
 mod cast_sign_loss;
 mod char_lit_as_u8;
 mod fn_to_numeric_cast;
+mod fn_to_numeric_cast_any;
 mod fn_to_numeric_cast_with_truncation;
 mod ptr_as_ptr;
 mod unnecessary_cast;
@@ -253,6 +254,42 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for casts of a function pointer to any integer type.
+    ///
+    /// ### Why is this bad?
+    /// Casting a function pointer to an integer can have surprising results and can occur
+    /// accidentally if parantheses are omitted from a function call. If you aren't doing anything
+    /// low-level with function pointers then you can opt-out of casting functions to integers in
+    /// order to avoid mistakes. Alternatively, you can use this lint to audit all uses of function
+    /// pointer casts in your code.
+    ///
+    /// ### Example
+    /// ```rust
+    /// // Bad: fn1 is cast as `usize`
+    /// fn fn1() -> u16 {
+    ///     1
+    /// };
+    /// let _ = fn1 as usize;
+    ///
+    /// // Good: maybe you intended to call the function?
+    /// fn fn2() -> u16 {
+    ///     1
+    /// };
+    /// let _ = fn2() as usize;
+    ///
+    /// // Good: maybe you intended to cast it to a function type?
+    /// fn fn3() -> u16 {
+    ///     1
+    /// }
+    /// let _ = fn3 as fn() -> u16;
+    /// ```
+    pub FN_TO_NUMERIC_CAST_ANY,
+    restriction,
+    "casting a function pointer to any integer type"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for casts of `&T` to `&mut T` anywhere in the code.
     ///
     /// ### Why is this bad?
@@ -360,6 +397,7 @@ impl_lint_pass!(Casts => [
     CAST_REF_TO_MUT,
     CAST_PTR_ALIGNMENT,
     UNNECESSARY_CAST,
+    FN_TO_NUMERIC_CAST_ANY,
     FN_TO_NUMERIC_CAST,
     FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
     CHAR_LIT_AS_U8,
@@ -385,6 +423,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 return;
             }
 
+            fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {

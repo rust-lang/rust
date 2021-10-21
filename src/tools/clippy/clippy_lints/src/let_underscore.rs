@@ -10,12 +10,11 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `let _ = <expr>`
-    /// where expr is #[must_use]
+    /// Checks for `let _ = <expr>` where expr is `#[must_use]`
     ///
     /// ### Why is this bad?
-    /// It's better to explicitly
-    /// handle the value of a #[must_use] expr
+    /// It's better to explicitly handle the value of a `#[must_use]`
+    /// expr
     ///
     /// ### Example
     /// ```rust
