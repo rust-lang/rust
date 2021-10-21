@@ -1219,13 +1219,13 @@ crate enum GenericParamDefKind {
     Type {
         did: DefId,
         bounds: Vec<GenericBound>,
-        default: Option<Type>,
+        default: Option<Box<Type>>,
         synthetic: Option<hir::SyntheticTyParamKind>,
     },
     Const {
         did: DefId,
-        ty: Type,
-        default: Option<String>,
+        ty: Box<Type>,
+        default: Option<Box<String>>,
     },
 }
 
@@ -1239,8 +1239,8 @@ impl GenericParamDefKind {
     // any embedded types, but `get_type` seems to be the wrong name for that.
     crate fn get_type(&self) -> Option<Type> {
         match self {
-            GenericParamDefKind::Type { default, .. } => default.clone(),
-            GenericParamDefKind::Const { ty, .. } => Some(ty.clone()),
+            GenericParamDefKind::Type { default, .. } => default.as_deref().cloned(),
+            GenericParamDefKind::Const { ty, .. } => Some((&**ty).clone()),
             GenericParamDefKind::Lifetime { .. } => None,
         }
     }
@@ -1251,6 +1251,10 @@ crate struct GenericParamDef {
     crate name: Symbol,
     crate kind: GenericParamDefKind,
 }
+
+// `GenericParamDef` is used in many places. Make sure it doesn't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(GenericParamDef, 56);
 
 impl GenericParamDef {
     crate fn is_synthetic_type_param(&self) -> bool {

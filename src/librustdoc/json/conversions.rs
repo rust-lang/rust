@@ -330,10 +330,10 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
             },
             Type { did: _, bounds, default, synthetic: _ } => GenericParamDefKind::Type {
                 bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
-                default: default.map(|x| x.into_tcx(tcx)),
+                default: default.map(|x| (*x).into_tcx(tcx)),
             },
             Const { did: _, ty, default } => {
-                GenericParamDefKind::Const { ty: ty.into_tcx(tcx), default }
+                GenericParamDefKind::Const { ty: (*ty).into_tcx(tcx), default: default.map(|x| *x) }
             }
         }
     }
