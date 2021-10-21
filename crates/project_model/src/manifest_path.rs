@@ -1,5 +1,5 @@
 //! See [`ManifestPath`].
-use std::{convert::TryFrom, ops, path::Path};
+use std::{ops, path::Path};
 
 use paths::{AbsPath, AbsPathBuf};
 

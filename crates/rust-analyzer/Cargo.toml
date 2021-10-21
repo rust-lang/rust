@@ -7,7 +7,7 @@ description = "A language server for the Rust programming language"
 documentation = "https://rust-analyzer.github.io/manual.html"
 license = "MIT OR Apache-2.0"
 autobins = false
-edition = "2018"
+edition = "2021"
 
 [lib]
 doctest = false

@@ -350,7 +350,7 @@ fn test_format_document_2018() {
 [package]
 name = "foo"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 
 //- /src/lib.rs
 mod bar;
@@ -799,7 +799,7 @@ fn resolve_proc_macro() {
 [package]
 name = "foo"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 [dependencies]
 bar = {path = "../bar"}
 
@@ -818,7 +818,7 @@ fn main() {
 [package]
 name = "bar"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 
 [lib]
 proc-macro = true

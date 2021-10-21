@@ -1,12 +1,6 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
-use std::{
-    convert::{TryFrom, TryInto},
-    fmt,
-    hash::Hash,
-    ops,
-    sync::Arc,
-};
+use std::{fmt, hash::Hash, ops, sync::Arc};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};

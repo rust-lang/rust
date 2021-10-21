@@ -2,7 +2,6 @@
 //! relative paths.
 use std::{
     borrow::Borrow,
-    convert::{TryFrom, TryInto},
     ffi::OsStr,
     ops,
     path::{Component, Path, PathBuf},

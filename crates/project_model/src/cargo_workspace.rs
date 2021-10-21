@@ -1,6 +1,5 @@
 //! See [`CargoWorkspace`].
 
-use std::convert::{TryFrom, TryInto};
 use std::iter;
 use std::path::PathBuf;
 use std::{ops, process::Command};

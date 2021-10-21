@@ -267,7 +267,6 @@ mod windows_paths {
     #[cfg(test)]
     fn vfs(str: &str) -> super::VfsPath {
         use super::{AbsPathBuf, VfsPath};
-        use std::convert::TryFrom;
         VfsPath::from(AbsPathBuf::try_from(str).unwrap())
     }
 }

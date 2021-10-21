@@ -3,7 +3,6 @@
 //! `ide` crate.
 
 use std::{
-    convert::TryFrom,
     io::Write as _,
     process::{self, Stdio},
 };

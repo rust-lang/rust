@@ -4,8 +4,6 @@
 
 mod block;
 
-use std::convert::TryFrom;
-
 use rowan::Direction;
 use rustc_lexer::unescape::{
     self, unescape_byte, unescape_byte_literal, unescape_char, unescape_literal, Mode,

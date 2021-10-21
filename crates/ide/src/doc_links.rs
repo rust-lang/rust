@@ -2,8 +2,6 @@
 
 mod intra_doc_links;
 
-use std::convert::{TryFrom, TryInto};
-
 use either::Either;
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};

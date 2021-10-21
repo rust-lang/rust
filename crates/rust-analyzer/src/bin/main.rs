@@ -4,7 +4,7 @@
 mod logger;
 mod rustc_wrapper;
 
-use std::{convert::TryFrom, env, fs, path::Path, process};
+use std::{env, fs, path::Path, process};
 
 use lsp_server::Connection;
 use project_model::ProjectManifest;

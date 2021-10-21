@@ -1,6 +1,4 @@
 //! Conversion lsp_types types to rust-analyzer specific ones.
-use std::convert::TryFrom;
-
 use ide::{Annotation, AnnotationKind, AssistKind, LineCol, LineColUtf16};
 use ide_db::base_db::{FileId, FilePosition, FileRange};
 use syntax::{TextRange, TextSize};
