@@ -829,6 +829,15 @@ impl<'a> Resolver<'a> {
                     return;
                 }
 
+                // #90113: Do not count an inaccessible reexported item as a candidate.
+                if let NameBindingKind::Import { binding, .. } = name_binding.kind {
+                    if this.is_accessible_from(binding.vis, parent_scope.module)
+                        && !this.is_accessible_from(name_binding.vis, parent_scope.module)
+                    {
+                        return;
+                    }
+                }
+
                 // collect results based on the filter function
                 // avoid suggesting anything from the same module in which we are resolving
                 if ident.name == lookup_ident.name
