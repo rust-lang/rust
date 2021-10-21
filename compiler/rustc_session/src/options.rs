@@ -1230,7 +1230,7 @@ options! {
     instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`); \
-        implies `-Z symbol-mangling-version=v0`. Optional values are:
+        implies `-C symbol-mangling-version=v0`. Optional values are:
         `=all` (implicit value)
         `=except-unused-generics`
         `=except-unused-functions`

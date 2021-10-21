@@ -8,8 +8,8 @@
 # and will probably get removed once `legacy` is gone.
 
 all:
-	$(RUSTC) a.rs --cfg x -C prefer-dynamic -Z symbol-mangling-version=legacy
-	$(RUSTC) b.rs -C prefer-dynamic -Z symbol-mangling-version=legacy
+	$(RUSTC) a.rs --cfg x -C prefer-dynamic -Z unstable-options -C symbol-mangling-version=legacy
+	$(RUSTC) b.rs -C prefer-dynamic -Z unstable-options -C symbol-mangling-version=legacy
 	$(call RUN,b)
-	$(RUSTC) a.rs --cfg y -C prefer-dynamic -Z symbol-mangling-version=legacy
+	$(RUSTC) a.rs --cfg y -C prefer-dynamic -Z unstable-options -C symbol-mangling-version=legacy
 	$(call FAIL,b)

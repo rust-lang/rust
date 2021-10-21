@@ -1,5 +1,5 @@
 // build-pass
-// compile-flags: -Zpolymorphize=on -Zsymbol-mangling-version=v0
+// compile-flags: -Zpolymorphize=on -Csymbol-mangling-version=v0
 
 pub(crate) struct Foo<'a, I, E>(I, &'a E);
 

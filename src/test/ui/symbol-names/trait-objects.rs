@@ -2,7 +2,7 @@
 
 // build-fail
 // revisions: v0
-//[v0]compile-flags: -Z symbol-mangling-version=v0
+//[v0]compile-flags: -C symbol-mangling-version=v0
 //[v0]normalize-stderr-test: "core\[.*?\]" -> "core[HASH]"
 
 #![feature(rustc_attrs)]

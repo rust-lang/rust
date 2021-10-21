@@ -1,5 +1,5 @@
 // run-pass
-// compile-flags: -Zsymbol-mangling-version=v0
+// compile-flags: -Csymbol-mangling-version=v0
 
 pub fn f<T: ?Sized>() {}
 pub trait Frob<T: ?Sized> {}
