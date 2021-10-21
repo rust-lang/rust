@@ -543,9 +543,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
+        assert!(capacity < 1_usize << usize::BITS - 1, "capacity overflow");
         // +1 since the ringbuffer always leaves one space empty
         let cap = cmp::max(capacity + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
-        assert!(cap > capacity, "capacity overflow");
 
         VecDeque { tail: 0, head: 0, buf: RawVec::with_capacity_in(cap, alloc) }
     }
