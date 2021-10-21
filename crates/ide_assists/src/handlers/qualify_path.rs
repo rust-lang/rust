@@ -1,7 +1,10 @@
 use std::iter;
 
 use hir::AsAssocItem;
-use ide_db::helpers::{import_assets::{ImportCandidate, LocatedImport}, mod_path_to_ast};
+use ide_db::helpers::{
+    import_assets::{ImportCandidate, LocatedImport},
+    mod_path_to_ast,
+};
 use ide_db::RootDatabase;
 use syntax::{
     ast,
@@ -136,7 +139,7 @@ impl QualifyCandidate<'_> {
     ) -> Option<()> {
         let receiver = mcall_expr.receiver()?;
         let method_name = mcall_expr.name_ref()?;
-        let generics = 
+        let generics =
             mcall_expr.generic_arg_list().as_ref().map_or_else(String::new, ToString::to_string);
         let arg_list = mcall_expr.arg_list().map(|arg_list| arg_list.args());
 

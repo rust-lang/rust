@@ -1,8 +1,14 @@
 use hir::{ItemInNs, ModuleDef};
-use ide_db::{assists::{AssistId, AssistKind}, helpers::import_assets::item_for_path_search};
-use syntax::{AstNode, ast};
+use ide_db::{
+    assists::{AssistId, AssistKind},
+    helpers::import_assets::item_for_path_search,
+};
+use syntax::{ast, AstNode};
 
-use crate::{assist_context::{AssistContext, Assists}, handlers::qualify_path::QualifyCandidate};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    handlers::qualify_path::QualifyCandidate,
+};
 
 // Assist: qualify_method_call
 //
@@ -11,7 +17,7 @@ use crate::{assist_context::{AssistContext, Assists}, handlers::qualify_path::Qu
 // ```
 // struct Foo;
 // impl Foo {
-//     fn foo(&self) {}    
+//     fn foo(&self) {}
 // }
 // fn main() {
 //     let foo = Foo;
@@ -22,7 +28,7 @@ use crate::{assist_context::{AssistContext, Assists}, handlers::qualify_path::Qu
 // ```
 // struct Foo;
 // impl Foo {
-//     fn foo(&self) {}    
+//     fn foo(&self) {}
 // }
 // fn main() {
 //     let foo = Foo;
@@ -32,7 +38,7 @@ use crate::{assist_context::{AssistContext, Assists}, handlers::qualify_path::Qu
 pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
     let fn_name = &call.name_ref()?;
-    
+
     // let callExpr = path_expr.syntax();
     let range = call.syntax().text_range();
     let resolved_call = ctx.sema.resolve_method_call(&call)?;
@@ -40,10 +46,11 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Opt
     let current_module = ctx.sema.scope(&call.syntax()).module()?;
     let target_module_def = ModuleDef::from(resolved_call);
     let item_in_ns = ItemInNs::from(target_module_def);
-    let receiver_path = current_module.find_use_path(ctx.sema.db, item_for_path_search(ctx.sema.db, item_in_ns)?)?;
+    let receiver_path = current_module
+        .find_use_path(ctx.sema.db, item_for_path_search(ctx.sema.db, item_in_ns)?)?;
 
     let qualify_candidate = QualifyCandidate::ImplMethod(ctx.sema.db, call, resolved_call);
-    
+
     acc.add(
         AssistId("qualify_method_call", AssistKind::RefactorInline),
         format!("Qualify call `{}`", fn_name),
@@ -52,17 +59,17 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Opt
             qualify_candidate.qualify(
                 |replace_with: String| builder.replace(range, replace_with),
                 &receiver_path,
-                item_in_ns
+                item_in_ns,
             )
-        }
+        },
     );
     Some(())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist};
     use super::*;
+    use crate::tests::check_assist;
 
     #[test]
     fn struct_method() {
@@ -478,4 +485,3 @@ fn main() {
         );
     }
 }
-
