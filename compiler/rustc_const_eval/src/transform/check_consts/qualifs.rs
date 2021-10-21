@@ -46,6 +46,9 @@ pub trait Qualif {
     /// Whether this `Qualif` is cleared when a local is moved from.
     const IS_CLEARED_ON_MOVE: bool = false;
 
+    /// Whether this `Qualif` might be evaluated after the promotion and can encounter a promoted.
+    const ALLOW_PROMOTED: bool = false;
+
     /// Extracts the field of `ConstQualifs` that corresponds to this `Qualif`.
     fn in_qualifs(qualifs: &ConstQualifs) -> bool;
 
@@ -129,6 +132,7 @@ pub struct NeedsNonConstDrop;
 impl Qualif for NeedsNonConstDrop {
     const ANALYSIS_NAME: &'static str = "flow_needs_nonconst_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
+    const ALLOW_PROMOTED: bool = true;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
         qualifs.needs_non_const_drop
@@ -310,9 +314,12 @@ where
     // Check the qualifs of the value of `const` items.
     if let Some(ct) = constant.literal.const_for_ty() {
         if let ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs_: _, promoted }) = ct.val {
-            assert!(promoted.is_none());
+            // Use qualifs of the type for the promoted. Promoteds in MIR body should be possible
+            // only for `NeedsNonConstDrop` with precise drop checking. This is the only const
+            // check performed after the promotion. Verify that with an assertion.
+            assert!(promoted.is_none() || Q::ALLOW_PROMOTED);
             // Don't peek inside trait associated constants.
-            if cx.tcx.trait_of_item(def.did).is_none() {
+            if promoted.is_none() && cx.tcx.trait_of_item(def.did).is_none() {
                 let qualifs = if let Some((did, param_did)) = def.as_const_arg() {
                     cx.tcx.at(constant.span).mir_const_qualif_const_arg((did, param_did))
                 } else {
