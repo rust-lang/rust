@@ -1231,19 +1231,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return None;
         }
         let tcx = self.tcx();
-        let pred = &cache_fresh_trait_pred.skip_binder();
-        let trait_ref = pred.trait_ref;
+        let pred = cache_fresh_trait_pred.skip_binder();
         if self.can_use_global_caches(param_env) {
-            if let Some(res) = tcx
-                .selection_cache
-                .get(&(param_env.and(trait_ref).with_constness(pred.constness), pred.polarity), tcx)
-            {
+            if let Some(res) = tcx.selection_cache.get(&param_env.and(pred), tcx) {
                 return Some(res);
             }
         }
-        self.infcx
-            .selection_cache
-            .get(&(param_env.and(trait_ref).with_constness(pred.constness), pred.polarity), tcx)
+        self.infcx.selection_cache.get(&param_env.and(pred), tcx)
     }
 
     /// Determines whether can we safely cache the result
@@ -1288,36 +1282,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         let tcx = self.tcx();
         let pred = cache_fresh_trait_pred.skip_binder();
-        let trait_ref = pred.trait_ref;
 
         if !self.can_cache_candidate(&candidate) {
-            debug!(?trait_ref, ?candidate, "insert_candidate_cache - candidate is not cacheable");
+            debug!(?pred, ?candidate, "insert_candidate_cache - candidate is not cacheable");
             return;
         }
 
         if self.can_use_global_caches(param_env) {
             if let Err(Overflow) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
-            } else if !trait_ref.needs_infer() {
+            } else if !pred.needs_infer() {
                 if !candidate.needs_infer() {
-                    debug!(?trait_ref, ?candidate, "insert_candidate_cache global");
+                    debug!(?pred, ?candidate, "insert_candidate_cache global");
                     // This may overwrite the cache with the same value.
-                    tcx.selection_cache.insert(
-                        (param_env.and(trait_ref).with_constness(pred.constness), pred.polarity),
-                        dep_node,
-                        candidate,
-                    );
+                    tcx.selection_cache.insert(param_env.and(pred), dep_node, candidate);
                     return;
                 }
             }
         }
 
-        debug!(?trait_ref, ?candidate, "insert_candidate_cache local");
-        self.infcx.selection_cache.insert(
-            (param_env.and(trait_ref).with_constness(pred.constness), pred.polarity),
-            dep_node,
-            candidate,
-        );
+        debug!(?pred, ?candidate, "insert_candidate_cache local");
+        self.infcx.selection_cache.insert(param_env.and(pred), dep_node, candidate);
     }
 
     /// Matches a predicate against the bounds of its self type.

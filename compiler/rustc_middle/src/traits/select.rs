@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_query_system::cache::Cache;
 
 pub type SelectionCache<'tcx> = Cache<
-    (ty::ConstnessAnd<ty::ParamEnvAnd<'tcx, ty::TraitRef<'tcx>>>, ty::ImplPolarity),
+    ty::ParamEnvAnd<'tcx, ty::TraitPredicate<'tcx>>,
     SelectionResult<'tcx, SelectionCandidate<'tcx>>,
 >;
 
