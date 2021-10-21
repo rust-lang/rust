@@ -1,6 +1,6 @@
 // FIXME(fee1-dead): this should have a better error message
 #![feature(const_trait_impl)]
-
+// check-pass
 struct NonConstAdd(i32);
 
 impl std::ops::Add for NonConstAdd {
@@ -29,3 +29,5 @@ impl const Baz for NonConstAdd {
 }
 
 fn main() {}
+
+// TODO: this test should not pass

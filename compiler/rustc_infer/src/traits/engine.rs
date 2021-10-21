@@ -1,7 +1,6 @@
 use crate::infer::InferCtxt;
 use crate::traits::Obligation;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, ToPredicate, Ty, WithConstness};
 
@@ -48,25 +47,10 @@ pub trait TraitEngine<'tcx>: 'tcx {
 
     fn select_all_or_error(&mut self, infcx: &InferCtxt<'_, 'tcx>) -> Vec<FulfillmentError<'tcx>>;
 
-    fn select_all_with_constness_or_error(
+    fn select_where_possible(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
-        _constness: hir::Constness,
-    ) -> Vec<FulfillmentError<'tcx>> {
-        self.select_all_or_error(infcx)
-    }
-
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'_, 'tcx>)
-    -> Vec<FulfillmentError<'tcx>>;
-
-    // FIXME(fee1-dead) this should not provide a default body for chalk as chalk should be updated
-    fn select_with_constness_where_possible(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-        _constness: hir::Constness,
-    ) -> Vec<FulfillmentError<'tcx>> {
-        self.select_where_possible(infcx)
-    }
+    ) -> Vec<FulfillmentError<'tcx>>;
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
 

@@ -613,7 +613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let errors = self
             .fulfillment_cx
             .borrow_mut()
-            .select_all_with_constness_or_error(&self, self.inh.constness);
+            .select_all_or_error(&self);
 
         if !errors.is_empty() {
             self.report_fulfillment_errors(&errors, self.inh.body_id, false);
@@ -629,7 +629,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut result = self
             .fulfillment_cx
             .borrow_mut()
-            .select_with_constness_where_possible(self, self.inh.constness);
+            .select_where_possible(self);
         if !result.is_empty() {
             mutate_fulfillment_errors(&mut result);
             self.report_fulfillment_errors(&result, self.inh.body_id, fallback_has_occurred);

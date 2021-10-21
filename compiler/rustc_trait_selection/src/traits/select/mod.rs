@@ -128,9 +128,6 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// and a negative impl
     allow_negative_impls: bool,
 
-    /// Are we in a const context that needs `~const` bounds to be const?
-    is_in_const_context: bool,
-
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
     /// rather than immediately reported because we do not have accurate spans.
@@ -222,7 +219,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
-            is_in_const_context: false,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -234,7 +230,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: true,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
-            is_in_const_context: false,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -250,7 +245,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls,
-            is_in_const_context: false,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -266,23 +260,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
-            is_in_const_context: false,
             query_mode,
-        }
-    }
-
-    pub fn with_constness(
-        infcx: &'cx InferCtxt<'cx, 'tcx>,
-        constness: hir::Constness,
-    ) -> SelectionContext<'cx, 'tcx> {
-        SelectionContext {
-            infcx,
-            freshener: infcx.freshener_keep_static(),
-            intercrate: false,
-            intercrate_ambiguity_causes: None,
-            allow_negative_impls: false,
-            is_in_const_context: matches!(constness, hir::Constness::Const),
-            query_mode: TraitQueryMode::Standard,
         }
     }
 
@@ -316,20 +294,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     pub fn is_intercrate(&self) -> bool {
         self.intercrate
-    }
-
-    /// Returns `true` if the trait predicate is considerd `const` to this selection context.
-    pub fn is_trait_predicate_const(&self, pred: ty::TraitPredicate<'_>) -> bool {
-        matches!(pred.constness, ty::BoundConstness::ConstIfConst) && self.is_in_const_context
-    }
-
-    /// Returns `true` if the predicate is considered `const` to
-    /// this selection context.
-    pub fn is_predicate_const(&self, pred: ty::Predicate<'_>) -> bool {
-        match pred.kind().skip_binder() {
-            ty::PredicateKind::Trait(pred) => self.is_trait_predicate_const(pred),
-            _ => false,
-        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1138,7 +1102,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         for candidate in candidates {
             // Respect const trait obligations
-            if self.is_trait_predicate_const(obligation.predicate.skip_binder()) {
+            if obligation.is_const() {
                 match candidate {
                     // const impl
                     ImplCandidate(def_id)

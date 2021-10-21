@@ -303,7 +303,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if lang_items.drop_trait() == Some(def_id)
                 && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
             {
-                if self.is_in_const_context {
+                if obligation.param_env.constness() == hir::Constness::Const {
                     self.assemble_const_drop_candidates(obligation, stack, &mut candidates)?;
                 } else {
                     debug!("passing ~const Drop bound; in non-const context");
