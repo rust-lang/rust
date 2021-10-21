@@ -12,6 +12,7 @@ use std::fmt;
 ///
 /// ```
 /// println!("nothing fancy");
+/// println!("but with two lines!");
 /// ```
 ///
 /// A failing to compile one:
