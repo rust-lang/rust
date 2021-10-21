@@ -14,6 +14,7 @@ note: this function takes ownership of the receiver `self`, which moves `some_ve
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

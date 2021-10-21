@@ -18,6 +18,7 @@ LL |     println!("Size: {}", std::mem::size_of::<[u8; u64::MAX as usize]>());
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 
