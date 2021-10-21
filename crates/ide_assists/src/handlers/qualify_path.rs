@@ -1,10 +1,7 @@
 use std::iter;
 
 use hir::AsAssocItem;
-use ide_db::helpers::{
-    import_assets::{ImportCandidate, LocatedImport},
-    mod_path_to_ast,
-};
+use ide_db::helpers::{import_assets::{ImportCandidate, LocatedImport}, mod_path_to_ast};
 use ide_db::RootDatabase;
 use syntax::{
     ast,
@@ -37,6 +34,7 @@ use crate::{
 // ```
 pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
+
     let mut proposed_imports = import_assets.search_for_relative_paths(&ctx.sema);
     if proposed_imports.is_empty() {
         return None;
@@ -91,16 +89,17 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     }
     Some(())
 }
-
-enum QualifyCandidate<'db> {
+#[derive(Debug)]
+pub(crate) enum QualifyCandidate<'db> {
     QualifierStart(ast::PathSegment, Option<ast::GenericArgList>),
     UnqualifiedName(Option<ast::GenericArgList>),
     TraitAssocItem(ast::Path, ast::PathSegment),
     TraitMethod(&'db RootDatabase, ast::MethodCallExpr),
+    ImplMethod(&'db RootDatabase, ast::MethodCallExpr, hir::Function),
 }
 
 impl QualifyCandidate<'_> {
-    fn qualify(
+    pub(crate) fn qualify(
         &self,
         mut replacer: impl FnMut(String),
         import: &hir::ModPath,
@@ -122,24 +121,26 @@ impl QualifyCandidate<'_> {
             QualifyCandidate::TraitMethod(db, mcall_expr) => {
                 Self::qualify_trait_method(db, mcall_expr, replacer, import, item);
             }
+            QualifyCandidate::ImplMethod(db, mcall_expr, hir_fn) => {
+                Self::qualify_fn_call(db, mcall_expr, replacer, import, hir_fn);
+            }
         }
     }
 
-    fn qualify_trait_method(
+    fn qualify_fn_call(
         db: &RootDatabase,
         mcall_expr: &ast::MethodCallExpr,
         mut replacer: impl FnMut(String),
         import: ast::Path,
-        item: hir::ItemInNs,
+        hir_fn: &hir::Function,
     ) -> Option<()> {
         let receiver = mcall_expr.receiver()?;
-        let trait_method_name = mcall_expr.name_ref()?;
-        let generics =
+        let method_name = mcall_expr.name_ref()?;
+        let generics = 
             mcall_expr.generic_arg_list().as_ref().map_or_else(String::new, ToString::to_string);
         let arg_list = mcall_expr.arg_list().map(|arg_list| arg_list.args());
-        let trait_ = item_as_trait(db, item)?;
-        let method = find_trait_method(db, trait_, &trait_method_name)?;
-        if let Some(self_access) = method.self_param(db).map(|sp| sp.access(db)) {
+
+        if let Some(self_access) = hir_fn.self_param(db).map(|sp| sp.access(db)) {
             let receiver = match self_access {
                 hir::Access::Shared => make::expr_ref(receiver, false),
                 hir::Access::Exclusive => make::expr_ref(receiver, true),
@@ -148,7 +149,7 @@ impl QualifyCandidate<'_> {
             replacer(format!(
                 "{}::{}{}{}",
                 import,
-                trait_method_name,
+                method_name,
                 generics,
                 match arg_list {
                     Some(args) => make::arg_list(iter::once(receiver).chain(args)),
@@ -156,6 +157,20 @@ impl QualifyCandidate<'_> {
                 }
             ));
         }
+        Some(())
+    }
+
+    fn qualify_trait_method(
+        db: &RootDatabase,
+        mcall_expr: &ast::MethodCallExpr,
+        replacer: impl FnMut(String),
+        import: ast::Path,
+        item: hir::ItemInNs,
+    ) -> Option<()> {
+        let trait_method_name = mcall_expr.name_ref()?;
+        let trait_ = item_as_trait(db, item)?;
+        let method = find_trait_method(db, trait_, &trait_method_name)?;
+        Self::qualify_fn_call(db, mcall_expr, replacer, import, &method);
         Some(())
     }
 }

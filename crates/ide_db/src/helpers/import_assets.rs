@@ -372,7 +372,7 @@ fn import_for_item(
     })
 }
 
-fn item_for_path_search(db: &RootDatabase, item: ItemInNs) -> Option<ItemInNs> {
+pub fn item_for_path_search(db: &RootDatabase, item: ItemInNs) -> Option<ItemInNs> {
     Some(match item {
         ItemInNs::Types(_) | ItemInNs::Values(_) => match item_as_assoc(db, item) {
             Some(assoc_item) => match assoc_item.container(db) {
@@ -619,6 +619,6 @@ fn path_import_candidate(
     })
 }
 
-fn item_as_assoc(db: &RootDatabase, item: ItemInNs) -> Option<AssocItem> {
+pub fn item_as_assoc(db: &RootDatabase, item: ItemInNs) -> Option<AssocItem> {
     item.as_module_def().and_then(|module_def| module_def.as_assoc_item(db))
 }

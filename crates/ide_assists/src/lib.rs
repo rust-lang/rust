@@ -160,6 +160,7 @@ mod handlers {
     mod promote_local_to_const;
     mod pull_assignment_up;
     mod qualify_path;
+    mod qualify_method_call;
     mod raw_string;
     mod remove_dbg;
     mod remove_mut;
@@ -241,6 +242,7 @@ mod handlers {
             pull_assignment_up::pull_assignment_up,
             promote_local_to_const::promote_local_to_const,
             qualify_path::qualify_path,
+            qualify_method_call::qualify_method_call,
             raw_string::add_hash,
             raw_string::make_usual_string,
             raw_string::remove_hash,
