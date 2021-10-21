@@ -70,7 +70,8 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       echo "Attempting to download $url"
       rm -f /tmp/rustci_docker_cache
       set +e
-      retry curl -y 30 -Y 10 --connect-timeout 30 -f -L -C - -o /tmp/rustci_docker_cache "$url"
+      retry curl --max-time 600 -y 30 -Y 10 --connect-timeout 30 -f -L -C - \
+        -o /tmp/rustci_docker_cache "$url"
       loaded_images=$(docker load -i /tmp/rustci_docker_cache | sed 's/.* sha/sha/')
       set -e
       echo "Downloaded containers:\n$loaded_images"
