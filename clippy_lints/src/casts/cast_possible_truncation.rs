@@ -1,12 +1,20 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::expr_or_init;
 use clippy_utils::ty::is_isize_or_usize;
-use rustc_hir::Expr;
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
 
 use super::{utils, CAST_POSSIBLE_TRUNCATION};
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+    // do not lint if cast comes from a `signum` function
+    if let ExprKind::MethodCall(path, ..) = expr_or_init(cx, cast_expr).kind {
+        if path.ident.name.as_str() == "signum" {
+            return;
+        }
+    }
+
     let msg = match (cast_from.is_integral(), cast_to.is_integral()) {
         (true, true) => {
             let from_nbits = utils::int_ty_to_nbits(cast_from, cx.tcx);
