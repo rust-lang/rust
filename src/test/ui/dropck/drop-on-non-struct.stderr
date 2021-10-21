@@ -4,12 +4,6 @@ error[E0412]: cannot find type `Nonexistent` in this scope
 LL | impl Drop for Nonexistent {
    |               ^^^^^^^^^^^ not found in this scope
 
-error[E0120]: the `Drop` trait may only be implemented for structs, enums, and unions
-  --> $DIR/drop-on-non-struct.rs:1:19
-   |
-LL | impl<'a> Drop for &'a mut isize {
-   |                   ^^^^^^^^^^^^^ must be a struct, enum, or union
-
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/drop-on-non-struct.rs:1:1
    |
@@ -20,6 +14,12 @@ LL | impl<'a> Drop for &'a mut isize {
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead
+
+error[E0120]: the `Drop` trait may only be implemented for structs, enums, and unions
+  --> $DIR/drop-on-non-struct.rs:1:19
+   |
+LL | impl<'a> Drop for &'a mut isize {
+   |                   ^^^^^^^^^^^^^ must be a struct, enum, or union
 
 error: aborting due to 3 previous errors
 

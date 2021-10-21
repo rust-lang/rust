@@ -1,21 +1,3 @@
-error[E0119]: conflicting implementations of trait `std::ops::Add` for type `i32`
-  --> $DIR/const-and-non-const-impl.rs:5:1
-   |
-LL | impl const std::ops::Add for i32 {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: conflicting implementation in crate `core`:
-           - impl Add for i32;
-
-error[E0119]: conflicting implementations of trait `std::ops::Add` for type `Int`
-  --> $DIR/const-and-non-const-impl.rs:23:1
-   |
-LL | impl std::ops::Add for Int {
-   | -------------------------- first implementation here
-...
-LL | impl const std::ops::Add for Int {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Int`
-
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/const-and-non-const-impl.rs:5:1
    |
@@ -28,7 +10,92 @@ LL | impl const std::ops::Add for i32 {
    |
    = note: define and implement a trait or new type instead
 
-error: aborting due to 3 previous errors
+error[E0119]: conflicting implementations of trait `std::ops::Add` for type `Int`
+  --> $DIR/const-and-non-const-impl.rs:22:1
+   |
+LL | impl std::ops::Add for Int {
+   | -------------------------- first implementation here
+...
+LL | impl const std::ops::Add for Int {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Int`
 
-Some errors have detailed explanations: E0117, E0119.
+error[E0283]: type annotations needed
+  --> $DIR/const-and-non-const-impl.rs:5:12
+   |
+LL | impl const std::ops::Add for i32 {
+   |            ^^^^^^^^^^^^^ cannot infer type for type `i32`
+   |
+note: multiple `impl`s satisfying `i32: Add` found
+  --> $DIR/const-and-non-const-impl.rs:5:1
+   |
+LL | impl const std::ops::Add for i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: and another `impl` found in the `core` crate: `impl Add for i32;`
+note: required by a bound in `Add`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+LL | / pub trait Add<Rhs = Self> {
+LL | |     /// The resulting type after applying the `+` operator.
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     type Output;
+...  |
+LL | |     fn add(self, rhs: Rhs) -> Self::Output;
+LL | | }
+   | |_^ required by this bound in `Add`
+
+error[E0283]: type annotations needed
+  --> $DIR/const-and-non-const-impl.rs:14:6
+   |
+LL | impl std::ops::Add for Int {
+   |      ^^^^^^^^^^^^^ cannot infer type for struct `Int`
+   |
+note: multiple `impl`s satisfying `Int: Add` found
+  --> $DIR/const-and-non-const-impl.rs:14:1
+   |
+LL | impl std::ops::Add for Int {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl const std::ops::Add for Int {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Add`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+LL | / pub trait Add<Rhs = Self> {
+LL | |     /// The resulting type after applying the `+` operator.
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     type Output;
+...  |
+LL | |     fn add(self, rhs: Rhs) -> Self::Output;
+LL | | }
+   | |_^ required by this bound in `Add`
+
+error[E0283]: type annotations needed
+  --> $DIR/const-and-non-const-impl.rs:22:12
+   |
+LL | impl const std::ops::Add for Int {
+   |            ^^^^^^^^^^^^^ cannot infer type for struct `Int`
+   |
+note: multiple `impl`s satisfying `Int: Add` found
+  --> $DIR/const-and-non-const-impl.rs:14:1
+   |
+LL | impl std::ops::Add for Int {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl const std::ops::Add for Int {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Add`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+LL | / pub trait Add<Rhs = Self> {
+LL | |     /// The resulting type after applying the `+` operator.
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     type Output;
+...  |
+LL | |     fn add(self, rhs: Rhs) -> Self::Output;
+LL | | }
+   | |_^ required by this bound in `Add`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0117, E0119, E0283.
 For more information about an error, try `rustc --explain E0117`.

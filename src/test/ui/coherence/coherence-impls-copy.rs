@@ -3,8 +3,7 @@
 use std::marker::Copy;
 
 impl Copy for i32 {}
-//~^ ERROR E0119
-//~| ERROR E0117
+//~^ ERROR E0117
 enum TestE {
   A
 }
@@ -32,7 +31,6 @@ impl Copy for [MyType] {}
 //~^ ERROR E0206
 //~| ERROR E0117
 impl Copy for &'static [NotSync] {}
-//~^ ERROR E0119
-//~| ERROR E0117
+//~^ ERROR E0117
 fn main() {
 }

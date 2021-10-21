@@ -7,6 +7,5 @@ use complex_impl_support::{External, M};
 struct Q;
 
 impl<R> External for (Q, R) {} //~ ERROR only traits defined
-//~^ ERROR conflicting implementations of trait
 
 fn main() {}

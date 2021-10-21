@@ -1,50 +1,3 @@
-error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `i32`
-  --> $DIR/coherence-impls-copy.rs:5:1
-   |
-LL | impl Copy for i32 {}
-   | ^^^^^^^^^^^^^^^^^
-   |
-   = note: conflicting implementation in crate `core`:
-           - impl Copy for i32;
-
-error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&NotSync`
-  --> $DIR/coherence-impls-copy.rs:29:1
-   |
-LL | impl Copy for &'static NotSync {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: conflicting implementation in crate `core`:
-           - impl<T> Copy for &T
-             where T: ?Sized;
-
-error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&[NotSync]`
-  --> $DIR/coherence-impls-copy.rs:34:1
-   |
-LL | impl Copy for &'static [NotSync] {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: conflicting implementation in crate `core`:
-           - impl<T> Copy for &T
-             where T: ?Sized;
-
-error[E0206]: the trait `Copy` may not be implemented for this type
-  --> $DIR/coherence-impls-copy.rs:22:15
-   |
-LL | impl Copy for &'static mut MyType {}
-   |               ^^^^^^^^^^^^^^^^^^^ type is not a structure or enumeration
-
-error[E0206]: the trait `Copy` may not be implemented for this type
-  --> $DIR/coherence-impls-copy.rs:26:15
-   |
-LL | impl Copy for (MyType, MyType) {}
-   |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
-
-error[E0206]: the trait `Copy` may not be implemented for this type
-  --> $DIR/coherence-impls-copy.rs:31:15
-   |
-LL | impl Copy for [MyType] {}
-   |               ^^^^^^^^ type is not a structure or enumeration
-
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-impls-copy.rs:5:1
    |
@@ -57,7 +10,7 @@ LL | impl Copy for i32 {}
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:26:1
+  --> $DIR/coherence-impls-copy.rs:25:1
    |
 LL | impl Copy for (MyType, MyType) {}
    | ^^^^^^^^^^^^^^----------------
@@ -68,7 +21,7 @@ LL | impl Copy for (MyType, MyType) {}
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:31:1
+  --> $DIR/coherence-impls-copy.rs:30:1
    |
 LL | impl Copy for [MyType] {}
    | ^^^^^^^^^^^^^^--------
@@ -79,7 +32,7 @@ LL | impl Copy for [MyType] {}
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:34:1
+  --> $DIR/coherence-impls-copy.rs:33:1
    |
 LL | impl Copy for &'static [NotSync] {}
    | ^^^^^^^^^^^^^^------------------
@@ -89,7 +42,35 @@ LL | impl Copy for &'static [NotSync] {}
    |
    = note: define and implement a trait or new type instead
 
-error: aborting due to 10 previous errors
+error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&NotSync`
+  --> $DIR/coherence-impls-copy.rs:28:1
+   |
+LL | impl Copy for &'static NotSync {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T> Copy for &T
+             where T: ?Sized;
+
+error[E0206]: the trait `Copy` may not be implemented for this type
+  --> $DIR/coherence-impls-copy.rs:21:15
+   |
+LL | impl Copy for &'static mut MyType {}
+   |               ^^^^^^^^^^^^^^^^^^^ type is not a structure or enumeration
+
+error[E0206]: the trait `Copy` may not be implemented for this type
+  --> $DIR/coherence-impls-copy.rs:25:15
+   |
+LL | impl Copy for (MyType, MyType) {}
+   |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
+
+error[E0206]: the trait `Copy` may not be implemented for this type
+  --> $DIR/coherence-impls-copy.rs:30:15
+   |
+LL | impl Copy for [MyType] {}
+   |               ^^^^^^^^ type is not a structure or enumeration
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0117, E0119, E0206.
 For more information about an error, try `rustc --explain E0117`.
