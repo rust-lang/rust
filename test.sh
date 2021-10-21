@@ -183,7 +183,7 @@ EOF
     git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
     rm src/test/ui/llvm-asm/llvm-asm-in-out-operand.rs || true # TODO(antoyo): Enable back this test if I ever implement the llvm_asm! macro.
 
-    RUSTC_ARGS="-Zpanic-abort-tests -Zsymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
+    RUSTC_ARGS="-Zpanic-abort-tests -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
 
     echo "[TEST] rustc test suite"
     COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 src/test/ui/ --rustc-args "$RUSTC_ARGS"
