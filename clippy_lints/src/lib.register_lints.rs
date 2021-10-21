@@ -16,6 +16,8 @@ store.register_lints(&[
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::INTERNING_DEFINED_SYMBOL,
     #[cfg(feature = "internal-lints")]
+    utils::internal_lints::INVALID_CLIPPY_VERSION_ATTRIBUTE,
+    #[cfg(feature = "internal-lints")]
     utils::internal_lints::INVALID_PATHS,
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::LINT_WITHOUT_LINT_PASS,

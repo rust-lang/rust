@@ -25,7 +25,7 @@ use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
 
-use crate::utils::internal_lints::is_lint_ref_type;
+use crate::utils::internal_lints::{extract_clippy_version_value, is_lint_ref_type};
 use clippy_utils::{
     diagnostics::span_lint, last_path_segment, match_def_path, match_function_call, match_path, paths, ty::match_type,
     ty::walk_ptrs_ty_depth,
@@ -570,25 +570,10 @@ fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
 }
 
 fn get_lint_version(cx: &LateContext<'_>, item: &Item<'_>) -> String {
-    let attrs = cx.tcx.hir().attrs(item.hir_id());
-    attrs
-        .iter()
-        .find_map(|attr| {
-            if_chain! {
-                // Identify attribute
-                if let ast::AttrKind::Normal(ref attr_kind, _) = &attr.kind;
-                if let [tool_name, attr_name] = &attr_kind.path.segments[..];
-                if tool_name.ident.name == sym::clippy;
-                if attr_name.ident.name == sym::version;
-                if let Some(version) = attr.value_str();
-                then {
-                    Some(version.as_str().to_string())
-                } else {
-                    None
-                }
-            }
-        })
-        .unwrap_or_else(|| VERION_DEFAULT_STR.to_string())
+    extract_clippy_version_value(cx, item).map_or_else(
+        || VERION_DEFAULT_STR.to_string(),
+        |version| version.as_str().to_string(),
+    )
 }
 
 fn get_lint_group_and_level_or_lint(

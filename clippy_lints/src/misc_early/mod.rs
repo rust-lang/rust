@@ -156,6 +156,7 @@ declare_clippy_lint! {
     /// // Good
     /// let y = 123832i32;
     /// ```
+    #[clippy::version = "1.58.0"]
     pub SEPARATED_LITERAL_SUFFIX,
     restriction,
     "literals whose suffix is separated by an underscore"
