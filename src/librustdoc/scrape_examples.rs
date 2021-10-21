@@ -173,7 +173,9 @@ where
 
         // If the enclosing item has a span coming from a proc macro, then we also don't want to include
         // the example.
-        let enclosing_item_span = tcx.hir().span_with_body(tcx.hir().get_parent_item(ex.hir_id));
+        let enclosing_item_span = tcx
+            .hir()
+            .span_with_body(tcx.hir().local_def_id_to_hir_id(tcx.hir().get_parent_item(ex.hir_id)));
         if enclosing_item_span.from_expansion() {
             trace!("Rejecting expr ({:?}) from macro item: {:?}", span, enclosing_item_span);
             return;

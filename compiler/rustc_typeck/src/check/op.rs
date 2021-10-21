@@ -972,7 +972,7 @@ fn suggest_constraining_param(
     if let Some(generics) = param_def_id
         .as_local()
         .map(|id| hir.local_def_id_to_hir_id(id))
-        .and_then(|id| hir.find(hir.get_parent_item(id)))
+        .and_then(|id| hir.find_by_def_id(hir.get_parent_item(id)))
         .as_ref()
         .and_then(|node| node.generics())
     {

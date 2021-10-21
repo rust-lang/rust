@@ -206,7 +206,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     check_object_unsafe_self_trait_by_name(tcx, trait_item);
     check_associated_item(tcx, trait_item.def_id, span, method_sig);
 
-    let encl_trait_def_id = tcx.hir().get_parent_did(hir_id);
+    let encl_trait_def_id = tcx.hir().get_parent_item(hir_id);
     let encl_trait = tcx.hir().expect_item(encl_trait_def_id);
     let encl_trait_def_id = encl_trait.def_id.to_def_id();
     let fn_lang_item_name = if Some(encl_trait_def_id) == tcx.lang_items().fn_trait() {
@@ -668,13 +668,14 @@ fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
 /// Detect when an object unsafe trait is referring to itself in one of its associated items.
 /// When this is done, suggest using `Self` instead.
 fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
-    let (trait_name, trait_def_id) = match tcx.hir().get(tcx.hir().get_parent_item(item.hir_id())) {
-        hir::Node::Item(item) => match item.kind {
-            hir::ItemKind::Trait(..) => (item.ident, item.def_id),
+    let (trait_name, trait_def_id) =
+        match tcx.hir().get_by_def_id(tcx.hir().get_parent_item(item.hir_id())) {
+            hir::Node::Item(item) => match item.kind {
+                hir::ItemKind::Trait(..) => (item.ident, item.def_id),
+                _ => return,
+            },
             _ => return,
-        },
-        _ => return,
-    };
+        };
     let mut trait_should_be_self = vec![];
     match &item.kind {
         hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))

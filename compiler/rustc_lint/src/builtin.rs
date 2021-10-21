@@ -656,7 +656,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
         // If the method is an impl for an item with docs_hidden, don't doc.
         if method_context(cx, impl_item.hir_id()) == MethodLateContext::PlainImpl {
-            let parent = cx.tcx.hir().get_parent_did(impl_item.hir_id());
+            let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
             let impl_ty = cx.tcx.type_of(parent);
             let outerdef = match impl_ty.kind() {
                 ty::Adt(def, _) => Some(def.did),

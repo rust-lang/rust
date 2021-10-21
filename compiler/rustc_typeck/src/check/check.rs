@@ -1440,8 +1440,8 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
     let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
 
     let mut label = false;
-    if let Some((hir_id, visitor)) = get_owner_return_paths(tcx, def_id) {
-        let typeck_results = tcx.typeck(tcx.hir().local_def_id(hir_id));
+    if let Some((def_id, visitor)) = get_owner_return_paths(tcx, def_id) {
+        let typeck_results = tcx.typeck(def_id);
         if visitor
             .returns
             .iter()

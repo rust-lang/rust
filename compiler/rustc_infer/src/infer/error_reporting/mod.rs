@@ -2212,9 +2212,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if let Some(Node::Item(Item {
                         kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
                         ..
-                    })) = hir.find(parent_id)
+                    })) = hir.find_by_def_id(parent_id)
                     {
-                        Some(self.tcx.generics_of(hir.local_def_id(parent_id).to_def_id()))
+                        Some(self.tcx.generics_of(parent_id))
                     } else {
                         None
                     },
