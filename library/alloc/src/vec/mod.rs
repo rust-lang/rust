@@ -1305,10 +1305,11 @@ impl<T, A: Allocator> Vec<T, A> {
             // We replace self[index] with the last element. Note that if the
             // bounds check above succeeds there must be a last element (which
             // can be self[index] itself).
-            let last = ptr::read(self.as_ptr().add(len - 1));
-            let hole = self.as_mut_ptr().add(index);
+            let value = ptr::read(self.as_ptr().add(index));
+            let base_ptr = self.as_mut_ptr();
+            ptr::copy(base_ptr.add(len - 1), base_ptr.add(index), 1);
             self.set_len(len - 1);
-            ptr::replace(hole, last)
+            value
         }
     }
 
