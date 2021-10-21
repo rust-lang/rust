@@ -251,13 +251,12 @@ pub struct FromBytesWithNulError {
 /// # Examples
 ///
 /// ```
-/// #![feature(cstring_from_vec_with_nul)]
 /// use std::ffi::{CString, FromVecWithNulError};
 ///
 /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"f\0oo".to_vec()).unwrap_err();
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
 pub struct FromVecWithNulError {
     error_kind: FromBytesWithNulErrorKind,
     bytes: Vec<u8>,
@@ -278,7 +277,7 @@ impl FromBytesWithNulError {
     }
 }
 
-#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
 impl FromVecWithNulError {
     /// Returns a slice of [`u8`]s bytes that were attempted to convert to a [`CString`].
     ///
@@ -287,7 +286,6 @@ impl FromVecWithNulError {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(cstring_from_vec_with_nul)]
     /// use std::ffi::CString;
     ///
     /// // Some invalid bytes in a vector
@@ -298,6 +296,7 @@ impl FromVecWithNulError {
     /// assert_eq!(&bytes[..], value.unwrap_err().as_bytes());
     /// ```
     #[must_use]
+    #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..]
     }
@@ -313,7 +312,6 @@ impl FromVecWithNulError {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(cstring_from_vec_with_nul)]
     /// use std::ffi::CString;
     ///
     /// // Some invalid bytes in a vector
@@ -324,6 +322,7 @@ impl FromVecWithNulError {
     /// assert_eq!(bytes, value.unwrap_err().into_bytes());
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
+    #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
     pub fn into_bytes(self) -> Vec<u8> {
         self.bytes
     }
@@ -704,7 +703,6 @@ impl CString {
     /// # Example
     ///
     /// ```
-    /// #![feature(cstring_from_vec_with_nul)]
     /// use std::ffi::CString;
     /// assert_eq!(
     ///     unsafe { CString::from_vec_with_nul_unchecked(b"abc\0".to_vec()) },
@@ -712,7 +710,7 @@ impl CString {
     /// );
     /// ```
     #[must_use]
-    #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+    #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
     pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u8>) -> Self {
         Self { inner: v.into_boxed_slice() }
     }
@@ -733,7 +731,6 @@ impl CString {
     /// when called without the ending nul byte.
     ///
     /// ```
-    /// #![feature(cstring_from_vec_with_nul)]
     /// use std::ffi::CString;
     /// assert_eq!(
     ///     CString::from_vec_with_nul(b"abc\0".to_vec())
@@ -745,14 +742,13 @@ impl CString {
     /// An incorrectly formatted [`Vec`] will produce an error.
     ///
     /// ```
-    /// #![feature(cstring_from_vec_with_nul)]
     /// use std::ffi::{CString, FromVecWithNulError};
     /// // Interior nul byte
     /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"a\0bc".to_vec()).unwrap_err();
     /// // No nul byte
     /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
     /// ```
-    #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+    #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
     pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromVecWithNulError> {
         let nul_pos = memchr::memchr(0, &v);
         match nul_pos {
@@ -1084,10 +1080,10 @@ impl fmt::Display for FromBytesWithNulError {
     }
 }
 
-#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
 impl Error for FromVecWithNulError {}
 
-#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
 impl fmt::Display for FromVecWithNulError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.error_kind {
