@@ -110,23 +110,6 @@ LL | |             _ => false,
 LL | |         };
    | |_________^ help: try this: `matches!(&val, &Some(ref _a))`
 
-error: you don't need to add `&` to both the expression and the patterns
-  --> $DIR/match_expr_like_matches_macro.rs:166:20
-   |
-LL |           let _res = match &val {
-   |  ____________________^
-LL | |             &Some(ref _a) => true,
-LL | |             _ => false,
-LL | |         };
-   | |_________^
-   |
-   = note: `-D clippy::match-ref-pats` implied by `-D warnings`
-help: try
-   |
-LL ~         let _res = match val {
-LL ~             Some(ref _a) => true,
-   |
-
 error: match expression looks like `matches!` macro
   --> $DIR/match_expr_like_matches_macro.rs:178:20
    |
@@ -137,21 +120,5 @@ LL | |             _ => false,
 LL | |         };
    | |_________^ help: try this: `matches!(&val, &Some(ref _a))`
 
-error: you don't need to add `&` to both the expression and the patterns
-  --> $DIR/match_expr_like_matches_macro.rs:178:20
-   |
-LL |           let _res = match &val {
-   |  ____________________^
-LL | |             &Some(ref _a) => true,
-LL | |             _ => false,
-LL | |         };
-   | |_________^
-   |
-help: try
-   |
-LL ~         let _res = match val {
-LL ~             Some(ref _a) => true,
-   |
-
-error: aborting due to 14 previous errors
+error: aborting due to 12 previous errors
 

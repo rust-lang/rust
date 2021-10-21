@@ -459,12 +459,10 @@ fn emit_branches_sharing_code_lint(
         } else {
             sm.stmt_span(block.stmts[block.stmts.len() - end_stmts].span, block.span)
         };
-        let moved_end = block
-            .expr
-            .map_or_else(
-                || sm.stmt_span(block.stmts[block.stmts.len() - 1].span, block.span),
-                |expr| expr.span.source_callsite(),
-            );
+        let moved_end = block.expr.map_or_else(
+            || sm.stmt_span(block.stmts[block.stmts.len() - 1].span, block.span),
+            |expr| expr.span.source_callsite(),
+        );
 
         let moved_span = moved_start.to(moved_end);
         let moved_snipped = reindent_multiline(snippet(cx, moved_span, "_"), true, None);

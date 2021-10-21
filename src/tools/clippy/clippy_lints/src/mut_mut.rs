@@ -82,6 +82,10 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
+        if in_external_macro(self.cx.sess(), ty.span) {
+            return;
+        }
+
         if let hir::TyKind::Rptr(
             _,
             hir::MutTy {

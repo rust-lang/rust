@@ -1,4 +1,5 @@
 use crate::clippy_project_root;
+use indoc::indoc;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, ErrorKind};
@@ -32,7 +33,7 @@ impl<T> Context for io::Result<T> {
 /// # Errors
 ///
 /// This function errors out if the files couldn't be created or written to.
-pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str>) -> io::Result<()> {
+pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str>, msrv: bool) -> io::Result<()> {
     let lint = LintData {
         pass: pass.expect("`pass` argument is validated by clap"),
         name: lint_name.expect("`name` argument is validated by clap"),
@@ -40,29 +41,12 @@ pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str
         project_root: clippy_project_root(),
     };
 
-    create_lint(&lint).context("Unable to create lint implementation")?;
+    create_lint(&lint, msrv).context("Unable to create lint implementation")?;
     create_test(&lint).context("Unable to create a test for the new lint")
 }
 
-fn create_lint(lint: &LintData<'_>) -> io::Result<()> {
-    let (pass_type, pass_lifetimes, pass_import, context_import) = match lint.pass {
-        "early" => ("EarlyLintPass", "", "use rustc_ast::ast::*;", "EarlyContext"),
-        "late" => ("LateLintPass", "<'_>", "use rustc_hir::*;", "LateContext"),
-        _ => {
-            unreachable!("`pass_type` should only ever be `early` or `late`!");
-        },
-    };
-
-    let camel_case_name = to_camel_case(lint.name);
-    let lint_contents = get_lint_file_contents(
-        pass_type,
-        pass_lifetimes,
-        lint.name,
-        &camel_case_name,
-        lint.category,
-        pass_import,
-        context_import,
-    );
+fn create_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
+    let lint_contents = get_lint_file_contents(lint, enable_msrv);
 
     let lint_path = format!("clippy_lints/src/{}.rs", lint.name);
     write_file(lint.project_root.join(&lint_path), lint_contents.as_bytes())
@@ -122,12 +106,13 @@ fn to_camel_case(name: &str) -> String {
 
 fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {
     let mut contents = format!(
-        "#![warn(clippy::{})]
+        indoc! {"
+            #![warn(clippy::{})]
 
-fn main() {{
-    // test code goes here
-}}
-",
+            fn main() {{
+                // test code goes here
+            }}
+        "},
         lint_name
     );
 
@@ -140,64 +125,143 @@ fn main() {{
 
 fn get_manifest_contents(lint_name: &str, hint: &str) -> String {
     format!(
-        r#"
-# {}
+        indoc! {r#"
+            # {}
 
-[package]
-name = "{}"
-version = "0.1.0"
-publish = false
+            [package]
+            name = "{}"
+            version = "0.1.0"
+            publish = false
 
-[workspace]
-"#,
+            [workspace]
+        "#},
         hint, lint_name
     )
 }
 
-fn get_lint_file_contents(
-    pass_type: &str,
-    pass_lifetimes: &str,
-    lint_name: &str,
-    camel_case_name: &str,
-    category: &str,
-    pass_import: &str,
-    context_import: &str,
-) -> String {
-    format!(
-        "use rustc_lint::{{{type}, {context_import}}};
-use rustc_session::{{declare_lint_pass, declare_tool_lint}};
-{pass_import}
+fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
+    let mut result = String::new();
 
-declare_clippy_lint! {{
-    /// ### What it does
-    ///
-    /// ### Why is this bad?
-    ///
-    /// ### Example
-    /// ```rust
-    /// // example code where clippy issues a warning
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// // example code which does not raise clippy warning
-    /// ```
-    pub {name_upper},
-    {category},
-    \"default lint description\"
-}}
+    let (pass_type, pass_lifetimes, pass_import, context_import) = match lint.pass {
+        "early" => ("EarlyLintPass", "", "use rustc_ast::ast::*;", "EarlyContext"),
+        "late" => ("LateLintPass", "<'_>", "use rustc_hir::*;", "LateContext"),
+        _ => {
+            unreachable!("`pass_type` should only ever be `early` or `late`!");
+        },
+    };
 
-declare_lint_pass!({name_camel} => [{name_upper}]);
+    let lint_name = lint.name;
+    let pass_name = lint.pass;
+    let category = lint.category;
+    let name_camel = to_camel_case(lint.name);
+    let name_upper = lint_name.to_uppercase();
 
-impl {type}{lifetimes} for {name_camel} {{}}
-",
-        type=pass_type,
-        lifetimes=pass_lifetimes,
-        name_upper=lint_name.to_uppercase(),
-        name_camel=camel_case_name,
-        category=category,
-        pass_import=pass_import,
-        context_import=context_import
-    )
+    result.push_str(&if enable_msrv {
+        format!(
+            indoc! {"
+                use clippy_utils::msrvs;
+                {pass_import}
+                use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
+                use rustc_semver::RustcVersion;
+                use rustc_session::{{declare_tool_lint, impl_lint_pass}};
+
+            "},
+            pass_type = pass_type,
+            pass_import = pass_import,
+            context_import = context_import,
+        )
+    } else {
+        format!(
+            indoc! {"
+                {pass_import}
+                use rustc_lint::{{{context_import}, {pass_type}}};
+                use rustc_session::{{declare_lint_pass, declare_tool_lint}};
+
+            "},
+            pass_import = pass_import,
+            pass_type = pass_type,
+            context_import = context_import
+        )
+    });
+
+    result.push_str(&format!(
+        indoc! {"
+            declare_clippy_lint! {{
+                /// ### What it does
+                ///
+                /// ### Why is this bad?
+                ///
+                /// ### Example
+                /// ```rust
+                /// // example code where clippy issues a warning
+                /// ```
+                /// Use instead:
+                /// ```rust
+                /// // example code which does not raise clippy warning
+                /// ```
+                pub {name_upper},
+                {category},
+                \"default lint description\"
+            }}
+        "},
+        name_upper = name_upper,
+        category = category,
+    ));
+
+    result.push_str(&if enable_msrv {
+        format!(
+            indoc! {"
+                pub struct {name_camel} {{
+                    msrv: Option<RustcVersion>,
+                }}
+
+                impl {name_camel} {{
+                    #[must_use]
+                    pub fn new(msrv: Option<RustcVersion>) -> Self {{
+                        Self {{ msrv }}
+                    }}
+                }}
+
+                impl_lint_pass!({name_camel} => [{name_upper}]);
+
+                impl {pass_type}{pass_lifetimes} for {name_camel} {{
+                    extract_msrv_attr!({context_import});
+                }}
+
+                // TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
+                //       e.g. store.register_{pass_name}_pass(move || Box::new({module_name}::{name_camel}::new(msrv)));
+                // TODO: Add MSRV level to `clippy_utils/src/msrvs.rs` if needed.
+                // TODO: Add MSRV test to `tests/ui/min_rust_version_attr.rs`.
+                // TODO: Update msrv config comment in `clippy_lints/src/utils/conf.rs`
+            "},
+            pass_type = pass_type,
+            pass_lifetimes = pass_lifetimes,
+            pass_name = pass_name,
+            name_upper = name_upper,
+            name_camel = name_camel,
+            module_name = lint_name,
+            context_import = context_import,
+        )
+    } else {
+        format!(
+            indoc! {"
+                declare_lint_pass!({name_camel} => [{name_upper}]);
+
+                impl {pass_type}{pass_lifetimes} for {name_camel} {{}}
+                //
+                // TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
+                //       e.g. store.register_{pass_name}_pass(|| Box::new({module_name}::{name_camel}));
+            "},
+            pass_type = pass_type,
+            pass_lifetimes = pass_lifetimes,
+            pass_name = pass_name,
+            name_upper = name_upper,
+            name_camel = name_camel,
+            module_name = lint_name,
+        )
+    });
+
+    result
 }
 
 #[test]

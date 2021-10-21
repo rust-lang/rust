@@ -25,6 +25,10 @@ struct GenArg<const U: usize>([u8; U]);
 
 static BAD: foo::atomic::AtomicPtr<()> = foo::atomic::AtomicPtr::new(std::ptr::null_mut());
 
+fn ip(_: std::net::Ipv4Addr) {}
+
+fn listener(_: std::net::TcpListener) {}
+
 #[allow(clippy::diverging_sub_expression)]
 fn main() {
     let _: std::collections::HashMap<(), ()> = std::collections::HashMap::new();

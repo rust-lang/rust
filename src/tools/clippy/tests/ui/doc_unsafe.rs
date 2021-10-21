@@ -115,3 +115,13 @@ fn main() {
         drive();
     }
 }
+
+// do not lint if any parent has `#[doc(hidden)]` attribute
+// see #7347
+#[doc(hidden)]
+pub mod __macro {
+    pub struct T;
+    impl T {
+        pub unsafe fn f() {}
+    }
+}

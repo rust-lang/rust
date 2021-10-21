@@ -103,6 +103,33 @@ mod int_to_float {
     }
 }
 
+mod num_to_bytes {
+    fn test() {
+        unsafe {
+            let _: [u8; 1] = std::mem::transmute(0u8);
+            let _: [u8; 4] = std::mem::transmute(0u32);
+            let _: [u8; 16] = std::mem::transmute(0u128);
+            let _: [u8; 1] = std::mem::transmute(0i8);
+            let _: [u8; 4] = std::mem::transmute(0i32);
+            let _: [u8; 16] = std::mem::transmute(0i128);
+            let _: [u8; 4] = std::mem::transmute(0.0f32);
+            let _: [u8; 8] = std::mem::transmute(0.0f64);
+        }
+    }
+    const fn test_const() {
+        unsafe {
+            let _: [u8; 1] = std::mem::transmute(0u8);
+            let _: [u8; 4] = std::mem::transmute(0u32);
+            let _: [u8; 16] = std::mem::transmute(0u128);
+            let _: [u8; 1] = std::mem::transmute(0i8);
+            let _: [u8; 4] = std::mem::transmute(0i32);
+            let _: [u8; 16] = std::mem::transmute(0i128);
+            let _: [u8; 4] = std::mem::transmute(0.0f32);
+            let _: [u8; 8] = std::mem::transmute(0.0f64);
+        }
+    }
+}
+
 fn bytes_to_str(b: &[u8], mb: &mut [u8]) {
     let _: &str = unsafe { std::mem::transmute(b) };
     let _: &mut str = unsafe { std::mem::transmute(mb) };
