@@ -69,6 +69,16 @@ impl PredicateObligation<'tcx> {
     }
 }
 
+impl TraitObligation<'tcx> {
+    /// Returns `true` if the trait predicate is considered `const` in its ParamEnv.
+    pub fn is_const(&self) -> bool {
+        match (self.predicate.skip_binder().constness, self.param_env.constness()) {
+            (ty::BoundConstness::ConstIfConst, hir::Constness::Const) => true,
+            _ => false,
+        }
+    }
+}
+
 // `PredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(PredicateObligation<'_>, 32);
