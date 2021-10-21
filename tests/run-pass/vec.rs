@@ -140,6 +140,14 @@ fn swap() {
     v.swap(2, 2);
 }
 
+fn swap_remove() {
+    let mut a = 0;
+    let mut b = 1;
+    let mut vec = vec![&mut a, &mut b];
+
+    vec.swap_remove(1);
+}
+
 fn main() {
     assert_eq!(vec_reallocate().len(), 5);
 
@@ -167,4 +175,5 @@ fn main() {
 
     sort();
     swap();
+    swap_remove();
 }
