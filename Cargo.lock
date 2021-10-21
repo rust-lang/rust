@@ -555,7 +555,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.57"
+version = "0.1.58"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_lints",
@@ -582,6 +582,7 @@ version = "0.0.1"
 dependencies = [
  "bytecount",
  "clap",
+ "indoc",
  "itertools 0.10.1",
  "opener",
  "regex",
@@ -591,7 +592,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.57"
+version = "0.1.58"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_utils",
@@ -612,7 +613,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.57"
+version = "0.1.58"
 dependencies = [
  "if_chain",
  "rustc-semver",
@@ -1663,6 +1664,15 @@ dependencies = [
  "autocfg",
  "hashbrown",
  "serde",
+]
+
+[[package]]
+name = "indoc"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5a75aeaaef0ce18b58056d306c27b07436fbb34b8816c53094b76dd81803136"
+dependencies = [
+ "unindent",
 ]
 
 [[package]]
@@ -5592,6 +5602,12 @@ checksum = "496a3d395ed0c30f411ceace4a91f7d93b148fb5a9b383d5d4cff7850f048d5f"
 dependencies = [
  "diff",
 ]
+
+[[package]]
+name = "unindent"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f14ee04d9415b52b3aeab06258a3f07093182b88ba0f9b8d203f211a7a7d41c7"
 
 [[package]]
 name = "unstable-book-gen"
