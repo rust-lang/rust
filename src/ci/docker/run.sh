@@ -73,7 +73,10 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       retry curl --max-time 600 -y 30 -Y 10 --connect-timeout 30 -f -L -C - \
         -o /tmp/rustci_docker_cache "$url"
       echo "Loading images into docker"
-      loaded_images=$(docker load -i /tmp/rustci_docker_cache | sed 's/.* sha/sha/')
+      # docker load sometimes hangs in the CI, so time out after 10 minutes with TERM,
+      # KILL after 12 minutes
+      loaded_images=$(/usr/bin/timeout -k 720 600 docker load -i /tmp/rustci_docker_cache \
+        | sed 's/.* sha/sha/')
       set -e
       echo "Downloaded containers:\n$loaded_images"
     fi
