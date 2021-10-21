@@ -173,9 +173,11 @@ On Unix, running the editor from a shell or changing the `.desktop` file to set 
 `rust-analyzer` is available in `rustup`, but only in the nightly toolchain:
 
 [source,bash]
----
+----
 $ rustup +nightly component add rust-analyzer-preview
----
+----
+
+However, in contrast to `component add clippy` or `component add rustfmt`, this does not actually place a `rust-analyzer` binary in `~/.cargo/bin`, see https://github.com/rust-lang/rustup/issues/2411[this issue].
 
 ==== Arch Linux
 
