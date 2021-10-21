@@ -169,7 +169,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         if generics.requires_monomorphization(self.tcx) || attrs.requests_inline() {
                             true
                         } else {
-                            let impl_did = self.tcx.hir().get_parent_did(hir_id);
+                            let impl_did = self.tcx.hir().get_parent_item(hir_id);
                             // Check the impl. If the generics on the self
                             // type of the impl require inlining, this method
                             // does too.

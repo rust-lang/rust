@@ -88,8 +88,10 @@ impl CallLocation {
         expr_id: HirId,
         source_file: &SourceFile,
     ) -> Self {
-        let enclosing_item_span =
-            tcx.hir().span_with_body(tcx.hir().get_parent_item(expr_id)).source_callsite();
+        let enclosing_item_span = tcx
+            .hir()
+            .span_with_body(tcx.hir().local_def_id_to_hir_id(tcx.hir().get_parent_item(expr_id)))
+            .source_callsite();
         assert!(enclosing_item_span.contains(expr_span));
 
         CallLocation {

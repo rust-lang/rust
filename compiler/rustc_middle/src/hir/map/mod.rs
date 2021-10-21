@@ -117,13 +117,13 @@ pub struct ParentOwnerIterator<'hir> {
 }
 
 impl<'hir> Iterator for ParentOwnerIterator<'hir> {
-    type Item = (HirId, OwnerNode<'hir>);
+    type Item = (LocalDefId, OwnerNode<'hir>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_id.local_id.index() != 0 {
             self.current_id.local_id = ItemLocalId::new(0);
             if let Some(node) = self.map.tcx.hir_owner(self.current_id.owner) {
-                return Some((self.current_id, node.node));
+                return Some((self.current_id.owner, node.node));
             }
         }
         if self.current_id == CRATE_HIR_ID {
@@ -141,7 +141,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
 
             // If this `HirId` doesn't have an entry, skip it and look for its `parent_id`.
             if let Some(node) = self.map.tcx.hir_owner(self.current_id.owner) {
-                return Some((self.current_id, node.node));
+                return Some((self.current_id.owner, node.node));
             }
         }
     }
@@ -328,9 +328,30 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
+    pub fn find_def(&self, id: LocalDefId) -> Option<Node<'hir>> {
+        if let Some(owner) = self.tcx.hir_owner(id) {
+            return Some(owner.node.into());
+        }
+
+        let id = self.local_def_id_to_hir_id(id);
+        if id.local_id == ItemLocalId::from_u32(0) {
+            None
+        } else {
+            let owner = self.tcx.hir_owner_nodes(id.owner)?;
+            let node = owner.nodes[id.local_id].as_ref()?;
+            Some(node.node)
+        }
+    }
+
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
     pub fn get(&self, id: HirId) -> Node<'hir> {
         self.find(id).unwrap_or_else(|| bug!("couldn't find hir id {} in the HIR map", id))
+    }
+
+    /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
+    pub fn get_def(&self, id: LocalDefId) -> Node<'hir> {
+        self.find_def(id).unwrap_or_else(|| bug!("couldn't find {:?} in the HIR map", id))
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
@@ -773,23 +794,23 @@ impl<'hir> Map<'hir> {
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
-    pub fn get_parent_item(&self, hir_id: HirId) -> HirId {
-        if let Some((hir_id, _node)) = self.parent_owner_iter(hir_id).next() {
-            hir_id
+    pub fn get_parent_item(&self, hir_id: HirId) -> LocalDefId {
+        if let Some((def_id, _node)) = self.parent_owner_iter(hir_id).next() {
+            def_id
         } else {
-            CRATE_HIR_ID
+            CRATE_DEF_ID
         }
     }
 
     /// Returns the `HirId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
-    pub(super) fn get_module_parent_node(&self, hir_id: HirId) -> HirId {
-        for (hir_id, node) in self.parent_owner_iter(hir_id) {
+    pub(super) fn get_module_parent_node(&self, hir_id: HirId) -> LocalDefId {
+        for (def_id, node) in self.parent_owner_iter(hir_id) {
             if let OwnerNode::Item(&Item { kind: ItemKind::Mod(_), .. }) = node {
-                return hir_id;
+                return def_id;
             }
         }
-        CRATE_HIR_ID
+        CRATE_DEF_ID
     }
 
     /// When on an if expression, a match arm tail expression or a match arm, give back
@@ -852,19 +873,18 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn get_parent_did(&self, id: HirId) -> LocalDefId {
-        self.local_def_id(self.get_parent_item(id))
-    }
-
     pub fn get_foreign_abi(&self, hir_id: HirId) -> Abi {
         let parent = self.get_parent_item(hir_id);
-        if let Some(node) = self.tcx.hir_owner(self.local_def_id(parent)) {
+        if let Some(node) = self.tcx.hir_owner(parent) {
             if let OwnerNode::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }) = node.node
             {
                 return *abi;
             }
         }
-        bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
+        bug!(
+            "expected foreign mod or inlined parent, found {}",
+            self.node_to_string(HirId::make_owner(parent))
+        )
     }
 
     pub fn expect_item(&self, id: LocalDefId) -> &'hir Item<'hir> {
@@ -922,7 +942,7 @@ impl<'hir> Map<'hir> {
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
-            Node::Ctor(..) => self.name(self.get_parent_item(id)),
+            Node::Ctor(..) => self.name(HirId::make_owner(self.get_parent_item(id))),
             _ => return None,
         })
     }

@@ -784,7 +784,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                         let def_scope_default = || {
                             let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                             let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
-                            parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
+                            parent_def_id == opaque_parent_hir_id
                         };
                         let (in_definition_scope, origin) = match tcx.hir().expect_item(def_id).kind
                         {
@@ -942,7 +942,7 @@ fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_def_id: Lo
     let scope = tcx.hir().get_defining_scope(opaque_hir_id);
     // We walk up the node tree until we hit the root or the scope of the opaque type.
     while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
-        hir_id = tcx.hir().get_parent_item(hir_id);
+        hir_id = tcx.hir().local_def_id_to_hir_id(tcx.hir().get_parent_item(hir_id));
     }
     // Syntactically, we are allowed to define the concrete type if:
     let res = hir_id == scope;
