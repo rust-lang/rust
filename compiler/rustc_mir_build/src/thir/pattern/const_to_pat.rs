@@ -130,6 +130,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     traits::NonStructuralMatchTy::Opaque => {
                         "opaque types cannot be used in patterns".to_string()
                     }
+                    traits::NonStructuralMatchTy::Closure => {
+                        "closures cannot be used in patterns".to_string()
+                    }
                     traits::NonStructuralMatchTy::Generator => {
                         "generators cannot be used in patterns".to_string()
                     }
