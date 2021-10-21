@@ -373,6 +373,26 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     }
 }
 
+/// An intermediate resolution result.
+///
+/// This refers to the thing referred by a name. The difference between `Res` and `Item` is that
+/// items are visible in their whole block, while `Res`es only from the place they are defined
+/// forward.
+#[derive(Debug)]
+enum LexicalScopeBinding<'a> {
+    Item(&'a NameBinding<'a>),
+    Res(Res),
+}
+
+impl<'a> LexicalScopeBinding<'a> {
+    fn res(self) -> Res {
+        match self {
+            LexicalScopeBinding::Item(binding) => binding.res(),
+            LexicalScopeBinding::Res(res) => res,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 enum ModuleOrUniformRoot<'a> {
     /// Regular module.
@@ -898,6 +918,10 @@ pub struct Resolver<'a> {
     /// "self-confirming" import resolutions during import validation.
     unusable_binding: Option<&'a NameBinding<'a>>,
 
+    // Spans for local variables found during pattern resolution.
+    // Used for suggestions during error reporting.
+    pat_span_map: NodeMap<Span>,
+
     /// Resolutions for nodes that have a single resolution.
     partial_res_map: NodeMap<PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
@@ -1308,6 +1332,7 @@ impl<'a> Resolver<'a> {
             last_import_segment: false,
             unusable_binding: None,
 
+            pat_span_map: Default::default(),
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             label_res_map: Default::default(),
@@ -1333,8 +1358,13 @@ impl<'a> Resolver<'a> {
             macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
-            dummy_binding: (Res::Err, ty::Visibility::Public, DUMMY_SP, LocalExpnId::ROOT)
-                .to_name_binding(arenas),
+            dummy_binding: arenas.alloc_name_binding(NameBinding {
+                kind: NameBindingKind::Res(Res::Err, false),
+                ambiguity: None,
+                expansion: LocalExpnId::ROOT,
+                span: DUMMY_SP,
+                vis: ty::Visibility::Public,
+            }),
 
             crate_loader: CrateLoader::new(session, metadata_loader, crate_name),
             macro_names: FxHashSet::default(),
@@ -1891,11 +1921,11 @@ impl<'a> Resolver<'a> {
         record_used_id: Option<NodeId>,
         path_span: Span,
         ribs: &[Rib<'a>],
-    ) -> Result<&'a NameBinding<'a>, Determinacy> {
+    ) -> Option<LexicalScopeBinding<'a>> {
         assert!(ns == TypeNS || ns == ValueNS);
         let orig_ident = ident;
         if ident.name == kw::Empty {
-            return Ok(self.dummy_binding);
+            return Some(LexicalScopeBinding::Res(Res::Err));
         }
         let (general_span, normalized_span) = if ident.name == kw::SelfUpper {
             // FIXME(jseyfried) improve `Self` hygiene
@@ -1918,30 +1948,18 @@ impl<'a> Resolver<'a> {
             // Use the rib kind to determine whether we are resolving parameters
             // (macro 2.0 hygiene) or local variables (`macro_rules` hygiene).
             let rib_ident = if ribs[i].kind.contains_params() { normalized_ident } else { ident };
-            if let Some((&original_rib_ident_def, &binding)) =
-                ribs[i].bindings.get_key_value(&rib_ident)
+            if let Some((original_rib_ident_def, res)) = ribs[i].bindings.get_key_value(&rib_ident)
             {
                 // The ident resolves to a type parameter or local variable.
-                let res = self.validate_res_from_ribs(
+                return Some(LexicalScopeBinding::Res(self.validate_res_from_ribs(
                     i,
                     rib_ident,
-                    binding.res(),
+                    *res,
                     record_used,
                     path_span,
-                    original_rib_ident_def,
+                    *original_rib_ident_def,
                     ribs,
-                );
-
-                // We have to create a new binding in case of validation errors,
-                // or in case of const generic hack changing the resolution.
-                return Ok(if res != binding.res() {
-                    self.arenas.alloc_name_binding(NameBinding {
-                        kind: NameBindingKind::Res(res, false),
-                        ..binding.clone()
-                    })
-                } else {
-                    binding
-                });
+                )));
             }
 
             module = match ribs[i].kind {
@@ -1960,7 +1978,7 @@ impl<'a> Resolver<'a> {
                 _ => break,
             }
 
-            let binding = self.resolve_ident_in_module_unadjusted(
+            let item = self.resolve_ident_in_module_unadjusted(
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
@@ -1968,9 +1986,9 @@ impl<'a> Resolver<'a> {
                 record_used,
                 path_span,
             );
-            if binding.is_ok() {
+            if let Ok(binding) = item {
                 // The ident resolves to an item.
-                return binding;
+                return Some(LexicalScopeBinding::Item(binding));
             }
         }
         self.early_resolve_ident_in_lexical_scope(
@@ -1981,6 +1999,8 @@ impl<'a> Resolver<'a> {
             record_used,
             path_span,
         )
+        .ok()
+        .map(LexicalScopeBinding::Item)
     }
 
     fn hygienic_lexical_parent(
@@ -2205,6 +2225,16 @@ impl<'a> Resolver<'a> {
 
         for (i, &Segment { ident, id, has_generic_args: _ }) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?} {:?}", i, ident, id);
+            let record_segment_res = |this: &mut Self, res| {
+                if record_used {
+                    if let Some(id) = id {
+                        if !this.partial_res_map.contains_key(&id) {
+                            assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
+                            this.record_partial_res(id, PartialRes::new(res));
+                        }
+                    }
+                }
+            };
 
             let is_last = i == path.len() - 1;
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
@@ -2283,8 +2313,12 @@ impl<'a> Resolver<'a> {
                 };
             }
 
+            enum FindBindingResult<'a> {
+                Binding(Result<&'a NameBinding<'a>, Determinacy>),
+                PathResult(PathResult<'a>),
+            }
             let find_binding_in_ns = |this: &mut Self, ns| {
-                if let Some(module) = module {
+                let binding = if let Some(module) = module {
                     this.resolve_ident_in_module(
                         module,
                         ident,
@@ -2309,34 +2343,44 @@ impl<'a> Resolver<'a> {
                     } else {
                         None
                     };
-                    this.resolve_ident_in_lexical_scope(
+                    match this.resolve_ident_in_lexical_scope(
                         ident,
                         ns,
                         parent_scope,
                         record_used_id,
                         path_span,
                         &ribs.unwrap()[ns],
-                    )
-                }
+                    ) {
+                        // we found a locally-imported or available item/module
+                        Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
+                        // we found a local variable or type param
+                        Some(LexicalScopeBinding::Res(res))
+                            if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) =>
+                        {
+                            record_segment_res(this, res);
+                            return FindBindingResult::PathResult(PathResult::NonModule(
+                                PartialRes::with_unresolved_segments(res, path.len() - 1),
+                            ));
+                        }
+                        _ => Err(Determinacy::determined(record_used)),
+                    }
+                };
+                FindBindingResult::Binding(binding)
             };
-
-            match find_binding_in_ns(self, ns) {
+            let binding = match find_binding_in_ns(self, ns) {
+                FindBindingResult::PathResult(x) => return x,
+                FindBindingResult::Binding(binding) => binding,
+            };
+            match binding {
                 Ok(binding) => {
                     if i == 1 {
                         second_binding = Some(binding);
                     }
                     let res = binding.res();
-                    if record_used {
-                        if let Some(id) = id {
-                            if !self.partial_res_map.contains_key(&id) {
-                                assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
-                                self.record_partial_res(id, PartialRes::new(res));
-                            }
-                        }
-                    }
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(res);
                     if let Some(next_module) = binding.module() {
                         module = Some(ModuleOrUniformRoot::Module(next_module));
+                        record_segment_res(self, res);
                     } else if res == Res::ToolMod && i + 1 != path.len() {
                         if binding.is_import() {
                             self.session
@@ -2426,25 +2470,56 @@ impl<'a> Resolver<'a> {
                             .map_or(false, |c| c.is_ascii_uppercase())
                         {
                             // Check whether the name refers to an item in the value namespace.
-                            let suggestion = ribs
-                                .and_then(|ribs| {
-                                    self.resolve_ident_in_lexical_scope(
-                                        ident,
-                                        ValueNS,
-                                        parent_scope,
-                                        None,
-                                        path_span,
-                                        &ribs[ValueNS],
-                                    )
-                                    .ok()
-                                })
-                                .map(|binding| {
-                                    (
-                                        vec![(binding.span, String::from(""))],
+                            let suggestion = if ribs.is_some() {
+                                let match_span = match self.resolve_ident_in_lexical_scope(
+                                    ident,
+                                    ValueNS,
+                                    parent_scope,
+                                    None,
+                                    path_span,
+                                    &ribs.unwrap()[ValueNS],
+                                ) {
+                                    // Name matches a local variable. For example:
+                                    // ```
+                                    // fn f() {
+                                    //     let Foo: &str = "";
+                                    //     println!("{}", Foo::Bar); // Name refers to local
+                                    //                               // variable `Foo`.
+                                    // }
+                                    // ```
+                                    Some(LexicalScopeBinding::Res(Res::Local(id))) => {
+                                        Some(*self.pat_span_map.get(&id).unwrap())
+                                    }
+
+                                    // Name matches item from a local name binding
+                                    // created by `use` declaration. For example:
+                                    // ```
+                                    // pub Foo: &str = "";
+                                    //
+                                    // mod submod {
+                                    //     use super::Foo;
+                                    //     println!("{}", Foo::Bar); // Name refers to local
+                                    //                               // binding `Foo`.
+                                    // }
+                                    // ```
+                                    Some(LexicalScopeBinding::Item(name_binding)) => {
+                                        Some(name_binding.span)
+                                    }
+                                    _ => None,
+                                };
+
+                                if let Some(span) = match_span {
+                                    Some((
+                                        vec![(span, String::from(""))],
                                         format!("`{}` is defined here, but is not a type", ident),
                                         Applicability::MaybeIncorrect,
-                                    )
-                                });
+                                    ))
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
 
                             (format!("use of undeclared type `{}`", ident), suggestion)
                         } else {
@@ -2482,7 +2557,9 @@ impl<'a> Resolver<'a> {
                         let mut msg = format!("could not find `{}` in {}", ident, parent);
                         if ns == TypeNS || ns == ValueNS {
                             let ns_to_try = if ns == TypeNS { ValueNS } else { TypeNS };
-                            if let Ok(binding) = find_binding_in_ns(self, ns_to_try) {
+                            if let FindBindingResult::Binding(Ok(binding)) =
+                                find_binding_in_ns(self, ns_to_try)
+                            {
                                 let mut found = |what| {
                                     msg = format!(
                                         "expected {}, found {} `{}` in {}",
@@ -2822,6 +2899,11 @@ impl<'a> Resolver<'a> {
         if let Some(prev_res) = self.partial_res_map.insert(node_id, resolution) {
             panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
         }
+    }
+
+    fn record_pat_span(&mut self, node: NodeId, span: Span) {
+        debug!("(recording pat) recording {:?} for {:?}", node, span);
+        self.pat_span_map.insert(node, span);
     }
 
     fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {

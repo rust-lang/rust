@@ -1294,8 +1294,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             // Walk backwards up the ribs in scope and collect candidates.
             for rib in self.ribs[ns].iter().rev() {
                 // Locals and type parameters
-                for (ident, binding) in &rib.bindings {
-                    let res = binding.res();
+                for (ident, &res) in &rib.bindings {
                     if filter_fn(res) {
                         names.push(TypoSuggestion::typo_from_res(ident.name, res));
                     }

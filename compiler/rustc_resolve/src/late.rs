@@ -7,7 +7,7 @@
 
 use RibKind::*;
 
-use crate::{path_names_to_string, BindingError, CrateLint, NameBinding, ToNameBinding};
+use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
@@ -21,21 +21,26 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{PrimTy, TraitCandidate};
-use rustc_middle::{bug, span_bug, ty};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
-use tracing::debug;
 
+use rustc_span::source_map::{respan, Spanned};
 use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, take};
+use tracing::debug;
 
 mod diagnostics;
 crate mod lifetimes;
 
 type Res = def::Res<NodeId>;
+
+type IdentMap<T> = FxHashMap<Ident, T>;
+
+/// Map from the name in a pattern to its binding mode.
+type BindingMap = IdentMap<BindingInfo>;
 
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
@@ -167,8 +172,8 @@ impl RibKind<'_> {
 /// The resolution keeps a separate stack of ribs as it traverses the AST for each namespace. When
 /// resolving, the name is looked up from inside out.
 #[derive(Debug)]
-crate struct Rib<'a, R = &'a NameBinding<'a>> {
-    pub bindings: FxHashMap<Ident, R>,
+crate struct Rib<'a, R = Res> {
+    pub bindings: IdentMap<R>,
     pub kind: RibKind<'a>,
 }
 
@@ -562,12 +567,12 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 GenericParamKind::Type { .. } => {
                     forward_ty_ban_rib
                         .bindings
-                        .insert(Ident::with_dummy_span(param.ident.name), self.r.dummy_binding);
+                        .insert(Ident::with_dummy_span(param.ident.name), Res::Err);
                 }
                 GenericParamKind::Const { .. } => {
                     forward_const_ban_rib
                         .bindings
-                        .insert(Ident::with_dummy_span(param.ident.name), self.r.dummy_binding);
+                        .insert(Ident::with_dummy_span(param.ident.name), Res::Err);
                 }
                 GenericParamKind::Lifetime => {}
             }
@@ -584,9 +589,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         // such as in the case of `trait Add<Rhs = Self>`.)
         if self.diagnostic_metadata.current_self_item.is_some() {
             // (`Some` if + only if we are in ADT's generics.)
-            forward_ty_ban_rib
-                .bindings
-                .insert(Ident::with_dummy_span(kw::SelfUpper), self.r.dummy_binding);
+            forward_ty_ban_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), Res::Err);
         }
 
         for param in &generics.params {
@@ -734,17 +737,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ns: Namespace,
         record_used_id: Option<NodeId>,
         path_span: Span,
-    ) -> Option<&'a NameBinding<'a>> {
-        self.r
-            .resolve_ident_in_lexical_scope(
-                ident,
-                ns,
-                &self.parent_scope,
-                record_used_id,
-                path_span,
-                &self.ribs[ns],
-            )
-            .ok()
+    ) -> Option<LexicalScopeBinding<'a>> {
+        self.r.resolve_ident_in_lexical_scope(
+            ident,
+            ns,
+            &self.parent_scope,
+            record_used_id,
+            path_span,
+            &self.ribs[ns],
+        )
     }
 
     fn resolve_path(
@@ -902,10 +903,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn future_proof_import(&mut self, use_tree: &UseTree) {
-        if !self.should_report_errs() {
-            return;
-        }
-
         let segments = &use_tree.prefix.segments;
         if !segments.is_empty() {
             let ident = segments[0].ident;
@@ -917,42 +914,31 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 UseTreeKind::Simple(..) if segments.len() == 1 => &[TypeNS, ValueNS][..],
                 _ => &[TypeNS],
             };
-
-            let from_ribs = |binding: &NameBinding<'_>| {
-                matches!(
-                    binding.res(),
-                    Res::Local(..)
-                        | Res::SelfTy(..)
-                        | Res::Def(DefKind::TyParam | DefKind::ConstParam, ..)
-                )
-            };
             let report_error = |this: &Self, ns| {
                 let what = if ns == TypeNS { "type parameters" } else { "local variables" };
-                let msg = format!("imports cannot refer to {what}");
-                this.r.session.span_err(ident.span, &msg);
+                if this.should_report_errs() {
+                    this.r
+                        .session
+                        .span_err(ident.span, &format!("imports cannot refer to {}", what));
+                }
             };
 
             for &ns in nss {
-                if let Some(binding) =
-                    self.resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span)
-                {
-                    if from_ribs(binding) {
+                match self.resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span) {
+                    Some(LexicalScopeBinding::Res(..)) => {
                         report_error(self, ns);
-                    } else {
+                    }
+                    Some(LexicalScopeBinding::Item(binding)) => {
                         let orig_unusable_binding =
                             replace(&mut self.r.unusable_binding, Some(binding));
-                        if let Some(binding) = self.resolve_ident_in_lexical_scope(
-                            ident,
-                            ns,
-                            None,
-                            use_tree.prefix.span,
-                        ) {
-                            if from_ribs(binding) {
-                                report_error(self, ns);
-                            }
+                        if let Some(LexicalScopeBinding::Res(..)) = self
+                            .resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span)
+                        {
+                            report_error(self, ns);
                         }
                         self.r.unusable_binding = orig_unusable_binding;
                     }
+                    None => {}
                 }
             }
         } else if let UseTreeKind::Nested(use_trees) = &use_tree.kind {
@@ -1149,12 +1135,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 _ => unreachable!(),
             };
             let res = Res::Def(def_kind, self.r.local_def_id(param.id).to_def_id());
-            let binding =
-                (res, ty::Visibility::Invisible, param.ident.span, self.parent_scope.expansion)
-                    .to_name_binding(self.r.arenas);
-
             self.r.record_partial_res(param.id, PartialRes::new(res));
-            rib.bindings.insert(ident, binding);
+            rib.bindings.insert(ident, res);
         }
 
         self.ribs[ValueNS].push(function_value_rib);
@@ -1274,12 +1256,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn with_self_rib_ns(&mut self, ns: Namespace, self_res: Res, f: impl FnOnce(&mut Self)) {
-        let binding = (self_res, ty::Visibility::Invisible, DUMMY_SP, self.parent_scope.expansion)
-            .to_name_binding(self.r.arenas);
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // Plain insert (no renaming, since types are not currently hygienic)
-        self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), binding);
+        self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), self_res);
         self.ribs[ns].push(self_type_rib);
         f(self);
         self.ribs[ns].pop();
@@ -1490,7 +1470,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     /// this is done hygienically. This could arise for a macro
     /// that expands into an or-pattern where one 'x' was from the
     /// user and one 'x' came from the macro.
-    fn binding_mode_map(&mut self, pat: &Pat) -> FxHashMap<Ident, BindingInfo> {
+    fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut binding_map = FxHashMap::default();
 
         pat.walk(&mut |pat| {
@@ -1523,7 +1503,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     /// Checks that all of the arms in an or-pattern have exactly the
     /// same set of bindings, with the same binding modes for each.
-    fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) -> Vec<FxHashMap<Ident, BindingInfo>> {
+    fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) -> Vec<BindingMap> {
         let mut missing_vars = FxHashMap::default();
         let mut inconsistent_vars = FxHashMap::default();
 
@@ -1665,6 +1645,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         .try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
                         .unwrap_or_else(|| self.fresh_binding(ident, pat.id, pat_src, bindings));
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
+                    self.r.record_pat_span(pat.id, pat.span);
                 }
                 PatKind::TupleStruct(ref qself, ref path, ref sub_patterns) => {
                     self.smart_resolve_path(
@@ -1754,24 +1735,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         if already_bound_or {
             // `Variant1(a) | Variant2(a)`, ok
             // Reuse definition from the first `a`.
-            self.innermost_rib_bindings(ValueNS)[&ident].res()
+            self.innermost_rib_bindings(ValueNS)[&ident]
         } else {
             let res = Res::Local(pat_id);
             if ident_valid {
                 // A completely fresh binding add to the set if it's valid.
-                let binding =
-                    (res, ty::Visibility::Invisible, ident.span, self.parent_scope.expansion)
-                        .to_name_binding(self.r.arenas);
-                self.innermost_rib_bindings(ValueNS).insert(ident, binding);
+                self.innermost_rib_bindings(ValueNS).insert(ident, res);
             }
             res
         }
     }
 
-    fn innermost_rib_bindings(
-        &mut self,
-        ns: Namespace,
-    ) -> &mut FxHashMap<Ident, &'a NameBinding<'a>> {
+    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut IdentMap<Res> {
         &mut self.ribs[ns].last_mut().unwrap().bindings
     }
 
@@ -1788,17 +1763,22 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // also be interpreted as a path to e.g. a constant, variant, etc.
         let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
 
-        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?;
-        if is_syntactic_ambiguity && binding.is_ambiguity() {
-            // For ambiguous bindings we don't know all their definitions and cannot check
-            // whether they can be shadowed by fresh bindings or not, so force an error.
-            // issues/33118#issuecomment-233962221 (see below) still applies here,
-            // but we have to ignore it for backward compatibility.
-            self.r.record_use(ident, binding, false);
-            return None;
-        }
+        let ls_binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?;
+        let (res, binding) = match ls_binding {
+            LexicalScopeBinding::Item(binding)
+                if is_syntactic_ambiguity && binding.is_ambiguity() =>
+            {
+                // For ambiguous bindings we don't know all their definitions and cannot check
+                // whether they can be shadowed by fresh bindings or not, so force an error.
+                // issues/33118#issuecomment-233962221 (see below) still applies here,
+                // but we have to ignore it for backward compatibility.
+                self.r.record_use(ident, binding, false);
+                return None;
+            }
+            LexicalScopeBinding::Item(binding) => (binding.res(), Some(binding)),
+            LexicalScopeBinding::Res(res) => (res, None),
+        };
 
-        let res = binding.res();
         match res {
             Res::SelfCtor(_) // See #70549.
             | Res::Def(
@@ -1806,7 +1786,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 _,
             ) if is_syntactic_ambiguity => {
                 // Disambiguate in favor of a unit struct/variant or constant pattern.
-                self.r.record_use(ident, binding, false);
+                if let Some(binding) = binding {
+                    self.r.record_use(ident, binding, false);
+                }
                 Some(res)
             }
             Res::Def(DefKind::Ctor(..) | DefKind::Const | DefKind::Static, _) => {
@@ -1815,6 +1797,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // to something unusable as a pattern (e.g., constructor function),
                 // but we still conservatively report an error, see
                 // issues/33118#issuecomment-233962221 for one reason why.
+                let binding = binding.expect("no binding for a ctor or static");
                 self.report_error(
                     ident.span,
                     ResolutionError::BindingShadowsSomethingUnacceptable {
@@ -2054,15 +2037,19 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn self_type_is_available(&mut self, span: Span) -> bool {
-        let ident = Ident::with_dummy_span(kw::SelfUpper);
-        self.resolve_ident_in_lexical_scope(ident, TypeNS, None, span)
-            .map_or(false, |binding| binding.res() != Res::Err)
+        let binding = self.resolve_ident_in_lexical_scope(
+            Ident::with_dummy_span(kw::SelfUpper),
+            TypeNS,
+            None,
+            span,
+        );
+        if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
 
     fn self_value_is_available(&mut self, self_span: Span, path_span: Span) -> bool {
         let ident = Ident::new(kw::SelfLower, self_span);
-        self.resolve_ident_in_lexical_scope(ident, ValueNS, None, path_span)
-            .map_or(false, |binding| binding.res() != Res::Err)
+        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, path_span);
+        if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
 
     /// A wrapper around [`Resolver::report_error`].
