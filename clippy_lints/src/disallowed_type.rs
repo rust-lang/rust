@@ -1,12 +1,14 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_then;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
     def::Res, def_id::DefId, Item, ItemKind, PolyTraitRef, PrimTy, TraitBoundModifier, Ty, TyKind, UseKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
+
+use crate::utils::conf;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -19,7 +21,15 @@ declare_clippy_lint! {
     /// An example clippy.toml configuration:
     /// ```toml
     /// # clippy.toml
-    /// disallowed-types = ["std::collections::BTreeMap"]
+    /// disallowed-types = [
+    ///     # Can use a string as the path of the disallowed type.
+    ///     "std::collections::BTreeMap",
+    ///     # Can also use an inline table with a `path` key.
+    ///     { path = "std::net::TcpListener" },
+    ///     # When using an inline table, can add a `reason` for why the type
+    ///     # is disallowed.
+    ///     { path = "std::net::Ipv4Addr", reason = "no IPv4 allowed" },
+    /// ]
     /// ```
     ///
     /// ```rust,ignore
@@ -38,33 +48,30 @@ declare_clippy_lint! {
 }
 #[derive(Clone, Debug)]
 pub struct DisallowedType {
-    disallowed: FxHashSet<Vec<Symbol>>,
-    def_ids: FxHashSet<DefId>,
-    prim_tys: FxHashSet<PrimTy>,
+    conf_disallowed: Vec<conf::DisallowedType>,
+    def_ids: FxHashMap<DefId, Option<String>>,
+    prim_tys: FxHashMap<PrimTy, Option<String>>,
 }
 
 impl DisallowedType {
-    pub fn new(disallowed: &FxHashSet<String>) -> Self {
+    pub fn new(conf_disallowed: Vec<conf::DisallowedType>) -> Self {
         Self {
-            disallowed: disallowed
-                .iter()
-                .map(|s| s.split("::").map(Symbol::intern).collect::<Vec<_>>())
-                .collect(),
-            def_ids: FxHashSet::default(),
-            prim_tys: FxHashSet::default(),
+            conf_disallowed,
+            def_ids: FxHashMap::default(),
+            prim_tys: FxHashMap::default(),
         }
     }
 
     fn check_res_emit(&self, cx: &LateContext<'_>, res: &Res, span: Span) {
         match res {
             Res::Def(_, did) => {
-                if self.def_ids.contains(did) {
-                    emit(cx, &cx.tcx.def_path_str(*did), span);
+                if let Some(reason) = self.def_ids.get(did) {
+                    emit(cx, &cx.tcx.def_path_str(*did), span, reason.as_deref());
                 }
             },
             Res::PrimTy(prim) => {
-                if self.prim_tys.contains(prim) {
-                    emit(cx, prim.name_str(), span);
+                if let Some(reason) = self.prim_tys.get(prim) {
+                    emit(cx, prim.name_str(), span, reason.as_deref());
                 }
             },
             _ => {},
@@ -76,14 +83,21 @@ impl_lint_pass!(DisallowedType => [DISALLOWED_TYPE]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedType {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
-        for path in &self.disallowed {
-            let segs = path.iter().map(ToString::to_string).collect::<Vec<_>>();
-            match clippy_utils::path_to_res(cx, &segs.iter().map(String::as_str).collect::<Vec<_>>()) {
+        for conf in &self.conf_disallowed {
+            let (path, reason) = match conf {
+                conf::DisallowedType::Simple(path) => (path, None),
+                conf::DisallowedType::WithReason { path, reason } => (
+                    path,
+                    reason.as_ref().map(|reason| format!("{} (from clippy.toml)", reason)),
+                ),
+            };
+            let segs: Vec<_> = path.split("::").collect();
+            match clippy_utils::path_to_res(cx, &segs) {
                 Res::Def(_, id) => {
-                    self.def_ids.insert(id);
+                    self.def_ids.insert(id, reason);
                 },
                 Res::PrimTy(ty) => {
-                    self.prim_tys.insert(ty);
+                    self.prim_tys.insert(ty, reason);
                 },
                 _ => {},
             }
@@ -107,11 +121,16 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedType {
     }
 }
 
-fn emit(cx: &LateContext<'_>, name: &str, span: Span) {
-    span_lint(
+fn emit(cx: &LateContext<'_>, name: &str, span: Span, reason: Option<&str>) {
+    span_lint_and_then(
         cx,
         DISALLOWED_TYPE,
         span,
         &format!("`{}` is not allowed according to config", name),
+        |diag| {
+            if let Some(reason) = reason {
+                diag.note(reason);
+            }
+        },
     );
 }

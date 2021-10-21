@@ -60,5 +60,11 @@ error: this pattern matching can be expressed using equality
 LL |     if let Some(NotStructuralEq::A) = Some(g) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(g) == Some(NotStructuralEq::A)`
 
-error: aborting due to 10 previous errors
+error: this pattern matching can be expressed using equality
+  --> $DIR/equatable_if_let.rs:75:8
+   |
+LL |     if let m1!(x) = "abc" {
+   |        ^^^^^^^^^^^^^^^^^^ help: try: `"abc" == m1!(x)`
+
+error: aborting due to 11 previous errors
 

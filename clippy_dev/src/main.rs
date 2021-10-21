@@ -28,6 +28,7 @@ fn main() {
                 matches.value_of("pass"),
                 matches.value_of("name"),
                 matches.value_of("category"),
+                matches.is_present("msrv"),
             ) {
                 Ok(_) => update_lints::run(update_lints::UpdateMode::Change),
                 Err(e) => eprintln!("Unable to create lint: {}", e),
@@ -147,6 +148,11 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                             "internal_warn",
                         ])
                         .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("msrv")
+                        .long("msrv")
+                        .help("Add MSRV config code to the lint"),
                 ),
         )
         .subcommand(

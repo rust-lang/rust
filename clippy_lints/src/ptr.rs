@@ -139,6 +139,7 @@ declare_clippy_lint! {
     /// unsafe { std::slice::from_raw_parts(ptr::null(), 0); }
     /// ```
     ///
+    /// ```ignore
     /// // Good
     /// unsafe { std::slice::from_raw_parts(NonNull::dangling().as_ptr(), 0); }
     /// ```

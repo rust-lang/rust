@@ -1,3 +1,4 @@
+use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_note};
 use clippy_utils::source::first_line_of_span;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
@@ -297,6 +298,17 @@ fn lint_for_missing_headers<'tcx>(
     if !cx.access_levels.is_exported(def_id) {
         return; // Private functions do not require doc comments
     }
+
+    // do not lint if any parent has `#[doc(hidden)]` attribute (#7347)
+    if cx
+        .tcx
+        .hir()
+        .parent_iter(cx.tcx.hir().local_def_id_to_hir_id(def_id))
+        .any(|(id, _node)| is_doc_hidden(cx.tcx.hir().attrs(id)))
+    {
+        return;
+    }
+
     if !headers.safety && sig.header.unsafety == hir::Unsafety::Unsafe {
         span_lint(
             cx,

@@ -122,5 +122,11 @@ error: usage of wildcard import
 LL |         use super::super::super_imports::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::super_imports::foofoo`
 
-error: aborting due to 20 previous errors
+error: usage of wildcard import
+  --> $DIR/wildcard_imports.rs:236:13
+   |
+LL |         use super::*;
+   |             ^^^^^^^^ help: try: `super::foofoo`
+
+error: aborting due to 21 previous errors
 

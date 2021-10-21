@@ -2,13 +2,16 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::{is_expn_of, match_def_path, paths};
+use crate::ty::is_type_diagnostic_item;
+use crate::{is_expn_of, last_path_segment, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitKind};
 use rustc_hir as hir;
-use rustc_hir::{Arm, Block, BorrowKind, Expr, ExprKind, LoopSource, MatchSource, Node, Pat, StmtKind, UnOp};
+use rustc_hir::{
+    Arm, Block, BorrowKind, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StmtKind, UnOp,
+};
 use rustc_lint::LateContext;
-use rustc_span::{sym, ExpnKind, Span, Symbol};
+use rustc_span::{sym, symbol, ExpnKind, Span, Symbol};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Return `(pat, arg, body, span)`.
@@ -569,6 +572,106 @@ impl FormatArgsExpn<'tcx> {
             }
         }
     }
+
+    /// Returns a vector of `FormatArgsArg`.
+    pub fn args(&self) -> Option<Vec<FormatArgsArg<'tcx>>> {
+        if let Some(expr) = self.fmt_expr {
+            if_chain! {
+                if let ExprKind::AddrOf(BorrowKind::Ref, _, expr) = expr.kind;
+                if let ExprKind::Array(exprs) = expr.kind;
+                then {
+                    exprs.iter().map(|fmt| {
+                        if_chain! {
+                            // struct `core::fmt::rt::v1::Argument`
+                            if let ExprKind::Struct(_, fields, _) = fmt.kind;
+                            if let Some(position_field) = fields.iter().find(|f| f.ident.name == sym::position);
+                            if let ExprKind::Lit(lit) = &position_field.expr.kind;
+                            if let LitKind::Int(position, _) = lit.node;
+                            then {
+                                let i = usize::try_from(position).unwrap();
+                                Some(FormatArgsArg { value: self.value_args[i], arg: &self.args[i], fmt: Some(fmt) })
+                            } else {
+                                None
+                            }
+                        }
+                    }).collect()
+                } else {
+                    None
+                }
+            }
+        } else {
+            Some(
+                self.value_args
+                    .iter()
+                    .zip(self.args.iter())
+                    .map(|(value, arg)| FormatArgsArg { value, arg, fmt: None })
+                    .collect(),
+            )
+        }
+    }
+}
+
+/// Type representing a `FormatArgsExpn`'s format arguments
+pub struct FormatArgsArg<'tcx> {
+    /// An element of `value_args` according to `position`
+    pub value: &'tcx Expr<'tcx>,
+    /// An element of `args` according to `position`
+    pub arg: &'tcx Expr<'tcx>,
+    /// An element of `fmt_expn`
+    pub fmt: Option<&'tcx Expr<'tcx>>,
+}
+
+impl<'tcx> FormatArgsArg<'tcx> {
+    /// Returns true if any formatting parameters are used that would have an effect on strings,
+    /// like `{:+2}` instead of just `{}`.
+    pub fn has_string_formatting(&self) -> bool {
+        self.fmt.map_or(false, |fmt| {
+            // `!` because these conditions check that `self` is unformatted.
+            !if_chain! {
+                // struct `core::fmt::rt::v1::Argument`
+                if let ExprKind::Struct(_, fields, _) = fmt.kind;
+                if let Some(format_field) = fields.iter().find(|f| f.ident.name == sym::format);
+                // struct `core::fmt::rt::v1::FormatSpec`
+                if let ExprKind::Struct(_, subfields, _) = format_field.expr.kind;
+                let mut precision_found = false;
+                let mut width_found = false;
+                if subfields.iter().all(|field| {
+                    match field.ident.name {
+                        sym::precision => {
+                            precision_found = true;
+                            if let ExprKind::Path(ref precision_path) = field.expr.kind {
+                                last_path_segment(precision_path).ident.name == sym::Implied
+                            } else {
+                                false
+                            }
+                        }
+                        sym::width => {
+                            width_found = true;
+                            if let ExprKind::Path(ref width_qpath) = field.expr.kind {
+                                last_path_segment(width_qpath).ident.name == sym::Implied
+                            } else {
+                                false
+                            }
+                        }
+                        _ => true,
+                    }
+                });
+                if precision_found && width_found;
+                then { true } else { false }
+            }
+        })
+    }
+
+    /// Returns true if the argument is formatted using `Display::fmt`.
+    pub fn is_display(&self) -> bool {
+        if_chain! {
+            if let ExprKind::Call(_, [_, format_field]) = self.arg.kind;
+            if let ExprKind::Path(QPath::Resolved(_, path)) = format_field.kind;
+            if let [.., t, _] = path.segments;
+            if t.ident.name == sym::Display;
+            then { true } else { false }
+        }
+    }
 }
 
 /// Checks if a `let` statement is from a `for` loop desugaring.
@@ -630,4 +733,52 @@ impl PanicExpn<'tcx> {
             }
         }
     }
+}
+
+/// A parsed `Vec` initialization expression
+#[derive(Clone, Copy)]
+pub enum VecInitKind {
+    /// `Vec::new()`
+    New,
+    /// `Vec::default()` or `Default::default()`
+    Default,
+    /// `Vec::with_capacity(123)`
+    WithLiteralCapacity(u64),
+    /// `Vec::with_capacity(slice.len())`
+    WithExprCapacity(HirId),
+}
+
+/// Checks if given expression is an initialization of `Vec` and returns its kind.
+pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<VecInitKind> {
+    if let ExprKind::Call(func, args) = expr.kind {
+        match func.kind {
+            ExprKind::Path(QPath::TypeRelative(ty, name))
+                if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::Vec) =>
+            {
+                if name.ident.name == sym::new {
+                    return Some(VecInitKind::New);
+                } else if name.ident.name == symbol::kw::Default {
+                    return Some(VecInitKind::Default);
+                } else if name.ident.name.as_str() == "with_capacity" {
+                    let arg = args.get(0)?;
+                    if_chain! {
+                        if let ExprKind::Lit(lit) = &arg.kind;
+                        if let LitKind::Int(num, _) = lit.node;
+                        then {
+                            return Some(VecInitKind::WithLiteralCapacity(num.try_into().ok()?))
+                        }
+                    }
+                    return Some(VecInitKind::WithExprCapacity(arg.hir_id));
+                }
+            }
+            ExprKind::Path(QPath::Resolved(_, path))
+                if match_def_path(cx, path.res.opt_def_id()?, &paths::DEFAULT_TRAIT_METHOD)
+                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Vec) =>
+            {
+                return Some(VecInitKind::Default);
+            }
+            _ => (),
+        }
+    }
+    None
 }
