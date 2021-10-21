@@ -91,6 +91,12 @@ extern "C" {}
     not(feature = "system-llvm-libunwind")
 ))]
 #[link(name = "gcc_eh", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+#[link(
+    name = "pthread",
+    kind = "static",
+    modifiers = "-bundle",
+    cfg(target_feature = "crt-static")
+)]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 extern "C" {}
 
