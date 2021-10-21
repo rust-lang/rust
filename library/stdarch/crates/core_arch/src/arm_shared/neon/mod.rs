@@ -478,9 +478,6 @@ extern "unadjusted" {
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v8i8")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.addp.v8i8")]
     fn vpadd_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v16i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.addp.v16i8")]
-    fn vpaddq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpaddls.v4i16.v8i8")]
     #[cfg_attr(
@@ -3922,6 +3919,26 @@ unsafe fn vdup_n_f32_vfp4(value: f32) -> float32x2_t {
     float32x2_t(value, value)
 }
 
+/// Load SIMD&FP register (immediate offset)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vldrq_p128(a: *const p128) -> p128 {
+    *a
+}
+
+/// Store SIMD&FP register (immediate offset)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vstrq_p128(a: *mut p128, b: p128) {
+    *a = b;
+}
+
 /// Duplicate vector element to vector or scalar
 #[inline]
 #[target_feature(enable = "neon")]
@@ -5814,6 +5831,23 @@ mod tests {
         let v: f32 = 64.0;
         let e = f32x2::new(64.0, 64.0);
         let r: f32x2 = transmute(vdup_n_f32(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vldrq_p128() {
+        let v: [p128; 2] = [1, 2];
+        let e: p128 = 2;
+        let r: p128 = vldrq_p128(v[1..].as_ptr());
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vstrq_p128() {
+        let v: [p128; 2] = [1, 2];
+        let e: p128 = 2;
+        let mut r: p128 = 1;
+        vstrq_p128(&mut r, v[1]);
         assert_eq!(r, e);
     }
 

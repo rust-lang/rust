@@ -1047,7 +1047,32 @@ pub unsafe fn vsliq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x
         int16x8_t(n, n, n, n, n, n, n, n),
     ))
 }
-
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon,v7,aes")]
+#[cfg_attr(test, assert_instr("vsli.64", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsli_n_p64<const N: i32>(a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
+    static_assert!(N : i32 where 0 <= N && N <= 63);
+    transmute(vshiftins_v1i64(
+        transmute(a),
+        transmute(b),
+        int64x1_t(N as i64),
+    ))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon,v7,aes")]
+#[cfg_attr(test, assert_instr("vsli.64", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsliq_n_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
+    static_assert!(N : i32 where 0 <= N && N <= 63);
+    transmute(vshiftins_v2i64(
+        transmute(a),
+        transmute(b),
+        int64x2_t(N as i64, N as i64),
+    ))
+}
 /// Shift Right and Insert (immediate)
 #[inline]
 #[target_feature(enable = "neon,v7")]
@@ -1290,6 +1315,32 @@ pub unsafe fn vsriq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x
         transmute(a),
         transmute(b),
         int16x8_t(n, n, n, n, n, n, n, n),
+    ))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon,v7,aes")]
+#[cfg_attr(test, assert_instr("vsri.64", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_p64<const N: i32>(a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
+    static_assert!(N : i32 where 1 <= N && N <= 64);
+    transmute(vshiftins_v1i64(
+        transmute(a),
+        transmute(b),
+        int64x1_t(-N as i64),
+    ))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon,v7,aes")]
+#[cfg_attr(test, assert_instr("vsri.64", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
+    static_assert!(N : i32 where 1 <= N && N <= 64);
+    transmute(vshiftins_v2i64(
+        transmute(a),
+        transmute(b),
+        int64x2_t(-N as i64, -N as i64),
     ))
 }
 

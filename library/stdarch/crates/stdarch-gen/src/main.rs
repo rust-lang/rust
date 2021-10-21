@@ -96,9 +96,9 @@ fn type_bits(t: &str) -> usize {
     }
 }
 
-fn type_exp_len(t: &str) -> usize {
+fn type_exp_len(t: &str, base_len: usize) -> usize {
     let t = type_to_sub_type(t);
-    let len = type_len(&t);
+    let len = type_len(&t) / base_len;
     match len {
         1 => 0,
         2 => 1,
@@ -242,6 +242,7 @@ fn type_to_suffix(t: &str) -> &str {
         "f64" => "d_f64",
         "p8" => "b_p8",
         "p16" => "h_p16",
+        "p128" => "q_p128",
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -328,35 +329,48 @@ fn type_to_noq_n_suffix(t: &str) -> &str {
     }
 }
 
-fn type_to_lane_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
+fn type_to_lane_suffixes<'a>(out_t: &'a str, in_t: &'a str, re_to_out: bool) -> String {
     let mut str = String::new();
     let suf = type_to_suffix(out_t);
     if !suf.starts_with("_") {
         str.push_str(&suf[0..1]);
     }
     str.push_str("_lane");
-    str.push_str(type_to_suffix(in_t));
+    if !re_to_out {
+        str.push_str(type_to_suffix(in_t));
+    } else {
+        if type_to_suffix(in_t).starts_with("q") {
+            str.push_str("q");
+        };
+        let suf2 = type_to_noq_suffix(out_t);
+        str.push_str(suf2);
+    }
     str
 }
 
-fn type_to_signed(t: &String) -> String {
+fn type_to_rot_suffix(c_name: &str, suf: &str) -> String {
+    let ns: Vec<_> = c_name.split('_').collect();
+    assert_eq!(ns.len(), 2);
+    if suf.starts_with("q") {
+        format!("{}q_{}{}", ns[0], ns[1], &suf[1..])
+    } else {
+        format!("{}{}", c_name, suf)
+    }
+}
+
+fn type_to_signed(t: &str) -> String {
     let s = t.replace("uint", "int");
     let s = s.replace("poly", "int");
     s
 }
 
-fn type_to_unsigned(t: &str) -> &str {
-    match t {
-        "int8x8_t" | "uint8x8_t" | "poly8x8_t" => "uint8x8_t",
-        "int8x16_t" | "uint8x16_t" | "poly8x16_t" => "uint8x16_t",
-        "int16x4_t" | "uint16x4_t" | "poly16x4_t" => "uint16x4_t",
-        "int16x8_t" | "uint16x8_t" | "poly16x8_t" => "uint16x8_t",
-        "int32x2_t" | "uint32x2_t" => "uint32x2_t",
-        "int32x4_t" | "uint32x4_t" => "uint32x4_t",
-        "int64x1_t" | "uint64x1_t" | "poly64x1_t" => "uint64x1_t",
-        "int64x2_t" | "uint64x2_t" | "poly64x2_t" => "uint64x2_t",
-        _ => panic!("unknown type: {}", t),
+fn type_to_unsigned(t: &str) -> String {
+    if t.contains("uint") {
+        return t.to_string();
     }
+    let s = t.replace("int", "uint");
+    let s = s.replace("poly", "uint");
+    s
 }
 
 fn type_to_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
@@ -411,6 +425,7 @@ fn type_to_noq_suffix(t: &str) -> &str {
         "poly8x8_t" | "poly8x16_t" => "_p8",
         "poly16x4_t" | "poly16x8_t" => "_p16",
         "poly64x1_t" | "poly64x2_t" | "p64" => "_p64",
+        "p128" => "_p128",
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -434,6 +449,9 @@ enum Suffix {
     Lane,
     In2,
     In2Lane,
+    OutLane,
+    Rot,
+    RotLane,
 }
 
 #[derive(Clone, Copy)]
@@ -443,6 +461,9 @@ enum TargetFeature {
     Vfp4,
     FPArmV8,
     AES,
+    FCMA,
+    Dotprod,
+    I8MM,
 }
 
 #[derive(Clone, Copy)]
@@ -659,16 +680,30 @@ fn values(t: &str, vs: &[String]) -> String {
     } else if vs.len() == 1 && type_to_global_type(t) == "f64" {
         format!(": {} = {}", type_to_global_type(t), vs[0])
     } else {
-        format!(
-            ": {} = {}::new({})",
-            type_to_global_type(t),
-            type_to_global_type(t),
-            vs.iter()
-                .map(|v| map_val(type_to_global_type(t), v))
-                //.map(|v| format!("{}{}", v, type_to_native_type(t)))
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
+        let s: Vec<_> = t.split('x').collect();
+        if s.len() == 3 {
+            format!(
+                ": [{}; {}] = [{}]",
+                type_to_native_type(t),
+                type_len(t),
+                vs.iter()
+                    .map(|v| map_val(type_to_global_type(t), v))
+                    //.map(|v| format!("{}{}", v, type_to_native_type(t)))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        } else {
+            format!(
+                ": {} = {}::new({})",
+                type_to_global_type(t),
+                type_to_global_type(t),
+                vs.iter()
+                    .map(|v| map_val(type_to_global_type(t), v))
+                    //.map(|v| format!("{}{}", v, type_to_native_type(t)))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        }
     }
 }
 
@@ -909,6 +944,7 @@ fn ext(s: &str, in_t: &[&str; 3], out_t: &str) -> String {
     s.replace("_EXT_", &type_to_ext(in_t[0], false, false, false))
         .replace("_EXT2_", &type_to_ext(out_t, false, false, false))
         .replace("_EXT3_", &type_to_ext(in_t[1], false, false, false))
+        .replace("_EXT4_", &type_to_ext(in_t[2], false, false, false))
         .replace("_EXTr3_", &type_to_ext(in_t[1], false, true, false))
         .replace("_EXTv2_", &type_to_ext(out_t, true, false, false))
         .replace("_EXTpi8_", &type_to_ext(in_t[1], false, false, true))
@@ -1003,9 +1039,24 @@ fn gen_aarch64(
             current_name,
             type_to_lane_suffix(&type_to_sub_type(in_t[1]))
         ),
-        Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
+        Lane => format!(
+            "{}{}",
+            current_name,
+            type_to_lane_suffixes(out_t, in_t[1], false)
+        ),
         In2 => format!("{}{}", current_name, type_to_suffix(in_t[2])),
-        In2Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[2])),
+        In2Lane => format!(
+            "{}{}",
+            current_name,
+            type_to_lane_suffixes(out_t, in_t[2], false)
+        ),
+        OutLane => format!(
+            "{}{}",
+            current_name,
+            type_to_lane_suffixes(out_t, in_t[2], true)
+        ),
+        Rot => type_to_rot_suffix(current_name, type_to_suffix(out_t)),
+        RotLane => type_to_rot_suffix(current_name, &type_to_lane_suffixes(out_t, in_t[2], false)),
     };
     let current_target = match target {
         Default => "neon",
@@ -1013,6 +1064,9 @@ fn gen_aarch64(
         Vfp4 => "vfp4",
         FPArmV8 => "fp-armv8,v8",
         AES => "neon,aes",
+        FCMA => "neon,fcma",
+        Dotprod => "neon,dotprod",
+        I8MM => "neon,i8mm",
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
@@ -1545,6 +1599,10 @@ fn gen_test(
         } else {
             String::new()
         };
+        let r_type = match type_sub_len(out_t) {
+            1 => type_to_global_type(out_t).to_string(),
+            _ => format!("[{}; {}]", type_to_native_type(out_t), type_len(out_t)),
+        };
         let t = {
             match para_num {
                 1 => {
@@ -1557,7 +1615,7 @@ fn gen_test(
 "#,
                         values(in_t[0], &a),
                         values(out_t, &e),
-                        type_to_global_type(out_t),
+                        r_type,
                         name,
                         const_value
                     )
@@ -1574,7 +1632,7 @@ fn gen_test(
                         values(in_t[0], &a),
                         values(in_t[1], &b),
                         values(out_t, &e),
-                        type_to_global_type(out_t),
+                        r_type,
                         name,
                         const_value
                     )
@@ -1593,7 +1651,7 @@ fn gen_test(
                         values(in_t[1], &b),
                         values(in_t[2], &c),
                         values(out_t, &e),
-                        type_to_global_type(out_t),
+                        r_type,
                         name,
                         const_value
                     )
@@ -1686,9 +1744,24 @@ fn gen_arm(
             current_name,
             type_to_lane_suffix(&type_to_sub_type(in_t[1]))
         ),
-        Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
+        Lane => format!(
+            "{}{}",
+            current_name,
+            type_to_lane_suffixes(out_t, in_t[1], false)
+        ),
         In2 => format!("{}{}", current_name, type_to_suffix(in_t[2])),
-        In2Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[2])),
+        In2Lane => format!(
+            "{}{}",
+            current_name,
+            type_to_lane_suffixes(out_t, in_t[2], false)
+        ),
+        OutLane => format!(
+            "{}{}",
+            current_name,
+            type_to_lane_suffixes(out_t, in_t[2], true)
+        ),
+        Rot => type_to_rot_suffix(current_name, type_to_suffix(out_t)),
+        RotLane => type_to_rot_suffix(current_name, &type_to_lane_suffixes(out_t, in_t[2], false)),
     };
     let current_aarch64 = current_aarch64
         .clone()
@@ -1699,6 +1772,9 @@ fn gen_arm(
         Vfp4 => "neon",
         FPArmV8 => "neon",
         AES => "neon,aes",
+        FCMA => "neon,fcma",
+        Dotprod => "neon,dotprod",
+        I8MM => "neon,i8mm",
     };
     let current_target_arm = match target {
         Default => "v7",
@@ -1706,6 +1782,9 @@ fn gen_arm(
         Vfp4 => "vfp4",
         FPArmV8 => "fp-armv8,v8",
         AES => "aes,v8",
+        FCMA => "v8",    // v8.3a
+        Dotprod => "v8", // v8.2a
+        I8MM => "v8",    // v8.6a
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() || link_arm.is_some() {
@@ -2477,6 +2556,34 @@ fn get_call(
         };
         return asc(start, len);
     }
+    if fn_name.starts_with("base") {
+        let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
+        assert_eq!(fn_format.len(), 3);
+        let mut s = format!("<const {}: i32> [", &fn_format[2]);
+        let base_len = fn_format[1].parse::<usize>().unwrap();
+        for i in 0..type_len(in_t[1]) / base_len {
+            for j in 0..base_len {
+                if i != 0 || j != 0 {
+                    s.push_str(", ");
+                }
+                s.push_str(&format!("{} * {} as u32", base_len, &fn_format[2]));
+                if j != 0 {
+                    s.push_str(&format!(" + {}", j));
+                }
+            }
+        }
+        s.push_str("]");
+        return s;
+    }
+    if fn_name.starts_with("as") {
+        let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
+        assert_eq!(fn_format.len(), 3);
+        let t = match &*fn_format[2] {
+            "in_ttn" => type_to_native_type(in_t[1]),
+            _ => String::new(),
+        };
+        return format!("{} as {}", &fn_format[1], t);
+    }
     if fn_name.starts_with("ins") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
         let n = n.unwrap();
@@ -2509,13 +2616,15 @@ fn get_call(
     if fn_name.starts_with("static_assert_imm") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
         let len = match &*fn_format[1] {
-            "out_exp_len" => type_exp_len(out_t),
+            "out_exp_len" => type_exp_len(out_t, 1),
             "out_bits_exp_len" => type_bits_exp_len(out_t),
-            "in_exp_len" => type_exp_len(in_t[1]),
+            "in_exp_len" => type_exp_len(in_t[1], 1),
             "in_bits_exp_len" => type_bits_exp_len(in_t[1]),
-            "in0_exp_len" => type_exp_len(in_t[0]),
-            "in1_exp_len" => type_exp_len(in_t[1]),
-            "in2_exp_len" => type_exp_len(in_t[2]),
+            "in0_exp_len" => type_exp_len(in_t[0], 1),
+            "in1_exp_len" => type_exp_len(in_t[1], 1),
+            "in2_exp_len" => type_exp_len(in_t[2], 1),
+            "in2_rot" => type_exp_len(in_t[2], 2),
+            "in2_dot" => type_exp_len(in_t[2], 4),
             _ => 0,
         };
         if len == 0 {
@@ -2558,9 +2667,9 @@ fn get_call(
     if fn_name.starts_with("matchn") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
         let len = match &*fn_format[1] {
-            "out_exp_len" => type_exp_len(out_t),
-            "in_exp_len" => type_exp_len(in_t[1]),
-            "in0_exp_len" => type_exp_len(in_t[0]),
+            "out_exp_len" => type_exp_len(out_t, 1),
+            "in_exp_len" => type_exp_len(in_t[1], 1),
+            "in0_exp_len" => type_exp_len(in_t[0], 1),
             _ => 0,
         };
         let mut call = format!("match {} & 0b{} {{\n", &fn_format[2], "1".repeat(len));
@@ -2644,6 +2753,10 @@ fn get_call(
                 re = Some((re_params[0].clone(), in_t[1].to_string()));
             } else if re_params[1] == "in_t" {
                 re = Some((re_params[0].clone(), in_t[1].to_string()));
+            } else if re_params[1] == "signed" {
+                re = Some((re_params[0].clone(), type_to_signed(in_t[1])));
+            } else if re_params[1] == "unsigned" {
+                re = Some((re_params[0].clone(), type_to_unsigned(in_t[1])));
             } else if re_params[1] == "in_t0" {
                 re = Some((re_params[0].clone(), in_t[0].to_string()));
             } else if re_params[1] == "in_t1" {
@@ -2664,6 +2777,11 @@ fn get_call(
                 ));
             } else if re_params[1] == "out_ntt" {
                 re = Some((re_params[0].clone(), native_type_to_type(out_t).to_string()));
+            } else if re_params[1] == "out_long_ntt" {
+                re = Some((
+                    re_params[0].clone(),
+                    native_type_to_long_type(out_t).to_string(),
+                ));
             } else {
                 re = Some((re_params[0].clone(), re_params[1].clone()));
             }
@@ -2691,6 +2809,12 @@ fn get_call(
             });
         return format!(r#"[{}]"#, &half[..half.len() - 2]);
     }
+    if fn_name == "a - b" {
+        return fn_name;
+    }
+    if fn_name == "-a" {
+        return fn_name;
+    }
     if fn_name.contains('-') {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
         assert_eq!(fn_format.len(), 3);
@@ -2715,7 +2839,9 @@ fn get_call(
         } else if fn_format[1] == "in2" {
             fn_name.push_str(type_to_suffix(in_t[2]));
         } else if fn_format[1] == "in2lane" {
-            fn_name.push_str(&type_to_lane_suffixes(out_t, in_t[2]));
+            fn_name.push_str(&type_to_lane_suffixes(out_t, in_t[2], false));
+        } else if fn_format[1] == "outlane" {
+            fn_name.push_str(&type_to_lane_suffixes(out_t, in_t[2], true));
         } else if fn_format[1] == "signed" {
             fn_name.push_str(type_to_suffix(&type_to_signed(&String::from(in_t[1]))));
         } else if fn_format[1] == "outsigned" {
@@ -2741,7 +2867,7 @@ fn get_call(
                 &String::from(in_t[1]),
             ))));
         } else if fn_format[1] == "unsigned" {
-            fn_name.push_str(type_to_suffix(type_to_unsigned(in_t[1])));
+            fn_name.push_str(type_to_suffix(&type_to_unsigned(in_t[1])));
         } else if fn_format[1] == "doubleself" {
             fn_name.push_str(&type_to_double_suffixes(out_t, in_t[1]));
         } else if fn_format[1] == "noq_doubleself" {
@@ -2769,6 +2895,8 @@ fn get_call(
             fn_name.push_str(type_to_suffix(native_type_to_type(in_t[1])));
         } else if fn_format[1] == "out_ntt" {
             fn_name.push_str(type_to_suffix(native_type_to_type(out_t)));
+        } else if fn_format[1] == "rot" {
+            fn_name = type_to_rot_suffix(&fn_name, type_to_suffix(out_t));
         } else {
             fn_name.push_str(&fn_format[1]);
         };
@@ -2976,6 +3104,12 @@ mod test {
             suffix = In2;
         } else if line.starts_with("in2-lane-suffixes") {
             suffix = In2Lane;
+        } else if line.starts_with("out-lane-suffixes") {
+            suffix = OutLane;
+        } else if line.starts_with("rot-suffix") {
+            suffix = Rot;
+        } else if line.starts_with("rot-lane-suffixes") {
+            suffix = RotLane;
         } else if line.starts_with("a = ") {
             a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("b = ") {
@@ -3010,6 +3144,9 @@ mod test {
                     "vfp4" => Vfp4,
                     "fp-armv8" => FPArmV8,
                     "aes" => AES,
+                    "fcma" => FCMA,
+                    "dotprod" => Dotprod,
+                    "i8mm" => I8MM,
                     _ => Default,
                 },
                 _ => Default,

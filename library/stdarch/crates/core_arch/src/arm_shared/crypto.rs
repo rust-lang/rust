@@ -51,8 +51,6 @@ extern "unadjusted" {
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-// TODO: Use AES for ARM when the minimum LLVM version includes b8baa2a9132498ea286dbb0d03f005760ecc6fdb
-
 /// AES single round encryption.
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "aes"))]

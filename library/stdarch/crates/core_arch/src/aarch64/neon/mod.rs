@@ -2985,7 +2985,24 @@ pub unsafe fn vsliq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x
     static_assert_imm4!(N);
     transmute(vsliq_n_s16_(transmute(a), transmute(b), N))
 }
-
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(test, assert_instr(sli, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsli_n_p64<const N: i32>(a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
+    static_assert!(N: i32 where N >= 0 && N <= 63);
+    transmute(vsli_n_s64_(transmute(a), transmute(b), N))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(test, assert_instr(sli, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsliq_n_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
+    static_assert!(N: i32 where N >= 0 && N <= 63);
+    transmute(vsliq_n_s64_(transmute(a), transmute(b), N))
+}
 /// Shift Right and Insert (immediate)
 #[inline]
 #[target_feature(enable = "neon")]
@@ -3165,6 +3182,24 @@ pub unsafe fn vsri_n_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4
 pub unsafe fn vsriq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     static_assert!(N: i32 where N >= 1 && N <= 16);
     transmute(vsriq_n_s16_(transmute(a), transmute(b), N))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(test, assert_instr(sri, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_p64<const N: i32>(a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
+    static_assert!(N: i32 where N >= 1 && N <= 64);
+    transmute(vsri_n_s64_(transmute(a), transmute(b), N))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(test, assert_instr(sri, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
+    static_assert!(N: i32 where N >= 1 && N <= 64);
+    transmute(vsriq_n_s64_(transmute(a), transmute(b), N))
 }
 
 #[cfg(test)]
