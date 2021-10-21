@@ -39,7 +39,6 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Opt
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
     let fn_name = &call.name_ref()?;
 
-    // let callExpr = path_expr.syntax();
     let range = call.syntax().text_range();
     let resolved_call = ctx.sema.resolve_method_call(&call)?;
 
