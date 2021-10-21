@@ -121,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                 }
             },
             FnKind::Method(_, sig, ..) => {
-                if trait_ref_of_method(cx, hir_id).is_some()
+                if trait_ref_of_method(cx, def_id).is_some()
                     || already_const(sig.header)
                     || method_accepts_dropable(cx, sig.decl.inputs)
                 {

@@ -48,7 +48,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let attr = must_use_attr(attrs);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
-        } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.hir_id()).is_none() {
+        } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.def_id).is_none() {
             check_must_use_candidate(
                 cx,
                 sig.decl,
