@@ -376,12 +376,9 @@ pub fn provide(providers: &mut ty::query::Providers) {
 
         named_region_map: |tcx, id| resolve_lifetimes_for(tcx, id).defs.get(&id),
         is_late_bound_map,
-        object_lifetime_defaults_map: |tcx, id| {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(id);
-            match tcx.hir().find(hir_id) {
-                Some(Node::Item(item)) => compute_object_lifetime_defaults(tcx, item),
-                _ => None,
-            }
+        object_lifetime_defaults_map: |tcx, id| match tcx.hir().find_def(id) {
+            Some(Node::Item(item)) => compute_object_lifetime_defaults(tcx, item),
+            _ => None,
         },
         late_bound_vars_map: |tcx, id| resolve_lifetimes_for(tcx, id).late_bound_vars.get(&id),
         lifetime_scope_map: |tcx, id| {
@@ -514,14 +511,14 @@ fn resolve_lifetimes_for<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx R
 
 /// Finds the `Item` that contains the given `LocalDefId`
 fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
-    match tcx.hir().find(hir_id) {
+    match tcx.hir().find_def(local_def_id) {
         Some(Node::Item(item)) => {
             return item.def_id;
         }
         _ => {}
     }
     let item = {
+        let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
         let mut parent_iter = tcx.hir().parent_iter(hir_id);
         loop {
             let node = parent_iter.next().map(|n| n.1);
@@ -2035,19 +2032,20 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             match lifetimeuseset {
                 Some(LifetimeUseSet::One(lifetime)) => {
-                    let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                    debug!("hir id first={:?}", hir_id);
-                    if let Some((id, span, name)) = match self.tcx.hir().get(hir_id) {
-                        Node::Lifetime(hir_lifetime) => Some((
-                            hir_lifetime.hir_id,
-                            hir_lifetime.span,
-                            hir_lifetime.name.ident(),
-                        )),
-                        Node::GenericParam(param) => {
-                            Some((param.hir_id, param.span, param.name.ident()))
+                    debug!("hir id first={:?}", def_id);
+                    if let Some((id, span, name)) =
+                        match self.tcx.hir().get_def(def_id.expect_local()) {
+                            Node::Lifetime(hir_lifetime) => Some((
+                                hir_lifetime.hir_id,
+                                hir_lifetime.span,
+                                hir_lifetime.name.ident(),
+                            )),
+                            Node::GenericParam(param) => {
+                                Some((param.hir_id, param.span, param.name.ident()))
+                            }
+                            _ => None,
                         }
-                        _ => None,
-                    } {
+                    {
                         debug!("id = {:?} span = {:?} name = {:?}", id, span, name);
                         if name.name == kw::UnderscoreLifetime {
                             continue;
@@ -2055,12 +2053,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                         if let Some(parent_def_id) = self.tcx.parent(def_id) {
                             if let Some(def_id) = parent_def_id.as_local() {
-                                let parent_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                                 // lifetimes in `derive` expansions don't count (Issue #53738)
                                 if self
                                     .tcx
-                                    .hir()
-                                    .attrs(parent_hir_id)
+                                    .get_attrs(def_id.to_def_id())
                                     .iter()
                                     .any(|attr| attr.has_name(sym::automatically_derived))
                                 {
@@ -2072,7 +2068,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 if let hir::Node::Item(hir::Item {
                                     kind: hir::ItemKind::OpaqueTy(ref opaque),
                                     ..
-                                }) = self.tcx.hir().get(parent_hir_id)
+                                }) = self.tcx.hir().get_def(def_id)
                                 {
                                     if opaque.origin != hir::OpaqueTyOrigin::AsyncFn {
                                         continue 'lifetimes;
@@ -2118,18 +2114,19 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     debug!("not one use lifetime");
                 }
                 None => {
-                    let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                    if let Some((id, span, name)) = match self.tcx.hir().get(hir_id) {
-                        Node::Lifetime(hir_lifetime) => Some((
-                            hir_lifetime.hir_id,
-                            hir_lifetime.span,
-                            hir_lifetime.name.ident(),
-                        )),
-                        Node::GenericParam(param) => {
-                            Some((param.hir_id, param.span, param.name.ident()))
+                    if let Some((id, span, name)) =
+                        match self.tcx.hir().get_def(def_id.expect_local()) {
+                            Node::Lifetime(hir_lifetime) => Some((
+                                hir_lifetime.hir_id,
+                                hir_lifetime.span,
+                                hir_lifetime.name.ident(),
+                            )),
+                            Node::GenericParam(param) => {
+                                Some((param.hir_id, param.span, param.name.ident()))
+                            }
+                            _ => None,
                         }
-                        _ => None,
-                    } {
+                    {
                         debug!("id ={:?} span = {:?} name = {:?}", id, span, name);
                         self.tcx.struct_span_lint_hir(
                             lint::builtin::UNUSED_LIFETIMES,

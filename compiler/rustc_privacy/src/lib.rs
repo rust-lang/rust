@@ -581,8 +581,7 @@ impl EmbargoVisitor<'tcx> {
             DefKind::Struct | DefKind::Union => {
                 // While structs and unions have type privacy, their fields do not.
                 if let ty::Visibility::Public = vis {
-                    let item =
-                        self.tcx.hir().expect_item(def_id);
+                    let item = self.tcx.hir().expect_item(def_id);
                     if let hir::ItemKind::Struct(ref struct_def, _)
                     | hir::ItemKind::Union(ref struct_def, _) = item.kind
                     {

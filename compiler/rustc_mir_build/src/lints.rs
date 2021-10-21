@@ -11,9 +11,8 @@ use std::ops::ControlFlow;
 
 crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
-    if let Some(fn_kind) = tcx.hir().get(hir_id).fn_kind() {
+    if let Some(fn_kind) = tcx.hir().get_def(def_id).fn_kind() {
         if let FnKind::Closure = fn_kind {
             // closures can't recur, so they don't matter.
             return;
@@ -37,6 +36,7 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
 
         vis.reachable_recursive_calls.sort();
 
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span_with_body(hir_id));
         tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
             let mut db = lint.build("function cannot return without recursing");

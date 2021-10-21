@@ -31,15 +31,14 @@ pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// said intrinsic has a `rustc_const_{un,}stable` attribute.
 fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let def_id = def_id.expect_local();
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-
-    let node = tcx.hir().get(hir_id);
+    let node = tcx.hir().get_def(def_id);
 
     if let hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) =
         node
     {
         // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
         // foreign items cannot be evaluated at compile-time.
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = tcx.hir().get_foreign_abi(hir_id) {
             tcx.lookup_const_stability(def_id).is_some()
         } else {

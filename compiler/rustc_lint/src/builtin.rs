@@ -611,8 +611,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
                 if let Some(def_id) = real_trait.as_local() {
-                    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
-                    if let Some(Node::Item(item)) = cx.tcx.hir().find(hir_id) {
+                    if let Some(Node::Item(item)) = cx.tcx.hir().find_def(def_id) {
                         if let hir::VisibilityKind::Inherited = item.vis.node {
                             for impl_item_ref in items {
                                 self.private_traits.insert(impl_item_ref.id.hir_id());
