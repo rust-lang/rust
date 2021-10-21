@@ -1,9 +1,9 @@
-// Test that `-Z instrument-coverage` injects Coverage statements. The Coverage Counter statements
+// Test that `-C instrument-coverage` injects Coverage statements. The Coverage Counter statements
 // are later converted into LLVM instrprof.increment intrinsics, during codegen.
 
 // needs-profiler-support
 // ignore-windows
-// compile-flags: -Z instrument-coverage --remap-path-prefix={{src-base}}=/the/src
+// compile-flags: -C instrument-coverage --remap-path-prefix={{src-base}}=/the/src
 
 // EMIT_MIR instrument_coverage.main.InstrumentCoverage.diff
 // EMIT_MIR instrument_coverage.bar.InstrumentCoverage.diff

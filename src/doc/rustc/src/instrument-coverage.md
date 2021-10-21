@@ -1,23 +1,17 @@
 # `instrument-coverage`
 
-The tracking issue for this feature is: [#79121].
-
-[#79121]: https://github.com/rust-lang/rust/issues/79121
-
----
-
 ## Introduction
 
 The Rust compiler includes two code coverage implementations:
 
 -   A GCC-compatible, gcov-based coverage implementation, enabled with `-Z profile`, which derives coverage data based on DebugInfo.
--   A source-based code coverage implementation, enabled with `-Z instrument-coverage`, which uses LLVM's native, efficient coverage instrumentation to generate very precise coverage data.
+-   A source-based code coverage implementation, enabled with `-C instrument-coverage`, which uses LLVM's native, efficient coverage instrumentation to generate very precise coverage data.
 
-This document describes how to enable and use the LLVM instrumentation-based coverage, via the `-Z instrument-coverage` compiler flag.
+This document describes how to enable and use the LLVM instrumentation-based coverage, via the `-C instrument-coverage` compiler flag.
 
 ## How it works
 
-When `-Z instrument-coverage` is enabled, the Rust compiler enhances rust-based libraries and binaries by:
+When `-C instrument-coverage` is enabled, the Rust compiler enhances rust-based libraries and binaries by:
 
 -   Automatically injecting calls to an LLVM intrinsic ([`llvm.instrprof.increment`]), at functions and branches in compiled code, to increment counters when conditional sections of code are executed.
 -   Embedding additional information in the data section of each library and binary (using the [LLVM Code Coverage Mapping Format] _Version 5_, if compiling with LLVM 12, or _Version 6_, if compiling with LLVM 13 or higher), to define the code regions (start and end positions in the source code) being counted.
@@ -27,13 +21,13 @@ When running a coverage-instrumented program, the counter values are written to 
 [`llvm.instrprof.increment`]: https://llvm.org/docs/LangRef.html#llvm-instrprof-increment-intrinsic
 [llvm code coverage mapping format]: https://llvm.org/docs/CoverageMappingFormat.html
 
-> **Note**: `-Z instrument-coverage` also automatically enables `-C symbol-mangling-version=v0` (tracking issue [#60705]). The `v0` symbol mangler is strongly recommended, but be aware that this demangler is also experimental. The `v0` demangler can be overridden by explicitly adding `-Z unstable-options -C symbol-mangling-version=legacy`.
+> **Note**: `-C instrument-coverage` also automatically enables `-C symbol-mangling-version=v0` (tracking issue [#60705]). The `v0` symbol mangler is strongly recommended. The `v0` demangler can be overridden by explicitly adding `-Z unstable-options -C symbol-mangling-version=legacy`.
 
 [#60705]: https://github.com/rust-lang/rust/issues/60705
 
 ## Enable coverage profiling in the Rust compiler
 
-Rust's source-based code coverage requires the Rust "profiler runtime". Without it, compiling with `-Z instrument-coverage` generates an error that the profiler runtime is missing.
+Rust's source-based code coverage requires the Rust "profiler runtime". Without it, compiling with `-C instrument-coverage` generates an error that the profiler runtime is missing.
 
 The Rust `nightly` distribution channel includes the profiler runtime, by default.
 
@@ -41,7 +35,7 @@ The Rust `nightly` distribution channel includes the profiler runtime, by defaul
 >
 > ```toml
 > # Build the profiler runtime (required when compiling with options that depend
-> # on this runtime, such as `-C profile-generate` or `-Z  instrument-coverage`).
+> # on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 > profiler = true
 > ```
 
@@ -65,9 +59,9 @@ $ ./x.py build rust-demangler
 
 ## Compiling with coverage enabled
 
-Set the `-Z instrument-coverage` compiler flag in order to enable LLVM source-based code coverage profiling.
+Set the `-C instrument-coverage` compiler flag in order to enable LLVM source-based code coverage profiling.
 
-The default option generates coverage for all functions, including unused (never called) functions and generics. The compiler flag supports an optional value to tailor this behavior. (See [`-Z instrument-coverage=<options>`](#-z-instrument-coverageoptions), below.)
+The default option generates coverage for all functions, including unused (never called) functions and generics. The compiler flag supports an optional value to tailor this behavior. (See [`-C instrument-coverage=<options>`](#-c-instrument-coverageoptions), below.)
 
 With `cargo`, you can instrument your program binary _and_ dependencies at the same time.
 
@@ -76,18 +70,18 @@ For example (if your project's Cargo.toml builds a binary by default):
 ```shell
 $ cd your-project
 $ cargo clean
-$ RUSTFLAGS="-Z instrument-coverage" cargo build
+$ RUSTFLAGS="-C instrument-coverage" cargo build
 ```
 
 If `cargo` is not configured to use your `profiler`-enabled version of `rustc`, set the path explicitly via the `RUSTC` environment variable. Here is another example, using a `stage1` build of `rustc` to compile an `example` binary (from the [`json5format`] crate):
 
 ```shell
 $ RUSTC=$HOME/rust/build/x86_64-unknown-linux-gnu/stage1/bin/rustc \
-    RUSTFLAGS="-Z instrument-coverage" \
+    RUSTFLAGS="-C instrument-coverage" \
     cargo build --example formatjson5
 ```
 
-> **Note**: that some compiler options, combined with `-Z instrument-coverage`, can produce LLVM IR and/or linked binaries that are incompatible with LLVM coverage maps. For example, coverage requires references to actual functions in LLVM IR. If any covered function is optimized out, the coverage tools may not be able to process the coverage results. If you need to pass additional options, with coverage enabled, test them early, to confirm you will get the coverage results you expect.
+> **Note**: that some compiler options, combined with `-C instrument-coverage`, can produce LLVM IR and/or linked binaries that are incompatible with LLVM coverage maps. For example, coverage requires references to actual functions in LLVM IR. If any covered function is optimized out, the coverage tools may not be able to process the coverage results. If you need to pass additional options, with coverage enabled, test them early, to confirm you will get the coverage results you expect.
 
 ## Running the instrumented binary to generate raw coverage profiling data
 
@@ -176,7 +170,7 @@ Some of the more notable options in this example include:
 
 > **Note**: Coverage can also be disabled on an individual function by annotating the function with the [`no_coverage` attribute] (which requires the feature flag `#![feature(no_coverage)]`).
 
-[`no_coverage` attribute]: ../language-features/no-coverage.md
+[`no_coverage` attribute]: ../unstable-book/language-features/no-coverage.html
 
 ## Interpreting reports
 
@@ -195,10 +189,10 @@ A typical use case for coverage analysis is test coverage. Rust's source-based c
 
 The following example (using the [`json5format`] crate, for demonstration purposes) show how to generate and analyze coverage results for all tests in a crate.
 
-Since `cargo test` both builds and runs the tests, we set both the additional `RUSTFLAGS`, to add the `-Z instrument-coverage` flag, and `LLVM_PROFILE_FILE`, to set a custom filename for the raw profiling data generated during the test runs. Since there may be more than one test binary, apply `%m` in the filename pattern. This generates unique names for each test binary. (Otherwise, each executed test binary would overwrite the coverage results from the previous binary.)
+Since `cargo test` both builds and runs the tests, we set both the additional `RUSTFLAGS`, to add the `-C instrument-coverage` flag, and `LLVM_PROFILE_FILE`, to set a custom filename for the raw profiling data generated during the test runs. Since there may be more than one test binary, apply `%m` in the filename pattern. This generates unique names for each test binary. (Otherwise, each executed test binary would overwrite the coverage results from the previous binary.)
 
 ```shell
-$ RUSTFLAGS="-Z instrument-coverage" \
+$ RUSTFLAGS="-C instrument-coverage" \
     LLVM_PROFILE_FILE="json5format-%m.profraw" \
     cargo test --tests
 ```
@@ -256,7 +250,7 @@ $ cargo cov -- report \
     $( \
       for file in \
         $( \
-          RUSTFLAGS="-Z instrument-coverage" \
+          RUSTFLAGS="-C instrument-coverage" \
             cargo test --tests --no-run --message-format=json \
               | jq -r "select(.profile.test == true) | .filenames[]" \
               | grep -v dSYM - \
@@ -280,12 +274,12 @@ for each listed test binary.
 The previous examples run `cargo test` with `--tests`, which excludes doc tests.[^79417]
 
 To include doc tests in the coverage results, drop the `--tests` flag, and apply the
-`-Z instrument-coverage` flag, and some doc-test-specific options in the
+`-C instrument-coverage` flag, and some doc-test-specific options in the
 `RUSTDOCFLAGS` environment variable. (The `cargo profdata` command does not change.)
 
 ```bash
-$ RUSTFLAGS="-Z instrument-coverage" \
-  RUSTDOCFLAGS="-Z instrument-coverage -Z unstable-options --persist-doctests target/debug/doctestbins" \
+$ RUSTFLAGS="-C instrument-coverage" \
+  RUSTDOCFLAGS="-C instrument-coverage -Z unstable-options --persist-doctests target/debug/doctestbins" \
   LLVM_PROFILE_FILE="json5format-%m.profraw" \
     cargo test
 $ cargo profdata -- merge \
@@ -300,8 +294,8 @@ $ cargo cov -- report \
     $( \
       for file in \
         $( \
-          RUSTFLAGS="-Z instrument-coverage" \
-          RUSTDOCFLAGS="-Z instrument-coverage -Z unstable-options --persist-doctests target/debug/doctestbins" \
+          RUSTFLAGS="-C instrument-coverage" \
+          RUSTDOCFLAGS="-C instrument-coverage -Z unstable-options --persist-doctests target/debug/doctestbins" \
             cargo test --no-run --message-format=json \
               | jq -r "select(.profile.test == true) | .filenames[]" \
               | grep -v dSYM - \
@@ -331,12 +325,12 @@ $ cargo cov -- report \
     [(#79417)](https://github.com/rust-lang/rust/issues/79417) that doc test coverage
     generates incorrect source line numbers in `llvm-cov show` results.
 
-## `-Z instrument-coverage=<options>`
+## `-C instrument-coverage=<options>`
 
--   `-Z instrument-coverage=all`: Instrument all functions, including unused functions and unused generics. (This is the same as `-Z instrument-coverage`, with no value.)
--   `-Z instrument-coverage=except-unused-generics`: Instrument all functions except unused generics.
--   `-Z instrument-coverage=except-unused-functions`: Instrument only used (called) functions and instantiated generic functions.
--   `-Z instrument-coverage=off`: Do not instrument any functions. (This is the same as simply not including the `-Z instrument-coverage` option.)
+-   `-C instrument-coverage=all`: Instrument all functions, including unused functions and unused generics. (This is the same as `-C instrument-coverage`, with no value.)
+-   `-C instrument-coverage=except-unused-generics`: Instrument all functions except unused generics.
+-   `-C instrument-coverage=except-unused-functions`: Instrument only used (called) functions and instantiated generic functions.
+-   `-C instrument-coverage=off`: Do not instrument any functions. (This is the same as simply not including the `-C instrument-coverage` option.)
 
 ## Other references
 

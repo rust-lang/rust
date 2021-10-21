@@ -3,7 +3,7 @@
 //!
 //! To enable coverage, include the rustc command line option:
 //!
-//!   * `-Z instrument-coverage`
+//!   * `-C instrument-coverage`
 //!
 //! MIR Dump Files, with additional `CoverageGraph` graphviz and `CoverageSpan` spanview
 //! ------------------------------------------------------------------------------------

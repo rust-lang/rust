@@ -1,5 +1,5 @@
 # Check for metadata, variables, declarations, and function definitions injected
-# into LLVM IR when compiling with -Zinstrument-coverage.
+# into LLVM IR when compiling with -Cinstrument-coverage.
 
 WINDOWS:      $__llvm_profile_runtime_user = comdat any
 

@@ -289,7 +289,7 @@ changelog-seen = 2
 #sanitizers = false
 
 # Build the profiler runtime (required when compiling with options that depend
-# on this runtime, such as `-C profile-generate` or `-Z instrument-coverage`).
+# on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 #profiler = false
 
 # Indicates whether the native libraries linked into Cargo will be statically
@@ -671,7 +671,7 @@ changelog-seen = 2
 #sanitizers = build.sanitizers (bool)
 
 # Build the profiler runtime for this target(required when compiling with options that depend
-# on this runtime, such as `-C profile-generate` or `-Z instrument-coverage`).
+# on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 # This option will override the same option under [build] section.
 #profiler = build.profiler (bool)
 

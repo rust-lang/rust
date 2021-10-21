@@ -303,7 +303,7 @@ pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 /// evaluation: `if false { ... }`.
 ///
 /// Those statements are bypassed by redirecting paths in the CFG around the
-/// `dead blocks`; but with `-Z instrument-coverage`, the dead blocks usually
+/// `dead blocks`; but with `-C instrument-coverage`, the dead blocks usually
 /// include `Coverage` statements representing the Rust source code regions to
 /// be counted at runtime. Without these `Coverage` statements, the regions are
 /// lost, and the Rust source code will show no coverage information.
