@@ -59,6 +59,21 @@ declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY]);
 
 impl LateLintPass<'_> for QueryStability {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        // FIXME(rustdoc): This lint uses typecheck results, causing rustdoc to
+        // error if there are resolution failures.
+        //
+        // As internal lints are currently always run if there are `unstable_options`,
+        // they are added to the lint store of rustdoc. Internal lints are also
+        // not used via the `lint_mod` query. Crate lints run outside of a query
+        // so rustdoc currently doesn't disable them.
+        //
+        // Instead of relying on this, either change crate lints to a query disabled by
+        // rustdoc, only run internal lints if the user is explicitly opting in
+        // or figure out a different way to avoid running lints for rustdoc.
+        if cx.tcx.sess.opts.actually_rustdoc {
+            return;
+        }
+
         let (def_id, span) = match expr.kind {
             ExprKind::Path(ref path) if let Some(def_id) = cx.qpath_res(path, expr.hir_id).opt_def_id() => {
                 (def_id, expr.span)
