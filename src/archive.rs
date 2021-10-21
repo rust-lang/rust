@@ -1,7 +1,6 @@
 //! Creation of ar archives like for the lib and staticlib crate type
 
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{self, Read, Seek};
 use std::path::{Path, PathBuf};

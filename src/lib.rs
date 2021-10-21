@@ -71,8 +71,6 @@ mod value_and_place;
 mod vtable;
 
 mod prelude {
-    pub(crate) use std::convert::{TryFrom, TryInto};
-
     pub(crate) use rustc_span::{FileNameDisplayPreference, Span};
 
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
