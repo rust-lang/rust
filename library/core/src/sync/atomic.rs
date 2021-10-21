@@ -1365,7 +1365,7 @@ macro_rules! atomic_int {
         }
 
         #[$stable_from]
-        #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+        #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
         impl const From<$int_type> for $atomic_type {
             #[doc = concat!("Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`.")]
             #[inline]
