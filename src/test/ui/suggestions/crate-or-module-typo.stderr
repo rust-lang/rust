@@ -1,5 +1,23 @@
+error[E0432]: unresolved import `my_cor`
+  --> $DIR/crate-or-module-typo.rs:31:5
+   |
+LL | use my_cor::mem;
+   |     ^^^^^^ use of undeclared crate or module `my_cor`
+
+error[E0432]: unresolved import `my_core`
+  --> $DIR/crate-or-module-typo.rs:33:5
+   |
+LL | use my_core::mem;
+   |     ^^^^^^^ use of undeclared crate or module `my_core`
+
+error[E0432]: unresolved import `aa`
+  --> $DIR/crate-or-module-typo.rs:35:5
+   |
+LL | use aa::bar;
+   |     ^^ use of undeclared crate or module `aa`
+
 error[E0433]: failed to resolve: use of undeclared crate or module `st`
-  --> $DIR/crate-or-module-typo.rs:3:5
+  --> $DIR/crate-or-module-typo.rs:39:5
    |
 LL | use st::cell::Cell;
    |     ^^ use of undeclared crate or module `st`
@@ -9,25 +27,51 @@ help: there is a crate or module with a similar name
 LL | use std::cell::Cell;
    |     ~~~
 
-error[E0432]: unresolved import `bas`
-  --> $DIR/crate-or-module-typo.rs:11:5
+error[E0432]: unresolved import `bb`
+  --> $DIR/crate-or-module-typo.rs:37:5
    |
-LL | use bas::bar;
-   |     ^^^ use of undeclared crate or module `bas`
+LL | use bb::bar;
+   |     ^^ use of undeclared crate or module `bb`
    |
 help: there is a crate or module with a similar name
    |
-LL | use bar::bar;
+LL | use b::bar;
+   |     ~
+
+error[E0432]: unresolved import `fooo`
+  --> $DIR/crate-or-module-typo.rs:41:5
+   |
+LL | use fooo::bar;
+   |     ^^^^ use of undeclared crate or module `fooo`
+   |
+help: there is a crate or module with a similar name
+   |
+LL | use foo::bar;
    |     ~~~
 
-error[E0433]: failed to resolve: use of undeclared crate or module `bar`
-  --> $DIR/crate-or-module-typo.rs:6:20
+error[E0432]: unresolved import `my_cor`
+  --> $DIR/crate-or-module-typo.rs:7:9
    |
-LL |     pub fn bar() { bar::baz(); }
-   |                    ^^^ use of undeclared crate or module `bar`
+LL |     use my_cor::mem;
+   |         ^^^^^^ use of undeclared crate or module `my_cor`
+...
+LL | a!();
+   | ----- in this macro invocation
+   |
+   = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: there is a crate or module with a similar name
+   |
+LL |     use my_core::mem;
+   |         ~~~~~~~
+
+error[E0433]: failed to resolve: use of undeclared crate or module `fooo`
+  --> $DIR/crate-or-module-typo.rs:22:20
+   |
+LL |     pub fn bar() { fooo::baz(); }
+   |                    ^^^^ use of undeclared crate or module `fooo`
 
 error[E0433]: failed to resolve: use of undeclared crate or module `st`
-  --> $DIR/crate-or-module-typo.rs:14:10
+  --> $DIR/crate-or-module-typo.rs:44:10
    |
 LL |     bar: st::cell::Cell<bool>
    |          ^^ use of undeclared crate or module `st`
@@ -37,7 +81,7 @@ help: there is a crate or module with a similar name
 LL |     bar: std::cell::Cell<bool>
    |          ~~~
 
-error: aborting due to 4 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0432, E0433.
 For more information about an error, try `rustc --explain E0432`.

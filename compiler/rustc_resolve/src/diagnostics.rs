@@ -1331,28 +1331,49 @@ impl<'a> Resolver<'a> {
 
     crate fn find_similarly_named_module_or_crate(
         &mut self,
-        ident: Symbol,
-        current_module: &Module<'a>,
+        ns: Namespace,
+        parent_scope: &ParentScope<'a>,
+        ident: Ident,
     ) -> Option<Symbol> {
-        let mut candidates = self
-            .extern_prelude
+        let current_module = parent_scope.module;
+        let candidates = self
+            .resolutions(current_module)
+            .borrow()
             .iter()
-            .map(|(ident, _)| ident.name)
-            .chain(
-                self.module_map
-                    .iter()
-                    .filter(|(_, module)| {
-                        current_module.is_ancestor_of(module) && !ptr::eq(current_module, *module)
-                    })
-                    .map(|(_, module)| module.kind.name())
-                    .flatten(),
-            )
-            .filter(|c| !c.to_string().is_empty())
+            .filter_map(|(key, res)| res.borrow().binding.map(|binding| (key, binding)))
+            .filter(|(_, binding)| {
+                matches!(
+                    binding.res(),
+                    Res::Def(DefKind::Mod, _) | Res::Def(DefKind::ExternCrate, _)
+                )
+            })
+            .map(|(key, binding)| (binding.is_extern_crate(), key.ident))
             .collect::<Vec<_>>();
-        candidates.sort();
-        candidates.dedup();
-        match find_best_match_for_name(&candidates, ident, None) {
-            Some(sugg) if sugg == ident => None,
+
+        let candidates = candidates
+            .iter()
+            .filter_map(|(is_extern_crate, c)| {
+                if *is_extern_crate {
+                    Some(c.name)
+                } else {
+                    let mut ctxt = c.span.ctxt().normalize_to_macros_2_0();
+                    let module = self.resolve_self(&mut ctxt, parent_scope.module);
+                    self.resolve_ident_in_module(
+                        ModuleOrUniformRoot::Module(module),
+                        *c,
+                        ns,
+                        parent_scope,
+                        false,
+                        c.span,
+                    )
+                    .ok()
+                    .map(|_| c.name)
+                }
+            })
+            .collect::<Vec<_>>();
+
+        match find_best_match_for_name(&candidates, ident.name, None) {
+            Some(sugg) if sugg == ident.name => None,
             sugg => sugg,
         }
     }

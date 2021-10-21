@@ -2529,8 +2529,9 @@ impl<'a> Resolver<'a> {
                                     ))
                                 } else {
                                     self.find_similarly_named_module_or_crate(
-                                        ident.name,
-                                        &parent_scope.module,
+                                        ns,
+                                        parent_scope,
+                                        ident,
                                     )
                                     .map(|sugg| {
                                         (
