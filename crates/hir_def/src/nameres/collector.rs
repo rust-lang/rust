@@ -50,9 +50,9 @@ use crate::{
     UnresolvedMacro,
 };
 
-const GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
-const EXPANSION_DEPTH_LIMIT: Limit = Limit::new(128);
-const FIXED_POINT_LIMIT: Limit = Limit::new(8192);
+static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
+static EXPANSION_DEPTH_LIMIT: Limit = Limit::new(128);
+static FIXED_POINT_LIMIT: Limit = Limit::new(8192);
 
 pub(super) fn collect_defs(
     db: &dyn DefDatabase,
@@ -1705,7 +1705,7 @@ impl ModCollector<'_, '_> {
     /// Returns `Err` when some attributes could not be resolved to builtins and have been
     /// registered as unresolved.
     ///
-    /// If `ignore_up_to` is `Some`, attributes precending and including that attribute will be
+    /// If `ignore_up_to` is `Some`, attributes preceding and including that attribute will be
     /// assumed to be resolved already.
     fn resolve_attributes(&mut self, attrs: &Attrs, mod_item: ModItem) -> Result<(), ()> {
         let mut ignore_up_to =

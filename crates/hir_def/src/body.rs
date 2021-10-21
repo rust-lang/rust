@@ -54,10 +54,10 @@ pub struct Expander {
 }
 
 #[cfg(test)]
-const EXPANSION_RECURSION_LIMIT: Limit = Limit::new(32);
+static EXPANSION_RECURSION_LIMIT: Limit = Limit::new(32);
 
 #[cfg(not(test))]
-const EXPANSION_RECURSION_LIMIT: Limit = Limit::new(128);
+static EXPANSION_RECURSION_LIMIT: Limit = Limit::new(128);
 
 impl CfgExpander {
     pub(crate) fn new(

@@ -18,7 +18,7 @@ use crate::{
     ProjectionTyExt, Solution, Substitution, Ty, TyBuilder, TyKind,
 };
 
-const AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(10);
+static AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(10);
 
 pub(crate) enum AutoderefKind {
     Builtin,

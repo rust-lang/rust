@@ -779,6 +779,7 @@ fn attr_macro_as_call_id(
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
 ) -> Result<MacroCallId, UnresolvedMacro> {
     let def: MacroDefId = resolver(item_attr.path.clone())
+        .filter(MacroDefId::is_attribute)
         .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
     let last_segment = item_attr
         .path
