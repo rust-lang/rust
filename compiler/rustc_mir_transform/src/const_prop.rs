@@ -68,11 +68,10 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             return;
         }
 
-        use rustc_middle::hir::map::blocks::FnLikeNode;
         let def_id = body.source.def_id().expect_local();
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
-        let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
+        let is_fn_like = tcx.hir().get(hir_id).fn_kind().is_some();
         let is_assoc_const = tcx.def_kind(def_id.to_def_id()) == DefKind::AssocConst;
 
         // Only run const prop on functions, methods, closures and associated constants

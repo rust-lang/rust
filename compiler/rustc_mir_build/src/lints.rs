@@ -2,7 +2,6 @@ use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
 use rustc_hir::intravisit::FnKind;
-use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::mir::{BasicBlock, Body, Operand, TerminatorKind};
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
@@ -14,8 +13,8 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
-    if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get(hir_id)) {
-        if let FnKind::Closure = fn_like_node.kind() {
+    if let Some(fn_kind) = tcx.hir().get(hir_id).fn_kind() {
+        if let FnKind::Closure = fn_kind {
             // closures can't recur, so they don't matter.
             return;
         }
