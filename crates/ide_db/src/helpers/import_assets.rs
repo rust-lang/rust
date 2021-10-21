@@ -619,6 +619,6 @@ fn path_import_candidate(
     })
 }
 
-pub fn item_as_assoc(db: &RootDatabase, item: ItemInNs) -> Option<AssocItem> {
+fn item_as_assoc(db: &RootDatabase, item: ItemInNs) -> Option<AssocItem> {
     item.as_module_def().and_then(|module_def| module_def.as_assoc_item(db))
 }
