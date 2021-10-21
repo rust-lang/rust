@@ -1216,23 +1216,28 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All`.
     ///
     /// Note: This is packed, use the reveal() method to access it.
-    packed: CopyTaggedPtr<&'tcx List<Predicate<'tcx>>, traits::Reveal, true>,
+    packed: CopyTaggedPtr<&'tcx List<Predicate<'tcx>>, ParamTag, true>,
 }
 
-unsafe impl rustc_data_structures::tagged_ptr::Tag for traits::Reveal {
+#[derive(Copy, Clone)]
+struct ParamTag {
+    reveal: traits::Reveal,
+}
+
+unsafe impl rustc_data_structures::tagged_ptr::Tag for ParamTag {
     const BITS: usize = 1;
     #[inline]
     fn into_usize(self) -> usize {
         match self {
-            traits::Reveal::UserFacing => 0,
-            traits::Reveal::All => 1,
+            Self { reveal: traits::Reveal::UserFacing } => 0,
+            Self { reveal: traits::Reveal::All } => 1,
         }
     }
     #[inline]
     unsafe fn from_usize(ptr: usize) -> Self {
         match ptr {
-            0 => traits::Reveal::UserFacing,
-            1 => traits::Reveal::All,
+            0 => Self { reveal: traits::Reveal::UserFacing },
+            1 => Self { reveal: traits::Reveal::All },
             _ => std::hint::unreachable_unchecked(),
         }
     }
@@ -1282,7 +1287,7 @@ impl<'tcx> ParamEnv<'tcx> {
 
     #[inline]
     pub fn reveal(self) -> traits::Reveal {
-        self.packed.tag()
+        self.packed.tag().reveal
     }
 
     /// Construct a trait environment with no where-clauses in scope
@@ -1300,11 +1305,11 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Construct a trait environment with the given set of predicates.
     #[inline]
     pub fn new(caller_bounds: &'tcx List<Predicate<'tcx>>, reveal: Reveal) -> Self {
-        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, reveal) }
+        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, ParamTag { reveal }) }
     }
 
     pub fn with_user_facing(mut self) -> Self {
-        self.packed.set_tag(Reveal::UserFacing);
+        self.packed.set_tag(ParamTag { reveal: Reveal::UserFacing, ..self.packed.tag() });
         self
     }
 
@@ -1318,7 +1323,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// will be normalized to their underlying types.
     /// See PR #65989 and issue #65918 for more details
     pub fn with_reveal_all_normalized(self, tcx: TyCtxt<'tcx>) -> Self {
-        if self.packed.tag() == traits::Reveal::All {
+        if self.packed.tag().reveal == traits::Reveal::All {
             return self;
         }
 
