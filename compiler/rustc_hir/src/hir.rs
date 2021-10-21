@@ -3246,6 +3246,7 @@ impl<'hir> Node<'hir> {
             | Node::Item(Item { kind: ItemKind::Impl(Impl { constness, .. }), .. }) => *constness,
 
             Node::Item(Item { kind: ItemKind::Const(..), .. })
+            | Node::Item(Item { kind: ItemKind::Static(..), .. })
             | Node::TraitItem(TraitItem { kind: TraitItemKind::Const(..), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Const(..), .. }) => Constness::Const,
 
