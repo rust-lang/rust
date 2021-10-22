@@ -1370,17 +1370,10 @@ crate enum FnRetTy {
     DefaultReturn,
 }
 
-impl GetDefId for FnRetTy {
-    fn def_id(&self) -> Option<DefId> {
-        match *self {
-            Return(ref ty) => ty.def_id(),
-            DefaultReturn => None,
-        }
-    }
-
-    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
-        match *self {
-            Return(ref ty) => ty.def_id_full(cache),
+impl FnRetTy {
+    crate fn as_return(&self) -> Option<&Type> {
+        match self {
+            Return(ret) => Some(ret),
             DefaultReturn => None,
         }
     }
