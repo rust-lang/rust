@@ -1117,8 +1117,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         (result, dep_node)
     }
 
-    /// filter_impls filters candidates that have a positive impl for a negative goal and a
-    /// negative impl for a positive goal
+    /// filter_impls filters constant trait obligations and candidates that have a positive impl
+    /// for a negative goal and a negative impl for a positive goal
     #[instrument(level = "debug", skip(self))]
     fn filter_impls(
         &mut self,
