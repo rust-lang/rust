@@ -1,8 +1,10 @@
 error[E0277]: `NoSync` cannot be shared between threads safely
-  --> $DIR/no_share-enum.rs:14:5
+  --> $DIR/no_share-enum.rs:14:9
    |
 LL |     bar(x);
-   |     ^^^ `NoSync` cannot be shared between threads safely
+   |     --- ^ `NoSync` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: within `Foo`, the trait `Sync` is not implemented for `NoSync`
 note: required because it appears within the type `Foo`

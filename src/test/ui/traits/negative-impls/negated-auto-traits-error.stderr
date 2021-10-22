@@ -49,7 +49,7 @@ LL |     is_send((8, TestType));
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Send` is not implemented for `dummy1c::TestType`
+   = help: within `({integer}, dummy1c::TestType)`, the trait `Send` is not implemented for `dummy1c::TestType`
    = note: required because it appears within the type `({integer}, dummy1c::TestType)`
 note: required by a bound in `is_send`
   --> $DIR/negated-auto-traits-error.rs:16:15
@@ -86,7 +86,7 @@ LL |     is_send(Box::new(Outer2(TestType)));
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Send` is not implemented for `dummy3::TestType`
+   = help: within `Outer2<dummy3::TestType>`, the trait `Send` is not implemented for `dummy3::TestType`
 note: required because it appears within the type `Outer2<dummy3::TestType>`
   --> $DIR/negated-auto-traits-error.rs:12:8
    |

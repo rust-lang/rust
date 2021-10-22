@@ -1,8 +1,8 @@
 error: future cannot be sent between threads safely
-  --> $DIR/issue-71137.rs:20:3
+  --> $DIR/issue-71137.rs:20:14
    |
 LL |   fake_spawn(wrong_mutex());
-   |   ^^^^^^^^^^ future returned by `wrong_mutex` is not `Send`
+   |              ^^^^^^^^^^^^^ future returned by `wrong_mutex` is not `Send`
    |
    = help: within `impl Future`, the trait `Send` is not implemented for `MutexGuard<'_, i32>`
 note: future is not `Send` as this value is used across an await
