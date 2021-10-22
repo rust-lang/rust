@@ -28,7 +28,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
-use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
+use rustc_middle::mir::{dump_mir, traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
@@ -188,12 +188,14 @@ fn run_passes(
     let mut index = 0;
     let mut run_pass = |pass: &dyn MirPass<'tcx>| {
         let run_hooks = |body: &_, index, is_after| {
-            dump_mir::on_mir_pass(
+            let disambiguator = if is_after { "after" } else { "before" };
+            dump_mir(
                 tcx,
-                &format_args!("{:03}-{:03}", phase_index, index),
+                Some(&format_args!("{:03}-{:03}", phase_index, index)),
                 &pass.name(),
+                &disambiguator,
                 body,
-                is_after,
+                |_, _| Ok(()),
             );
         };
         run_hooks(body, index, false);
