@@ -25,7 +25,7 @@ use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
 use crate::cell;
 use crate::char;
-use crate::fmt::{self, Debug, Display};
+use crate::fmt::{self, Debug, Display, Write};
 use crate::mem::transmute;
 use crate::num;
 use crate::str;
@@ -805,5 +805,248 @@ impl dyn Error + Send + Sync {
             // Reapply the `Send + Sync` marker.
             transmute::<Box<dyn Error>, Box<dyn Error + Send + Sync>>(s)
         })
+    }
+}
+
+/// An error reporter that exposes the entire error chain for printing.
+/// It also exposes options for formatting the error chain, either entirely on a single line,
+/// or in multi-line format with each cause in the error chain on a new line.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(error_reporter)]
+///
+/// use std::error::{Error, Report};
+/// use std::fmt;
+///
+/// #[derive(Debug)]
+/// struct SuperError {
+///     side: SuperErrorSideKick,
+/// }
+///
+/// impl fmt::Display for SuperError {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         write!(f, "SuperError is here!")
+///     }
+/// }
+///
+/// impl Error for SuperError {
+///     fn source(&self) -> Option<&(dyn Error + 'static)> {
+///         Some(&self.side)
+///     }
+/// }
+///
+/// #[derive(Debug)]
+/// struct SuperErrorSideKick;
+///
+/// impl fmt::Display for SuperErrorSideKick {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         write!(f, "SuperErrorSideKick is here!")
+///     }
+/// }
+///
+/// impl Error for SuperErrorSideKick {}
+///
+/// fn main() {
+///     let error = SuperError { side: SuperErrorSideKick };
+///     let report = Report::new(&error).pretty();
+///
+///     println!("{}", report);
+/// }
+/// ```
+#[unstable(feature = "error_reporter", issue = "90172")]
+pub struct Report<E> {
+    source: E,
+    show_backtrace: bool,
+    pretty: bool,
+}
+
+impl<E> Report<E>
+where
+    E: Error,
+{
+    /// Create a new `Report` from an input error.
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    pub fn new(source: E) -> Report<E> {
+        Report { source, show_backtrace: false, pretty: false }
+    }
+
+    /// Enable pretty-printing the report.
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    pub fn pretty(mut self) -> Self {
+        self.pretty = true;
+        self
+    }
+
+    /// Enable showing a backtrace for the report.
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    pub fn show_backtrace(mut self) -> Self {
+        self.show_backtrace = true;
+        self
+    }
+
+    /// Format the report as a single line.
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    fn fmt_singleline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.source)?;
+
+        let sources = self.source.source().into_iter().flat_map(<dyn Error>::chain);
+
+        for cause in sources {
+            write!(f, ": {}", cause)?;
+        }
+
+        Ok(())
+    }
+
+    /// Format the report as multiple lines, with each error cause on its own line.
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let error = &self.source;
+
+        write!(f, "{}", error)?;
+
+        if let Some(cause) = error.source() {
+            write!(f, "\n\nCaused by:")?;
+
+            let multiple = cause.source().is_some();
+            let format = if multiple {
+                Format::Numbered { ind: 0 }
+            } else {
+                Format::Uniform { indentation: "    " }
+            };
+
+            for error in cause.chain() {
+                writeln!(f)?;
+
+                let mut indented = Indented { inner: f, needs_indent: true, format };
+
+                write!(indented, "{}", error)?;
+            }
+        }
+
+        if self.show_backtrace {
+            let backtrace = error.backtrace();
+
+            if let Some(backtrace) = backtrace {
+                let mut backtrace = backtrace.to_string();
+
+                write!(f, "\n\n")?;
+                writeln!(f, "Stack backtrace:")?;
+
+                backtrace.truncate(backtrace.trim_end().len());
+
+                write!(f, "{}", backtrace)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[unstable(feature = "error_reporter", issue = "90172")]
+impl<E> From<E> for Report<E>
+where
+    E: Error,
+{
+    fn from(source: E) -> Self {
+        Report::new(source)
+    }
+}
+
+#[unstable(feature = "error_reporter", issue = "90172")]
+impl<E> fmt::Display for Report<E>
+where
+    E: Error,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.pretty { self.fmt_multiline(f) } else { self.fmt_singleline(f) }
+    }
+}
+
+// This type intentionally outputs the same format for `Display` and `Debug`for
+// situations where you unwrap a `Report` or return it from main.
+#[unstable(feature = "error_reporter", issue = "90172")]
+impl<E> fmt::Debug for Report<E>
+where
+    E: Error,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+/// Encapsulates how error sources are indented and formatted.
+struct Indented<'a, D: ?Sized> {
+    inner: &'a mut D,
+    needs_indent: bool,
+    format: Format,
+}
+
+/// The possible variants that error sources can be formatted as.
+#[derive(Clone, Copy)]
+enum Format {
+    /// Insert uniform indentation before every line.
+    ///
+    /// This format takes a static string as input and inserts it after every newline.
+    Uniform {
+        /// The string to insert as indentation.
+        indentation: &'static str,
+    },
+    /// Inserts a number before the first line.
+    ///
+    /// This format hard codes the indentation level to match the indentation from
+    /// `std::backtrace::Backtrace`.
+    Numbered {
+        /// The index to insert before the first line of output.
+        ind: usize,
+    },
+}
+
+impl<D> Write for Indented<'_, D>
+where
+    D: Write + ?Sized,
+{
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for (ind, line) in s.split('\n').enumerate() {
+            if ind > 0 {
+                self.inner.write_char('\n')?;
+                self.needs_indent = true;
+            }
+
+            if self.needs_indent {
+                if line.is_empty() {
+                    continue;
+                }
+
+                self.format.insert_indentation(ind, &mut self.inner)?;
+                self.needs_indent = false;
+            }
+
+            self.inner.write_fmt(format_args!("{}", line))?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Format {
+    /// Write the specified formatting to the write buffer.
+    fn insert_indentation(&mut self, line: usize, f: &mut dyn Write) -> fmt::Result {
+        match self {
+            Format::Uniform { indentation } => {
+                write!(f, "{}", indentation)
+            }
+            Format::Numbered { ind } => {
+                if line == 0 {
+                    write!(f, "{: >4}: ", ind)?;
+                    *ind += 1;
+                    Ok(())
+                } else {
+                    write!(f, "      ")
+                }
+            }
+        }
     }
 }
