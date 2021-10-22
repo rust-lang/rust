@@ -6,8 +6,6 @@ pub fn opts() -> TargetOptions {
     // FIXME: This should be updated for the exception machinery changes from #67502
     // and inherit from `windows_gnu_base`, at least partially.
     let mut late_link_args = LinkArgs::new();
-    let late_link_args_dynamic = LinkArgs::new();
-    let late_link_args_static = LinkArgs::new();
     let mingw_libs = vec![
         //"-lwinstorecompat".to_string(),
         //"-lmingwex".to_string(),
@@ -30,8 +28,6 @@ pub fn opts() -> TargetOptions {
         executables: false,
         limit_rdylib_exports: false,
         late_link_args,
-        late_link_args_dynamic,
-        late_link_args_static,
 
         ..base
     }

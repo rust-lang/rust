@@ -1074,12 +1074,6 @@ pub struct TargetOptions {
     /// user-defined but before post-link objects. Standard platform
     /// libraries that should be always be linked to, usually go here.
     pub late_link_args: LinkArgs,
-    /// Linker arguments used in addition to `late_link_args` if at least one
-    /// Rust dependency is dynamically linked.
-    pub late_link_args_dynamic: LinkArgs,
-    /// Linker arguments used in addition to `late_link_args` if aall Rust
-    /// dependencies are statically linked.
-    pub late_link_args_static: LinkArgs,
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
     pub post_link_args: LinkArgs,
@@ -1413,8 +1407,6 @@ impl Default for TargetOptions {
             post_link_objects_fallback: Default::default(),
             crt_objects_fallback: None,
             late_link_args: LinkArgs::new(),
-            late_link_args_dynamic: LinkArgs::new(),
-            late_link_args_static: LinkArgs::new(),
             link_env: Vec::new(),
             link_env_remove: Vec::new(),
             archive_format: "gnu".to_string(),
@@ -1962,8 +1954,6 @@ impl Target {
         key!(crt_objects_fallback, crt_objects_fallback)?;
         key!(pre_link_args, link_args);
         key!(late_link_args, link_args);
-        key!(late_link_args_dynamic, link_args);
-        key!(late_link_args_static, link_args);
         key!(post_link_args, link_args);
         key!(link_script, optional);
         key!(link_env, env);
@@ -2201,8 +2191,6 @@ impl ToJson for Target {
         target_option_val!(crt_objects_fallback);
         target_option_val!(link_args - pre_link_args);
         target_option_val!(link_args - late_link_args);
-        target_option_val!(link_args - late_link_args_dynamic);
-        target_option_val!(link_args - late_link_args_static);
         target_option_val!(link_args - post_link_args);
         target_option_val!(link_script);
         target_option_val!(env - link_env);

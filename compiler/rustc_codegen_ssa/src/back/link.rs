@@ -1626,26 +1626,7 @@ fn add_user_defined_link_args(cmd: &mut dyn Linker, sess: &Session) {
 
 /// Add arbitrary "late link" args defined by the target spec.
 /// FIXME: Determine where exactly these args need to be inserted.
-fn add_late_link_args(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    flavor: LinkerFlavor,
-    crate_type: CrateType,
-    codegen_results: &CodegenResults,
-) {
-    let any_dynamic_crate = crate_type == CrateType::Dylib
-        || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
-            *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
-        });
-    if any_dynamic_crate {
-        if let Some(args) = sess.target.late_link_args_dynamic.get(&flavor) {
-            cmd.args(args);
-        }
-    } else {
-        if let Some(args) = sess.target.late_link_args_static.get(&flavor) {
-            cmd.args(args);
-        }
-    }
+fn add_late_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     if let Some(args) = sess.target.late_link_args.get(&flavor) {
         cmd.args(args);
     }
@@ -1871,7 +1852,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // FIXME: Built-in target specs occasionally use this for linking system libraries,
     // eliminate all such uses by migrating them to `#[link]` attributes in `lib(std,c,unwind)`
     // and remove the option.
-    add_late_link_args(cmd, sess, flavor, crate_type, codegen_results);
+    add_late_link_args(cmd, sess, flavor);
 
     // ------------ Arbitrary order-independent options ------------
 

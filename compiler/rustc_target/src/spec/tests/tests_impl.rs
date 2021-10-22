@@ -18,13 +18,7 @@ impl Target {
             self.lld_flavor == LldFlavor::Link,
         );
         assert_eq!(self.is_like_msvc, self.lld_flavor == LldFlavor::Link);
-        for args in &[
-            &self.pre_link_args,
-            &self.late_link_args,
-            &self.late_link_args_dynamic,
-            &self.late_link_args_static,
-            &self.post_link_args,
-        ] {
+        for args in &[&self.pre_link_args, &self.late_link_args, &self.post_link_args] {
             assert_eq!(
                 args.get(&LinkerFlavor::Msvc),
                 args.get(&LinkerFlavor::Lld(LldFlavor::Link)),
