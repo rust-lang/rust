@@ -256,6 +256,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
 
+        // The only way to prove a NotImplemented(T: Foo) predicate is via a negative impl.
+        // There are no compiler built-in rules for this.
         if obligation.polarity() == ty::ImplPolarity::Negative {
             self.assemble_candidates_from_impls(obligation, &mut candidates);
         } else {
