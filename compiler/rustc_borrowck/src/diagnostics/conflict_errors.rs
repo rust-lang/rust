@@ -11,7 +11,6 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
-use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -247,6 +246,36 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                         place_name, partially_str, loop_message
                                     ),
                                 );
+                                let sess = self.infcx.tcx.sess;
+                                let ty = used_place.ty(self.body, self.infcx.tcx).ty;
+                                // If we have a `&mut` ref, we need to reborrow.
+                                if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
+                                    // If we are in a loop this will be suggested later.
+                                    if !is_loop_move {
+                                        err.span_suggestion_verbose(
+                                            move_span.shrink_to_lo(),
+                                            &format!(
+                                                "consider creating a fresh reborrow of {} here",
+                                                self.describe_place(moved_place.as_ref())
+                                                    .map(|n| format!("`{}`", n))
+                                                    .unwrap_or_else(
+                                                        || "the mutable reference".to_string()
+                                                    ),
+                                            ),
+                                            "&mut *".to_string(),
+                                            Applicability::MachineApplicable,
+                                        );
+                                    }
+                                } else if let Ok(snippet) =
+                                    sess.source_map().span_to_snippet(move_span)
+                                {
+                                    err.span_suggestion(
+                                        move_span,
+                                        "consider borrowing to avoid moving into the for loop",
+                                        format!("&{}", snippet),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
                             } else {
                                 err.span_label(
                                     fn_call_span,
@@ -313,35 +342,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                         in_pattern = true;
-                    }
-                }
-
-                if let Some(DesugaringKind::ForLoop(_)) = move_span.desugaring_kind() {
-                    let sess = self.infcx.tcx.sess;
-                    let ty = used_place.ty(self.body, self.infcx.tcx).ty;
-                    // If we have a `&mut` ref, we need to reborrow.
-                    if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
-                        // If we are in a loop this will be suggested later.
-                        if !is_loop_move {
-                            err.span_suggestion_verbose(
-                                move_span.shrink_to_lo(),
-                                &format!(
-                                    "consider creating a fresh reborrow of {} here",
-                                    self.describe_place(moved_place.as_ref())
-                                        .map(|n| format!("`{}`", n))
-                                        .unwrap_or_else(|| "the mutable reference".to_string()),
-                                ),
-                                "&mut *".to_string(),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                    } else if let Ok(snippet) = sess.source_map().span_to_snippet(move_span) {
-                        err.span_suggestion(
-                            move_span,
-                            "consider borrowing to avoid moving into the for loop",
-                            format!("&{}", snippet),
-                            Applicability::MaybeIncorrect,
-                        );
                     }
                 }
             }

@@ -83,7 +83,7 @@ pub fn change_iteration_variable_pattern() {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir, typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir, typeck, promoted_mir")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir, typeck")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_iteration_variable_pattern() {
     let mut _x = 0;
@@ -108,7 +108,7 @@ pub fn change_iterable() {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes, promoted_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, promoted_mir, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, promoted_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_iterable() {
     let mut _x = 0;
@@ -183,7 +183,7 @@ pub fn add_loop_label_to_break() {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_loop_label_to_break() {
     let mut _x = 0;
@@ -237,7 +237,7 @@ pub fn add_loop_label_to_continue() {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_loop_label_to_continue() {
     let mut _x = 0;
