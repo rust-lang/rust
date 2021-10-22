@@ -358,11 +358,9 @@ where
 // of data to return. Simply tacking on an extra DEFAULT_BUF_SIZE space every
 // time is 4,500 times (!) slower than a default reservation size of 32 if the
 // reader has a very small amount of data to return.
-//
-// Because we're extending the buffer with uninitialized data for trusted
-// readers, we need to make sure to truncate that if any of this panics.
 pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
-    let initial_len = buf.len(); // need to know so we can return how many bytes we read
+    let start_len = buf.len();
+    let start_cap = buf.capacity();
 
     let mut initialized = 0; // Extra initalized bytes from previous loop iteration
     loop {
@@ -384,7 +382,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
         }
 
         if read_buf.filled_len() == 0 {
-            break;
+            return Ok(buf.len() - start_len) 
         }
 
         // store how much was initialized but not filled
@@ -395,9 +393,27 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
         unsafe {
             buf.set_len(new_len);
         }
-    }
 
-    Ok(buf.len() - initial_len)
+        if buf.len() == buf.capacity() && buf.capacity() == start_cap {
+            // The buffer might be an exact fit. Let's read into a probe buffer
+            // and see if it returns `Ok(0)`. If so, we've avoided an
+            // unnecessary doubling of the capacity. But if not, append the
+            // probe buffer to the primary buffer and let its capacity grow.
+            let mut probe = [0u8; 32];
+
+            loop {
+                match r.read(&mut probe) {
+                    Ok(0) => return Ok(buf.len() - start_len),
+                    Ok(n) => {
+                        buf.extend_from_slice(&probe[..n]);
+                        break;
+                    }
+                    Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+    }
 }
 
 pub(crate) fn default_read_to_string<R: Read + ?Sized>(
