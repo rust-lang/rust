@@ -7,7 +7,10 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::SubregionOrigin;
 
-use rustc_errors::{struct_span_err, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_hir as hir;
+use rustc_hir::Ty;
+use rustc_middle::ty::Region;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when both the concerned regions are anonymous.
@@ -166,6 +169,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         e.span_label(span_2, String::new());
         e.span_label(span, span_label);
 
+        self.suggest_adding_lifetime_params(sub, ty_sup, ty_sub, &mut e);
+
         if let Some(t) = future_return_type {
             let snip = self
                 .tcx()
@@ -178,7 +183,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     (_, "") => None,
                     _ => Some(s),
                 })
-                .unwrap_or("{unnamed_type}".to_string());
+                .unwrap_or_else(|| "{unnamed_type}".to_string());
 
             e.span_label(
                 t.span,
@@ -187,5 +192,54 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         e.emit();
         Some(ErrorReported)
+    }
+
+    fn suggest_adding_lifetime_params(
+        &self,
+        sub: Region<'tcx>,
+        ty_sup: &Ty<'_>,
+        ty_sub: &Ty<'_>,
+        e: &mut DiagnosticBuilder<'_>,
+    ) {
+        if let (
+            hir::Ty { kind: hir::TyKind::Rptr(lifetime_sub, _), .. },
+            hir::Ty { kind: hir::TyKind::Rptr(lifetime_sup, _), .. },
+        ) = (ty_sub, ty_sup)
+        {
+            if lifetime_sub.name.is_elided() && lifetime_sup.name.is_elided() {
+                if let Some(anon_reg) = self.tcx().is_suitable_region(sub) {
+                    let hir_id = self.tcx().hir().local_def_id_to_hir_id(anon_reg.def_id);
+                    if let hir::Node::Item(&hir::Item {
+                        kind: hir::ItemKind::Fn(_, ref generics, ..),
+                        ..
+                    }) = self.tcx().hir().get(hir_id)
+                    {
+                        let add_lifetime_param = match &generics.params {
+                            [] => (generics.span, "<'a>".to_string()),
+                            [first, ..] => (first.span.shrink_to_lo(), "'a, ".to_string()),
+                        };
+
+                        e.multipart_suggestion(
+                            "Explicitly declare a lifetime and assign it to both",
+                            vec![
+                                add_lifetime_param,
+                                if let hir::LifetimeName::Underscore = lifetime_sub.name {
+                                    (lifetime_sub.span, "'a".to_string())
+                                } else {
+                                    (lifetime_sub.span.shrink_to_hi(), "'a ".to_string())
+                                },
+                                if let hir::LifetimeName::Underscore = lifetime_sup.name {
+                                    (lifetime_sup.span, "'a".to_string())
+                                } else {
+                                    (lifetime_sup.span.shrink_to_hi(), "'a ".to_string())
+                                },
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                        e.note("Each elided lifetime in input position becomes a distinct lifetime.");
+                    }
+                }
+            }
+        }
     }
 }
