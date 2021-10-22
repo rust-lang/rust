@@ -61,7 +61,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       # only run in x86_64 machines.
       uname -m >> $hash_key
 
-      docker --version >> $hash_key
+      podman --version >> $hash_key
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
 
@@ -71,7 +71,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       rm -f /tmp/rustci_docker_cache
       set +e
       retry curl -y 30 -Y 10 --connect-timeout 30 -f -L -C - -o /tmp/rustci_docker_cache "$url"
-      loaded_images=$(docker load -i /tmp/rustci_docker_cache | sed 's/.* sha/sha/')
+      loaded_images=$(podman load -i /tmp/rustci_docker_cache | sed 's/.* sha/sha/')
       set -e
       echo "Downloaded containers:\n$loaded_images"
     fi
@@ -83,7 +83,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     else
         context="$script_dir"
     fi
-    retry docker \
+    retry podman \
       build \
       --rm \
       -t rust-ci \
@@ -93,14 +93,14 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     if [ "$CI" != "" ]; then
       s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
       upload="aws s3 cp - $s3url"
-      digest=$(docker inspect rust-ci --format '{{.Id}}')
+      digest=$(podman inspect rust-ci --format '{{.Id}}')
       echo "Built container $digest"
       if ! grep -q "$digest" <(echo "$loaded_images"); then
         echo "Uploading finished image to $url"
         set +e
-        docker history -q rust-ci | \
+        podman history -q rust-ci | \
           grep -v missing | \
-          xargs docker save | \
+          xargs podman save | \
           gzip | \
           $upload
         set -e
@@ -119,7 +119,7 @@ elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
         exit 1
     fi
     # Transform changes the context of disabled Dockerfiles to match the enabled ones
-    tar --transform 's#disabled/#./#' -C $script_dir -c . | docker \
+    tar --transform 's#disabled/#./#' -C $script_dir -c . | podman \
       build \
       --rm \
       -t rust-ci \
@@ -198,8 +198,8 @@ args="$args --privileged"
 # `LOCAL_USER_ID` (recognized in `src/ci/run.sh`) to ensure that files are all
 # read/written as the same user as the bare-metal user.
 if [ -f /.dockerenv ]; then
-  docker create -v /checkout --name checkout alpine:3.4 /bin/true
-  docker cp . checkout:/checkout
+  podman create -v /checkout --name checkout alpine:3.4 /bin/true
+  podman cp . checkout:/checkout
   args="$args --volumes-from checkout"
 else
   args="$args --volume $root_dir:/checkout:ro"
@@ -229,7 +229,7 @@ else
   BASE_COMMIT=""
 fi
 
-docker \
+podman \
   run \
   --workdir /checkout/obj \
   --env SRC=/checkout \
@@ -255,5 +255,5 @@ docker \
 
 if [ -f /.dockerenv ]; then
   rm -rf $objdir
-  docker cp checkout:/checkout/obj $objdir
+  podman cp checkout:/checkout/obj $objdir
 fi
