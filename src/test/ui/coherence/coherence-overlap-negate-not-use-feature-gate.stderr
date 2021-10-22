@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `Foo` for type `&_`
+  --> $DIR/coherence-overlap-negate-not-use-feature-gate.rs:5:1
+   |
+LL | impl<T: DerefMut> Foo for T {}
+   | --------------------------- first implementation here
+LL | impl<U> Foo for &U {}
+   | ^^^^^^^^^^^^^^^^^^ conflicting implementation for `&_`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

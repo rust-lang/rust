@@ -3,6 +3,8 @@
 //
 // Check that if we promise to not impl what would overlap it doesn't actually overlap
 
+#![feature(negative_impls)]
+
 extern crate error_lib as lib;
 use lib::Error;
 

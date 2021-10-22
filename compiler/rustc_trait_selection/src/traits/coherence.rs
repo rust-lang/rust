@@ -233,10 +233,11 @@ fn overlap_within_probe(
                     .unwrap_or(false)
             } else {
                 !selcx.predicate_may_hold_fatal(o)
-                    || o.flip_polarity(tcx)
-                        .as_ref()
-                        .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
-                        .unwrap_or(false)
+                    || tcx.features().negative_impls
+                        && o.flip_polarity(tcx)
+                            .as_ref()
+                            .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
+                            .unwrap_or(false)
             }
         });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
