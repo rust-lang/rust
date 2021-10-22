@@ -10,6 +10,7 @@ use rustc_span::Span;
 use self::newline_style::apply_newline_style;
 use crate::comment::{CharClasses, FullCodeCharKind};
 use crate::config::{Config, FileName, Verbosity};
+use crate::formatting::generated::is_generated_file;
 use crate::issues::BadIssueSeeker;
 use crate::modules::Module;
 use crate::syntux::parser::{DirectoryOwnership, Parser, ParserError};
@@ -18,6 +19,7 @@ use crate::utils::count_newlines;
 use crate::visitor::FmtVisitor;
 use crate::{modules, source_file, ErrorKind, FormatReport, Input, Session};
 
+mod generated;
 mod newline_style;
 
 // A map of the files of a crate, with their new content
@@ -103,7 +105,12 @@ fn format_project<T: FormatHandler>(
     context.parse_session.set_silent_emitter();
 
     for (path, module) in files {
-        let should_ignore = !input_is_stdin && context.ignore_file(&path);
+        let source_file = context.parse_session.span_to_file_contents(module.span);
+        let src = source_file.src.as_ref().expect("SourceFile without src");
+
+        let should_ignore = (!input_is_stdin && context.ignore_file(&path))
+            || (!config.format_generated_files() && is_generated_file(src));
+
         if (config.skip_children() && path != main_file) || should_ignore {
             continue;
         }
