@@ -19,9 +19,7 @@ use std::mem;
 struct Marker(LocalExpnId, Transparency);
 
 impl MutVisitor for Marker {
-    fn token_visiting_enabled(&self) -> bool {
-        true
-    }
+    const VISIT_TOKENS: bool = true;
 
     fn visit_span(&mut self, span: &mut Span) {
         *span = span.apply_mark(self.0.to_expn_id(), self.1)
