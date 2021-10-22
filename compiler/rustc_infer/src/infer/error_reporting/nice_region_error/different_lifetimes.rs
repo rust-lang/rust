@@ -236,7 +236,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             ],
                             Applicability::MaybeIncorrect,
                         );
-                        e.note("Each elided lifetime in input position becomes a distinct lifetime.");
+                        e.note(
+                            "Each elided lifetime in input position becomes a distinct lifetime.",
+                        );
                     }
                 }
             }
