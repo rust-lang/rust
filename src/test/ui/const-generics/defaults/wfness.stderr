@@ -1,0 +1,38 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/wfness.rs:3:33
+   |
+LL | struct Ooopsies<const N: u8 = { u8::MAX + 1 }>;
+   |                                 ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
+
+error[E0277]: the trait bound `(): Trait<2_u8>` is not satisfied
+  --> $DIR/wfness.rs:8:47
+   |
+LL | struct WhereClause<const N: u8 = 2> where (): Trait<N>;
+   |                                               ^^^^^^^^ the trait `Trait<2_u8>` is not implemented for `()`
+   |
+   = help: the following implementations were found:
+             <() as Trait<3_u8>>
+note: required by `WhereClause`
+  --> $DIR/wfness.rs:8:1
+   |
+LL | struct WhereClause<const N: u8 = 2> where (): Trait<N>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `(): Trait<1_u8>` is not satisfied
+  --> $DIR/wfness.rs:16:13
+   |
+LL | fn foo() -> DependentDefaultWfness {
+   |             ^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<1_u8>` is not implemented for `()`
+   |
+   = help: the following implementations were found:
+             <() as Trait<3_u8>>
+note: required by a bound in `WhereClause`
+  --> $DIR/wfness.rs:8:47
+   |
+LL | struct WhereClause<const N: u8 = 2> where (): Trait<N>;
+   |                                               ^^^^^^^^ required by this bound in `WhereClause`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0080, E0277.
+For more information about an error, try `rustc --explain E0080`.
