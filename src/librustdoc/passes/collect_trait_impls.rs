@@ -81,8 +81,8 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     // scan through included items ahead of time to splice in Deref targets to the "valid" sets
     for it in &new_items {
         if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
-            if cleaner.keep_impl(for_)
-                && trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait()
+            if trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait()
+                && cleaner.keep_impl(for_)
             {
                 let target = items
                     .iter()
@@ -221,8 +221,11 @@ impl BadImplStripper {
             true
         } else if let Some(prim) = ty.primitive_type() {
             self.prims.contains(&prim)
-        } else if let Some(did) = ty.def_id_no_primitives() {
-            self.keep_impl_with_def_id(did.into())
+        } else if ty.def_id_no_primitives().is_some() {
+            // We want to keep *ALL* deref implementations in case some of them are used in
+            // the current crate.
+            // FIXME: Try to filter the one actually used...
+            true
         } else {
             false
         }
