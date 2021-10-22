@@ -197,18 +197,18 @@ args="$args --privileged"
 # data directories to share as much data as possible. Note that we also use
 # `LOCAL_USER_ID` (recognized in `src/ci/run.sh`) to ensure that files are all
 # read/written as the same user as the bare-metal user.
-if [ -f /.dockerenv ]; then
+# if [ -f /.dockerenv ]; then
   podman create -v /checkout --name checkout alpine:3.4 /bin/true
   podman cp . checkout:/checkout
   args="$args --volumes-from checkout"
-else
-  args="$args --volume $root_dir:/checkout:ro"
-  args="$args --volume $objdir:/checkout/obj"
-  args="$args --volume $HOME/.cargo:/cargo"
-  args="$args --volume $HOME/rustsrc:$HOME/rustsrc"
-  args="$args --volume /tmp/toolstate:/tmp/toolstate"
-  args="$args --env LOCAL_USER_ID=`id -u`"
-fi
+# else
+#   args="$args --volume $root_dir:/checkout:ro"
+#   args="$args --volume $objdir:/checkout/obj"
+#   args="$args --volume $HOME/.cargo:/cargo"
+#   args="$args --volume $HOME/rustsrc:$HOME/rustsrc"
+#   args="$args --volume /tmp/toolstate:/tmp/toolstate"
+#   args="$args --env LOCAL_USER_ID=`id -u`"
+# fi
 
 if [ "$dev" = "1" ]
 then
