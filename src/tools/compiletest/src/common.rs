@@ -349,6 +349,9 @@ pub struct Config {
     /// The current Rust channel
     pub channel: String,
 
+    /// The default Rust edition
+    pub edition: Option<String>,
+
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
     pub cc: String,
