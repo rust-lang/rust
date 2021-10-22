@@ -38,8 +38,8 @@ use super::map::{map_try_reserve_error, RandomState};
 /// determined by the [`Eq`] trait, changes while it is in the set. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or
 /// unsafe code. The behavior resulting from such a logic error is not
-/// specified, but will not result in undefined behavior. This could include
-/// panics, incorrect results, aborts, memory leaks, and non-termination.
+/// specified (it could include panics, incorrect results, aborts, memory
+/// leaks, or non-termination) but will not be undefined behavior.
 ///
 /// # Examples
 ///
