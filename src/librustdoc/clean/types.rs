@@ -2092,16 +2092,6 @@ crate struct Typedef {
     crate item_type: Option<Type>,
 }
 
-impl GetDefId for Typedef {
-    fn def_id(&self) -> Option<DefId> {
-        self.type_.def_id()
-    }
-
-    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
-        self.type_.def_id_full(cache)
-    }
-}
-
 #[derive(Clone, Debug)]
 crate struct OpaqueTy {
     crate bounds: Vec<GenericBound>,
