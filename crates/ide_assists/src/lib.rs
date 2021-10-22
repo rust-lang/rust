@@ -122,6 +122,7 @@ mod handlers {
     mod destructure_tuple_binding;
     mod expand_glob_import;
     mod extract_function;
+    mod extract_module;
     mod extract_struct_from_enum_variant;
     mod extract_type_alias;
     mod extract_variable;
@@ -275,6 +276,7 @@ mod handlers {
             //
             extract_variable::extract_variable,
             extract_function::extract_function,
+            extract_module::extract_module,
             //
             generate_getter::generate_getter,
             generate_getter::generate_getter_mut,

@@ -140,7 +140,7 @@ fn process_usage(
     None
 }
 
-fn range_to_remove(node: &SyntaxNode) -> TextRange {
+pub(crate) fn range_to_remove(node: &SyntaxNode) -> TextRange {
     let up_to_comma = next_prev().find_map(|dir| {
         node.siblings_with_tokens(dir)
             .filter_map(|it| it.into_token())
