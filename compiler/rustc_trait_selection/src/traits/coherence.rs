@@ -185,7 +185,27 @@ fn overlap_within_probe(
 
     debug!("overlap: unification check succeeded");
 
-    // Are any of the obligations unsatisfiable? If so, no overlap.
+    // There's no overlap if obligations are unsatisfiable or if the obligation negated is
+    // satisfied.
+    //
+    // For example, given these two impl headers:
+    //
+    // `impl<'a> From<&'a str> for Box<dyn Error>`
+    // `impl<E> From<E> for Box<dyn Error> where E: Error`
+    //
+    // So we have:
+    //
+    // `Box<dyn Error>: From<&'?a str>`
+    // `Box<dyn Error>: From<?E>`
+    //
+    // After equating the two headers:
+    //
+    // `Box<dyn Error> = Box<dyn Error>`
+    // So, `?E = &'?a str` and then given the where clause `&'?a str: Error`.
+    //
+    // If the obligation `&'?a str: Error` holds, it means that there's overlap. If that doesn't
+    // hold we need to check if `&'?a str: !Error` holds, if doesn't hold there's overlap because
+    // at some point an impl for `&'?a str: Error` could be added.
     let infcx = selcx.infcx();
     let tcx = infcx.tcx;
     let opt_failing_obligation = a_impl_header
