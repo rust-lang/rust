@@ -1,5 +1,5 @@
 use crate::simd::intrinsics;
-use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 
 /// Constructs a new vector by selecting values from the lanes of the source vector or vectors to use.
 ///
@@ -12,7 +12,8 @@ use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 /// ## One source vector
 /// ```
 /// # #![feature(portable_simd)]
-/// # use core_simd::{Simd, simd_swizzle};
+/// # #[cfg(feature = "std")] use core_simd::{Simd, simd_swizzle};
+/// # #[cfg(not(feature = "std"))] use core::simd::{Simd, simd_swizzle};
 /// let v = Simd::<f32, 4>::from_array([0., 1., 2., 3.]);
 ///
 /// // Keeping the same size
@@ -27,7 +28,8 @@ use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 /// ## Two source vectors
 /// ```
 /// # #![feature(portable_simd)]
-/// # use core_simd::{Simd, simd_swizzle, Which};
+/// # #[cfg(feature = "std")] use core_simd::{Simd, simd_swizzle, Which};
+/// # #[cfg(not(feature = "std"))] use core::simd::{Simd, simd_swizzle, Which};
 /// use Which::*;
 /// let a = Simd::<f32, 4>::from_array([0., 1., 2., 3.]);
 /// let b = Simd::<f32, 4>::from_array([4., 5., 6., 7.]);
@@ -40,11 +42,11 @@ use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 /// let r = simd_swizzle!(a, b, [First(0), Second(0)]);
 /// assert_eq!(r.to_array(), [0., 4.]);
 /// ```
-#[macro_export]
-macro_rules! simd_swizzle {
-    {
+#[allow(unused_macros)]
+pub macro simd_swizzle {
+    (
         $vector:expr, $index:expr $(,)?
-    } => {
+    ) => {
         {
             use $crate::simd::Swizzle;
             struct Impl;
@@ -53,10 +55,10 @@ macro_rules! simd_swizzle {
             }
             Impl::swizzle($vector)
         }
-    };
-    {
+    },
+    (
         $first:expr, $second:expr, $index:expr $(,)?
-    } => {
+    ) => {
         {
             use $crate::simd::{Which, Swizzle2};
             struct Impl;
@@ -262,7 +264,8 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// # use core_simd::Simd;
+    /// # #[cfg(feature = "std")] use core_simd::Simd;
+    /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
     /// let a = Simd::from_array([0, 1, 2, 3]);
     /// let b = Simd::from_array([4, 5, 6, 7]);
     /// let (x, y) = a.interleave(b);
@@ -324,7 +327,8 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// # use core_simd::Simd;
+    /// # #[cfg(feature = "std")] use core_simd::Simd;
+    /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
     /// let a = Simd::from_array([0, 4, 1, 5]);
     /// let b = Simd::from_array([2, 6, 3, 7]);
     /// let (x, y) = a.deinterleave(b);

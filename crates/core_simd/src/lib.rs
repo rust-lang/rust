@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(
     const_fn_trait_bound,
-    const_panic,
+    decl_macro,
     platform_intrinsics,
     repr_simd,
     simd_ffi,
