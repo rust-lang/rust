@@ -857,7 +857,7 @@ impl dyn Error + Send + Sync {
 /// ```
 #[unstable(feature = "error_reporter", issue = "90172")]
 pub struct Report<E> {
-    source: E,
+    error: E,
     show_backtrace: bool,
     pretty: bool,
 }
@@ -868,8 +868,8 @@ where
 {
     /// Create a new `Report` from an input error.
     #[unstable(feature = "error_reporter", issue = "90172")]
-    pub fn new(source: E) -> Report<E> {
-        Report { source, show_backtrace: false, pretty: false }
+    pub fn new(error: E) -> Report<E> {
+        Report { error, show_backtrace: false, pretty: false }
     }
 
     /// Enable pretty-printing the report.
@@ -889,9 +889,9 @@ where
     /// Format the report as a single line.
     #[unstable(feature = "error_reporter", issue = "90172")]
     fn fmt_singleline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.source)?;
+        write!(f, "{}", self.error)?;
 
-        let sources = self.source.source().into_iter().flat_map(<dyn Error>::chain);
+        let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
 
         for cause in sources {
             write!(f, ": {}", cause)?;
@@ -903,7 +903,7 @@ where
     /// Format the report as multiple lines, with each error cause on its own line.
     #[unstable(feature = "error_reporter", issue = "90172")]
     fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let error = &self.source;
+        let error = &self.error;
 
         write!(f, "{}", error)?;
 
@@ -950,8 +950,8 @@ impl<E> From<E> for Report<E>
 where
     E: Error,
 {
-    fn from(source: E) -> Self {
-        Report::new(source)
+    fn from(error: E) -> Self {
+        Report::new(error)
     }
 }
 
