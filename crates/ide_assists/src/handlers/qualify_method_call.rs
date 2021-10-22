@@ -12,7 +12,7 @@ use crate::{
 
 // Assist: qualify_method_call
 //
-// If the name is resolvable, provides fully qualified path for it.
+// Replaces the method call with a qualified function call.
 //
 // ```
 // struct Foo;
@@ -36,8 +36,10 @@ use crate::{
 // }
 // ```
 pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
-    let fn_name = &call.name_ref()?;
+    let name: ast::NameRef = ctx.find_node_at_offset()?;
+    let call = name.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
+
+    let ident = name.ident_token()?;
 
     let range = call.syntax().text_range();
     let resolved_call = ctx.sema.resolve_method_call(&call)?;
@@ -52,7 +54,7 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Opt
 
     acc.add(
         AssistId("qualify_method_call", AssistKind::RefactorInline),
-        format!("Qualify call `{}`", fn_name),
+        format!("Qualify `{}` method call", ident.text()),
         range,
         |builder| {
             qualify_candidate.qualify(
@@ -68,7 +70,7 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Opt
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     #[test]
     fn struct_method() {
@@ -479,6 +481,49 @@ use test_mod::*;
 fn main() {
     let test_struct = TestStruct {};
     TestTrait::test_method::<()>(&test_struct)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn struct_method_over_stuct_instance() {
+        check_assist_not_applicable(
+            qualify_method_call,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+
+fn main() {
+    let foo = Foo {};
+    f$0oo.foo()
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn trait_method_over_stuct_instance() {
+        check_assist_not_applicable(
+            qualify_method_call,
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method(&self) {}
+    }
+}
+
+use test_mod::*;
+
+fn main() {
+    let test_struct = test_mod::TestStruct {};
+    tes$0t_struct.test_method()
 }
 "#,
         );

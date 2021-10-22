@@ -171,8 +171,7 @@ impl QualifyCandidate<'_> {
         let trait_method_name = mcall_expr.name_ref()?;
         let trait_ = item_as_trait(db, item)?;
         let method = find_trait_method(db, trait_, &trait_method_name)?;
-        Self::qualify_fn_call(db, mcall_expr, replacer, import, &method);
-        Some(())
+        Self::qualify_fn_call(db, mcall_expr, replacer, import, &method)
     }
 }
 
