@@ -598,9 +598,7 @@ fn document_full_inner(
     };
 
     if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
-        if let Some(def_id) = item.def_id.as_def_id() {
-            render_call_locations(w, cx, def_id, item);
-        }
+        render_call_locations(w, cx, item);
     }
 }
 
@@ -2463,8 +2461,9 @@ const MAX_FULL_EXAMPLES: usize = 5;
 const NUM_VISIBLE_LINES: usize = 10;
 
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
-fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, def_id: DefId, item: &clean::Item) {
+fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
     let tcx = cx.tcx();
+    let def_id = item.def_id.expect_def_id();
     let key = tcx.def_path_hash(def_id);
     let call_locations = match cx.shared.call_locations.get(&key) {
         Some(call_locations) => call_locations,
