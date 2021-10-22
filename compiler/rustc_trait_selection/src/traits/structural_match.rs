@@ -17,6 +17,7 @@ pub enum NonStructuralMatchTy<'tcx> {
     Dynamic,
     Foreign,
     Opaque,
+    Closure,
     Generator,
     Projection,
 }
@@ -154,6 +155,9 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             ty::Projection(..) => {
                 return ControlFlow::Break(NonStructuralMatchTy::Projection);
             }
+            ty::Closure(..) => {
+                return ControlFlow::Break(NonStructuralMatchTy::Closure);
+            }
             ty::Generator(..) | ty::GeneratorWitness(..) => {
                 return ControlFlow::Break(NonStructuralMatchTy::Generator);
             }
@@ -197,7 +201,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 // First check all contained types and then tell the caller to continue searching.
                 return ty.super_visit_with(self);
             }
-            ty::Closure(..) | ty::Infer(_) | ty::Placeholder(_) | ty::Bound(..) => {
+            ty::Infer(_) | ty::Placeholder(_) | ty::Bound(..) => {
                 bug!("unexpected type during structural-match checking: {:?}", ty);
             }
             ty::Error(_) => {
