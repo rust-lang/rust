@@ -320,6 +320,7 @@
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(pin_static_ref)]
+#![cfg_attr(not(bootstrap), feature(portable_simd))]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(rustc_attrs)]
@@ -472,6 +473,9 @@ pub use core::pin;
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
+#[unstable(feature = "portable_simd", issue = "86656")]
+#[cfg(not(bootstrap))]
+pub use core::simd;
 #[unstable(feature = "async_stream", issue = "79024")]
 pub use core::stream;
 #[stable(feature = "i128", since = "1.26.0")]
