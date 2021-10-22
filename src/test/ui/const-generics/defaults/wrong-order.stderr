@@ -4,5 +4,11 @@ error: generic parameters with a default must be trailing
 LL | struct A<T = u32, const N: usize> {
    |          ^
 
-error: aborting due to previous error
+error: generic parameters with a default must be trailing
+  --> $DIR/wrong-order.rs:8:18
+   |
+LL | struct Foo<const N: u8 = 3, T>(T);
+   |                  ^
+
+error: aborting due to 2 previous errors
 
