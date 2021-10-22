@@ -14,9 +14,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
-use crate::clean::{
-    self, utils, Attributes, AttributesExt, GetDefId, ItemId, NestedAttributesExt, Type,
-};
+use crate::clean::{self, utils, Attributes, AttributesExt, ItemId, NestedAttributesExt, Type};
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 

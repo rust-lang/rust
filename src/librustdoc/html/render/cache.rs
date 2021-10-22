@@ -6,9 +6,7 @@ use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{
-    FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
-};
+use crate::clean::types::{FnDecl, FnRetTy, GenericBound, Generics, Type, WherePredicate};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;

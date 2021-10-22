@@ -2,7 +2,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::middle::privacy::AccessLevels;
 use std::mem;
 
-use crate::clean::{self, GetDefId, Item, ItemIdSet};
+use crate::clean::{self, Item, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
 
 crate struct Stripper<'a> {

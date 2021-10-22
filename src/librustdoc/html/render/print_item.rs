@@ -21,7 +21,7 @@ use super::{
     render_impl, render_stability_since_raw, write_srclink, AssocItemLink, Context,
     ImplRenderingParameters,
 };
-use crate::clean::{self, GetDefId};
+use crate::clean::{self};
 use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;

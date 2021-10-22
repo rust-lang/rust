@@ -1451,24 +1451,6 @@ crate enum Type {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Type, 72);
 
-crate trait GetDefId {
-    /// Use this method to get the [`DefId`] of a [`clean`] AST node.
-    /// This will return [`None`] when called on a primitive [`clean::Type`].
-    /// Use [`Self::def_id_full`] if you want to include primitives.
-    ///
-    /// [`clean`]: crate::clean
-    /// [`clean::Type`]: crate::clean::Type
-    // FIXME: get rid of this function and always use `def_id_full`
-    fn def_id(&self) -> Option<DefId>;
-
-    /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
-    ///
-    /// See [`Self::def_id`] for more.
-    ///
-    /// [clean]: crate::clean
-    fn def_id_full(&self, cache: &Cache) -> Option<DefId>;
-}
-
 impl Type {
     crate fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
@@ -1549,14 +1531,24 @@ impl Type {
         };
         cache.and_then(|c| Primitive(t).def_id_full(c))
     }
-}
 
-impl GetDefId for Type {
-    fn def_id(&self) -> Option<DefId> {
+    /// Use this method to get the [`DefId`] of a [`clean`] AST node.
+    /// This will return [`None`] when called on a primitive [`clean::Type`].
+    /// Use [`Self::def_id_full`] if you want to include primitives.
+    ///
+    /// [`clean`]: crate::clean
+    /// [`clean::Type`]: crate::clean::Type
+    // FIXME: get rid of this function and always use `def_id_full`
+    crate fn def_id(&self) -> Option<DefId> {
         self.inner_def_id(None)
     }
 
-    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+    /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
+    ///
+    /// See [`Self::def_id`] for more.
+    ///
+    /// [clean]: crate::clean
+    crate fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
         self.inner_def_id(Some(cache))
     }
 }
