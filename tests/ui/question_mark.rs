@@ -2,9 +2,6 @@
 #![allow(unreachable_code)]
 #![allow(clippy::unnecessary_wraps)]
 
-use std::env;
-use std::path::PathBuf;
-
 fn some_func(a: Option<u32>) -> Option<u32> {
     if a.is_none() {
         return None;
@@ -137,11 +134,11 @@ fn func() -> Option<i32> {
     Some(0)
 }
 
-fn func_returning_result() -> Result<i32, String> {
+fn func_returning_result() -> Result<i32, i32> {
     Ok(1)
 }
 
-fn result_func(x: Result<i32, String>) -> Result<i32, String> {
+fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     let _ = if let Ok(x) = x { x } else { return x };
 
     if x.is_err() {
@@ -152,7 +149,7 @@ fn result_func(x: Result<i32, String>) -> Result<i32, String> {
     let y = if let Ok(x) = x {
         x
     } else {
-        return Err("some error".to_string());
+        return Err(0);
     };
 
     // issue #7859
@@ -160,9 +157,10 @@ fn result_func(x: Result<i32, String>) -> Result<i32, String> {
     let _ = if let Ok(x) = func_returning_result() {
         x
     } else {
-        return Err("some error".to_string());
+        return Err(0);
     };
 
+    // no warning
     if func_returning_result().is_err() {
         return func_returning_result();
     }
