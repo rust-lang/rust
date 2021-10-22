@@ -15,6 +15,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
+use rustc_middle::hir::place::{Place, PlaceBase};
 use rustc_middle::middle::region::{self, YieldData};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -222,30 +223,37 @@ pub fn resolve_interior<'a, 'tcx>(
 ) {
     let body = fcx.tcx.hir().body(body_id);
 
-    let mut drop_range_visitor = DropRangeVisitor::default();
+    let mut visitor = {
+        let mut drop_range_visitor = DropRangeVisitor {
+            consumed_places: <_>::default(),
+            borrowed_places: <_>::default(),
+            drop_ranges: vec![<_>::default()],
+            expr_count: 0,
+        };
 
-    // Run ExprUseVisitor to find where values are consumed.
-    ExprUseVisitor::new(
-        &mut drop_range_visitor,
-        &fcx.infcx,
-        def_id.expect_local(),
-        fcx.param_env,
-        &fcx.typeck_results.borrow(),
-    )
-    .consume_body(body);
-    intravisit::walk_body(&mut drop_range_visitor, body);
+        // Run ExprUseVisitor to find where values are consumed.
+        ExprUseVisitor::new(
+            &mut drop_range_visitor,
+            &fcx.infcx,
+            def_id.expect_local(),
+            fcx.param_env,
+            &fcx.typeck_results.borrow(),
+        )
+        .consume_body(body);
+        intravisit::walk_body(&mut drop_range_visitor, body);
 
-    let mut visitor = InteriorVisitor {
-        fcx,
-        types: FxIndexSet::default(),
-        region_scope_tree: fcx.tcx.region_scope_tree(def_id),
-        expr_count: 0,
-        kind,
-        prev_unresolved_span: None,
-        guard_bindings: <_>::default(),
-        guard_bindings_set: <_>::default(),
-        linted_values: <_>::default(),
-        drop_ranges: drop_range_visitor.drop_ranges,
+        InteriorVisitor {
+            fcx,
+            types: FxIndexSet::default(),
+            region_scope_tree: fcx.tcx.region_scope_tree(def_id),
+            expr_count: 0,
+            kind,
+            prev_unresolved_span: None,
+            guard_bindings: <_>::default(),
+            guard_bindings_set: <_>::default(),
+            linted_values: <_>::default(),
+            drop_ranges: drop_range_visitor.drop_ranges.pop().unwrap(),
+        }
     };
     intravisit::walk_body(&mut visitor, body);
 
@@ -656,17 +664,37 @@ fn check_must_not_suspend_def(
 }
 
 /// This struct facilitates computing the ranges for which a place is uninitialized.
-#[derive(Default)]
 struct DropRangeVisitor {
     consumed_places: HirIdSet,
-    drop_ranges: HirIdMap<DropRange>,
+    borrowed_places: HirIdSet,
+    drop_ranges: Vec<HirIdMap<DropRange>>,
     expr_count: usize,
 }
 
 impl DropRangeVisitor {
     fn record_drop(&mut self, hir_id: HirId) {
-        debug!("marking {:?} as dropped at {}", hir_id, self.expr_count);
-        self.drop_ranges.insert(hir_id, DropRange { dropped_at: self.expr_count });
+        let drop_ranges = self.drop_ranges.last_mut().unwrap();
+        if self.borrowed_places.contains(&hir_id) {
+            debug!("not marking {:?} as dropped because it is borrowed at some point", hir_id);
+        } else if self.consumed_places.contains(&hir_id) {
+            debug!("marking {:?} as dropped at {}", hir_id, self.expr_count);
+            drop_ranges.insert(hir_id, DropRange { dropped_at: self.expr_count });
+        }
+    }
+
+    fn push_drop_scope(&mut self) {
+        self.drop_ranges.push(<_>::default());
+    }
+
+    fn pop_and_merge_drop_scope(&mut self) {
+        let mut old_last = self.drop_ranges.pop().unwrap();
+        let drop_ranges = self.drop_ranges.last_mut().unwrap();
+        for (k, v) in old_last.drain() {
+            match drop_ranges.get(&k).cloned() {
+                Some(v2) => drop_ranges.insert(k, v.intersect(&v2)),
+                None => drop_ranges.insert(k, v),
+            };
+        }
     }
 
     /// ExprUseVisitor's consume callback doesn't go deep enough for our purposes in all
@@ -685,6 +713,14 @@ impl DropRangeVisitor {
     }
 }
 
+fn place_hir_id(place: &Place<'_>) -> Option<HirId> {
+    match place.base {
+        PlaceBase::Rvalue | PlaceBase::StaticItem => None,
+        PlaceBase::Local(hir_id)
+        | PlaceBase::Upvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id }, .. }) => Some(hir_id),
+    }
+}
+
 impl<'tcx> expr_use_visitor::Delegate<'tcx> for DropRangeVisitor {
     fn consume(
         &mut self,
@@ -693,14 +729,16 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for DropRangeVisitor {
     ) {
         debug!("consume {:?}; diag_expr_id={:?}", place_with_id, diag_expr_id);
         self.consumed_places.insert(place_with_id.hir_id);
+        place_hir_id(&place_with_id.place).map(|place| self.consumed_places.insert(place));
     }
 
     fn borrow(
         &mut self,
-        _place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
+        place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
         _diag_expr_id: hir::HirId,
         _bk: rustc_middle::ty::BorrowKind,
     ) {
+        place_hir_id(&place_with_id.place).map(|place| self.borrowed_places.insert(place));
     }
 
     fn mutate(
@@ -726,17 +764,44 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor {
         NestedVisitorMap::None
     }
 
-    fn visit_expr(&mut self, expr: &Expr<'_>) {
-        intravisit::walk_expr(self, expr);
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        match expr.kind {
+            ExprKind::AssignOp(_, lhs, rhs) => {
+                // These operations are weird because their order of evaluation depends on whether
+                // the operator is overloaded. In a perfect world, we'd just ask the type checker
+                // whether this is a method call, but we also need to match the expression IDs
+                // from RegionResolutionVisitor. RegionResolutionVisitor doesn't know the order,
+                // so it runs both orders and picks the most conservative. We'll mirror that here.
+                let mut old_count = self.expr_count;
+                intravisit::walk_expr(self, lhs);
+                intravisit::walk_expr(self, rhs);
+
+                self.push_drop_scope();
+                std::mem::swap(&mut old_count, &mut self.expr_count);
+                intravisit::walk_expr(self, rhs);
+                intravisit::walk_expr(self, lhs);
+
+                // We should have visited the same number of expressions in either order.
+                assert_eq!(old_count, self.expr_count);
+
+                self.pop_and_merge_drop_scope();
+            }
+            _ => intravisit::walk_expr(self, expr),
+        }
 
         self.expr_count += 1;
+        self.consume_expr(expr);
+    }
 
-        if self.consumed_places.contains(&expr.hir_id) {
-            self.consume_expr(expr);
-        }
+    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
+        intravisit::walk_pat(self, pat);
+
+        // Increment expr_count here to match what InteriorVisitor expects.
+        self.expr_count += 1;
     }
 }
 
+#[derive(Clone)]
 struct DropRange {
     /// The post-order id of the point where this expression is dropped.
     ///
@@ -745,7 +810,11 @@ struct DropRange {
 }
 
 impl DropRange {
+    fn intersect(&self, other: &Self) -> Self {
+        Self { dropped_at: self.dropped_at.max(other.dropped_at) }
+    }
+
     fn contains(&self, id: usize) -> bool {
-        id >= self.dropped_at
+        id > self.dropped_at
     }
 }
