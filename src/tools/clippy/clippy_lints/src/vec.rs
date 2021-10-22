@@ -63,13 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
             if is_copy(cx, vec_type(cx.typeck_results().expr_ty_adjusted(arg)));
             then {
                 // report the error around the `vec!` not inside `<std macros>:`
-                let span = arg.span
-                    .ctxt()
-                    .outer_expn_data()
-                    .call_site
-                    .ctxt()
-                    .outer_expn_data()
-                    .call_site;
+                let span = arg.span.ctxt().outer_expn_data().call_site;
                 self.check_vec_macro(cx, &vec_args, Mutability::Not, span);
             }
         }

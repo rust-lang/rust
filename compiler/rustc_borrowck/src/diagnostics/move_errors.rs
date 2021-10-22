@@ -5,11 +5,10 @@ use rustc_middle::ty;
 use rustc_mir_dataflow::move_paths::{
     IllegalMoveOrigin, IllegalMoveOriginKind, LookupResult, MoveError, MovePathIndex,
 };
-use rustc_span::source_map::DesugaringKind;
 use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
 
-use crate::diagnostics::UseSpans;
+use crate::diagnostics::{FnSelfUseKind, UseSpans};
 use crate::prefixes::PrefixSet;
 use crate::MirBorrowckCtxt;
 
@@ -400,19 +399,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             | ty::Opaque(def_id, _) => def_id,
             _ => return err,
         };
-        let is_option = self.infcx.tcx.is_diagnostic_item(sym::Option, def_id);
-        let is_result = self.infcx.tcx.is_diagnostic_item(sym::Result, def_id);
-        if (is_option || is_result) && use_spans.map_or(true, |v| !v.for_closure()) {
+        let diag_name = self.infcx.tcx.get_diagnostic_name(def_id);
+        if matches!(diag_name, Some(sym::Option | sym::Result))
+            && use_spans.map_or(true, |v| !v.for_closure())
+        {
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
-                &format!(
-                    "consider borrowing the `{}`'s content",
-                    if is_option { "Option" } else { "Result" }
-                ),
+                &format!("consider borrowing the `{}`'s content", diag_name.unwrap()),
                 ".as_ref()".to_string(),
                 Applicability::MaybeIncorrect,
             );
-        } else if matches!(span.desugaring_kind(), Some(DesugaringKind::ForLoop(_))) {
+        } else if let Some(UseSpans::FnSelfUse {
+            kind: FnSelfUseKind::Normal { implicit_into_iter: true, .. },
+            ..
+        }) = use_spans
+        {
             let suggest = match self.infcx.tcx.get_diagnostic_item(sym::IntoIterator) {
                 Some(def_id) => self.infcx.tcx.infer_ctxt().enter(|infcx| {
                     type_known_to_meet_bound_modulo_regions(

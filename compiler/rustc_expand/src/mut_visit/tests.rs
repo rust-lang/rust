@@ -15,9 +15,8 @@ fn print_crate_items(krate: &ast::Crate) -> String {
 struct ToZzIdentMutVisitor;
 
 impl MutVisitor for ToZzIdentMutVisitor {
-    fn token_visiting_enabled(&self) -> bool {
-        true
-    }
+    const VISIT_TOKENS: bool = true;
+
     fn visit_ident(&mut self, ident: &mut Ident) {
         *ident = Ident::from_str("zz");
     }

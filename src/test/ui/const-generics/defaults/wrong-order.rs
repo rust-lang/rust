@@ -5,4 +5,7 @@ struct A<T = u32, const N: usize> {
     arg: T,
 }
 
+struct Foo<const N: u8 = 3, T>(T);
+//~^ error: generic parameters with a default must be trailing
+
 fn main() {}

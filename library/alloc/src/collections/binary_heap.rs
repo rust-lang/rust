@@ -162,9 +162,9 @@ use super::SpecExtend;
 /// item's ordering relative to any other item, as determined by the [`Ord`]
 /// trait, changes while it is in the heap. This is normally only possible
 /// through [`Cell`], [`RefCell`], global state, I/O, or unsafe code. The
-/// behavior resulting from such a logic error is not specified, but will
-/// not result in undefined behavior. This could include panics, incorrect
-/// results, aborts, memory leaks, and non-termination.
+/// behavior resulting from such a logic error is not specified (it
+/// could include panics, incorrect results, aborts, memory leaks, or
+/// non-termination) but will not be undefined behavior.
 ///
 /// # Examples
 ///

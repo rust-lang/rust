@@ -279,9 +279,9 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Macro) {
             // MACROS 2.0 ITEM
             self.parse_item_decl_macro(lo)?
-        } else if self.is_macro_rules_item() {
+        } else if let IsMacroRulesItem::Yes { has_bang } = self.is_macro_rules_item() {
             // MACRO_RULES ITEM
-            self.parse_item_macro_rules(vis)?
+            self.parse_item_macro_rules(vis, has_bang)?
         } else if vis.kind.is_pub() && self.isnt_macro_invocation() {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
@@ -300,7 +300,7 @@ impl<'a> Parser<'a> {
         || self.is_kw_followed_by_ident(kw::Union) // no: `union::b`, yes: `union U { .. }`
         || self.check_auto_or_unsafe_trait_item() // no: `auto::b`, yes: `auto trait X { .. }`
         || self.is_async_fn() // no(2015): `async::b`, yes: `async fn`
-        || self.is_macro_rules_item() // no: `macro_rules::b`, yes: `macro_rules! mac`
+        || matches!(self.is_macro_rules_item(), IsMacroRulesItem::Yes{..}) // no: `macro_rules::b`, yes: `macro_rules! mac`
     }
 
     /// Are we sure this could not possibly be a macro invocation?
@@ -1534,18 +1534,43 @@ impl<'a> Parser<'a> {
         Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, macro_rules: false })))
     }
 
-    /// Is this unambiguously the start of a `macro_rules! foo` item definition?
-    fn is_macro_rules_item(&mut self) -> bool {
-        self.check_keyword(kw::MacroRules)
-            && self.look_ahead(1, |t| *t == token::Not)
-            && self.look_ahead(2, |t| t.is_ident())
+    /// Is this a possibly malformed start of a `macro_rules! foo` item definition?
+
+    fn is_macro_rules_item(&mut self) -> IsMacroRulesItem {
+        if self.check_keyword(kw::MacroRules) {
+            let macro_rules_span = self.token.span;
+
+            if self.look_ahead(1, |t| *t == token::Not) && self.look_ahead(2, |t| t.is_ident()) {
+                return IsMacroRulesItem::Yes { has_bang: true };
+            } else if self.look_ahead(1, |t| (t.is_ident())) {
+                // macro_rules foo
+                self.struct_span_err(macro_rules_span, "expected `!` after `macro_rules`")
+                    .span_suggestion(
+                        macro_rules_span,
+                        "add a `!`",
+                        "macro_rules!".to_owned(),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+
+                return IsMacroRulesItem::Yes { has_bang: false };
+            }
+        }
+
+        IsMacroRulesItem::No
     }
 
     /// Parses a `macro_rules! foo { ... }` declarative macro.
-    fn parse_item_macro_rules(&mut self, vis: &Visibility) -> PResult<'a, ItemInfo> {
+    fn parse_item_macro_rules(
+        &mut self,
+        vis: &Visibility,
+        has_bang: bool,
+    ) -> PResult<'a, ItemInfo> {
         self.expect_keyword(kw::MacroRules)?; // `macro_rules`
-        self.expect(&token::Not)?; // `!`
 
+        if has_bang {
+            self.expect(&token::Not)?; // `!`
+        }
         let ident = self.parse_ident()?;
 
         if self.eat(&token::Not) {
@@ -2120,4 +2145,9 @@ impl<'a> Parser<'a> {
             _ => "function",
         }
     }
+}
+
+enum IsMacroRulesItem {
+    Yes { has_bang: bool },
+    No,
 }

@@ -1332,15 +1332,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::Expr<'hir> {
-        let orig_head_span = head.span;
         // expand <head>
-        let mut head = self.lower_expr_mut(head);
-        let desugared_span = self.mark_span_with_reason(
-            DesugaringKind::ForLoop(ForLoopLoc::Head),
-            orig_head_span,
-            None,
-        );
-        head.span = self.lower_span(desugared_span);
+        let head = self.lower_expr_mut(head);
+        let desugared_span =
+            self.mark_span_with_reason(DesugaringKind::ForLoop(ForLoopLoc::Head), head.span, None);
+        let e_span = self.lower_span(e.span);
 
         let iter = Ident::with_dummy_span(sym::iter);
 
@@ -1354,23 +1350,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `::std::option::Option::Some(val) => __next = val`
         let pat_arm = {
             let val_ident = Ident::with_dummy_span(sym::val);
-            let (val_pat, val_pat_hid) = self.pat_ident(pat.span, val_ident);
-            let val_expr = self.expr_ident(pat.span, val_ident, val_pat_hid);
-            let next_expr = self.expr_ident(pat.span, next_ident, next_pat_hid);
+            let pat_span = self.lower_span(pat.span);
+            let (val_pat, val_pat_hid) = self.pat_ident(pat_span, val_ident);
+            let val_expr = self.expr_ident(pat_span, val_ident, val_pat_hid);
+            let next_expr = self.expr_ident(pat_span, next_ident, next_pat_hid);
             let assign = self.arena.alloc(self.expr(
-                pat.span,
-                hir::ExprKind::Assign(next_expr, val_expr, self.lower_span(pat.span)),
+                pat_span,
+                hir::ExprKind::Assign(next_expr, val_expr, self.lower_span(pat_span)),
                 ThinVec::new(),
             ));
-            let some_pat = self.pat_some(pat.span, val_pat);
+            let some_pat = self.pat_some(pat_span, val_pat);
             self.arm(some_pat, assign)
         };
 
         // `::std::option::Option::None => break`
         let break_arm = {
             let break_expr =
-                self.with_loop_scope(e.id, |this| this.expr_break_alloc(e.span, ThinVec::new()));
-            let pat = self.pat_none(e.span);
+                self.with_loop_scope(e.id, |this| this.expr_break_alloc(e_span, ThinVec::new()));
+            let pat = self.pat_none(e_span);
             self.arm(pat, break_expr)
         };
 
@@ -1416,10 +1413,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
         let body_expr = self.expr_block(body_block, ThinVec::new());
-        let body_stmt = self.stmt_expr(body.span, body_expr);
+        let body_stmt = self.stmt_expr(body_block.span, body_expr);
 
         let loop_block = self.block_all(
-            e.span,
+            e_span,
             arena_vec![self; next_let, match_stmt, pat_let, body_stmt],
             None,
         );
@@ -1429,7 +1426,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             loop_block,
             self.lower_label(opt_label),
             hir::LoopSource::ForLoop,
-            self.lower_span(e.span.with_hi(orig_head_span.hi())),
+            self.lower_span(e_span.with_hi(head.span.hi())),
         );
         let loop_expr = self.arena.alloc(hir::Expr {
             hir_id: self.lower_node_id(e.id),
@@ -1442,7 +1439,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let into_iter_span = self.mark_span_with_reason(
             DesugaringKind::ForLoop(ForLoopLoc::IntoIter),
-            orig_head_span,
+            head.span,
             None,
         );
 
@@ -1458,7 +1455,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // #82462: to correctly diagnose borrow errors, the block that contains
         // the iter expr needs to have a span that covers the loop body.
         let desugared_full_span =
-            self.mark_span_with_reason(DesugaringKind::ForLoop(ForLoopLoc::Head), e.span, None);
+            self.mark_span_with_reason(DesugaringKind::ForLoop(ForLoopLoc::Head), e_span, None);
 
         let match_expr = self.arena.alloc(self.expr_match(
             desugared_full_span,
