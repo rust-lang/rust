@@ -21987,7 +21987,8 @@ pub unsafe fn vshll_n_u32<const N: i32>(a: uint32x2_t) -> uint64x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shr(a, vdup_n_s8(N.try_into().unwrap()))
+    let n: i32 = if N == 8 { 7 } else { N };
+    simd_shr(a, vdup_n_s8(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -21999,7 +22000,8 @@ pub unsafe fn vshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shr(a, vdupq_n_s8(N.try_into().unwrap()))
+    let n: i32 = if N == 8 { 7 } else { N };
+    simd_shr(a, vdupq_n_s8(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22011,7 +22013,8 @@ pub unsafe fn vshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shr(a, vdup_n_s16(N.try_into().unwrap()))
+    let n: i32 = if N == 16 { 15 } else { N };
+    simd_shr(a, vdup_n_s16(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22023,7 +22026,8 @@ pub unsafe fn vshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shr(a, vdupq_n_s16(N.try_into().unwrap()))
+    let n: i32 = if N == 16 { 15 } else { N };
+    simd_shr(a, vdupq_n_s16(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22035,7 +22039,8 @@ pub unsafe fn vshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shr(a, vdup_n_s32(N.try_into().unwrap()))
+    let n: i32 = if N == 32 { 31 } else { N };
+    simd_shr(a, vdup_n_s32(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22047,7 +22052,8 @@ pub unsafe fn vshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shr(a, vdupq_n_s32(N.try_into().unwrap()))
+    let n: i32 = if N == 32 { 31 } else { N };
+    simd_shr(a, vdupq_n_s32(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22059,7 +22065,8 @@ pub unsafe fn vshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
-    simd_shr(a, vdup_n_s64(N.try_into().unwrap()))
+    let n: i32 = if N == 64 { 63 } else { N };
+    simd_shr(a, vdup_n_s64(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22071,7 +22078,8 @@ pub unsafe fn vshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
-    simd_shr(a, vdupq_n_s64(N.try_into().unwrap()))
+    let n: i32 = if N == 64 { 63 } else { N };
+    simd_shr(a, vdupq_n_s64(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22083,7 +22091,8 @@ pub unsafe fn vshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shr(a, vdup_n_u8(N.try_into().unwrap()))
+    let n: i32 = if N == 8 { return vdup_n_u8(0); } else { N };
+    simd_shr(a, vdup_n_u8(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22095,7 +22104,8 @@ pub unsafe fn vshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shr(a, vdupq_n_u8(N.try_into().unwrap()))
+    let n: i32 = if N == 8 { return vdupq_n_u8(0); } else { N };
+    simd_shr(a, vdupq_n_u8(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22107,7 +22117,8 @@ pub unsafe fn vshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shr(a, vdup_n_u16(N.try_into().unwrap()))
+    let n: i32 = if N == 16 { return vdup_n_u16(0); } else { N };
+    simd_shr(a, vdup_n_u16(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22119,7 +22130,8 @@ pub unsafe fn vshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shr(a, vdupq_n_u16(N.try_into().unwrap()))
+    let n: i32 = if N == 16 { return vdupq_n_u16(0); } else { N };
+    simd_shr(a, vdupq_n_u16(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22131,7 +22143,8 @@ pub unsafe fn vshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shr(a, vdup_n_u32(N.try_into().unwrap()))
+    let n: i32 = if N == 32 { return vdup_n_u32(0); } else { N };
+    simd_shr(a, vdup_n_u32(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22143,7 +22156,8 @@ pub unsafe fn vshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shr(a, vdupq_n_u32(N.try_into().unwrap()))
+    let n: i32 = if N == 32 { return vdupq_n_u32(0); } else { N };
+    simd_shr(a, vdupq_n_u32(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22155,7 +22169,8 @@ pub unsafe fn vshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
-    simd_shr(a, vdup_n_u64(N.try_into().unwrap()))
+    let n: i32 = if N == 64 { return vdup_n_u64(0); } else { N };
+    simd_shr(a, vdup_n_u64(n.try_into().unwrap()))
 }
 
 /// Shift right
@@ -22167,7 +22182,8 @@ pub unsafe fn vshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert!(N : i32 where N >= 1 && N <= 64);
-    simd_shr(a, vdupq_n_u64(N.try_into().unwrap()))
+    let n: i32 = if N == 64 { return vdupq_n_u64(0); } else { N };
+    simd_shr(a, vdupq_n_u64(n.try_into().unwrap()))
 }
 
 /// Shift right narrow

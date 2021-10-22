@@ -2772,7 +2772,8 @@ pub unsafe fn vshld_n_u64<const N: i32>(a: u64) -> u64 {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshrd_n_s64<const N: i32>(a: i64) -> i64 {
     static_assert!(N : i32 where N >= 1 && N <= 64);
-    a >> N
+    let n: i32 = if N == 64 { 63 } else { N };
+    a >> n
 }
 
 /// Unsigned shift right
@@ -2782,7 +2783,12 @@ pub unsafe fn vshrd_n_s64<const N: i32>(a: i64) -> i64 {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshrd_n_u64<const N: i32>(a: u64) -> u64 {
     static_assert!(N : i32 where N >= 1 && N <= 64);
-    a >> N
+    let n: i32 = if N == 64 {
+        return 0;
+    } else {
+        N
+    };
+    a >> n
 }
 
 /// Signed shift right and accumulate
@@ -2792,7 +2798,7 @@ pub unsafe fn vshrd_n_u64<const N: i32>(a: u64) -> u64 {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vsrad_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
     static_assert!(N : i32 where N >= 1 && N <= 64);
-    a + (b >> N)
+    a + vshrd_n_s64::<N>(b)
 }
 
 /// Unsigned shift right and accumulate
@@ -2802,7 +2808,7 @@ pub unsafe fn vsrad_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vsrad_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
     static_assert!(N : i32 where N >= 1 && N <= 64);
-    a + (b >> N)
+    a + vshrd_n_u64::<N>(b)
 }
 
 /// Shift Left and Insert (immediate)

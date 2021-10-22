@@ -2664,6 +2664,28 @@ fn get_call(
             );
         }
     }
+    if fn_name.starts_with("fix_right_shift_imm") {
+        let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
+        let lim = if fn_format[2] == "bits" {
+            type_bits(in_t[1]).to_string()
+        } else {
+            fn_format[2].clone()
+        };
+        let fixed = if in_t[1].starts_with('u') {
+            format!("return vdup{nself}(0);", nself = type_to_n_suffix(in_t[1]))
+        } else {
+            (lim.parse::<i32>().unwrap() - 1).to_string()
+        };
+
+        return format!(
+            r#"let {name}: i32 = if {const_name} == {upper} {{ {fixed} }} else {{ N }};"#,
+            name = fn_format[1].to_lowercase(),
+            const_name = fn_format[1],
+            upper = lim,
+            fixed = fixed,
+        );
+    }
+
     if fn_name.starts_with("matchn") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
         let len = match &*fn_format[1] {

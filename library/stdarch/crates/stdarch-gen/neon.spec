@@ -6785,7 +6785,8 @@ name = vshr
 n-suffix
 constn = N
 multi_fn = static_assert-N-1-bits
-multi_fn = simd_shr, a, {vdup-nself-noext, N.try_into().unwrap()}
+multi_fn = fix_right_shift_imm-N-bits
+multi_fn = simd_shr, a, {vdup-nself-noext, n.try_into().unwrap()}
 a = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
 n = 2
 validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
