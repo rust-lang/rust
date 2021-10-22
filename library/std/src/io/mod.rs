@@ -382,7 +382,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
         }
 
         if read_buf.filled_len() == 0 {
-            return Ok(buf.len() - start_len) 
+            return Ok(buf.len() - start_len);
         }
 
         // store how much was initialized but not filled
