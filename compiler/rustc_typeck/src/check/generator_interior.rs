@@ -69,29 +69,29 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     //
                     // See the mega-comment at `yield_in_scope` for a proof.
 
-                    debug!(
-                        "comparing counts yield: {} self: {}, source_span = {:?}",
-                        yield_data.expr_and_pat_count, self.expr_count, source_span
-                    );
+                    yield_data
+                        .iter()
+                        .find(|yield_data| {
+                            debug!(
+                                "comparing counts yield: {} self: {}, source_span = {:?}",
+                                yield_data.expr_and_pat_count, self.expr_count, source_span
+                            );
 
-                    match self.drop_ranges.get(&hir_id) {
-                        Some(range) if range.contains(yield_data.expr_and_pat_count) => {
-                            debug!("value is dropped at yield point; not recording");
-                            return None
-                        }
-                        _ => (),
-                    }
+                            match self.drop_ranges.get(&hir_id) {
+                                Some(range) if range.contains(yield_data.expr_and_pat_count) => {
+                                    debug!("value is dropped at yield point; not recording");
+                                    return false;
+                                }
+                                _ => (),
+                            }
 
-                    // If it is a borrowing happening in the guard,
-                    // it needs to be recorded regardless because they
-                    // do live across this yield point.
-                    if guard_borrowing_from_pattern
-                        || yield_data.expr_and_pat_count >= self.expr_count
-                    {
-                        Some(yield_data)
-                    } else {
-                        None
-                    }
+                            // If it is a borrowing happening in the guard,
+                            // it needs to be recorded regardless because they
+                            // do live across this yield point.
+                            guard_borrowing_from_pattern
+                                || yield_data.expr_and_pat_count >= self.expr_count
+                        })
+                        .cloned()
                 })
             })
             .unwrap_or_else(|| {
