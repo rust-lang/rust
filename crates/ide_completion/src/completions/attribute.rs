@@ -177,7 +177,7 @@ macro_rules! attrs {
 #[rustfmt::skip]
 static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
     use SyntaxKind::*;
-    std::array::IntoIter::new([
+    [
         (
             SOURCE_FILE,
             attrs!(
@@ -229,7 +229,8 @@ static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
         (MATCH_ARM, attrs!()),
         (IDENT_PAT, attrs!()),
         (RECORD_PAT_FIELD, attrs!()),
-    ])
+    ]
+    .into_iter()
     .collect()
 });
 const EXPR_ATTRIBUTES: &[&str] = attrs!();

@@ -12,8 +12,8 @@ pub(crate) fn get(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Ve
 
     // Some nightly-only cfgs, which are required for stdlib
     res.push(CfgFlag::Atom("target_thread_local".into()));
-    for &ty in ["8", "16", "32", "64", "cas", "ptr"].iter() {
-        for &key in ["target_has_atomic", "target_has_atomic_load_store"].iter() {
+    for ty in ["8", "16", "32", "64", "cas", "ptr"] {
+        for key in ["target_has_atomic", "target_has_atomic_load_store"] {
             res.push(CfgFlag::KeyValue { key: key.to_string(), value: ty.into() });
         }
     }

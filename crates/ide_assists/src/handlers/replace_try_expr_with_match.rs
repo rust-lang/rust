@@ -76,8 +76,7 @@ pub(crate) fn replace_try_expr_with_match(acc: &mut Assists, ctx: &AssistContext
             );
             let sad_arm = make::match_arm(iter::once(sad_pat), None, sad_expr);
 
-            let match_arms = [happy_arm, sad_arm];
-            let match_arm_list = make::match_arm_list(std::array::IntoIter::new(match_arms));
+            let match_arm_list = make::match_arm_list([happy_arm, sad_arm]);
 
             let expr_match = make::expr_match(expr, match_arm_list)
                 .indent(IndentLevel::from_node(qm_kw_parent.syntax()));

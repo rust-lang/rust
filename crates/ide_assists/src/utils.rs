@@ -268,7 +268,7 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
 }
 
 pub(crate) fn next_prev() -> impl Iterator<Item = Direction> {
-    [Direction::Next, Direction::Prev].iter().copied()
+    [Direction::Next, Direction::Prev].into_iter()
 }
 
 pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {

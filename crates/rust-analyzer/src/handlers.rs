@@ -706,7 +706,7 @@ pub(crate) fn handle_runnables(
     let config = snap.config.runnables();
     match cargo_spec {
         Some(spec) => {
-            for &cmd in ["check", "test"].iter() {
+            for cmd in ["check", "test"] {
                 res.push(lsp_ext::Runnable {
                     label: format!("cargo {} -p {} --all-targets", cmd, spec.package),
                     location: None,
