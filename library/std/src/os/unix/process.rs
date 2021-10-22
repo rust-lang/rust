@@ -237,27 +237,27 @@ pub trait ExitStatusExt: Sealed {
     fn signal(&self) -> Option<i32>;
 
     /// If the process was terminated by a signal, says whether it dumped core.
-    #[stable(feature = "unix_process_wait_more", since = "1.57.0")]
+    #[stable(feature = "unix_process_wait_more", since = "1.58.0")]
     fn core_dumped(&self) -> bool;
 
     /// If the process was stopped by a signal, returns that signal.
     ///
     /// In other words, if `WIFSTOPPED`, this returns `WSTOPSIG`.  This is only possible if the status came from
     /// a `wait` system call which was passed `WUNTRACED`, and was then converted into an `ExitStatus`.
-    #[stable(feature = "unix_process_wait_more", since = "1.57.0")]
+    #[stable(feature = "unix_process_wait_more", since = "1.58.0")]
     fn stopped_signal(&self) -> Option<i32>;
 
     /// Whether the process was continued from a stopped status.
     ///
     /// Ie, `WIFCONTINUED`.  This is only possible if the status came from a `wait` system call
     /// which was passed `WCONTINUED`, and was then converted into an `ExitStatus`.
-    #[stable(feature = "unix_process_wait_more", since = "1.57.0")]
+    #[stable(feature = "unix_process_wait_more", since = "1.58.0")]
     fn continued(&self) -> bool;
 
     /// Returns the underlying raw `wait` status.
     ///
     /// The returned integer is a **wait status, not an exit status**.
-    #[stable(feature = "unix_process_wait_more", since = "1.57.0")]
+    #[stable(feature = "unix_process_wait_more", since = "1.58.0")]
     fn into_raw(self) -> i32;
 }
 
