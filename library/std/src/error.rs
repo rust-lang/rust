@@ -850,7 +850,7 @@ impl dyn Error + Send + Sync {
 ///
 /// fn main() {
 ///     let error = SuperError { side: SuperErrorSideKick };
-///     let report = Report::new(&error).pretty();
+///     let report = Report::new(&error).pretty(true);
 ///
 ///     println!("{}", report);
 /// }
@@ -874,15 +874,15 @@ where
 
     /// Enable pretty-printing the report.
     #[unstable(feature = "error_reporter", issue = "90172")]
-    pub fn pretty(mut self) -> Self {
-        self.pretty = true;
+    pub fn pretty(mut self, pretty: bool) -> Self {
+        self.pretty = pretty;
         self
     }
 
     /// Enable showing a backtrace for the report.
     #[unstable(feature = "error_reporter", issue = "90172")]
-    pub fn show_backtrace(mut self) -> Self {
-        self.show_backtrace = true;
+    pub fn show_backtrace(mut self, show_backtrace: bool) -> Self {
+        self.show_backtrace = show_backtrace;
         self
     }
 
