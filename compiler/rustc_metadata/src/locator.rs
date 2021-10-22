@@ -529,6 +529,15 @@ impl<'a> CrateLocator<'a> {
         let mut err_data: Option<Vec<PathBuf>> = None;
         for (lib, kind) in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
+            if flavor == CrateFlavor::Rmeta && lib.metadata().map_or(false, |m| m.len() == 0) {
+                // Empty files will cause get_metadata_section to fail. Rmeta
+                // files can be empty, for example with binaries (which can
+                // often appear with `cargo check` when checking a library as
+                // a unittest). We don't want to emit a user-visible warning
+                // in this case as it is not a real problem.
+                debug!("skipping empty file");
+                continue;
+            }
             let (hash, metadata) =
                 match get_metadata_section(self.target, flavor, &lib, self.metadata_loader) {
                     Ok(blob) => {
