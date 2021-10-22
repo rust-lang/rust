@@ -70,7 +70,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 
                 if let Some(prim) = target.primitive_type() {
                     cleaner.prims.insert(prim);
-                } else if let Some(did) = target.def_id_full(&cx.cache) {
+                } else if let Some(did) = target.def_id(&cx.cache) {
                     cleaner.items.insert(did.into());
                 }
             }

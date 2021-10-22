@@ -1529,18 +1529,7 @@ impl Type {
             QPath { ref self_type, .. } => return self_type.inner_def_id(cache),
             Generic(_) | Infer | ImplTrait(_) => return None,
         };
-        cache.and_then(|c| Primitive(t).def_id_full(c))
-    }
-
-    /// Use this method to get the [`DefId`] of a [`clean`] AST node.
-    /// This will return [`None`] when called on a primitive [`clean::Type`].
-    /// Use [`Self::def_id_full`] if you want to include primitives.
-    ///
-    /// [`clean`]: crate::clean
-    /// [`clean::Type`]: crate::clean::Type
-    // FIXME: get rid of this function and always use `def_id_full`
-    crate fn def_id_no_primitives(&self) -> Option<DefId> {
-        self.inner_def_id(None)
+        cache.and_then(|c| Primitive(t).def_id(c))
     }
 
     /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
@@ -1548,8 +1537,19 @@ impl Type {
     /// See [`Self::def_id_no_primitives`] for more.
     ///
     /// [clean]: crate::clean
-    crate fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+    crate fn def_id(&self, cache: &Cache) -> Option<DefId> {
         self.inner_def_id(Some(cache))
+    }
+
+    /// Use this method to get the [`DefId`] of a [`clean`] AST node.
+    /// This will return [`None`] when called on a primitive [`clean::Type`].
+    /// Use [`Self::def_id`] if you want to include primitives.
+    ///
+    /// [`clean`]: crate::clean
+    /// [`clean::Type`]: crate::clean::Type
+    // FIXME: get rid of this function and always use `def_id`
+    crate fn def_id_no_primitives(&self) -> Option<DefId> {
+        self.inner_def_id(None)
     }
 }
 
