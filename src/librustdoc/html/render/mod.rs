@@ -597,11 +597,10 @@ fn document_full_inner(
         clean::ItemKind::StrippedItem(box kind) | kind => kind,
     };
 
-    match kind {
-        clean::ItemKind::FunctionItem(f) | clean::ItemKind::MethodItem(f, _) => {
-            render_call_locations(w, cx, f.def_id, item);
+    if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
+        if let Some(def_id) = item.def_id.as_def_id() {
+            render_call_locations(w, cx, def_id, item);
         }
-        _ => {}
     }
 }
 

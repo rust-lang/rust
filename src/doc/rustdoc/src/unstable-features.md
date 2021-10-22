@@ -458,7 +458,13 @@ Calculating code examples follows these rules:
 
 ### `--with-examples`: include examples of uses of items as documentation
 
-This option, combined with `--scrape-examples-target-crate` and `--scrape-examples-output-path`, is used to implement the functionality in [RFC #3123](https://github.com/rust-lang/rfcs/pull/3123). Uses of an item (currently functions / call-sites) are found in a crate and its reverse-dependencies, and then the uses are included as documentation for that item. This feature is intended to be used via `cargo doc --scrape-examples`, but the rustdoc-only workflow looks like:
+This option, combined with `--scrape-examples-target-crate` and
+`--scrape-examples-output-path`, is used to implement the functionality in [RFC
+#3123](https://github.com/rust-lang/rfcs/pull/3123). Uses of an item (currently
+functions / call-sites) are found in a crate and its reverse-dependencies, and
+then the uses are included as documentation for that item. This feature is
+intended to be used via `cargo doc --scrape-examples`, but the rustdoc-only
+workflow looks like:
 
 ```bash
 $ rustdoc examples/ex.rs -Z unstable-options \
@@ -468,4 +474,8 @@ $ rustdoc examples/ex.rs -Z unstable-options \
 $ rustdoc src/lib.rs -Z unstable-options --with-examples output.calls
 ```
 
-First, the library must be checked to generate an `rmeta`. Then a reverse-dependency like `examples/ex.rs` is given to rustdoc with the target crate being documented (`foobar`) and a path to output the calls (`output.calls`). Then, the generated calls file can be passed via `--with-examples` to the subsequent documentation of `foobar`.
+First, the library must be checked to generate an `rmeta`. Then a
+reverse-dependency like `examples/ex.rs` is given to rustdoc with the target
+crate being documented (`foobar`) and a path to output the calls
+(`output.calls`). Then, the generated calls file can be passed via
+`--with-examples` to the subsequent documentation of `foobar`.

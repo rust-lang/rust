@@ -289,7 +289,7 @@ crate fn from_fn_header(header: &rustc_hir::FnHeader) -> HashSet<Qualifiers> {
 
 impl FromWithTcx<clean::Function> for Function {
     fn from_tcx(function: clean::Function, tcx: TyCtxt<'_>) -> Self {
-        let clean::Function { decl, generics, header, def_id: _ } = function;
+        let clean::Function { decl, generics, header } = function;
         Function {
             decl: decl.into_tcx(tcx),
             generics: generics.into_tcx(tcx),
@@ -530,7 +530,7 @@ crate fn from_function_method(
     has_body: bool,
     tcx: TyCtxt<'_>,
 ) -> Method {
-    let clean::Function { header, decl, generics, def_id: _ } = function;
+    let clean::Function { header, decl, generics } = function;
     Method {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),

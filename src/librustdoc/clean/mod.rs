@@ -801,8 +801,7 @@ impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::Bo
     fn clean(&self, cx: &mut DocContext<'_>) -> Function {
         let (generics, decl) =
             enter_impl_trait(cx, |cx| (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx)));
-        let def_id = self.2.hir_id.owner.to_def_id();
-        Function { decl, generics, header: self.0.header, def_id }
+        Function { decl, generics, header: self.0.header }
     }
 }
 
@@ -934,8 +933,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
                         (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                     });
-                    let def_id = self.def_id.to_def_id();
-                    let mut t = Function { header: sig.header, decl, generics, def_id };
+                    let mut t = Function { header: sig.header, decl, generics };
                     if t.header.constness == hir::Constness::Const
                         && is_unstable_const_fn(cx.tcx, local_did).is_some()
                     {
@@ -1069,7 +1067,6 @@ impl Clean<Item> for ty::AssocItem {
                                 constness,
                                 asyncness,
                             },
-                            def_id: self.def_id,
                         },
                         defaultness,
                     )
@@ -1083,7 +1080,6 @@ impl Clean<Item> for ty::AssocItem {
                             constness: hir::Constness::NotConst,
                             asyncness: hir::IsAsync::NotAsync,
                         },
-                        def_id: self.def_id,
                     })
                 }
             }
@@ -2103,7 +2099,6 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                             constness: hir::Constness::NotConst,
                             asyncness: hir::IsAsync::NotAsync,
                         },
-                        def_id,
                     })
                 }
                 hir::ForeignItemKind::Static(ref ty, mutability) => {

@@ -1254,7 +1254,6 @@ crate struct Function {
     crate decl: FnDecl,
     crate generics: Generics,
     crate header: hir::FnHeader,
-    crate def_id: DefId,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
