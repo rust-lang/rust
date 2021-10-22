@@ -2,13 +2,13 @@ error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/lifetime-mismatch-between-trait-and-impl.rs:6:5
    |
 LL |     fn foo<'a>(x: &i32, y: &'a i32) -> &'a i32;
-   |     ------------------------------------------- expected `fn(&i32, &'a i32) -> &'a i32`
+   |     ------------------------------------------- expected `fn(&'1 i32, &'a i32) -> &'a i32`
 ...
 LL |     fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&i32, &i32) -> &i32`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 i32, &'1 i32) -> &'1 i32`
    |
-   = note: expected `fn(&i32, &'a i32) -> &'a i32`
-              found `fn(&i32, &i32) -> &i32`
+   = note: expected `fn(&'1 i32, &'a i32) -> &'a i32`
+              found `fn(&'1 i32, &'1 i32) -> &'1 i32`
    = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
    = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
 
