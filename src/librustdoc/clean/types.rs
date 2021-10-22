@@ -1469,16 +1469,6 @@ crate trait GetDefId {
     fn def_id_full(&self, cache: &Cache) -> Option<DefId>;
 }
 
-impl<T: GetDefId> GetDefId for Option<T> {
-    fn def_id(&self) -> Option<DefId> {
-        self.as_ref().and_then(|d| d.def_id())
-    }
-
-    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
-        self.as_ref().and_then(|d| d.def_id_full(cache))
-    }
-}
-
 impl Type {
     crate fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
