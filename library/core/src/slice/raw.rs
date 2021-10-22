@@ -138,12 +138,14 @@ pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T]
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-pub fn from_ref<T>(s: &T) -> &[T] {
+#[rustc_const_unstable(feature = "const_slice_from_ref", issue = "none")]
+pub const fn from_ref<T>(s: &T) -> &[T] {
     array::from_ref(s)
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-pub fn from_mut<T>(s: &mut T) -> &mut [T] {
+#[rustc_const_unstable(feature = "const_slice_from_ref", issue = "none")]
+pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
     array::from_mut(s)
 }
