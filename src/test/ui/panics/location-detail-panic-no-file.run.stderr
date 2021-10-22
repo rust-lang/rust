@@ -1,0 +1,2 @@
+thread 'main' panicked at 'file-redacted', <redacted>:6:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
