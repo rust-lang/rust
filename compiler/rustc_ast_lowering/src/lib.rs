@@ -725,10 +725,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let hir_name = ParamName::Plain(ident);
+        let normalized_macro_2_0_hir_name = hir_name.normalize_to_macros_2_0();
 
-        if self.lifetimes_to_define.iter().any(|(_, lt_name)| {
-            lt_name.normalize_to_macros_2_0() == hir_name.normalize_to_macros_2_0()
-        }) {
+        if self
+            .lifetimes_to_define
+            .iter()
+            .any(|(_, lt_name)| lt_name.normalize_to_macros_2_0() == normalized_macro_2_0_hir_name)
+        {
             return;
         }
 
