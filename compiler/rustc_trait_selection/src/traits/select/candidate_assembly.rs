@@ -121,7 +121,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(None);
         }
 
-        let mut candidates = candidate_set.vec;
+        let candidates = candidate_set.vec;
 
         debug!(?stack, ?candidates, "assembled {} candidates", candidates.len());
 
@@ -134,7 +134,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // candidate which assumes $0 == int, one that assumes `$0 ==
         // usize`, etc. This spells an ambiguity.
 
-        self.filter_impls(&mut candidates, stack);
+        let mut candidates = self.filter_impls(candidates, stack.obligation);
 
         // If there is more than one candidate, first winnow them down
         // by considering extra conditions (nested obligations and so

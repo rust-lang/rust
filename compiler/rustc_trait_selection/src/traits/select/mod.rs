@@ -20,7 +20,7 @@ use super::ObligationCauseCode;
 use super::Selection;
 use super::SelectionResult;
 use super::TraitQueryMode;
-use super::{ErrorReporting, Overflow, SelectionError, Unimplemented};
+use super::{ErrorReporting, Overflow, SelectionError};
 use super::{ObligationCause, PredicateObligation, TraitObligation};
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -1122,19 +1122,52 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn filter_impls(
         &mut self,
-        candidates: &mut Vec<SelectionCandidate<'tcx>>,
-        stack: &TraitObligationStack<'o, 'tcx>,
-    ) {
+        candidates: Vec<SelectionCandidate<'tcx>>,
+        obligation: &TraitObligation<'tcx>,
+    ) -> Vec<SelectionCandidate<'tcx>> {
         let tcx = self.tcx();
-        candidates.retain(|candidate| {
-            if let ImplCandidate(def_id) = candidate {
-                ty::ImplPolarity::Reservation == tcx.impl_polarity(*def_id)
-                    || stack.obligation.polarity() == tcx.impl_polarity(*def_id)
-                    || self.allow_negative_impls
-            } else {
-                true
+        let mut result = Vec::with_capacity(candidates.len());
+
+        for candidate in candidates {
+            // Respect const trait obligations
+            if self.is_trait_predicate_const(obligation.predicate.skip_binder()) {
+                match candidate {
+                    // const impl
+                    ImplCandidate(def_id)
+                        if tcx.impl_constness(def_id) == hir::Constness::Const => {}
+                    // const param
+                    ParamCandidate((
+                        ty::ConstnessAnd { constness: ty::BoundConstness::ConstIfConst, .. },
+                        _,
+                    )) => {}
+                    // auto trait impl
+                    AutoImplCandidate(..) => {}
+                    // generator, this will raise error in other places
+                    // or ignore error with const_async_blocks feature
+                    GeneratorCandidate => {}
+                    // FnDef where the function is const
+                    FnPointerCandidate { is_const: true } => {}
+                    ConstDropCandidate => {}
+                    _ => {
+                        // reject all other types of candidates
+                        continue;
+                    }
+                }
             }
-        });
+
+            if let ImplCandidate(def_id) = candidate {
+                if ty::ImplPolarity::Reservation == tcx.impl_polarity(def_id)
+                    || obligation.polarity() == tcx.impl_polarity(def_id)
+                    || self.allow_negative_impls
+                {
+                    result.push(candidate);
+                }
+            } else {
+                result.push(candidate);
+            }
+        }
+
+        result
     }
 
     /// filter_reservation_impls filter reservation impl for any goal as ambiguous
@@ -1145,30 +1178,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         let tcx = self.tcx();
-        // Respect const trait obligations
-        if self.is_trait_predicate_const(obligation.predicate.skip_binder()) {
-            match candidate {
-                // const impl
-                ImplCandidate(def_id) if tcx.impl_constness(def_id) == hir::Constness::Const => {}
-                // const param
-                ParamCandidate((
-                    ty::ConstnessAnd { constness: ty::BoundConstness::ConstIfConst, .. },
-                    _,
-                )) => {}
-                // auto trait impl
-                AutoImplCandidate(..) => {}
-                // generator, this will raise error in other places
-                // or ignore error with const_async_blocks feature
-                GeneratorCandidate => {}
-                // FnDef where the function is const
-                FnPointerCandidate { is_const: true } => {}
-                ConstDropCandidate => {}
-                _ => {
-                    // reject all other types of candidates
-                    return Err(Unimplemented);
-                }
-            }
-        }
         // Treat reservation impls as ambiguity.
         if let ImplCandidate(def_id) = candidate {
             if let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id) {
