@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-type_changing_struct_update.rs:20:11
+   |
+LL |         ..m1
+   |           ^^ expected struct `State2`, found struct `State1`
+   |
+   = note: expected struct `Machine<State2>`
+              found struct `Machine<State1>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
