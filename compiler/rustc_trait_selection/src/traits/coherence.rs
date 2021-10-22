@@ -222,11 +222,22 @@ fn overlap_within_probe(
         })
         .chain(obligations)
         .find(|o| {
-            !selcx.predicate_may_hold_fatal(o)
-                || o.flip_polarity(tcx)
+            // if both impl headers are set to strict coherence it means that this will be accepted
+            // only if it's stated that T: !Trait. So only prove that the negated obligation holds.
+            if tcx.has_attr(a_def_id, sym::rustc_strict_coherence)
+                && tcx.has_attr(b_def_id, sym::rustc_strict_coherence)
+            {
+                o.flip_polarity(tcx)
                     .as_ref()
                     .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
                     .unwrap_or(false)
+            } else {
+                !selcx.predicate_may_hold_fatal(o)
+                    || o.flip_polarity(tcx)
+                        .as_ref()
+                        .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
+                        .unwrap_or(false)
+            }
         });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
