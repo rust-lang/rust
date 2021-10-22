@@ -190,6 +190,7 @@ pub enum ImplPolarity {
 }
 
 impl ImplPolarity {
+    /// Flips polarity by turning `Positive` into `Negative` and `Negative` into `Positive`.
     pub fn flip(&self) -> Option<ImplPolarity> {
         match self {
             ImplPolarity::Positive => Some(ImplPolarity::Negative),
@@ -492,6 +493,9 @@ impl<'tcx> Predicate<'tcx> {
         self.inner.kind
     }
 
+    /// Flips the polarity of a Predicate.
+    ///
+    /// Given `T: Trait` predicate it returns `T: !Trait` and given `T: !Trait` returns `T: Trait`.
     pub fn flip_polarity(&self, tcx: TyCtxt<'tcx>) -> Option<Predicate<'tcx>> {
         let kind = self
             .inner
