@@ -28,11 +28,9 @@ use super::remove_unused_param::range_to_remove;
 // resolved.
 //
 // ```
-// $0
-// fn foo(name: i32) -> i32 {
+// $0fn foo(name: i32) -> i32 {
 //     name + 1
-// }
-// $0
+// }$0
 //
 // fn bar(name: i32) -> i32 {
 //     name + 2
@@ -939,8 +937,7 @@ $0pub struct PublicStruct {
                     let _a = bar();
                 }
 
-$0
-struct PrivateStruct {
+$0struct PrivateStruct {
     inner: SomeType,
 }
 
@@ -956,8 +953,7 @@ impl PrivateStruct {
 
 fn bar() -> i32 {
     2
-}
-$0
+}$0
             }
             ",
             r"
@@ -1019,11 +1015,9 @@ mod modname {
         check_assist(
             extract_module,
             r"
-$0
-fn foo(name: i32) -> i32 {
+$0fn foo(name: i32) -> i32 {
     name + 1
-}
-$0
+}$0
 
                 fn bar(name: i32) -> i32 {
                     name + 2
@@ -1049,15 +1043,13 @@ mod modname {
             extract_module,
             r"
             mod impl_play {
-$0
-struct A {}
+$0struct A {}
 
 impl A {
     pub fn new_a() -> i32 {
         2
     }
-}
-$0
+}$0
 
                 fn a() {
                     let _a = A::new_a();
@@ -1097,11 +1089,9 @@ mod modname {
             mod bar {
                 use super::foo::{PrivateStruct, PrivateStruct1};
 
-$0
-struct Strukt {
+$0struct Strukt {
     field: PrivateStruct,
-}
-$0
+}$0
 
                 struct Strukt1 {
                     field: PrivateStruct1,
@@ -1145,11 +1135,9 @@ mod modname {
             mod bar {
                 use super::foo::PrivateStruct;
 
-$0
-struct Strukt {
+$0struct Strukt {
     field: PrivateStruct,
-}
-$0
+}$0
 
                 struct Strukt1 {
                     field: PrivateStruct,
@@ -1188,11 +1176,9 @@ mod modname {
             mod bar {
                 pub struct PrivateStruct;
 
-$0
-struct Strukt {
+$0struct Strukt {
     field: PrivateStruct,
-}
-$0
+}$0
 
                 struct Strukt1 {
                     field: PrivateStruct,
@@ -1227,13 +1213,11 @@ mod modname {
             mod impl_play {
                 struct A {}
 
-$0
-impl A {
+$0impl A {
     pub fn new_a() -> i32 {
         2
     }
-}
-$0
+}$0
 
                 fn a() {
                     let _a = A::new_a();
@@ -1274,13 +1258,11 @@ mod modname {
             mod impl_play {
                 use super::foo::A;
 
-$0
-impl A {
+$0impl A {
     pub fn new_a() -> i32 {
         2
     }
-}
-$0
+}$0
 
                 fn a() {
                     let _a = A::new_a();
@@ -1320,8 +1302,7 @@ mod modname {
             mod impl_play2 {
                 trait JustATrait {}
 
-$0
-struct A {}
+$0struct A {}
 
 fn foo<T: JustATrait>(arg: T) -> T {
     arg
@@ -1332,8 +1313,7 @@ impl JustATrait for A {}
 fn bar() {
     let a = A {};
     foo(a);
-}
-$0
+}$0
             }
             ",
             r"
@@ -1367,11 +1347,9 @@ mod modname {
             extract_module,
             r"
             mod impl_play2 {
-$0
-mod impl_play {
+$0mod impl_play {
     pub struct A {}
-}
-$0
+}$0
             }
             ",
             r"
@@ -1401,11 +1379,9 @@ mod modname {
             }
 
             fn main() {
-                $0
-                struct Strukt1 {
+                $0struct Strukt1 {
                     field: Strukt,
-                }
-                $0
+                }$0
             }
             //- /foo.rs
             pub struct PrivateStruct;

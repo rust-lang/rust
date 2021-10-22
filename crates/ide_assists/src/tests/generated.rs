@@ -531,11 +531,9 @@ fn doctest_extract_module() {
     check_doc_test(
         "extract_module",
         r#####"
-$0
-fn foo(name: i32) -> i32 {
+$0fn foo(name: i32) -> i32 {
     name + 1
-}
-$0
+}$0
 
 fn bar(name: i32) -> i32 {
     name + 2
