@@ -1,4 +1,3 @@
-// min-llvm-version: 12.0.0
 // revisions: x64 A64 ppc64le
 // assembly-output: emit-asm
 // [x64] compile-flags: --target x86_64-unknown-linux-gnu -Crelocation-model=static

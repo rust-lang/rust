@@ -5,7 +5,6 @@
 //[riscv32] compile-flags: --target riscv32imac-unknown-none-elf
 //[riscv32] needs-llvm-components: riscv
 // compile-flags: -C target-feature=+d
-// min-system-llvm-version: 12.0
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]

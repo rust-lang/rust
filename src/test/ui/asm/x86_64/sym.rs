@@ -1,4 +1,4 @@
-// min-llvm-version: 12.0.0
+// min-llvm-version: 12.0.1
 // only-x86_64
 // only-linux
 // run-pass

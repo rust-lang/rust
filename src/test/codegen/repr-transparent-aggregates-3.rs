@@ -1,7 +1,6 @@
 // compile-flags: -C no-prepopulate-passes
 //
 
-// min-system-llvm-version: 12.0
 // only-mips64
 // See repr-transparent.rs
 
