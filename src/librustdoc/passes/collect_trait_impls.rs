@@ -187,7 +187,7 @@ impl BadImplStripper {
             true
         } else if let Some(prim) = ty.primitive_type() {
             self.prims.contains(&prim)
-        } else if let Some(did) = ty.def_id() {
+        } else if let Some(did) = ty.def_id_no_primitives() {
             self.keep_impl_with_def_id(did.into())
         } else {
             false

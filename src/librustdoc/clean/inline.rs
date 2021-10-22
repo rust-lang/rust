@@ -479,7 +479,11 @@ crate fn build_impl(
     let (merged_attrs, cfg) = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
     trace!("merged_attrs={:?}", merged_attrs);
 
-    trace!("build_impl: impl {:?} for {:?}", trait_.as_ref().map(|t| t.def_id()), for_.def_id());
+    trace!(
+        "build_impl: impl {:?} for {:?}",
+        trait_.as_ref().map(|t| t.def_id()),
+        for_.def_id_no_primitives()
+    );
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         None,
