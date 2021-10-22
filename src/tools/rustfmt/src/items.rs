@@ -174,14 +174,14 @@ pub(crate) struct FnSig<'a> {
     constness: ast::Const,
     defaultness: ast::Defaultness,
     unsafety: ast::Unsafe,
-    visibility: ast::Visibility,
+    visibility: &'a ast::Visibility,
 }
 
 impl<'a> FnSig<'a> {
     pub(crate) fn from_method_sig(
         method_sig: &'a ast::FnSig,
         generics: &'a ast::Generics,
-        visibility: ast::Visibility,
+        visibility: &'a ast::Visibility,
     ) -> FnSig<'a> {
         FnSig {
             unsafety: method_sig.header.unsafety,
@@ -204,7 +204,7 @@ impl<'a> FnSig<'a> {
         match *fn_kind {
             visit::FnKind::Fn(fn_ctxt, _, fn_sig, vis, _) => match fn_ctxt {
                 visit::FnCtxt::Assoc(..) => {
-                    let mut fn_sig = FnSig::from_method_sig(fn_sig, generics, vis.clone());
+                    let mut fn_sig = FnSig::from_method_sig(fn_sig, generics, vis);
                     fn_sig.defaultness = defaultness;
                     fn_sig
                 }
@@ -216,7 +216,7 @@ impl<'a> FnSig<'a> {
                     is_async: Cow::Borrowed(&fn_sig.header.asyncness),
                     defaultness,
                     unsafety: fn_sig.header.unsafety,
-                    visibility: vis.clone(),
+                    visibility: vis,
                 },
             },
             _ => unreachable!(),
@@ -323,6 +323,7 @@ impl<'a> FmtVisitor<'a> {
         indent: Indent,
         ident: symbol::Ident,
         sig: &ast::FnSig,
+        vis: &ast::Visibility,
         generics: &ast::Generics,
         span: Span,
     ) -> Option<String> {
@@ -334,7 +335,7 @@ impl<'a> FmtVisitor<'a> {
             &context,
             indent,
             ident,
-            &FnSig::from_method_sig(sig, generics, DEFAULT_VISIBILITY),
+            &FnSig::from_method_sig(sig, generics, vis),
             span,
             FnBraceStyle::None,
         )?;
@@ -1474,12 +1475,17 @@ fn format_tuple_struct(
         format_empty_struct_or_tuple(context, inner_span, offset, &mut result, "(", ")");
     } else {
         let shape = Shape::indented(offset, context.config).sub_width(1)?;
+        let lo = if let Some(generics) = struct_parts.generics {
+            generics.span.hi()
+        } else {
+            struct_parts.ident.span.hi()
+        };
         result = overflow::rewrite_with_parens(
             context,
             &result,
             fields.iter(),
             shape,
-            span,
+            mk_sp(lo, span.hi()),
             context.config.fn_call_width(),
             None,
         )?;
@@ -1503,7 +1509,7 @@ fn format_tuple_struct(
     Some(result)
 }
 
-fn rewrite_type<R: Rewrite>(
+pub(crate) fn rewrite_type<R: Rewrite>(
     context: &RewriteContext<'_>,
     indent: Indent,
     ident: symbol::Ident,
@@ -1760,7 +1766,7 @@ impl<'a> StaticParts<'a> {
         };
         StaticParts {
             prefix: "const",
-            vis: &DEFAULT_VISIBILITY,
+            vis: &ti.vis,
             ident: ti.ident,
             ty,
             mutability: ast::Mutability::Not,
@@ -1847,29 +1853,6 @@ fn rewrite_static(
         Some(format!("{}{};", prefix, ty_str))
     }
 }
-
-pub(crate) fn rewrite_type_alias(
-    ident: symbol::Ident,
-    ty_opt: Option<&ptr::P<ast::Ty>>,
-    generics: &ast::Generics,
-    generic_bounds_opt: Option<&ast::GenericBounds>,
-    context: &RewriteContext<'_>,
-    indent: Indent,
-    vis: &ast::Visibility,
-    span: Span,
-) -> Option<String> {
-    rewrite_type(
-        context,
-        indent,
-        ident,
-        vis,
-        generics,
-        generic_bounds_opt,
-        ty_opt,
-        span,
-    )
-}
-
 struct OpaqueType<'a> {
     bounds: &'a ast::GenericBounds,
 }
@@ -1883,32 +1866,7 @@ impl<'a> Rewrite for OpaqueType<'a> {
     }
 }
 
-pub(crate) fn rewrite_opaque_impl_type(
-    context: &RewriteContext<'_>,
-    ident: symbol::Ident,
-    generics: &ast::Generics,
-    generic_bounds: &ast::GenericBounds,
-    indent: Indent,
-) -> Option<String> {
-    let ident_str = rewrite_ident(context, ident);
-    // 5 = "type "
-    let generics_shape = Shape::indented(indent, context.config).offset_left(5)?;
-    let generics_str = rewrite_generics(context, ident_str, generics, generics_shape)?;
-    let prefix = format!("type {} =", generics_str);
-    let rhs = OpaqueType {
-        bounds: generic_bounds,
-    };
-
-    rewrite_assign_rhs(
-        context,
-        &prefix,
-        &rhs,
-        Shape::indented(indent, context.config).sub_width(1)?,
-    )
-    .map(|s| s + ";")
-}
-
-pub(crate) fn rewrite_associated_impl_type(
+pub(crate) fn rewrite_impl_type(
     ident: symbol::Ident,
     vis: &ast::Visibility,
     defaultness: ast::Defaultness,
@@ -1918,7 +1876,25 @@ pub(crate) fn rewrite_associated_impl_type(
     indent: Indent,
     span: Span,
 ) -> Option<String> {
-    let result = rewrite_type_alias(ident, ty_opt, generics, None, context, indent, vis, span)?;
+    // Opaque type
+    let result = if let Some(rustc_ast::ast::Ty {
+        kind: ast::TyKind::ImplTrait(_, ref bounds),
+        ..
+    }) = ty_opt.map(|t| &**t)
+    {
+        rewrite_type(
+            context,
+            indent,
+            ident,
+            &DEFAULT_VISIBILITY,
+            generics,
+            None,
+            Some(&OpaqueType { bounds }),
+            span,
+        )
+    } else {
+        rewrite_type(context, indent, ident, vis, generics, None, ty_opt, span)
+    }?;
 
     match defaultness {
         ast::Defaultness::Default(..) => Some(format!("default {}", result)),
@@ -1995,14 +1971,17 @@ impl Rewrite for ast::Param {
         let param_attrs_result = self
             .attrs
             .rewrite(context, Shape::legacy(shape.width, shape.indent))?;
-        let (span, has_multiple_attr_lines) = if !self.attrs.is_empty() {
+        // N.B. Doc comments aren't typically valid syntax, but could appear
+        // in the presence of certain macros - https://github.com/rust-lang/rustfmt/issues/4936
+        let (span, has_multiple_attr_lines, has_doc_comments) = if !self.attrs.is_empty() {
             let num_attrs = self.attrs.len();
             (
                 mk_sp(self.attrs[num_attrs - 1].span.hi(), self.pat.span.lo()),
                 param_attrs_result.contains('\n'),
+                self.attrs.iter().any(|a| a.is_doc_comment()),
             )
         } else {
-            (mk_sp(self.span.lo(), self.span.lo()), false)
+            (mk_sp(self.span.lo(), self.span.lo()), false, false)
         };
 
         if let Some(ref explicit_self) = self.to_self() {
@@ -2015,15 +1994,16 @@ impl Rewrite for ast::Param {
                 has_multiple_attr_lines,
             )
         } else if is_named_param(self) {
+            let param_name = &self
+                .pat
+                .rewrite(context, Shape::legacy(shape.width, shape.indent))?;
             let mut result = combine_strs_with_missing_comments(
                 context,
                 &param_attrs_result,
-                &self
-                    .pat
-                    .rewrite(context, Shape::legacy(shape.width, shape.indent))?,
+                param_name,
                 span,
                 shape,
-                !has_multiple_attr_lines,
+                !has_multiple_attr_lines && !has_doc_comments,
             )?;
 
             if !is_empty_infer(&*self.ty, self.pat.span) {
@@ -2034,10 +2014,30 @@ impl Rewrite for ast::Param {
                 result.push_str(&after_comment);
                 let overhead = last_line_width(&result);
                 let max_width = shape.width.checked_sub(overhead)?;
-                let ty_str = self
+                if let Some(ty_str) = self
                     .ty
-                    .rewrite(context, Shape::legacy(max_width, shape.indent))?;
-                result.push_str(&ty_str);
+                    .rewrite(context, Shape::legacy(max_width, shape.indent))
+                {
+                    result.push_str(&ty_str);
+                } else {
+                    result = combine_strs_with_missing_comments(
+                        context,
+                        &(param_attrs_result + &shape.to_string_with_newline(context.config)),
+                        param_name,
+                        span,
+                        shape,
+                        !has_multiple_attr_lines,
+                    )?;
+                    result.push_str(&before_comment);
+                    result.push_str(colon_spaces(context.config));
+                    result.push_str(&after_comment);
+                    let overhead = last_line_width(&result);
+                    let max_width = shape.width.checked_sub(overhead)?;
+                    let ty_str = self
+                        .ty
+                        .rewrite(context, Shape::legacy(max_width, shape.indent))?;
+                    result.push_str(&ty_str);
+                }
             }
 
             Some(result)
@@ -3146,7 +3146,7 @@ impl Rewrite for ast::ForeignItem {
                         context,
                         shape.indent,
                         self.ident,
-                        &FnSig::from_method_sig(&fn_sig, generics, self.vis.clone()),
+                        &FnSig::from_method_sig(&fn_sig, generics, &self.vis),
                         span,
                         FnBraceStyle::None,
                     )
@@ -3170,14 +3170,14 @@ impl Rewrite for ast::ForeignItem {
             ast::ForeignItemKind::TyAlias(ref ty_alias_kind) => {
                 let ast::TyAliasKind(_, ref generics, ref generic_bounds, ref type_default) =
                     **ty_alias_kind;
-                rewrite_type_alias(
-                    self.ident,
-                    type_default.as_ref(),
-                    generics,
-                    Some(generic_bounds),
+                rewrite_type(
                     &context,
                     shape.indent,
+                    self.ident,
                     &self.vis,
+                    generics,
+                    Some(generic_bounds),
+                    type_default.as_ref(),
                     self.span,
                 )
             }

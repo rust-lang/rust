@@ -13,7 +13,7 @@ use crate::comment::{
     rewrite_missing_comment, CharClasses, FindUncommented,
 };
 use crate::config::lists::*;
-use crate::config::{Config, ControlBraceStyle, IndentStyle, Version};
+use crate::config::{Config, ControlBraceStyle, HexLiteralCase, IndentStyle, Version};
 use crate::lists::{
     definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
     struct_lit_tactic, write_list, ListFormatting, Separator,
@@ -822,7 +822,7 @@ impl<'a> ControlFlow<'a> {
             let pat_string = pat.rewrite(context, pat_shape)?;
             let comments_lo = context
                 .snippet_provider
-                .span_after(self.span, self.connector.trim());
+                .span_after(self.span.with_lo(pat.span.hi()), self.connector.trim());
             let comments_span = mk_sp(comments_lo, expr.span.lo());
             return rewrite_assign_rhs_with_comments(
                 context,
@@ -1168,6 +1168,7 @@ pub(crate) fn rewrite_literal(
 ) -> Option<String> {
     match l.kind {
         ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
+        ast::LitKind::Int(..) => rewrite_int_lit(context, l, shape),
         _ => wrap_str(
             context.snippet(l.span).to_owned(),
             context.config.max_width(),
@@ -1199,6 +1200,36 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
         str_lit,
         &StringFormat::new(shape.visual_indent(0), context.config),
         shape.width.saturating_sub(2),
+    )
+}
+
+fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -> Option<String> {
+    let span = lit.span;
+    let symbol = lit.token.symbol.as_str();
+
+    if symbol.starts_with("0x") {
+        let hex_lit = match context.config.hex_literal_case() {
+            HexLiteralCase::Preserve => None,
+            HexLiteralCase::Upper => Some(symbol[2..].to_ascii_uppercase()),
+            HexLiteralCase::Lower => Some(symbol[2..].to_ascii_lowercase()),
+        };
+        if let Some(hex_lit) = hex_lit {
+            return wrap_str(
+                format!(
+                    "0x{}{}",
+                    hex_lit,
+                    lit.token.suffix.map_or(String::new(), |s| s.to_string())
+                ),
+                context.config.max_width(),
+                shape,
+            );
+        }
+    }
+
+    wrap_str(
+        context.snippet(span).to_owned(),
+        context.config.max_width(),
+        shape,
     )
 }
 
@@ -1497,12 +1528,12 @@ fn rewrite_struct_lit<'a>(
     let path_shape = shape.sub_width(2)?;
     let path_str = rewrite_path(context, PathContext::Expr, None, path, path_shape)?;
 
-    let has_base = match struct_rest {
+    let has_base_or_rest = match struct_rest {
         ast::StructRest::None if fields.is_empty() => return Some(format!("{} {{}}", path_str)),
         ast::StructRest::Rest(_) if fields.is_empty() => {
             return Some(format!("{} {{ .. }}", path_str));
         }
-        ast::StructRest::Base(_) => true,
+        ast::StructRest::Rest(_) | ast::StructRest::Base(_) => true,
         _ => false,
     };
 
@@ -1511,7 +1542,7 @@ fn rewrite_struct_lit<'a>(
 
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
     let body_lo = context.snippet_provider.span_after(span, "{");
-    let fields_str = if struct_lit_can_be_aligned(fields, has_base)
+    let fields_str = if struct_lit_can_be_aligned(fields, has_base_or_rest)
         && context.config.struct_field_align_threshold() > 0
     {
         rewrite_with_alignment(
@@ -1583,10 +1614,7 @@ fn rewrite_struct_lit<'a>(
             nested_shape,
             tactic,
             context,
-            force_no_trailing_comma
-                || has_base
-                || !context.use_block_indent()
-                || matches!(struct_rest, ast::StructRest::Rest(_)),
+            force_no_trailing_comma || has_base_or_rest || !context.use_block_indent(),
         );
 
         write_list(&item_vec, &fmt)?

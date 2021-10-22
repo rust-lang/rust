@@ -104,7 +104,7 @@ impl Spanned for ast::Arm {
 impl Spanned for ast::Param {
     fn span(&self) -> Span {
         if crate::items::is_named_param(self) {
-            mk_sp(self.pat.span.lo(), self.ty.span.hi())
+            mk_sp(crate::items::span_lo_for_param(self), self.ty.span.hi())
         } else {
             self.ty.span
         }

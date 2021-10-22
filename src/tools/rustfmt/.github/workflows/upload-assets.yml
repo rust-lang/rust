@@ -1,8 +1,10 @@
 name: upload
 
 on:
+  push:
   release:
     types: [created]
+  workflow_dispatch:
 
 jobs:
   build-release:
@@ -14,42 +16,40 @@ jobs:
           - build: linux-x86_64
             os: ubuntu-latest
             rust: nightly
+            target: x86_64-unknown-linux-gnu
           - build: macos-x86_64
             os: macos-latest
             rust: nightly
+            target: x86_64-apple-darwin
           - build: windows-x86_64-gnu
             os: windows-latest
             rust: nightly-x86_64-gnu
+            target: x86_64-pc-windows-gnu
           - build: windows-x86_64-msvc
             os: windows-latest
             rust: nightly-x86_64-msvc
+            target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
+        # Run build
+      - name: install rustup
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+          sh rustup-init.sh -y --default-toolchain none
+          rustup target add ${{ matrix.target }}
 
       - name: Add mingw64 to path for x86_64-gnu
         run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
         if: matrix.rust == 'nightly-x86_64-gnu'
         shell: bash
 
-      - name: Install cargo-make
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --force cargo-make
-
       - name: Build release binaries
         uses: actions-rs/cargo@v1
         with:
-          command: make
-          args: release
+          command: build
+          args: --release
 
       - name: Build archive
         shell: bash
@@ -70,6 +70,7 @@ jobs:
           fi
 
       - name: Upload Release Asset
+        if: github.event_name == 'release'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

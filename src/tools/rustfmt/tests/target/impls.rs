@@ -21,6 +21,14 @@ pub impl Foo for Bar {
     // Comment 3
 }
 
+#[inherent]
+impl Visible for Bar {
+    pub const C: i32;
+    pub type T;
+    pub fn f();
+    pub fn g() {}
+}
+
 pub unsafe impl<'a, 'b, X, Y: Foo<Bar>> !Foo<'a, X> for Bar<'b, Y>
 where
     X: Foo<'a, Z>,
