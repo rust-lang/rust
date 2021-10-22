@@ -259,6 +259,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // The only way to prove a NotImplemented(T: Foo) predicate is via a negative impl.
         // There are no compiler built-in rules for this.
         if obligation.polarity() == ty::ImplPolarity::Negative {
+            self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
             self.assemble_candidates_from_impls(obligation, &mut candidates);
         } else {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
