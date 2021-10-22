@@ -507,12 +507,12 @@ impl DefCollector<'_> {
         };
         let path = ModPath::from_segments(
             path_kind.clone(),
-            [krate.clone(), name![prelude], edition].iter().cloned(),
+            [krate.clone(), name![prelude], edition].into_iter(),
         );
         // Fall back to the older `std::prelude::v1` for compatibility with Rust <1.52.0
         // FIXME remove this fallback
         let fallback_path =
-            ModPath::from_segments(path_kind, [krate, name![prelude], name![v1]].iter().cloned());
+            ModPath::from_segments(path_kind, [krate, name![prelude], name![v1]].into_iter());
 
         for path in &[path, fallback_path] {
             let (per_ns, _) = self.def_map.resolve_path(

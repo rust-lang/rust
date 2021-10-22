@@ -56,12 +56,12 @@ impl Feature {
 
 fn is_valid_feature_name(feature: &str) -> Result<(), String> {
     'word: for word in feature.split_whitespace() {
-        for &short in ["to", "and"].iter() {
+        for short in ["to", "and"] {
             if word == short {
                 continue 'word;
             }
         }
-        for &short in ["To", "And"].iter() {
+        for short in ["To", "And"] {
             if word == short {
                 return Err(format!("Don't capitalize {:?}", word));
             }

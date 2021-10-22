@@ -19,11 +19,10 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
             }
         });
 
-        std::array::IntoIter::new(["self::", "super::", "crate::"])
-            .for_each(|kw| acc.add_keyword(ctx, kw));
+        ["self::", "super::", "crate::"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
         return;
     }
-    std::array::IntoIter::new(["self", "super", "crate"]).for_each(|kw| acc.add_keyword(ctx, kw));
+    ["self", "super", "crate"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
 
     match &ctx.completion_location {
         Some(ImmediateLocation::Visibility(_)) => return,

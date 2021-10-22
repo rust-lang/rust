@@ -28,8 +28,7 @@ macro_rules! quote_ts {
         [
             TokenTree::from(Punct::new(':', Spacing::Joint)),
             TokenTree::from(Punct::new(':', Spacing::Alone)),
-        ].iter()
-            .cloned()
+        ].into_iter()
             .map(|mut x| {
                 x.set_span(Span::def_site());
                 x
@@ -52,7 +51,7 @@ macro_rules! quote {
     ($($t:tt)*) => {
         [
             $(TokenStream::from(quote_ts!($t)),)*
-        ].iter().cloned().collect::<TokenStream>()
+        ].into_iter().collect::<TokenStream>()
     };
 }
 

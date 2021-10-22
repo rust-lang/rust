@@ -2392,7 +2392,7 @@ impl Type {
                 }
                 .cast(&Interner),
             ),
-            [TyVariableKind::General].iter().copied(),
+            [TyVariableKind::General].into_iter(),
         );
 
         match db.trait_solve(self.krate, goal)? {

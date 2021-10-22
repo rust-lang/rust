@@ -10,9 +10,9 @@ use crate::{
 };
 
 pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
-    let add_completion = |item: &&str| {
+    let add_completion = |item: &str| {
         let mut completion =
-            CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), *item);
+            CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), item);
         completion.insert_text(format!(r#""{}""#, item));
         completion.kind(CompletionItemKind::Attribute);
         acc.add(completion.build());
@@ -26,11 +26,11 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
     .find(|t| matches!(t.kind(), SyntaxKind::IDENT));
 
     match previous.as_ref().map(|p| p.text()) {
-        Some("target_arch") => KNOWN_ARCH.iter().for_each(add_completion),
-        Some("target_env") => KNOWN_ENV.iter().for_each(add_completion),
-        Some("target_os") => KNOWN_OS.iter().for_each(add_completion),
-        Some("target_vendor") => KNOWN_VENDOR.iter().for_each(add_completion),
-        Some("target_endian") => ["little", "big"].iter().for_each(add_completion),
+        Some("target_arch") => KNOWN_ARCH.iter().copied().for_each(add_completion),
+        Some("target_env") => KNOWN_ENV.iter().copied().for_each(add_completion),
+        Some("target_os") => KNOWN_OS.iter().copied().for_each(add_completion),
+        Some("target_vendor") => KNOWN_VENDOR.iter().copied().for_each(add_completion),
+        Some("target_endian") => ["little", "big"].into_iter().for_each(add_completion),
         Some(name) => {
             if let Some(krate) = ctx.krate {
                 krate.potential_cfg(ctx.db).get_cfg_values(&name).iter().for_each(|s| {

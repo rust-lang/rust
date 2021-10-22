@@ -283,7 +283,7 @@ pub fn mirror(input: TokenStream) -> TokenStream {
     input
 }
 "#;
-    let proc_macros = std::array::IntoIter::new([
+    let proc_macros = [
         ProcMacro {
             name: "identity".into(),
             kind: crate::ProcMacroKind::Attr,
@@ -304,7 +304,8 @@ pub fn mirror(input: TokenStream) -> TokenStream {
             kind: crate::ProcMacroKind::FuncLike,
             expander: Arc::new(MirrorProcMacroExpander),
         },
-    ])
+    ]
+    .into_iter()
     .filter(|pm| proc_macros.iter().any(|name| name == pm.name))
     .collect();
     (proc_macros, source.into())
