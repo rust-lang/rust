@@ -482,7 +482,7 @@ crate fn build_impl(
     trace!(
         "build_impl: impl {:?} for {:?}",
         trait_.as_ref().map(|t| t.def_id()),
-        for_.def_id_no_primitives()
+        for_.def_id(&cx.cache)
     );
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
