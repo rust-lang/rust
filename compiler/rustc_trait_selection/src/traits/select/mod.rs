@@ -1187,7 +1187,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let value = attr.and_then(|a| a.value_str());
                     if let Some(value) = value {
                         debug!(
-                            "filter_impls: \
+                            "filter_reservation_impls: \
                                  reservation impl ambiguity on {:?}",
                             def_id
                         );
