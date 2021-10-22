@@ -374,7 +374,7 @@ crate fn build_impl(
     // Only inline impl if the implementing type is
     // reachable in rustdoc generated documentation
     if !did.is_local() {
-        if let Some(did) = for_.def_id() {
+        if let Some(did) = for_.def_id_full(&cx.cache) {
             if !cx.cache.access_levels.is_public(did) {
                 return;
             }
@@ -462,7 +462,7 @@ crate fn build_impl(
     }
 
     while let Some(ty) = stack.pop() {
-        if let Some(did) = ty.def_id() {
+        if let Some(did) = ty.def_id_full(&cx.cache) {
             if tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
                 return;
             }

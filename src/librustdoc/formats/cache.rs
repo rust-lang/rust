@@ -206,7 +206,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 || i.trait_
                     .as_ref()
                     .map_or(false, |t| self.cache.masked_crates.contains(&t.def_id().krate))
-                || i.for_.def_id().map_or(false, |d| self.cache.masked_crates.contains(&d.krate))
+                || i.for_
+                    .def_id_full(self.cache)
+                    .map_or(false, |d| self.cache.masked_crates.contains(&d.krate))
             {
                 return None;
             }
@@ -454,7 +456,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
             if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
                 for bound in generics {
-                    if let Some(did) = bound.def_id() {
+                    if let Some(did) = bound.def_id_full(self.cache) {
                         dids.insert(did);
                     }
                 }
