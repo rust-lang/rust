@@ -325,7 +325,7 @@ fn merge_attrs(
     }
 }
 
-/// Builds a specific implementation of a type. The `did` could be a type method or trait method.
+/// Inline an `impl`, inherent or of a trait. The `did` must be for an `impl`.
 crate fn build_impl(
     cx: &mut DocContext<'_>,
     parent_module: impl Into<Option<DefId>>,
