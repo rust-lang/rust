@@ -1,0 +1,39 @@
+error[E0599]: no method named `ceil` found for struct `Simd` in the current scope
+  --> $DIR/libm_no_std_cant_float.rs:14:17
+   |
+LL |     let _xc = x.ceil();
+   |                 ^^^^ method not found in `Simd<f32, 4_usize>`
+
+error[E0599]: no method named `floor` found for struct `Simd` in the current scope
+  --> $DIR/libm_no_std_cant_float.rs:15:17
+   |
+LL |     let _xf = x.floor();
+   |                 ^^^^^ method not found in `Simd<f32, 4_usize>`
+
+error[E0599]: no method named `round` found for struct `Simd` in the current scope
+  --> $DIR/libm_no_std_cant_float.rs:16:17
+   |
+LL |     let _xr = x.round();
+   |                 ^^^^^ method not found in `Simd<f32, 4_usize>`
+
+error[E0599]: no method named `trunc` found for struct `Simd` in the current scope
+  --> $DIR/libm_no_std_cant_float.rs:17:17
+   |
+LL |     let _xt = x.trunc();
+   |                 ^^^^^ method not found in `Simd<f32, 4_usize>`
+
+error[E0599]: no method named `mul_add` found for struct `Simd` in the current scope
+  --> $DIR/libm_no_std_cant_float.rs:18:19
+   |
+LL |     let _xfma = x.mul_add(x, x);
+   |                   ^^^^^^^ method not found in `Simd<f32, 4_usize>`
+
+error[E0599]: no method named `sqrt` found for struct `Simd` in the current scope
+  --> $DIR/libm_no_std_cant_float.rs:19:20
+   |
+LL |     let _xsqrt = x.sqrt();
+   |                    ^^^^ method not found in `Simd<f32, 4_usize>`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0599`.
