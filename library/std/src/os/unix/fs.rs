@@ -883,7 +883,8 @@ impl DirEntryExt2 for fs::DirEntry {
 
 /// Creates a new symbolic link on the filesystem.
 ///
-/// The `link` path will be a symbolic link pointing to the `original` path.
+/// The second path given will become a symbolic link pointing to
+/// the first, original path.
 ///
 /// # Examples
 ///
