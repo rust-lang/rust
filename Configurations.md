@@ -2062,7 +2062,7 @@ use sit;
 Controls the strategy for how imports are grouped together.
 
 - **Default value**: `Preserve`
-- **Possible values**: `Preserve`, `StdExternalCrate`
+- **Possible values**: `Preserve`, `StdExternalCrate`, `One`
 - **Stable**: No
 
 #### `Preserve` (default):
@@ -2106,6 +2106,23 @@ use uuid::Uuid;
 use super::schema::{Context, Payload};
 use super::update::convert_publish_payload;
 use crate::models::Event;
+```
+
+#### `One`:
+
+Discard existing import groups, and create a single group for everything
+
+```rust
+use super::schema::{Context, Payload};
+use super::update::convert_publish_payload;
+use crate::models::Event;
+use alloc::alloc::Layout;
+use broker::database::PooledConnection;
+use chrono::Utc;
+use core::f32;
+use juniper::{FieldError, FieldResult};
+use std::sync::Arc;
+use uuid::Uuid;
 ```
 
 ## `reorder_modules`
