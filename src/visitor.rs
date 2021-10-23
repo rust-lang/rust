@@ -164,7 +164,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     );
                 } else {
                     let shape = self.shape();
-                    let rewrite = self.with_context(|ctx| stmt.rewrite(&ctx, shape));
+                    let rewrite = self.with_context(|ctx| stmt.rewrite(ctx, shape));
                     self.push_rewrite(stmt.span(), rewrite)
                 }
             }
@@ -273,9 +273,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         let comment_snippet = self.snippet(span);
 
-        let align_to_right = if unindent_comment && contains_comment(&comment_snippet) {
+        let align_to_right = if unindent_comment && contains_comment(comment_snippet) {
             let first_lines = comment_snippet.splitn(2, '/').next().unwrap_or("");
-            last_line_width(first_lines) > last_line_width(&comment_snippet)
+            last_line_width(first_lines) > last_line_width(comment_snippet)
         } else {
             false
         };
@@ -439,7 +439,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let filtered_attrs;
         let mut attrs = &item.attrs;
         let skip_context_saved = self.skip_context.clone();
-        self.skip_context.update_with_attrs(&attrs);
+        self.skip_context.update_with_attrs(attrs);
 
         let should_visit_node_again = match item.kind {
             // For use/extern crate items, skip rewriting attributes but check for a skip attribute.
@@ -488,12 +488,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 ast::ItemKind::Use(ref tree) => self.format_import(item, tree),
                 ast::ItemKind::Impl { .. } => {
                     let block_indent = self.block_indent;
-                    let rw = self.with_context(|ctx| format_impl(&ctx, item, block_indent));
+                    let rw = self.with_context(|ctx| format_impl(ctx, item, block_indent));
                     self.push_rewrite(item.span, rw);
                 }
                 ast::ItemKind::Trait(..) => {
                     let block_indent = self.block_indent;
-                    let rw = self.with_context(|ctx| format_trait(&ctx, item, block_indent));
+                    let rw = self.with_context(|ctx| format_trait(ctx, item, block_indent));
                     self.push_rewrite(item.span, rw);
                 }
                 ast::ItemKind::TraitAlias(ref generics, ref generic_bounds) => {
@@ -552,7 +552,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                             visit::FnKind::Fn(
                                 fn_ctxt,
                                 item.ident,
-                                &fn_signature,
+                                fn_signature,
                                 &item.vis,
                                 Some(body),
                             ),
@@ -567,7 +567,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         let rewrite = self.rewrite_required_fn(
                             indent,
                             item.ident,
-                            &fn_signature,
+                            fn_signature,
                             &item.vis,
                             generics,
                             item.span,
@@ -718,7 +718,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         &ii.vis,
                         defaultness,
                         ty.as_ref(),
-                        &generics,
+                        generics,
                         &self.get_context(),
                         self.block_indent,
                         ii.span,
@@ -905,7 +905,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     fn walk_mod_items(&mut self, items: &[rustc_ast::ptr::P<ast::Item>]) {
-        self.visit_items_with_reordering(&ptr_vec_to_ref_vec(&items));
+        self.visit_items_with_reordering(&ptr_vec_to_ref_vec(items));
     }
 
     fn walk_stmts(&mut self, stmts: &[Stmt<'_>], include_current_empty_semi: bool) {

@@ -226,7 +226,7 @@ impl<'a> FnSig<'a> {
     fn to_str(&self, context: &RewriteContext<'_>) -> String {
         let mut result = String::with_capacity(128);
         // Vis defaultness constness unsafety abi.
-        result.push_str(&*format_visibility(context, &self.visibility));
+        result.push_str(&*format_visibility(context, self.visibility));
         result.push_str(format_defaultness(self.defaultness));
         result.push_str(format_constness(self.constness));
         result.push_str(format_async(&self.is_async));
@@ -1220,7 +1220,7 @@ impl<'a> Rewrite for TraitAliasBounds<'a> {
         } else if fits_single_line {
             Cow::from(" ")
         } else {
-            shape.indent.to_string_with_newline(&context.config)
+            shape.indent.to_string_with_newline(context.config)
         };
 
         Some(format!("{}{}{}", generic_bounds_str, space, where_str))
@@ -1238,7 +1238,7 @@ pub(crate) fn format_trait_alias(
     let alias = rewrite_ident(context, ident);
     // 6 = "trait ", 2 = " ="
     let g_shape = shape.offset_left(6)?.sub_width(2)?;
-    let generics_str = rewrite_generics(context, &alias, generics, g_shape)?;
+    let generics_str = rewrite_generics(context, alias, generics, g_shape)?;
     let vis_str = format_visibility(context, vis);
     let lhs = format!("{}trait {} =", vis_str, generics_str);
     // 1 = ";"
@@ -1386,7 +1386,7 @@ fn format_empty_struct_or_tuple(
     closer: &str,
 ) {
     // 3 = " {}" or "();"
-    let used_width = last_line_used_width(&result, offset.width()) + 3;
+    let used_width = last_line_used_width(result, offset.width()) + 3;
     if used_width > context.config.max_width() {
         result.push_str(&offset.to_string_with_newline(context.config))
     }
@@ -2066,7 +2066,7 @@ fn rewrite_explicit_self(
                     )?;
                     Some(combine_strs_with_missing_comments(
                         context,
-                        &param_attrs,
+                        param_attrs,
                         &format!("&{} {}self", lifetime_str, mut_str),
                         span,
                         shape,
@@ -2075,7 +2075,7 @@ fn rewrite_explicit_self(
                 }
                 None => Some(combine_strs_with_missing_comments(
                     context,
-                    &param_attrs,
+                    param_attrs,
                     &format!("&{}self", mut_str),
                     span,
                     shape,
@@ -2091,7 +2091,7 @@ fn rewrite_explicit_self(
 
             Some(combine_strs_with_missing_comments(
                 context,
-                &param_attrs,
+                param_attrs,
                 &format!("{}self: {}", format_mutability(mutability), type_str),
                 span,
                 shape,
@@ -2100,7 +2100,7 @@ fn rewrite_explicit_self(
         }
         ast::SelfKind::Value(mutability) => Some(combine_strs_with_missing_comments(
             context,
-            &param_attrs,
+            param_attrs,
             &format!("{}self", format_mutability(mutability)),
             span,
             shape,
@@ -2226,7 +2226,7 @@ fn rewrite_fn_base(
     }
 
     // Skip `pub(crate)`.
-    let lo_after_visibility = get_bytepos_after_visibility(&fn_sig.visibility, span);
+    let lo_after_visibility = get_bytepos_after_visibility(fn_sig.visibility, span);
     // A conservative estimation, the goal is to be over all parens in generics
     let params_start = fn_sig
         .generics
@@ -2984,7 +2984,7 @@ fn format_header(
     let mut result = String::with_capacity(128);
     let shape = Shape::indented(offset, context.config);
 
-    result.push_str(&format_visibility(context, vis).trim());
+    result.push_str(format_visibility(context, vis).trim());
 
     // Check for a missing comment between the visibility and the item name.
     let after_vis = vis.span.hi();
@@ -3005,7 +3005,7 @@ fn format_header(
         }
     }
 
-    result.push_str(&rewrite_ident(context, ident));
+    result.push_str(rewrite_ident(context, ident));
 
     result
 }
@@ -3133,7 +3133,7 @@ impl Rewrite for ast::ForeignItem {
                     let inner_attrs = inner_attributes(&self.attrs);
                     let fn_ctxt = visit::FnCtxt::Foreign;
                     visitor.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, self.ident, &fn_sig, &self.vis, Some(body)),
+                        visit::FnKind::Fn(fn_ctxt, self.ident, fn_sig, &self.vis, Some(body)),
                         generics,
                         &fn_sig.decl,
                         self.span,
@@ -3146,7 +3146,7 @@ impl Rewrite for ast::ForeignItem {
                         context,
                         shape.indent,
                         self.ident,
-                        &FnSig::from_method_sig(&fn_sig, generics, &self.vis),
+                        &FnSig::from_method_sig(fn_sig, generics, &self.vis),
                         span,
                         FnBraceStyle::None,
                     )
@@ -3171,7 +3171,7 @@ impl Rewrite for ast::ForeignItem {
                 let ast::TyAliasKind(_, ref generics, ref generic_bounds, ref type_default) =
                     **ty_alias_kind;
                 rewrite_type(
-                    &context,
+                    context,
                     shape.indent,
                     self.ident,
                     &self.vis,
@@ -3229,7 +3229,7 @@ fn rewrite_attrs(
     combine_strs_with_missing_comments(
         context,
         &attrs_str,
-        &item_str,
+        item_str,
         missed_span,
         shape,
         allow_extend,

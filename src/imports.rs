@@ -275,7 +275,7 @@ impl UseTree {
         shape: Shape,
     ) -> Option<String> {
         let vis = self.visibility.as_ref().map_or(Cow::from(""), |vis| {
-            crate::utils::format_visibility(context, &vis)
+            crate::utils::format_visibility(context, vis)
         });
         let use_str = self
             .rewrite(context, shape.offset_left(vis.len())?)
@@ -929,7 +929,7 @@ impl Rewrite for UseTree {
     fn rewrite(&self, context: &RewriteContext<'_>, mut shape: Shape) -> Option<String> {
         let mut result = String::with_capacity(256);
         let mut iter = self.path.iter().peekable();
-        while let Some(ref segment) = iter.next() {
+        while let Some(segment) = iter.next() {
             let segment_str = segment.rewrite(context, shape)?;
             result.push_str(&segment_str);
             if iter.peek().is_some() {

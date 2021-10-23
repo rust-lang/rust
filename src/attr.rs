@@ -451,7 +451,7 @@ impl Rewrite for [ast::Attribute] {
                         if next.is_doc_comment() {
                             let snippet = context.snippet(missing_span);
                             let (_, mlb) = has_newlines_before_after_comment(snippet);
-                            result.push_str(&mlb);
+                            result.push_str(mlb);
                         }
                     }
                     result.push('\n');
@@ -484,7 +484,7 @@ impl Rewrite for [ast::Attribute] {
                     if next.is_doc_comment() {
                         let snippet = context.snippet(missing_span);
                         let (_, mlb) = has_newlines_before_after_comment(snippet);
-                        result.push_str(&mlb);
+                        result.push_str(mlb);
                     }
                 }
                 result.push('\n');

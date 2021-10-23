@@ -155,7 +155,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
         let snippet_provider = self.parse_session.snippet_provider(module.span);
         let mut visitor = FmtVisitor::from_parse_sess(
             &self.parse_session,
-            &self.config,
+            self.config,
             &snippet_provider,
             self.report.clone(),
         );
@@ -180,7 +180,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             &mut visitor.buffer,
             &path,
             &visitor.skipped_range.borrow(),
-            &self.config,
+            self.config,
             &self.report,
         );
 

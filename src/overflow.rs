@@ -394,7 +394,7 @@ impl<'a> Context<'a> {
     ) -> Option<String> {
         let last_item = self.last_item()?;
         let rewrite = match last_item {
-            OverflowableItem::Expr(ref expr) => {
+            OverflowableItem::Expr(expr) => {
                 match expr.kind {
                     // When overflowing the closure which consists of a single control flow
                     // expression, force to use block if its condition uses multi line.

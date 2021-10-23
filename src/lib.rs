@@ -283,7 +283,7 @@ impl FormatReport {
         writeln!(
             t,
             "{}",
-            FormatReportFormatterBuilder::new(&self)
+            FormatReportFormatterBuilder::new(self)
                 .enable_colors(true)
                 .build()
         )?;
@@ -297,7 +297,7 @@ impl FormatReport {
 impl fmt::Display for FormatReport {
     // Prints all the formatting errors.
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(fmt, "{}", FormatReportFormatterBuilder::new(&self).build())?;
+        write!(fmt, "{}", FormatReportFormatterBuilder::new(self).build())?;
         Ok(())
     }
 }

@@ -401,12 +401,12 @@ fn get_targets_root_only(
 
 fn get_targets_recursive(
     manifest_path: Option<&Path>,
-    mut targets: &mut BTreeSet<Target>,
+    targets: &mut BTreeSet<Target>,
     visited: &mut BTreeSet<String>,
 ) -> Result<(), io::Error> {
     let metadata = get_cargo_metadata(manifest_path)?;
     for package in &metadata.packages {
-        add_targets(&package.targets, &mut targets);
+        add_targets(&package.targets, targets);
 
         // Look for local dependencies using information available since cargo v1.51
         // It's theoretically possible someone could use a newer version of rustfmt with
@@ -427,7 +427,7 @@ fn get_targets_recursive(
                     .any(|p| p.manifest_path.eq(&manifest_path))
             {
                 visited.insert(dependency.name.to_owned());
-                get_targets_recursive(Some(&manifest_path), &mut targets, visited)?;
+                get_targets_recursive(Some(&manifest_path), targets, visited)?;
             }
         }
     }

@@ -164,7 +164,7 @@ impl ParseSess {
     }
 
     pub(crate) fn ignore_file(&self, path: &FileName) -> bool {
-        self.ignore_path_set.as_ref().is_match(&path)
+        self.ignore_path_set.as_ref().is_match(path)
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {

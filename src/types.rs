@@ -728,7 +728,7 @@ impl Rewrite for ast::Ty {
                     result = combine_strs_with_missing_comments(
                         context,
                         result.trim_end(),
-                        &mt.ty.rewrite(&context, shape)?,
+                        &mt.ty.rewrite(context, shape)?,
                         before_ty_span,
                         shape,
                         true,
@@ -738,7 +738,7 @@ impl Rewrite for ast::Ty {
                     let budget = shape.width.checked_sub(used_width)?;
                     let ty_str = mt
                         .ty
-                        .rewrite(&context, Shape::legacy(budget, shape.indent + used_width))?;
+                        .rewrite(context, Shape::legacy(budget, shape.indent + used_width))?;
                     result.push_str(&ty_str);
                 }
 

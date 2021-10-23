@@ -257,7 +257,7 @@ pub(crate) fn format_expr(
                         }
                         _ => false,
                     },
-                    ast::ExprKind::Unary(_, ref expr) => needs_space_before_range(context, &expr),
+                    ast::ExprKind::Unary(_, ref expr) => needs_space_before_range(context, expr),
                     _ => false,
                 }
             }
@@ -423,7 +423,7 @@ fn rewrite_empty_block(
     prefix: &str,
     shape: Shape,
 ) -> Option<String> {
-    if block_has_statements(&block) {
+    if block_has_statements(block) {
         return None;
     }
 
@@ -1148,7 +1148,7 @@ pub(crate) fn is_empty_block(
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
 ) -> bool {
-    !block_has_statements(&block)
+    !block_has_statements(block)
         && !block_contains_comment(context, block)
         && attrs.map_or(true, |a| inner_attributes(a).is_empty())
 }
@@ -1621,7 +1621,7 @@ fn rewrite_struct_lit<'a>(
     };
 
     let fields_str =
-        wrap_struct_field(context, &attrs, &fields_str, shape, v_shape, one_line_width)?;
+        wrap_struct_field(context, attrs, &fields_str, shape, v_shape, one_line_width)?;
     Some(format!("{} {{{}}}", path_str, fields_str))
 
     // FIXME if context.config.indent_style() == Visual, but we run out
@@ -1888,7 +1888,7 @@ pub(crate) fn rewrite_assign_rhs_expr<R: Rewrite>(
     shape: Shape,
     rhs_tactics: RhsTactics,
 ) -> Option<String> {
-    let last_line_width = last_line_width(&lhs).saturating_sub(if lhs.contains('\n') {
+    let last_line_width = last_line_width(lhs).saturating_sub(if lhs.contains('\n') {
         shape.indent.width()
     } else {
         0
@@ -1947,7 +1947,7 @@ pub(crate) fn rewrite_assign_rhs_with_comments<S: Into<String>, R: Rewrite>(
 
     if contains_comment {
         let rhs = rhs.trim_start();
-        combine_strs_with_missing_comments(context, &lhs, &rhs, between_span, shape, allow_extend)
+        combine_strs_with_missing_comments(context, &lhs, rhs, between_span, shape, allow_extend)
     } else {
         Some(lhs + &rhs)
     }

@@ -42,7 +42,7 @@ pub(crate) fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
         (
             VisibilityKind::Restricted { path: p, .. },
             VisibilityKind::Restricted { path: q, .. },
-        ) => pprust::path_to_string(&p) == pprust::path_to_string(&q),
+        ) => pprust::path_to_string(p) == pprust::path_to_string(q),
         (VisibilityKind::Public, VisibilityKind::Public)
         | (VisibilityKind::Inherited, VisibilityKind::Inherited)
         | (
@@ -689,7 +689,7 @@ mod test {
     #[test]
     fn test_remove_trailing_white_spaces() {
         let s = "    r#\"\n        test\n    \"#";
-        assert_eq!(remove_trailing_white_spaces(&s), s);
+        assert_eq!(remove_trailing_white_spaces(s), s);
     }
 
     #[test]
@@ -698,7 +698,7 @@ mod test {
         let config = Config::default();
         let indent = Indent::new(4, 0);
         assert_eq!(
-            trim_left_preserve_layout(&s, indent, &config),
+            trim_left_preserve_layout(s, indent, &config),
             Some("aaa\n    bbb\n    ccc".to_string())
         );
     }

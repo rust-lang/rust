@@ -482,7 +482,7 @@ fn rewrite_tuple_pat(
     let path_str = path_str.unwrap_or_default();
 
     overflow::rewrite_with_parens(
-        &context,
+        context,
         &path_str,
         pat_vec.iter(),
         shape,

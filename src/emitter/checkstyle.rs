@@ -121,7 +121,7 @@ mod tests {
             format!(r#"<file name="{}">"#, bin_file),
             format!(
                 r#"<error line="2" severity="warning" message="Should be `{}`" />"#,
-                XmlEscaped(&r#"    println!("Hello, world!");"#),
+                XmlEscaped(r#"    println!("Hello, world!");"#),
             ),
             String::from("</file>"),
         ];
@@ -129,7 +129,7 @@ mod tests {
             format!(r#"<file name="{}">"#, lib_file),
             format!(
                 r#"<error line="2" severity="warning" message="Should be `{}`" />"#,
-                XmlEscaped(&r#"    println!("Greetings!");"#),
+                XmlEscaped(r#"    println!("Greetings!");"#),
             ),
             String::from("</file>"),
         ];

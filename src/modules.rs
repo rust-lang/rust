@@ -290,7 +290,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 };
                 self.visit_sub_mod_after_directory_update(sub_mod, Some(directory))
             }
-            SubModKind::Internal(ref item) => {
+            SubModKind::Internal(item) => {
                 self.push_inline_mod_directory(item.ident, &item.attrs);
                 self.visit_sub_mod_after_directory_update(sub_mod, None)
             }
@@ -317,7 +317,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         }
         match (sub_mod.ast_mod_kind, sub_mod.items) {
             (Some(Cow::Borrowed(ast::ModKind::Loaded(items, _, _))), _) => {
-                self.visit_mod_from_ast(&items)
+                self.visit_mod_from_ast(items)
             }
             (Some(Cow::Owned(..)), Cow::Owned(items)) => self.visit_mod_outside_ast(items),
             (_, _) => Ok(()),
