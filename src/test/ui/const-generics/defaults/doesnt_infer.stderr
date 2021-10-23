@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `Foo<{_: u32}>`
-  --> $DIR/doesnt_infer.rs:13:15
+  --> $DIR/doesnt_infer.rs:11:15
    |
 LL |     let foo = Foo::foo();
    |         ---   ^^^^^^^^ cannot infer the value of const parameter `N`

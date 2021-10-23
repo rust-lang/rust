@@ -1,5 +1,5 @@
 error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/default-on-impl.rs:5:12
+  --> $DIR/default-on-impl.rs:3:12
    |
 LL | impl<const N: usize = 1> Foo<N> {}
    |            ^

@@ -5,7 +5,6 @@
 // compile-flags: -Z unpretty=expanded
 
 #![crate_type = "lib"]
-#![feature(const_generics_defaults)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
 #[macro_use]

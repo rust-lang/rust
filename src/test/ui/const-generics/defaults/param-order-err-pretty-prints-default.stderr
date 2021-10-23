@@ -1,5 +1,5 @@
 error: lifetime parameters must be declared prior to const parameters
-  --> $DIR/param-order-err-pretty-prints-default.rs:2:33
+  --> $DIR/param-order-err-pretty-prints-default.rs:1:33
    |
 LL | struct Foo<const M: usize = 10, 'a>(&'a u32);
    |           ----------------------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, const M: usize = 10>`

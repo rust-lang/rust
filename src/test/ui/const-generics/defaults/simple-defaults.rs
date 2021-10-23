@@ -1,6 +1,5 @@
 // run-pass
 // Checks that type param defaults are allowed after const params.
-#![feature(const_generics_defaults)]
 #![allow(dead_code)]
 
 struct FixedOutput<'a, const N: usize, T=u32> {

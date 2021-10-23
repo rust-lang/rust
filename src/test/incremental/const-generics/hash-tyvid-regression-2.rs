@@ -1,5 +1,5 @@
 // revisions: cfail
-#![feature(generic_const_exprs, adt_const_params, const_generics_defaults)]
+#![feature(generic_const_exprs, adt_const_params)]
 #![allow(incomplete_features)]
 // regression test for #77650
 struct C<T, const N: core::num::NonZeroUsize>([T; N.get()])
