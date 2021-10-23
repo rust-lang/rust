@@ -40,10 +40,12 @@ where
 {
     type Item = T;
 
+    #[inline]
     fn next(&mut self) -> Option<T> {
         self.it.next().copied()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
     }
@@ -64,14 +66,17 @@ where
         self.it.fold(init, copy_fold(f))
     }
 
+    #[inline]
     fn nth(&mut self, n: usize) -> Option<T> {
         self.it.nth(n).copied()
     }
 
+    #[inline]
     fn last(self) -> Option<T> {
         self.it.last().copied()
     }
 
+    #[inline]
     fn count(self) -> usize {
         self.it.count()
     }
@@ -82,6 +87,7 @@ where
     }
 
     #[doc(hidden)]
+    #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
         Self: TrustedRandomAccessNoCoerce,
@@ -98,6 +104,7 @@ where
     I: DoubleEndedIterator<Item = &'a T>,
     T: Copy,
 {
+    #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.it.next_back().copied()
     }
