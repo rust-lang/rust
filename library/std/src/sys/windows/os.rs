@@ -281,6 +281,10 @@ pub fn temp_dir() -> PathBuf {
 #[cfg(not(target_vendor = "uwp"))]
 fn home_dir_crt() -> Option<PathBuf> {
     unsafe {
+        // The magic constant -4 can be used as the token passed to GetUserProfileDirectoryW below
+        // instead of us having to go through these multiple steps to get a token. However this is
+        // not implemented on Windows 7, only Windows 8 and up. When we drop support for Windows 7
+        // we can simplify this code. See #90144 for details.
         use crate::sys::handle::Handle;
 
         let me = c::GetCurrentProcess();

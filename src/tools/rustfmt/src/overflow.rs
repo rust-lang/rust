@@ -77,6 +77,7 @@ pub(crate) enum OverflowableItem<'a> {
     FieldDef(&'a ast::FieldDef),
     TuplePatField(&'a TuplePatField<'a>),
     Ty(&'a ast::Ty),
+    Pat(&'a ast::Pat),
 }
 
 impl<'a> Rewrite for OverflowableItem<'a> {
@@ -116,6 +117,7 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::FieldDef(sf) => f(*sf),
             OverflowableItem::TuplePatField(pat) => f(*pat),
             OverflowableItem::Ty(ty) => f(*ty),
+            OverflowableItem::Pat(pat) => f(*pat),
         }
     }
 
@@ -232,7 +234,7 @@ macro_rules! impl_into_overflowable_item_for_rustfmt_types {
     }
 }
 
-impl_into_overflowable_item_for_ast_node!(Expr, GenericParam, NestedMetaItem, FieldDef, Ty);
+impl_into_overflowable_item_for_ast_node!(Expr, GenericParam, NestedMetaItem, FieldDef, Ty, Pat);
 impl_into_overflowable_item_for_rustfmt_types!([MacroArg], [SegmentParam, TuplePatField]);
 
 pub(crate) fn into_overflowable_list<'a, T>(

@@ -1665,6 +1665,80 @@ impl<T> [T] {
         unsafe { (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid)) }
     }
 
+    /// Divides one slice into an array and a remainder slice at an index.
+    ///
+    /// The array will contain all indices from `[0, N)` (excluding
+    /// the index `N` itself) and the slice will contain all
+    /// indices from `[N, len)` (excluding the index `len` itself).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N > len`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_array)]
+    ///
+    /// let v = &[1, 2, 3, 4, 5, 6][..];
+    ///
+    /// {
+    ///    let (left, right) = v.split_array_ref::<0>();
+    ///    assert_eq!(left, &[]);
+    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_array_ref::<2>();
+    ///     assert_eq!(left, &[1, 2]);
+    ///     assert_eq!(right, [3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_array_ref::<6>();
+    ///     assert_eq!(left, &[1, 2, 3, 4, 5, 6]);
+    ///     assert_eq!(right, []);
+    /// }
+    /// ```
+    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
+    #[inline]
+    pub fn split_array_ref<const N: usize>(&self) -> (&[T; N], &[T]) {
+        let (a, b) = self.split_at(N);
+        // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at)
+        unsafe { (&*(a.as_ptr() as *const [T; N]), b) }
+    }
+
+    /// Divides one mutable slice into an array and a remainder slice at an index.
+    ///
+    /// The array will contain all indices from `[0, N)` (excluding
+    /// the index `N` itself) and the slice will contain all
+    /// indices from `[N, len)` (excluding the index `len` itself).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N > len`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_array)]
+    ///
+    /// let mut v = &mut [1, 0, 3, 0, 5, 6][..];
+    /// let (left, right) = v.split_array_mut::<2>();
+    /// assert_eq!(left, &mut [1, 0]);
+    /// assert_eq!(right, [3, 0, 5, 6]);
+    /// left[1] = 2;
+    /// right[1] = 4;
+    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
+    #[inline]
+    pub fn split_array_mut<const N: usize>(&mut self) -> (&mut [T; N], &mut [T]) {
+        let (a, b) = self.split_at_mut(N);
+        // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)
+        unsafe { (&mut *(a.as_mut_ptr() as *mut [T; N]), b) }
+    }
+
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`. The matched element is not contained in the subslices.
     ///

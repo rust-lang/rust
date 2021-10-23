@@ -8,6 +8,16 @@ fn foo() {
             "line1";
             "line2"
         },
+        ThisIsA::Guard if true => {
+            "line1";
+            "line2"
+        },
+        ThisIsA::ReallyLongPattern(ThatWillForce::TheGuard, ToWrapOnto::TheFollowingLine)
+            if true =>
+        {
+            "line1";
+            "line2"
+        },
         b => (
             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
             bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,

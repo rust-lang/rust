@@ -521,11 +521,13 @@ fn main() {
 
 ## `disable_all_formatting`
 
-Don't reformat anything
+Don't reformat anything.
+
+Note that this option may be soft-deprecated in the future once the [ignore](#ignore) option is stabilized. Nightly toolchain users are encouraged to use [ignore](#ignore) instead when possible.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No (tracking issue: #3388)
+- **Stable**: Yes
 
 ## `edition`
 
@@ -924,6 +926,15 @@ fn add_one(x: i32) -> i32 {
 }
 ```
 
+## `format_generated_files`
+
+Format generated files. A file is considered generated
+if any of the first five lines contains `@generated` marker.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
 ## `format_macro_matchers`
 
 Format the metavariable matching patterns in macros.
@@ -1047,6 +1058,13 @@ fn lorem() -> usize {
 
 See also: [`tab_spaces`](#tab_spaces).
 
+## `hex_literal_case`
+
+Control the case of the letters in hexadecimal literal values
+
+- **Default value**: `Preserve`
+- **Possible values**: `Upper`, `Lower`
+- **Stable**: No
 
 ## `hide_parse_errors`
 
@@ -1610,7 +1628,7 @@ Put a trailing comma after a block based match arm (non-block arms are not affec
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No (tracking issue: #3380)
+- **Stable**: Yes
 
 #### `false` (default):
 
@@ -1668,6 +1686,9 @@ pub enum Foo {}
 #### `false`:
 
 ```rust
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub enum Bar {}
+
 #[derive(Eq, PartialEq)]
 #[derive(Debug)]
 #[derive(Copy, Clone)]
@@ -1679,7 +1700,7 @@ pub enum Foo {}
 How imports should be grouped into `use` statements. Imports will be merged or split to the configured level of granularity.
 
 - **Default value**: `Preserve`
-- **Possible values**: `Preserve`, `Crate`, `Module`, `Item`
+- **Possible values**: `Preserve`, `Crate`, `Module`, `Item`, `One`
 - **Stable**: No
 
 #### `Preserve` (default):
@@ -1731,6 +1752,23 @@ use foo::c;
 use foo::d::e;
 use qux::h;
 use qux::i;
+```
+
+#### `One`:
+
+Merge all imports into a single `use` statement as long as they have the same visibility.
+
+```rust
+pub use foo::{x, y};
+use {
+    bar::{
+        a,
+        b::{self, f, g},
+        c,
+        d::e,
+    },
+    qux::{h, i},
+};
 ```
 
 ## `merge_imports`
@@ -1824,6 +1862,9 @@ Convert `#![doc]` and `#[doc]` attributes to `//!` and `///` doc comments.
 #![doc = "Example documentation"]
 
 #[doc = "Example item documentation"]
+pub enum Bar {}
+
+/// Example item documentation
 pub enum Foo {}
 ```
 
@@ -1938,6 +1979,8 @@ fn main() {
 #### `false`:
 ```rust
 fn main() {
+    (foo());
+
     ((((foo()))));
 }
 ```
@@ -1962,6 +2005,14 @@ impl Iterator for Dummy {
     }
 
     type Item = i32;
+}
+
+impl Iterator for Dummy {
+    type Item = i32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
 }
 ```
 
@@ -2519,7 +2570,8 @@ fn main() {
     let x = 1;
     let y = 2;
     let z = 3;
-    let a = Foo { x: x, y: y, z: z };
+    let a = Foo { x, y, z };
+    let b = Foo { x: x, y: y, z: z };
 }
 ```
 
@@ -2688,6 +2740,8 @@ Replace uses of the try! macro by the ? shorthand
 
 ```rust
 fn main() {
+    let lorem = ipsum.map(|dolor| dolor.sit())?;
+
     let lorem = try!(ipsum.map(|dolor| dolor.sit()));
 }
 ```
@@ -2759,6 +2813,12 @@ Break comments to fit on the line
 #### `false` (default):
 
 ```rust
+// Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+// sed do eiusmod tempor incididunt ut labore et dolore
+// magna aliqua. Ut enim ad minim veniam, quis nostrud
+// exercitation ullamco laboris nisi ut aliquip ex ea
+// commodo consequat.
+
 // Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
 ```
 

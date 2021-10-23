@@ -75,7 +75,10 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
         let cfg = cfgspecs
             .into_iter()
             .map(|s| {
-                let sess = ParseSess::with_silent_emitter();
+                let sess = ParseSess::with_silent_emitter(Some(format!(
+                    "this error occurred on the command line: `--cfg={}`",
+                    s
+                )));
                 let filename = FileName::cfg_spec_source_code(&s);
                 let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
 
