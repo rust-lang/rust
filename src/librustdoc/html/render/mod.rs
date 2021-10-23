@@ -40,20 +40,25 @@ crate use span_map::{collect_spans_and_sources, LinkFromSrc};
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt;
+use std::fs;
+use std::iter::Peekable;
 use std::path::PathBuf;
 use std::str;
 use std::string::ToString;
 
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{
+    symbol::{kw, sym, Symbol},
+    BytePos, FileName, RealFileName,
+};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
@@ -68,7 +73,10 @@ use crate::html::format::{
     href, print_abi_with_space, print_constness_with_space, print_default_space,
     print_generic_bounds, print_where_clause, Buffer, HrefError, PrintWithSpace,
 };
+use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::sources;
+use crate::scrape_examples::CallData;
 
 /// A pair of name and its optional document.
 crate type NameDoc = (String, Option<String>);
@@ -584,6 +592,14 @@ fn document_full_inner(
         } else {
             render_markdown(w, cx, &s, item.links(cx), heading_offset);
         }
+    }
+
+    let kind = match &*item.kind {
+        clean::ItemKind::StrippedItem(box kind) | kind => kind,
+    };
+
+    if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
+        render_call_locations(w, cx, item);
     }
 }
 
@@ -2489,4 +2505,222 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
         }
     }
     out
+}
+
+const MAX_FULL_EXAMPLES: usize = 5;
+const NUM_VISIBLE_LINES: usize = 10;
+
+/// Generates the HTML for example call locations generated via the --scrape-examples flag.
+fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
+    let tcx = cx.tcx();
+    let def_id = item.def_id.expect_def_id();
+    let key = tcx.def_path_hash(def_id);
+    let call_locations = match cx.shared.call_locations.get(&key) {
+        Some(call_locations) => call_locations,
+        _ => {
+            return;
+        }
+    };
+
+    // Generate a unique ID so users can link to this section for a given method
+    let id = cx.id_map.borrow_mut().derive("scraped-examples");
+    write!(
+        w,
+        "<div class=\"docblock scraped-example-list\">\
+          <span></span>\
+          <h5 id=\"{id}\" class=\"section-header\">\
+             <a href=\"#{id}\">Examples found in repository</a>\
+          </h5>",
+        id = id
+    );
+
+    // Generate the HTML for a single example, being the title and code block
+    let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| -> bool {
+        let contents = match fs::read_to_string(&path) {
+            Ok(contents) => contents,
+            Err(err) => {
+                let span = item.span(tcx).inner();
+                tcx.sess
+                    .span_err(span, &format!("failed to read file {}: {}", path.display(), err));
+                return false;
+            }
+        };
+
+        // To reduce file sizes, we only want to embed the source code needed to understand the example, not
+        // the entire file. So we find the smallest byte range that covers all items enclosing examples.
+        assert!(!call_data.locations.is_empty());
+        let min_loc =
+            call_data.locations.iter().min_by_key(|loc| loc.enclosing_item.byte_span.0).unwrap();
+        let byte_min = min_loc.enclosing_item.byte_span.0;
+        let line_min = min_loc.enclosing_item.line_span.0;
+        let max_loc =
+            call_data.locations.iter().max_by_key(|loc| loc.enclosing_item.byte_span.1).unwrap();
+        let byte_max = max_loc.enclosing_item.byte_span.1;
+        let line_max = max_loc.enclosing_item.line_span.1;
+
+        // The output code is limited to that byte range.
+        let contents_subset = &contents[(byte_min as usize)..(byte_max as usize)];
+
+        // The call locations need to be updated to reflect that the size of the program has changed.
+        // Specifically, the ranges are all subtracted by `byte_min` since that's the new zero point.
+        let (mut byte_ranges, line_ranges): (Vec<_>, Vec<_>) = call_data
+            .locations
+            .iter()
+            .map(|loc| {
+                let (byte_lo, byte_hi) = loc.call_expr.byte_span;
+                let (line_lo, line_hi) = loc.call_expr.line_span;
+                let byte_range = (byte_lo - byte_min, byte_hi - byte_min);
+                let line_range = (line_lo - line_min, line_hi - line_min);
+                let (anchor, line_title) = if line_lo == line_hi {
+                    (format!("{}", line_lo + 1), format!("line {}", line_lo + 1))
+                } else {
+                    (
+                        format!("{}-{}", line_lo + 1, line_hi + 1),
+                        format!("lines {}-{}", line_lo + 1, line_hi + 1),
+                    )
+                };
+                let line_url = format!("{}{}#{}", cx.root_path(), call_data.url, anchor);
+
+                (byte_range, (line_range, line_url, line_title))
+            })
+            .unzip();
+
+        let (_, init_url, init_title) = &line_ranges[0];
+        let needs_expansion = line_max - line_min > NUM_VISIBLE_LINES;
+        let locations_encoded = serde_json::to_string(&line_ranges).unwrap();
+
+        write!(
+            w,
+            "<div class=\"scraped-example {expanded_cls}\" data-locs=\"{locations}\">\
+                <div class=\"scraped-example-title\">\
+                   {name} (<a href=\"{url}\">{title}</a>)\
+                </div>\
+                <div class=\"code-wrapper\">",
+            expanded_cls = if needs_expansion { "" } else { "expanded" },
+            name = call_data.display_name,
+            url = init_url,
+            title = init_title,
+            // The locations are encoded as a data attribute, so they can be read
+            // later by the JS for interactions.
+            locations = Escape(&locations_encoded)
+        );
+
+        if line_ranges.len() > 1 {
+            write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
+        }
+
+        if needs_expansion {
+            write!(w, r#"<span class="expand">&varr;</span>"#);
+        }
+
+        // Look for the example file in the source map if it exists, otherwise return a dummy span
+        let file_span = (|| {
+            let source_map = tcx.sess.source_map();
+            let crate_src = tcx.sess.local_crate_source_file.as_ref()?;
+            let abs_crate_src = crate_src.canonicalize().ok()?;
+            let crate_root = abs_crate_src.parent()?.parent()?;
+            let rel_path = path.strip_prefix(crate_root).ok()?;
+            let files = source_map.files();
+            let file = files.iter().find(|file| match &file.name {
+                FileName::Real(RealFileName::LocalPath(other_path)) => rel_path == other_path,
+                _ => false,
+            })?;
+            Some(rustc_span::Span::with_root_ctxt(
+                file.start_pos + BytePos(byte_min),
+                file.start_pos + BytePos(byte_max),
+            ))
+        })()
+        .unwrap_or(rustc_span::DUMMY_SP);
+
+        // The root path is the inverse of Context::current
+        let root_path = vec!["../"; cx.current.len() - 1].join("");
+
+        let mut decoration_info = FxHashMap::default();
+        decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);
+        decoration_info.insert("highlight", byte_ranges);
+
+        sources::print_src(
+            w,
+            contents_subset,
+            call_data.edition,
+            file_span,
+            cx,
+            &root_path,
+            Some(highlight::DecorationInfo(decoration_info)),
+            sources::SourceContext::Embedded { offset: line_min },
+        );
+        write!(w, "</div></div>");
+
+        true
+    };
+
+    // The call locations are output in sequence, so that sequence needs to be determined.
+    // Ideally the most "relevant" examples would be shown first, but there's no general algorithm
+    // for determining relevance. Instead, we prefer the smallest examples being likely the easiest to
+    // understand at a glance.
+    let ordered_locations = {
+        let sort_criterion = |(_, call_data): &(_, &CallData)| {
+            // Use the first location because that's what the user will see initially
+            let (lo, hi) = call_data.locations[0].enclosing_item.byte_span;
+            hi - lo
+        };
+
+        let mut locs = call_locations.into_iter().collect::<Vec<_>>();
+        locs.sort_by_key(sort_criterion);
+        locs
+    };
+
+    let mut it = ordered_locations.into_iter().peekable();
+
+    // An example may fail to write if its source can't be read for some reason, so this method
+    // continues iterating until a write suceeds
+    let write_and_skip_failure = |w: &mut Buffer, it: &mut Peekable<_>| {
+        while let Some(example) = it.next() {
+            if write_example(&mut *w, example) {
+                break;
+            }
+        }
+    };
+
+    // Write just one example that's visible by default in the method's description.
+    write_and_skip_failure(w, &mut it);
+
+    // Then add the remaining examples in a hidden section.
+    if it.peek().is_some() {
+        write!(
+            w,
+            "<details class=\"rustdoc-toggle more-examples-toggle\">\
+                  <summary class=\"hideme\">\
+                     <span>More examples</span>\
+                  </summary>\
+                  <div class=\"more-scraped-examples\">\
+                    <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>\
+                    <div class=\"more-scraped-examples-inner\">"
+        );
+
+        // Only generate inline code for MAX_FULL_EXAMPLES number of examples. Otherwise we could
+        // make the page arbitrarily huge!
+        for _ in 0..MAX_FULL_EXAMPLES {
+            write_and_skip_failure(w, &mut it);
+        }
+
+        // For the remaining examples, generate a <ul> containing links to the source files.
+        if it.peek().is_some() {
+            write!(w, r#"<div class="example-links">Additional examples can be found in:<br><ul>"#);
+            it.for_each(|(_, call_data)| {
+                write!(
+                    w,
+                    r#"<li><a href="{root}{url}">{name}</a></li>"#,
+                    root = cx.root_path(),
+                    url = call_data.url,
+                    name = call_data.display_name
+                );
+            });
+            write!(w, "</ul></div>");
+        }
+
+        write!(w, "</div></div></details>");
+    }
+
+    write!(w, "</div>");
 }

@@ -613,3 +613,22 @@ div.files > .selected {
 input:checked + .slider {
 	background-color: #ffb454 !important;
 }
+
+.scraped-example .example-wrap .rust span.highlight {
+	background: rgb(91, 59, 1);
+}
+.scraped-example .example-wrap .rust span.highlight.focus {
+	background: rgb(124, 75, 15);
+}
+.scraped-example:not(.expanded) .code-wrapper:before {
+	background: linear-gradient(to bottom, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
+}
+.scraped-example:not(.expanded) .code-wrapper:after {
+	background: linear-gradient(to top, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
+}
+.toggle-line-inner {
+	background: #616161;
+}
+.toggle-line:hover .toggle-line-inner {
+	background: ##898989;
+}

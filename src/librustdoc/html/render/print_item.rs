@@ -1159,6 +1159,7 @@ fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Mac
             it.span(cx.tcx()).inner().edition(),
             None,
             None,
+            None,
         );
     });
     document(w, cx, it, None, HeadingOffset::H2)

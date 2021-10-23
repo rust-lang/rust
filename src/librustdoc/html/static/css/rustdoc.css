@@ -467,6 +467,11 @@ nav.sub {
 	overflow-x: auto;
 }
 
+.rustdoc:not(.source) .example-wrap > pre.line-numbers {
+	width: auto;
+	overflow-x: visible;
+}
+
 .rustdoc .example-wrap > pre {
 	margin: 0;
 }
@@ -1980,3 +1985,166 @@ details.undocumented[open] > summary::before {
 		overflow-wrap: anywhere;
 	}
 }
+
+
+/* Begin: styles for --scrape-examples feature */
+
+.scraped-example-title {
+	font-family: 'Fira Sans';
+}
+
+.scraped-example:not(.expanded) .code-wrapper pre.line-numbers {
+	overflow: hidden;
+	max-height: 240px;
+}
+
+.scraped-example:not(.expanded) .code-wrapper .example-wrap pre.rust {
+	overflow-y: hidden;
+	max-height: 240px;
+	padding-bottom: 0;
+}
+
+.scraped-example .code-wrapper .prev {
+	position: absolute;
+	top: 0.25em;
+	right: 2.25em;
+	z-index: 100;
+	cursor: pointer;
+}
+
+.scraped-example .code-wrapper .next {
+	position: absolute;
+	top: 0.25em;
+	right: 1.25em;
+	z-index: 100;
+	cursor: pointer;
+}
+
+.scraped-example .code-wrapper .expand {
+	position: absolute;
+	top: 0.25em;
+	right: 0.25em;
+	z-index: 100;
+	cursor: pointer;
+}
+
+.scraped-example .code-wrapper {
+	position: relative;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	width: 100%;
+}
+
+.scraped-example:not(.expanded) .code-wrapper:before {
+	content: " ";
+	width: 100%;
+	height: 5px;
+	position: absolute;
+	z-index: 100;
+	top: 0;
+	background: linear-gradient(to bottom, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
+}
+
+.scraped-example:not(.expanded) .code-wrapper:after {
+	content: " ";
+	width: 100%;
+	height: 5px;
+	position: absolute;
+	z-index: 100;
+	bottom: 0;
+	background: linear-gradient(to top, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
+}
+
+.scraped-example:not(.expanded) .code-wrapper {
+	overflow: hidden;
+	max-height: 240px;
+}
+
+.scraped-example .code-wrapper .line-numbers {
+	margin: 0;
+	padding: 14px 0;
+}
+
+.scraped-example .code-wrapper .line-numbers span {
+	padding: 0 14px;
+}
+
+.scraped-example .code-wrapper .example-wrap {
+	flex: 1;
+	overflow-x: auto;
+	overflow-y: hidden;
+	margin-bottom: 0;
+}
+
+.scraped-example .code-wrapper .example-wrap pre.rust {
+	overflow-x: inherit;
+	width: inherit;
+	overflow-y: hidden;
+}
+
+.scraped-example .example-wrap .rust span.highlight {
+	background: #fcffd6;
+}
+
+.scraped-example .example-wrap .rust span.highlight.focus {
+	background: #f6fdb0;
+}
+
+.more-examples-toggle {
+	margin-top: 10px;
+}
+
+.more-examples-toggle summary {
+	color: #999;
+	font-family: 'Fira Sans';
+}
+
+.more-scraped-examples {
+	margin-left: 25px;
+	display: flex;
+	flex-direction: row;
+	width: calc(100% - 25px);
+}
+
+.more-scraped-examples-inner {
+	/* 20px is width of toggle-line + toggle-line-inner */
+	width: calc(100% - 20px);
+}
+
+.toggle-line {
+	align-self: stretch;
+	margin-right: 10px;
+	margin-top: 5px;
+	padding: 0 4px;
+	cursor: pointer;
+}
+
+.toggle-line:hover .toggle-line-inner {
+	background: #aaa;
+}
+
+.toggle-line-inner {
+	min-width: 2px;
+	background: #ddd;
+	height: 100%;
+}
+
+.more-scraped-examples .scraped-example {
+	margin-bottom: 20px;
+}
+
+.more-scraped-examples .scraped-example:last-child {
+	margin-bottom: 0;
+}
+
+.example-links a {
+	margin-top: 20px;
+	font-family: 'Fira Sans';
+}
+
+.example-links ul {
+	margin-bottom: 0;
+}
+
+/* End: styles for --scrape-examples feature */
