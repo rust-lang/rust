@@ -512,7 +512,7 @@ where
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if query.cache_on_disk(tcx, key, None) {
+    if query.cache_on_disk(tcx, key) {
         let prof_timer = tcx.dep_context().profiler().incr_cache_loading();
         let result = query.try_load_from_disk(tcx, prev_dep_node_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());

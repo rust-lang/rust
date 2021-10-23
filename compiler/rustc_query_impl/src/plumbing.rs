@@ -418,7 +418,7 @@ macro_rules! define_queries {
 
                     let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
                     let tcx = QueryCtxt::from_tcx(tcx);
-                    if queries::$name::cache_on_disk(tcx, &key, None) {
+                    if queries::$name::cache_on_disk(tcx, &key) {
                         let _ = tcx.$name(key);
                     }
                 }

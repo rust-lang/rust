@@ -27,7 +27,7 @@ pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
     pub compute: fn(CTX::DepContext, K) -> V,
     pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
     pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_>) -> V,
-    pub cache_on_disk: fn(CTX, &K, Option<&V>) -> bool,
+    pub cache_on_disk: fn(CTX, &K) -> bool,
     pub try_load_from_disk: fn(CTX, SerializedDepNodeIndex) -> Option<V>,
 }
 
@@ -43,8 +43,8 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
         (self.compute)(tcx, key)
     }
 
-    pub(crate) fn cache_on_disk(&self, tcx: CTX, key: &K, value: Option<&V>) -> bool {
-        (self.cache_on_disk)(tcx, key, value)
+    pub(crate) fn cache_on_disk(&self, tcx: CTX, key: &K) -> bool {
+        (self.cache_on_disk)(tcx, key)
     }
 
     pub(crate) fn try_load_from_disk(&self, tcx: CTX, index: SerializedDepNodeIndex) -> Option<V> {
@@ -82,7 +82,7 @@ pub trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
     fn describe(tcx: CTX, key: Self::Key) -> String;
 
     #[inline]
-    fn cache_on_disk(_: CTX, _: &Self::Key, _: Option<&Self::Value>) -> bool {
+    fn cache_on_disk(_: CTX, _: &Self::Key) -> bool {
         false
     }
 

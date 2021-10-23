@@ -36,7 +36,7 @@ enum QueryModifier {
     Storage(Type),
 
     /// Cache the query to disk if the `Expr` returns true.
-    Cache(Option<(IdentOrWild, IdentOrWild)>, Block),
+    Cache(Option<IdentOrWild>, Block),
 
     /// Custom code to load the query from disk.
     LoadCached(Ident, Ident, Block),
@@ -87,9 +87,7 @@ impl Parse for QueryModifier {
                 let args;
                 parenthesized!(args in input);
                 let tcx = args.parse()?;
-                args.parse::<Token![,]>()?;
-                let value = args.parse()?;
-                Some((tcx, value))
+                Some(tcx)
             } else {
                 None
             };
@@ -197,7 +195,7 @@ struct QueryModifiers {
     storage: Option<Type>,
 
     /// Cache the query to disk if the `Block` returns true.
-    cache: Option<(Option<(IdentOrWild, IdentOrWild)>, Block)>,
+    cache: Option<(Option<IdentOrWild>, Block)>,
 
     /// Custom code to load the query from disk.
     load_cached: Option<(Ident, Ident, Block)>,
@@ -375,14 +373,7 @@ fn add_query_description_impl(
         let tcx = args
             .as_ref()
             .map(|t| {
-                let t = &(t.0).0;
-                quote! { #t }
-            })
-            .unwrap_or_else(|| quote! { _ });
-        let value = args
-            .as_ref()
-            .map(|t| {
-                let t = &(t.1).0;
+                let t = &t.0;
                 quote! { #t }
             })
             .unwrap_or_else(|| quote! { _ });
@@ -394,7 +385,6 @@ fn add_query_description_impl(
             fn cache_on_disk(
                 #tcx: QueryCtxt<'tcx>,
                 #key: &Self::Key,
-                #value: Option<&Self::Value>
             ) -> bool {
                 #expr
             }
