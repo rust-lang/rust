@@ -48,11 +48,13 @@ extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_lint_defs;
+extern crate rustc_macros;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_parse;
 extern crate rustc_passes;
 extern crate rustc_resolve;
+extern crate rustc_serialize;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -120,6 +122,7 @@ mod json;
 crate mod lint;
 mod markdown;
 mod passes;
+mod scrape_examples;
 mod theme;
 mod visit_ast;
 mod visit_lib;
@@ -619,6 +622,30 @@ fn opts() -> Vec<RustcOptGroup> {
                 "Make the identifiers in the HTML source code pages navigable",
             )
         }),
+        unstable("scrape-examples-output-path", |o| {
+            o.optopt(
+                "",
+                "scrape-examples-output-path",
+                "",
+                "collect function call information and output at the given path",
+            )
+        }),
+        unstable("scrape-examples-target-crate", |o| {
+            o.optmulti(
+                "",
+                "scrape-examples-target-crate",
+                "",
+                "collect function call information for functions from the target crate",
+            )
+        }),
+        unstable("with-examples", |o| {
+            o.optmulti(
+                "",
+                "with-examples",
+                "",
+                "path to function call information (for displaying examples in the documentation)",
+            )
+        }),
     ]
 }
 
@@ -732,6 +759,7 @@ fn main_options(options: config::Options) -> MainResult {
     // FIXME: fix this clone (especially render_options)
     let manual_passes = options.manual_passes.clone();
     let render_options = options.render_options.clone();
+    let scrape_examples_options = options.scrape_examples_options.clone();
     let config = core::create_config(options);
 
     interface::create_compiler_and_run(config, |compiler| {
@@ -767,6 +795,10 @@ fn main_options(options: config::Options) -> MainResult {
                     )
                 });
                 info!("finished with rustc");
+
+                if let Some(options) = scrape_examples_options {
+                    return scrape_examples::run(krate, render_opts, cache, tcx, options);
+                }
 
                 cache.crate_version = crate_version;
 

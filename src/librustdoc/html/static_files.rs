@@ -35,6 +35,10 @@ crate static SETTINGS_JS: &str = include_str!("static/js/settings.js");
 /// Storage, used to store documentation settings.
 crate static STORAGE_JS: &str = include_str!("static/js/storage.js");
 
+/// The file contents of `scraped-examples.js`, which contains functionality related to the
+/// --scrape-examples flag that inserts automatically-found examples of usages of items.
+crate static SCRAPE_EXAMPLES_JS: &str = include_str!("static/js/scrape-examples.js");
+
 /// The file contents of `brush.svg`, the icon used for the theme-switch button.
 crate static BRUSH_SVG: &[u8] = include_bytes!("static/images/brush.svg");
 

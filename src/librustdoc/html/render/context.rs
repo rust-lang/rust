@@ -34,6 +34,7 @@ use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
 use crate::html::{layout, sources};
+use crate::scrape_examples::AllCallLocations;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -123,6 +124,8 @@ crate struct SharedContext<'tcx> {
     crate span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
     crate cache: Cache,
+
+    crate call_locations: AllCallLocations,
 }
 
 impl SharedContext<'_> {
@@ -291,10 +294,10 @@ impl<'tcx> Context<'tcx> {
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
     pub(super) fn src_href(&self, item: &clean::Item) -> Option<String> {
-        self.href_from_span(item.span(self.tcx()))
+        self.href_from_span(item.span(self.tcx()), true)
     }
 
-    crate fn href_from_span(&self, span: clean::Span) -> Option<String> {
+    crate fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
         if span.is_dummy() {
             return None;
         }
@@ -341,16 +344,26 @@ impl<'tcx> Context<'tcx> {
             (&*symbol, &path)
         };
 
-        let loline = span.lo(self.sess()).line;
-        let hiline = span.hi(self.sess()).line;
-        let lines =
-            if loline == hiline { loline.to_string() } else { format!("{}-{}", loline, hiline) };
+        let anchor = if with_lines {
+            let loline = span.lo(self.sess()).line;
+            let hiline = span.hi(self.sess()).line;
+            format!(
+                "#{}",
+                if loline == hiline {
+                    loline.to_string()
+                } else {
+                    format!("{}-{}", loline, hiline)
+                }
+            )
+        } else {
+            "".to_string()
+        };
         Some(format!(
-            "{root}src/{krate}/{path}#{lines}",
+            "{root}src/{krate}/{path}{anchor}",
             root = Escape(&root),
             krate = krate,
             path = path,
-            lines = lines
+            anchor = anchor
         ))
     }
 }
@@ -388,6 +401,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_redirect_map,
             show_type_layout,
             generate_link_to_definition,
+            call_locations,
             ..
         } = options;
 
@@ -412,6 +426,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             krate: krate.name.to_string(),
             css_file_extension: extension_css,
             generate_search_filter,
+            scrape_examples_extension: !call_locations.is_empty(),
         };
         let mut issue_tracker_base_url = None;
         let mut include_sources = true;
@@ -474,6 +489,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             templates,
             span_correspondance_map: matches,
             cache,
+            call_locations,
         };
 
         // Add the default themes to the `Vec` of stylepaths

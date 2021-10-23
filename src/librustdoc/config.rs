@@ -25,6 +25,7 @@ use crate::html::render::StylePath;
 use crate::html::static_files;
 use crate::opts;
 use crate::passes::{self, Condition, DefaultPassOption};
+use crate::scrape_examples::{AllCallLocations, ScrapeExamplesOptions};
 use crate::theme;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -158,6 +159,10 @@ crate struct Options {
     crate json_unused_externs: bool,
     /// Whether to skip capturing stdout and stderr of tests.
     crate nocapture: bool,
+
+    /// Configuration for scraping examples from the current crate. If this option is Some(..) then
+    /// the compiler will scrape examples and not generate documentation.
+    crate scrape_examples_options: Option<ScrapeExamplesOptions>,
 }
 
 impl fmt::Debug for Options {
@@ -202,6 +207,7 @@ impl fmt::Debug for Options {
             .field("run_check", &self.run_check)
             .field("no_run", &self.no_run)
             .field("nocapture", &self.nocapture)
+            .field("scrape_examples_options", &self.scrape_examples_options)
             .finish()
     }
 }
@@ -280,6 +286,7 @@ crate struct RenderOptions {
     crate emit: Vec<EmitType>,
     /// If `true`, HTML source pages will generate links for items to their definition.
     crate generate_link_to_definition: bool,
+    crate call_locations: AllCallLocations,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -671,6 +678,10 @@ impl Options {
             return Err(1);
         }
 
+        let scrape_examples_options = ScrapeExamplesOptions::new(&matches, &diag)?;
+        let with_examples = matches.opt_strs("with-examples");
+        let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
+
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
         Ok(Options {
@@ -737,10 +748,12 @@ impl Options {
                 ),
                 emit,
                 generate_link_to_definition,
+                call_locations,
             },
             crate_name,
             output_format,
             json_unused_externs,
+            scrape_examples_options,
         })
     }
 

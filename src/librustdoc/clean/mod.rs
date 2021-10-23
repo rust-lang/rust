@@ -2062,7 +2062,8 @@ fn clean_use_statement(
 impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let (item, renamed) = self;
-        cx.with_param_env(item.def_id.to_def_id(), |cx| {
+        let def_id = item.def_id.to_def_id();
+        cx.with_param_env(def_id, |cx| {
             let kind = match item.kind {
                 hir::ForeignItemKind::Fn(ref decl, ref names, ref generics) => {
                     let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
