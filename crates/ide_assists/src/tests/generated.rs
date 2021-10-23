@@ -1532,6 +1532,33 @@ fn main() {
 }
 
 #[test]
+fn doctest_qualify_method_call() {
+    check_doc_test(
+        "qualify_method_call",
+        r#####"
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+fn main() {
+    let foo = Foo;
+    foo.fo$0o();
+}
+"#####,
+        r#####"
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+fn main() {
+    let foo = Foo;
+    Foo::foo(&foo);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_qualify_path() {
     check_doc_test(
         "qualify_path",
