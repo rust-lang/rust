@@ -39,7 +39,6 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T!['('],
         T!['{'],
         T!['['],
-        L_DOLLAR,
         T![|],
         T![move],
         T![box],
@@ -59,7 +58,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         LIFETIME_IDENT,
     ]));
 
-const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[T![let], R_DOLLAR]);
+const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[T![let]]);
 
 pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     if let Some(m) = literal(p) {
@@ -72,7 +71,6 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
     let done = match p.current() {
         T!['('] => tuple_expr(p),
         T!['['] => array_expr(p),
-        L_DOLLAR => meta_var_expr(p),
         T![|] => closure_expr(p),
         T![move] if la == T![|] => closure_expr(p),
         T![async] if la == T![|] || (la == T![move] && p.nth(2) == T![|]) => closure_expr(p),
@@ -621,28 +619,4 @@ fn box_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
         expr(p);
     }
     m.complete(p, BOX_EXPR)
-}
-
-/// Expression from `$var` macro expansion, wrapped in dollars
-fn meta_var_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(L_DOLLAR));
-    let m = p.start();
-    p.bump(L_DOLLAR);
-    let expr = expr_bp(p, None, Restrictions { forbid_structs: false, prefer_stmt: false }, 1);
-
-    match (expr, p.current()) {
-        (Some((cm, _)), R_DOLLAR) => {
-            p.bump(R_DOLLAR);
-            // FIXME: this leaves the dollar hanging in the air...
-            m.abandon(p);
-            cm
-        }
-        _ => {
-            while !p.at(R_DOLLAR) {
-                p.bump_any();
-            }
-            p.bump(R_DOLLAR);
-            m.complete(p, ERROR)
-        }
-    }
 }
