@@ -168,7 +168,7 @@ fn collect_beginning_verts(
         .map(|a| {
             context
                 .snippet(a.pat.span)
-                .starts_with("|")
+                .starts_with('|')
                 .then(|| a.pat.span().lo())
         })
         .collect()

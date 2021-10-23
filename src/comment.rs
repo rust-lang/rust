@@ -405,7 +405,7 @@ impl CodeBlockAttribute {
     /// attributes are valid rust attributes
     /// See <https://doc.rust-lang.org/rustdoc/print.html#attributes>
     fn new(attributes: &str) -> CodeBlockAttribute {
-        for attribute in attributes.split(",") {
+        for attribute in attributes.split(',') {
             match attribute.trim() {
                 "" | "rust" | "should_panic" | "no_run" | "edition2015" | "edition2018"
                 | "edition2021" => (),
@@ -1384,7 +1384,7 @@ impl<'a> Iterator for LineClasses<'a> {
             None => unreachable!(),
         };
 
-        while let Some((kind, c)) = self.base.next() {
+        for (kind, c) in self.base.by_ref() {
             // needed to set the kind of the ending character on the last line
             self.kind = kind;
             if c == '\n' {

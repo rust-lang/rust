@@ -197,7 +197,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
     /// Visit modules from AST.
     fn visit_mod_from_ast(
         &mut self,
-        items: &'ast Vec<rustc_ast::ptr::P<ast::Item>>,
+        items: &'ast [rustc_ast::ptr::P<ast::Item>],
     ) -> Result<(), ModuleResolutionError> {
         for item in items {
             if is_cfg_if(item) {

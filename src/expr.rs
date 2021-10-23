@@ -1207,11 +1207,11 @@ fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -
     let span = lit.span;
     let symbol = lit.token.symbol.as_str();
 
-    if symbol.starts_with("0x") {
+    if let Some(symbol_stripped) = symbol.strip_prefix("0x") {
         let hex_lit = match context.config.hex_literal_case() {
             HexLiteralCase::Preserve => None,
-            HexLiteralCase::Upper => Some(symbol[2..].to_ascii_uppercase()),
-            HexLiteralCase::Lower => Some(symbol[2..].to_ascii_lowercase()),
+            HexLiteralCase::Upper => Some(symbol_stripped.to_ascii_uppercase()),
+            HexLiteralCase::Lower => Some(symbol_stripped.to_ascii_lowercase()),
         };
         if let Some(hex_lit) = hex_lit {
             return wrap_str(
