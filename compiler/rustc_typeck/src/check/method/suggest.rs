@@ -1203,6 +1203,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort();
             candidates.dedup();
+
+            // `TryFrom` and `FromIterator` have no methods
+            let edition_fix = candidates
+                .iter()
+                .find(|did| self.tcx.is_diagnostic_item(sym::TryInto, **did))
+                .map(|&d| d);
+
             err.help("items from traits can only be used if the trait is in scope");
             let msg = format!(
                 "the following {traits_are} implemented but not in scope; \
@@ -1212,6 +1219,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
 
             self.suggest_use_candidates(err, msg, candidates);
+            if let Some(did) = edition_fix {
+                err.note(&format!(
+                    "'{}' is included in the prelude starting in Edition 2021",
+                    with_crate_prefix(|| self.tcx.def_path_str(did))
+                ));
+            }
+
             true
         } else {
             false
