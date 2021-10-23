@@ -297,7 +297,6 @@ impl Resolver<'_> {
                 })
                 .collect::<Vec<String>>();
             span_snippets.sort();
-
             let msg = format!(
                 "unused import{}{}",
                 pluralize!(len),
@@ -305,7 +304,7 @@ impl Resolver<'_> {
                     format!(": {}", span_snippets.join(", "))
                 } else {
                     String::new()
-                },
+                }
             );
 
             let fix_msg = if fixes.len() == 1 && fixes[0].0 == unused.item_span {
