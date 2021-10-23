@@ -4,7 +4,7 @@
 
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{self, BasicBlock, Local, Location};
+use rustc_middle::mir::{self, BasicBlock, Local, Location, Statement, StatementKind};
 
 use std::marker::PhantomData;
 
@@ -118,6 +118,15 @@ where
         // We need to assign qualifs to the left-hand side before visiting `rvalue` since
         // qualifs can be cleared on move.
         self.super_assign(place, rvalue, location);
+    }
+
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+        match statement.kind {
+            StatementKind::StorageDead(local) => {
+                self.qualifs_per_local.remove(local);
+            }
+            _ => self.super_statement(statement, location),
+        }
     }
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
