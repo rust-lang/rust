@@ -7,7 +7,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use crate::ty::TyCtxt;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::Node;
@@ -215,14 +215,14 @@ pub struct ScopeTree {
     /// conditional expression or repeating block. (Note that the
     /// enclosing scope ID for the block associated with a closure is
     /// the closure itself.)
-    pub parent_map: FxHashMap<Scope, (Scope, ScopeDepth)>,
+    pub parent_map: FxIndexMap<Scope, (Scope, ScopeDepth)>,
 
     /// Maps from a variable or binding ID to the block in which that
     /// variable is declared.
-    var_map: FxHashMap<hir::ItemLocalId, Scope>,
+    var_map: FxIndexMap<hir::ItemLocalId, Scope>,
 
     /// Maps from a `NodeId` to the associated destruction scope (if any).
-    destruction_scopes: FxHashMap<hir::ItemLocalId, Scope>,
+    destruction_scopes: FxIndexMap<hir::ItemLocalId, Scope>,
 
     /// `rvalue_scopes` includes entries for those expressions whose
     /// cleanup scope is larger than the default. The map goes from the
