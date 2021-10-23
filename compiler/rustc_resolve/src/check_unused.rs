@@ -297,6 +297,7 @@ impl Resolver<'_> {
                 })
                 .collect::<Vec<String>>();
             span_snippets.sort();
+
             let msg = format!(
                 "unused import{}{}",
                 pluralize!(len),
@@ -304,7 +305,7 @@ impl Resolver<'_> {
                     format!(": {}", span_snippets.join(", "))
                 } else {
                     String::new()
-                }
+                },
             );
 
             let fix_msg = if fixes.len() == 1 && fixes[0].0 == unused.item_span {
@@ -315,12 +316,20 @@ impl Resolver<'_> {
                 "remove the unused import"
             };
 
+            let parent_module = visitor.r.get_nearest_non_block_module(
+                visitor.r.local_def_id(unused.use_tree_id).to_def_id(),
+            );
+            let test_module_span = match super::module_to_string(parent_module) {
+                Some(module) if module == "test" => Some(parent_module.span),
+                _ => None,
+            };
+
             visitor.r.lint_buffer.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,
                 &msg,
-                BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes),
+                BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes, test_module_span),
             );
         }
     }
