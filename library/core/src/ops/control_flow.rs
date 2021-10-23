@@ -34,17 +34,40 @@ use crate::{convert, ops};
 /// }
 ///
 /// impl<T> TreeNode<T> {
-///     pub fn traverse_inorder<B>(&self, mut f: impl FnMut(&T) -> ControlFlow<B>) -> ControlFlow<B> {
+///     pub fn traverse_inorder<B>(&self, f: &impl Fn(&T) -> ControlFlow<B>) -> ControlFlow<B> {
 ///         if let Some(left) = &self.left {
-///             left.traverse_inorder(&mut f)?;
+///             left.traverse_inorder(f)?;
 ///         }
 ///         f(&self.value)?;
 ///         if let Some(right) = &self.right {
-///             right.traverse_inorder(&mut f)?;
+///             right.traverse_inorder(f)?;
 ///         }
 ///         ControlFlow::Continue(())
 ///     }
 /// }
+///
+/// let node = TreeNode {
+///     value: 0,
+///     left: Some(Box::new(TreeNode {
+///         value: 1,
+///         left: None,
+///         right: None
+///     })),
+///     right: Some(Box::new(TreeNode {
+///         value: 2,
+///         left: None,
+///         right: None
+///     }))
+/// };
+///
+/// node.traverse_inorder(& |val| {
+///     println!("{}", val);
+///     if *val <= 0 {
+///         ControlFlow::Break(())
+///     } else {
+///         ControlFlow::Continue(())
+///     }
+/// });
 /// ```
 #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
 #[derive(Debug, Clone, Copy, PartialEq)]
