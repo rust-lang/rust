@@ -52,17 +52,20 @@ impl<'a> SubtreeTokenSource {
                     cursor.bump()
                 }
                 Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
-                    cached.push(convert_delim(subtree.delimiter_kind(), false));
+                    if let Some(d) = subtree.delimiter_kind() {
+                        cached.push(convert_delim(d, false));
+                    }
                     cursor.subtree().unwrap()
                 }
-                None => {
-                    if let Some(subtree) = cursor.end() {
-                        cached.push(convert_delim(subtree.delimiter_kind(), true));
+                None => match cursor.end() {
+                    Some(subtree) => {
+                        if let Some(d) = subtree.delimiter_kind() {
+                            cached.push(convert_delim(d, true));
+                        }
                         cursor.bump()
-                    } else {
-                        continue;
                     }
-                }
+                    None => continue,
+                },
             };
         }
 
@@ -109,17 +112,16 @@ impl<'a> TokenSource for SubtreeTokenSource {
     }
 }
 
-fn convert_delim(d: Option<tt::DelimiterKind>, closing: bool) -> TtToken {
+fn convert_delim(d: tt::DelimiterKind, closing: bool) -> TtToken {
     let (kinds, texts) = match d {
-        Some(tt::DelimiterKind::Parenthesis) => ([T!['('], T![')']], "()"),
-        Some(tt::DelimiterKind::Brace) => ([T!['{'], T!['}']], "{}"),
-        Some(tt::DelimiterKind::Bracket) => ([T!['['], T![']']], "[]"),
-        None => ([L_DOLLAR, R_DOLLAR], ""),
+        tt::DelimiterKind::Parenthesis => ([T!['('], T![')']], "()"),
+        tt::DelimiterKind::Brace => ([T!['{'], T!['}']], "{}"),
+        tt::DelimiterKind::Bracket => ([T!['['], T![']']], "[]"),
     };
 
     let idx = closing as usize;
     let kind = kinds[idx];
-    let text = if !texts.is_empty() { &texts[idx..texts.len() - (1 - idx)] } else { "" };
+    let text = &texts[idx..texts.len() - (1 - idx)];
     TtToken { tt: Token { kind, is_jointed_to_next: false }, text: SmolStr::new(text) }
 }
 

@@ -632,12 +632,11 @@ impl<'a> TtTreeSink<'a> {
     }
 }
 
-fn delim_to_str(d: Option<tt::DelimiterKind>, closing: bool) -> &'static str {
+fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> &'static str {
     let texts = match d {
-        Some(tt::DelimiterKind::Parenthesis) => "()",
-        Some(tt::DelimiterKind::Brace) => "{}",
-        Some(tt::DelimiterKind::Bracket) => "[]",
-        None => return "",
+        tt::DelimiterKind::Parenthesis => "()",
+        tt::DelimiterKind::Brace => "{}",
+        tt::DelimiterKind::Bracket => "[]",
     };
 
     let idx = closing as usize;
@@ -646,10 +645,6 @@ fn delim_to_str(d: Option<tt::DelimiterKind>, closing: bool) -> &'static str {
 
 impl<'a> TreeSink for TtTreeSink<'a> {
     fn token(&mut self, kind: SyntaxKind, mut n_tokens: u8) {
-        if kind == L_DOLLAR || kind == R_DOLLAR {
-            self.cursor = self.cursor.bump_subtree();
-            return;
-        }
         if kind == LIFETIME_IDENT {
             n_tokens = 2;
         }
@@ -661,48 +656,54 @@ impl<'a> TreeSink for TtTreeSink<'a> {
                 break;
             }
             last = self.cursor;
-            let text: &str = match self.cursor.token_tree() {
-                Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
-                    // Mark the range if needed
-                    let (text, id) = match leaf {
-                        tt::Leaf::Ident(ident) => (&ident.text, ident.id),
-                        tt::Leaf::Punct(punct) => {
-                            assert!(punct.char.is_ascii());
-                            let char = &(punct.char as u8);
-                            tmp_str = SmolStr::new_inline(
-                                std::str::from_utf8(std::slice::from_ref(char)).unwrap(),
-                            );
-                            (&tmp_str, punct.id)
-                        }
-                        tt::Leaf::Literal(lit) => (&lit.text, lit.id),
-                    };
-                    let range = TextRange::at(self.text_pos, TextSize::of(text.as_str()));
-                    self.token_map.insert(id, range);
-                    self.cursor = self.cursor.bump();
-                    text
-                }
-                Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
-                    self.cursor = self.cursor.subtree().unwrap();
-                    if let Some(id) = subtree.delimiter.map(|it| it.id) {
-                        self.open_delims.insert(id, self.text_pos);
-                    }
-                    delim_to_str(subtree.delimiter_kind(), false)
-                }
-                None => {
-                    if let Some(parent) = self.cursor.end() {
-                        self.cursor = self.cursor.bump();
-                        if let Some(id) = parent.delimiter.map(|it| it.id) {
-                            if let Some(open_delim) = self.open_delims.get(&id) {
-                                let open_range = TextRange::at(*open_delim, TextSize::of('('));
-                                let close_range = TextRange::at(self.text_pos, TextSize::of('('));
-                                self.token_map.insert_delim(id, open_range, close_range);
+            let text: &str = loop {
+                break match self.cursor.token_tree() {
+                    Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
+                        // Mark the range if needed
+                        let (text, id) = match leaf {
+                            tt::Leaf::Ident(ident) => (&ident.text, ident.id),
+                            tt::Leaf::Punct(punct) => {
+                                assert!(punct.char.is_ascii());
+                                let char = &(punct.char as u8);
+                                tmp_str = SmolStr::new_inline(
+                                    std::str::from_utf8(std::slice::from_ref(char)).unwrap(),
+                                );
+                                (&tmp_str, punct.id)
                             }
-                        }
-                        delim_to_str(parent.delimiter_kind(), true)
-                    } else {
-                        continue;
+                            tt::Leaf::Literal(lit) => (&lit.text, lit.id),
+                        };
+                        let range = TextRange::at(self.text_pos, TextSize::of(text.as_str()));
+                        self.token_map.insert(id, range);
+                        self.cursor = self.cursor.bump();
+                        text
                     }
-                }
+                    Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
+                        self.cursor = self.cursor.subtree().unwrap();
+                        match subtree.delimiter {
+                            Some(d) => {
+                                self.open_delims.insert(d.id, self.text_pos);
+                                delim_to_str(d.kind, false)
+                            }
+                            None => continue,
+                        }
+                    }
+                    None => {
+                        let parent = self.cursor.end().unwrap();
+                        self.cursor = self.cursor.bump();
+                        match parent.delimiter {
+                            Some(d) => {
+                                if let Some(open_delim) = self.open_delims.get(&d.id) {
+                                    let open_range = TextRange::at(*open_delim, TextSize::of('('));
+                                    let close_range =
+                                        TextRange::at(self.text_pos, TextSize::of('('));
+                                    self.token_map.insert_delim(d.id, open_range, close_range);
+                                }
+                                delim_to_str(d.kind, true)
+                            }
+                            None => continue,
+                        }
+                    }
+                };
             };
             self.buf += text;
             self.text_pos += TextSize::of(text);

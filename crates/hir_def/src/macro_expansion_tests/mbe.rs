@@ -317,32 +317,35 @@ macro_rules! m {
     ($ i:expr) => { fn bar() { $ i * 3; } }
 }
 fn bar() {
-    1+2*3;
+    (1+2)*3;
 }
-// MACRO_ITEMS@0..15
-//   FN@0..15
+// MACRO_ITEMS@0..17
+//   FN@0..17
 //     FN_KW@0..2 "fn"
 //     NAME@2..5
 //       IDENT@2..5 "bar"
 //     PARAM_LIST@5..7
 //       L_PAREN@5..6 "("
 //       R_PAREN@6..7 ")"
-//     BLOCK_EXPR@7..15
-//       STMT_LIST@7..15
+//     BLOCK_EXPR@7..17
+//       STMT_LIST@7..17
 //         L_CURLY@7..8 "{"
-//         EXPR_STMT@8..14
-//           BIN_EXPR@8..13
-//             BIN_EXPR@8..11
-//               LITERAL@8..9
-//                 INT_NUMBER@8..9 "1"
-//               PLUS@9..10 "+"
-//               LITERAL@10..11
-//                 INT_NUMBER@10..11 "2"
-//             STAR@11..12 "*"
-//             LITERAL@12..13
-//               INT_NUMBER@12..13 "3"
-//           SEMICOLON@13..14 ";"
-//         R_CURLY@14..15 "}"
+//         EXPR_STMT@8..16
+//           BIN_EXPR@8..15
+//             PAREN_EXPR@8..13
+//               L_PAREN@8..9 "("
+//               BIN_EXPR@9..12
+//                 LITERAL@9..10
+//                   INT_NUMBER@9..10 "1"
+//                 PLUS@10..11 "+"
+//                 LITERAL@11..12
+//                   INT_NUMBER@11..12 "2"
+//               R_PAREN@12..13 ")"
+//             STAR@13..14 "*"
+//             LITERAL@14..15
+//               INT_NUMBER@14..15 "3"
+//           SEMICOLON@15..16 ";"
+//         R_CURLY@16..17 "}"
 
 "#]],
     )
@@ -722,7 +725,7 @@ macro_rules! m {
 }
 
 fn bar() {
-    2+2*baz(3).quux();
+    (2+2*baz(3).quux());
 }
 "#]],
     )
@@ -1370,42 +1373,48 @@ macro_rules! m {
 }
 /* parse error: expected identifier */
 /* parse error: expected SEMICOLON */
+/* parse error: expected SEMICOLON */
+/* parse error: expected expression */
 fn f() {
-    K::C("0");
+    K::(C("0"));
 }
-// MACRO_ITEMS@0..17
-//   FN@0..17
+// MACRO_ITEMS@0..19
+//   FN@0..19
 //     FN_KW@0..2 "fn"
 //     NAME@2..3
 //       IDENT@2..3 "f"
 //     PARAM_LIST@3..5
 //       L_PAREN@3..4 "("
 //       R_PAREN@4..5 ")"
-//     BLOCK_EXPR@5..17
-//       STMT_LIST@5..17
+//     BLOCK_EXPR@5..19
+//       STMT_LIST@5..19
 //         L_CURLY@5..6 "{"
-//         EXPR_STMT@6..9
-//           PATH_EXPR@6..9
-//             PATH@6..9
+//         EXPR_STMT@6..10
+//           PATH_EXPR@6..10
+//             PATH@6..10
 //               PATH@6..7
 //                 PATH_SEGMENT@6..7
 //                   NAME_REF@6..7
 //                     IDENT@6..7 "K"
 //               COLON2@7..9 "::"
-//         EXPR_STMT@9..16
-//           CALL_EXPR@9..15
-//             PATH_EXPR@9..10
-//               PATH@9..10
-//                 PATH_SEGMENT@9..10
-//                   NAME_REF@9..10
-//                     IDENT@9..10 "C"
-//             ARG_LIST@10..15
-//               L_PAREN@10..11 "("
-//               LITERAL@11..14
-//                 STRING@11..14 "\"0\""
-//               R_PAREN@14..15 ")"
-//           SEMICOLON@15..16 ";"
-//         R_CURLY@16..17 "}"
+//               ERROR@9..10
+//                 L_PAREN@9..10 "("
+//         EXPR_STMT@10..16
+//           CALL_EXPR@10..16
+//             PATH_EXPR@10..11
+//               PATH@10..11
+//                 PATH_SEGMENT@10..11
+//                   NAME_REF@10..11
+//                     IDENT@10..11 "C"
+//             ARG_LIST@11..16
+//               L_PAREN@11..12 "("
+//               LITERAL@12..15
+//                 STRING@12..15 "\"0\""
+//               R_PAREN@15..16 ")"
+//         ERROR@16..17
+//           R_PAREN@16..17 ")"
+//         SEMICOLON@17..18 ";"
+//         R_CURLY@18..19 "}"
 
 "#]],
     );
@@ -1441,7 +1450,7 @@ fn f() {
         expect![[r#"
 macro_rules! m { ($expr:expr) => { map($expr) } }
 fn f() {
-    let _ = map(x+foo);
+    let _ = map((x+foo));
 }
 "#]],
     )

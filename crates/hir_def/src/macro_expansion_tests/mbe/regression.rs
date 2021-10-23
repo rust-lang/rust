@@ -825,15 +825,18 @@ macro_rules! rgb_color {
     };
 }
 /* parse error: expected type */
+/* parse error: expected R_PAREN */
 /* parse error: expected R_ANGLE */
 /* parse error: expected COMMA */
 /* parse error: expected R_ANGLE */
 /* parse error: expected SEMICOLON */
+/* parse error: expected SEMICOLON */
+/* parse error: expected expression */
 pub fn new() {
-    let _ = 0as u32<<8+8;
+    let _ = 0as u32<<(8+8);
 }
-// MACRO_ITEMS@0..29
-//   FN@0..29
+// MACRO_ITEMS@0..31
+//   FN@0..31
 //     VISIBILITY@0..3
 //       PUB_KW@0..3 "pub"
 //     FN_KW@3..5 "fn"
@@ -842,39 +845,45 @@ pub fn new() {
 //     PARAM_LIST@8..10
 //       L_PAREN@8..9 "("
 //       R_PAREN@9..10 ")"
-//     BLOCK_EXPR@10..29
-//       STMT_LIST@10..29
+//     BLOCK_EXPR@10..31
+//       STMT_LIST@10..31
 //         L_CURLY@10..11 "{"
-//         LET_STMT@11..24
+//         LET_STMT@11..27
 //           LET_KW@11..14 "let"
 //           WILDCARD_PAT@14..15
 //             UNDERSCORE@14..15 "_"
 //           EQ@15..16 "="
-//           CAST_EXPR@16..24
+//           CAST_EXPR@16..27
 //             LITERAL@16..17
 //               INT_NUMBER@16..17 "0"
 //             AS_KW@17..19 "as"
-//             PATH_TYPE@19..24
-//               PATH@19..24
-//                 PATH_SEGMENT@19..24
+//             PATH_TYPE@19..27
+//               PATH@19..27
+//                 PATH_SEGMENT@19..27
 //                   NAME_REF@19..22
 //                     IDENT@19..22 "u32"
-//                   GENERIC_ARG_LIST@22..24
+//                   GENERIC_ARG_LIST@22..27
 //                     L_ANGLE@22..23 "<"
-//                     TYPE_ARG@23..24
-//                       PATH_TYPE@23..24
-//                         PATH@23..24
-//                           PATH_SEGMENT@23..24
-//                             L_ANGLE@23..24 "<"
-//         EXPR_STMT@24..28
-//           BIN_EXPR@24..27
-//             LITERAL@24..25
-//               INT_NUMBER@24..25 "8"
-//             PLUS@25..26 "+"
-//             LITERAL@26..27
-//               INT_NUMBER@26..27 "8"
-//           SEMICOLON@27..28 ";"
-//         R_CURLY@28..29 "}"
+//                     TYPE_ARG@23..27
+//                       DYN_TRAIT_TYPE@23..27
+//                         TYPE_BOUND_LIST@23..27
+//                           TYPE_BOUND@23..26
+//                             PATH_TYPE@23..26
+//                               PATH@23..26
+//                                 PATH_SEGMENT@23..26
+//                                   L_ANGLE@23..24 "<"
+//                                   PAREN_TYPE@24..26
+//                                     L_PAREN@24..25 "("
+//                                     ERROR@25..26
+//                                       INT_NUMBER@25..26 "8"
+//                           PLUS@26..27 "+"
+//         EXPR_STMT@27..28
+//           LITERAL@27..28
+//             INT_NUMBER@27..28 "8"
+//         ERROR@28..29
+//           R_PAREN@28..29 ")"
+//         SEMICOLON@29..30 ";"
+//         R_CURLY@30..31 "}"
 
 "#]],
     );

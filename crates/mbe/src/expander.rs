@@ -110,7 +110,12 @@ enum Binding {
 enum Fragment {
     /// token fragments are just copy-pasted into the output
     Tokens(tt::TokenTree),
-    /// Ast fragments are inserted with fake delimiters, so as to make things
-    /// like `$i * 2` where `$i = 1 + 1` work as expectd.
-    Ast(tt::TokenTree),
+    /// Expr ast fragments are surrounded with `()` on insertion to preserve
+    /// precedence. Note that this impl is different from the one currently in
+    /// `rustc` -- `rustc` doesn't translate fragments into token trees at all.
+    ///
+    /// At one point in time, we tried to to use "fake" delimiters here a-la
+    /// proc-macro delimiter=none. As we later discovered, "none" delimiters are
+    /// tricky to handle in the parser, and rustc doesn't handle those either.
+    Expr(tt::TokenTree),
 }

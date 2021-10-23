@@ -238,7 +238,16 @@ fn expand_repeat(
 fn push_fragment(buf: &mut Vec<tt::TokenTree>, fragment: Fragment) {
     match fragment {
         Fragment::Tokens(tt::TokenTree::Subtree(tt)) => push_subtree(buf, tt),
-        Fragment::Tokens(tt) | Fragment::Ast(tt) => buf.push(tt),
+        Fragment::Expr(tt::TokenTree::Subtree(mut tt)) => {
+            if tt.delimiter.is_none() {
+                tt.delimiter = Some(tt::Delimiter {
+                    id: tt::TokenId::unspecified(),
+                    kind: tt::DelimiterKind::Parenthesis,
+                })
+            }
+            buf.push(tt.into())
+        }
+        Fragment::Tokens(tt) | Fragment::Expr(tt) => buf.push(tt),
     }
 }
 

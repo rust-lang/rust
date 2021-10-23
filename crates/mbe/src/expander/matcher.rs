@@ -736,7 +736,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
         }
     };
     let result = input.expect_fragment(fragment);
-    result.map(|tt| if kind == "expr" { tt.map(Fragment::Ast) } else { tt.map(Fragment::Tokens) })
+    result.map(|tt| if kind == "expr" { tt.map(Fragment::Expr) } else { tt.map(Fragment::Tokens) })
 }
 
 fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &MetaTemplate) {
