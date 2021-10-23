@@ -1075,9 +1075,10 @@ fn render_assoc_items_inner(
     };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
+        let mut tmp_buf = Buffer::empty_from(w);
         let render_mode = match what {
             AssocItemRender::All => {
-                w.write_str(
+                tmp_buf.write_str(
                     "<h2 id=\"implementations\" class=\"small-section-header\">\
                          Implementations<a href=\"#implementations\" class=\"anchor\"></a>\
                     </h2>",
@@ -1091,7 +1092,7 @@ fn render_assoc_items_inner(
                     cx.deref_id_map.borrow_mut().insert(def_id, id.clone());
                 }
                 write!(
-                    w,
+                    tmp_buf,
                     "<h2 id=\"{id}\" class=\"small-section-header\">\
                          <span>Methods from {trait_}&lt;Target = {type_}&gt;</span>\
                          <a href=\"#{id}\" class=\"anchor\"></a>\
@@ -1103,9 +1104,10 @@ fn render_assoc_items_inner(
                 RenderMode::ForDeref { mut_: deref_mut_ }
             }
         };
+        let mut impls_buf = Buffer::empty_from(w);
         for i in &non_trait {
             render_impl(
-                w,
+                &mut impls_buf,
                 cx,
                 i,
                 containing_item,
@@ -1121,6 +1123,10 @@ fn render_assoc_items_inner(
                     toggle_open_by_default: true,
                 },
             );
+        }
+        if !impls_buf.is_empty() {
+            w.push_buffer(tmp_buf);
+            w.push_buffer(impls_buf);
         }
     }
 

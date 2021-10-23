@@ -5,7 +5,12 @@ pub struct A;
 pub struct B;
 pub struct C;
 
+impl C {
+    pub fn c(&self) {}
+}
+
 // @has recursive_deref/struct.A.html '//h3[@class="code-header in-band"]' 'impl Deref for A'
+// @has '-' '//*[@class="impl-items"]//*[@id="method.c"]' 'pub fn c(&self)'
 impl Deref for A {
     type Target = B;
 
@@ -15,6 +20,7 @@ impl Deref for A {
 }
 
 // @has recursive_deref/struct.B.html '//h3[@class="code-header in-band"]' 'impl Deref for B'
+// @has '-' '//*[@class="impl-items"]//*[@id="method.c"]' 'pub fn c(&self)'
 impl Deref for B {
     type Target = C;
 
@@ -38,7 +44,13 @@ pub struct E;
 pub struct F;
 pub struct G;
 
+impl G {
+    // There is no "self" parameter so it shouldn't be listed!
+    pub fn g() {}
+}
+
 // @has recursive_deref/struct.D.html '//h3[@class="code-header in-band"]' 'impl Deref for D'
+// @!has '-' '//*[@id="deref-methods-G"]'
 impl Deref for D {
     type Target = E;
 
@@ -48,6 +60,7 @@ impl Deref for D {
 }
 
 // @has recursive_deref/struct.E.html '//h3[@class="code-header in-band"]' 'impl Deref for E'
+// @!has '-' '//*[@id="deref-methods-G"]'
 impl Deref for E {
     type Target = F;
 
@@ -57,6 +70,7 @@ impl Deref for E {
 }
 
 // @has recursive_deref/struct.F.html '//h3[@class="code-header in-band"]' 'impl Deref for F'
+// @!has '-' '//*[@id="deref-methods-G"]'
 impl Deref for F {
     type Target = G;
 
@@ -78,7 +92,13 @@ impl Deref for G {
 pub struct H;
 pub struct I;
 
+impl I {
+    // There is no "self" parameter so it shouldn't be listed!
+    pub fn i() {}
+}
+
 // @has recursive_deref/struct.H.html '//h3[@class="code-header in-band"]' 'impl Deref for H'
+// @!has '-' '//*[@id="deref-methods-I"]'
 impl Deref for H {
     type Target = I;
 
