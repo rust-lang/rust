@@ -301,6 +301,13 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for [T] {
     }
 }
 
+impl<CTX> HashStable<CTX> for [u8] {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.len().hash_stable(ctx, hasher);
+        hasher.write(self);
+    }
+}
+
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Vec<T> {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
