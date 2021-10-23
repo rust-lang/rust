@@ -43,10 +43,10 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     [anon] TraitSelect,
 
-    // WARNING: if `Symbol` is changed, make sure you update `make_compile_codegen_unit` below.
+    // WARNING: if `Symbol` is changed, make sure you update `make_compile_codegen_unit`.
     [] CompileCodegenUnit(Symbol),
 
-    // WARNING: if `MonoItem` is changed, make sure you update `make_compile_mono_item` below.
+    // WARNING: if `MonoItem` is changed, make sure you update `make_compile_mono_item`.
     // Only used by rustc_codegen_cranelift
     [] CompileMonoItem(MonoItem),
 ]);
