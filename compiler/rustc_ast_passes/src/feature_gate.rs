@@ -724,10 +724,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
     gate_all!(inline_const, "inline-const is experimental");
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
-    gate_all!(
-        const_generics_defaults,
-        "default values for const generic parameters are experimental"
-    );
     if sess.parse_sess.span_diagnostic.err_count() == 0 {
         // Errors for `destructuring_assignment` can get quite noisy, especially where `_` is
         // involved, so we only emit errors where there are no other parsing errors.

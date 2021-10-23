@@ -131,8 +131,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             _ => {}
         }
 
-        let kind_ord = param.kind.to_ord(tcx);
-        let arg_ord = arg.to_ord(tcx.features());
+        let kind_ord = param.kind.to_ord();
+        let arg_ord = arg.to_ord();
 
         // This note is only true when generic parameters are strictly ordered by their kind.
         if possible_ordering_error && kind_ord.cmp(&arg_ord) != core::cmp::Ordering::Equal {
@@ -298,26 +298,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         .params
                                         .clone()
                                         .into_iter()
-                                        .map(|param| {
-                                            (
-                                                match param.kind {
-                                                    GenericParamDefKind::Lifetime => {
-                                                        ParamKindOrd::Lifetime
-                                                    }
-                                                    GenericParamDefKind::Type { .. } => {
-                                                        ParamKindOrd::Type
-                                                    }
-                                                    GenericParamDefKind::Const { .. } => {
-                                                        ParamKindOrd::Const {
-                                                            unordered: tcx
-                                                                .features()
-                                                                .unordered_const_ty_params(),
-                                                        }
-                                                    }
-                                                },
-                                                param,
-                                            )
-                                        })
+                                        .map(|param| (param.kind.to_ord(), param))
                                         .collect::<Vec<(ParamKindOrd, GenericParamDef)>>();
                                     param_types_present.sort_by_key(|(ord, _)| *ord);
                                     let (mut param_types_present, ordered_params): (
@@ -330,16 +311,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         tcx,
                                         arg,
                                         param,
-                                        !args_iter.clone().is_sorted_by_key(|arg| match arg {
-                                            GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
-                                            GenericArg::Type(_) => ParamKindOrd::Type,
-                                            GenericArg::Const(_) => ParamKindOrd::Const {
-                                                unordered: tcx
-                                                    .features()
-                                                    .unordered_const_ty_params(),
-                                            },
-                                            GenericArg::Infer(_) => ParamKindOrd::Infer,
-                                        }),
+                                        !args_iter.clone().is_sorted_by_key(|arg| arg.to_ord()),
                                         Some(&format!(
                                             "reorder the arguments: {}: `<{}>`",
                                             param_types_present

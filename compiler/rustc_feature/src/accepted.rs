@@ -306,6 +306,8 @@ declare_features! (
     (accepted, while_let, "1.0.0", None, None),
     /// Allows `#![windows_subsystem]`.
     (accepted, windows_subsystem, "1.18.0", Some(37499), None),
+    /// Allows const generics to have default values (e.g. `struct Foo<const N: usize = 3>(...);`).
+    (accepted, const_generics_defaults, "1.58.0", Some(44580), None),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
