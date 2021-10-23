@@ -107,8 +107,14 @@ pub trait DoubleEndedIterator: Iterator {
     /// outer iterator until it finds an inner iterator that is not empty, which then often
     /// allows it to return a more accurate `size_hint()` than in its initial state.
     ///
+    /// Implementations may elide side-effects such as calling closures or `clone` when they are
+    /// not necessary to determine by how many steps an iterator can be advanced. For example
+    /// [`Cloned::advance_back_by`] avoids unnecessary allocations by directly advancing its inner iterator
+    /// instead.
+    ///
     /// [`advance_by`]: Iterator::advance_by
     /// [`Flatten`]: crate::iter::Flatten
+    /// [`Cloned::advance_back_by`]: crate::iter::Cloned::advance_back_by
     /// [`next_back`]: DoubleEndedIterator::next_back
     ///
     /// # Examples

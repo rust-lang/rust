@@ -250,7 +250,13 @@ pub trait Iterator {
     /// can advance its outer iterator until it finds an inner iterator that is not empty, which
     /// then often allows it to return a more accurate `size_hint()` than in its initial state.
     ///
+    /// Implementations may elide side-effects such as calling closures or `clone` when they are
+    /// not necessary to determine by how many steps an iterator can be advanced. For example
+    /// [`Cloned::advance_by`] avoids unnecessary allocations by directly advancing its inner iterator
+    /// instead.
+    ///
     /// [`Flatten`]: crate::iter::Flatten
+    /// [`Cloned::advance_by`]: crate::iter::Cloned::advance_by
     /// [`next`]: Iterator::next
     ///
     /// # Examples

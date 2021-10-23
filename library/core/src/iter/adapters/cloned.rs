@@ -60,6 +60,11 @@ where
         self.it.map(T::clone).fold(init, f)
     }
 
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        self.it.advance_by(n)
+    }
+
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
@@ -95,6 +100,11 @@ where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
         self.it.map(T::clone).rfold(init, f)
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        self.it.advance_back_by(n)
     }
 }
 
