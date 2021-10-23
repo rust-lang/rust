@@ -436,3 +436,36 @@ where
     std::panic::set_hook(prev_hook);
     result
 }
+
+#[test]
+fn array_split_array_mut() {
+    let mut v = [1, 2, 3, 4, 5, 6];
+
+    {
+        let (left, right) = v.split_array_mut::<0>();
+        assert_eq!(left, &mut []);
+        assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
+    }
+
+    {
+        let (left, right) = v.split_array_mut::<6>();
+        assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
+        assert_eq!(right, &mut []);
+    }
+}
+
+#[should_panic]
+#[test]
+fn array_split_array_ref_out_of_bounds() {
+    let v = [1, 2, 3, 4, 5, 6];
+
+    v.split_array_ref::<7>();
+}
+
+#[should_panic]
+#[test]
+fn array_split_array_mut_out_of_bounds() {
+    let mut v = [1, 2, 3, 4, 5, 6];
+
+    v.split_array_mut::<7>();
+}
