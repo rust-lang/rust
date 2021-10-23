@@ -372,7 +372,7 @@ fn add_query_description_impl(
         quote! {
             #[allow(unused_variables, unused_braces)]
             #[inline]
-            fn cache_on_disk(#tcx: QueryCtxt<'tcx>, #key: &Self::Key) -> bool {
+            fn cache_on_disk(#tcx: TyCtxt<'tcx>, #key: &Self::Key) -> bool {
                 #expr
             }
 
@@ -384,7 +384,7 @@ fn add_query_description_impl(
         }
         quote! {
             #[inline]
-            fn cache_on_disk(_: QueryCtxt<'tcx>, _: &Self::Key) -> bool {
+            fn cache_on_disk(_: TyCtxt<'tcx>, _: &Self::Key) -> bool {
                 false
             }
 

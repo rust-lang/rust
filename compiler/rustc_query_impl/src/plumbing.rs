@@ -315,7 +315,7 @@ macro_rules! define_queries {
                 } else {
                     tcx.queries.extern_providers.$name
                 };
-                let cache_on_disk = Self::cache_on_disk(tcx, key);
+                let cache_on_disk = Self::cache_on_disk(tcx.tcx, key);
                 QueryVtable {
                     anon: is_anon!([$($modifiers)*]),
                     eval_always: is_eval_always!([$($modifiers)*]),
@@ -415,7 +415,6 @@ macro_rules! define_queries {
                     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
                     let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
-                    let tcx = QueryCtxt::from_tcx(tcx);
                     if queries::$name::cache_on_disk(tcx, &key) {
                         let _ = tcx.$name(key);
                     }

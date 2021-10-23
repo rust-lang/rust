@@ -71,5 +71,5 @@ pub trait QueryDescription<CTX: QueryContext>: QueryConfig {
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn make_vtable(tcx: CTX, key: &Self::Key) -> QueryVtable<CTX, Self::Key, Self::Value>;
 
-    fn cache_on_disk(tcx: CTX, key: &Self::Key) -> bool;
+    fn cache_on_disk(tcx: CTX::DepContext, key: &Self::Key) -> bool;
 }

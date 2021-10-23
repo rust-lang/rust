@@ -1033,7 +1033,7 @@ where
         if res.is_err() {
             return;
         }
-        if Q::cache_on_disk(tcx, &key) {
+        if Q::cache_on_disk(*tcx.dep_context(), &key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
             // Record position of the cache entry.
