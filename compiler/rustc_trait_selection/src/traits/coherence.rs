@@ -8,7 +8,9 @@ use crate::infer::{CombinedSnapshot, InferOk, TyCtxtInferExt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::SkipLeakCheck;
-use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionContext};
+use crate::traits::{
+    self, Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext,
+};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
@@ -159,6 +161,19 @@ fn overlap_within_probe(
     b_def_id: DefId,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
+    fn loose_check(selcx: &mut SelectionContext<'cx, 'tcx>, o: &PredicateObligation<'tcx>) -> bool {
+        !selcx.predicate_may_hold_fatal(o)
+    }
+
+    fn strict_check(selcx: &SelectionContext<'cx, 'tcx>, o: &PredicateObligation<'tcx>) -> bool {
+        let infcx = selcx.infcx();
+        let tcx = infcx.tcx;
+        o.flip_polarity(tcx)
+            .as_ref()
+            .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
+            .unwrap_or(false)
+    }
+
     // For the purposes of this check, we don't bring any placeholder
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
@@ -227,17 +242,9 @@ fn overlap_within_probe(
             if tcx.has_attr(a_def_id, sym::rustc_strict_coherence)
                 && tcx.has_attr(b_def_id, sym::rustc_strict_coherence)
             {
-                o.flip_polarity(tcx)
-                    .as_ref()
-                    .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
-                    .unwrap_or(false)
+                strict_check(selcx, o)
             } else {
-                !selcx.predicate_may_hold_fatal(o)
-                    || tcx.features().negative_impls
-                        && o.flip_polarity(tcx)
-                            .as_ref()
-                            .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
-                            .unwrap_or(false)
+                loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o)
             }
         });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
