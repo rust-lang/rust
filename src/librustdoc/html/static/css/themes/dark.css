@@ -485,3 +485,22 @@ div.files > .selected {
 .setting-line > .title {
 	border-bottom-color: #ddd;
 }
+
+.scraped-example .example-wrap .rust span.highlight {
+	background: rgb(91, 59, 1);
+}
+.scraped-example .example-wrap .rust span.highlight.focus {
+	background: rgb(124, 75, 15);
+}
+.scraped-example:not(.expanded) .code-wrapper:before {
+	background: linear-gradient(to bottom, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
+}
+.scraped-example:not(.expanded) .code-wrapper:after {
+	background: linear-gradient(to top, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
+}
+.toggle-line-inner {
+	background: #616161;
+}
+.toggle-line:hover .toggle-line-inner {
+	background: ##898989;
+}

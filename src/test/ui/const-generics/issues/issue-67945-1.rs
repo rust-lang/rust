@@ -5,7 +5,7 @@
 use std::mem::MaybeUninit;
 
 struct Bug<S> {
-    //~^ ERROR parameter `S` is never used
+    //[min]~^ ERROR parameter `S` is never used
     A: [(); {
         let x: S = MaybeUninit::uninit();
         //[min]~^ ERROR generic parameters may not be used in const operations

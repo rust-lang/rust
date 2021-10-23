@@ -38,18 +38,18 @@ LL | #[generate_mod::check_attr]
            OuterAttr
    = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: cannot find type `FromOutside` in this scope
+error: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:16:10
    |
 LL | #[derive(generate_mod::CheckDerive)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
-   = note: `#[warn(proc_macro_derive_resolution_fallback)]` on by default
+   = note: `#[deny(proc_macro_derive_resolution_fallback)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: cannot find type `OuterDerive` in this scope
+error: cannot find type `OuterDerive` in this scope
   --> $DIR/generate-mod.rs:16:10
    |
 LL | #[derive(generate_mod::CheckDerive)]
@@ -57,9 +57,9 @@ LL | #[derive(generate_mod::CheckDerive)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: cannot find type `FromOutside` in this scope
+error: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:23:14
    |
 LL |     #[derive(generate_mod::CheckDerive)]
@@ -67,9 +67,9 @@ LL |     #[derive(generate_mod::CheckDerive)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: cannot find type `OuterDerive` in this scope
+error: cannot find type `OuterDerive` in this scope
   --> $DIR/generate-mod.rs:23:14
    |
 LL |     #[derive(generate_mod::CheckDerive)]
@@ -77,25 +77,25 @@ LL |     #[derive(generate_mod::CheckDerive)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors; 4 warnings emitted
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0412`.
 Future incompatibility report: Future breakage diagnostic:
-warning: cannot find type `FromOutside` in this scope
+error: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:16:10
    |
 LL | #[derive(generate_mod::CheckDerive)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
-   = note: `#[warn(proc_macro_derive_resolution_fallback)]` on by default
+   = note: `#[deny(proc_macro_derive_resolution_fallback)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-warning: cannot find type `OuterDerive` in this scope
+error: cannot find type `OuterDerive` in this scope
   --> $DIR/generate-mod.rs:16:10
    |
 LL | #[derive(generate_mod::CheckDerive)]
@@ -103,10 +103,10 @@ LL | #[derive(generate_mod::CheckDerive)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-warning: cannot find type `FromOutside` in this scope
+error: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:23:14
    |
 LL |     #[derive(generate_mod::CheckDerive)]
@@ -114,10 +114,10 @@ LL |     #[derive(generate_mod::CheckDerive)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-warning: cannot find type `OuterDerive` in this scope
+error: cannot find type `OuterDerive` in this scope
   --> $DIR/generate-mod.rs:23:14
    |
 LL |     #[derive(generate_mod::CheckDerive)]
@@ -125,7 +125,7 @@ LL |     #[derive(generate_mod::CheckDerive)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
 warning: cannot find type `FromOutside` in this scope

@@ -1449,6 +1449,10 @@ fn _assert_sync_and_send() {
 /// global state in order to more accurately query the amount of available
 /// parallelism.
 ///
+/// Resource limits can be changed during the runtime of a program, therefore the value is
+/// not cached and instead recomputed every time this function is called. It should not be
+/// called from hot code.
+///
 /// The value returned by this function should be considered a simplified
 /// approximation of the actual amount of parallelism available at any given
 /// time. To get a more detailed or precise overview of the amount of

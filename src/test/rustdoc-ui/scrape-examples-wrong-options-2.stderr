@@ -1,0 +1,2 @@
+error: must use --scrape-examples-output-path and --scrape-examples-target-crate together
+
