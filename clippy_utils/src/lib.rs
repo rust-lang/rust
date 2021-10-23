@@ -712,7 +712,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// Checks if the top level expression can be moved into a closure as is.
 /// Currently checks for:
 /// * Break/Continue outside the given loop HIR ids.
-/// * Yield/Return statments.
+/// * Yield/Return statements.
 /// * Inline assembly.
 /// * Usages of a field of a local where the type of the local can be partially moved.
 ///
@@ -2123,7 +2123,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     vis.found
 }
 
-/// Checks whether item either has `test` attribute appelied, or
+/// Checks whether item either has `test` attribute applied, or
 /// is a module with `test` in its name.
 ///
 /// Note: If you use this function, please add a `#[test]` case in `tests/ui_test`.
