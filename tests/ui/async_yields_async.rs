@@ -1,5 +1,4 @@
 // run-rustfix
-// edition:2018
 
 #![feature(async_closure)]
 #![warn(clippy::async_yields_async)]

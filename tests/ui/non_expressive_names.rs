@@ -15,8 +15,8 @@ struct InstSplit {
 impl MaybeInst {
     fn fill(&mut self) {
         let filled = match *self {
-            MaybeInst::Split1(goto1) => panic!(1),
-            MaybeInst::Split2(goto2) => panic!(2),
+            MaybeInst::Split1(goto1) => panic!("1"),
+            MaybeInst::Split2(goto2) => panic!("2"),
             _ => unimplemented!(),
         };
         unimplemented!()

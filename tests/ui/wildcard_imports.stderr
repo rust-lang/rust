@@ -1,5 +1,5 @@
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:12:5
+  --> $DIR/wildcard_imports.rs:17:5
    |
 LL | use crate::fn_mod::*;
    |     ^^^^^^^^^^^^^^^^ help: try: `crate::fn_mod::foo`
@@ -7,85 +7,85 @@ LL | use crate::fn_mod::*;
    = note: `-D clippy::wildcard-imports` implied by `-D warnings`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:13:5
+  --> $DIR/wildcard_imports.rs:18:5
    |
 LL | use crate::mod_mod::*;
    |     ^^^^^^^^^^^^^^^^^ help: try: `crate::mod_mod::inner_mod`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:14:5
+  --> $DIR/wildcard_imports.rs:19:5
    |
 LL | use crate::multi_fn_mod::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate::multi_fn_mod::{multi_bar, multi_foo, multi_inner_mod}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:16:5
+  --> $DIR/wildcard_imports.rs:21:5
    |
 LL | use crate::struct_mod::*;
    |     ^^^^^^^^^^^^^^^^^^^^ help: try: `crate::struct_mod::{A, inner_struct_mod}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:20:5
+  --> $DIR/wildcard_imports.rs:25:5
    |
 LL | use wildcard_imports_helper::inner::inner_for_self_import::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::inner::inner_for_self_import::inner_extern_bar`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:21:5
+  --> $DIR/wildcard_imports.rs:26:5
    |
 LL | use wildcard_imports_helper::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternA, extern_foo}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:92:13
+  --> $DIR/wildcard_imports.rs:97:13
    |
 LL |         use crate::fn_mod::*;
    |             ^^^^^^^^^^^^^^^^ help: try: `crate::fn_mod::foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:98:75
+  --> $DIR/wildcard_imports.rs:103:75
    |
 LL |         use wildcard_imports_helper::inner::inner_for_self_import::{self, *};
    |                                                                           ^ help: try: `inner_extern_foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:99:13
+  --> $DIR/wildcard_imports.rs:104:13
    |
 LL |         use wildcard_imports_helper::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternA, extern_foo}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:110:20
+  --> $DIR/wildcard_imports.rs:115:20
    |
 LL |         use self::{inner::*, inner2::*};
    |                    ^^^^^^^^ help: try: `inner::inner_foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:110:30
+  --> $DIR/wildcard_imports.rs:115:30
    |
 LL |         use self::{inner::*, inner2::*};
    |                              ^^^^^^^^^ help: try: `inner2::inner_bar`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:117:13
+  --> $DIR/wildcard_imports.rs:122:13
    |
 LL |         use wildcard_imports_helper::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternExportedEnum, ExternExportedStruct, extern_exported}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:146:9
+  --> $DIR/wildcard_imports.rs:151:9
    |
 LL |     use crate::in_fn_test::*;
    |         ^^^^^^^^^^^^^^^^^^^^ help: try: `crate::in_fn_test::{ExportedEnum, ExportedStruct, exported}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:155:9
+  --> $DIR/wildcard_imports.rs:160:9
    |
 LL |     use crate:: in_fn_test::  * ;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate:: in_fn_test::exported`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:156:9
+  --> $DIR/wildcard_imports.rs:161:9
    |
 LL |       use crate:: fn_mod::
    |  _________^
@@ -93,37 +93,37 @@ LL | |         *;
    | |_________^ help: try: `crate:: fn_mod::foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:167:13
+  --> $DIR/wildcard_imports.rs:172:13
    |
 LL |         use super::*;
    |             ^^^^^^^^ help: try: `super::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:202:17
+  --> $DIR/wildcard_imports.rs:207:17
    |
 LL |             use super::*;
    |                 ^^^^^^^^ help: try: `super::insidefoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:210:13
+  --> $DIR/wildcard_imports.rs:215:13
    |
 LL |         use super_imports::*;
    |             ^^^^^^^^^^^^^^^^ help: try: `super_imports::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:219:17
+  --> $DIR/wildcard_imports.rs:224:17
    |
 LL |             use super::super::*;
    |                 ^^^^^^^^^^^^^^^ help: try: `super::super::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:228:13
+  --> $DIR/wildcard_imports.rs:233:13
    |
 LL |         use super::super::super_imports::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::super_imports::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:236:13
+  --> $DIR/wildcard_imports.rs:241:13
    |
 LL |         use super::*;
    |             ^^^^^^^^ help: try: `super::foofoo`

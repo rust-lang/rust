@@ -38,7 +38,7 @@ note: potential failure(s)
    |
 LL |             panic!();
    |             ^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: consider implementing `TryFrom` instead
   --> $DIR/fallible_impl_from.rs:35:1
@@ -65,7 +65,7 @@ LL |         } else if s.parse::<u32>().unwrap() != 42 {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |             panic!("{:?}", s);
    |             ^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: consider implementing `TryFrom` instead
   --> $DIR/fallible_impl_from.rs:53:1
@@ -87,7 +87,7 @@ LL |         if s.parse::<u32>().ok().unwrap() != 42 {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |             panic!("{:?}", s);
    |             ^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

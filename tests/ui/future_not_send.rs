@@ -1,4 +1,3 @@
-// edition:2018
 #![warn(clippy::future_not_send)]
 
 use std::cell::Cell;

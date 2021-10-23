@@ -1,5 +1,3 @@
-// edition:2018
-
 #[warn(clippy::eval_order_dependence)]
 #[allow(
     unused_assignments,

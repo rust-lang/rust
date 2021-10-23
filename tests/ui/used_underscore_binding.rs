@@ -1,4 +1,3 @@
-// edition:2018
 // aux-build:proc_macro_derive.rs
 
 #![feature(rustc_private)]

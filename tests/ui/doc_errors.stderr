@@ -1,5 +1,5 @@
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:8:1
+  --> $DIR/doc_errors.rs:7:1
    |
 LL | / pub fn pub_fn_missing_errors_header() -> Result<(), ()> {
 LL | |     unimplemented!();
@@ -9,7 +9,7 @@ LL | | }
    = note: `-D clippy::missing-errors-doc` implied by `-D warnings`
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:12:1
+  --> $DIR/doc_errors.rs:11:1
    |
 LL | / pub async fn async_pub_fn_missing_errors_header() -> Result<(), ()> {
 LL | |     unimplemented!();
@@ -17,7 +17,7 @@ LL | | }
    | |_^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:17:1
+  --> $DIR/doc_errors.rs:16:1
    |
 LL | / pub fn pub_fn_returning_io_result() -> io::Result<()> {
 LL | |     unimplemented!();
@@ -25,7 +25,7 @@ LL | | }
    | |_^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:22:1
+  --> $DIR/doc_errors.rs:21:1
    |
 LL | / pub async fn async_pub_fn_returning_io_result() -> io::Result<()> {
 LL | |     unimplemented!();
@@ -33,7 +33,7 @@ LL | | }
    | |_^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:52:5
+  --> $DIR/doc_errors.rs:51:5
    |
 LL | /     pub fn pub_method_missing_errors_header() -> Result<(), ()> {
 LL | |         unimplemented!();
@@ -41,7 +41,7 @@ LL | |     }
    | |_____^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:57:5
+  --> $DIR/doc_errors.rs:56:5
    |
 LL | /     pub async fn async_pub_method_missing_errors_header() -> Result<(), ()> {
 LL | |         unimplemented!();
@@ -49,7 +49,7 @@ LL | |     }
    | |_____^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:86:5
+  --> $DIR/doc_errors.rs:85:5
    |
 LL |     fn trait_method_missing_errors_header() -> Result<(), ()>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

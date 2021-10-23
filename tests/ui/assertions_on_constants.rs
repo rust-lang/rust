@@ -1,3 +1,4 @@
+//FIXME: suggestions are wrongly expanded, this should be fixed along with #7843
 #![allow(non_fmt_panics)]
 
 macro_rules! assert_const {
@@ -6,7 +7,6 @@ macro_rules! assert_const {
         debug_assert!($len < 0);
     };
 }
-
 fn main() {
     assert!(true);
     assert!(false);
@@ -14,7 +14,7 @@ fn main() {
     assert!(false, "false message");
 
     let msg = "panic message";
-    assert!(false, msg.to_uppercase());
+    assert!(false, "{}", msg.to_uppercase());
 
     const B: bool = true;
     assert!(B);

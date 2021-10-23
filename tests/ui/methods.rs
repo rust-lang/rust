@@ -1,5 +1,4 @@
 // aux-build:option_helpers.rs
-// edition:2018
 
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(

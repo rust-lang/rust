@@ -1,4 +1,6 @@
+// edition:2018
 // run-rustfix
+//FIXME: This does not correctly match in edition 2021, see #7843
 #![warn(clippy::manual_assert)]
 
 fn main() {
