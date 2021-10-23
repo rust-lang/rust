@@ -8,15 +8,5 @@ LL |     inner: [(); { [|_: &T| {}; 0].len() }],
    |
    = help: consider moving this anonymous constant into a `const` function
 
-error[E0392]: parameter `T` is never used
-  --> $DIR/issue-67375.rs:5:12
-   |
-LL | struct Bug<T> {
-   |            ^ unused parameter
-   |
-   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `T` to be a const parameter, use `const T: usize` instead
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0392`.
