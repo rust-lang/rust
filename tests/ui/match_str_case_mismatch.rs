@@ -12,6 +12,49 @@ fn as_str_match() {
     }
 }
 
+fn non_alphabetic() {
+    let var = "~!@#$%^&*()-_=+FOO";
+
+    match var.to_ascii_lowercase().as_str() {
+        "1234567890" => {},
+        "~!@#$%^&*()-_=+foo" => {},
+        "\n\r\t\x7F" => {},
+        _ => {},
+    }
+}
+
+fn unicode_cased() {
+    let var = "ВОДЫ";
+
+    match var.to_lowercase().as_str() {
+        "水" => {},
+        "νερό" => {},
+        "воды" => {},
+        "물" => {},
+        _ => {},
+    }
+}
+
+fn titlecase() {
+    let var = "Barǲ";
+
+    match var.to_lowercase().as_str() {
+        "fooǉ" => {},
+        "barǳ" => {},
+        _ => {},
+    }
+}
+
+fn no_case_equivalent() {
+    let var = "barʁ";
+
+    match var.to_uppercase().as_str() {
+        "FOOɕ" => {},
+        "BARʁ" => {},
+        _ => {},
+    }
+}
+
 fn addrof_unary_match() {
     let var = "BAR";
 
@@ -66,6 +109,49 @@ fn as_str_match_mismatch() {
     match var.to_ascii_lowercase().as_str() {
         "foo" => {},
         "Bar" => {},
+        _ => {},
+    }
+}
+
+fn non_alphabetic_mismatch() {
+    let var = "~!@#$%^&*()-_=+FOO";
+
+    match var.to_ascii_lowercase().as_str() {
+        "1234567890" => {},
+        "~!@#$%^&*()-_=+Foo" => {},
+        "\n\r\t\x7F" => {},
+        _ => {},
+    }
+}
+
+fn unicode_cased_mismatch() {
+    let var = "ВОДЫ";
+
+    match var.to_lowercase().as_str() {
+        "水" => {},
+        "νερό" => {},
+        "Воды" => {},
+        "물" => {},
+        _ => {},
+    }
+}
+
+fn titlecase_mismatch() {
+    let var = "Barǲ";
+
+    match var.to_lowercase().as_str() {
+        "fooǉ" => {},
+        "barǲ" => {},
+        _ => {},
+    }
+}
+
+fn no_case_equivalent_mismatch() {
+    let var = "barʁ";
+
+    match var.to_uppercase().as_str() {
+        "FOOɕ" => {},
+        "bARʁ" => {},
         _ => {},
     }
 }
