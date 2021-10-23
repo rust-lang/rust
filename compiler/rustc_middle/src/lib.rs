@@ -56,6 +56,7 @@
 #![feature(try_reserve_kind)]
 #![feature(nonzero_ops)]
 #![recursion_limit = "512"]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate bitflags;

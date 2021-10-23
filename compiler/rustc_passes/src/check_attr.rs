@@ -62,7 +62,7 @@ impl CheckAttrVisitor<'tcx> {
     fn check_attributes(
         &self,
         hir_id: HirId,
-        span: &Span,
+        span: Span,
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
@@ -78,7 +78,7 @@ impl CheckAttrVisitor<'tcx> {
                 sym::marker => self.check_marker(hir_id, attr, span, target),
                 sym::target_feature => self.check_target_feature(hir_id, attr, span, target),
                 sym::track_caller => {
-                    self.check_track_caller(hir_id, &attr.span, attrs, span, target)
+                    self.check_track_caller(hir_id, attr.span, attrs, span, target)
                 }
                 sym::doc => self.check_doc_attrs(
                     attr,
@@ -102,6 +102,9 @@ impl CheckAttrVisitor<'tcx> {
                 sym::naked => self.check_naked(hir_id, attr, span, target),
                 sym::rustc_legacy_const_generics => {
                     self.check_rustc_legacy_const_generics(&attr, span, target, item)
+                }
+                sym::rustc_lint_query_instability => {
+                    self.check_rustc_lint_query_instability(&attr, span, target)
                 }
                 sym::rustc_clean
                 | sym::rustc_dirty
@@ -230,7 +233,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure. Returns `true` if valid.
-    fn check_inline(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) -> bool {
+    fn check_inline(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
             Target::Fn
             | Target::Closure
@@ -273,7 +276,7 @@ impl CheckAttrVisitor<'tcx> {
                     E0518,
                     "attribute should be applied to function or closure",
                 )
-                .span_label(*span, "not a function or closure")
+                .span_label(span, "not a function or closure")
                 .emit();
                 false
             }
@@ -312,7 +315,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[naked]` is applied to a function definition.
-    fn check_naked(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) -> bool {
+    fn check_naked(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
@@ -331,7 +334,7 @@ impl CheckAttrVisitor<'tcx> {
                         attr.span,
                         "attribute should be applied to a function definition",
                     )
-                    .span_label(*span, "not a function definition")
+                    .span_label(span, "not a function definition")
                     .emit();
                 false
             }
@@ -339,7 +342,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[cmse_nonsecure_entry]` is applied to a function definition.
-    fn check_cmse_nonsecure_entry(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+    fn check_cmse_nonsecure_entry(&self, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
@@ -350,7 +353,7 @@ impl CheckAttrVisitor<'tcx> {
                         attr.span,
                         "attribute should be applied to a function definition",
                     )
-                    .span_label(*span, "not a function definition")
+                    .span_label(span, "not a function definition")
                     .emit();
                 false
             }
@@ -361,16 +364,16 @@ impl CheckAttrVisitor<'tcx> {
     fn check_track_caller(
         &self,
         hir_id: HirId,
-        attr_span: &Span,
+        attr_span: Span,
         attrs: &'hir [Attribute],
-        span: &Span,
+        span: Span,
         target: Target,
     ) -> bool {
         match target {
             _ if attrs.iter().any(|attr| attr.has_name(sym::naked)) => {
                 struct_span_err!(
                     self.tcx.sess,
-                    *attr_span,
+                    attr_span,
                     E0736,
                     "cannot use `#[track_caller]` with `#[naked]`",
                 )
@@ -391,11 +394,11 @@ impl CheckAttrVisitor<'tcx> {
             _ => {
                 struct_span_err!(
                     self.tcx.sess,
-                    *attr_span,
+                    attr_span,
                     E0739,
                     "attribute should be applied to function"
                 )
-                .span_label(*span, "not a function")
+                .span_label(span, "not a function")
                 .emit();
                 false
             }
@@ -407,7 +410,7 @@ impl CheckAttrVisitor<'tcx> {
         &self,
         hir_id: HirId,
         attr: &Attribute,
-        span: &Span,
+        span: Span,
         target: Target,
     ) -> bool {
         match target {
@@ -427,7 +430,7 @@ impl CheckAttrVisitor<'tcx> {
                     E0701,
                     "attribute can only be applied to a struct or enum"
                 )
-                .span_label(*span, "not a struct or enum")
+                .span_label(span, "not a struct or enum")
                 .emit();
                 false
             }
@@ -435,7 +438,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[marker]` attribute on an `item` is valid. Returns `true` if valid.
-    fn check_marker(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) -> bool {
+    fn check_marker(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
             Target::Trait => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
@@ -450,7 +453,7 @@ impl CheckAttrVisitor<'tcx> {
                 self.tcx
                     .sess
                     .struct_span_err(attr.span, "attribute can only be applied to a trait")
-                    .span_label(*span, "not a trait")
+                    .span_label(span, "not a trait")
                     .emit();
                 false
             }
@@ -462,7 +465,7 @@ impl CheckAttrVisitor<'tcx> {
         &self,
         hir_id: HirId,
         attr: &Attribute,
-        span: &Span,
+        span: Span,
         target: Target,
     ) -> bool {
         match target {
@@ -478,7 +481,7 @@ impl CheckAttrVisitor<'tcx> {
                              being phased out; it will become a hard error in \
                              a future release!",
                         )
-                        .span_label(*span, "not a function")
+                        .span_label(span, "not a function")
                         .emit();
                 });
                 true
@@ -495,7 +498,7 @@ impl CheckAttrVisitor<'tcx> {
                 self.tcx
                     .sess
                     .struct_span_err(attr.span, "attribute should be applied to a function")
-                    .span_label(*span, "not a function")
+                    .span_label(span, "not a function")
                     .emit();
                 false
             }
@@ -1047,14 +1050,14 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[must_not_suspend]` is applied to a function. Returns `true` if valid.
-    fn check_must_not_suspend(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+    fn check_must_not_suspend(&self, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
             Target::Struct | Target::Enum | Target::Union | Target::Trait => true,
             _ => {
                 self.tcx
                     .sess
                     .struct_span_err(attr.span, "`must_not_suspend` attribute should be applied to a struct, enum, or trait")
-                        .span_label(*span, "is not a struct, enum, or trait")
+                        .span_label(span, "is not a struct, enum, or trait")
                         .emit();
                 false
             }
@@ -1062,7 +1065,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[cold]` is applied to a non-function. Returns `true` if valid.
-    fn check_cold(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
+    fn check_cold(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
         match target {
             Target::Fn | Target::Method(..) | Target::ForeignFn | Target::Closure => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
@@ -1082,7 +1085,7 @@ impl CheckAttrVisitor<'tcx> {
                              being phased out; it will become a hard error in \
                              a future release!",
                         )
-                        .span_label(*span, "not a function")
+                        .span_label(span, "not a function")
                         .emit();
                 });
             }
@@ -1090,7 +1093,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[link_name]` is applied to an item other than a foreign function or static.
-    fn check_link_name(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
+    fn check_link_name(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
         match target {
             Target::ForeignFn | Target::ForeignStatic => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
@@ -1124,7 +1127,7 @@ impl CheckAttrVisitor<'tcx> {
                         }
                     }
 
-                    diag.span_label(*span, "not a foreign function or static");
+                    diag.span_label(span, "not a foreign function or static");
                     diag.emit();
                 });
             }
@@ -1132,7 +1135,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[no_link]` is applied to an `extern crate`. Returns `true` if valid.
-    fn check_no_link(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) -> bool {
+    fn check_no_link(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
             Target::ExternCrate => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
@@ -1150,7 +1153,7 @@ impl CheckAttrVisitor<'tcx> {
                         attr.span,
                         "attribute should be applied to an `extern crate` item",
                     )
-                    .span_label(*span, "not an `extern crate` item")
+                    .span_label(span, "not an `extern crate` item")
                     .emit();
                 false
             }
@@ -1166,7 +1169,7 @@ impl CheckAttrVisitor<'tcx> {
         &self,
         hir_id: HirId,
         attr: &Attribute,
-        span: &Span,
+        span: Span,
         target: Target,
     ) -> bool {
         match target {
@@ -1187,7 +1190,7 @@ impl CheckAttrVisitor<'tcx> {
                         attr.span,
                         "attribute should be applied to a free function, impl method or static",
                     )
-                    .span_label(*span, "not a free function, impl method or static")
+                    .span_label(span, "not a free function, impl method or static")
                     .emit();
                 false
             }
@@ -1197,14 +1200,14 @@ impl CheckAttrVisitor<'tcx> {
     fn check_rustc_layout_scalar_valid_range(
         &self,
         attr: &Attribute,
-        span: &Span,
+        span: Span,
         target: Target,
     ) -> bool {
         if target != Target::Struct {
             self.tcx
                 .sess
                 .struct_span_err(attr.span, "attribute should be applied to a struct")
-                .span_label(*span, "not a struct")
+                .span_label(span, "not a struct")
                 .emit();
             return false;
         }
@@ -1229,7 +1232,7 @@ impl CheckAttrVisitor<'tcx> {
     fn check_rustc_legacy_const_generics(
         &self,
         attr: &Attribute,
-        span: &Span,
+        span: Span,
         target: Target,
         item: Option<ItemLike<'_>>,
     ) -> bool {
@@ -1238,7 +1241,7 @@ impl CheckAttrVisitor<'tcx> {
             self.tcx
                 .sess
                 .struct_span_err(attr.span, "attribute should be applied to a function")
-                .span_label(*span, "not a function")
+                .span_label(span, "not a function")
                 .emit();
             return false;
         }
@@ -1324,6 +1327,25 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
+    fn check_rustc_lint_query_instability(
+        &self,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        let is_function = matches!(target, Target::Fn | Target::Method(..));
+        if !is_function {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "attribute should be applied to a function")
+                .span_label(span, "not a function")
+                .emit();
+            false
+        } else {
+            true
+        }
+    }
+
     /// Checks that the dep-graph debugging attributes are only present when the query-dep-graph
     /// option is passed to the compiler.
     fn check_rustc_dirty_clean(&self, attr: &Attribute) -> bool {
@@ -1339,7 +1361,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[link_section]` is applied to a function or static.
-    fn check_link_section(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
+    fn check_link_section(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
         match target {
             Target::Static | Target::Fn | Target::Method(..) => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
@@ -1359,7 +1381,7 @@ impl CheckAttrVisitor<'tcx> {
                              being phased out; it will become a hard error in \
                              a future release!",
                         )
-                        .span_label(*span, "not a function or static")
+                        .span_label(span, "not a function or static")
                         .emit();
                 });
             }
@@ -1367,7 +1389,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[no_mangle]` is applied to a function or static.
-    fn check_no_mangle(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
+    fn check_no_mangle(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
         match target {
             Target::Static | Target::Fn => {}
             Target::Method(..) if self.is_impl_item(hir_id) => {}
@@ -1397,7 +1419,7 @@ impl CheckAttrVisitor<'tcx> {
                             being phased out; it will become a hard error in \
                             a future release!",
                     )
-                    .span_label(*span, format!("foreign {}", foreign_item_kind))
+                    .span_label(span, format!("foreign {}", foreign_item_kind))
                     .note("symbol names in extern blocks are not mangled")
                     .span_suggestion(
                         attr.span,
@@ -1420,7 +1442,7 @@ impl CheckAttrVisitor<'tcx> {
                          being phased out; it will become a hard error in \
                          a future release!",
                     )
-                    .span_label(*span, "not a free function, impl method or static")
+                    .span_label(span, "not a free function, impl method or static")
                     .emit();
                 });
             }
@@ -1431,7 +1453,7 @@ impl CheckAttrVisitor<'tcx> {
     fn check_repr(
         &self,
         attrs: &'hir [Attribute],
-        span: &Span,
+        span: Span,
         target: Target,
         item: Option<ItemLike<'_>>,
         hir_id: HirId,
@@ -1565,7 +1587,7 @@ impl CheckAttrVisitor<'tcx> {
                 "{}",
                 &format!("attribute should be applied to {} {}", article, allowed_targets)
             )
-            .span_label(*span, &format!("not {} {}", article, allowed_targets))
+            .span_label(span, &format!("not {} {}", article, allowed_targets))
             .emit();
         }
 
@@ -1628,7 +1650,7 @@ impl CheckAttrVisitor<'tcx> {
         &self,
         hir_id: HirId,
         attr: &Attribute,
-        span: &Span,
+        span: Span,
         target: Target,
         attrs: &[Attribute],
     ) -> bool {
@@ -1661,7 +1683,7 @@ impl CheckAttrVisitor<'tcx> {
                 self.tcx
                     .sess
                     .struct_span_err(attr.span, "attribute should be applied to a macro")
-                    .span_label(*span, "not a macro")
+                    .span_label(span, "not a macro")
                     .emit();
                 false
             }
@@ -1674,7 +1696,7 @@ impl CheckAttrVisitor<'tcx> {
         &self,
         hir_id: HirId,
         attr: &Attribute,
-        span: &Span,
+        span: Span,
         target: Target,
     ) -> bool {
         match target {
@@ -1695,7 +1717,7 @@ impl CheckAttrVisitor<'tcx> {
                 self.tcx
                     .sess
                     .struct_span_err(attr.span, "attribute should be applied to `const fn`")
-                    .span_label(*span, "not a `const fn`")
+                    .span_label(span, "not a `const fn`")
                     .emit();
                 false
             }
@@ -1706,7 +1728,7 @@ impl CheckAttrVisitor<'tcx> {
     fn check_default_method_body_is_const(
         &self,
         attr: &Attribute,
-        span: &Span,
+        span: Span,
         target: Target,
     ) -> bool {
         match target {
@@ -1718,14 +1740,14 @@ impl CheckAttrVisitor<'tcx> {
                         attr.span,
                         "attribute should be applied to a trait method with body",
                     )
-                    .span_label(*span, "not a trait method or missing a body")
+                    .span_label(span, "not a trait method or missing a body")
                     .emit();
                 false
             }
         }
     }
 
-    fn check_stability_promotable(&self, attr: &Attribute, _span: &Span, target: Target) -> bool {
+    fn check_stability_promotable(&self, attr: &Attribute, _span: Span, target: Target) -> bool {
         match target {
             Target::Expression => {
                 self.tcx
@@ -1738,7 +1760,7 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_deprecated(&self, hir_id: HirId, attr: &Attribute, _span: &Span, target: Target) {
+    fn check_deprecated(&self, hir_id: HirId, attr: &Attribute, _span: Span, target: Target) {
         match target {
             Target::Closure | Target::Expression | Target::Statement | Target::Arm => {
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
@@ -1810,29 +1832,29 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         }
 
         let target = Target::from_item(item);
-        self.check_attributes(item.hir_id(), &item.span, target, Some(ItemLike::Item(item)));
+        self.check_attributes(item.hir_id(), item.span, target, Some(ItemLike::Item(item)));
         intravisit::walk_item(self, item)
     }
 
     fn visit_generic_param(&mut self, generic_param: &'tcx hir::GenericParam<'tcx>) {
         let target = Target::from_generic_param(generic_param);
-        self.check_attributes(generic_param.hir_id, &generic_param.span, target, None);
+        self.check_attributes(generic_param.hir_id, generic_param.span, target, None);
         intravisit::walk_generic_param(self, generic_param)
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) {
         let target = Target::from_trait_item(trait_item);
-        self.check_attributes(trait_item.hir_id(), &trait_item.span, target, None);
+        self.check_attributes(trait_item.hir_id(), trait_item.span, target, None);
         intravisit::walk_trait_item(self, trait_item)
     }
 
     fn visit_field_def(&mut self, struct_field: &'tcx hir::FieldDef<'tcx>) {
-        self.check_attributes(struct_field.hir_id, &struct_field.span, Target::Field, None);
+        self.check_attributes(struct_field.hir_id, struct_field.span, Target::Field, None);
         intravisit::walk_field_def(self, struct_field);
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
-        self.check_attributes(arm.hir_id, &arm.span, Target::Arm, None);
+        self.check_attributes(arm.hir_id, arm.span, Target::Arm, None);
         intravisit::walk_arm(self, arm);
     }
 
@@ -1840,7 +1862,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         let target = Target::from_foreign_item(f_item);
         self.check_attributes(
             f_item.hir_id(),
-            &f_item.span,
+            f_item.span,
             target,
             Some(ItemLike::ForeignItem(f_item)),
         );
@@ -1849,14 +1871,14 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let target = target_from_impl_item(self.tcx, impl_item);
-        self.check_attributes(impl_item.hir_id(), &impl_item.span, target, None);
+        self.check_attributes(impl_item.hir_id(), impl_item.span, target, None);
         intravisit::walk_impl_item(self, impl_item)
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
         // When checking statements ignore expressions, they will be checked later.
         if let hir::StmtKind::Local(ref l) = stmt.kind {
-            self.check_attributes(l.hir_id, &stmt.span, Target::Statement, None);
+            self.check_attributes(l.hir_id, stmt.span, Target::Statement, None);
         }
         intravisit::walk_stmt(self, stmt)
     }
@@ -1867,7 +1889,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
             _ => Target::Expression,
         };
 
-        self.check_attributes(expr.hir_id, &expr.span, target, None);
+        self.check_attributes(expr.hir_id, expr.span, target, None);
         intravisit::walk_expr(self, expr)
     }
 
@@ -1877,12 +1899,12 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         generics: &'tcx hir::Generics<'tcx>,
         item_id: HirId,
     ) {
-        self.check_attributes(variant.id, &variant.span, Target::Variant, None);
+        self.check_attributes(variant.id, variant.span, Target::Variant, None);
         intravisit::walk_variant(self, variant, generics, item_id)
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        self.check_attributes(param.hir_id, &param.span, Target::Param, None);
+        self.check_attributes(param.hir_id, param.span, Target::Param, None);
 
         intravisit::walk_param(self, param);
     }
@@ -1950,7 +1972,7 @@ fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let check_attr_visitor = &mut CheckAttrVisitor { tcx };
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut check_attr_visitor.as_deep_visitor());
     if module_def_id.is_top_level_module() {
-        check_attr_visitor.check_attributes(CRATE_HIR_ID, &DUMMY_SP, Target::Mod, None);
+        check_attr_visitor.check_attributes(CRATE_HIR_ID, DUMMY_SP, Target::Mod, None);
         check_invalid_crate_level_attr(tcx, tcx.hir().krate_attrs());
     }
 }
