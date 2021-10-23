@@ -121,7 +121,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(None);
         }
 
-        let mut candidates = candidate_set.vec;
+        let candidates = candidate_set.vec;
 
         debug!(?stack, ?candidates, "assembled {} candidates", candidates.len());
 
@@ -133,6 +133,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // unconstrained type variable. In that case, we'll get a
         // candidate which assumes $0 == int, one that assumes `$0 ==
         // usize`, etc. This spells an ambiguity.
+
+        let mut candidates = self.filter_impls(candidates, stack.obligation);
 
         // If there is more than one candidate, first winnow them down
         // by considering extra conditions (nested obligations and so
@@ -149,7 +151,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report "`Bar` does
         // not implement `Clone`".
         if candidates.len() == 1 {
-            return self.filter_impls(candidates.pop().unwrap(), stack.obligation);
+            return self.filter_reservation_impls(candidates.pop().unwrap(), stack.obligation);
         }
 
         // Winnow, but record the exact outcome of evaluation, which
@@ -223,7 +225,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Just one candidate left.
-        self.filter_impls(candidates.pop().unwrap().candidate, stack.obligation)
+        self.filter_reservation_impls(candidates.pop().unwrap().candidate, stack.obligation)
     }
 
     #[instrument(skip(self, stack), level = "debug")]
@@ -254,68 +256,75 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
 
-        self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
-
-        // Other bounds. Consider both in-scope bounds from fn decl
-        // and applicable impls. There is a certain set of precedence rules here.
-        let def_id = obligation.predicate.def_id();
-        let lang_items = self.tcx().lang_items();
-
-        if lang_items.copy_trait() == Some(def_id) {
-            debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
-
-            // User-defined copy impls are permitted, but only for
-            // structs and enums.
+        // The only way to prove a NotImplemented(T: Foo) predicate is via a negative impl.
+        // There are no compiler built-in rules for this.
+        if obligation.polarity() == ty::ImplPolarity::Negative {
+            self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
             self.assemble_candidates_from_impls(obligation, &mut candidates);
-
-            // For other types, we'll use the builtin rules.
-            let copy_conditions = self.copy_clone_conditions(obligation);
-            self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
-        } else if lang_items.discriminant_kind_trait() == Some(def_id) {
-            // `DiscriminantKind` is automatically implemented for every type.
-            candidates.vec.push(DiscriminantKindCandidate);
-        } else if lang_items.pointee_trait() == Some(def_id) {
-            // `Pointee` is automatically implemented for every type.
-            candidates.vec.push(PointeeCandidate);
-        } else if lang_items.sized_trait() == Some(def_id) {
-            // Sized is never implementable by end-users, it is
-            // always automatically computed.
-            let sized_conditions = self.sized_conditions(obligation);
-            self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
-        } else if lang_items.unsize_trait() == Some(def_id) {
-            self.assemble_candidates_for_unsizing(obligation, &mut candidates);
-        } else if lang_items.drop_trait() == Some(def_id)
-            && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
-        {
-            if self.is_in_const_context {
-                self.assemble_const_drop_candidates(obligation, &mut candidates)?;
-            } else {
-                debug!("passing ~const Drop bound; in non-const context");
-                // `~const Drop` when we are not in a const context has no effect.
-                candidates.vec.push(ConstDropCandidate)
-            }
         } else {
-            if lang_items.clone_trait() == Some(def_id) {
-                // Same builtin conditions as `Copy`, i.e., every type which has builtin support
-                // for `Copy` also has builtin support for `Clone`, and tuples/arrays of `Clone`
-                // types have builtin support for `Clone`.
-                let clone_conditions = self.copy_clone_conditions(obligation);
-                self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
+            self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
+
+            // Other bounds. Consider both in-scope bounds from fn decl
+            // and applicable impls. There is a certain set of precedence rules here.
+            let def_id = obligation.predicate.def_id();
+            let lang_items = self.tcx().lang_items();
+
+            if lang_items.copy_trait() == Some(def_id) {
+                debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
+
+                // User-defined copy impls are permitted, but only for
+                // structs and enums.
+                self.assemble_candidates_from_impls(obligation, &mut candidates);
+
+                // For other types, we'll use the builtin rules.
+                let copy_conditions = self.copy_clone_conditions(obligation);
+                self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
+            } else if lang_items.discriminant_kind_trait() == Some(def_id) {
+                // `DiscriminantKind` is automatically implemented for every type.
+                candidates.vec.push(DiscriminantKindCandidate);
+            } else if lang_items.pointee_trait() == Some(def_id) {
+                // `Pointee` is automatically implemented for every type.
+                candidates.vec.push(PointeeCandidate);
+            } else if lang_items.sized_trait() == Some(def_id) {
+                // Sized is never implementable by end-users, it is
+                // always automatically computed.
+                let sized_conditions = self.sized_conditions(obligation);
+                self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
+            } else if lang_items.unsize_trait() == Some(def_id) {
+                self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+            } else if lang_items.drop_trait() == Some(def_id)
+                && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
+            {
+                if self.is_in_const_context {
+                    self.assemble_const_drop_candidates(obligation, &mut candidates)?;
+                } else {
+                    debug!("passing ~const Drop bound; in non-const context");
+                    // `~const Drop` when we are not in a const context has no effect.
+                    candidates.vec.push(ConstDropCandidate)
+                }
+            } else {
+                if lang_items.clone_trait() == Some(def_id) {
+                    // Same builtin conditions as `Copy`, i.e., every type which has builtin support
+                    // for `Copy` also has builtin support for `Clone`, and tuples/arrays of `Clone`
+                    // types have builtin support for `Clone`.
+                    let clone_conditions = self.copy_clone_conditions(obligation);
+                    self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
+                }
+
+                self.assemble_generator_candidates(obligation, &mut candidates);
+                self.assemble_closure_candidates(obligation, &mut candidates);
+                self.assemble_fn_pointer_candidates(obligation, &mut candidates);
+                self.assemble_candidates_from_impls(obligation, &mut candidates);
+                self.assemble_candidates_from_object_ty(obligation, &mut candidates);
             }
 
-            self.assemble_generator_candidates(obligation, &mut candidates);
-            self.assemble_closure_candidates(obligation, &mut candidates);
-            self.assemble_fn_pointer_candidates(obligation, &mut candidates);
-            self.assemble_candidates_from_impls(obligation, &mut candidates);
-            self.assemble_candidates_from_object_ty(obligation, &mut candidates);
-        }
-
-        self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
-        self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
-        // Auto implementations have lower priority, so we only
-        // consider triggering a default if there is no other impl that can apply.
-        if candidates.vec.is_empty() {
-            self.assemble_candidates_from_auto_impls(obligation, &mut candidates);
+            self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
+            self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
+            // Auto implementations have lower priority, so we only
+            // consider triggering a default if there is no other impl that can apply.
+            if candidates.vec.is_empty() {
+                self.assemble_candidates_from_auto_impls(obligation, &mut candidates);
+            }
         }
         debug!("candidate list size: {}", candidates.vec.len());
         Ok(candidates)
@@ -376,7 +385,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for bound in matching_bounds {
             let wc = self.evaluate_where_clause(stack, bound.value)?;
             if wc.may_apply() {
-                candidates.vec.push(ParamCandidate(bound));
+                candidates.vec.push(ParamCandidate((bound, stack.obligation.polarity())));
             }
         }
 
@@ -913,6 +922,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         substs: self.tcx().mk_substs_trait(ty, &[]),
                     },
                     constness: ty::BoundConstness::NotConst,
+                    polarity: ty::ImplPolarity::Positive,
                 }));
             copy_obligation.recursion_depth = depth + 1;
             self.assemble_candidates_from_impls(&copy_obligation, &mut copy_candidates);

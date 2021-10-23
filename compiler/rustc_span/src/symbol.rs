@@ -1141,6 +1141,7 @@ symbols! {
         rustc_specialization_trait,
         rustc_stable,
         rustc_std_internal_symbol,
+        rustc_strict_coherence,
         rustc_symbol_name,
         rustc_synthetic,
         rustc_test_marker,

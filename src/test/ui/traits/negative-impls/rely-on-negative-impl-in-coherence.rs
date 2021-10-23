@@ -1,3 +1,5 @@
+// check-pass
+
 #![feature(negative_impls)]
 
 // aux-build: foreign_trait.rs
@@ -16,6 +18,6 @@ use foreign_trait::ForeignTrait;
 
 trait LocalTrait { }
 impl<T: ForeignTrait> LocalTrait for T { }
-impl LocalTrait for String { } //~ ERROR conflicting implementations
+impl LocalTrait for String { }
 
 fn main() { }

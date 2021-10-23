@@ -797,6 +797,20 @@ impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for ty::ImplPolarity {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ty::ImplPolarity,
+        b: ty::ImplPolarity,
+    ) -> RelateResult<'tcx, ty::ImplPolarity> {
+        if a != b {
+            Err(TypeError::PolarityMismatch(expected_found(relation, a, b)))
+        } else {
+            Ok(a)
+        }
+    }
+}
+
 impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
@@ -806,6 +820,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
         Ok(ty::TraitPredicate {
             trait_ref: relation.relate(a.trait_ref, b.trait_ref)?,
             constness: relation.relate(a.constness, b.constness)?,
+            polarity: relation.relate(a.polarity, b.polarity)?,
         })
     }
 }

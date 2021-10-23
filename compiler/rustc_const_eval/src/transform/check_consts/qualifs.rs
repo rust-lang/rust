@@ -162,6 +162,7 @@ impl Qualif for NeedsNonConstDrop {
             ty::Binder::dummy(ty::TraitPredicate {
                 trait_ref,
                 constness: ty::BoundConstness::ConstIfConst,
+                polarity: ty::ImplPolarity::Positive,
             }),
         );
 

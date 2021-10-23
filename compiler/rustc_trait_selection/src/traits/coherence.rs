@@ -5,9 +5,12 @@
 //! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 use crate::infer::{CombinedSnapshot, InferOk, TyCtxtInferExt};
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::SkipLeakCheck;
-use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionContext};
+use crate::traits::{
+    self, Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext,
+};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
@@ -158,6 +161,19 @@ fn overlap_within_probe(
     b_def_id: DefId,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
+    fn loose_check(selcx: &mut SelectionContext<'cx, 'tcx>, o: &PredicateObligation<'tcx>) -> bool {
+        !selcx.predicate_may_hold_fatal(o)
+    }
+
+    fn strict_check(selcx: &SelectionContext<'cx, 'tcx>, o: &PredicateObligation<'tcx>) -> bool {
+        let infcx = selcx.infcx();
+        let tcx = infcx.tcx;
+        o.flip_polarity(tcx)
+            .as_ref()
+            .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
+            .unwrap_or(false)
+    }
+
     // For the purposes of this check, we don't bring any placeholder
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
@@ -184,8 +200,29 @@ fn overlap_within_probe(
 
     debug!("overlap: unification check succeeded");
 
-    // Are any of the obligations unsatisfiable? If so, no overlap.
+    // There's no overlap if obligations are unsatisfiable or if the obligation negated is
+    // satisfied.
+    //
+    // For example, given these two impl headers:
+    //
+    // `impl<'a> From<&'a str> for Box<dyn Error>`
+    // `impl<E> From<E> for Box<dyn Error> where E: Error`
+    //
+    // So we have:
+    //
+    // `Box<dyn Error>: From<&'?a str>`
+    // `Box<dyn Error>: From<?E>`
+    //
+    // After equating the two headers:
+    //
+    // `Box<dyn Error> = Box<dyn Error>`
+    // So, `?E = &'?a str` and then given the where clause `&'?a str: Error`.
+    //
+    // If the obligation `&'?a str: Error` holds, it means that there's overlap. If that doesn't
+    // hold we need to check if `&'?a str: !Error` holds, if doesn't hold there's overlap because
+    // at some point an impl for `&'?a str: Error` could be added.
     let infcx = selcx.infcx();
+    let tcx = infcx.tcx;
     let opt_failing_obligation = a_impl_header
         .predicates
         .iter()
@@ -199,7 +236,17 @@ fn overlap_within_probe(
             predicate: p,
         })
         .chain(obligations)
-        .find(|o| !selcx.predicate_may_hold_fatal(o));
+        .find(|o| {
+            // if both impl headers are set to strict coherence it means that this will be accepted
+            // only if it's stated that T: !Trait. So only prove that the negated obligation holds.
+            if tcx.has_attr(a_def_id, sym::rustc_strict_coherence)
+                && tcx.has_attr(b_def_id, sym::rustc_strict_coherence)
+            {
+                strict_check(selcx, o)
+            } else {
+                loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o)
+            }
+        });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
     // the new system supports intercrate mode (which coherence needs).
