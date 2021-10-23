@@ -1,6 +1,5 @@
 // only-wasm32
 // compile-flags: -C target-feature=-nontrapping-fptoint
-// min-llvm-version: 12.0
 #![crate_type = "lib"]
 
 // CHECK-LABEL: @cast_f64_i64

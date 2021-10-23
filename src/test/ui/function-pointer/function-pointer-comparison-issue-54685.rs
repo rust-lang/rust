@@ -1,4 +1,3 @@
-// min-llvm-version: 12.0
 // compile-flags: -C opt-level=3
 // run-pass
 

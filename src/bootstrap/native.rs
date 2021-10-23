@@ -378,11 +378,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 10 {
+        if major >= 12 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=10.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=12.0\n\n", version)
 }
 
 fn configure_cmake(

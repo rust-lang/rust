@@ -98,10 +98,7 @@ extern "C" void LLVMRustCoverageWriteMapSectionNameToString(LLVMModuleRef M,
 
 extern "C" void LLVMRustCoverageWriteFuncSectionNameToString(LLVMModuleRef M,
                                                              RustStringRef Str) {
-#if LLVM_VERSION_GE(11, 0)
   WriteSectionNameToString(M, IPSK_covfun, Str);
-// else do nothing; the `Version` check will abort codegen on the Rust side
-#endif
 }
 
 extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
@@ -111,9 +108,5 @@ extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
 }
 
 extern "C" uint32_t LLVMRustCoverageMappingVersion() {
-#if LLVM_VERSION_GE(11, 0)
   return coverage::CovMapVersion::Version4;
-#else
-  return coverage::CovMapVersion::Version3;
-#endif
 }

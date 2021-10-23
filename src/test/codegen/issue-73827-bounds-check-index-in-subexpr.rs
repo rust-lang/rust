@@ -1,7 +1,6 @@
 // This test checks that bounds checks are elided when
 // index is part of a (x | y) < C style condition
 
-// min-llvm-version: 11.0.0
 // compile-flags: -O
 
 #![crate_type = "lib"]

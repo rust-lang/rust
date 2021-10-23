@@ -1,4 +1,3 @@
-// min-llvm-version: 10.0.1
 // revisions: riscv64 riscv32
 // assembly-output: emit-asm
 //[riscv64] compile-flags: --target riscv64imac-unknown-none-elf
@@ -6,7 +5,6 @@
 //[riscv32] compile-flags: --target riscv32imac-unknown-none-elf
 //[riscv32] needs-llvm-components: riscv
 // compile-flags: -C target-feature=+d
-// min-system-llvm-version: 12.0
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]

@@ -1,7 +1,5 @@
 -include ../tools.mk
 
-# min-llvm-version: 11.0
-
 all: off packed unpacked
 
 ifeq ($(UNAME),Darwin)
