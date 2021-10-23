@@ -972,8 +972,26 @@ impl<'a> Builder<'a> {
             }
         }
 
-        if self.config.rust_new_symbol_mangling {
+        let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {
+            Some(setting) => {
+                // If an explicit setting is given, use that
+                setting
+            }
+            None => {
+                if mode == Mode::Std {
+                    // The standard library defaults to the legacy scheme
+                    false
+                } else {
+                    // The compiler and tools default to the new scheme
+                    true
+                }
+            }
+        };
+
+        if use_new_symbol_mangling {
             rustflags.arg("-Zsymbol-mangling-version=v0");
+        } else {
+            rustflags.arg("-Zsymbol-mangling-version=legacy");
         }
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
