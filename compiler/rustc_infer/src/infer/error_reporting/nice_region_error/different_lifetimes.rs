@@ -220,7 +220,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         };
 
                         e.multipart_suggestion(
-                            "Explicitly declare a lifetime and assign it to both",
+                            "explicitly declare a lifetime and assign it to both",
                             vec![
                                 add_lifetime_param,
                                 if let hir::LifetimeName::Underscore = lifetime_sub.name {
@@ -237,7 +237,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             Applicability::MaybeIncorrect,
                         );
                         e.note(
-                            "Each elided lifetime in input position becomes a distinct lifetime.",
+                            "each elided lifetime in input position becomes a distinct lifetime",
                         );
                     }
                 }

@@ -6,8 +6,8 @@ LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
 LL |     z.push((x,y));
    |             ^ ...but data flows into `z` here
    |
-   = note: Each elided lifetime in input position becomes a distinct lifetime.
-help: Explicitly declare a lifetime and assign it to both
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: explicitly declare a lifetime and assign it to both
    |
 LL | fn foo<'a>(z: &mut Vec<(&'a u8,&u8)>, (x, y): (&'a u8, &u8)) {
    |       ++++               ++                     ++
@@ -20,8 +20,8 @@ LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
 LL |     z.push((x,y));
    |               ^ ...but data flows into `z` here
    |
-   = note: Each elided lifetime in input position becomes a distinct lifetime.
-help: Explicitly declare a lifetime and assign it to both
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: explicitly declare a lifetime and assign it to both
    |
 LL | fn foo<'a>(z: &mut Vec<(&u8,&'a u8)>, (x, y): (&u8, &'a u8)) {
    |       ++++                   ++                      ++

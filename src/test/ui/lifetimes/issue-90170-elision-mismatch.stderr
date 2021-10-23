@@ -6,8 +6,8 @@ LL | fn foo(slice_a: &mut [u8], slice_b: &mut [u8]) {
 LL |     core::mem::swap(&mut slice_a, &mut slice_b);
    |                                   ^^^^^^^^^^^^ ...but data from `slice_b` flows into `slice_a` here
    |
-   = note: Each elided lifetime in input position becomes a distinct lifetime.
-help: Explicitly declare a lifetime and assign it to both
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: explicitly declare a lifetime and assign it to both
    |
 LL | fn foo<'a>(slice_a: &'a mut [u8], slice_b: &'a mut [u8]) {
    |       ++++           ++                     ++
@@ -22,8 +22,8 @@ LL | fn foo(slice_a: &mut [u8], slice_b: &mut [u8]) {
 LL |     core::mem::swap(&mut slice_a, &mut slice_b);
    |                                   ^^^^^^^^^^^^ ...but data from `slice_a` flows into `slice_b` here
    |
-   = note: Each elided lifetime in input position becomes a distinct lifetime.
-help: Explicitly declare a lifetime and assign it to both
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: explicitly declare a lifetime and assign it to both
    |
 LL | fn foo<'a>(slice_a: &'a mut [u8], slice_b: &'a mut [u8]) {
    |       ++++           ++                     ++
@@ -36,8 +36,8 @@ LL | fn foo2<U, W, O>(slice_a: &mut [u8], slice_b: &mut [u8], _: U, _: W, _: O) 
 LL |     core::mem::swap(&mut slice_a, &mut slice_b);
    |                                   ^^^^^^^^^^^^ ...but data from `slice_b` flows into `slice_a` here
    |
-   = note: Each elided lifetime in input position becomes a distinct lifetime.
-help: Explicitly declare a lifetime and assign it to both
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: explicitly declare a lifetime and assign it to both
    |
 LL | fn foo2<'a, U, W, O>(slice_a: &'a mut [u8], slice_b: &'a mut [u8], _: U, _: W, _: O) {
    |         +++                    ++                     ++
@@ -52,8 +52,8 @@ LL | fn foo2<U, W, O>(slice_a: &mut [u8], slice_b: &mut [u8], _: U, _: W, _: O) 
 LL |     core::mem::swap(&mut slice_a, &mut slice_b);
    |                                   ^^^^^^^^^^^^ ...but data from `slice_a` flows into `slice_b` here
    |
-   = note: Each elided lifetime in input position becomes a distinct lifetime.
-help: Explicitly declare a lifetime and assign it to both
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: explicitly declare a lifetime and assign it to both
    |
 LL | fn foo2<'a, U, W, O>(slice_a: &'a mut [u8], slice_b: &'a mut [u8], _: U, _: W, _: O) {
    |         +++                    ++                     ++
