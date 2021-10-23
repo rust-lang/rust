@@ -48,6 +48,8 @@ pub fn merge_codegen_units<'tcx>(
         let mut consumed_cgu_names = cgu_contents.remove(&smallest.name()).unwrap();
         cgu_contents.get_mut(&second_smallest.name()).unwrap().append(&mut consumed_cgu_names);
 
+        // TODO emit event indicating which CGU's were merged, and their sizes.
+
         debug!(
             "CodegenUnit {} merged into CodegenUnit {}",
             smallest.name(),
