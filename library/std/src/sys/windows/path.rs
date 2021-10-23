@@ -150,7 +150,7 @@ fn parse_next_component(path: &OsStr, verbatim: bool) -> (&OsStr, &OsStr) {
 ///
 /// This path may or may not have a verbatim prefix.
 pub(crate) fn maybe_verbatim(path: &Path) -> io::Result<Vec<u16>> {
-    // Normally the MAX path is 260 UTF-16 code units (including the NULL).
+    // Normally the MAX_PATH is 260 UTF-16 code units (including the NULL).
     // However, for APIs such as CreateDirectory[1], the limit is 248.
     //
     // [1]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createdirectorya#parameters
