@@ -48,9 +48,6 @@ extern "stdcall" fn stdcall() {}
 //[arm]~^^^^^ WARN use of calling convention not supported
 //[arm]~^^^^^^ WARN this was previously accepted
 extern "thiscall" fn thiscall() {}
-//[x64]~^ WARN use of calling convention not supported
-//[x64]~^^ WARN this was previously accepted
-//[aarch64]~^^^ WARN use of calling convention not supported
-//[aarch64]~^^^^ WARN this was previously accepted
-//[arm]~^^^^^ WARN use of calling convention not supported
-//[arm]~^^^^^^ WARN this was previously accepted
+//[x64]~^ ERROR is not a supported ABI
+//[aarch64]~^^ ERROR is not a supported ABI
+//[arm]~^^^ ERROR is not a supported ABI

@@ -1557,10 +1557,11 @@ impl Target {
             }
             // Outside of Windows we want to only support these calling conventions for the
             // architectures for which these calling conventions are actually well defined.
-            Stdcall { .. } | Fastcall | Thiscall { .. } if self.arch == "x86" => true,
+            Stdcall { .. } | Fastcall if self.arch == "x86" => true,
+            Thiscall { .. } => self.arch == "x86",
             Vectorcall if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
             // Return a `None` for other cases so that we know to emit a future compat lint.
-            Stdcall { .. } | Fastcall | Thiscall { .. } | Vectorcall => return None,
+            Stdcall { .. } | Fastcall | Vectorcall => return None,
         })
     }
 
