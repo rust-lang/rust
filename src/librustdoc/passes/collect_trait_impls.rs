@@ -66,7 +66,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
             debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
             if let Some(target_prim) = target.primitive_type() {
                 cleaner.prims.insert(target_prim);
-            } else if let Some(target_did) = target.def_id() {
+            } else if let Some(target_did) = target.def_id_no_primitives() {
                 // `impl Deref<Target = S> for S`
                 if target_did == type_did {
                     // Avoid infinite cycles
@@ -82,7 +82,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     for it in &new_items {
         if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
             if trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait()
-                && cleaner.keep_impl(for_)
+                && cleaner.keep_impl(for_, true)
             {
                 let target = items
                     .iter()
@@ -97,7 +97,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
                 } else if let Some(did) = target.def_id(&cx.cache) {
                     cleaner.items.insert(did.into());
                 }
-                if let Some(for_did) = for_.def_id() {
+                if let Some(for_did) = for_.def_id_no_primitives() {
                     if type_did_to_deref_target.insert(for_did, target).is_none() {
                         // Since only the `DefId` portion of the `Type` instances is known to be same for both the
                         // `Deref` target type and the impl for type positions, this map of types is keyed by
@@ -113,10 +113,10 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 
     new_items.retain(|it| {
         if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
-            cleaner.keep_impl(for_)
-                || trait_
-                    .as_ref()
-                    .map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
+            cleaner.keep_impl(
+                for_,
+                trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
+            ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
                 || blanket_impl.is_some()
         } else {
             true
@@ -215,17 +215,14 @@ struct BadImplStripper {
 }
 
 impl BadImplStripper {
-    fn keep_impl(&self, ty: &Type) -> bool {
+    fn keep_impl(&self, ty: &Type, is_deref: bool) -> bool {
         if let Generic(_) = ty {
             // keep impls made on generics
             true
         } else if let Some(prim) = ty.primitive_type() {
             self.prims.contains(&prim)
-        } else if ty.def_id_no_primitives().is_some() {
-            // We want to keep *ALL* deref implementations in case some of them are used in
-            // the current crate.
-            // FIXME: Try to filter the one actually used...
-            true
+        } else if let Some(did) = ty.def_id_no_primitives() {
+            is_deref || self.keep_impl_with_def_id(did.into())
         } else {
             false
         }
