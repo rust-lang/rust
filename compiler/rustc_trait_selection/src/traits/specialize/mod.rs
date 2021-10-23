@@ -291,6 +291,11 @@ pub(super) fn specialization_graph_provider(
     sg
 }
 
+// This function is only used when
+// encountering errors and inlining
+// it negatively impacts perf.
+#[cold]
+#[inline(never)]
 fn report_overlap_conflict(
     tcx: TyCtxt<'_>,
     overlap: OverlapError,
