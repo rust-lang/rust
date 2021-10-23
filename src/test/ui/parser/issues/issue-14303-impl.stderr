@@ -2,7 +2,7 @@ error: lifetime parameters must be declared prior to type parameters
   --> $DIR/issue-14303-impl.rs:3:13
    |
 LL | impl<'a, T, 'b> X<T> {}
-   |     --------^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, 'b, T>`
+   |     --------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b, T>`
 
 error: aborting due to previous error
 

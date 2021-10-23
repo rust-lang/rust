@@ -1,5 +1,5 @@
 error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/issue-59508-1.rs:11:25
+  --> $DIR/issue-59508-1.rs:10:25
    |
 LL |     pub fn do_things<T, 'a, 'b: 'a>() {
    |                     ----^^--^^----- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b: 'a, T>`
