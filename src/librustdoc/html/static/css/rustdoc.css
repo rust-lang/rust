@@ -334,7 +334,7 @@ nav.sub {
 }
 
 .source .sidebar {
-	width: 0px;
+	width: 50px;
 	min-width: 0px;
 	max-width: 300px;
 	flex-grow: 0;
@@ -343,6 +343,24 @@ nav.sub {
 	border-right: 1px solid;
 	transition: width .5s;
 	overflow-x: hidden;
+	/* The sidebar is by default hidden  */
+	overflow-y: hidden;
+}
+
+.source .sidebar > *:not(:first-child) {
+	transition: opacity 0.5s, visibility 0.2s;
+	opacity: 0;
+	visibility: hidden;
+}
+
+.source .sidebar.expanded {
+	overflow-y: auto;
+	width: 300px !important;
+}
+
+.source .sidebar.expanded > * {
+	opacity: 1;
+	visibility: visible;
 }
 
 /* Improve the scrollbar display on firefox */
@@ -375,23 +393,15 @@ nav.sub {
 }
 
 .logo-container {
-	height: 100px;
-	width: 100px;
-	position: relative;
-	margin: 20px auto;
-	display: block;
+	display: flex;
 	margin-top: 10px;
+	margin-bottom: 10px;
+	justify-content: center;
 }
 
 .logo-container > img {
-	max-width: 100px;
-	max-height: 100px;
-	height: 100%;
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	transform: translate(-50%, -50%);
-	display: block;
+	height: 100px;
+	width: 100px;
 }
 
 .sidebar .location {
@@ -1347,19 +1357,18 @@ pre.rust {
 }
 
 #sidebar-toggle {
-	position: fixed;
-	top: 30px;
-	left: 300px;
-	z-index: 10;
-	padding: 3px;
-	border-top-right-radius: 3px;
-	border-bottom-right-radius: 3px;
+	position: sticky;
+	top: 0;
+	left: 0;
 	cursor: pointer;
 	font-weight: bold;
-	transition: left .5s;
 	font-size: 1.2em;
-	border: 1px solid;
-	border-left: 0;
+	border-bottom: 1px solid;
+	display: flex;
+	height: 40px;
+	justify-content: center;
+	align-items: center;
+	z-index: 10;
 }
 #source-sidebar {
 	width: 300px;
@@ -1700,6 +1709,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		left: 0;
 		margin: 0;
 		z-index: 11;
+		width: 0;
 	}
 
 	.sidebar.mobile {
@@ -1724,12 +1734,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	.sidebar .location:empty {
 		padding: 0;
-	}
-
-	.rustdoc.source .sidebar .logo-container {
-		width: 100%;
-		height: 45px;
-		margin: 0 auto;
 	}
 
 	.rustdoc:not(.source) .sidebar .logo-container {
@@ -1892,12 +1896,25 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		margin: 10px;
 	}
 
-	#sidebar-toggle {
+	.sidebar.expanded #sidebar-toggle {
+		font-size: 1.5rem;
+	}
+
+	.sidebar:not(.expanded) #sidebar-toggle {
+		position: fixed;
+		left: 1px;
 		top: 100px;
 		width: 30px;
 		font-size: 1.5rem;
 		text-align: center;
 		padding: 0;
+		z-index: 10;
+		border-top-right-radius: 3px;
+		border-bottom-right-radius: 3px;
+		cursor: pointer;
+		font-weight: bold;
+		border: 1px solid;
+		border-left: 0;
 	}
 
 	#source-sidebar {
