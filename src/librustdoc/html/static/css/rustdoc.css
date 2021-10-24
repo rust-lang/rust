@@ -321,6 +321,27 @@ nav.sub {
 	text-transform: uppercase;
 }
 
+.sub-container {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+}
+
+.sub-logo-container {
+	display: none;
+	margin-right: 20px;
+}
+
+.source .sub-logo-container {
+	display: block;
+}
+
+.source .sub-logo-container > img {
+	height: 60px;
+	width: 60px;
+	object-fit: contain;
+}
+
 .sidebar {
 	width: 200px;
 	overflow-y: scroll;
@@ -742,6 +763,7 @@ nav.sub {
 }
 
 nav:not(.sidebar) {
+	flex-grow: 1;
 	border-bottom: 1px solid;
 	padding-bottom: 10px;
 	margin-bottom: 25px;
@@ -2016,6 +2038,19 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	.docblock code {
 		overflow-wrap: anywhere;
+	}
+
+	.sub-container {
+		flex-direction: column;
+	}
+
+	.sub-logo-container {
+		align-self: center;
+	}
+
+	.source .sub-logo-container > img {
+		height: 35px;
+		width: 35px;
 	}
 }
 
