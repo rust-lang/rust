@@ -44,7 +44,7 @@ declare_clippy_lint! {
     /// Use thread-safe types like [`std::sync::Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
     /// or specify correct bounds on generic type parameters (`T: Send`).
     pub NON_SEND_FIELDS_IN_SEND_TY,
-    nursery,
+    suspicious,
     "there is field that does not implement `Send` in a `Send` struct"
 }
 

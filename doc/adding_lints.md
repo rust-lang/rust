@@ -564,7 +564,8 @@ in the following steps:
     /// <The configuration field doc comment>
     (configuration_ident: Type = DefaultValue),
     ```
-    The doc comment will be automatically added to the lint documentation.
+    The doc comment is automatically added to the documentation of the listed lints. The default
+    value will be formatted using the `Debug` implementation of the type.
 2. Adding the configuration value to the lint impl struct:
     1. This first requires the definition of a lint impl struct. Lint impl structs are usually
         generated with the `declare_lint_pass!` macro. This struct needs to be defined manually
