@@ -90,7 +90,9 @@ else
   fi
 
   # Same for overflow checks
-  if [ "$NO_OVERFLOW_CHECKS" = "" ]; then
+  # Note: temporarily disabled to prevent CI failures due to overflow in rustc-rayon dependency
+  # Reenable once https://github.com/rust-lang/rust/issues/90227 is fixed
+  if [ "$NO_OVERFLOW_CHECKS" = "" ] && false; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-overflow-checks"
   fi
 
