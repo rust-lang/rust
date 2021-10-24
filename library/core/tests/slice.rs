@@ -2147,6 +2147,14 @@ fn test_slice_run_destructors() {
 }
 
 #[test]
+fn test_const_from_ref() {
+    const VALUE: &i32 = &1;
+    const SLICE: &[i32] = core::slice::from_ref(VALUE);
+
+    assert!(core::ptr::eq(VALUE, &SLICE[0]))
+}
+
+#[test]
 fn test_slice_fill_with_uninit() {
     // This should not UB. See #87891
     let mut a = [MaybeUninit::<u8>::uninit(); 10];
