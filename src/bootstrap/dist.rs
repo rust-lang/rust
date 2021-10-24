@@ -2071,6 +2071,7 @@ impl Step for LlvmCoverageTools {
 
         // Only build if `profiler = true`
         if !builder.config.profiler_enabled(target) {
+            builder.info(&format!("Skipping LlvmCoverageTools: profiler not enabled"));
             return None;
         }
 
