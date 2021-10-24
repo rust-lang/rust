@@ -2,6 +2,7 @@
 #![feature(if_let_guard)]
 #![feature(nll)]
 #![recursion_limit = "256"]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 mod dump_visitor;
 mod dumper;
