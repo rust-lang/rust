@@ -3,7 +3,7 @@
 // C++ code.
 
 // For linking libstdc++ on MinGW
-#![cfg_attr(all(windows, target_env = "gnu"), feature(static_nobundle))]
+#![cfg_attr(all(windows, target_env = "gnu"), feature(native_link_modifiers))]
 #![feature(c_unwind)]
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
