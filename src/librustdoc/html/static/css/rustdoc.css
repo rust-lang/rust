@@ -1740,11 +1740,11 @@ details.undocumented[open] > summary::before {
 
 	.rustdoc:not(.source) .sidebar .logo-container {
 		width: 35px;
-	    height: 35px;
-	    margin-top: 5px;
-	    margin-bottom: 5px;
-	    float: left;
-	    margin-left: 50px;
+		height: 35px;
+		margin-top: 5px;
+		margin-bottom: 5px;
+		float: left;
+		margin-left: 50px;
 	}
 
 	.sidebar .logo-container > img {
