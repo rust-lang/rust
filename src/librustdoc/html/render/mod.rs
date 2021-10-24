@@ -66,7 +66,7 @@ use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
     href, print_abi_with_space, print_constness_with_space, print_default_space,
-    print_generic_bounds, print_where_clause, Buffer, HrefError, PrintWithSpace,
+    print_generic_bounds, print_where_clause, Buffer, HrefError, PrintWithSpace, VisibilityScope,
 };
 use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
 
@@ -589,6 +589,7 @@ fn document_full_inner(
 
 /// Add extra information about an item such as:
 ///
+/// * Visibility
 /// * Stability
 /// * Deprecated
 /// * Required features (through the `doc_cfg` feature)
@@ -619,6 +620,49 @@ fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<Strin
     Some(format!("<div class=\"stab portability\">{}</div>", cfg?.render_long_html()))
 }
 
+fn visibility(
+    item: &clean::Item,
+    cx: &Context<'_>,
+    parent: Option<&clean::Item>,
+) -> Option<String> {
+    // For now, we only render visibility tags for methods and struct fields.
+    match *item.kind {
+        clean::ItemKind::MethodItem(_, _) | clean::ItemKind::StructFieldItem(_) => {}
+        _ => return None,
+    }
+
+    fn tag(contents: impl fmt::Display) -> Option<String> {
+        Some(format!(
+            r#"<div class="visibility"><span class="emoji">🙈</span> Visibility: {}</div>"#,
+            contents
+        ))
+    }
+    const PRIVATE: &str = "private";
+
+    use clean::ItemKind::*;
+    use clean::Visibility::*;
+
+    match item.visibility {
+        Public => None,
+        // By default, everything in Rust is private, with two exceptions:
+        // Associated items in a pub Trait are public by default;
+        // Enum variants in a pub enum are also public by default.
+        // https://doc.rust-lang.org/reference/visibility-and-privacy.html
+        // Therefore we don't put "private" annotations on traits, trait impls,
+        // or enum variant fields.
+        Inherited => match parent.map(|p| &*p.kind) {
+            Some(TraitItem(_) | ImplItem(_) | VariantItem(_)) => None,
+            _ => tag(PRIVATE),
+        },
+        Restricted(vis_did) => {
+            match VisibilityScope::new(vis_did, item.def_id.expect_def_id(), cx.tcx()) {
+                VisibilityScope::Inherited => tag(PRIVATE),
+                scope => tag(scope),
+            }
+        }
+    }
+}
+
 /// Render the stability, deprecation and portability information that is displayed at the top of
 /// the item's documentation.
 fn short_item_info(
@@ -628,6 +672,10 @@ fn short_item_info(
 ) -> Vec<String> {
     let mut extra_info = vec![];
     let error_codes = cx.shared.codes;
+
+    if let Some(visibility) = visibility(item, cx, parent) {
+        extra_info.push(visibility)
+    }
 
     if let Some(depr @ Deprecation { note, since, is_since_rustc_version: _, suggestion: _ }) =
         item.deprecation(cx.tcx())
@@ -903,7 +951,6 @@ fn render_assoc_item(
                 }
             }
         };
-        let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
         let constness =
             print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()));
         let asyncness = header.asyncness.print_with_space();
@@ -914,7 +961,6 @@ fn render_assoc_item(
         // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
         let generics_len = format!("{:#}", g.print(cx)).len();
         let mut header_len = "fn ".len()
-            + vis.len()
             + constness.len()
             + asyncness.len()
             + unsafety.len()
@@ -935,10 +981,9 @@ fn render_assoc_item(
         w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
         write!(
             w,
-            "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a {href} class=\"fnname\">{name}</a>\
+            "{indent}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a {href} class=\"fnname\">{name}</a>\
              {generics}{decl}{notable_traits}{where_clause}",
             indent = indent_str,
-            vis = vis,
             constness = constness,
             asyncness = asyncness,
             unsafety = unsafety,
@@ -1477,6 +1522,7 @@ fn render_impl(
         }
 
         w.push_buffer(info_buffer);
+
         if toggled {
             w.write_str("</summary>");
             w.push_buffer(doc_buffer);

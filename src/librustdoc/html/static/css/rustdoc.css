@@ -956,10 +956,12 @@ body.blur > :not(#help) {
 	padding: 0 20px 20px 17px;;
 }
 
-.item-info .stab {
+.item-info .stab,
+.item-info .visibility {
 	display: table;
 }
-.stab {
+.stab,
+.visibility {
 	border-width: 1px;
 	border-style: solid;
 	padding: 3px;
@@ -971,7 +973,8 @@ body.blur > :not(#help) {
 	display: inline;
 }
 
-.stab .emoji {
+.stab .emoji
+.visibility .emoji {
 	font-size: 1.5em;
 }
 
