@@ -12,6 +12,7 @@
 #![feature(never_type)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
+#![feature(if_let_guard)]
 #![recursion_limit = "256"]
 #![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
@@ -62,6 +63,7 @@ mod match_branches;
 mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
+mod refinements;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
 mod remove_unneeded_drops;
@@ -507,6 +509,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     // The main optimizations that we do on MIR.
     let optimizations: &[&dyn MirPass<'tcx>] = &[
+        &refinements::Refinements,
         &remove_storage_markers::RemoveStorageMarkers,
         &remove_zsts::RemoveZsts,
         &const_goto::ConstGoto,

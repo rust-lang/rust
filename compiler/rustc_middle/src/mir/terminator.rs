@@ -417,6 +417,13 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
+    pub fn switch_targets_mut(&mut self) -> Option<&mut SwitchTargets> {
+        match self {
+            TerminatorKind::SwitchInt { targets, .. } => Some(targets),
+            _ => None,
+        }
+    }
+
     pub fn as_goto(&self) -> Option<BasicBlock> {
         match self {
             TerminatorKind::Goto { target } => Some(*target),

@@ -1,0 +1,67 @@
+- // MIR for `foo` before Refinements
++ // MIR for `foo` after Refinements
+  
+  fn foo(_1: u32) -> u32 {
+      debug b => _1;                       // in scope 0 at $DIR/or_pattern.rs:3:8: 3:9
+      let mut _0: u32;                     // return place in scope 0 at $DIR/or_pattern.rs:3:19: 3:22
+      let _2: u32;                         // in scope 0 at $DIR/or_pattern.rs:5:9: 5:20
+      scope 1 {
+          debug c => _2;                   // in scope 1 at $DIR/or_pattern.rs:5:9: 5:20
+      }
+  
+      bb0: {
+          switchInt(_1) -> [1_u32: bb3, 2_u32: bb4, otherwise: bb1]; // scope 0 at $DIR/or_pattern.rs:4:5: 4:12
+      }
+  
+      bb1: {
+          _0 = const 1_u32;                // scope 0 at $DIR/or_pattern.rs:11:14: 11:15
+          goto -> bb10;                    // scope 0 at $DIR/or_pattern.rs:11:14: 11:15
+      }
+  
+      bb2: {
+-         switchInt(_2) -> [1_u32: bb6, 2_u32: bb7, 3_u32: bb8, otherwise: bb5]; // scope 1 at $DIR/or_pattern.rs:5:24: 5:31
++         switchInt(_2) -> [1_u32: bb6, otherwise: bb7]; // scope 1 at $DIR/or_pattern.rs:5:24: 5:31
+      }
+  
+      bb3: {
+          StorageLive(_2);                 // scope 0 at $DIR/or_pattern.rs:5:9: 5:20
+          _2 = _1;                         // scope 0 at $DIR/or_pattern.rs:5:9: 5:20
+          goto -> bb2;                     // scope 0 at $DIR/or_pattern.rs:4:5: 12:6
+      }
+  
+      bb4: {
+          StorageLive(_2);                 // scope 0 at $DIR/or_pattern.rs:5:9: 5:20
+          _2 = _1;                         // scope 0 at $DIR/or_pattern.rs:5:9: 5:20
+          goto -> bb2;                     // scope 0 at $DIR/or_pattern.rs:4:5: 12:6
+      }
+  
+      bb5: {
+          _0 = const 8594_u32;             // scope 1 at $DIR/or_pattern.rs:9:18: 9:22
+          goto -> bb9;                     // scope 1 at $DIR/or_pattern.rs:9:18: 9:22
+      }
+  
+      bb6: {
+          _0 = const 18_u32;               // scope 1 at $DIR/or_pattern.rs:6:18: 6:20
+          goto -> bb9;                     // scope 1 at $DIR/or_pattern.rs:6:18: 6:20
+      }
+  
+      bb7: {
+          _0 = const 384_u32;              // scope 1 at $DIR/or_pattern.rs:7:18: 7:21
+          goto -> bb9;                     // scope 1 at $DIR/or_pattern.rs:7:18: 7:21
+      }
+  
+      bb8: {
+          _0 = const 28732897_u32;         // scope 1 at $DIR/or_pattern.rs:8:18: 8:26
+          goto -> bb9;                     // scope 1 at $DIR/or_pattern.rs:8:18: 8:26
+      }
+  
+      bb9: {
+          StorageDead(_2);                 // scope 0 at $DIR/or_pattern.rs:10:9: 10:10
+          goto -> bb10;                    // scope 0 at $DIR/or_pattern.rs:10:9: 10:10
+      }
+  
+      bb10: {
+          return;                          // scope 0 at $DIR/or_pattern.rs:13:2: 13:2
+      }
+  }
+  

@@ -530,6 +530,7 @@ impl EffectIndex {
     }
 }
 
+#[derive(Debug)]
 pub struct SwitchIntTarget {
     pub value: Option<u128>,
     pub target: BasicBlock,

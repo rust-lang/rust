@@ -1,0 +1,52 @@
+- // MIR for `foo` before Refinements
++ // MIR for `foo` after Refinements
+  
+  fn foo(_1: u32) -> i32 {
+      debug a => _1;                       // in scope 0 at $DIR/double_match.rs:3:8: 3:9
+      let mut _0: i32;                     // return place in scope 0 at $DIR/double_match.rs:3:19: 3:22
+      let _2: u32;                         // in scope 0 at $DIR/double_match.rs:5:9: 5:14
+      scope 1 {
+          debug b => _2;                   // in scope 1 at $DIR/double_match.rs:5:9: 5:14
+      }
+  
+      bb0: {
+          switchInt(_1) -> [1_u32: bb2, otherwise: bb1]; // scope 0 at $DIR/double_match.rs:4:5: 4:12
+      }
+  
+      bb1: {
+          _0 = const 3_i32;                // scope 0 at $DIR/double_match.rs:10:14: 10:15
+          goto -> bb7;                     // scope 0 at $DIR/double_match.rs:10:14: 10:15
+      }
+  
+      bb2: {
+          StorageLive(_2);                 // scope 0 at $DIR/double_match.rs:5:9: 5:14
+          _2 = _1;                         // scope 0 at $DIR/double_match.rs:5:9: 5:14
+-         switchInt(_2) -> [1_u32: bb4, 2_u32: bb5, otherwise: bb3]; // scope 1 at $DIR/double_match.rs:5:18: 5:25
++         switchInt(_2) -> bb4;            // scope 1 at $DIR/double_match.rs:5:18: 5:25
+      }
+  
+      bb3: {
+          _0 = const 3_i32;                // scope 1 at $DIR/double_match.rs:8:18: 8:19
+          goto -> bb6;                     // scope 1 at $DIR/double_match.rs:8:18: 8:19
+      }
+  
+      bb4: {
+          _0 = const 1_i32;                // scope 1 at $DIR/double_match.rs:6:18: 6:19
+          goto -> bb6;                     // scope 1 at $DIR/double_match.rs:6:18: 6:19
+      }
+  
+      bb5: {
+          _0 = const 2_i32;                // scope 1 at $DIR/double_match.rs:7:18: 7:19
+          goto -> bb6;                     // scope 1 at $DIR/double_match.rs:7:18: 7:19
+      }
+  
+      bb6: {
+          StorageDead(_2);                 // scope 0 at $DIR/double_match.rs:9:9: 9:10
+          goto -> bb7;                     // scope 0 at $DIR/double_match.rs:9:9: 9:10
+      }
+  
+      bb7: {
+          return;                          // scope 0 at $DIR/double_match.rs:12:2: 12:2
+      }
+  }
+  
