@@ -10,6 +10,7 @@
 #![feature(iter_zip)]
 #![feature(let_else)]
 #![feature(nll)]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate rustc_macros;
