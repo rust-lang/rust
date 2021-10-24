@@ -23,7 +23,7 @@ use crate::config::TargetSelection;
 use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, timeit};
-use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
+use crate::{Compiler, DependencyType, Mode, LLVM_COVERAGE_TOOLS, LLVM_TOOLS};
 use time::{self, Timespec};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
@@ -2040,6 +2040,53 @@ impl Step for LlvmTools {
     }
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct LlvmCoverageTools {
+    pub target: TargetSelection,
+}
+
+impl Step for LlvmCoverageTools {
+    type Output = Option<GeneratedTarball>;
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("llvm-coverage-tools")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(LlvmCoverageTools { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        let target = self.target;
+
+        /* run only if llvm-config isn't used */
+        if let Some(config) = builder.config.target_config.get(&target) {
+            if let Some(ref _s) = config.llvm_config {
+                builder.info(&format!("Skipping LlvmCoverageTools ({}): external LLVM", target));
+                return None;
+            }
+        }
+
+        // Only build if `profiler = true`
+        if !builder.config.profiler_enabled(target) {
+            return None;
+        }
+
+        let mut tarball = Tarball::new(builder, "llvm-coverage-tools", &target.triple);
+        tarball.set_overlay(OverlayKind::LLVM);
+
+        let src_bindir = builder.llvm_out(target).join("bin");
+        for tool in LLVM_COVERAGE_TOOLS {
+            let exe = src_bindir.join(exe(tool, target));
+            tarball.add_file(&exe, "bin", 0o755);
+        }
+
+        Some(tarball.generate())
+    }
+}
+
 // Tarball intended for internal consumption to ease rustc/std development.
 //
 // Should not be considered stable by end users.
@@ -2080,9 +2127,7 @@ impl Step for RustDev {
             "llvm-config",
             "llvm-ar",
             "llvm-objdump",
-            "llvm-profdata",
             "llvm-bcanalyzer",
-            "llvm-cov",
             "llvm-dwp",
         ] {
             tarball.add_file(src_bindir.join(exe(bin, target)), "bin", 0o755);

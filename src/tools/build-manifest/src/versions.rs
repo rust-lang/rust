@@ -19,6 +19,7 @@ pub(crate) enum PkgType {
     Clippy,
     Rustfmt,
     LlvmTools,
+    LlvmCoverageTools,
     Miri,
     Other(String),
 }
@@ -35,6 +36,7 @@ impl PkgType {
             "clippy" | "clippy-preview" => PkgType::Clippy,
             "rustfmt" | "rustfmt-preview" => PkgType::Rustfmt,
             "llvm-tools" | "llvm-tools-preview" => PkgType::LlvmTools,
+            "llvm-coverage-tools" => PkgType::LlvmCoverageTools,
             "miri" | "miri-preview" => PkgType::Miri,
             other => PkgType::Other(other.into()),
         }
@@ -52,6 +54,7 @@ impl PkgType {
             PkgType::Clippy => "clippy",
             PkgType::Rustfmt => "rustfmt",
             PkgType::LlvmTools => "llvm-tools",
+            PkgType::LlvmCoverageTools => "llvm-coverage-tools",
             PkgType::Miri => "miri",
             PkgType::Other(component) => component,
         }
@@ -67,6 +70,7 @@ impl PkgType {
             PkgType::Clippy => false,
             PkgType::Rustfmt => false,
             PkgType::LlvmTools => false,
+            PkgType::LlvmCoverageTools => false,
             PkgType::Miri => false,
 
             PkgType::Rust => true,

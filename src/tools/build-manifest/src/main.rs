@@ -311,6 +311,7 @@ impl Builder {
         package("rust-std", TARGETS);
         package("rust-docs", DOCS_TARGETS);
         package("rust-src", &["*"]);
+        package("llvm-coverage-tools", HOSTS);
         package("rls-preview", HOSTS);
         package("rust-analyzer-preview", HOSTS);
         package("clippy-preview", HOSTS);
@@ -369,6 +370,7 @@ impl Builder {
                 "rls-preview",
                 "rust-analyzer-preview",
                 "rust-src",
+                "llvm-coverage-tools",
                 "llvm-tools-preview",
                 "rust-analysis",
                 "miri-preview",
@@ -445,6 +447,7 @@ impl Builder {
             host_component("rls-preview"),
             host_component("rust-analyzer-preview"),
             host_component("rustfmt-preview"),
+            host_component("llvm-coverage-tools"),
             host_component("llvm-tools-preview"),
             host_component("rust-analysis"),
         ]);
