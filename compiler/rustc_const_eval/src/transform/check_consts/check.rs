@@ -893,7 +893,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                 if Some(callee) == tcx.lang_items().begin_panic_fn() {
                     match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if ty.is_str() => return,
-                        _ => self.check_op(ops::PanicNonStr),
+                        _ => (),
                     }
                 }
 
@@ -904,7 +904,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                         {
                             return;
                         }
-                        _ => self.check_op(ops::PanicNonStr),
+                        _ => (),
                     }
                 }
 

@@ -368,18 +368,6 @@ impl NonConstOp for MutDeref {
     }
 }
 
-/// A call to a `panic()` lang item where the first argument is _not_ a `&str`.
-#[derive(Debug)]
-pub struct PanicNonStr;
-impl NonConstOp for PanicNonStr {
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        ccx.tcx.sess.struct_span_err(
-            span,
-            "argument to `panic!()` in a const context must have type `&str`",
-        )
-    }
-}
-
 /// Comparing raw pointers for equality.
 /// Not currently intended to ever be allowed, even behind a feature gate: operation depends on
 /// allocation base addresses that are not known at compile-time.

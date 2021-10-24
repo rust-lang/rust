@@ -158,6 +158,10 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
             ty::Adt(adt, _) if self.tcx.is_diagnostic_item(sym::Arguments, adt.did) => {
                 return self.fmt_arguments(arg, f);
             }
+            ty::Adt(adt, _) if self.tcx.is_diagnostic_item(sym::String, adt.did) => {
+                // NOTE(nbdd0121): const `String` can only be empty.
+                dispatch_fmt!("", Display);
+            }
 
             // FIXME(nbdd0121): ty::Adt(..) => (),
             _ => {
@@ -240,5 +244,19 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         let mut formatter = Formatter::new(&mut msg);
         self.fmt_arguments(arguments, &mut formatter)?;
         Ok(msg)
+    }
+
+    pub(super) fn eval_const_panic_any(&mut self, arg: OpTy<'tcx>) -> InterpResult<'tcx, String> {
+        match arg.layout.ty.kind() {
+            ty::Ref(_, ty, _) if ty.is_str() => {
+                let place = self.deref_operand(&arg)?;
+                Ok(self.read_str(&place)?.to_string())
+            }
+            ty::Adt(adt, _) if self.tcx.is_diagnostic_item(sym::String, adt.did) => {
+                // NOTE(nbdd0121): const `String` can only be empty.
+                Ok(String::new())
+            }
+            _ => Ok("Box<dyn Any>".to_string()),
+        }
     }
 }

@@ -48,18 +48,10 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
                     .unwrap(),
                 ));
             }
-        } else if Some(def_id) == self.tcx.lang_items().panic_display()
-            || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
-        {
-            // &str or &&str
+        } else if Some(def_id) == self.tcx.lang_items().begin_panic_fn() {
             assert!(args.len() == 1);
-
-            let mut msg_place = self.deref_operand(&args[0])?;
-            while msg_place.layout.ty.is_ref() {
-                msg_place = self.deref_operand(&msg_place.into())?;
-            }
-
-            let msg = Symbol::intern(self.read_str(&msg_place)?);
+            let msg = self.eval_const_panic_any(args[0])?;
+            let msg = Symbol::intern(&msg);
             let span = self.find_closest_untracked_caller_location();
             let (file, line, col) = self.location_triple_for_span(span);
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
@@ -71,6 +63,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
             let (file, line, col) = self.location_triple_for_span(span);
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
         }
+
         Ok(None)
     }
 }

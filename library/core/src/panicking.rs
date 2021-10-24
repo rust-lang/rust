@@ -51,13 +51,13 @@ pub const fn panic(expr: &'static str) -> ! {
 #[track_caller]
 #[lang = "panic_str"] // needed for `non-fmt-panics` lint
 pub const fn panic_str(expr: &str) -> ! {
-    panic_display(&expr);
+    panic_fmt(format_args!("{}", expr));
 }
 
 #[inline]
 #[track_caller]
 #[lang = "panic_display"] // needed for const-evaluated panics
-#[rustc_do_not_const_check] // hooked by const-eval
+#[rustc_const_unstable(feature = "const_panic_extra", issue = "none")]
 pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));
 }
