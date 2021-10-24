@@ -2,7 +2,7 @@
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::is_present_in_source;
-use clippy_utils::str_utils;
+use clippy_utils::str_utils::{self, count_match_end, count_match_start};
 use rustc_hir::{EnumDef, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -117,26 +117,6 @@ impl_lint_pass!(EnumVariantNames => [
     MODULE_INCEPTION
 ]);
 
-/// Returns the number of chars that match from the start
-#[must_use]
-fn partial_match(pre: &str, name: &str) -> usize {
-    let mut name_iter = name.chars();
-    let _ = name_iter.next_back(); // make sure the name is never fully matched
-    pre.chars().zip(name_iter).take_while(|&(l, r)| l == r).count()
-}
-
-/// Returns the number of chars that match from the end
-#[must_use]
-fn partial_rmatch(post: &str, name: &str) -> usize {
-    let mut name_iter = name.chars();
-    let _ = name_iter.next(); // make sure the name is never fully matched
-    post.chars()
-        .rev()
-        .zip(name_iter.rev())
-        .take_while(|&(l, r)| l == r)
-        .count()
-}
-
 fn check_variant(
     cx: &LateContext<'_>,
     threshold: u64,
@@ -150,7 +130,7 @@ fn check_variant(
     }
     for var in def.variants {
         let name = var.ident.name.as_str();
-        if partial_match(item_name, &name) == item_name_chars
+        if count_match_start(item_name, &name).char_count == item_name_chars
             && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
             && name.chars().nth(item_name_chars + 1).map_or(false, |c| !c.is_numeric())
         {
@@ -161,7 +141,7 @@ fn check_variant(
                 "variant name starts with the enum's name",
             );
         }
-        if partial_rmatch(item_name, &name) == item_name_chars {
+        if count_match_end(item_name, &name).char_count == item_name_chars {
             span_lint(
                 cx,
                 ENUM_VARIANT_NAMES,
@@ -176,7 +156,7 @@ fn check_variant(
     for var in def.variants {
         let name = var.ident.name.as_str();
 
-        let pre_match = partial_match(pre, &name);
+        let pre_match = count_match_start(pre, &name).byte_count;
         pre = &pre[..pre_match];
         let pre_camel = str_utils::camel_case_until(pre).byte_index;
         pre = &pre[..pre_camel];
@@ -193,8 +173,8 @@ fn check_variant(
             }
         }
 
-        let post_match = partial_rmatch(post, &name);
-        let post_end = post.len() - post_match;
+        let post_match = count_match_end(post, &name);
+        let post_end = post.len() - post_match.byte_count;
         post = &post[post_end..];
         let post_camel = str_utils::camel_case_start(post);
         post = &post[post_camel.byte_index..];
@@ -266,14 +246,16 @@ impl LateLintPass<'_> for EnumVariantNames {
                             );
                         }
                     }
-                    if item.vis.node.is_pub() {
-                        let matching = partial_match(mod_camel, &item_camel);
-                        let rmatching = partial_rmatch(mod_camel, &item_camel);
+                    // The `module_name_repetitions` lint should only trigger if the item has the module in its
+                    // name. Having the same name is accepted.
+                    if item.vis.node.is_pub() && item_camel.len() > mod_camel.len() {
+                        let matching = count_match_start(mod_camel, &item_camel);
+                        let rmatching = count_match_end(mod_camel, &item_camel);
                         let nchars = mod_camel.chars().count();
 
                         let is_word_beginning = |c: char| c == '_' || c.is_uppercase() || c.is_numeric();
 
-                        if matching == nchars {
+                        if matching.char_count == nchars {
                             match item_camel.chars().nth(nchars) {
                                 Some(c) if is_word_beginning(c) => span_lint(
                                     cx,
@@ -284,7 +266,7 @@ impl LateLintPass<'_> for EnumVariantNames {
                                 _ => (),
                             }
                         }
-                        if rmatching == nchars {
+                        if rmatching.char_count == nchars {
                             span_lint(
                                 cx,
                                 MODULE_NAME_REPETITIONS,

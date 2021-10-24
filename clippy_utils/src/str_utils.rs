@@ -99,6 +99,75 @@ pub fn camel_case_start(s: &str) -> StrIndex {
     last_index
 }
 
+/// Dealing with sting comparison can be complicated, this struct ensures that both the
+/// character and byte count are provided for correct indexing.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct StrCount {
+    pub char_count: usize,
+    pub byte_count: usize,
+}
+
+impl StrCount {
+    pub fn new(char_count: usize, byte_count: usize) -> Self {
+        Self { char_count, byte_count }
+    }
+}
+
+/// Returns the number of chars that match from the start
+///
+/// ```
+/// assert_eq!(count_match_start("hello_mouse", "hello_penguin"), StrCount::new(6, 6));
+/// assert_eq!(count_match_start("hello_clippy", "bye_bugs"), StrCount::new(0, 0));
+/// assert_eq!(count_match_start("hello_world", "hello_world"), StrCount::new(11, 11));
+/// assert_eq!(count_match_start("T\u{f6}ffT\u{f6}ff", "T\u{f6}ff"), StrCount::new(4, 5));
+/// ```
+#[must_use]
+pub fn count_match_start(str1: &str, str2: &str) -> StrCount {
+    // (char_index, char1)
+    let char_count = str1.chars().count();
+    let iter1 = (0..=char_count).zip(str1.chars());
+    // (byte_index, char2)
+    let iter2 = str2.char_indices();
+
+    iter1
+        .zip(iter2)
+        .take_while(|((_, c1), (_, c2))| c1 == c2)
+        .last()
+        .map_or_else(StrCount::default, |((char_index, _), (byte_index, character))| {
+            StrCount::new(char_index + 1, byte_index + character.len_utf8())
+        })
+}
+
+/// Returns the number of chars and bytes that match from the end
+///
+/// ```
+/// assert_eq!(count_match_end("hello_cat", "bye_cat"), StrCount::new(4, 4));
+/// assert_eq!(count_match_end("if_item_thing", "enum_value"), StrCount::new(0, 0));
+/// assert_eq!(count_match_end("Clippy", "Clippy"), StrCount::new(6, 6));
+/// assert_eq!(count_match_end("MyT\u{f6}ff", "YourT\u{f6}ff"), StrCount::new(4, 5));
+/// ```
+#[must_use]
+pub fn count_match_end(str1: &str, str2: &str) -> StrCount {
+    let char_count = str1.chars().count();
+    if char_count == 0 {
+        return StrCount::default();
+    }
+
+    // (char_index, char1)
+    let iter1 = (0..char_count).rev().zip(str1.chars().rev());
+    // (byte_index, char2)
+    let byte_count = str2.len();
+    let iter2 = str2.char_indices().rev();
+
+    iter1
+        .zip(iter2)
+        .take_while(|((_, c1), (_, c2))| c1 == c2)
+        .last()
+        .map_or_else(StrCount::default, |((char_index, _), (byte_index, _))| {
+            StrCount::new(char_count - char_index, byte_count - byte_index)
+        })
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
