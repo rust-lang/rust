@@ -1,6 +1,6 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
-use clippy_utils::camel_case;
+use clippy_utils::str_utils;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::is_present_in_source;
 use rustc_hir::{EnumDef, Item, ItemKind};
@@ -171,14 +171,14 @@ fn check_variant(
         }
     }
     let first = &def.variants[0].ident.name.as_str();
-    let mut pre = &first[..camel_case::until(&*first)];
-    let mut post = &first[camel_case::from(&*first)..];
+    let mut pre = &first[..str_utils::until(&*first)];
+    let mut post = &first[str_utils::from(&*first)..];
     for var in def.variants {
         let name = var.ident.name.as_str();
 
         let pre_match = partial_match(pre, &name);
         pre = &pre[..pre_match];
-        let pre_camel = camel_case::until(pre);
+        let pre_camel = str_utils::until(pre);
         pre = &pre[..pre_camel];
         while let Some((next, last)) = name[pre.len()..].chars().zip(pre.chars().rev()).next() {
             if next.is_numeric() {
@@ -186,7 +186,7 @@ fn check_variant(
             }
             if next.is_lowercase() {
                 let last = pre.len() - last.len_utf8();
-                let last_camel = camel_case::until(&pre[..last]);
+                let last_camel = str_utils::until(&pre[..last]);
                 pre = &pre[..last_camel];
             } else {
                 break;
@@ -196,7 +196,7 @@ fn check_variant(
         let post_match = partial_rmatch(post, &name);
         let post_end = post.len() - post_match;
         post = &post[post_end..];
-        let post_camel = camel_case::from(post);
+        let post_camel = str_utils::from(post);
         post = &post[post_camel..];
     }
     let (what, value) = match (pre.is_empty(), post.is_empty()) {

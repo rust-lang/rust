@@ -37,7 +37,7 @@ pub mod sym_helper;
 #[allow(clippy::module_name_repetitions)]
 pub mod ast_utils;
 pub mod attrs;
-pub mod camel_case;
+pub mod str_utils;
 pub mod comparisons;
 pub mod consts;
 pub mod diagnostics;
