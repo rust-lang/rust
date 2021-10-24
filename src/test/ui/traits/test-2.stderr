@@ -79,7 +79,35 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn bar>>` for `Box<{integer}>`
    = note: required by cast to type `Box<dyn bar>`
 
-error: aborting due to 5 previous errors
+error[E0283]: type annotations needed
+  --> $DIR/test-2.rs:9:8
+   |
+LL |     10.dup::<i32>();
+   |        ^^^ cannot infer type for type `{integer}`
+   |
+note: multiple `impl`s satisfying `{integer}: bar` found
+  --> $DIR/test-2.rs:5:1
+   |
+LL | impl bar for i32 { fn dup(&self) -> i32 { *self } fn blah<X>(&self) {} }
+   | ^^^^^^^^^^^^^^^^
+LL | impl bar for u32 { fn dup(&self) -> u32 { *self } fn blah<X>(&self) {} }
+   | ^^^^^^^^^^^^^^^^
 
-Some errors have detailed explanations: E0038, E0107.
+error[E0283]: type annotations needed
+  --> $DIR/test-2.rs:11:8
+   |
+LL |     10.blah::<i32, i32>();
+   |        ^^^^ cannot infer type for type `{integer}`
+   |
+note: multiple `impl`s satisfying `{integer}: bar` found
+  --> $DIR/test-2.rs:5:1
+   |
+LL | impl bar for i32 { fn dup(&self) -> i32 { *self } fn blah<X>(&self) {} }
+   | ^^^^^^^^^^^^^^^^
+LL | impl bar for u32 { fn dup(&self) -> u32 { *self } fn blah<X>(&self) {} }
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0038, E0107, E0283.
 For more information about an error, try `rustc --explain E0038`.

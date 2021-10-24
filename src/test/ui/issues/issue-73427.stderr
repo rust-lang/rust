@@ -120,10 +120,10 @@ LL | | }
    | |_^
 help: try to construct one of the enum's variants
    |
-LL |     let x = A::TupleWithFields(3);
-   |             ~~~~~~~~~~~~~~~~~~
 LL |     let x = A::Tuple(3);
    |             ~~~~~~~~
+LL |     let x = A::TupleWithFields(3);
+   |             ~~~~~~~~~~~~~~~~~~
 
 error[E0532]: expected tuple struct or tuple variant, found enum `A`
   --> $DIR/issue-73427.rs:42:12
@@ -145,10 +145,10 @@ LL | | }
    | |_^
 help: try to match against one of the enum's variants
    |
-LL |     if let A::TupleWithFields(3) = x { }
-   |            ~~~~~~~~~~~~~~~~~~
 LL |     if let A::Tuple(3) = x { }
    |            ~~~~~~~~
+LL |     if let A::TupleWithFields(3) = x { }
+   |            ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 6 previous errors
 

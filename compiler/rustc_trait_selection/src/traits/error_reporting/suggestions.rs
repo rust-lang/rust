@@ -299,18 +299,15 @@ fn suggest_restriction(
                 generics,
                 trait_ref.without_const().to_predicate(tcx).to_string(),
             ),
-            (None, Some((ident, []))) => (
-                ident.span.shrink_to_hi(),
-                format!(": {}", trait_ref.print_only_trait_path().to_string()),
-            ),
-            (_, Some((_, [.., bounds]))) => (
-                bounds.span().shrink_to_hi(),
-                format!(" + {}", trait_ref.print_only_trait_path().to_string()),
-            ),
-            (Some(_), Some((_, []))) => (
-                generics.span.shrink_to_hi(),
-                format!(": {}", trait_ref.print_only_trait_path().to_string()),
-            ),
+            (None, Some((ident, []))) => {
+                (ident.span.shrink_to_hi(), format!(": {}", trait_ref.print_only_trait_path()))
+            }
+            (_, Some((_, [.., bounds]))) => {
+                (bounds.span().shrink_to_hi(), format!(" + {}", trait_ref.print_only_trait_path()))
+            }
+            (Some(_), Some((_, []))) => {
+                (generics.span.shrink_to_hi(), format!(": {}", trait_ref.print_only_trait_path()))
+            }
         };
 
         err.span_suggestion_verbose(

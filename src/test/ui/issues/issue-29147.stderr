@@ -4,7 +4,13 @@ error[E0283]: type annotations needed
 LL |     let _ = <S5<_>>::xxx;
    |             ^^^^^^^^^^^^ cannot infer type for struct `S5<_>`
    |
-   = note: cannot satisfy `S5<_>: Foo`
+note: multiple `impl`s satisfying `S5<_>: Foo` found
+  --> $DIR/issue-29147.rs:17:1
+   |
+LL | impl Foo for S5<u32> { fn xxx(&self) {} }
+   | ^^^^^^^^^^^^^^^^^^^^
+LL | impl Foo for S5<u64> { fn xxx(&self) {} }
+   | ^^^^^^^^^^^^^^^^^^^^
 note: required by `Foo::xxx`
   --> $DIR/issue-29147.rs:10:13
    |

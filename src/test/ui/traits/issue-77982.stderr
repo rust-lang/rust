@@ -6,17 +6,50 @@ LL |     opts.get(opt.as_ref());
    |          |
    |          cannot infer type for type parameter `Q` declared on the associated function `get`
    |
-   = note: cannot satisfy `String: Borrow<_>`
+   = note: multiple `impl`s satisfying `String: Borrow<_>` found in the following crates: `alloc`, `core`:
+           - impl Borrow<str> for String;
+           - impl<T> Borrow<T> for T
+             where T: ?Sized;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-77982.rs:12:44
+  --> $DIR/issue-77982.rs:8:18
+   |
+LL |     opts.get(opt.as_ref());
+   |              ----^^^^^^--
+   |              |   |
+   |              |   cannot infer type for type parameter `T` declared on the trait `AsRef`
+   |              this method call resolves to `&T`
+   |
+   = note: multiple `impl`s satisfying `String: AsRef<_>` found in the following crates: `alloc`, `std`:
+           - impl AsRef<OsStr> for String;
+           - impl AsRef<Path> for String;
+           - impl AsRef<[u8]> for String;
+           - impl AsRef<str> for String;
+help: use the fully qualified path for the potential candidates
+   |
+LL |     opts.get(<String as AsRef<OsStr>>::as_ref(opt));
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     opts.get(<String as AsRef<Path>>::as_ref(opt));
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     opts.get(<String as AsRef<[u8]>>::as_ref(opt));
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     opts.get(<String as AsRef<str>>::as_ref(opt));
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error[E0283]: type annotations needed
+  --> $DIR/issue-77982.rs:13:44
    |
 LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect();
    |                                            ^^^^^^^^^ ----------- this method call resolves to `T`
    |                                            |
    |                                            cannot infer type for type parameter `T` declared on the trait `From`
    |
-   = note: cannot satisfy `u32: From<_>`
+   = note: multiple `impl`s satisfying `u32: From<_>` found in the following crates: `core`, `std`:
+           - impl From<Ipv4Addr> for u32;
+           - impl From<NonZeroU32> for u32;
+           - impl From<bool> for u32;
+           - impl From<char> for u32;
+           and 3 more
 note: required by `from`
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    |
@@ -24,25 +57,37 @@ LL |     fn from(_: T) -> Self;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed for `Box<T>`
-  --> $DIR/issue-77982.rs:35:16
+  --> $DIR/issue-77982.rs:36:16
    |
 LL |     let _ = ().foo();
    |         -      ^^^ cannot infer type for type parameter `T` declared on the trait `Foo`
    |         |
    |         consider giving this pattern the explicit type `Box<T>`, where the type parameter `T` is specified
    |
-   = note: cannot satisfy `(): Foo<'_, _>`
+note: multiple `impl`s satisfying `(): Foo<'_, _>` found
+  --> $DIR/issue-77982.rs:29:1
+   |
+LL | impl Foo<'static, u32> for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<'a> Foo<'a, i16> for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed for `Box<T>`
-  --> $DIR/issue-77982.rs:39:19
+  --> $DIR/issue-77982.rs:40:19
    |
 LL |     let _ = (&()).bar();
    |         -         ^^^ cannot infer type for type parameter `T` declared on the trait `Bar`
    |         |
    |         consider giving this pattern the explicit type `Box<T>`, where the type parameter `T` is specified
    |
-   = note: cannot satisfy `&(): Bar<'_, _>`
+note: multiple `impl`s satisfying `&(): Bar<'_, _>` found
+  --> $DIR/issue-77982.rs:32:1
+   |
+LL | impl<'a> Bar<'static, u32> for &'a () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<'a> Bar<'a, i16> for &'a () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0283`.

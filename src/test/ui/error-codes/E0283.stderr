@@ -21,7 +21,14 @@ LL |     let bar = foo_impl.into() * 1u32;
    |               this method call resolves to `T`
    |               help: use the fully qualified path for the potential candidate: `<Impl as Into<u32>>::into(foo_impl)`
    |
-   = note: cannot satisfy `Impl: Into<_>`
+note: multiple `impl`s satisfying `Impl: Into<_>` found
+  --> $DIR/E0283.rs:17:1
+   |
+LL | impl Into<u32> for Impl {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: and another `impl` found in the `core` crate:
+           - impl<T, U> Into<U> for T
+             where U: From<T>;
 
 error: aborting due to 2 previous errors
 

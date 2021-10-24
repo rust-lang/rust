@@ -6,7 +6,11 @@ LL |         if String::from("a") == "a".try_into().unwrap() {}
    |                              |
    |                              cannot infer type
    |
-   = note: cannot satisfy `String: PartialEq<_>`
+   = note: multiple `impl`s satisfying `String: PartialEq<_>` found in the `alloc` crate:
+           - impl PartialEq for String;
+           - impl<'a, 'b> PartialEq<&'a str> for String;
+           - impl<'a, 'b> PartialEq<Cow<'a, str>> for String;
+           - impl<'a, 'b> PartialEq<str> for String;
 
 error: aborting due to previous error
 
