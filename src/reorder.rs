@@ -118,7 +118,9 @@ fn rewrite_reorderable_or_regroupable_items(
             };
 
             let mut regrouped_items = match context.config.group_imports() {
-                GroupImportsTactic::Preserve => vec![normalized_items],
+                GroupImportsTactic::Preserve | GroupImportsTactic::One => {
+                    vec![normalized_items]
+                }
                 GroupImportsTactic::StdExternalCrate => group_imports(normalized_items),
             };
 
