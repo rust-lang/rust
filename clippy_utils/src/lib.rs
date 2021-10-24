@@ -37,7 +37,6 @@ pub mod sym_helper;
 #[allow(clippy::module_name_repetitions)]
 pub mod ast_utils;
 pub mod attrs;
-pub mod str_utils;
 pub mod comparisons;
 pub mod consts;
 pub mod diagnostics;
@@ -50,6 +49,7 @@ pub mod paths;
 pub mod ptr;
 pub mod qualify_min_const_fn;
 pub mod source;
+pub mod str_utils;
 pub mod sugg;
 pub mod ty;
 pub mod usage;
