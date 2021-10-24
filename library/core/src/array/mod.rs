@@ -85,14 +85,16 @@ where
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
 #[stable(feature = "array_from_ref", since = "1.53.0")]
-pub fn from_ref<T>(s: &T) -> &[T; 1] {
+#[rustc_const_unstable(feature = "const_array_from_ref", issue = "90206")]
+pub const fn from_ref<T>(s: &T) -> &[T; 1] {
     // SAFETY: Converting `&T` to `&[T; 1]` is sound.
     unsafe { &*(s as *const T).cast::<[T; 1]>() }
 }
 
 /// Converts a mutable reference to `T` into a mutable reference to an array of length 1 (without copying).
 #[stable(feature = "array_from_ref", since = "1.53.0")]
-pub fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
+#[rustc_const_unstable(feature = "const_array_from_ref", issue = "90206")]
+pub const fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
     // SAFETY: Converting `&mut T` to `&mut [T; 1]` is sound.
     unsafe { &mut *(s as *mut T).cast::<[T; 1]>() }
 }
