@@ -123,7 +123,8 @@ trap datecheck EXIT
 # server (#48192) which causes Cargo to erroneously think that a build script
 # hasn't finished yet. Try to solve that problem by starting a very long-lived
 # sccache server at the start of the build, but no need to worry if this fails.
-SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
+SCCACHE_ERROR_LOG=/tmp/sccache_log.txt SCCACHE_LOG=sccache=debug \
+    SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
 if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   $SRC/configure --enable-parallel-compiler
@@ -164,3 +165,4 @@ else
 fi
 
 sccache --show-stats || true
+cat /tmp/sccache_log.txt || true
