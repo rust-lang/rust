@@ -24,6 +24,7 @@
 //    in the last step
 
 use crate::imports::ImportKind;
+use crate::module_to_string;
 use crate::Resolver;
 
 use rustc_ast as ast;
@@ -318,7 +319,7 @@ impl Resolver<'_> {
             let parent_module = visitor.r.get_nearest_non_block_module(
                 visitor.r.local_def_id(unused.use_tree_id).to_def_id(),
             );
-            let test_module_span = match super::module_to_string(parent_module) {
+            let test_module_span = match module_to_string(parent_module) {
                 Some(module) if module == "test" => Some(parent_module.span),
                 _ => None,
             };
