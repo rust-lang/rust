@@ -350,7 +350,7 @@ fn test_format_document_2018() {
 [package]
 name = "foo"
 version = "0.0.0"
-edition = "2021"
+edition = "2018"
 
 //- /src/lib.rs
 mod bar;
