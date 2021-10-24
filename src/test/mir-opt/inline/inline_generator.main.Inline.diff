@@ -3,10 +3,10 @@
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/inline-generator.rs:8:11: 8:11
-      let _1: std::ops::GeneratorState<<impl std::ops::Generator<bool> as std::ops::Generator<bool>>::Yield, <impl std::ops::Generator<bool> as std::ops::Generator<bool>>::Return>; // in scope 0 at $DIR/inline-generator.rs:9:9: 9:11
-      let mut _2: std::pin::Pin<&mut impl std::ops::Generator<bool>>; // in scope 0 at $DIR/inline-generator.rs:9:14: 9:32
-      let mut _3: &mut impl std::ops::Generator<bool>; // in scope 0 at $DIR/inline-generator.rs:9:23: 9:31
-      let mut _4: impl std::ops::Generator<bool>; // in scope 0 at $DIR/inline-generator.rs:9:28: 9:31
+      let _1: std::ops::GeneratorState<i32, bool>; // in scope 0 at $DIR/inline-generator.rs:9:9: 9:11
+      let mut _2: std::pin::Pin<&mut [generator@$DIR/inline-generator.rs:15:5: 15:41]>; // in scope 0 at $DIR/inline-generator.rs:9:14: 9:32
+      let mut _3: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]; // in scope 0 at $DIR/inline-generator.rs:9:23: 9:31
+      let mut _4: [generator@$DIR/inline-generator.rs:15:5: 15:41]; // in scope 0 at $DIR/inline-generator.rs:9:28: 9:31
 +     let mut _7: bool;                    // in scope 0 at $DIR/inline-generator.rs:9:14: 9:46
       scope 1 {
           debug _r => _1;                  // in scope 1 at $DIR/inline-generator.rs:9:9: 9:11
