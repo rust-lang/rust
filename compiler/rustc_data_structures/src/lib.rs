@@ -28,6 +28,7 @@
 #![feature(thread_id_value)]
 #![allow(rustc::default_hash_types)]
 #![deny(unaligned_references)]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate tracing;

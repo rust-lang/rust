@@ -5,10 +5,7 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{
-    GenericArg, HirId, Item, ItemKind, MutTy, Mutability, Node, Path, PathSegment, QPath, Ty,
-    TyKind,
-};
+use rustc_hir::*;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -48,6 +45,60 @@ impl LateLintPass<'_> for DefaultHashTypes {
                 .note(&format!("a `use rustc_data_structures::fx::{}` may be necessary", replace))
                 .emit();
         });
+    }
+}
+
+declare_tool_lint! {
+    pub rustc::POTENTIAL_QUERY_INSTABILITY,
+    Allow,
+    "require explicit opt-in when using potentially unstable methods or functions",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY]);
+
+impl LateLintPass<'_> for QueryStability {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        // FIXME(rustdoc): This lint uses typecheck results, causing rustdoc to
+        // error if there are resolution failures.
+        //
+        // As internal lints are currently always run if there are `unstable_options`,
+        // they are added to the lint store of rustdoc. Internal lints are also
+        // not used via the `lint_mod` query. Crate lints run outside of a query
+        // so rustdoc currently doesn't disable them.
+        //
+        // Instead of relying on this, either change crate lints to a query disabled by
+        // rustdoc, only run internal lints if the user is explicitly opting in
+        // or figure out a different way to avoid running lints for rustdoc.
+        if cx.tcx.sess.opts.actually_rustdoc {
+            return;
+        }
+
+        let (def_id, span) = match expr.kind {
+            ExprKind::Path(ref path) if let Some(def_id) = cx.qpath_res(path, expr.hir_id).opt_def_id() => {
+                (def_id, expr.span)
+            }
+            ExprKind::MethodCall(_, span, _, _) if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) => {
+                (def_id, span)
+            },
+            _ => return,
+        };
+
+        let substs = cx.typeck_results().node_substs(expr.hir_id);
+        if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs) {
+            let def_id = instance.def_id();
+            if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
+                cx.struct_span_lint(POTENTIAL_QUERY_INSTABILITY, span, |lint| {
+                    let msg = format!(
+                        "using `{}` can result in unstable query results",
+                        cx.tcx.item_name(def_id)
+                    );
+                    lint.build(&msg)
+                        .note("if you believe this case to be fine, allow this lint and add a comment explaining your rationale")
+                        .emit();
+                })
+            }
+        }
     }
 }
 

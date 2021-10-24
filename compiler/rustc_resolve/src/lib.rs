@@ -20,6 +20,7 @@
 #![feature(nll)]
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate tracing;

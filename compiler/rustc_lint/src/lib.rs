@@ -31,12 +31,14 @@
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
+#![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(iter_zip)]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(control_flow_enum)]
 #![recursion_limit = "256"]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -484,6 +486,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_early_pass(|| Box::new(LintPassImpl));
     store.register_lints(&DefaultHashTypes::get_lints());
     store.register_late_pass(|| Box::new(DefaultHashTypes));
+    store.register_lints(&QueryStability::get_lints());
+    store.register_late_pass(|| Box::new(QueryStability));
     store.register_lints(&ExistingDocKeyword::get_lints());
     store.register_late_pass(|| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
@@ -494,6 +498,7 @@ fn register_internals(store: &mut LintStore) {
         None,
         vec![
             LintId::of(DEFAULT_HASH_TYPES),
+            LintId::of(POTENTIAL_QUERY_INSTABILITY),
             LintId::of(USAGE_OF_TY_TYKIND),
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(TY_PASS_BY_REFERENCE),

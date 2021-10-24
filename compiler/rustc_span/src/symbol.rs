@@ -1114,6 +1114,7 @@ symbols! {
         rustc_layout_scalar_valid_range_end,
         rustc_layout_scalar_valid_range_start,
         rustc_legacy_const_generics,
+        rustc_lint_query_instability,
         rustc_macro_transparency,
         rustc_main,
         rustc_mir,
