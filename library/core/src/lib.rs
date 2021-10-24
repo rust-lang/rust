@@ -136,6 +136,8 @@
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
 #![feature(variant_count)]
+#![feature(const_array_from_ref)]
+#![feature(const_slice_from_ref)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
