@@ -1,0 +1,17 @@
+error: malformed `rustc_lint_query_instability` attribute input
+  --> $DIR/query_stability_incorrect.rs:10:5
+   |
+LL |     #[rustc_lint_query_instability(a)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_lint_query_instability]`
+
+error: attribute should be applied to a function
+  --> $DIR/query_stability_incorrect.rs:5:1
+   |
+LL | #[rustc_lint_query_instability]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Foo;
+   | ----------- not a function
+
+error: aborting due to 2 previous errors
+
