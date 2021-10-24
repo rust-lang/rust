@@ -844,10 +844,13 @@ pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind 
     let mut capture_expr_ty = e;
 
     for (parent_id, parent) in cx.tcx.hir().parent_iter(e.hir_id) {
-        if let [Adjustment {
-            kind: Adjust::Deref(_) | Adjust::Borrow(AutoBorrow::Ref(..)),
-            target,
-        }, ref adjust @ ..] = *cx
+        if let [
+            Adjustment {
+                kind: Adjust::Deref(_) | Adjust::Borrow(AutoBorrow::Ref(..)),
+                target,
+            },
+            ref adjust @ ..,
+        ] = *cx
             .typeck_results()
             .adjustments()
             .get(child_id)
@@ -1232,9 +1235,7 @@ pub fn get_enclosing_loop_or_closure(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Opti
     for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
         match node {
             Node::Expr(
-                e
-                @
-                Expr {
+                e @ Expr {
                     kind: ExprKind::Loop(..) | ExprKind::Closure(..),
                     ..
                 },
@@ -1692,10 +1693,12 @@ pub fn is_async_fn(kind: FnKind<'_>) -> bool {
 pub fn get_async_fn_body(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Call(
         _,
-        &[Expr {
-            kind: ExprKind::Closure(_, _, body, _, _),
-            ..
-        }],
+        &[
+            Expr {
+                kind: ExprKind::Closure(_, _, body, _, _),
+                ..
+            },
+        ],
     ) = body.value.kind
     {
         if let ExprKind::Block(
