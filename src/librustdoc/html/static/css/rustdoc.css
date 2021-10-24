@@ -152,10 +152,15 @@ h1.fqn > .in-band > a:hover {
 h2, h3, h4 {
 	border-bottom: 1px solid;
 }
-h3.code-header, h4.code-header {
+h3.code-header {
+	font-size: 1.1em;
+}
+h4.code-header {
 	font-size: 1em;
+}
+h3.code-header, h4.code-header {
 	font-weight: 600;
-	border: none;
+	border-bottom-style: none;
 	padding: 0;
 	margin: 0;
 }
@@ -173,12 +178,6 @@ h3.code-header, h4.code-header {
 	margin-top: 16px;
 	margin-bottom: 10px;
 	position: relative;
-}
-.impl, .method.trait-impl,
-.type.trait-impl,
-.associatedconstant.trait-impl,
-.associatedtype.trait-impl {
-	padding-left: 15px;
 }
 
 div.impl-items > div {
@@ -674,13 +673,6 @@ nav.sub {
 	left: -19px;
 }
 
-.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant,
-.impl-items > .associatedtype, .content .impl-items details > summary > .type,
-.impl-items details > summary > .associatedconstant,
-.impl-items details > summary > .associatedtype {
-	margin-left: 20px;
-}
-
 .content .impl-items .docblock, .content .impl-items .item-info {
 	margin-bottom: .6em;
 }
@@ -751,7 +743,7 @@ a {
 .anchor {
 	display: none;
 	position: absolute;
-	left: 0;
+	left: -0.5em;
 	background: none !important;
 }
 .anchor.field {
@@ -1584,14 +1576,14 @@ details.rustdoc-toggle > summary.hideme::before {
 
 details.rustdoc-toggle > summary:not(.hideme)::before {
 	position: absolute;
-	left: -23px;
+	left: -24px;
 	top: 3px;
 }
 
 .impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
 .undocumented > details.rustdoc-toggle > summary:not(.hideme)::before {
 	position: absolute;
-	left: -2px;
+	left: -24px;
 }
 
 /* When a "hideme" summary is open and the "Expand description" or "Show
