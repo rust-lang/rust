@@ -1877,6 +1877,25 @@ fn handle() {
 }
 
 #[test]
+fn doctest_replace_turbofish_with_explicit_type() {
+    check_doc_test(
+        "replace_turbofish_with_explicit_type",
+        r#####"
+fn make<T>() -> T { ) }
+fn main() {
+    let a = make$0::<i32>();
+}
+"#####,
+        r#####"
+fn make<T>() -> T { ) }
+fn main() {
+    let a: i32 = make();
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_sort_items() {
     check_doc_test(
         "sort_items",
