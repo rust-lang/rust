@@ -5,7 +5,6 @@
 #![feature(native_link_modifiers_bundle)]
 #![feature(nll)]
 #![feature(staged_api)]
-#![feature(static_nobundle)]
 #![feature(c_unwind)]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 
