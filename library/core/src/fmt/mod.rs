@@ -312,7 +312,8 @@ macro_rules! arg_new {
     ($f: ident, $t: ident) => {
         #[doc(hidden)]
         #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-        pub fn $f<'b, T: $t>(x: &'b T) -> ArgumentV1<'_> {
+        #[rustc_const_unstable(feature = "const_panic_extra", issue = "none")]
+        pub const fn $f<'b, T: $t>(x: &'b T) -> ArgumentV1<'_> {
             Self::new(x, $t::fmt)
         }
     };
@@ -321,7 +322,8 @@ macro_rules! arg_new {
 impl<'a> ArgumentV1<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
+    #[rustc_const_unstable(feature = "const_panic_extra", issue = "none")]
+    pub const fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
         // SAFETY: `mem::transmute(x)` is safe because
         //     1. `&'b T` keeps the lifetime it originated with `'b`
         //              (so as to not have an unbounded lifetime)
