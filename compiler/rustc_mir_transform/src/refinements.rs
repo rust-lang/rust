@@ -159,6 +159,10 @@ impl RefineRange {
         discr_refines: Option<RefineRange>,
         targets: &SwitchTargets,
     ) -> Option<Self> {
+        // FIXME this logic is kinda janky, i.e. if we have a range `0..=3`
+        // with arms 2 and 3 in that order than we'll end up with a range `0..=2`
+        // rather than `0..=1`... This is probably fine for now, this will all
+        // be scrapped when we eventually support OR patterns properly.
         discr_refines.and_then(|mut discr_refines| {
             for (value, _) in targets.iter() {
                 if value == discr_refines.start {
