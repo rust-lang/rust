@@ -465,7 +465,6 @@ symbols! {
         const_loop,
         const_mut_refs,
         const_panic,
-        const_panic_fmt,
         const_precise_live_drops,
         const_ptr,
         const_raw_ptr_deref,

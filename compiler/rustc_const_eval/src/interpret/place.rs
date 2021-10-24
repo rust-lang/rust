@@ -420,7 +420,7 @@ where
 
     // Iterates over all fields of an array. Much more efficient than doing the
     // same by repeatedly calling `mplace_array`.
-    pub(super) fn mplace_array_fields(
+    pub(crate) fn mplace_array_fields(
         &self,
         base: &'a MPlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'a>
@@ -1082,7 +1082,7 @@ where
 
     /// Turn a place with a `dyn Trait` type into a place with the actual dynamic type.
     /// Also return some more information so drop doesn't have to run the same code twice.
-    pub(super) fn unpack_dyn_trait(
+    pub(crate) fn unpack_dyn_trait(
         &self,
         mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (ty::Instance<'tcx>, MPlaceTy<'tcx, M::PointerTag>)> {

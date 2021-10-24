@@ -18,6 +18,7 @@ mod error;
 mod eval_queries;
 mod fn_queries;
 mod machine;
+mod panic;
 
 pub use error::*;
 pub use eval_queries::*;

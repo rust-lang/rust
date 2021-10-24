@@ -107,6 +107,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 }
 
 /// This function is used instead of panic_fmt in const eval.
+#[cfg(bootstrap)]
 #[lang = "const_panic_fmt"]
 pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if let Some(msg) = fmt.as_str() {
