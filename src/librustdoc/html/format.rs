@@ -1221,50 +1221,80 @@ impl clean::FnDecl {
     }
 }
 
+pub(crate) enum VisibilityScope {
+    Inherited,
+    Crate,
+    Super,
+    Path(Vec<String>),
+}
+
+impl VisibilityScope {
+    crate fn new<'tcx>(vis_did: DefId, item_did: DefId, tcx: TyCtxt<'tcx>) -> VisibilityScope {
+        // FIXME(camelid): This may not work correctly if `item_did` is a module.
+        //                 However, rustdoc currently never displays a module's
+        //                 visibility, so it shouldn't matter.
+        let parent_module = find_nearest_parent_module(tcx, item_did);
+
+        if vis_did.index == CRATE_DEF_INDEX {
+            VisibilityScope::Crate
+        } else if parent_module == Some(vis_did) {
+            // `pub(in foo)` where `foo` is the parent module
+            // is the same as no visibility modifier
+            VisibilityScope::Inherited
+        } else if parent_module.map(|parent| find_nearest_parent_module(tcx, parent)).flatten()
+            == Some(vis_did)
+        {
+            VisibilityScope::Super
+        } else {
+            let path = tcx.def_path(vis_did);
+            debug!("path={:?}", path);
+            let mut components: Vec<String> = vec![];
+            for seg in &path.data {
+                components.push(seg.data.get_opt_name().unwrap().to_string());
+            }
+            VisibilityScope::Path(components)
+        }
+    }
+}
+
+impl fmt::Display for VisibilityScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VisibilityScope::Inherited => f.write_str(""),
+            VisibilityScope::Crate => f.write_str("crate"),
+            VisibilityScope::Super => f.write_str("super"),
+            VisibilityScope::Path(components) => {
+                f.write_str("in ")?;
+                for (i, c) in components.iter().enumerate() {
+                    if i > 0 {
+                        f.write_str("::")?;
+                    }
+                    f.write_str(c)?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
 impl clean::Visibility {
     crate fn print_with_space<'a, 'tcx: 'a>(
         self,
         item_did: ItemId,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        let to_print = match self {
-            clean::Public => "pub ".to_owned(),
-            clean::Inherited => String::new(),
+        display_fn(move |f| match self {
+            clean::Public => write!(f, "pub "),
+            clean::Inherited => write!(f, ""),
             clean::Visibility::Restricted(vis_did) => {
-                // FIXME(camelid): This may not work correctly if `item_did` is a module.
-                //                 However, rustdoc currently never displays a module's
-                //                 visibility, so it shouldn't matter.
-                let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_def_id());
-
-                if vis_did.index == CRATE_DEF_INDEX {
-                    "pub(crate) ".to_owned()
-                } else if parent_module == Some(vis_did) {
-                    // `pub(in foo)` where `foo` is the parent module
-                    // is the same as no visibility modifier
-                    String::new()
-                } else if parent_module
-                    .map(|parent| find_nearest_parent_module(cx.tcx(), parent))
-                    .flatten()
-                    == Some(vis_did)
-                {
-                    "pub(super) ".to_owned()
-                } else {
-                    let path = cx.tcx().def_path(vis_did);
-                    debug!("path={:?}", path);
-                    // modified from `resolved_path()` to work with `DefPathData`
-                    let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                    let anchor = anchor(vis_did, &last_name.as_str(), cx).to_string();
-
-                    let mut s = "pub(in ".to_owned();
-                    for seg in &path.data[..path.data.len() - 1] {
-                        s.push_str(&format!("{}::", seg.data.get_opt_name().unwrap()));
-                    }
-                    s.push_str(&format!("{}) ", anchor));
-                    s
+                let mut scope = VisibilityScope::new(vis_did, item_did.expect_def_id(), cx.tcx());
+                if let VisibilityScope::Path(ref mut components) = scope {
+                    let last_name = components.pop().unwrap();
+                    components.push(anchor(vis_did, &last_name.as_str(), cx).to_string());
                 }
+                write!(f, "pub({}) ", scope)
             }
-        };
-        display_fn(move |f| f.write_str(&to_print))
+        })
     }
 
     /// This function is the same as print_with_space, except that it renders no links.
@@ -1275,33 +1305,14 @@ impl clean::Visibility {
         tcx: TyCtxt<'tcx>,
         item_did: DefId,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        let to_print = match self {
-            clean::Public => "pub ".to_owned(),
-            clean::Inherited => String::new(),
+        display_fn(move |f| match self {
+            clean::Public => write!(f, "pub "),
+            clean::Inherited => write!(f, ""),
             clean::Visibility::Restricted(vis_did) => {
-                // FIXME(camelid): This may not work correctly if `item_did` is a module.
-                //                 However, rustdoc currently never displays a module's
-                //                 visibility, so it shouldn't matter.
-                let parent_module = find_nearest_parent_module(tcx, item_did);
-
-                if vis_did.index == CRATE_DEF_INDEX {
-                    "pub(crate) ".to_owned()
-                } else if parent_module == Some(vis_did) {
-                    // `pub(in foo)` where `foo` is the parent module
-                    // is the same as no visibility modifier
-                    String::new()
-                } else if parent_module
-                    .map(|parent| find_nearest_parent_module(tcx, parent))
-                    .flatten()
-                    == Some(vis_did)
-                {
-                    "pub(super) ".to_owned()
-                } else {
-                    format!("pub(in {}) ", tcx.def_path_str(vis_did))
-                }
+                let scope = VisibilityScope::new(vis_did, item_did, tcx);
+                write!(f, "pub({}) ", scope)
             }
-        };
-        display_fn(move |f| f.write_str(&to_print))
+        })
     }
 }
 
