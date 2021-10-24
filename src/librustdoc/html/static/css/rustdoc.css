@@ -245,8 +245,7 @@ main {
 	position: relative;
 	flex-grow: 1;
 	padding: 10px 15px 40px 45px;
-	height: 100vh;
-	overflow-y: auto;
+	min-width: 0;
 }
 
 .source main {
@@ -312,6 +311,9 @@ nav.sub {
 	min-width: 200px;
 	height: 100vh;
 	overflow: auto;
+	position: sticky;
+	top: 0;
+	left: 0;
 }
 
 .source .sidebar {
@@ -1679,10 +1681,8 @@ details.undocumented[open] > summary::before {
 	}
 
 	main {
-		height: auto;
 		padding-left: 15px;
 		padding-top: 0px;
-		overflow-y: visible;
 	}
 
 	.rustdoc {
@@ -1706,6 +1706,15 @@ details.undocumented[open] > summary::before {
 		left: 0;
 		margin: 0;
 		z-index: 11;
+	}
+
+	.sidebar.mobile {
+		position: sticky !important;
+		top: 0;
+		left: 0;
+		width: 100%;
+		margin-left: 0;
+		background-color: rgba(0,0,0,0);
 	}
 
 	.sidebar > .location {
@@ -1841,15 +1850,6 @@ details.undocumented[open] > summary::before {
 
 	#titles {
 		height: 50px;
-	}
-
-	.sidebar.mobile {
-		position: sticky;
-		top: 0;
-		left: 0;
-		width: 100%;
-		margin-left: 0;
-		background-color: rgba(0,0,0,0);
 	}
 
 	.show-it, .sidebar-elems:focus-within {
