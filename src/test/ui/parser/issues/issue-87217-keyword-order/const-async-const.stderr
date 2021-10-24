@@ -1,13 +1,17 @@
 error: expected one of `extern`, `fn`, or `unsafe`, found keyword `const`
-  --> $DIR/const-async-const.rs:6:13
+  --> $DIR/const-async-const.rs:5:13
    |
 LL | const async const fn test() {}
-   |       ------^^^^^
-   |       |     |
-   |       |     expected one of `extern`, `fn`, or `unsafe`
-   |       help: `const` must come before `async`: `const async`
+   |             ^^^^^
+   |             |
+   |             expected one of `extern`, `fn`, or `unsafe`
+   |             help: `const` already used earlier, remove this one
    |
-   = note: keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`
+note: `const` first seen here
+  --> $DIR/const-async-const.rs:5:1
+   |
+LL | const async const fn test() {}
+   | ^^^^^
 
 error: aborting due to previous error
 

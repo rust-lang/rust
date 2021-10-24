@@ -7,7 +7,7 @@ LL |     pub pub fn foo();
    |         ^^^
    |         |
    |         expected one of 9 possible tokens
-   |         help: there is already a visibility, remove this one
+   |         help: there is already a visibility modifier, remove one
 ...
 LL | }
    | - the item list ends here

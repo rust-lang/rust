@@ -2026,7 +2026,7 @@ impl<'a> Parser<'a> {
                             else {
                                 err.span_suggestion(
                                     current_vis.span,
-                                    "there is already a visibility, remove this one",
+                                    "there is already a visibility modifier, remove one",
                                     "".to_string(),
                                     Applicability::MachineApplicable,
                                 )

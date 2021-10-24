@@ -5,7 +5,7 @@ LL | pub const pub fn test() {}
    |           ^^^
    |           |
    |           expected one of `async`, `extern`, `fn`, or `unsafe`
-   |           help: there is already a visibility, remove this one
+   |           help: there is already a visibility modifier, remove one
    |
 note: explicit visibility first seen here
   --> $DIR/issue-87694-duplicated-pub.rs:1:1
