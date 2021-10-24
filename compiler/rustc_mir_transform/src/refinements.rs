@@ -273,6 +273,7 @@ impl<'a, 'tcx> Analysis<'tcx> for HasRefinement<'a, 'tcx> {
     ) {
         use StatementKind::*;
         match &statement.kind {
+            // FIXME this should set some refinements
             SetDiscriminant { place, .. } => trans.clear(place.local),
             Assign(box (lhs_p, rhs)) => {
                 trans.clear(lhs_p.local);
@@ -300,10 +301,11 @@ impl<'a, 'tcx> Analysis<'tcx> for HasRefinement<'a, 'tcx> {
                     },
                     // FIXME this should probably do something
                     Aggregate(_, _) => (),
+                    // FIXME this should set some refinements
+                    Discriminant(_) => (),
                     Repeat(_, _)
                     | ThreadLocalRef(_)
                     | Len(_)
-                    | Discriminant(_)
                     | Cast(_, _, _)
                     | BinaryOp(_, _)
                     | CheckedBinaryOp(_, _)
