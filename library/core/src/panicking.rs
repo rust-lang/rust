@@ -127,8 +127,9 @@ pub enum AssertKind {
 /// Internal function for `assert_eq!` and `assert_ne!` macros
 #[cold]
 #[track_caller]
+#[rustc_const_unstable(feature = "const_panic_extra", issue = "none")]
 #[doc(hidden)]
-pub fn assert_failed<T, U>(
+pub const fn assert_failed<T, U>(
     kind: AssertKind,
     left: &T,
     right: &U,
@@ -144,8 +145,9 @@ where
 /// Internal function for `assert_match!`
 #[cold]
 #[track_caller]
+#[rustc_const_unstable(feature = "const_panic_extra", issue = "none")]
 #[doc(hidden)]
-pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
+pub const fn assert_matches_failed<T: fmt::Debug + ?Sized>(
     left: &T,
     right: &str,
     args: Option<fmt::Arguments<'_>>,
@@ -162,7 +164,7 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
 
 /// Non-generic version of the above functions, to avoid code bloat.
 #[track_caller]
-fn assert_failed_inner(
+const fn assert_failed_inner(
     kind: AssertKind,
     left: &dyn fmt::Debug,
     right: &dyn fmt::Debug,

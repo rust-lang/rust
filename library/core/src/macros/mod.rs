@@ -31,7 +31,7 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic, const_format_args)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
@@ -54,7 +54,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::const_format_args!($($arg)+)));
                 }
             }
         }
@@ -80,7 +80,7 @@ macro_rules! assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic, const_format_args)]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
@@ -103,7 +103,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::const_format_args!($($arg)+)));
                 }
             }
         }
@@ -137,7 +137,7 @@ macro_rules! assert_ne {
 /// assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
 #[unstable(feature = "assert_matches", issue = "82775")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic, const_format_args)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro assert_matches {
     ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => ({
@@ -159,7 +159,7 @@ pub macro assert_matches {
                 $crate::panicking::assert_matches_failed(
                     left_val,
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
-                    $crate::option::Option::Some($crate::format_args!($($arg)+))
+                    $crate::option::Option::Some($crate::const_format_args!($($arg)+))
                 );
             }
         }
