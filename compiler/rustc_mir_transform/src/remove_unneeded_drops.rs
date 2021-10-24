@@ -13,7 +13,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
         trace!("Running RemoveUnneededDrops on {:?}", body.source);
 
         let did = body.source.def_id();
-        let param_env = tcx.param_env(did);
+        let param_env = tcx.param_env_reveal_all_normalized(did);
         let mut should_simplify = false;
 
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
