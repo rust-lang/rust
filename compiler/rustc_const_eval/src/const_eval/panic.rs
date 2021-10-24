@@ -1,5 +1,6 @@
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, layout::LayoutOf, subst::Subst};
+use rustc_span::sym;
 use std::cell::Cell;
 use std::fmt::{self, Debug, Formatter};
 
@@ -152,6 +153,10 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
                 // FIXME(nbdd0121): User can implement trait on &UserType, so this isn't always correct.
                 let place = self.deref_operand(&arg)?;
                 return self.fmt_arg(place.into(), fmt_trait, f);
+            }
+
+            ty::Adt(adt, _) if self.tcx.is_diagnostic_item(sym::Arguments, adt.did) => {
+                return self.fmt_arguments(arg, f);
             }
 
             // FIXME(nbdd0121): ty::Adt(..) => (),

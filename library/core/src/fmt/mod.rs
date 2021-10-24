@@ -458,6 +458,7 @@ impl<'a> Arguments<'a> {
 ///
 /// [`format()`]: ../../std/fmt/fn.format.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "Arguments"]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
