@@ -1,0 +1,63 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_extra.rs:5:15
+   |
+LL | const _: () = core::panic!("hello {}", "world");
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello world', $DIR/const_panic_extra.rs:5:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_extra.rs:8:15
+   |
+LL | const _: () = core::panic!("answer is {ans}", ans = 21*2);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'answer is 42', $DIR/const_panic_extra.rs:8:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_extra.rs:11:15
+   |
+LL | const _: () = core::assert_eq!(42, 43);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: `(left == right)`
+  left: `42`,
+ right: `43`', $DIR/const_panic_extra.rs:11:15
+   |
+   = note: this error originates in the macro `core::assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_extra.rs:14:15
+   |
+LL | const _: () = core::assert_ne!(42, 42, "hello {}", "world");
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: `(left != right)`
+  left: `42`,
+ right: `42`: hello world', $DIR/const_panic_extra.rs:14:15
+   |
+   = note: this error originates in the macro `core::assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_extra.rs:17:15
+   |
+LL | const _: () = core::panic!("{}", 42);
+   |               ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at '42', $DIR/const_panic_extra.rs:17:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_extra.rs:20:15
+   |
+LL | const _: () = std::panic!(42);
+   |               ^^^^^^^^^^^^^^^ the evaluated program panicked at 'Box<dyn Any>', $DIR/const_panic_extra.rs:20:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_extra.rs:23:15
+   |
+LL | const _: () = std::panic!(String::new());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at '', $DIR/const_panic_extra.rs:23:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
