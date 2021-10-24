@@ -420,7 +420,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ..
                         },
                         method,
-                    )) if Some(recv_ty.def_id()) == pin_did && method.ident.name == sym::new => {
+                    )) if recv_ty.opt_def_id() == pin_did && method.ident.name == sym::new => {
                         err.span_suggestion(
                             fn_name.span,
                             "use `Box::pin` to pin and box this expression",
