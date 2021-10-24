@@ -2124,13 +2124,7 @@ impl Step for RustDev {
         tarball.set_overlay(OverlayKind::LLVM);
 
         let src_bindir = builder.llvm_out(target).join("bin");
-        for bin in &[
-            "llvm-config",
-            "llvm-ar",
-            "llvm-objdump",
-            "llvm-bcanalyzer",
-            "llvm-dwp",
-        ] {
+        for bin in &["llvm-config", "llvm-ar", "llvm-objdump", "llvm-bcanalyzer", "llvm-dwp"] {
             tarball.add_file(src_bindir.join(exe(bin, target)), "bin", 0o755);
         }
         tarball.add_file(&builder.llvm_filecheck(target), "bin", 0o755);

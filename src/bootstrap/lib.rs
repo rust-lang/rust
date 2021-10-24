@@ -170,17 +170,17 @@ pub use crate::config::Config;
 pub use crate::flags::Subcommand;
 
 const LLVM_TOOLS: &[&str] = &[
-    "llvm-nm",       // used to inspect binaries; it shows symbol names, their sizes and visibility
-    "llvm-objcopy",  // used to transform ELFs into binary format which flashing tools consume
-    "llvm-objdump",  // used to disassemble programs
-    "llvm-readobj",  // used to get information from ELFs/objects that the other tools don't provide
-    "llvm-size",     // used to prints the size of the linker sections of a program
-    "llvm-strip",    // used to discard symbols from binary files to reduce their size
-    "llvm-ar",       // used for creating and modifying archive files
-    "llvm-as",       // used to convert LLVM assembly to LLVM bitcode
-    "llvm-dis",      // used to disassemble LLVM bitcode
-    "llc",           // used to compile LLVM bytecode
-    "opt",           // used to optimize LLVM bytecode
+    "llvm-nm", // used to inspect binaries; it shows symbol names, their sizes and visibility
+    "llvm-objcopy", // used to transform ELFs into binary format which flashing tools consume
+    "llvm-objdump", // used to disassemble programs
+    "llvm-readobj", // used to get information from ELFs/objects that the other tools don't provide
+    "llvm-size", // used to prints the size of the linker sections of a program
+    "llvm-strip", // used to discard symbols from binary files to reduce their size
+    "llvm-ar", // used for creating and modifying archive files
+    "llvm-as", // used to convert LLVM assembly to LLVM bitcode
+    "llvm-dis", // used to disassemble LLVM bitcode
+    "llc",     // used to compile LLVM bytecode
+    "opt",     // used to optimize LLVM bytecode
 ];
 
 const LLVM_COVERAGE_TOOLS: &[&str] = &[
