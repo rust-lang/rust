@@ -812,7 +812,7 @@ impl Duration {
     #[inline]
     pub const fn try_from_secs_f32(secs: f32) -> Result<Duration, FromSecsError> {
         const MAX_NANOS_F32: f32 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f32;
-        let nanos = secs * (NANOS_PER_SEC as f32);
+        let nanos = secs as f64 * (NANOS_PER_SEC as f64);
         if !nanos.is_finite() {
             Err(FromSecsError { kind: FromSecsErrorKind::NonFinite })
         } else if nanos >= MAX_NANOS_F32 {
