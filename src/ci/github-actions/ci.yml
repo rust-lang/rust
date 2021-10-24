@@ -456,6 +456,7 @@ jobs:
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-macos-xl
 
@@ -467,6 +468,7 @@ jobs:
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
             <<: *job-macos-xl
 
           - name: x86_64-apple
@@ -478,6 +480,7 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
             <<: *job-macos-xl
 
           # This target only needs to support 11.0 and up as nothing else supports the hardware
@@ -499,6 +502,7 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 11.0
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
               # Corresponds to 16K page size
               #

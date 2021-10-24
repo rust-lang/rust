@@ -293,6 +293,7 @@ jobs:
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
             os: macos-latest
           - name: dist-x86_64-apple-alt
@@ -303,6 +304,7 @@ jobs:
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
             os: macos-latest
           - name: x86_64-apple
             env:
@@ -313,6 +315,7 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
             os: macos-latest
           - name: dist-aarch64-apple
             env:
@@ -324,6 +327,7 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 11.0
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
               JEMALLOC_SYS_WITH_LG_PAGE: 14
             os: macos-latest
