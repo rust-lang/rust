@@ -13,7 +13,8 @@ assert-text: (".sidebar-elems > .items > ul > li:nth-child(4)", "Enums")
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(5)", "Traits")
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(6)", "Functions")
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(7)", "Type Definitions")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(8)", "Keywords")
+assert-text: (".sidebar-elems > .items > ul > li:nth-child(8)", "Unions")
+assert-text: (".sidebar-elems > .items > ul > li:nth-child(9)", "Keywords")
 assert-text: ("#structs + .item-table .item-left > a", "Foo")
 click: "#structs + .item-table .item-left > a"
 
