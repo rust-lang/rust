@@ -1809,10 +1809,30 @@ pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     matches!(get_parent_node(tcx, expr.hir_id), Some(Node::Block(..)))
 }
 
+pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
+    if !is_no_std_crate(cx) {
+        Some("std")
+    } else if !is_no_core_crate(cx) {
+        Some("core")
+    } else {
+        None
+    }
+}
+
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
         if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
             attr.path == sym::no_std
+        } else {
+            false
+        }
+    })
+}
+
+pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
+    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
+        if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
+            attr.path == sym::no_core
         } else {
             false
         }
