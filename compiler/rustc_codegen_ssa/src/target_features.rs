@@ -19,6 +19,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("crypto", Some(sym::arm_target_feature)),
     ("aes", Some(sym::arm_target_feature)),
     ("sha2", Some(sym::arm_target_feature)),
+    ("i8mm", Some(sym::arm_target_feature)),
     ("v5te", Some(sym::arm_target_feature)),
     ("v6", Some(sym::arm_target_feature)),
     ("v6k", Some(sym::arm_target_feature)),
