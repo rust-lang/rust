@@ -7,7 +7,7 @@ LL | fn foo(x: &mut Vec<&'_ u8>, y: &'_ u8) { x.push(y); }
    |                                these two types are declared with different lifetimes...
    |
    = note: each elided lifetime in input position becomes a distinct lifetime
-help: explicitly declare a lifetime and assign it to both
+help: consider introducing a named lifetime parameter
    |
 LL | fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
    |       ++++              ~~          ~~

@@ -1,63 +1,64 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:2:35
+  --> $DIR/issue-90170-elision-mismatch.rs:3:43
    |
-LL | fn foo(slice_a: &mut [u8], slice_b: &mut [u8]) {
-   |                 ---------           --------- these two types are declared with different lifetimes...
-LL |     core::mem::swap(&mut slice_a, &mut slice_b);
-   |                                   ^^^^^^^^^^^^ ...but data from `slice_b` flows into `slice_a` here
+LL | fn foo(x: &mut Vec<&u8>, y: &u8) { x.push(y); }
+   |                    ---      ---           ^ ...but data from `y` flows into `x` here
+   |                             |
+   |                             these two types are declared with different lifetimes...
    |
    = note: each elided lifetime in input position becomes a distinct lifetime
-help: explicitly declare a lifetime and assign it to both
+help: consider introducing a named lifetime parameter
    |
-LL | fn foo<'a>(slice_a: &'a mut [u8], slice_b: &'a mut [u8]) {
-   |       ++++           ++                     ++
+LL | fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
+   |       ++++              ++          ++
 
 error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:2:35
+  --> $DIR/issue-90170-elision-mismatch.rs:5:47
    |
-LL | fn foo(slice_a: &mut [u8], slice_b: &mut [u8]) {
-   |                 ---------           ---------
-   |                 |
-   |                 these two types are declared with different lifetimes...
-LL |     core::mem::swap(&mut slice_a, &mut slice_b);
-   |                                   ^^^^^^^^^^^^ ...but data from `slice_a` flows into `slice_b` here
+LL | fn foo2(x: &mut Vec<&'_ u8>, y: &u8) { x.push(y); }
+   |                     ------      ---           ^ ...but data from `y` flows into `x` here
+   |                                 |
+   |                                 these two types are declared with different lifetimes...
    |
    = note: each elided lifetime in input position becomes a distinct lifetime
-help: explicitly declare a lifetime and assign it to both
+help: consider introducing a named lifetime parameter
    |
-LL | fn foo<'a>(slice_a: &'a mut [u8], slice_b: &'a mut [u8]) {
-   |       ++++           ++                     ++
+LL | fn foo2<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
+   |        ++++              ~~          ++
 
 error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:7:35
+  --> $DIR/issue-90170-elision-mismatch.rs:7:66
    |
-LL | fn foo2<U, W, O>(slice_a: &mut [u8], slice_b: &mut [u8], _: U, _: W, _: O) {
-   |                           ---------           --------- these two types are declared with different lifetimes...
-LL |     core::mem::swap(&mut slice_a, &mut slice_b);
-   |                                   ^^^^^^^^^^^^ ...but data from `slice_b` flows into `slice_a` here
-   |
-   = note: each elided lifetime in input position becomes a distinct lifetime
-help: explicitly declare a lifetime and assign it to both
-   |
-LL | fn foo2<'a, U, W, O>(slice_a: &'a mut [u8], slice_b: &'a mut [u8], _: U, _: W, _: O) {
-   |         +++                    ++                     ++
-
-error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:7:35
-   |
-LL | fn foo2<U, W, O>(slice_a: &mut [u8], slice_b: &mut [u8], _: U, _: W, _: O) {
-   |                           ---------           ---------
-   |                           |
-   |                           these two types are declared with different lifetimes...
-LL |     core::mem::swap(&mut slice_a, &mut slice_b);
-   |                                   ^^^^^^^^^^^^ ...but data from `slice_a` flows into `slice_b` here
+LL | fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&u8>, y: &u8) { x.push(y); }
+   |                                           ---      ---           ^ ...but data from `y` flows into `x` here
+   |                                                    |
+   |                                                    these two types are declared with different lifetimes...
    |
    = note: each elided lifetime in input position becomes a distinct lifetime
-help: explicitly declare a lifetime and assign it to both
+help: consider introducing a named lifetime parameter
    |
-LL | fn foo2<'a, U, W, O>(slice_a: &'a mut [u8], slice_b: &'a mut [u8], _: U, _: W, _: O) {
-   |         +++                    ++                     ++
+LL | fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
+   |                                            ++          ++
 
-error: aborting due to 4 previous errors
+error[E0308]: mismatched types
+  --> $DIR/issue-90170-elision-mismatch.rs:16:9
+   |
+LL |     foo(&mut a, &mut b);
+   |         ^^^^^^ expected struct `Vec`, found array `[u8; 3]`
+   |
+   = note: expected mutable reference `&mut Vec<&u8>`
+              found mutable reference `&mut [u8; 3]`
 
-For more information about this error, try `rustc --explain E0623`.
+error[E0308]: mismatched types
+  --> $DIR/issue-90170-elision-mismatch.rs:16:17
+   |
+LL |     foo(&mut a, &mut b);
+   |                 ^^^^^^ expected `u8`, found array `[u8; 3]`
+   |
+   = note:      expected reference `&u8`
+           found mutable reference `&mut [u8; 3]`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0308, E0623.
+For more information about an error, try `rustc --explain E0308`.

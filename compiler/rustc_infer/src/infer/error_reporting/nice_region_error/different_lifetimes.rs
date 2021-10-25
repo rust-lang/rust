@@ -9,7 +9,7 @@ use crate::infer::SubregionOrigin;
 
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
-use rustc_hir::Ty;
+use rustc_hir::{GenericParamKind, Ty};
 use rustc_middle::ty::Region;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
@@ -163,13 +163,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 }
             };
 
-        let mut e = struct_span_err!(self.tcx().sess, span, E0623, "lifetime mismatch");
+        let mut err = struct_span_err!(self.tcx().sess, span, E0623, "lifetime mismatch");
 
-        e.span_label(span_1, main_label);
-        e.span_label(span_2, String::new());
-        e.span_label(span, span_label);
+        err.span_label(span_1, main_label);
+        err.span_label(span_2, String::new());
+        err.span_label(span, span_label);
 
-        self.suggest_adding_lifetime_params(sub, ty_sup, ty_sub, &mut e);
+        self.suggest_adding_lifetime_params(sub, ty_sup, ty_sub, &mut err);
 
         if let Some(t) = future_return_type {
             let snip = self
@@ -185,12 +185,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 })
                 .unwrap_or_else(|| "{unnamed_type}".to_string());
 
-            e.span_label(
+            err.span_label(
                 t.span,
                 &format!("this `async fn` implicitly returns an `impl Future<Output = {}>`", snip),
             );
         }
-        e.emit();
+        err.emit();
         Some(ErrorReported)
     }
 
@@ -199,7 +199,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         sub: Region<'tcx>,
         ty_sup: &Ty<'_>,
         ty_sub: &Ty<'_>,
-        e: &mut DiagnosticBuilder<'_>,
+        err: &mut DiagnosticBuilder<'_>,
     ) {
         if let (
             hir::Ty { kind: hir::TyKind::Rptr(lifetime_sub, _), .. },
@@ -214,29 +214,51 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         ..
                     }) = self.tcx().hir().get(hir_id)
                     {
-                        let add_lifetime_param = match &generics.params {
-                            [] => (generics.span, "<'a>".to_string()),
-                            [first, ..] => (first.span.shrink_to_lo(), "'a, ".to_string()),
-                        };
+                        let (suggestion_param_name, introduce_new) = generics
+                            .params
+                            .iter()
+                            .find(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                            .and_then(|p| self.tcx().sess.source_map().span_to_snippet(p.span).ok())
+                            .map(|name| (name, false))
+                            .unwrap_or_else(|| ("'a".to_string(), true));
 
-                        e.multipart_suggestion(
-                            "explicitly declare a lifetime and assign it to both",
-                            vec![
-                                add_lifetime_param,
-                                if let hir::LifetimeName::Underscore = lifetime_sub.name {
-                                    (lifetime_sub.span, "'a".to_string())
-                                } else {
-                                    (lifetime_sub.span.shrink_to_hi(), "'a ".to_string())
-                                },
-                                if let hir::LifetimeName::Underscore = lifetime_sup.name {
-                                    (lifetime_sup.span, "'a".to_string())
-                                } else {
-                                    (lifetime_sup.span.shrink_to_hi(), "'a ".to_string())
-                                },
-                            ],
+                        let mut suggestions = vec![
+                            if let hir::LifetimeName::Underscore = lifetime_sub.name {
+                                (lifetime_sub.span, suggestion_param_name.clone())
+                            } else {
+                                (
+                                    lifetime_sub.span.shrink_to_hi(),
+                                    suggestion_param_name.clone() + " ",
+                                )
+                            },
+                            if let hir::LifetimeName::Underscore = lifetime_sup.name {
+                                (lifetime_sup.span, suggestion_param_name.clone())
+                            } else {
+                                (
+                                    lifetime_sup.span.shrink_to_hi(),
+                                    suggestion_param_name.clone() + " ",
+                                )
+                            },
+                        ];
+
+                        if introduce_new {
+                            let new_param_suggestion = match &generics.params {
+                                [] => (generics.span, format!("<{}>", suggestion_param_name)),
+                                [first, ..] => (
+                                    first.span.shrink_to_lo(),
+                                    format!("{}, ", suggestion_param_name),
+                                ),
+                            };
+
+                            suggestions.push(new_param_suggestion);
+                        }
+
+                        err.multipart_suggestion(
+                            "consider introducing a named lifetime parameter",
+                            suggestions,
                             Applicability::MaybeIncorrect,
                         );
-                        e.note(
+                        err.note(
                             "each elided lifetime in input position becomes a distinct lifetime",
                         );
                     }
