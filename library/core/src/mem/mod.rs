@@ -984,6 +984,7 @@ impl<T> cmp::Eq for Discriminant<T> {}
 
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> hash::Hash for Discriminant<T> {
+    #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.0.hash(state);
     }
