@@ -259,6 +259,7 @@ pub struct Cargo {
 impl Step for Cargo {
     type Output = ();
     const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/cargo")
