@@ -17,7 +17,7 @@ trait Foo {
 
 impl const Foo for NonConstAdd {
     type Bar = NonConstAdd;
-    //~^ ERROR
+    //TODO: ~^ ERROR
 }
 
 trait Baz {
@@ -29,5 +29,3 @@ impl const Baz for NonConstAdd {
 }
 
 fn main() {}
-
-// TODO: this test should not pass
