@@ -218,6 +218,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST),
     LintId::of(non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
     LintId::of(non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS),
+    LintId::of(non_send_fields_in_send_ty::NON_SEND_FIELDS_IN_SEND_TY),
     LintId::of(open_options::NONSENSICAL_OPEN_OPTIONS),
     LintId::of(option_env_unwrap::OPTION_ENV_UNWRAP),
     LintId::of(overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),

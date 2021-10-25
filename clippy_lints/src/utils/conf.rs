@@ -288,10 +288,10 @@ define_Conf! {
     ///
     /// The list of imports to always rename, a fully qualified path followed by the rename.
     (enforced_import_renames: Vec<crate::utils::conf::Rename> = Vec::new()),
-    /// Lint: RESTRICTED_SCRIPTS.
+    /// Lint: DISALLOWED_SCRIPT_IDENTS.
     ///
     /// The list of unicode scripts allowed to be used in the scope.
-    (allowed_scripts: Vec<String> = vec!["Latin".to_string()]),
+    (allowed_scripts: Vec<String> = ["Latin"].iter().map(ToString::to_string).collect()),
     /// Lint: NON_SEND_FIELDS_IN_SEND_TY.
     ///
     /// Whether to apply the raw pointer heuristic to determine if a type is `Send`.
