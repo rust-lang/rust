@@ -160,6 +160,9 @@ impl Anchor {
             .ancestors()
             .take_while(|it| !ast::Item::can_cast(it.kind()) || ast::MacroCall::can_cast(it.kind()))
             .find_map(|node| {
+                if ast::MacroCall::can_cast(node.kind()) {
+                    return None;
+                }
                 if let Some(expr) =
                     node.parent().and_then(ast::StmtList::cast).and_then(|it| it.tail_expr())
                 {
@@ -814,6 +817,32 @@ fn foo() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn extract_macro_call() {
+        check_assist(
+            extract_variable,
+            r"
+struct Vec;
+macro_rules! vec {
+    () => {Vec}
+}
+fn main() {
+    let _ = $0vec![]$0;
+}
+",
+            r"
+struct Vec;
+macro_rules! vec {
+    () => {Vec}
+}
+fn main() {
+    let $0vec = vec![];
+    let _ = vec;
+}
+",
+        );
     }
 
     #[test]
