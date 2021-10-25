@@ -160,7 +160,7 @@ impl<'tcx> Context<'tcx> {
     }
 
     pub(super) fn sess(&self) -> &'tcx Session {
-        &self.shared.tcx.sess
+        self.shared.tcx.sess
     }
 
     pub(super) fn derive_id(&self, id: String) -> String {
@@ -188,7 +188,7 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(&doc));
+        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(doc));
         let desc = if let Some(desc) = desc {
             desc
         } else if it.is_crate() {

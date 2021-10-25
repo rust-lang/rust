@@ -321,13 +321,13 @@ impl Options {
     /// been printed, returns `Err` with the exit code.
     crate fn from_matches(matches: &getopts::Matches) -> Result<Options, i32> {
         // Check for unstable options.
-        nightly_options::check_nightly_options(&matches, &opts());
+        nightly_options::check_nightly_options(matches, &opts());
 
         if matches.opt_present("h") || matches.opt_present("help") {
             crate::usage("rustdoc");
             return Err(0);
         } else if matches.opt_present("version") {
-            rustc_driver::version("rustdoc", &matches);
+            rustc_driver::version("rustdoc", matches);
             return Err(0);
         }
 
@@ -363,10 +363,10 @@ impl Options {
             return Err(0);
         }
 
-        let color = config::parse_color(&matches);
+        let color = config::parse_color(matches);
         let config::JsonConfig { json_rendered, json_unused_externs, .. } =
-            config::parse_json(&matches);
-        let error_format = config::parse_error_format(&matches, color, json_rendered);
+            config::parse_json(matches);
+        let error_format = config::parse_error_format(matches, color, json_rendered);
 
         let codegen_options = CodegenOptions::build(matches, error_format);
         let debugging_opts = DebuggingOptions::build(matches, error_format);
@@ -374,7 +374,7 @@ impl Options {
         let diag = new_handler(error_format, None, &debugging_opts);
 
         // check for deprecated options
-        check_deprecated_options(&matches, &diag);
+        check_deprecated_options(matches, &diag);
 
         let mut emit = Vec::new();
         for list in matches.opt_strs("emit") {
@@ -440,8 +440,8 @@ impl Options {
             .iter()
             .map(|s| SearchPath::from_cli_opt(s, error_format))
             .collect();
-        let externs = parse_externs(&matches, &debugging_opts, error_format);
-        let extern_html_root_urls = match parse_extern_html_roots(&matches) {
+        let externs = parse_externs(matches, &debugging_opts, error_format);
+        let extern_html_root_urls = match parse_extern_html_roots(matches) {
             Ok(ex) => ex,
             Err(err) => {
                 diag.struct_err(err).emit();
@@ -560,7 +560,7 @@ impl Options {
             }
         }
 
-        let edition = config::parse_crate_edition(&matches);
+        let edition = config::parse_crate_edition(matches);
 
         let mut id_map = html::markdown::IdMap::new();
         let external_html = match ExternalHtml::load(
@@ -569,7 +569,7 @@ impl Options {
             &matches.opt_strs("html-after-content"),
             &matches.opt_strs("markdown-before-content"),
             &matches.opt_strs("markdown-after-content"),
-            nightly_options::match_is_nightly_build(&matches),
+            nightly_options::match_is_nightly_build(matches),
             &diag,
             &mut id_map,
             edition,

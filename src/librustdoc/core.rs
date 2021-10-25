@@ -85,7 +85,7 @@ crate struct DocContext<'tcx> {
 
 impl<'tcx> DocContext<'tcx> {
     crate fn sess(&self) -> &'tcx Session {
-        &self.tcx.sess
+        self.tcx.sess
     }
 
     crate fn with_param_env<T, F: FnOnce(&mut Self) -> T>(&mut self, def_id: DefId, f: F) -> T {
@@ -464,7 +464,7 @@ crate fn run_global_ctxt(
                 _ => continue,
             };
             for name in value.as_str().split_whitespace() {
-                let span = attr.name_value_literal_span().unwrap_or(attr.span());
+                let span = attr.name_value_literal_span().unwrap_or_else(|| attr.span());
                 manual_passes.extend(parse_pass(name, Some(span)));
             }
         }

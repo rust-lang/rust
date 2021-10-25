@@ -775,7 +775,7 @@ fn main_options(options: config::Options) -> MainResult {
             // We need to hold on to the complete resolver, so we cause everything to be
             // cloned for the analysis passes to use. Suboptimal, but necessary in the
             // current architecture.
-            let resolver = core::create_resolver(queries, &sess);
+            let resolver = core::create_resolver(queries, sess);
 
             if sess.has_errors() {
                 sess.fatal("Compilation failed, aborting rustdoc");

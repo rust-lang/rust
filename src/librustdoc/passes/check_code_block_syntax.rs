@@ -36,7 +36,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         let source = dox[code_block.code].to_owned();
         let sess = ParseSess::with_span_handler(handler, sm);
 
-        let edition = code_block.lang_string.edition.unwrap_or(self.cx.tcx.sess.edition());
+        let edition = code_block.lang_string.edition.unwrap_or_else(|| self.cx.tcx.sess.edition());
         let expn_data = ExpnData::default(
             ExpnKind::AstPass(AstPass::TestHarness),
             DUMMY_SP,
@@ -77,7 +77,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         // The span and whether it is precise or not.
         let (sp, precise_span) = match super::source_span_for_markdown_range(
             self.cx.tcx,
-            &dox,
+            dox,
             &code_block.range,
             &item.attrs,
         ) {
@@ -123,7 +123,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
 
             // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
             for message in buffer.messages.iter() {
-                diag.note(&message);
+                diag.note(message);
             }
 
             diag.emit();
@@ -150,8 +150,8 @@ impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
                 item.def_id.expect_def_id(),
                 sp,
             );
-            for code_block in markdown::rust_code_blocks(&dox, &extra) {
-                self.check_rust_syntax(&item, &dox, code_block);
+            for code_block in markdown::rust_code_blocks(dox, &extra) {
+                self.check_rust_syntax(&item, dox, code_block);
             }
         }
 

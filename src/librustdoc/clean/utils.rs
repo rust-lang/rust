@@ -171,8 +171,8 @@ crate fn strip_path_generics(path: Path) -> Path {
 
 crate fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
-        hir::QPath::Resolved(_, ref path) => &path.segments,
-        hir::QPath::TypeRelative(_, ref segment) => return segment.ident.to_string(),
+        hir::QPath::Resolved(_, path) => &path.segments,
+        hir::QPath::TypeRelative(_, segment) => return segment.ident.to_string(),
         hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
@@ -217,15 +217,15 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
         PatKind::Binding(_, _, ident, _) => return ident.name,
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
-        PatKind::Or(ref pats) => {
+        PatKind::Or(pats) => {
             pats.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(" | ")
         }
-        PatKind::Tuple(ref elts, _) => format!(
+        PatKind::Tuple(elts, _) => format!(
             "({})",
             elts.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(", ")
         ),
-        PatKind::Box(ref p) => return name_from_pat(&**p),
-        PatKind::Ref(ref p, _) => return name_from_pat(&**p),
+        PatKind::Box(p) => return name_from_pat(&*p),
+        PatKind::Ref(p, _) => return name_from_pat(&*p),
         PatKind::Lit(..) => {
             warn!(
                 "tried to get argument name from PatKind::Lit, which is silly in function arguments"
@@ -233,7 +233,7 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             return Symbol::intern("()");
         }
         PatKind::Range(..) => return kw::Underscore,
-        PatKind::Slice(ref begin, ref mid, ref end) => {
+        PatKind::Slice(begin, ref mid, end) => {
             let begin = begin.iter().map(|p| name_from_pat(p).to_string());
             let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();
             let end = end.iter().map(|p| name_from_pat(p).to_string());
@@ -507,7 +507,7 @@ crate fn has_doc_flag(attrs: ty::Attributes<'_>, flag: Symbol) -> bool {
 /// so that the channel is consistent.
 ///
 /// Set by `bootstrap::Builder::doc_rust_lang_org_channel` in order to keep tests passing on beta/stable.
-crate const DOC_RUST_LANG_ORG_CHANNEL: &'static str = env!("DOC_RUST_LANG_ORG_CHANNEL");
+crate const DOC_RUST_LANG_ORG_CHANNEL: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
 
 /// Render a sequence of macro arms in a format suitable for displaying to the user
 /// as part of an item declaration.
