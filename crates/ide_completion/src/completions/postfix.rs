@@ -55,7 +55,10 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         None => return,
     };
 
-    let postfix_snippet = build_postfix_snippet_builder(ctx, cap, &dot_receiver);
+    let postfix_snippet = match build_postfix_snippet_builder(ctx, cap, &dot_receiver) {
+        Some(it) => it,
+        None => return,
+    };
 
     if !ctx.config.snippets.is_empty() {
         add_custom_postfix_completions(acc, ctx, &postfix_snippet, &receiver_text);
@@ -123,7 +126,10 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     // so it's better to consider references now to avoid breaking the compilation
     let dot_receiver = include_references(dot_receiver);
     let receiver_text = get_receiver_text(&dot_receiver, receiver_is_ambiguous_float_literal);
-    let postfix_snippet = build_postfix_snippet_builder(ctx, cap, &dot_receiver);
+    let postfix_snippet = match build_postfix_snippet_builder(ctx, cap, &dot_receiver) {
+        Some(it) => it,
+        None => return,
+    };
 
     match try_enum {
         Some(try_enum) => match try_enum {
@@ -200,27 +206,36 @@ fn include_references(initial_element: &ast::Expr) -> ast::Expr {
     resulting_element
 }
 
-fn build_postfix_snippet_builder<'a>(
-    ctx: &'a CompletionContext,
+fn build_postfix_snippet_builder<'ctx>(
+    ctx: &'ctx CompletionContext,
     cap: SnippetCap,
-    receiver: &'a ast::Expr,
-) -> impl Fn(&str, &str, &str) -> Builder + 'a {
+    receiver: &'ctx ast::Expr,
+) -> Option<impl Fn(&str, &str, &str) -> Builder + 'ctx> {
     let receiver_syntax = receiver.syntax();
-    let receiver_range = ctx.sema.original_range(receiver_syntax).range;
+    let receiver_range = ctx.sema.original_range_opt(receiver_syntax)?.range;
     let delete_range = TextRange::new(receiver_range.start(), ctx.source_range().end());
 
-    move |label, detail, snippet| {
-        let edit = TextEdit::replace(delete_range, snippet.to_string());
-        let mut item = CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label);
-        item.detail(detail).kind(CompletionItemKind::Snippet).snippet_edit(cap, edit);
-        if ctx.original_token.text() == label {
-            let relevance =
-                CompletionRelevance { exact_postfix_snippet_match: true, ..Default::default() };
-            item.set_relevance(relevance);
-        }
+    // Wrapping impl Fn in an option ruins lifetime inference for the parameters in a way that
+    // can't be annotated for the closure, hence fix it by constructing it without the Option first
+    fn build<'ctx>(
+        ctx: &'ctx CompletionContext,
+        cap: SnippetCap,
+        delete_range: TextRange,
+    ) -> impl Fn(&str, &str, &str) -> Builder + 'ctx {
+        move |label, detail, snippet| {
+            let edit = TextEdit::replace(delete_range, snippet.to_string());
+            let mut item = CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label);
+            item.detail(detail).kind(CompletionItemKind::Snippet).snippet_edit(cap, edit);
+            if ctx.original_token.text() == label {
+                let relevance =
+                    CompletionRelevance { exact_postfix_snippet_match: true, ..Default::default() };
+                item.set_relevance(relevance);
+            }
 
-        item
+            item
+        }
     }
+    Some(build(ctx, cap, delete_range))
 }
 
 fn add_custom_postfix_completions(

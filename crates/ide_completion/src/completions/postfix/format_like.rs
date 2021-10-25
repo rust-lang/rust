@@ -49,7 +49,10 @@ pub(crate) fn add_format_like_completions(
         None => return,
     };
 
-    let postfix_snippet = build_postfix_snippet_builder(ctx, cap, dot_receiver);
+    let postfix_snippet = match build_postfix_snippet_builder(ctx, cap, dot_receiver) {
+        Some(it) => it,
+        None => return,
+    };
     let mut parser = FormatStrParser::new(input);
 
     if parser.parse().is_ok() {
