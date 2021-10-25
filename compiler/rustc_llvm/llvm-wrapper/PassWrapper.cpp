@@ -462,6 +462,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
     bool FunctionSections,
     bool DataSections,
+    bool UniqueSectionNames,
     bool TrapUnreachable,
     bool Singlethread,
     bool AsmComments,
@@ -491,6 +492,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
+  Options.UniqueSectionNames = UniqueSectionNames;
   Options.MCOptions.AsmVerbose = AsmComments;
   Options.MCOptions.PreserveAsmComments = AsmComments;
   Options.MCOptions.ABIName = ABIStr;

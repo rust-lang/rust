@@ -2187,6 +2187,7 @@ extern "C" {
         UseSoftFP: bool,
         FunctionSections: bool,
         DataSections: bool,
+        UniqueSectionNames: bool,
         TrapUnreachable: bool,
         Singlethread: bool,
         AsmComments: bool,
