@@ -327,9 +327,8 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             // metadata in rlib files is wrapped in a "dummy" object file for
             // the target platform so the rlib can be processed entirely by
             // normal linkers for the platform.
-            let out_filename = tmpdir.as_ref().join(METADATA_FILENAME);
-            create_metadata_file(sess, codegen_results.metadata.raw_data(), &out_filename);
-            ab.add_file(&out_filename);
+            let metadata = create_metadata_file(sess, codegen_results.metadata.raw_data());
+            ab.add_file(&emit_metadata(sess, &metadata, tmpdir));
 
             // After adding all files to the archive, we need to update the
             // symbol table of the archive. This currently dies on macOS (see
@@ -383,7 +382,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     //
     // Note that this metdata format is kept in sync with
     // `rustc_codegen_ssa/src/back/metadata.rs`.
-    fn create_metadata_file(sess: &Session, metadata: &[u8], out_filename: &Path) {
+    fn create_metadata_file(sess: &Session, metadata: &[u8]) -> Vec<u8> {
         let endianness = match sess.target.options.endian {
             Endian::Little => Endianness::Little,
             Endian::Big => Endianness::Big,
@@ -424,21 +423,16 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             // WebAssembly and for targets not supported by the `object` crate
             // yet it means that work will need to be done in the `object` crate
             // to add a case above.
-            _ => {
-                if let Err(e) = fs::write(out_filename, metadata) {
-                    sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
-                }
-                return;
-            }
+            _ => return metadata.to_vec(),
         };
 
-        let file = if sess.target.is_like_osx {
+        if sess.target.is_like_osx {
             let mut file = Object::new(BinaryFormat::MachO, architecture, endianness);
 
             let section =
                 file.add_section(b"__DWARF".to_vec(), b".rmeta".to_vec(), SectionKind::Debug);
             file.set_section_data(section, metadata, 1);
-            file
+            file.write().unwrap()
         } else if sess.target.is_like_windows {
             const IMAGE_SCN_LNK_REMOVE: u32 = 0;
             let mut file = Object::new(BinaryFormat::Coff, architecture, endianness);
@@ -447,7 +441,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             file.section_mut(section).flags =
                 SectionFlags::Coff { characteristics: IMAGE_SCN_LNK_REMOVE };
             file.set_section_data(section, metadata, 1);
-            file
+            file.write().unwrap()
         } else {
             const SHF_EXCLUDE: u64 = 0x80000000;
             let mut file = Object::new(BinaryFormat::Elf, architecture, endianness);
@@ -479,14 +473,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             let section = file.add_section(Vec::new(), b".rmeta".to_vec(), SectionKind::Debug);
             file.section_mut(section).flags = SectionFlags::Elf { sh_flags: SHF_EXCLUDE };
             file.set_section_data(section, metadata, 1);
-            file
-        };
-        let out_file = match fs::File::create(out_filename) {
-            Ok(out_file) => io::BufWriter::new(out_file),
-            Err(e) => sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e)),
-        };
-        if let Err(e) = file.write_stream(out_file) {
-            sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+            file.write().unwrap()
         }
     }
 }
