@@ -744,6 +744,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(new_llvm_pass_manager, Some(true));
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
+    tracked!(no_unique_section_names, true);
     tracked!(no_profiler_runtime, true);
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);
