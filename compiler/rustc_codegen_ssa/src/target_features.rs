@@ -19,6 +19,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("crypto", Some(sym::arm_target_feature)),
     ("aes", Some(sym::arm_target_feature)),
     ("sha2", Some(sym::arm_target_feature)),
+    ("i8mm", Some(sym::arm_target_feature)),
     ("v5te", Some(sym::arm_target_feature)),
     ("v6", Some(sym::arm_target_feature)),
     ("v6k", Some(sym::arm_target_feature)),
@@ -90,7 +91,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // FEAT_FRINTTS
     ("frintts", Some(sym::aarch64_target_feature)),
     // FEAT_I8MM
-    // ("i8mm", Some(sym::aarch64_target_feature)),
+    ("i8mm", Some(sym::aarch64_target_feature)),
     // FEAT_F32MM
     // ("f32mm", Some(sym::aarch64_target_feature)),
     // FEAT_F64MM
