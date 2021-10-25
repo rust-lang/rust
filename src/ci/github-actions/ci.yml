@@ -672,17 +672,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-apple
-            env:
-              SCRIPT: ./x.py dist --exclude src/doc --exclude extended && ./x.py dist --target=x86_64-apple-darwin src/doc && ./x.py dist extended
-              RUST_CONFIGURE_ARGS: --host=x86_64-apple-darwin --target=x86_64-apple-darwin,aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.7
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              DIST_REQUIRE_ALL_TOOLS: 1
-            <<: *job-macos-xl
-
+          - &dist-x86_64-linux
+            name: dist-x86_64-linux
+            <<: *job-linux-xl
 
   master:
     name: master
