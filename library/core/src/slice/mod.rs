@@ -553,7 +553,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let mut v = ["a", "b", "c", "d", "e];
+    /// let mut v = ["a", "b", "c", "d", "e"];
     /// v.swap(2, 4);
     /// assert!(v == ["a", "b", "e", "d", "c"]);
     /// ```
