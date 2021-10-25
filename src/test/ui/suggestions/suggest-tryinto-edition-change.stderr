@@ -1,0 +1,21 @@
+error[E0599]: no method named `try_into` found for type `i32` in the current scope
+  --> $DIR/suggest-tryinto-edition-change.rs:5:24
+   |
+LL |     let i: i16 = 0_i32.try_into().unwrap();
+   |                        ^^^^^^^^ method not found in `i32`
+   |
+  ::: $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn try_into(self) -> Result<T, Self::Error>;
+   |        -------- the method is available for `i32` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+   |
+LL | use std::convert::TryInto;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

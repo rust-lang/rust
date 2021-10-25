@@ -15,6 +15,7 @@ LL |     fn try_into(self) -> Result<T, Self::Error>;
    |        the method is available for `Rc<u8>` here
    |
    = help: items from traits can only be used if the trait is in scope
+   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 help: consider wrapping the receiver expression with the appropriate type
    |
 LL |         let _: u32 = Box::new(3u8).try_into().unwrap();
