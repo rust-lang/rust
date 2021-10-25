@@ -34,7 +34,7 @@ impl IntraLinkCrateLoader {
         let attrs = crate::clean::Attributes::from_ast(attrs, None);
         for (parent_module, doc) in attrs.collapsed_doc_value_by_module_level() {
             debug!(?doc);
-            for link in markdown_links(&doc.as_str()) {
+            for link in markdown_links(doc.as_str()) {
                 debug!(?link.link);
                 let path_str = if let Some(Ok(x)) = preprocess_link(&link) {
                     x.path_str
@@ -46,7 +46,7 @@ impl IntraLinkCrateLoader {
                         span,
                         &path_str,
                         TypeNS,
-                        parent_module.unwrap_or(self.current_mod.to_def_id()),
+                        parent_module.unwrap_or_else(|| self.current_mod.to_def_id()),
                     );
                 });
             }

@@ -204,7 +204,7 @@ impl ExternalCrate {
             .filter_map(|a| a.value_str())
             .map(to_remote)
             .next()
-            .or(extern_url.map(to_remote)) // NOTE: only matters if `extern_url_takes_precedence` is false
+            .or_else(|| extern_url.map(to_remote)) // NOTE: only matters if `extern_url_takes_precedence` is false
             .unwrap_or(Unknown) // Well, at least we tried.
     }
 
@@ -238,7 +238,7 @@ impl ExternalCrate {
                         hir::ItemKind::Mod(_) => {
                             as_keyword(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
                         }
-                        hir::ItemKind::Use(ref path, hir::UseKind::Single)
+                        hir::ItemKind::Use(path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
                             as_keyword(path.res.expect_non_local())
@@ -304,7 +304,7 @@ impl ExternalCrate {
                         hir::ItemKind::Mod(_) => {
                             as_primitive(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
                         }
-                        hir::ItemKind::Use(ref path, hir::UseKind::Single)
+                        hir::ItemKind::Use(path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
                             as_primitive(path.res.expect_non_local()).map(|(_, prim)| {
@@ -381,7 +381,7 @@ impl Item {
         {
             *span
         } else {
-            self.def_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(|| Span::dummy())
+            self.def_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(Span::dummy)
         }
     }
 
@@ -562,7 +562,7 @@ impl Item {
     }
 
     crate fn stability_class(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        self.stability(tcx).as_ref().and_then(|ref s| {
+        self.stability(tcx).as_ref().and_then(|s| {
             let mut classes = Vec::with_capacity(2);
 
             if s.level.is_unstable() {
@@ -820,9 +820,9 @@ impl AttributesExt for [ast::Attribute] {
                         // #[doc(cfg(...))]
                         if let Some(cfg_mi) = item
                             .meta_item()
-                            .and_then(|item| rustc_expand::config::parse_cfg(&item, sess))
+                            .and_then(|item| rustc_expand::config::parse_cfg(item, sess))
                         {
-                            match Cfg::parse(&cfg_mi) {
+                            match Cfg::parse(cfg_mi) {
                                 Ok(new_cfg) => cfg &= new_cfg,
                                 Err(e) => sess.span_err(e.span, e.msg),
                             }
@@ -934,7 +934,7 @@ impl<'a> FromIterator<&'a DocFragment> for String {
         T: IntoIterator<Item = &'a DocFragment>,
     {
         iter.into_iter().fold(String::new(), |mut acc, frag| {
-            add_doc_fragment(&mut acc, &frag);
+            add_doc_fragment(&mut acc, frag);
             acc
         })
     }
@@ -1061,12 +1061,12 @@ impl Attributes {
 
         let ori = iter.next()?;
         let mut out = String::new();
-        add_doc_fragment(&mut out, &ori);
-        while let Some(new_frag) = iter.next() {
+        add_doc_fragment(&mut out, ori);
+        for new_frag in iter {
             if new_frag.kind != ori.kind || new_frag.parent_module != ori.parent_module {
                 break;
             }
-            add_doc_fragment(&mut out, &new_frag);
+            add_doc_fragment(&mut out, new_frag);
         }
         if out.is_empty() { None } else { Some(out) }
     }
@@ -1079,7 +1079,7 @@ impl Attributes {
 
         for new_frag in self.doc_strings.iter() {
             let out = ret.entry(new_frag.parent_module).or_default();
-            add_doc_fragment(out, &new_frag);
+            add_doc_fragment(out, new_frag);
         }
         ret
     }

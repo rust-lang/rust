@@ -128,7 +128,7 @@ impl Context<'_> {
     ) -> Result<(), Error> {
         if minify {
             let contents = contents.as_ref();
-            let contents = if resource.extension() == Some(&OsStr::new("css")) {
+            let contents = if resource.extension() == Some(OsStr::new("css")) {
                 minifier::css::minify(contents).map_err(|e| {
                     Error::new(format!("failed to minify CSS file: {}", e), resource.path(self))
                 })?

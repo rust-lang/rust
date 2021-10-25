@@ -126,8 +126,8 @@ impl Serialize for IndexItemFunctionType {
         // If we couldn't figure out a type, just write `null`.
         let mut iter = self.inputs.iter();
         if match self.output {
-            Some(ref output) => iter.chain(output.iter()).any(|ref i| i.ty.name.is_none()),
-            None => iter.any(|ref i| i.ty.name.is_none()),
+            Some(ref output) => iter.chain(output.iter()).any(|i| i.ty.name.is_none()),
+            None => iter.any(|i| i.ty.name.is_none()),
         } {
             serializer.serialize_none()
         } else {
@@ -906,7 +906,7 @@ fn render_assoc_item(
             AssocItemLink::GotoSource(did, provided_methods) => {
                 // We're creating a link from an impl-item to the corresponding
                 // trait-item and need to map the anchored type accordingly.
-                let ty = if provided_methods.contains(&name) {
+                let ty = if provided_methods.contains(name) {
                     ItemType::Method
                 } else {
                     ItemType::TyMethod
@@ -965,7 +965,7 @@ fn render_assoc_item(
             name = name,
             generics = g.print(cx),
             decl = d.full_print(header_len, indent, header.asyncness, cx),
-            notable_traits = notable_traits_decl(&d, cx),
+            notable_traits = notable_traits_decl(d, cx),
             where_clause = print_where_clause(g, cx, indent, end_newline),
         )
     }
@@ -1008,7 +1008,7 @@ fn attributes(it: &clean::Item) -> Vec<String> {
         .iter()
         .filter_map(|attr| {
             if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
-                Some(pprust::attribute_to_string(&attr).replace("\n", "").replace("  ", " "))
+                Some(pprust::attribute_to_string(attr).replace("\n", "").replace("  ", " "))
             } else {
                 None
             }
@@ -1041,7 +1041,7 @@ enum AssocItemLink<'a> {
 impl<'a> AssocItemLink<'a> {
     fn anchor(&self, id: &'a str) -> Self {
         match *self {
-            AssocItemLink::Anchor(_) => AssocItemLink::Anchor(Some(&id)),
+            AssocItemLink::Anchor(_) => AssocItemLink::Anchor(Some(id)),
             ref other => *other,
         }
     }
@@ -1120,7 +1120,7 @@ fn render_assoc_items(
         let (blanket_impl, concrete): (Vec<&&Impl>, _) =
             concrete.into_iter().partition(|t| t.inner_impl().blanket_impl.is_some());
 
-        let mut impls = Buffer::empty_from(&w);
+        let mut impls = Buffer::empty_from(w);
         render_impls(cx, &mut impls, &concrete, containing_item);
         let impls = impls.into_inner();
         if !impls.is_empty() {
@@ -1333,7 +1333,7 @@ fn render_impl(
             && match render_mode {
                 RenderMode::Normal => true,
                 RenderMode::ForDeref { mut_: deref_mut_ } => {
-                    should_render_item(&item, deref_mut_, cx.tcx())
+                    should_render_item(item, deref_mut_, cx.tcx())
                 }
             };
 
@@ -1566,7 +1566,7 @@ fn render_impl(
                 &mut impl_items,
                 cx,
                 &t.trait_,
-                &i.inner_impl(),
+                i.inner_impl(),
                 &i.impl_item,
                 parent,
                 render_mode,
@@ -2060,7 +2060,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
     }
 }
 
-fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &Vec<Impl>) {
+fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &[Impl]) {
     let c = cx.cache();
 
     debug!("found Deref: {:?}", impl_);
@@ -2159,16 +2159,14 @@ fn get_id_for_impl_on_foreign_type(
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
     match *item.kind {
         clean::ItemKind::ImplItem(ref i) => {
-            if let Some(ref trait_) = i.trait_ {
+            i.trait_.as_ref().map(|trait_| {
                 // Alternative format produces no URLs,
                 // so this parameter does nothing.
-                Some((
+                (
                     format!("{:#}", i.for_.print(cx)),
                     get_id_for_impl_on_foreign_type(&i.for_, trait_, cx),
-                ))
-            } else {
-                None
-            }
+                )
+            })
         }
         _ => None,
     }
@@ -2343,9 +2341,10 @@ fn sidebar_enum(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, e: &clean:
     let mut variants = e
         .variants
         .iter()
-        .filter_map(|v| match v.name {
-            Some(ref name) => Some(format!("<a href=\"#variant.{name}\">{name}</a>", name = name)),
-            _ => None,
+        .filter_map(|v| {
+            v.name
+                .as_ref()
+                .map(|name| format!("<a href=\"#variant.{name}\">{name}</a>", name = name))
         })
         .collect::<Vec<_>>();
     if !variants.is_empty() {

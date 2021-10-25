@@ -292,7 +292,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // inserted later on when serializing the search-index.
                     if item.def_id.index().map_or(false, |idx| idx != CRATE_DEF_INDEX) {
                         let desc = item.doc_value().map_or_else(String::new, |x| {
-                            short_markdown_summary(&x.as_str(), &item.link_names(&self.cache))
+                            short_markdown_summary(x.as_str(), &item.link_names(self.cache))
                         });
                         self.cache.search_index.push(IndexItem {
                             ty: item.type_(),
@@ -462,7 +462,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             let impl_item = Impl { impl_item: item };
             if impl_item.trait_did().map_or(true, |d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
-                    self.cache.impls.entry(did).or_insert(vec![]).push(impl_item.clone());
+                    self.cache.impls.entry(did).or_insert_with(Vec::new).push(impl_item.clone());
                 }
             } else {
                 let trait_did = impl_item.trait_did().expect("no trait did");

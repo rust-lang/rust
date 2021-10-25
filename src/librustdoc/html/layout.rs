@@ -68,10 +68,8 @@ crate fn render<T: Print, S: Print>(
     let krate_with_trailing_slash = ensure_trailing_slash(&layout.krate).to_string();
     let style_files = style_files
         .iter()
-        .filter_map(|t| {
-            if let Some(stem) = t.path.file_stem() { Some((stem, t.disabled)) } else { None }
-        })
-        .filter_map(|t| if let Some(path) = t.0.to_str() { Some((path, t.1)) } else { None })
+        .filter_map(|t| t.path.file_stem().map(|stem| (stem, t.disabled)))
+        .filter_map(|t| t.0.to_str().map(|path| (path, t.1)))
         .map(|t| {
             format!(
                 r#"<link rel="stylesheet" type="text/css" href="{}.css" {} {}>"#,

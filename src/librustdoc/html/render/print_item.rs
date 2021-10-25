@@ -34,10 +34,10 @@ use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 
 use serde::Serialize;
 
-const ITEM_TABLE_OPEN: &'static str = "<div class=\"item-table\">";
-const ITEM_TABLE_CLOSE: &'static str = "</div>";
-const ITEM_TABLE_ROW_OPEN: &'static str = "<div class=\"item-row\">";
-const ITEM_TABLE_ROW_CLOSE: &'static str = "</div>";
+const ITEM_TABLE_OPEN: &str = "<div class=\"item-table\">";
+const ITEM_TABLE_CLOSE: &str = "</div>";
+const ITEM_TABLE_ROW_OPEN: &str = "<div class=\"item-row\">";
+const ITEM_TABLE_ROW_CLOSE: &str = "</div>";
 
 // A component in a `use` path, like `string` in std::string::ToString
 #[derive(Serialize)]
@@ -761,7 +761,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 render_impl(
                     w,
                     cx,
-                    &implementor,
+                    implementor,
                     it,
                     assoc_link,
                     RenderMode::Normal,
@@ -1497,7 +1497,7 @@ fn render_union(
     );
     if let Some(g) = g {
         write!(w, "{}", g.print(cx));
-        write!(w, "{}", print_where_clause(&g, cx, 0, true));
+        write!(w, "{}", print_where_clause(g, cx, 0, true));
     }
 
     write!(w, " {{\n{}", tab);

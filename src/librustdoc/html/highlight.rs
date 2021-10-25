@@ -62,7 +62,7 @@ crate fn render_with_highlighting(
     }
 
     write_header(out, class, extra_content);
-    write_code(out, &src, edition, context_info, decoration_info);
+    write_code(out, src, edition, context_info, decoration_info);
     write_footer(out, playground_button);
 }
 
@@ -718,7 +718,7 @@ fn string<T: Display>(
                             .map(|(url, _, _)| url)
                     }
                     LinkFromSrc::Primitive(prim) => format::href_with_root_path(
-                        PrimitiveType::primitive_locations(context.tcx())[&prim],
+                        PrimitiveType::primitive_locations(context.tcx())[prim],
                         context,
                         Some(context_info.root_path),
                     )

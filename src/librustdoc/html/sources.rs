@@ -67,7 +67,7 @@ impl LocalSourcesCollector<'_, '_> {
         }
 
         let mut href = String::new();
-        clean_path(&self.src_root, &p, false, |component| {
+        clean_path(self.src_root, &p, false, |component| {
             href.push_str(&component.to_string_lossy());
             href.push('/');
         });
@@ -168,7 +168,7 @@ impl SourceCollector<'_, 'tcx> {
         };
 
         // Remove the utf-8 BOM if any
-        let contents = if contents.starts_with('\u{feff}') { &contents[3..] } else { &contents };
+        let contents = contents.strip_prefix('\u{feff}').unwrap_or(&contents);
 
         // Create the intermediate directories
         let mut cur = self.dst.clone();
@@ -209,7 +209,7 @@ impl SourceCollector<'_, 'tcx> {
                     contents,
                     self.cx.shared.edition(),
                     file_span,
-                    &self.cx,
+                    self.cx,
                     &root_path,
                     None,
                     SourceContext::Standalone,
