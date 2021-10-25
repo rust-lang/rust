@@ -2379,7 +2379,16 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         if let Some(dir) = parent {
             cmd.include_path(&fix_windows_verbatim_for_gcc(dir));
         }
-        let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
+        let filename = cratepath.file_name().unwrap().to_str().unwrap();
+        // test if dll_suffix is found within filename (should be, but if it
+        // isn't falls back to just getting the file stem). Then just gets the
+        // substring from the beginning to the suffix. This is better than just
+        // getting the filestem, as it respects versioned libraries.
+        let filestem = filename
+            .find(&sess.target.dll_suffix)
+            .map(|idx| filename.get(0..idx))
+            .flatten()
+            .unwrap_or(cratepath.file_stem().unwrap().to_str().unwrap());
         cmd.link_rust_dylib(
             Symbol::intern(&unlib(&sess.target, filestem)),
             parent.unwrap_or_else(|| Path::new("")),

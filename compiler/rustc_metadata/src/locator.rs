@@ -365,6 +365,25 @@ impl<'a> CrateLocator<'a> {
         self.find_library_crate("", &mut seen_paths)
     }
 
+    /// Returns true if `file` has a suffix that could be a valid dylib
+    /// Example (assuming target has .so as dll_suffix):
+    ///   - `libsomecrate.asdf` -> `false`
+    ///   - `libsomecrate.so` -> `true`
+    ///   - `libsomecrate.so.0.1` -> `true`
+    ///   - `libsomecrate.so.a.4` -> `false`
+    fn test_dylib_suffix(&self, file: &str) -> bool {
+        // test if the targets dll_suffix is found within the filename. If it
+        // is check if all of the chars following it are either in range 0x30
+        // to 0x39 (0-9) or 0x2E (.).
+        match file.find(&self.target.dll_suffix) {
+            Some(idx) => file
+                .chars()
+                .skip(idx + self.target.dll_suffix.len())
+                .all(|c| c as u32 >= 0x30 && c as u32 <= 0x39 || c as u32 == 0x2E),
+            None => false,
+        }
+    }
+
     fn find_library_crate(
         &mut self,
         extra_prefix: &str,
@@ -402,7 +421,7 @@ impl<'a> CrateLocator<'a> {
                 (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
             } else if file.starts_with(&rlib_prefix) && file.ends_with(".rmeta") {
                 (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
-            } else if file.starts_with(&dylib_prefix) && file.ends_with(&self.target.dll_suffix) {
+            } else if file.starts_with(&dylib_prefix) && self.test_dylib_suffix(file) {
                 (
                     &file[(dylib_prefix.len())..(file.len() - self.target.dll_suffix.len())],
                     CrateFlavor::Dylib,
@@ -681,8 +700,7 @@ impl<'a> CrateLocator<'a> {
             };
 
             if file.starts_with("lib") && (file.ends_with(".rlib") || file.ends_with(".rmeta"))
-                || file.starts_with(&self.target.dll_prefix)
-                    && file.ends_with(&self.target.dll_suffix)
+                || file.starts_with(&self.target.dll_prefix) && self.test_dylib_suffix(file)
             {
                 // Make sure there's at most one rlib and at most one dylib.
                 // Note to take care and match against the non-canonicalized name:
