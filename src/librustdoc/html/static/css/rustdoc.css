@@ -532,7 +532,7 @@ nav.sub {
 	position: relative;
 }
 
-.docblock > * {
+.docblock > :not(.information) {
 	max-width: 100%;
 	overflow-x: auto;
 }
