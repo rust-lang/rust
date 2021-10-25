@@ -14,9 +14,7 @@ use rustc_hir::ItemKind;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
-use rustc_middle::ty::{
-    self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
-};
+use rustc_middle::ty::{self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
