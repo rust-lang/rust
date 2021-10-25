@@ -1402,7 +1402,7 @@ pub fn recurse_or_patterns<'tcx, F: FnMut(&'tcx Pat<'tcx>)>(pat: &'tcx Pat<'tcx>
 /// Checks for the `#[automatically_derived]` attribute all `#[derive]`d
 /// implementations have.
 pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(|attr| attr.has_name(sym::automatically_derived))
+    has_attr(attrs, sym::automatically_derived)
 }
 
 /// Remove blocks around an expression.
@@ -1524,18 +1524,27 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: rustc_ty::UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool {
+pub fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
+    attrs.iter().any(|attr| attr.has_name(symbol))
+}
+
+pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
     let map = &tcx.hir();
     let mut prev_enclosing_node = None;
     let mut enclosing_node = node;
     while Some(enclosing_node) != prev_enclosing_node {
-        if is_automatically_derived(map.attrs(enclosing_node)) {
+        if has_attr(map.attrs(enclosing_node), symbol) {
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);
         enclosing_node = map.get_parent_item(enclosing_node);
     }
+
     false
+}
+
+pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool {
+    any_parent_has_attr(tcx, node, sym::automatically_derived)
 }
 
 /// Matches a function call with the given path and returns the arguments.
