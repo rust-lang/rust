@@ -1089,10 +1089,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ImplCandidate(def_id)
                         if tcx.impl_constness(def_id) == hir::Constness::Const => {}
                     // const param
-                    ParamCandidate((
-                        ty::ConstnessAnd { constness: ty::BoundConstness::ConstIfConst, .. },
-                        _,
-                    )) => {}
+                    ParamCandidate(trait_pred)
+                        if trait_pred.skip_binder().constness
+                            == ty::BoundConstness::ConstIfConst => {}
                     // auto trait impl
                     AutoImplCandidate(..) => {}
                     // generator, this will raise error in other places
@@ -1474,7 +1473,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Check if a bound would previously have been removed when normalizing
         // the param_env so that it can be given the lowest priority. See
         // #50825 for the motivation for this.
-        let is_global = |cand: &ty::PolyTraitRef<'tcx>| {
+        let is_global = |cand: &ty::PolyTraitPredicate<'tcx>| {
             cand.is_global(self.infcx.tcx) && !cand.has_late_bound_regions()
         };
 
@@ -1507,25 +1506,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ConstDropCandidate,
             ) => false,
 
-            (
-                ParamCandidate((other, other_polarity)),
-                ParamCandidate((victim, victim_polarity)),
-            ) => {
-                let same_except_bound_vars = other.value.skip_binder()
-                    == victim.value.skip_binder()
-                    && other.constness == victim.constness
-                    && other_polarity == victim_polarity
-                    && !other.value.skip_binder().has_escaping_bound_vars();
+            (ParamCandidate(other), ParamCandidate(victim)) => {
+                let same_except_bound_vars = other.skip_binder().trait_ref
+                    == victim.skip_binder().trait_ref
+                    && other.skip_binder().constness == victim.skip_binder().constness
+                    && other.skip_binder().polarity == victim.skip_binder().polarity
+                    && !other.skip_binder().trait_ref.has_escaping_bound_vars();
                 if same_except_bound_vars {
                     // See issue #84398. In short, we can generate multiple ParamCandidates which are
                     // the same except for unused bound vars. Just pick the one with the fewest bound vars
                     // or the current one if tied (they should both evaluate to the same answer). This is
                     // probably best characterized as a "hack", since we might prefer to just do our
                     // best to *not* create essentially duplicate candidates in the first place.
-                    other.value.bound_vars().len() <= victim.value.bound_vars().len()
-                } else if other.value == victim.value
-                    && victim.constness == ty::BoundConstness::NotConst
-                    && other_polarity == victim_polarity
+                    other.bound_vars().len() <= victim.bound_vars().len()
+                } else if other.skip_binder().trait_ref == victim.skip_binder().trait_ref
+                    && victim.skip_binder().constness == ty::BoundConstness::NotConst
+                    && other.skip_binder().polarity == victim.skip_binder().polarity
                 {
                     // Drop otherwise equivalent non-const candidates in favor of const candidates.
                     true
@@ -1555,11 +1551,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | TraitAliasCandidate(..)
                 | ObjectCandidate(_)
                 | ProjectionCandidate(_),
-            ) => !is_global(&cand.0.value),
+            ) => !is_global(cand),
             (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref cand)) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                is_global(&cand.0.value)
+                is_global(cand)
             }
             (
                 ImplCandidate(_)
@@ -1575,7 +1571,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                is_global(&cand.0.value) && other.evaluation.must_apply_modulo_regions()
+                is_global(cand) && other.evaluation.must_apply_modulo_regions()
             }
 
             (ProjectionCandidate(i), ProjectionCandidate(j))

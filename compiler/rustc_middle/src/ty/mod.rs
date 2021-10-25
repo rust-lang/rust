@@ -885,12 +885,10 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
-    pub fn to_opt_poly_trait_ref(self) -> Option<ConstnessAnd<PolyTraitRef<'tcx>>> {
+    pub fn to_opt_poly_trait_pred(self) -> Option<PolyTraitPredicate<'tcx>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateKind::Trait(t) => {
-                Some(ConstnessAnd { constness: t.constness, value: predicate.rebind(t.trait_ref) })
-            }
+            PredicateKind::Trait(t) => Some(predicate.rebind(t)),
             PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)

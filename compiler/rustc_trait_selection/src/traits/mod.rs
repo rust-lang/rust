@@ -574,14 +574,17 @@ fn prepare_vtable_segments<'tcx, T>(
                     .predicates
                     .into_iter()
                     .filter_map(move |(pred, _)| {
-                        pred.subst_supertrait(tcx, &inner_most_trait_ref).to_opt_poly_trait_ref()
+                        pred.subst_supertrait(tcx, &inner_most_trait_ref).to_opt_poly_trait_pred()
                     });
 
                 'diving_in_skip_visited_traits: loop {
                     if let Some(next_super_trait) = direct_super_traits_iter.next() {
                         if visited.insert(next_super_trait.to_predicate(tcx)) {
+                            // We're throwing away potential constness of super traits here.
+                            // FIXME: handle ~const super traits
+                            let next_super_trait = next_super_trait.map_bound(|t| t.trait_ref);
                             stack.push((
-                                next_super_trait.value,
+                                next_super_trait,
                                 emit_vptr_on_new_entry,
                                 Some(direct_super_traits_iter),
                             ));
@@ -613,7 +616,11 @@ fn prepare_vtable_segments<'tcx, T>(
                     if let Some(siblings) = siblings_opt {
                         if let Some(next_inner_most_trait_ref) = siblings.next() {
                             if visited.insert(next_inner_most_trait_ref.to_predicate(tcx)) {
-                                *inner_most_trait_ref = next_inner_most_trait_ref.value;
+                                // We're throwing away potential constness of super traits here.
+                                // FIXME: handle ~const super traits
+                                let next_inner_most_trait_ref =
+                                    next_inner_most_trait_ref.map_bound(|t| t.trait_ref);
+                                *inner_most_trait_ref = next_inner_most_trait_ref;
                                 *emit_vptr = emit_vptr_on_new_entry;
                                 break 'exiting_out;
                             } else {
