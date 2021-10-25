@@ -553,9 +553,9 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let mut v = ["a", "b", "c", "d"];
-    /// v.swap(1, 3);
-    /// assert!(v == ["a", "d", "c", "b"]);
+    /// let mut v = ["a", "b", "c", "d", "e];
+    /// v.swap(2, 4);
+    /// assert!(v == ["a", "b", "e", "d", "c"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
