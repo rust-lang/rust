@@ -846,20 +846,6 @@ impl ToPredicate<'tcx> for Binder<'tcx, PredicateKind<'tcx>> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.value
-            .map_bound(|trait_ref| {
-                PredicateKind::Trait(ty::TraitPredicate {
-                    trait_ref,
-                    constness: self.constness,
-                    polarity: ty::ImplPolarity::Positive,
-                })
-            })
-            .to_predicate(tcx)
-    }
-}
-
 impl<'tcx> ToPredicate<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(PredicateKind::Trait).to_predicate(tcx)
@@ -1391,32 +1377,22 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
-pub struct ConstnessAnd<T> {
-    pub constness: BoundConstness,
-    pub value: T,
-}
-
 // FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
 // the constness of trait bounds is being propagated correctly.
-pub trait WithConstness: Sized {
+impl PolyTraitRef<'tcx> {
     #[inline]
-    fn with_constness(self, constness: BoundConstness) -> ConstnessAnd<Self> {
-        ConstnessAnd { constness, value: self }
+    pub fn with_constness(self, constness: BoundConstness) -> PolyTraitPredicate<'tcx> {
+        self.map_bound(|trait_ref| ty::TraitPredicate {
+            trait_ref,
+            constness,
+            polarity: ty::ImplPolarity::Positive,
+        })
     }
-
     #[inline]
-    fn with_const_if_const(self) -> ConstnessAnd<Self> {
-        self.with_constness(BoundConstness::ConstIfConst)
-    }
-
-    #[inline]
-    fn without_const(self) -> ConstnessAnd<Self> {
+    pub fn without_const(self) -> PolyTraitPredicate<'tcx> {
         self.with_constness(BoundConstness::NotConst)
     }
 }
-
-impl<T> WithConstness for T {}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
 pub struct ParamEnvAnd<'tcx, T> {

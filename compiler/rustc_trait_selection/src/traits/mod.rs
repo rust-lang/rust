@@ -33,8 +33,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{
-    self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry, WithConstness,
-    COMMON_VTABLE_ENTRIES,
+    self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry, COMMON_VTABLE_ENTRIES,
 };
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
