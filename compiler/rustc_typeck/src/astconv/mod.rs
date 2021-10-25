@@ -1588,7 +1588,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 traits::transitive_bounds_that_define_assoc_type(
                     tcx,
                     predicates.iter().filter_map(|(p, _)| {
-                        p.to_opt_poly_trait_ref().map(|trait_ref| trait_ref.value)
+                        Some(p.to_opt_poly_trait_pred()?.map_bound(|t| t.trait_ref))
                     }),
                     assoc_name,
                 )
