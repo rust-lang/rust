@@ -151,7 +151,7 @@ pub trait InferCtxtExt<'tcx> {
         outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'tcx>,
         target_ty: Ty<'tcx>,
-        typeck_results: &ty::TypeckResults<'tcx>,
+        typeck_results: Option<&ty::TypeckResults<'tcx>>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
     );
@@ -1460,11 +1460,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         // Only continue if a generator was found.
-        debug!(
-            "maybe_note_obligation_cause_for_async_await: generator={:?} trait_ref={:?} \
-                target_ty={:?}",
-            generator, trait_ref, target_ty
-        );
+        debug!(?generator, ?trait_ref, ?target_ty, "maybe_note_obligation_cause_for_async_await");
         let (generator_did, trait_ref, target_ty) = match (generator, trait_ref, target_ty) {
             (Some(generator_did), Some(trait_ref), Some(target_ty)) => {
                 (generator_did, trait_ref, target_ty)
@@ -1474,14 +1470,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let span = self.tcx.def_span(generator_did);
 
-        // Do not ICE on closure typeck (#66868).
-        if !generator_did.is_local() {
-            return false;
-        }
-
-        // Get the typeck results from the infcx if the generator is the function we are
-        // currently type-checking; otherwise, get them by performing a query.
-        // This is needed to avoid cycles.
         let in_progress_typeck_results = self.in_progress_typeck_results.map(|t| t.borrow());
         let generator_did_root = self.tcx.closure_base_def_id(generator_did);
         debug!(
@@ -1492,14 +1480,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             in_progress_typeck_results.as_ref().map(|t| t.hir_owner),
             span
         );
-        let query_typeck_results;
-        let typeck_results: &TypeckResults<'tcx> = match &in_progress_typeck_results {
-            Some(t) if t.hir_owner.to_def_id() == generator_did_root => t,
-            _ => {
-                query_typeck_results = self.tcx.typeck(generator_did.expect_local());
-                &query_typeck_results
-            }
-        };
 
         let generator_body = generator_did
             .as_local()
@@ -1542,51 +1522,59 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut interior_or_upvar_span = None;
         let mut interior_extra_info = None;
 
-        if let Some(upvars) = self.tcx.upvars_mentioned(generator_did) {
-            interior_or_upvar_span = upvars.iter().find_map(|(upvar_id, upvar)| {
-                let upvar_ty = typeck_results.node_type(*upvar_id);
-                let upvar_ty = self.resolve_vars_if_possible(upvar_ty);
-                if ty_matches(ty::Binder::dummy(upvar_ty)) {
-                    Some(GeneratorInteriorOrUpvar::Upvar(upvar.span))
-                } else {
-                    None
-                }
-            });
+        // Get the typeck results from the infcx if the generator is the function we are currently
+        // type-checking; otherwise, get them by performing a query.  This is needed to avoid
+        // cycles. If we can't use resolved types because the generator comes from another crate,
+        // we still provide a targeted error but without all the relevant spans.
+        let query_typeck_results;
+        let typeck_results: Option<&TypeckResults<'tcx>> = match &in_progress_typeck_results {
+            Some(t) if t.hir_owner.to_def_id() == generator_did_root => Some(&t),
+            _ if generator_did.is_local() => {
+                query_typeck_results = self.tcx.typeck(generator_did.expect_local());
+                Some(&query_typeck_results)
+            }
+            _ => None, // Do not ICE on closure typeck (#66868).
         };
+        if let Some(typeck_results) = typeck_results {
+            if let Some(upvars) = self.tcx.upvars_mentioned(generator_did) {
+                interior_or_upvar_span = upvars.iter().find_map(|(upvar_id, upvar)| {
+                    let upvar_ty = typeck_results.node_type(*upvar_id);
+                    let upvar_ty = self.resolve_vars_if_possible(upvar_ty);
+                    if ty_matches(ty::Binder::dummy(upvar_ty)) {
+                        Some(GeneratorInteriorOrUpvar::Upvar(upvar.span))
+                    } else {
+                        None
+                    }
+                });
+            };
 
-        // The generator interior types share the same binders
-        if let Some(cause) =
-            typeck_results.generator_interior_types.as_ref().skip_binder().iter().find(
-                |ty::GeneratorInteriorTypeCause { ty, .. }| {
-                    ty_matches(typeck_results.generator_interior_types.rebind(ty))
-                },
-            )
-        {
-            // Check to see if any awaited expressions have the target type.
-            let from_awaited_ty = visitor
-                .awaits
-                .into_iter()
-                .map(|id| hir.expect_expr(id))
-                .find(|await_expr| {
-                    let ty = typeck_results.expr_ty_adjusted(&await_expr);
-                    debug!(
-                        "maybe_note_obligation_cause_for_async_await: await_expr={:?}",
-                        await_expr
-                    );
-                    ty_matches(ty::Binder::dummy(ty))
-                })
-                .map(|expr| expr.span);
-            let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } = cause;
+            // The generator interior types share the same binders
+            if let Some(cause) =
+                typeck_results.generator_interior_types.as_ref().skip_binder().iter().find(
+                    |ty::GeneratorInteriorTypeCause { ty, .. }| {
+                        ty_matches(typeck_results.generator_interior_types.rebind(ty))
+                    },
+                )
+            {
+                // Check to see if any awaited expressions have the target type.
+                let from_awaited_ty = visitor
+                    .awaits
+                    .into_iter()
+                    .map(|id| hir.expect_expr(id))
+                    .find(|await_expr| {
+                        ty_matches(ty::Binder::dummy(typeck_results.expr_ty_adjusted(&await_expr)))
+                    })
+                    .map(|expr| expr.span);
+                let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } =
+                    cause;
 
-            interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(*span));
-            interior_extra_info = Some((*scope_span, *yield_span, *expr, from_awaited_ty));
-        };
+                interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(*span));
+                interior_extra_info = Some((*scope_span, *yield_span, *expr, from_awaited_ty));
+            };
+        } else {
+            interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(span));
+        }
 
-        debug!(
-            "maybe_note_obligation_cause_for_async_await: interior_or_upvar={:?} \
-                generator_interior_types={:?}",
-            interior_or_upvar_span, typeck_results.generator_interior_types
-        );
         if let Some(interior_or_upvar_span) = interior_or_upvar_span {
             self.note_obligation_cause_for_async_await(
                 err,
@@ -1617,7 +1605,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'tcx>,
         target_ty: Ty<'tcx>,
-        typeck_results: &ty::TypeckResults<'tcx>,
+        typeck_results: Option<&ty::TypeckResults<'tcx>>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
     ) {
@@ -1828,7 +1816,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // Look at the last interior type to get a span for the `.await`.
                         debug!(
                             "note_obligation_cause_for_async_await generator_interior_types: {:#?}",
-                            typeck_results.generator_interior_types
+                            typeck_results.as_ref().map(|t| &t.generator_interior_types)
                         );
                         explain_yield(interior_span, yield_span, scope_span);
                     }
@@ -1849,10 +1837,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             // ^^^^^^^ a temporary `&T` created inside this method call due to `&self`
                             // ```
                             //
-                            let is_region_borrow = typeck_results
-                                .expr_adjustments(expr)
-                                .iter()
-                                .any(|adj| adj.is_region_borrow());
+                            let is_region_borrow = if let Some(typeck_results) = typeck_results {
+                                typeck_results
+                                    .expr_adjustments(expr)
+                                    .iter()
+                                    .any(|adj| adj.is_region_borrow())
+                            } else {
+                                false
+                            };
 
                             // ```rust
                             // struct Foo(*const u8);
@@ -1865,15 +1857,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     DefKind::Fn | DefKind::Ctor(..) => target_ty.is_unsafe_ptr(),
                                     _ => false,
                                 };
-
-                            if (typeck_results.is_method_call(e) && is_region_borrow)
-                                || is_raw_borrow_inside_fn_like_call
-                            {
-                                err.span_help(
-                                    parent_span,
-                                    "consider moving this into a `let` \
+                            if let Some(typeck_results) = typeck_results {
+                                if (typeck_results.is_method_call(e) && is_region_borrow)
+                                    || is_raw_borrow_inside_fn_like_call
+                                {
+                                    err.span_help(
+                                        parent_span,
+                                        "consider moving this into a `let` \
                         binding to create a shorter lived borrow",
-                                );
+                                    );
+                                }
                             }
                         }
                     }
