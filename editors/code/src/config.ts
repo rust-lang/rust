@@ -21,7 +21,6 @@ export class Config {
         "highlighting",
         "updates.channel",
         "lens", // works as lens.*
-        "hoverActions", // works as hoverActions.*
     ]
         .map(opt => `${this.rootSection}.${opt}`);
 
