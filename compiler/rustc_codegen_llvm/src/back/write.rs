@@ -161,6 +161,7 @@ pub fn target_machine_factory(
     let ffunction_sections =
         sess.opts.debugging_opts.function_sections.unwrap_or(sess.target.function_sections);
     let fdata_sections = ffunction_sections;
+    let funique_section_names = !sess.opts.debugging_opts.no_unique_section_names;
 
     let code_model = to_llvm_code_model(sess.code_model());
 
@@ -205,6 +206,7 @@ pub fn target_machine_factory(
                 use_softfp,
                 ffunction_sections,
                 fdata_sections,
+                funique_section_names,
                 trap_unreachable,
                 singlethread,
                 asm_comments,
