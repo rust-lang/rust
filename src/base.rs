@@ -77,7 +77,10 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (Modul
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
         }
+        // NOTE: an optimization (https://github.com/rust-lang/rustc_codegen_gcc/issues/53).
         context.add_command_line_option("-fno-semantic-interposition");
+        // NOTE: Rust relies on LLVM not doing TBAA (https://github.com/rust-lang/unsafe-code-guidelines/issues/292).
+        context.add_command_line_option("-fno-strict-aliasing");
         if env::var("CG_GCCJIT_DUMP_CODE").as_deref() == Ok("1") {
             context.set_dump_code_on_compile(true);
         }
