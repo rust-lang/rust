@@ -1,5 +1,5 @@
 use ide_db::{base_db::Upcast, helpers::pick_best_token, RootDatabase};
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, T};
+use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TextRange, T};
 
 use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
 
@@ -27,32 +27,6 @@ pub(crate) fn goto_type_definition(
             kind if kind.is_trivia() => 0,
             _ => 1,
         })?;
-    let token: SyntaxToken = sema.descend_into_macros_single(token);
-
-    let (ty, node) = sema.token_ancestors_with_macros(token).find_map(|node| {
-        let ty = match_ast! {
-            match node {
-                ast::Expr(it) => sema.type_of_expr(&it)?.original,
-                ast::Pat(it) => sema.type_of_pat(&it)?.original,
-                ast::SelfParam(it) => sema.type_of_self(&it)?,
-                ast::Type(it) => sema.resolve_type(&it)?,
-                ast::RecordField(it) => sema.to_def(&it).map(|d| d.ty(db.upcast()))?,
-                // can't match on RecordExprField directly as `ast::Expr` will match an iteration too early otherwise
-                ast::NameRef(it) => {
-                    if let Some(record_field) = ast::RecordExprField::for_name_ref(&it) {
-                        let (_, _, ty) = sema.resolve_record_field(&record_field)?;
-                        ty
-                    } else {
-                        let record_field = ast::RecordPatField::for_field_name_ref(&it)?;
-                        sema.resolve_record_pat_field(&record_field)?.ty(db)
-                    }
-                },
-                _ => return None,
-            }
-        };
-
-        Some((ty, node))
-    })?;
 
     let mut res = Vec::new();
     let mut push = |def: hir::ModuleDef| {
@@ -63,20 +37,60 @@ pub(crate) fn goto_type_definition(
         }
     };
 
-    let ty = ty.strip_references();
-    ty.walk(db, |t| {
-        if let Some(adt) = t.as_adt() {
-            push(adt.into());
-        } else if let Some(trait_) = t.as_dyn_trait() {
-            push(trait_.into());
-        } else if let Some(traits) = t.as_impl_traits(db) {
-            traits.into_iter().for_each(|it| push(it.into()));
-        } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
-            push(trait_.into());
-        }
-    });
+    // TODO this became pretty baroque after refactoring for `descend_into_macros(_many)`
+    let range = sema
+        .descend_into_macros(token)
+        .iter()
+        .filter_map(|token| {
+            let ty_range = sema.token_ancestors_with_macros(token.clone()).find_map(|node| {
+                let ty = match_ast! {
+                    match node {
+                        ast::Expr(it) => sema.type_of_expr(&it)?.original,
+                        ast::Pat(it) => sema.type_of_pat(&it)?.original,
+                        ast::SelfParam(it) => sema.type_of_self(&it)?,
+                        ast::Type(it) => sema.resolve_type(&it)?,
+                        ast::RecordField(it) => sema.to_def(&it).map(|d| d.ty(db.upcast()))?,
+                        // can't match on RecordExprField directly as `ast::Expr` will match an iteration too early otherwise
+                        ast::NameRef(it) => {
+                            if let Some(record_field) = ast::RecordExprField::for_name_ref(&it) {
+                                let (_, _, ty) = sema.resolve_record_field(&record_field)?;
+                                ty
+                            } else {
+                                let record_field = ast::RecordPatField::for_field_name_ref(&it)?;
+                                sema.resolve_record_pat_field(&record_field)?.ty(db)
+                            }
+                        },
+                        _ => return None,
+                    }
+                };
 
-    Some(RangeInfo::new(node.text_range(), res))
+                let range = node.text_range();
+                Some((ty, range.start(), range.end()))
+            });
+            ty_range
+        })
+        .inspect(|(ty, _range_start, _range_end)| {
+            // collect from each `ty` into the `res` result vec
+            let ty = ty.strip_references();
+            ty.walk(db, |t| {
+                if let Some(adt) = t.as_adt() {
+                    push(adt.into());
+                } else if let Some(trait_) = t.as_dyn_trait() {
+                    push(trait_.into());
+                } else if let Some(traits) = t.as_impl_traits(db) {
+                    traits.into_iter().for_each(|it| push(it.into()));
+                } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
+                    push(trait_.into());
+                }
+            });
+        }) // reduce all ranges into a single umbrella span (TODO fishy?)
+        .map(|(_, range_start, range_end)| (range_start, range_end))
+        .reduce(|(start_acc, end_acc), (start_cur, end_cur)| {
+            (start_acc.min(start_cur), end_acc.max(end_cur))
+        })
+        .map(|(range_start, range_end)| TextRange::new(range_start, range_end))?; // TODO easy to miss `?` bail
+
+    Some(RangeInfo::new(range, res))
 }
 
 #[cfg(test)]
