@@ -39,7 +39,6 @@ use rustc_middle::ty::fast_reject;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
-use rustc_middle::ty::WithConstness;
 use rustc_middle::ty::{self, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::sym;
@@ -138,9 +137,9 @@ pub struct SelectionContext<'cx, 'tcx> {
 struct TraitObligationStack<'prev, 'tcx> {
     obligation: &'prev TraitObligation<'tcx>,
 
-    /// The trait ref from `obligation` but "freshened" with the
+    /// The trait predicate from `obligation` but "freshened" with the
     /// selection-context's freshener. Used to check for recursion.
-    fresh_trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
+    fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
 
     /// Starts out equal to `depth` -- if, during evaluation, we
     /// encounter a cycle, then we will set this flag to the minimum
@@ -676,20 +675,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let stack = self.push_stack(previous_stack, &obligation);
-        let fresh_trait_ref = stack.fresh_trait_ref;
+        let fresh_trait_pred = stack.fresh_trait_pred;
 
-        debug!(?fresh_trait_ref);
+        debug!(?fresh_trait_pred);
 
-        if let Some(result) = self.check_evaluation_cache(
-            obligation.param_env,
-            fresh_trait_ref,
-            obligation.polarity(),
-        ) {
+        if let Some(result) = self.check_evaluation_cache(obligation.param_env, fresh_trait_pred) {
             debug!(?result, "CACHE HIT");
             return Ok(result);
         }
 
-        if let Some(result) = stack.cache().get_provisional(fresh_trait_ref) {
+        if let Some(result) = stack.cache().get_provisional(fresh_trait_pred) {
             debug!(?result, "PROVISIONAL CACHE HIT");
             stack.update_reached_depth(result.reached_depth);
             return Ok(result.result);
@@ -714,19 +709,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let reached_depth = stack.reached_depth.get();
         if reached_depth >= stack.depth {
             debug!(?result, "CACHE MISS");
-            self.insert_evaluation_cache(
-                obligation.param_env,
-                fresh_trait_ref,
-                obligation.polarity(),
-                dep_node,
-                result,
-            );
+            self.insert_evaluation_cache(obligation.param_env, fresh_trait_pred, dep_node, result);
 
-            stack.cache().on_completion(stack.dfn, |fresh_trait_ref, provisional_result| {
+            stack.cache().on_completion(stack.dfn, |fresh_trait_pred, provisional_result| {
                 self.insert_evaluation_cache(
                     obligation.param_env,
-                    fresh_trait_ref,
-                    obligation.polarity(),
+                    fresh_trait_pred,
                     dep_node,
                     provisional_result.max(result),
                 );
@@ -736,10 +724,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             debug!(
                 "caching provisionally because {:?} \
                  is a cycle participant (at depth {}, reached depth {})",
-                fresh_trait_ref, stack.depth, reached_depth,
+                fresh_trait_pred, stack.depth, reached_depth,
             );
 
-            stack.cache().insert_provisional(stack.dfn, reached_depth, fresh_trait_ref, result);
+            stack.cache().insert_provisional(stack.dfn, reached_depth, fresh_trait_pred, result);
         }
 
         Ok(result)
@@ -773,7 +761,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .skip(1) // Skip top-most frame.
             .find(|prev| {
                 stack.obligation.param_env == prev.obligation.param_env
-                    && stack.fresh_trait_ref == prev.fresh_trait_ref
+                    && stack.fresh_trait_pred == prev.fresh_trait_pred
             })
             .map(|stack| stack.depth)
         {
@@ -836,7 +824,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
         let unbound_input_types =
-            stack.fresh_trait_ref.value.skip_binder().substs.types().any(|ty| ty.is_fresh());
+            stack.fresh_trait_pred.skip_binder().trait_ref.substs.types().any(|ty| ty.is_fresh());
 
         if stack.obligation.polarity() != ty::ImplPolarity::Negative {
             // This check was an imperfect workaround for a bug in the old
@@ -874,8 +862,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             && stack.iter().skip(1).any(|prev| {
                 stack.obligation.param_env == prev.obligation.param_env
                     && self.match_fresh_trait_refs(
-                        stack.fresh_trait_ref,
-                        prev.fresh_trait_ref,
+                        stack.fresh_trait_pred,
+                        prev.fresh_trait_pred,
                         prev.obligation.param_env,
                     )
             })
@@ -953,7 +941,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // not just the lifetime choice for this particular (non-erased)
         // predicate.
         // See issue #80691
-        if stack.fresh_trait_ref.has_erased_regions() {
+        if stack.fresh_trait_pred.has_erased_regions() {
             result = result.max(EvaluatedToOkModuloRegions);
         }
 
@@ -964,8 +952,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn check_evaluation_cache(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
-        polarity: ty::ImplPolarity,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<EvaluationResult> {
         // Neither the global nor local cache is aware of intercrate
         // mode, so don't do any caching. In particular, we might
@@ -977,19 +964,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.tcx();
         if self.can_use_global_caches(param_env) {
-            if let Some(res) = tcx.evaluation_cache.get(&(param_env.and(trait_ref), polarity), tcx)
-            {
+            if let Some(res) = tcx.evaluation_cache.get(&param_env.and(trait_pred), tcx) {
                 return Some(res);
             }
         }
-        self.infcx.evaluation_cache.get(&(param_env.and(trait_ref), polarity), tcx)
+        self.infcx.evaluation_cache.get(&param_env.and(trait_pred), tcx)
     }
 
     fn insert_evaluation_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
-        polarity: ty::ImplPolarity,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
         dep_node: DepNodeIndex,
         result: EvaluationResult,
     ) {
@@ -1008,23 +993,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if self.can_use_global_caches(param_env) {
-            if !trait_ref.needs_infer() {
-                debug!(?trait_ref, ?result, "insert_evaluation_cache global");
+            if !trait_pred.needs_infer() {
+                debug!(?trait_pred, ?result, "insert_evaluation_cache global");
                 // This may overwrite the cache with the same value
                 // FIXME: Due to #50507 this overwrites the different values
                 // This should be changed to use HashMapExt::insert_same
                 // when that is fixed
-                self.tcx().evaluation_cache.insert(
-                    (param_env.and(trait_ref), polarity),
-                    dep_node,
-                    result,
-                );
+                self.tcx().evaluation_cache.insert(param_env.and(trait_pred), dep_node, result);
                 return;
             }
         }
 
-        debug!(?trait_ref, ?result, "insert_evaluation_cache");
-        self.infcx.evaluation_cache.insert((param_env.and(trait_ref), polarity), dep_node, result);
+        debug!(?trait_pred, ?result, "insert_evaluation_cache");
+        self.infcx.evaluation_cache.insert(param_env.and(trait_pred), dep_node, result);
     }
 
     /// For various reasons, it's possible for a subobligation
@@ -2154,8 +2135,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn match_fresh_trait_refs(
         &self,
-        previous: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
-        current: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
+        previous: ty::PolyTraitPredicate<'tcx>,
+        current: ty::PolyTraitPredicate<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
         let mut matcher = ty::_match::Match::new(self.tcx(), param_env);
@@ -2167,18 +2148,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         obligation: &'o TraitObligation<'tcx>,
     ) -> TraitObligationStack<'o, 'tcx> {
-        let fresh_trait_ref = obligation
+        let fresh_trait_pred = obligation
             .predicate
-            .to_poly_trait_ref()
             .fold_with(&mut self.freshener)
-            .into_ok()
-            .with_constness(obligation.predicate.skip_binder().constness);
+            .into_ok();
 
         let dfn = previous_stack.cache.next_dfn();
         let depth = previous_stack.depth() + 1;
         TraitObligationStack {
             obligation,
-            fresh_trait_ref,
+            fresh_trait_pred,
             reached_depth: Cell::new(depth),
             previous: previous_stack,
             dfn,
@@ -2372,7 +2351,7 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
         debug!(reached_depth, "update_reached_depth");
         let mut p = self;
         while reached_depth < p.depth {
-            debug!(?p.fresh_trait_ref, "update_reached_depth: marking as cycle participant");
+            debug!(?p.fresh_trait_pred, "update_reached_depth: marking as cycle participant");
             p.reached_depth.set(p.reached_depth.get().min(reached_depth));
             p = p.previous.head.unwrap();
         }
@@ -2451,7 +2430,7 @@ struct ProvisionalEvaluationCache<'tcx> {
     /// - then we determine that `E` is in error -- we will then clear
     ///   all cache values whose DFN is >= 4 -- in this case, that
     ///   means the cached value for `F`.
-    map: RefCell<FxHashMap<ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>, ProvisionalEvaluation>>,
+    map: RefCell<FxHashMap<ty::PolyTraitPredicate<'tcx>, ProvisionalEvaluation>>,
 }
 
 /// A cache value for the provisional cache: contains the depth-first
@@ -2483,28 +2462,28 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     /// `reached_depth` (from the returned value).
     fn get_provisional(
         &self,
-        fresh_trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
+        fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<ProvisionalEvaluation> {
         debug!(
-            ?fresh_trait_ref,
+            ?fresh_trait_pred,
             "get_provisional = {:#?}",
-            self.map.borrow().get(&fresh_trait_ref),
+            self.map.borrow().get(&fresh_trait_pred),
         );
-        Some(*self.map.borrow().get(&fresh_trait_ref)?)
+        Some(*self.map.borrow().get(&fresh_trait_pred)?)
     }
 
     /// Insert a provisional result into the cache. The result came
     /// from the node with the given DFN. It accessed a minimum depth
-    /// of `reached_depth` to compute. It evaluated `fresh_trait_ref`
+    /// of `reached_depth` to compute. It evaluated `fresh_trait_pred`
     /// and resulted in `result`.
     fn insert_provisional(
         &self,
         from_dfn: usize,
         reached_depth: usize,
-        fresh_trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
+        fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
         result: EvaluationResult,
     ) {
-        debug!(?from_dfn, ?fresh_trait_ref, ?result, "insert_provisional");
+        debug!(?from_dfn, ?fresh_trait_pred, ?result, "insert_provisional");
 
         let mut map = self.map.borrow_mut();
 
@@ -2528,7 +2507,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
             }
         }
 
-        map.insert(fresh_trait_ref, ProvisionalEvaluation { from_dfn, reached_depth, result });
+        map.insert(fresh_trait_pred, ProvisionalEvaluation { from_dfn, reached_depth, result });
     }
 
     /// Invoked when the node with dfn `dfn` does not get a successful
@@ -2579,16 +2558,16 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     fn on_completion(
         &self,
         dfn: usize,
-        mut op: impl FnMut(ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>, EvaluationResult),
+        mut op: impl FnMut(ty::PolyTraitPredicate<'tcx>, EvaluationResult),
     ) {
         debug!(?dfn, "on_completion");
 
-        for (fresh_trait_ref, eval) in
+        for (fresh_trait_pred, eval) in
             self.map.borrow_mut().drain_filter(|_k, eval| eval.from_dfn >= dfn)
         {
-            debug!(?fresh_trait_ref, ?eval, "on_completion");
+            debug!(?fresh_trait_pred, ?eval, "on_completion");
 
-            op(fresh_trait_ref, eval.result);
+            op(fresh_trait_pred, eval.result);
         }
     }
 }
