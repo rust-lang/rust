@@ -1018,7 +1018,7 @@ pub fn encode_query_results<'a, 'tcx, CTX, Q>(
 ) -> FileEncodeResult
 where
     CTX: QueryContext + 'tcx,
-    Q: super::QueryDescription<CTX> + super::QueryAccessors<CTX>,
+    Q: super::QueryDescription<CTX>,
     Q::Value: Encodable<CacheEncoder<'a, 'tcx, FileEncoder>>,
 {
     let _timer = tcx
@@ -1033,7 +1033,7 @@ where
         if res.is_err() {
             return;
         }
-        if Q::cache_on_disk(tcx, &key) {
+        if Q::cache_on_disk(*tcx.dep_context(), &key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
             // Record position of the cache entry.

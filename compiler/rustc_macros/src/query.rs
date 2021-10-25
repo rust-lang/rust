@@ -349,24 +349,14 @@ fn add_query_description_impl(
         let try_load_from_disk = if let Some((tcx, id, block)) = modifiers.load_cached.as_ref() {
             // Use custom code to load the query from disk
             quote! {
-                #[inline]
-                fn try_load_from_disk(
-                    #tcx: QueryCtxt<'tcx>,
-                    #id: SerializedDepNodeIndex
-                ) -> Option<Self::Value> {
-                    #block
-                }
+                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
+                    = Some(|#tcx, #id| { #block });
             }
         } else {
             // Use the default code to load the query from disk
             quote! {
-                #[inline]
-                fn try_load_from_disk(
-                    tcx: QueryCtxt<'tcx>,
-                    id: SerializedDepNodeIndex
-                ) -> Option<Self::Value> {
-                    tcx.on_disk_cache().as_ref()?.try_load_query_result(*tcx, id)
-                }
+                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
+                    = Some(|tcx, id| tcx.on_disk_cache().as_ref()?.try_load_query_result(*tcx, id));
             }
         };
 
@@ -380,12 +370,9 @@ fn add_query_description_impl(
         // expr is a `Block`, meaning that `{ #expr }` gets expanded
         // to `{ { stmts... } }`, which triggers the `unused_braces` lint.
         quote! {
-            #[inline]
             #[allow(unused_variables, unused_braces)]
-            fn cache_on_disk(
-                #tcx: QueryCtxt<'tcx>,
-                #key: &Self::Key,
-            ) -> bool {
+            #[inline]
+            fn cache_on_disk(#tcx: TyCtxt<'tcx>, #key: &Self::Key) -> bool {
                 #expr
             }
 
@@ -395,7 +382,14 @@ fn add_query_description_impl(
         if modifiers.load_cached.is_some() {
             panic!("load_cached modifier on query `{}` without a cache modifier", name);
         }
-        quote! {}
+        quote! {
+            #[inline]
+            fn cache_on_disk(_: TyCtxt<'tcx>, _: &Self::Key) -> bool {
+                false
+            }
+
+            const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>> = None;
+        }
     };
 
     let (tcx, desc) = modifiers.desc;
@@ -403,17 +397,17 @@ fn add_query_description_impl(
 
     let desc = quote! {
         #[allow(unused_variables)]
-        fn describe(tcx: QueryCtxt<'tcx>, key: Self::Key) -> String {
+        fn describe(tcx: QueryCtxt<$tcx>, key: Self::Key) -> String {
             let (#tcx, #key) = (*tcx, key);
             ::rustc_middle::ty::print::with_no_trimmed_paths(|| format!(#desc).into())
         }
     };
 
     impls.extend(quote! {
-        impl<'tcx> QueryDescription<QueryCtxt<'tcx>> for queries::#name<'tcx> {
+        (#name<$tcx:tt>) => {
             #desc
             #cache
-        }
+        };
     });
 }
 
@@ -521,7 +515,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         }
         #[macro_export]
         macro_rules! rustc_query_description {
-            () => { #query_description_stream }
+            #query_description_stream
         }
     })
 }

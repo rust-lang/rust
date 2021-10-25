@@ -4,7 +4,7 @@
 
 use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
 use crate::query::caches::QueryCache;
-use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
+use crate::query::config::{QueryDescription, QueryVtable};
 use crate::query::job::{
     report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId,
 };
@@ -512,7 +512,7 @@ where
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if query.cache_on_disk(tcx, key) {
+    if query.cache_on_disk {
         let prof_timer = tcx.dep_context().profiler().incr_cache_loading();
         let result = query.try_load_from_disk(tcx, prev_dep_node_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -713,8 +713,6 @@ where
     Q::Key: DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    assert!(!Q::ANON);
-
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
     let cache = Q::query_cache(tcx);
@@ -731,5 +729,7 @@ where
 
     let query = Q::make_vtable(tcx, &key);
     let state = Q::query_state(tcx);
+    debug_assert!(!query.anon);
+
     try_execute_query(tcx, state, cache, DUMMY_SP, key, lookup, Some(dep_node), &query);
 }

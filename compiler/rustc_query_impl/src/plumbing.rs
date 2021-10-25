@@ -2,20 +2,17 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::{on_disk_cache, queries, Queries};
+use crate::{on_disk_cache, Queries};
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::HasDepContext;
-use rustc_query_system::query::{
-    QueryContext, QueryDescription, QueryJobId, QueryMap, QuerySideEffects,
-};
+use rustc_query_system::query::{QueryContext, QueryJobId, QueryMap, QuerySideEffects};
 
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, Handler};
 use rustc_serialize::opaque;
-use rustc_span::def_id::LocalDefId;
 
 use std::any::Any;
 
@@ -290,11 +287,8 @@ macro_rules! define_queries {
             const NAME: &'static str = stringify!($name);
         }
 
-        impl<$tcx> QueryAccessors<QueryCtxt<$tcx>> for queries::$name<$tcx> {
-            const ANON: bool = is_anon!([$($modifiers)*]);
-            const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
-            const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$name;
-            const HASH_RESULT: Option<fn(&mut StableHashingContext<'_>, &Self::Value) -> Fingerprint> = hash_result!([$($modifiers)*]);
+        impl<$tcx> QueryDescription<QueryCtxt<$tcx>> for queries::$name<$tcx> {
+            rustc_query_description! { $name<$tcx> }
 
             type Cache = query_storage::$name<$tcx>;
 
@@ -313,21 +307,25 @@ macro_rules! define_queries {
             }
 
             #[inline]
-            fn compute_fn(tcx: QueryCtxt<'tcx>, key: &Self::Key) ->
-                fn(TyCtxt<'tcx>, Self::Key) -> Self::Value
+            fn make_vtable(tcx: QueryCtxt<'tcx>, key: &Self::Key) ->
+                QueryVtable<QueryCtxt<$tcx>, Self::Key, Self::Value>
             {
-                if key.query_crate_is_local() {
+                let compute = if key.query_crate_is_local() {
                     tcx.queries.local_providers.$name
                 } else {
                     tcx.queries.extern_providers.$name
+                };
+                let cache_on_disk = Self::cache_on_disk(tcx.tcx, key);
+                QueryVtable {
+                    anon: is_anon!([$($modifiers)*]),
+                    eval_always: is_eval_always!([$($modifiers)*]),
+                    dep_kind: dep_graph::DepKind::$name,
+                    hash_result: hash_result!([$($modifiers)*]),
+                    handle_cycle_error: |tcx, mut error| handle_cycle_error!([$($modifiers)*][tcx, error]),
+                    compute,
+                    cache_on_disk,
+                    try_load_from_disk: Self::TRY_LOAD_FROM_DISK,
                 }
-            }
-
-            fn handle_cycle_error(
-                tcx: QueryCtxt<'tcx>,
-                mut error: DiagnosticBuilder<'_>,
-            ) -> Self::Value {
-                handle_cycle_error!([$($modifiers)*][tcx, error])
             }
         })*
 
@@ -417,7 +415,6 @@ macro_rules! define_queries {
                     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
                     let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
-                    let tcx = QueryCtxt::from_tcx(tcx);
                     if queries::$name::cache_on_disk(tcx, &key) {
                         let _ = tcx.$name(key);
                     }
@@ -518,13 +515,3 @@ macro_rules! define_queries_struct {
         }
     };
 }
-
-fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
-    if def_id.is_top_level_module() {
-        "top-level module".to_string()
-    } else {
-        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
-    }
-}
-
-rustc_query_description! {}

@@ -19,16 +19,16 @@ pub trait QueryConfig {
     type Stored: Clone;
 }
 
-pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
+pub struct QueryVtable<CTX: QueryContext, K, V> {
     pub anon: bool,
     pub dep_kind: CTX::DepKind,
     pub eval_always: bool,
+    pub cache_on_disk: bool,
 
     pub compute: fn(CTX::DepContext, K) -> V,
     pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
     pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_>) -> V,
-    pub cache_on_disk: fn(CTX, &K) -> bool,
-    pub try_load_from_disk: fn(CTX, SerializedDepNodeIndex) -> Option<V>,
+    pub try_load_from_disk: Option<fn(CTX, SerializedDepNodeIndex) -> Option<V>>,
 }
 
 impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
@@ -43,24 +43,20 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
         (self.compute)(tcx, key)
     }
 
-    pub(crate) fn cache_on_disk(&self, tcx: CTX, key: &K) -> bool {
-        (self.cache_on_disk)(tcx, key)
-    }
-
     pub(crate) fn try_load_from_disk(&self, tcx: CTX, index: SerializedDepNodeIndex) -> Option<V> {
-        (self.try_load_from_disk)(tcx, index)
+        self.try_load_from_disk
+            .expect("QueryDescription::load_from_disk() called for an unsupported query.")(
+            tcx, index,
+        )
     }
 }
 
-pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
-    const ANON: bool;
-    const EVAL_ALWAYS: bool;
-    const DEP_KIND: CTX::DepKind;
-    const HASH_RESULT: Option<
-        fn(hcx: &mut StableHashingContext<'_>, result: &Self::Value) -> Fingerprint,
-    >;
+pub trait QueryDescription<CTX: QueryContext>: QueryConfig {
+    const TRY_LOAD_FROM_DISK: Option<fn(CTX, SerializedDepNodeIndex) -> Option<Self::Value>>;
 
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
+
+    fn describe(tcx: CTX, key: Self::Key) -> String;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX::DepKind, Self::Key>
@@ -73,43 +69,7 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
         CTX: 'a;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
-    fn compute_fn(tcx: CTX, key: &Self::Key) -> fn(CTX::DepContext, Self::Key) -> Self::Value;
+    fn make_vtable(tcx: CTX, key: &Self::Key) -> QueryVtable<CTX, Self::Key, Self::Value>;
 
-    fn handle_cycle_error(tcx: CTX, diag: DiagnosticBuilder<'_>) -> Self::Value;
-}
-
-pub trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
-    fn describe(tcx: CTX, key: Self::Key) -> String;
-
-    #[inline]
-    fn cache_on_disk(_: CTX, _: &Self::Key) -> bool {
-        false
-    }
-
-    fn try_load_from_disk(_: CTX, _: SerializedDepNodeIndex) -> Option<Self::Value> {
-        panic!("QueryDescription::load_from_disk() called for an unsupported query.")
-    }
-}
-
-pub(crate) trait QueryVtableExt<CTX: QueryContext, K, V> {
-    fn make_vtable(tcx: CTX, key: &K) -> QueryVtable<CTX, K, V>;
-}
-
-impl<CTX, Q> QueryVtableExt<CTX, Q::Key, Q::Value> for Q
-where
-    CTX: QueryContext,
-    Q: QueryDescription<CTX>,
-{
-    fn make_vtable(tcx: CTX, key: &Q::Key) -> QueryVtable<CTX, Q::Key, Q::Value> {
-        QueryVtable {
-            anon: Q::ANON,
-            dep_kind: Q::DEP_KIND,
-            eval_always: Q::EVAL_ALWAYS,
-            hash_result: Q::HASH_RESULT,
-            compute: Q::compute_fn(tcx, key),
-            handle_cycle_error: Q::handle_cycle_error,
-            cache_on_disk: Q::cache_on_disk,
-            try_load_from_disk: Q::try_load_from_disk,
-        }
-    }
+    fn cache_on_disk(tcx: CTX::DepContext, key: &Self::Key) -> bool;
 }
