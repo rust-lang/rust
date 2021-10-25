@@ -1323,6 +1323,11 @@ impl<'tcx> ParamEnv<'tcx> {
         self
     }
 
+    pub fn with_const(mut self) -> Self {
+        self.packed.set_tag(ParamTag { constness: hir::Constness::Const, ..self.packed.tag() });
+        self
+    }
+
     /// Returns a new parameter environment with the same clauses, but
     /// which "reveals" the true results of projections in all cases
     /// (even for associated types that are specializable). This is

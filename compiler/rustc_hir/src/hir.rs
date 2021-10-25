@@ -3248,6 +3248,7 @@ impl<'hir> Node<'hir> {
             Node::Item(Item { kind: ItemKind::Const(..), .. })
             | Node::Item(Item { kind: ItemKind::Static(..), .. })
             | Node::TraitItem(TraitItem { kind: TraitItemKind::Const(..), .. })
+            | Node::AnonConst(_)
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Const(..), .. }) => Constness::Const,
 
             _ => Constness::NotConst,
