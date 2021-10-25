@@ -59,7 +59,7 @@ pub fn panic_str(expr: &str) -> ! {
 
 #[inline]
 #[track_caller]
-#[cfg_attr(not(bootstrap), lang = "panic_display")] // needed for const-evaluated panics
+#[lang = "panic_display"] // needed for const-evaluated panics
 pub fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));
 }

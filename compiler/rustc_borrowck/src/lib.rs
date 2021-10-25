@@ -2,7 +2,6 @@
 
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
-#![cfg_attr(bootstrap, feature(const_panic))]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(in_band_lifetimes)]

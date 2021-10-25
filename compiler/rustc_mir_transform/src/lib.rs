@@ -1,7 +1,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(bootstrap, feature(const_panic))]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(let_else)]

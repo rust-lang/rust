@@ -11,7 +11,6 @@
 #![feature(const_cell_into_inner)]
 #![feature(const_convert)]
 #![feature(const_maybe_uninit_assume_init)]
-#![cfg_attr(bootstrap, feature(const_panic))]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_ptr_offset)]
