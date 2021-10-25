@@ -1,5 +1,4 @@
 [workspace]
-resolver = "2"
 members = ["xtask/", "lib/*", "crates/*"]
 exclude = ["crates/proc_macro_test/imp"]
 
