@@ -1,0 +1,99 @@
+// This test check that headers (a) have the correct heading level, and (b) are the right size.
+// The sizes may change as design changes, but try to make sure a lower header is never bigger than
+// its parent headers.
+// Most of these sizes are set in CSS in `em` units, so here's a conversion chart based on our
+// default 16px font size:
+// 24px    1.5em
+// 22.4px  1.4em
+// 20.8px  1.3em
+// 18.4px  1.15em
+// 17.6px  1.1em
+// 16px    1em
+// 15.2px  0.95em  
+goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
+
+assert-css: ("h1.fqn", {"font-size": "24px"})
+
+assert-css: ("h2#top-doc-prose-title", {"font-size": "20.8px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"font-size": "18.4px"})
+assert-css: ("h4#top-doc-prose-sub-sub-heading", {"font-size": "17.6px"})
+
+assert-css: ("h2#fields", {"font-size": "22.4px"})
+assert-css: ("h3#title-for-field", {"font-size": "20.8px"})
+assert-css: ("h4#sub-heading-for-field", {"font-size": "16px"})
+
+assert-css: ("h2#implementations", {"font-size": "22.4px"})
+
+assert-css: ("#impl > h3.code-header", {"font-size": "17.6px"})
+assert-css: ("#method\.do_nothing > h4.code-header", {"font-size": "16px"})
+
+assert-css: ("h4#title-for-struct-impl-doc", {"font-size": "16px"})
+assert-css: ("h5#sub-heading-for-struct-impl-doc", {"font-size": "16px"})
+assert-css: ("h6#sub-sub-heading-for-struct-impl-doc", {"font-size": "15.2px"})
+
+assert-css: ("h5#title-for-struct-impl-item-doc", {"font-size": "16px"})
+assert-css: ("h6#sub-heading-for-struct-impl-item-doc", {"font-size": "15.2px"})
+assert-css: ("h6#sub-sub-heading-for-struct-impl-item-doc", {"font-size": "15.2px"})
+
+goto: file://|DOC_PATH|/test_docs/enum.HeavilyDocumentedEnum.html
+
+assert-css: ("h1.fqn", {"font-size": "24px"})
+
+assert-css: ("h2#top-doc-prose-title", {"font-size": "20.8px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"font-size": "18.4px"})
+assert-css: ("h4#top-doc-prose-sub-sub-heading", {"font-size": "17.6px"})
+
+assert-css: ("h2#variants", {"font-size": "22.4px"})
+
+assert-css: ("h3#none-prose-title", {"font-size": "20.8px"})
+assert-css: ("h4#none-prose-sub-heading", {"font-size": "16px"})
+
+assert-css: ("h3#wrapped-prose-title", {"font-size": "20.8px"})
+assert-css: ("h4#wrapped-prose-sub-heading", {"font-size": "16px"})
+
+assert-css: ("h4#wrapped0-prose-title", {"font-size": "16px"})
+assert-css: ("h5#wrapped0-prose-sub-heading", {"font-size": "16px"})
+
+assert-css: ("h4#structy-prose-title", {"font-size": "16px"})
+assert-css: ("h5#structy-prose-sub-heading", {"font-size": "16px"})
+
+assert-css: ("h2#implementations", {"font-size": "22.4px"})
+
+assert-css: ("#impl > h3.code-header", {"font-size": "17.6px"})
+assert-css: ("#method\.do_nothing > h4.code-header", {"font-size": "16px"})
+
+assert-css: ("h4#title-for-enum-impl-doc", {"font-size": "16px"})
+assert-css: ("h5#sub-heading-for-enum-impl-doc", {"font-size": "16px"})
+assert-css: ("h6#sub-sub-heading-for-enum-impl-doc", {"font-size": "15.2px"})
+
+assert-css: ("h5#title-for-enum-impl-item-doc", {"font-size": "16px"})
+assert-css: ("h6#sub-heading-for-enum-impl-item-doc", {"font-size": "15.2px"})
+assert-css: ("h6#sub-sub-heading-for-enum-impl-item-doc", {"font-size": "15.2px"})
+
+goto: file://|DOC_PATH|/test_docs/union.HeavilyDocumentedUnion.html
+
+assert-css: ("h1.fqn", {"font-size": "24px"})
+
+assert-css: ("h2#top-doc-prose-title", {"font-size": "20.8px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"font-size": "18.4px"})
+
+assert-css: ("h2#fields", {"font-size": "22.4px"})
+
+assert-css: ("h3#title-for-union-variant", {"font-size": "20.8px"})
+assert-css: ("h4#sub-heading-for-union-variant", {"font-size": "16px"})
+
+assert-css: ("h2#implementations", {"font-size": "22.4px"})
+
+assert-css: ("#impl > h3.code-header", {"font-size": "17.6px"})
+assert-css: ("h4#title-for-union-impl-doc", {"font-size": "16px"})
+assert-css: ("h5#sub-heading-for-union-impl-doc", {"font-size": "16px"})
+
+assert-css: ("h5#title-for-union-impl-item-doc", {"font-size": "16px"})
+assert-css: ("h6#sub-heading-for-union-impl-item-doc", {"font-size": "15.2px"})
+
+goto: file://|DOC_PATH|/test_docs/macro.heavily_documented_macro.html
+
+assert-css: ("h1.fqn", {"font-size": "24px"})
+
+assert-css: ("h2#top-doc-prose-title", {"font-size": "20.8px"})
+assert-css: ("h3#top-doc-prose-sub-heading", {"font-size": "18.4px"})

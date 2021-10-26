@@ -131,3 +131,129 @@ macro_rules! repro {
 }
 
 pub use crate::repro as repro2;
+
+/// # Top-doc Prose title
+///
+/// Text below title.
+///
+/// ## Top-doc Prose sub-heading
+///
+/// Text below sub-heading.
+///
+/// ### Top-doc Prose sub-sub-heading
+///
+/// Text below sub-sub-heading
+pub struct HeavilyDocumentedStruct {
+    /// # Title for field
+    /// ## Sub-heading for field
+    pub nothing: (),
+}
+
+/// # Title for struct impl doc
+///
+/// Text below heading.
+///
+/// ## Sub-heading for struct impl doc
+///
+/// Text below sub-heading.
+///
+/// ### Sub-sub-heading for struct impl doc
+///
+/// Text below sub-sub-heading.
+///
+impl HeavilyDocumentedStruct {
+    /// # Title for struct impl-item doc
+    /// Text below title.
+    /// ## Sub-heading for struct impl-item doc
+    /// Text below sub-heading.
+    /// ### Sub-sub-heading for struct impl-item doc
+    /// Text below sub-sub-heading.
+    pub fn do_nothing() {}
+}
+
+/// # Top-doc Prose title
+///
+/// Text below title.
+///
+/// ## Top-doc Prose sub-heading
+///
+/// Text below sub-heading.
+///
+/// ### Top-doc Prose sub-sub-heading
+///
+/// Text below sub-sub-heading
+pub enum HeavilyDocumentedEnum {
+    /// # None prose title
+    /// ## None prose sub-heading
+    None,
+    /// # Wrapped prose title
+    /// ## Wrapped prose sub-heading
+    Wrapped(
+        /// # Wrapped.0 prose title
+        /// ## Wrapped.0 prose sub-heading
+        String,
+        String,
+    ),
+    Structy {
+        /// # Structy prose title
+        /// ## Structy prose sub-heading
+        alpha: String,
+        beta: String,
+    },
+}
+
+/// # Title for enum impl doc
+///
+/// Text below heading.
+///
+/// ## Sub-heading for enum impl doc
+///
+/// Text below sub-heading.
+///
+/// ### Sub-sub-heading for enum impl doc
+///
+/// Text below sub-sub-heading.
+///
+impl HeavilyDocumentedEnum {
+    /// # Title for enum impl-item doc
+    /// Text below title.
+    /// ## Sub-heading for enum impl-item doc
+    /// Text below sub-heading.
+    /// ### Sub-sub-heading for enum impl-item doc
+    /// Text below sub-sub-heading.
+    pub fn do_nothing() {}
+}
+
+/// # Top-doc prose title
+///
+/// Text below heading.
+///
+/// ## Top-doc prose sub-heading
+///
+/// Text below heading.
+pub union HeavilyDocumentedUnion {
+    /// # Title for union variant
+    /// ## Sub-heading for union variant
+    pub nothing: (),
+    pub something: f32,
+}
+
+/// # Title for union impl doc
+/// ## Sub-heading for union impl doc
+impl HeavilyDocumentedUnion {
+    /// # Title for union impl-item doc
+    /// ## Sub-heading for union impl-item doc
+    pub fn do_nothing() {}
+}
+
+/// # Top-doc prose title
+///
+/// Text below heading.
+///
+/// ## Top-doc prose sub-heading
+///
+/// Text below heading.
+#[macro_export]
+macro_rules! heavily_documented_macro {
+    () => {};
+}
