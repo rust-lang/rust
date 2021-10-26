@@ -107,6 +107,7 @@ rustc_queries! {
     /// parameter. e.g. `fn example<const N: usize=3>` called on `N` would return `3`.
     query const_param_default(param: DefId) -> &'tcx ty::Const<'tcx> {
         desc { |tcx| "compute const default for a given parameter `{}`", tcx.def_path_str(param)  }
+        separate_provide_extern
     }
 
     query default_anon_const_substs(key: DefId) -> SubstsRef<'tcx> {
@@ -128,6 +129,7 @@ rustc_queries! {
             path = tcx.def_path_str(key),
         }
         cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
 
     query analysis(key: ()) -> Result<(), ErrorReported> {
@@ -141,6 +143,7 @@ rustc_queries! {
         desc { |tcx| "computing generics of `{}`", tcx.def_path_str(key) }
         storage(ArenaCacheSelector<'tcx>)
         cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
 
     /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
@@ -181,6 +184,7 @@ rustc_queries! {
     /// Bounds from the parent (e.g. with nested impl trait) are not included.
     query explicit_item_bounds(key: DefId) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
         desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     /// Elaborated version of the predicates from `explicit_item_bounds`.
@@ -209,6 +213,7 @@ rustc_queries! {
 
     query native_libraries(_: CrateNum) -> Lrc<Vec<NativeLib>> {
         desc { "looking up the native libraries of a linked crate" }
+        separate_provide_extern
     }
 
     query lint_levels(_: ()) -> LintLevelMap {
@@ -226,11 +231,13 @@ rustc_queries! {
         // This query reads from untracked data in definitions.
         eval_always
         desc { |tcx| "expansion that defined `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     query is_panic_runtime(_: CrateNum) -> bool {
         fatal_cycle
         desc { "checking if the crate is_panic_runtime" }
+        separate_provide_extern
     }
 
     /// Fetch the THIR for a given body. If typeck for that body failed, returns an empty `Thir`.
@@ -260,6 +267,7 @@ rustc_queries! {
     query mir_const_qualif(key: DefId) -> mir::ConstQualifs {
         desc { |tcx| "const checking `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
     query mir_const_qualif_const_arg(
         key: (LocalDefId, DefId)
@@ -296,6 +304,7 @@ rustc_queries! {
         desc {
             |tcx| "building an abstract representation for {}", tcx.def_path_str(key),
         }
+        separate_provide_extern
     }
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const_of_const_arg(
@@ -329,6 +338,7 @@ rustc_queries! {
     ) -> &'tcx mir::Body<'tcx> {
         desc { |tcx| "caching mir of `{}` for CTFE", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
 
     query mir_for_ctfe_of_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::Body<'tcx> {
@@ -366,6 +376,7 @@ rustc_queries! {
     query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {
         desc { |tcx| "optimizing MIR for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
 
     /// Returns coverage summary info for a function, after executing the `InstrumentCoverage`
@@ -404,6 +415,7 @@ rustc_queries! {
     query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
         desc { |tcx| "optimizing promoted MIR for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
     query promoted_mir_of_const_arg(
         key: (LocalDefId, DefId)
@@ -462,12 +474,14 @@ rustc_queries! {
     /// Returns the predicates written explicitly by the user.
     query explicit_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { |tcx| "computing explicit predicates of `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     /// Returns the inferred outlives predicates (e.g., for `struct
     /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
     query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
         desc { |tcx| "computing inferred outlives predicates of `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     /// Maps from the `DefId` of a trait to the list of
@@ -478,6 +492,7 @@ rustc_queries! {
     /// additional acyclicity requirements).
     query super_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { |tcx| "computing the super predicates of `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     /// The `Option<Ident>` is the name of an associated type. If it is `None`, then this query
@@ -503,12 +518,15 @@ rustc_queries! {
     query trait_def(key: DefId) -> ty::TraitDef {
         desc { |tcx| "computing trait definition for `{}`", tcx.def_path_str(key) }
         storage(ArenaCacheSelector<'tcx>)
+        separate_provide_extern
     }
     query adt_def(key: DefId) -> &'tcx ty::AdtDef {
         desc { |tcx| "computing ADT definition for `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
     query adt_destructor(key: DefId) -> Option<ty::Destructor> {
         desc { |tcx| "computing `Drop` impl for `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     // The cycle error here should be reported as an error by `check_representable`.
@@ -537,10 +555,12 @@ rustc_queries! {
     /// `is_const_fn` function.
     query is_const_fn_raw(key: DefId) -> bool {
         desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     query asyncness(key: DefId) -> hir::IsAsync {
         desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     /// Returns `true` if calls to the function may be promoted.
@@ -557,16 +577,19 @@ rustc_queries! {
     /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
     query is_foreign_item(key: DefId) -> bool {
         desc { |tcx| "checking if `{}` is a foreign item", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     /// Returns `Some(mutability)` if the node pointed to by `def_id` is a static item.
     query static_mutability(def_id: DefId) -> Option<hir::Mutability> {
         desc { |tcx| "looking up static mutability of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
     query generator_kind(def_id: DefId) -> Option<hir::GeneratorKind> {
         desc { |tcx| "looking up generator kind of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     /// Gets a map with the variance of every item; use `item_variance` instead.
@@ -578,6 +601,7 @@ rustc_queries! {
     /// Maps from the `DefId` of a type or region parameter to its (inferred) variance.
     query variances_of(def_id: DefId) -> &'tcx [ty::Variance] {
         desc { |tcx| "computing the variances of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     /// Maps from thee `DefId` of a type to its (inferred) outlives.
@@ -589,12 +613,14 @@ rustc_queries! {
     /// Maps from an impl/trait `DefId` to a list of the `DefId`s of its items.
     query associated_item_def_ids(key: DefId) -> &'tcx [DefId] {
         desc { |tcx| "collecting associated items of `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     /// Maps from a trait item to the trait item "descriptor".
     query associated_item(key: DefId) -> ty::AssocItem {
         desc { |tcx| "computing associated item data for `{}`", tcx.def_path_str(key) }
         storage(ArenaCacheSelector<'tcx>)
+        separate_provide_extern
     }
 
     /// Collects the associated items defined on a trait or impl.
@@ -607,9 +633,11 @@ rustc_queries! {
     /// Return `None` if this is an inherent impl.
     query impl_trait_ref(impl_id: DefId) -> Option<ty::TraitRef<'tcx>> {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
+        separate_provide_extern
     }
     query impl_polarity(impl_id: DefId) -> ty::ImplPolarity {
         desc { |tcx| "computing implementation polarity of `{}`", tcx.def_path_str(impl_id) }
+        separate_provide_extern
     }
 
     query issue33140_self_ty(key: DefId) -> Option<ty::Ty<'tcx>> {
@@ -622,6 +650,7 @@ rustc_queries! {
     query inherent_impls(key: DefId) -> &'tcx [DefId] {
         desc { |tcx| "collecting inherent impls for `{}`", tcx.def_path_str(key) }
         eval_always
+        separate_provide_extern
     }
 
     /// The result of unsafety-checking this `LocalDefId`.
@@ -661,6 +690,7 @@ rustc_queries! {
     /// The signature of functions.
     query fn_sig(key: DefId) -> ty::PolyFnSig<'tcx> {
         desc { |tcx| "computing function signature of `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     query lint_mod(key: LocalDefId) -> () {
@@ -715,10 +745,10 @@ rustc_queries! {
     }
 
     /// Caches `CoerceUnsized` kinds for impls on custom types.
-    query coerce_unsized_info(key: DefId)
-        -> ty::adjustment::CoerceUnsizedInfo {
-            desc { |tcx| "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
-        }
+    query coerce_unsized_info(key: DefId) -> ty::adjustment::CoerceUnsizedInfo {
+        desc { |tcx| "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
+    }
 
     query typeck_item_bodies(_: ()) -> () {
         desc { "type-checking all item bodies" }
@@ -913,22 +943,27 @@ rustc_queries! {
 
     query opt_def_kind(def_id: DefId) -> Option<DefKind> {
         desc { |tcx| "looking up definition kind of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query def_span(def_id: DefId) -> Span {
         desc { |tcx| "looking up span for `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query def_ident_span(def_id: DefId) -> Option<Span> {
         desc { |tcx| "looking up span for `{}`'s identifier", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query lookup_stability(def_id: DefId) -> Option<&'tcx attr::Stability> {
         desc { |tcx| "looking up stability of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query lookup_const_stability(def_id: DefId) -> Option<&'tcx attr::ConstStability> {
         desc { |tcx| "looking up const stability of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query should_inherit_track_caller(def_id: DefId) -> bool {
@@ -937,10 +972,12 @@ rustc_queries! {
 
     query lookup_deprecation_entry(def_id: DefId) -> Option<DeprecationEntry> {
         desc { |tcx| "checking whether `{}` is deprecated", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query item_attrs(def_id: DefId) -> &'tcx [ast::Attribute] {
         desc { |tcx| "collecting attributes of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query codegen_fn_attrs(def_id: DefId) -> CodegenFnAttrs {
@@ -951,27 +988,33 @@ rustc_queries! {
 
     query fn_arg_names(def_id: DefId) -> &'tcx [rustc_span::symbol::Ident] {
         desc { |tcx| "looking up function parameter names for `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
     /// Gets the rendered value of the specified constant or associated constant.
     /// Used by rustdoc.
     query rendered_const(def_id: DefId) -> String {
         desc { |tcx| "rendering constant intializer of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
     query impl_parent(def_id: DefId) -> Option<DefId> {
         desc { |tcx| "computing specialization parent impl of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     /// Given an `associated_item`, find the trait it belongs to.
     /// Return `None` if the `DefId` is not an associated item.
     query trait_of_item(associated_item: DefId) -> Option<DefId> {
         desc { |tcx| "finding trait defining `{}`", tcx.def_path_str(associated_item) }
+        separate_provide_extern
     }
 
     query is_ctfe_mir_available(key: DefId) -> bool {
         desc { |tcx| "checking if item has ctfe mir available: `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
     query is_mir_available(key: DefId) -> bool {
         desc { |tcx| "checking if item has mir available: `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     query own_existential_vtable_entries(
@@ -1137,6 +1180,7 @@ rustc_queries! {
     query dylib_dependency_formats(_: CrateNum)
                                     -> &'tcx [(CrateNum, LinkagePreference)] {
         desc { "dylib dependency formats of crate" }
+        separate_provide_extern
     }
 
     query dependency_formats(_: ()) -> Lrc<crate::middle::dependency_format::Dependencies> {
@@ -1146,41 +1190,50 @@ rustc_queries! {
     query is_compiler_builtins(_: CrateNum) -> bool {
         fatal_cycle
         desc { "checking if the crate is_compiler_builtins" }
+        separate_provide_extern
     }
     query has_global_allocator(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
         eval_always
         fatal_cycle
         desc { "checking if the crate has_global_allocator" }
+        separate_provide_extern
     }
     query has_panic_handler(_: CrateNum) -> bool {
         fatal_cycle
         desc { "checking if the crate has_panic_handler" }
+        separate_provide_extern
     }
     query is_profiler_runtime(_: CrateNum) -> bool {
         fatal_cycle
         desc { "query a crate is `#![profiler_runtime]`" }
+        separate_provide_extern
     }
     query panic_strategy(_: CrateNum) -> PanicStrategy {
         fatal_cycle
         desc { "query a crate's configured panic strategy" }
+        separate_provide_extern
     }
     query panic_in_drop_strategy(_: CrateNum) -> PanicStrategy {
         fatal_cycle
         desc { "query a crate's configured panic-in-drop strategy" }
+        separate_provide_extern
     }
     query is_no_builtins(_: CrateNum) -> bool {
         fatal_cycle
         desc { "test whether a crate has `#![no_builtins]`" }
+        separate_provide_extern
     }
     query symbol_mangling_version(_: CrateNum) -> SymbolManglingVersion {
         fatal_cycle
         desc { "query a crate's symbol mangling version" }
+        separate_provide_extern
     }
 
     query extern_crate(def_id: DefId) -> Option<&'tcx ExternCrate> {
         eval_always
         desc { "getting crate's ExternCrateData" }
+        separate_provide_extern
     }
 
     query specializes(_: (DefId, DefId)) -> bool {
@@ -1197,10 +1250,12 @@ rustc_queries! {
 
     query impl_defaultness(def_id: DefId) -> hir::Defaultness {
         desc { |tcx| "looking up whether `{}` is a default impl", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query impl_constness(def_id: DefId) -> hir::Constness {
         desc { |tcx| "looking up whether `{}` is a const impl", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query check_item_well_formed(key: LocalDefId) -> () {
@@ -1229,9 +1284,11 @@ rustc_queries! {
         -> DefIdMap<SymbolExportLevel> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "looking up the exported symbols of a crate" }
+        separate_provide_extern
     }
     query is_reachable_non_generic(def_id: DefId) -> bool {
         desc { |tcx| "checking whether `{}` is an exported symbol", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
     query is_unreachable_local_definition(def_id: LocalDefId) -> bool {
         desc { |tcx|
@@ -1264,6 +1321,7 @@ rustc_queries! {
                 "collecting available upstream monomorphizations for `{}`",
                 tcx.def_path_str(def_id),
             }
+            separate_provide_extern
         }
 
     /// Returns the upstream crate that exports drop-glue for the given
@@ -1287,6 +1345,7 @@ rustc_queries! {
 
     query foreign_modules(_: CrateNum) -> Lrc<FxHashMap<DefId, ForeignModule>> {
         desc { "looking up the foreign modules of a linked crate" }
+        separate_provide_extern
     }
 
     /// Identifies the entry-point (e.g., the `main` function) for a given
@@ -1302,18 +1361,22 @@ rustc_queries! {
     query crate_hash(_: CrateNum) -> Svh {
         eval_always
         desc { "looking up the hash a crate" }
+        separate_provide_extern
     }
     query crate_host_hash(_: CrateNum) -> Option<Svh> {
         eval_always
         desc { "looking up the hash of a host version of a crate" }
+        separate_provide_extern
     }
     query extra_filename(_: CrateNum) -> String {
         eval_always
         desc { "looking up the extra filename for a crate" }
+        separate_provide_extern
     }
     query crate_extern_paths(_: CrateNum) -> Vec<PathBuf> {
         eval_always
         desc { "looking up the paths for extern crates" }
+        separate_provide_extern
     }
 
     /// Given a crate and a trait, look up all impls of that trait in the crate.
@@ -1321,6 +1384,7 @@ rustc_queries! {
     query implementations_of_trait(_: (CrateNum, DefId))
         -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
         desc { "looking up implementations of a trait in a crate" }
+        separate_provide_extern
     }
 
     /// Given a crate, look up all trait impls in that crate.
@@ -1328,6 +1392,7 @@ rustc_queries! {
     query all_trait_implementations(_: CrateNum)
         -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
         desc { "looking up all (?) trait implementations" }
+        separate_provide_extern
     }
 
     query is_dllimport_foreign_item(def_id: DefId) -> bool {
@@ -1384,6 +1449,7 @@ rustc_queries! {
 
     query visibility(def_id: DefId) -> ty::Visibility {
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     /// Computes the set of modules from which this type is visibly uninhabited.
@@ -1398,13 +1464,16 @@ rustc_queries! {
     query dep_kind(_: CrateNum) -> CrateDepKind {
         eval_always
         desc { "fetching what a dependency looks like" }
+        separate_provide_extern
     }
     query crate_name(_: CrateNum) -> Symbol {
         eval_always
         desc { "fetching what a crate is named" }
+        separate_provide_extern
     }
     query item_children(def_id: DefId) -> &'tcx [Export] {
         desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
@@ -1418,6 +1487,7 @@ rustc_queries! {
     query defined_lib_features(_: CrateNum)
         -> &'tcx [(Symbol, Option<Symbol>)] {
         desc { "calculating the lib features defined in a crate" }
+        separate_provide_extern
     }
     /// Returns the lang items defined in another crate by loading it from metadata.
     query get_lang_items(_: ()) -> LanguageItems {
@@ -1436,16 +1506,19 @@ rustc_queries! {
     /// Returns the lang items defined in another crate by loading it from metadata.
     query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, usize)] {
         desc { "calculating the lang items defined in a crate" }
+        separate_provide_extern
     }
 
     /// Returns the diagnostic items defined in a crate.
     query diagnostic_items(_: CrateNum) -> rustc_hir::diagnostic_items::DiagnosticItems {
         storage(ArenaCacheSelector<'tcx>)
         desc { "calculating the diagnostic items map in a crate" }
+        separate_provide_extern
     }
 
     query missing_lang_items(_: CrateNum) -> &'tcx [LangItem] {
         desc { "calculating the missing lang items in a crate" }
+        separate_provide_extern
     }
     query visible_parent_map(_: ()) -> DefIdMap<DefId> {
         storage(ArenaCacheSelector<'tcx>)
@@ -1458,10 +1531,12 @@ rustc_queries! {
     query missing_extern_crate_item(_: CrateNum) -> bool {
         eval_always
         desc { "seeing if we're missing an `extern crate` item for this crate" }
+        separate_provide_extern
     }
     query used_crate_source(_: CrateNum) -> Lrc<CrateSource> {
         eval_always
         desc { "looking at the source for a crate" }
+        separate_provide_extern
     }
     query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
         eval_always
@@ -1472,6 +1547,7 @@ rustc_queries! {
     query is_private_dep(c: CrateNum) -> bool {
         eval_always
         desc { "check whether crate {} is a private dependency", c }
+        separate_provide_extern
     }
     query allocator_kind(_: ()) -> Option<AllocatorKind> {
         eval_always
@@ -1517,6 +1593,7 @@ rustc_queries! {
     query exported_symbols(_: CrateNum)
         -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
         desc { "exported_symbols" }
+        separate_provide_extern
     }
 
     query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
@@ -1542,6 +1619,7 @@ rustc_queries! {
             |tcx| "determining which generic parameters are unused by `{}`",
                 tcx.def_path_str(key.def_id())
         }
+        separate_provide_extern
     }
     query backend_optimization_level(_: ()) -> OptLevel {
         desc { "optimization level used by backend" }

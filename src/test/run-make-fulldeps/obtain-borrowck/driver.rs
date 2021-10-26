@@ -25,7 +25,7 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_interface::interface::Compiler;
 use rustc_interface::{Config, Queries};
 use rustc_middle::ty::query::query_values::mir_borrowck;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use std::cell::RefCell;
@@ -87,9 +87,8 @@ impl rustc_driver::Callbacks for CompilerCalls {
     }
 }
 
-fn override_queries(_session: &Session, local: &mut Providers, external: &mut Providers) {
+fn override_queries(_session: &Session, local: &mut Providers, _external: &mut ExternProviders) {
     local.mir_borrowck = mir_borrowck;
-    external.mir_borrowck = mir_borrowck;
 }
 
 // Since mir_borrowck does not have access to any other state, we need to use a

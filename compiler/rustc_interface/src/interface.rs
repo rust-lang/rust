@@ -38,7 +38,7 @@ pub struct Compiler {
     pub(crate) output_file: Option<PathBuf>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries:
-        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::Providers)>,
+        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::ExternProviders)>,
 }
 
 impl Compiler {
@@ -155,7 +155,7 @@ pub struct Config {
     ///
     /// The second parameter is local providers and the third parameter is external providers.
     pub override_queries:
-        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::Providers)>,
+        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::ExternProviders)>,
 
     /// This is a callback from the driver that is called to create a codegen backend.
     pub make_codegen_backend:
