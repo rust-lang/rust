@@ -74,19 +74,16 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
 
         let (msg, sp) = match loc.source {
             hir::LocalSource::Normal => ("local binding", Some(loc.span)),
-            hir::LocalSource::ForLoopDesugar => ("`for` loop binding", None),
             hir::LocalSource::AsyncFn => ("async fn binding", None),
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
             hir::LocalSource::AssignDesugar(_) => ("destructuring assignment binding", None),
         };
         self.check_irrefutable(&loc.pat, msg, sp);
-        self.check_patterns(&loc.pat, Irrefutable);
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
         intravisit::walk_param(self, param);
         self.check_irrefutable(&param.pat, "function argument", None);
-        self.check_patterns(&param.pat, Irrefutable);
     }
 }
 
@@ -161,12 +158,12 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
     fn check_match(
         &mut self,
         scrut: &hir::Expr<'_>,
-        arms: &'tcx [hir::Arm<'tcx>],
+        hir_arms: &'tcx [hir::Arm<'tcx>],
         source: hir::MatchSource,
     ) {
         let mut cx = self.new_cx(scrut.hir_id);
 
-        for arm in arms {
+        for arm in hir_arms {
             // Check the arm for some things unrelated to exhaustiveness.
             self.check_patterns(&arm.pat, Refutable);
             if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
@@ -178,7 +175,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
         let mut have_errors = false;
 
-        let arms: Vec<_> = arms
+        let arms: Vec<_> = hir_arms
             .iter()
             .map(|hir::Arm { pat, guard, .. }| MatchArm {
                 pat: self.lower_pattern(&mut cx, pat, &mut have_errors),
@@ -196,6 +193,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let report = compute_match_usefulness(&cx, &arms, scrut.hir_id, scrut_ty);
 
         match source {
+            // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
+            // when the iterator is an uninhabited type. unreachable_code will trigger instead.
+            hir::MatchSource::ForLoopDesugar if arms.len() == 1 => {}
             hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
                 report_arm_reachability(&cx, &report)
             }
@@ -208,7 +208,13 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let is_empty_match = arms.is_empty();
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
-            non_exhaustive_match(&cx, scrut_ty, scrut.span, witnesses, is_empty_match);
+            if source == hir::MatchSource::ForLoopDesugar && hir_arms.len() == 2 {
+                // the for loop pattern is not irrefutable
+                let pat = hir_arms[1].pat.for_loop_some().unwrap();
+                self.check_irrefutable(pat, "`for` loop binding", None);
+            } else {
+                non_exhaustive_match(&cx, scrut_ty, scrut.span, witnesses, is_empty_match);
+            }
         }
     }
 
@@ -225,6 +231,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let witnesses = report.non_exhaustiveness_witnesses;
         if witnesses.is_empty() {
             // The pattern is irrefutable.
+            self.check_patterns(pat, Irrefutable);
             return;
         }
 

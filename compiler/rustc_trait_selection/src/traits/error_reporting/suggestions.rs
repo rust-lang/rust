@@ -27,7 +27,7 @@ use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, DesugaringKind, ExpnKind, ForLoopLoc, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{BytePos, DesugaringKind, ExpnKind, MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use std::fmt;
 
@@ -685,7 +685,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             &obligation.cause.code
         {
             parent_code.clone()
-        } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop(ForLoopLoc::IntoIter)) =
+        } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop) =
             span.ctxt().outer_expn_data().kind
         {
             Lrc::new(obligation.cause.code.clone())
@@ -765,8 +765,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // This if is to prevent a special edge-case
                     if matches!(
                         span.ctxt().outer_expn_data().kind,
-                        ExpnKind::Root
-                            | ExpnKind::Desugaring(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
+                        ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
                     ) {
                         // We don't want a borrowing suggestion on the fields in structs,
                         // ```

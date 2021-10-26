@@ -1,8 +1,8 @@
-error[E0515]: cannot return value referencing local binding
+error[E0515]: cannot return value referencing temporary value
   --> $DIR/return-local-binding-from-desugaring.rs:30:5
    |
 LL |     for ref x in xs {
-   |                  -- local binding introduced here
+   |                  -- temporary value created here
 ...
 LL |     result
    |     ^^^^^^ returns a value referencing data owned by the current function

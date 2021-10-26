@@ -5,13 +5,12 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, Pat};
+use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, MatchSource, Pat};
 use rustc_middle::hir::map::Map;
 use rustc_middle::infer::unify_key::ConstVariableOriginKind;
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, DefIdTree, InferConst, Ty, TyCtxt};
-use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -26,6 +25,7 @@ struct FindHirNodeVisitor<'a, 'tcx> {
     found_closure: Option<&'tcx Expr<'tcx>>,
     found_method_call: Option<&'tcx Expr<'tcx>>,
     found_exact_method_call: Option<&'tcx Expr<'tcx>>,
+    found_for_loop_iter: Option<&'tcx Expr<'tcx>>,
     found_use_diagnostic: Option<UseDiagnostic<'tcx>>,
 }
 
@@ -41,6 +41,7 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
             found_closure: None,
             found_method_call: None,
             found_exact_method_call: None,
+            found_for_loop_iter: None,
             found_use_diagnostic: None,
         }
     }
@@ -111,6 +112,15 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        if let ExprKind::Match(scrutinee, [_, arm], MatchSource::ForLoopDesugar) = expr.kind {
+            if let Some(pat) = arm.pat.for_loop_some() {
+                if let Some(ty) = self.node_ty_contains_target(pat.hir_id) {
+                    self.found_for_loop_iter = Some(scrutinee);
+                    self.found_node_ty = Some(ty);
+                    return;
+                }
+            }
+        }
         if let ExprKind::MethodCall(_, call_span, exprs, _) = expr.kind {
             if call_span == self.target_span
                 && Some(self.target)
@@ -643,10 +653,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let msg = if let Some(simple_ident) = pattern.simple_ident() {
                 match pattern.span.desugaring_kind() {
                     None => format!("consider giving `{}` {}", simple_ident, suffix),
-                    Some(DesugaringKind::ForLoop(_)) => {
-                        "the element type for this iterator is not specified".to_string()
-                    }
-                    _ => format!("this needs {}", suffix),
+                    Some(_) => format!("this needs {}", suffix),
                 }
             } else {
                 format!("consider giving this pattern {}", suffix)
@@ -719,6 +726,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 //    = note: type must be known at this point
                 self.annotate_method_call(segment, e, &mut err);
             }
+        } else if let Some(scrutinee) = local_visitor.found_for_loop_iter {
+            err.span_label(
+                scrutinee.span,
+                "the element type for this iterator is not specified".to_string(),
+            );
         }
         // Instead of the following:
         // error[E0282]: type annotations needed

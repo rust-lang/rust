@@ -549,13 +549,10 @@ mod fn_keyword {}
 /// {
 ///     let result = match IntoIterator::into_iter(iterator) {
 ///         mut iter => loop {
-///             let next;
 ///             match iter.next() {
-///                 Some(val) => next = val,
 ///                 None => break,
+///                 Some(loop_variable) => { code(); },
 ///             };
-///             let loop_variable = next;
-///             let () = { code(); };
 ///         },
 ///     };
 ///     result

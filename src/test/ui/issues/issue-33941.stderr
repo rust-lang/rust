@@ -23,16 +23,6 @@ LL |     for _ in HashMap::new().iter().cloned() {}
    = note: required because of the requirements on the impl of `Iterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
    = note: required because of the requirements on the impl of `IntoIterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
 
-error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, _> as Iterator>::Item == &_`
-  --> $DIR/issue-33941.rs:4:14
-   |
-LL |     for _ in HashMap::new().iter().cloned() {}
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected reference, found tuple
-   |
-   = note: expected reference `&_`
-                  found tuple `(&_, &_)`
-   = note: required because of the requirements on the impl of `Iterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0271`.
