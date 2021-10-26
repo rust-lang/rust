@@ -1074,7 +1074,11 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
-        Literal(bridge::client::Literal::float(&n.to_string()))
+        let mut repr = n.to_string();
+        if !repr.contains('.') {
+            repr.push_str(".0");
+        }
+        Literal(bridge::client::Literal::float(&repr))
     }
 
     /// Creates a new suffixed floating-point literal.
@@ -1115,7 +1119,11 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
-        Literal(bridge::client::Literal::float(&n.to_string()))
+        let mut repr = n.to_string();
+        if !repr.contains('.') {
+            repr.push_str(".0");
+        }
+        Literal(bridge::client::Literal::float(&repr))
     }
 
     /// Creates a new suffixed floating-point literal.
