@@ -47,10 +47,10 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             let mut tt = tt.syntax().children_with_tokens().skip(1).join("");
             tt.pop();
             let expansions = sema.expand_derive_macro(&attr)?;
-            return Some(ExpandedMacro {
+            Some(ExpandedMacro {
                 name: tt,
                 expansion: expansions.into_iter().map(insert_whitespaces).join(""),
-            });
+            })
         } else {
             None
         }
