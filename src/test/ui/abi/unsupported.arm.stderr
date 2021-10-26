@@ -34,8 +34,14 @@ error[E0570]: `"x86-interrupt"` is not a supported ABI for the current target
 LL | extern "x86-interrupt" fn x86() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of calling convention not supported on this target
+error[E0570]: `"thiscall"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:43:1
+   |
+LL | extern "thiscall" fn thiscall() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of calling convention not supported on this target
+  --> $DIR/unsupported.rs:47:1
    |
 LL | extern "stdcall" fn stdcall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,15 +50,6 @@ LL | extern "stdcall" fn stdcall() {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
 
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:50:1
-   |
-LL | extern "thiscall" fn thiscall() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
-
-error: aborting due to 6 previous errors; 2 warnings emitted
+error: aborting due to 7 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0570`.
