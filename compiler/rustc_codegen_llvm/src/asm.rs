@@ -13,7 +13,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, span_bug, ty::Instance};
 use rustc_span::{Pos, Span, Symbol};
 use rustc_target::abi::*;
 use rustc_target::asm::*;
@@ -120,6 +120,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         operands: &[InlineAsmOperandRef<'tcx, Self>],
         options: InlineAsmOptions,
         line_spans: &[Span],
+        instance: Instance<'_>,
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
@@ -135,7 +136,10 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     let is_target_supported = |reg_class: InlineAsmRegClass| {
                         for &(_, feature) in reg_class.supported_types(asm_arch) {
                             if let Some(feature) = feature {
-                                if self.tcx.sess.target_features.contains(&Symbol::intern(feature))
+                                let codegen_fn_attrs = self.tcx.codegen_fn_attrs(instance.def_id());
+                                let feature_name = Symbol::intern(feature);
+                                if self.tcx.sess.target_features.contains(&feature_name)
+                                    || codegen_fn_attrs.target_features.contains(&feature_name)
                                 {
                                     return true;
                                 }
