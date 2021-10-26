@@ -53,6 +53,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(shadow::SHADOW_SAME),
     LintId::of(shadow::SHADOW_UNRELATED),
     LintId::of(strings::STRING_ADD),
+    LintId::of(strings::STRING_SLICE),
     LintId::of(strings::STRING_TO_STRING),
     LintId::of(strings::STR_TO_STRING),
     LintId::of(types::RC_BUFFER),

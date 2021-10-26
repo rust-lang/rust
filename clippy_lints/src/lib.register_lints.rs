@@ -431,6 +431,7 @@ store.register_lints(&[
     strings::STRING_ADD_ASSIGN,
     strings::STRING_FROM_UTF8_AS_BYTES,
     strings::STRING_LIT_AS_BYTES,
+    strings::STRING_SLICE,
     strings::STRING_TO_STRING,
     strings::STR_TO_STRING,
     strlen_on_c_strings::STRLEN_ON_C_STRINGS,
