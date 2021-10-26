@@ -33,7 +33,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     })?;
 
     // due to how Rust Analyzer works internally, we need to special case derive attributes,
-    // otherwise they might not get found, e.g. here only `#[attr]` would expand:
+    // otherwise they might not get found, e.g. here with the cursor at $0 `#[attr]` would expand:
     // ```
     // #[attr]
     // #[derive($0Foo)]
