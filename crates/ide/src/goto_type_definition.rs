@@ -81,11 +81,7 @@ pub(crate) fn goto_type_definition(
                 }
             });
         });
-    if res.is_empty() {
-        None
-    } else {
-        Some(RangeInfo::new(range, res))
-    }
+    Some(RangeInfo::new(range, res))
 }
 
 #[cfg(test)]
