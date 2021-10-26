@@ -160,15 +160,35 @@ crate mod source_code_pro {
     crate static LICENSE: &[u8] = include_bytes!("static/fonts/SourceCodePro-LICENSE.txt");
 }
 
-crate mod noto_sans_kr {
-    /// The file `noto-sans-kr.woff`, the Regular variant of the Noto Sans KR font.
-    crate static REGULAR: &[u8] = include_bytes!("static/fonts/noto-sans-kr-regular.woff");
+/// Files related to the Nanum Barun Gothic font.
+///
+/// These files are used to avoid some legacy CJK serif fonts in Windows.
+///
+/// Note that the Noto Sans KR font, which was used previously but was not very readable on Windows,
+/// has been replaced by the Nanum Barun Gothic font. This is due to Windows' implementation of font
+/// rendering that distorts OpenType fonts too much.
+///
+/// The font files were generated with these commands:
+///
+/// ```sh
+/// pyftsubset NanumBarunGothic.ttf \
+/// --unicodes=U+AC00-D7AF,U+1100-11FF,U+3130-318F,U+A960-A97F,U+D7B0-D7FF \
+/// --output-file=NanumBarunGothic.ttf.woff --flavor=woff
+/// ```
+/// ```sh
+/// pyftsubset NanumBarunGothic.ttf \
+/// --unicodes=U+AC00-D7AF,U+1100-11FF,U+3130-318F,U+A960-A97F,U+D7B0-D7FF \
+/// --output-file=NanumBarunGothic.ttf.woff2 --flavor=woff2
+/// ```
+crate mod nanum_barun_gothic {
+    /// The file `NanumBarunGothic.ttf.woff`, the Regular variant of the Nanum Barun Gothic font.
+    crate static REGULAR: &[u8] = include_bytes!("static/fonts/NanumBarunGothic.ttf.woff");
 
-    /// The file `noto-sans-kr.woff2`, the Regular variant of the Noto Sans KR font.
-    crate static REGULAR2: &[u8] = include_bytes!("static/fonts/noto-sans-kr-regular.woff2");
+    /// The file `NanumBarunGothic.ttf.woff2`, the Regular variant of the Nanum Barun Gothic font.
+    crate static REGULAR2: &[u8] = include_bytes!("static/fonts/NanumBarunGothic.ttf.woff2");
 
-    /// The file `noto-sans-kr-LICENSE.txt`, the license text of the Noto Sans KR font.
-    crate static LICENSE: &[u8] = include_bytes!("static/fonts/noto-sans-kr-LICENSE.txt");
+    /// The file `NanumBarunGothic-LICENSE.txt`, the license text of the Nanum Barun Gothic font.
+    crate static LICENSE: &[u8] = include_bytes!("static/fonts/NanumBarunGothic-LICENSE.txt");
 }
 
 /// Files related to the sidebar in rustdoc sources.
