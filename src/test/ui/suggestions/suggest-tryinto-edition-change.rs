@@ -2,30 +2,28 @@
 // Edition 2021 change
 // edition:2018
 
-fn test() {
-    let _i: i16 = 0_i32.try_into().unwrap();
+// We mark this no_std to avoid emitting suggestions for both `std` and `core` traits. These were
+// inconsistently ordered between CI and at least one local build, causing test failures.
+#![no_std]
+#![crate_type = "lib"]
+
+pub fn test() {
+    let _i: Result<i16, _> = 0_i32.try_into();
     //~^ ERROR no method named `try_into` found for type `i32` in the current scope
     //~| NOTE method not found in `i32`
-    //~| NOTE 'std::convert::TryInto' is included in the prelude starting in Edition 2021
-
-    let _i: i16 = TryFrom::try_from(0_i32).unwrap();
-    //~^ ERROR failed to resolve: use of undeclared type
-    //~| NOTE not found in this scope
-    //~| NOTE 'std::convert::TryFrom' is included in the prelude starting in Edition 2021
-    //~| NOTE 'core::convert::TryFrom' is included in the prelude starting in Edition 2021
-
-    let _i: i16 = TryInto::try_into(0_i32).unwrap();
-    //~^ ERROR failed to resolve: use of undeclared type
-    //~| NOTE not found in this scope
-    //~| NOTE 'std::convert::TryInto' is included in the prelude starting in Edition 2021
     //~| NOTE 'core::convert::TryInto' is included in the prelude starting in Edition 2021
 
-    let _v: Vec<_> = FromIterator::from_iter(&[1]);
+    let _i: Result<i16, _> = TryFrom::try_from(0_i32);
     //~^ ERROR failed to resolve: use of undeclared type
-    //~| NOTE 'std::iter::FromIterator' is included in the prelude starting in Edition 2021
-    //~| NOTE 'core::iter::FromIterator' is included in the prelude starting in Edition 2021
-}
+    //~| NOTE not found in this scope
+    //~| NOTE 'core::convert::TryFrom' is included in the prelude starting in Edition 2021
 
-fn main() {
-    test();
+    let _i: Result<i16, _> = TryInto::try_into(0_i32);
+    //~^ ERROR failed to resolve: use of undeclared type
+    //~| NOTE not found in this scope
+    //~| NOTE 'core::convert::TryInto' is included in the prelude starting in Edition 2021
+
+    let _i: () = FromIterator::from_iter(core::iter::empty());
+    //~^ ERROR failed to resolve: use of undeclared type
+    //~| NOTE 'core::iter::FromIterator' is included in the prelude starting in Edition 2021
 }
