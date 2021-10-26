@@ -1,5 +1,5 @@
 use ide_db::{base_db::Upcast, helpers::pick_best_token, RootDatabase};
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TextRange, T};
+use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, T};
 
 use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
 
