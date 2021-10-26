@@ -3,6 +3,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorReported, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
+use rustc_metadata::locator::{get_dylib_symbol_name, unlib};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
@@ -17,7 +18,7 @@ use rustc_span::symbol::Symbol;
 use rustc_target::abi::Endian;
 use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
-use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
+use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet};
 
 use super::archive::{find_library, ArchiveBuilder};
 use super::command::Command;
@@ -2252,11 +2253,6 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
     }
 
-    // Converts a library file-stem into a cc -l argument
-    fn unlib<'a>(target: &Target, stem: &'a str) -> &'a str {
-        if stem.starts_with("lib") && !target.is_like_windows { &stem[3..] } else { stem }
-    }
-
     // Adds the static "rlib" versions of all crates to the command line.
     // There's a bit of magic which happens here specifically related to LTO,
     // namely that we remove upstream object files.
@@ -2380,19 +2376,9 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             cmd.include_path(&fix_windows_verbatim_for_gcc(dir));
         }
         let filename = cratepath.file_name().unwrap().to_str().unwrap();
-        // test if dll_suffix is found within filename (should be, but if it
-        // isn't falls back to just getting the file stem). Then just gets the
-        // substring from the beginning to the suffix. This is better than just
-        // getting the filestem, as it respects versioned libraries.
-        let filestem = filename
-            .find(&sess.target.dll_suffix)
-            .map(|idx| filename.get(0..idx))
-            .flatten()
-            .unwrap_or(cratepath.file_stem().unwrap().to_str().unwrap());
-        cmd.link_rust_dylib(
-            Symbol::intern(&unlib(&sess.target, filestem)),
-            parent.unwrap_or_else(|| Path::new("")),
-        );
+        let symbol_name = get_dylib_symbol_name(filename, &sess.target)
+            .unwrap_or(unlib(&sess.target, cratepath.file_stem().unwrap().to_str().unwrap()));
+        cmd.link_rust_dylib(Symbol::intern(symbol_name), cratepath);
     }
 }
 

@@ -464,9 +464,9 @@ impl<'a> Linker for GccLinker<'a> {
         self.linker_arg("-znorelro");
     }
 
-    fn link_rust_dylib(&mut self, lib: Symbol, _path: &Path) {
+    fn link_rust_dylib(&mut self, _lib: Symbol, path: &Path) {
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}", lib));
+        self.cmd.arg(format!("-l:{}", path.file_name().unwrap().to_str().unwrap()));
     }
 
     fn link_framework(&mut self, framework: Symbol, as_needed: bool) {
@@ -837,7 +837,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         // check to see if the file is there and just omit linking to it if it's
         // not present.
         let name = format!("{}.dll.lib", lib);
-        if path.join(&name).exists() {
+        if path.parent().unwrap_or_else(|| Path::new("")).join(&name).exists() {
             self.cmd.arg(name);
         }
     }
