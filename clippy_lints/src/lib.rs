@@ -828,6 +828,7 @@ fn register_removed_non_tool_lints(store: &mut rustc_lint::LintStore) {
 ///
 /// Used in `./src/driver.rs`.
 pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
+    // NOTE: when renaming a lint, add a corresponding test to tests/ui/rename.rs
     ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
     ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
