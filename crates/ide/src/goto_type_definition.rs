@@ -36,13 +36,11 @@ pub(crate) fn goto_type_definition(
             }
         }
     };
-
-    // TODO this became pretty baroque after refactoring for `descend_into_macros(_many)`
-    let range = sema
-        .descend_into_macros(token)
+    let range = token.text_range();
+    sema.descend_into_macros(token)
         .iter()
         .filter_map(|token| {
-            let ty_range = sema.token_ancestors_with_macros(token.clone()).find_map(|node| {
+            let ty = sema.token_ancestors_with_macros(token.clone()).find_map(|node| {
                 let ty = match_ast! {
                     match node {
                         ast::Expr(it) => sema.type_of_expr(&it)?.original,
@@ -64,12 +62,11 @@ pub(crate) fn goto_type_definition(
                     }
                 };
 
-                let range = node.text_range();
-                Some((ty, range.start(), range.end()))
+                Some(ty)
             });
-            ty_range
+            ty
         })
-        .inspect(|(ty, _range_start, _range_end)| {
+        .for_each(|ty| {
             // collect from each `ty` into the `res` result vec
             let ty = ty.strip_references();
             ty.walk(db, |t| {
@@ -83,14 +80,12 @@ pub(crate) fn goto_type_definition(
                     push(trait_.into());
                 }
             });
-        }) // reduce all ranges into a single umbrella span (TODO fishy?)
-        .map(|(_, range_start, range_end)| (range_start, range_end))
-        .reduce(|(start_acc, end_acc), (start_cur, end_cur)| {
-            (start_acc.min(start_cur), end_acc.max(end_cur))
-        })
-        .map(|(range_start, range_end)| TextRange::new(range_start, range_end))?; // TODO easy to miss `?` bail
-
-    Some(RangeInfo::new(range, res))
+        });
+    if res.is_empty() {
+        None
+    } else {
+        Some(RangeInfo::new(range, res))
+    }
 }
 
 #[cfg(test)]
