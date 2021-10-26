@@ -1551,6 +1551,11 @@ fn test_trailing_separator() {
         assert_eq!(dir, Path::new(r"tmp\f\\"));
     }
 
+    let dir_dot = Path::new("tmp/f/.");
+    assert_ne!(file, dir_dot);
+    assert!(file < dir_dot);
+    assert_eq!(dir, dir_dot);
+
     let file = file.to_owned();
     let dir = dir.to_owned();
     assert_ne!(file, dir);
@@ -1658,9 +1663,15 @@ fn test_ord() {
     ord!(Less, "foo/./bar", "foo/bar/");
     ord!(Equal, "foo/./bar/", "foo/bar/");
     ord!(Less, "foo/bar", "foo/bar/");
-    ord!(Equal, "foo/bar", "foo/bar/.");
+    ord!(Less, "foo/bar", "foo/bar/.");
     ord!(Less, "foo/bar", "foo/bar//");
     ord!(Equal, "foo/bar/", "foo/bar//");
+    ord!(Equal, "foo/bar/", "foo/bar/.");
+    ord!(Equal, "foo/bar/", "foo/bar/./");
+    ord!(Equal, "foo/bar/", "foo/bar/./.");
+    ord!(Less, "/", "./");
+    ord!(Equal, ".", "./");
+    ord!(Equal, ".", "./.");
 }
 
 #[bench]

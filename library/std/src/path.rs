@@ -2719,11 +2719,30 @@ impl Path {
         PathBuf { inner: OsString::from(inner) }
     }
 
-    fn ends_with_separator(&self) -> bool {
+    /// Returns true if the path's syntax indicates it necessarily can only
+    /// refer to a directory.
+    ///
+    /// This is relevant to the PartialEq and PartialOrd impls of Path. For
+    /// example, compared as paths "r/s/" and "r/s/." and "r/s/./" and "r/s/./."
+    /// are all in the same equivalence class, but a different class from "r/s".
+    /// That's because if "r/s" is a file then "r/s" exists while most
+    /// filesystems would consider that "r/s/" does not exist, and thus these
+    /// must not be equal paths.
+    fn syntactically_dir(&self) -> bool {
         let components = self.components();
-        match components.path.last() {
-            None => false,
-            Some(byte) => components.is_sep_byte(*byte),
+        let bytes_after_prefix =
+            &components.path[components.prefix.as_ref().map_or(0, Prefix::len)..];
+        let mut bytes_iter = bytes_after_prefix.iter();
+        let last_byte = bytes_iter.next_back();
+        let second_last_byte = bytes_iter.next_back();
+        match (second_last_byte, last_byte) {
+            // Path ends in separator, like "path/to/"
+            (_, Some(&sep)) if components.is_sep_byte(sep) => true,
+            // Path ends in separator followed by CurDir, like "path/to/."
+            (Some(&sep), Some(b'.')) if components.is_sep_byte(sep) => true,
+            // Path is ".", because "." and "./." need to be considered equal
+            (None, Some(b'.')) => true,
+            _ => false,
         }
     }
 }
@@ -2787,7 +2806,7 @@ impl cmp::PartialEq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
         self.components() == other.components()
-            && self.ends_with_separator() == other.ends_with_separator()
+            && self.syntactically_dir() == other.syntactically_dir()
     }
 }
 
@@ -2816,7 +2835,7 @@ impl cmp::Ord for Path {
     #[inline]
     fn cmp(&self, other: &Path) -> cmp::Ordering {
         compare_components(self.components(), other.components())
-            .then_with(|| self.ends_with_separator().cmp(&other.ends_with_separator()))
+            .then_with(|| self.syntactically_dir().cmp(&other.syntactically_dir()))
     }
 }
 
