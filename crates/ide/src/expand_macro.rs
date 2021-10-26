@@ -366,10 +366,12 @@ fn main() {
     fn macro_expand_derive() {
         check(
             r#"
+//- proc_macros: identity
+
 #[rustc_builtin_macro]
 pub macro Clone {}
 
-#[doc = ""]
+#[proc_macros::identity]
 #[derive(C$0lone)]
 struct Foo {}
 "#,
