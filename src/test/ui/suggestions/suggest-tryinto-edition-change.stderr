@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type `TryFrom`
-  --> $DIR/suggest-tryinto-edition-change.rs:14:30
+  --> $DIR/suggest-tryinto-edition-change.rs:16:30
    |
 LL |     let _i: Result<i16, _> = TryFrom::try_from(0_i32);
    |                              ^^^^^^^ not found in this scope
@@ -11,7 +11,7 @@ LL | use core::convert::TryFrom;
    |
 
 error[E0433]: failed to resolve: use of undeclared type `TryInto`
-  --> $DIR/suggest-tryinto-edition-change.rs:19:30
+  --> $DIR/suggest-tryinto-edition-change.rs:21:30
    |
 LL |     let _i: Result<i16, _> = TryInto::try_into(0_i32);
    |                              ^^^^^^^ not found in this scope
@@ -23,7 +23,7 @@ LL | use core::convert::TryInto;
    |
 
 error[E0433]: failed to resolve: use of undeclared type `FromIterator`
-  --> $DIR/suggest-tryinto-edition-change.rs:24:18
+  --> $DIR/suggest-tryinto-edition-change.rs:26:18
    |
 LL |     let _i: () = FromIterator::from_iter(core::iter::empty());
    |                  ^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL | use core::iter::FromIterator;
    |
 
 error[E0599]: no method named `try_into` found for type `i32` in the current scope
-  --> $DIR/suggest-tryinto-edition-change.rs:9:36
+  --> $DIR/suggest-tryinto-edition-change.rs:11:36
    |
 LL |     let _i: Result<i16, _> = 0_i32.try_into();
    |                                    ^^^^^^^^ method not found in `i32`
