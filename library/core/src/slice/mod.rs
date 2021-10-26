@@ -3076,6 +3076,7 @@ impl<T> [T] {
     /// [`copy_from_slice`]: slice::copy_from_slice
     /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
+    #[track_caller]
     pub fn clone_from_slice(&mut self, src: &[T])
     where
         T: Clone,
@@ -3139,6 +3140,7 @@ impl<T> [T] {
     /// [`split_at_mut`]: slice::split_at_mut
     #[doc(alias = "memcpy")]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
+    #[track_caller]
     pub fn copy_from_slice(&mut self, src: &[T])
     where
         T: Copy,
@@ -3259,6 +3261,7 @@ impl<T> [T] {
     ///
     /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "swap_with_slice", since = "1.27.0")]
+    #[track_caller]
     pub fn swap_with_slice(&mut self, other: &mut [T]) {
         assert!(self.len() == other.len(), "destination and source slices have different lengths");
         // SAFETY: `self` is valid for `self.len()` elements by definition, and `src` was
@@ -3581,6 +3584,7 @@ impl<T> CloneFromSpec<T> for [T]
 where
     T: Clone,
 {
+    #[track_caller]
     default fn spec_clone_from(&mut self, src: &[T]) {
         assert!(self.len() == src.len(), "destination and source slices have different lengths");
         // NOTE: We need to explicitly slice them to the same length
@@ -3598,6 +3602,7 @@ impl<T> CloneFromSpec<T> for [T]
 where
     T: Copy,
 {
+    #[track_caller]
     fn spec_clone_from(&mut self, src: &[T]) {
         self.copy_from_slice(src);
     }
