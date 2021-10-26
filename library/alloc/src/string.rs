@@ -1500,10 +1500,11 @@ impl String {
     ///
     /// # Safety
     ///
-    /// This function is unsafe because it does not check that the bytes passed
-    /// to it are valid UTF-8. If this constraint is violated, it may cause
-    /// memory unsafety issues with future users of the `String`, as the rest of
-    /// the standard library assumes that `String`s are valid UTF-8.
+    /// This function is unsafe because the returned `&mut Vec` allows writing
+    /// bytes which are not valid UTF-8. If this constraint is violated, using
+    /// the original `String` after dropping the `&mut Vec` may violate memory
+    /// safety, as the rest of the standard library assumes that `String`s are
+    /// valid UTF-8.
     ///
     /// # Examples
     ///
