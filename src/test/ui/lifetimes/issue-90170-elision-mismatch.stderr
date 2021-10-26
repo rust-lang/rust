@@ -1,64 +1,45 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:3:43
+  --> $DIR/issue-90170-elision-mismatch.rs:3:47
    |
-LL | fn foo(x: &mut Vec<&u8>, y: &u8) { x.push(y); }
-   |                    ---      ---           ^ ...but data from `y` flows into `x` here
-   |                             |
-   |                             these two types are declared with different lifetimes...
-   |
-   = note: each elided lifetime in input position becomes a distinct lifetime
-help: consider introducing a named lifetime parameter
-   |
-LL | fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
-   |       ++++              ++          ++
-
-error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:5:47
-   |
-LL | fn foo2(x: &mut Vec<&'_ u8>, y: &u8) { x.push(y); }
-   |                     ------      ---           ^ ...but data from `y` flows into `x` here
+LL | pub fn foo(x: &mut Vec<&u8>, y: &u8) { x.push(y); }
+   |                        ---      ---           ^ ...but data from `y` flows into `x` here
    |                                 |
    |                                 these two types are declared with different lifetimes...
    |
    = note: each elided lifetime in input position becomes a distinct lifetime
 help: consider introducing a named lifetime parameter
    |
-LL | fn foo2<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
-   |        ++++              ~~          ++
+LL | pub fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
+   |           ++++              ++          ++
 
 error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:7:66
+  --> $DIR/issue-90170-elision-mismatch.rs:5:51
    |
-LL | fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&u8>, y: &u8) { x.push(y); }
-   |                                           ---      ---           ^ ...but data from `y` flows into `x` here
-   |                                                    |
-   |                                                    these two types are declared with different lifetimes...
+LL | pub fn foo2(x: &mut Vec<&'_ u8>, y: &u8) { x.push(y); }
+   |                         ------      ---           ^ ...but data from `y` flows into `x` here
+   |                                     |
+   |                                     these two types are declared with different lifetimes...
    |
    = note: each elided lifetime in input position becomes a distinct lifetime
 help: consider introducing a named lifetime parameter
    |
-LL | fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
-   |                                            ++          ++
+LL | pub fn foo2<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
+   |            ++++              ~~          ++
 
-error[E0308]: mismatched types
-  --> $DIR/issue-90170-elision-mismatch.rs:16:9
+error[E0623]: lifetime mismatch
+  --> $DIR/issue-90170-elision-mismatch.rs:7:70
    |
-LL |     foo(&mut a, &mut b);
-   |         ^^^^^^ expected struct `Vec`, found array `[u8; 3]`
+LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&u8>, y: &u8) { x.push(y); }
+   |                                               ---      ---           ^ ...but data from `y` flows into `x` here
+   |                                                        |
+   |                                                        these two types are declared with different lifetimes...
    |
-   = note: expected mutable reference `&mut Vec<&u8>`
-              found mutable reference `&mut [u8; 3]`
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter
+   |
+LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
+   |                                                ++          ++
 
-error[E0308]: mismatched types
-  --> $DIR/issue-90170-elision-mismatch.rs:16:17
-   |
-LL |     foo(&mut a, &mut b);
-   |                 ^^^^^^ expected `u8`, found array `[u8; 3]`
-   |
-   = note:      expected reference `&u8`
-           found mutable reference `&mut [u8; 3]`
+error: aborting due to 3 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0308, E0623.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0623`.
