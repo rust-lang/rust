@@ -27,32 +27,6 @@ pub(crate) fn goto_type_definition(
             kind if kind.is_trivia() => 0,
             _ => 1,
         })?;
-    let token: SyntaxToken = sema.descend_into_macros_single(token);
-
-    let (ty, node) = sema.token_ancestors_with_macros(token).find_map(|node| {
-        let ty = match_ast! {
-            match node {
-                ast::Expr(it) => sema.type_of_expr(&it)?.original,
-                ast::Pat(it) => sema.type_of_pat(&it)?.original,
-                ast::SelfParam(it) => sema.type_of_self(&it)?,
-                ast::Type(it) => sema.resolve_type(&it)?,
-                ast::RecordField(it) => sema.to_def(&it).map(|d| d.ty(db.upcast()))?,
-                // can't match on RecordExprField directly as `ast::Expr` will match an iteration too early otherwise
-                ast::NameRef(it) => {
-                    if let Some(record_field) = ast::RecordExprField::for_name_ref(&it) {
-                        let (_, _, ty) = sema.resolve_record_field(&record_field)?;
-                        ty
-                    } else {
-                        let record_field = ast::RecordPatField::for_field_name_ref(&it)?;
-                        sema.resolve_record_pat_field(&record_field)?.ty(db)
-                    }
-                },
-                _ => return None,
-            }
-        };
-
-        Some((ty, node))
-    })?;
 
     let mut res = Vec::new();
     let mut push = |def: hir::ModuleDef| {
@@ -62,21 +36,56 @@ pub(crate) fn goto_type_definition(
             }
         }
     };
+    let range = token.text_range();
+    sema.descend_into_macros(token)
+        .iter()
+        .filter_map(|token| {
+            let ty = sema.token_ancestors_with_macros(token.clone()).find_map(|node| {
+                let ty = match_ast! {
+                    match node {
+                        ast::Expr(it) => sema.type_of_expr(&it)?.original,
+                        ast::Pat(it) => sema.type_of_pat(&it)?.original,
+                        ast::SelfParam(it) => sema.type_of_self(&it)?,
+                        ast::Type(it) => sema.resolve_type(&it)?,
+                        ast::RecordField(it) => sema.to_def(&it).map(|d| d.ty(db.upcast()))?,
+                        // can't match on RecordExprField directly as `ast::Expr` will match an iteration too early otherwise
+                        ast::NameRef(it) => {
+                            if let Some(record_field) = ast::RecordExprField::for_name_ref(&it) {
+                                let (_, _, ty) = sema.resolve_record_field(&record_field)?;
+                                ty
+                            } else {
+                                let record_field = ast::RecordPatField::for_field_name_ref(&it)?;
+                                sema.resolve_record_pat_field(&record_field)?.ty(db)
+                            }
+                        },
+                        _ => return None,
+                    }
+                };
 
-    let ty = ty.strip_references();
-    ty.walk(db, |t| {
-        if let Some(adt) = t.as_adt() {
-            push(adt.into());
-        } else if let Some(trait_) = t.as_dyn_trait() {
-            push(trait_.into());
-        } else if let Some(traits) = t.as_impl_traits(db) {
-            traits.into_iter().for_each(|it| push(it.into()));
-        } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
-            push(trait_.into());
-        }
-    });
-
-    Some(RangeInfo::new(node.text_range(), res))
+                Some(ty)
+            });
+            ty
+        })
+        .for_each(|ty| {
+            // collect from each `ty` into the `res` result vec
+            let ty = ty.strip_references();
+            ty.walk(db, |t| {
+                if let Some(adt) = t.as_adt() {
+                    push(adt.into());
+                } else if let Some(trait_) = t.as_dyn_trait() {
+                    push(trait_.into());
+                } else if let Some(traits) = t.as_impl_traits(db) {
+                    traits.into_iter().for_each(|it| push(it.into()));
+                } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
+                    push(trait_.into());
+                }
+            });
+        });
+    if res.is_empty() {
+        None
+    } else {
+        Some(RangeInfo::new(range, res))
+    }
 }
 
 #[cfg(test)]
