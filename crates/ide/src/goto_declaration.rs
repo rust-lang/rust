@@ -19,28 +19,35 @@ pub(crate) fn goto_declaration(
     let original_token = file
         .token_at_offset(position.offset)
         .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate]))?;
-    let token = sema.descend_into_macros_single(original_token.clone());
-    let parent = token.parent()?;
-    let def = match_ast! {
-        match parent {
-            ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
-                NameRefClass::Definition(it) => Some(it),
-                _ => None
-            },
-            ast::Name(name) => match NameClass::classify(&sema, &name)? {
-                NameClass::Definition(it) => Some(it),
-                _ => None
-            },
-            _ => None,
-        }
-    };
-    match def? {
-        Definition::ModuleDef(hir::ModuleDef::Module(module)) => Some(RangeInfo::new(
-            original_token.text_range(),
-            vec![NavigationTarget::from_module_to_decl(db, module)],
-        )),
-        _ => None,
-    }
+    let range = original_token.text_range();
+    let info: Vec<NavigationTarget> = sema
+        .descend_into_macros(original_token)
+        .iter()
+        .filter_map(|token| {
+            let parent = token.parent()?;
+            let def = match_ast! {
+                match parent {
+                    ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
+                        NameRefClass::Definition(it) => Some(it),
+                        _ => None
+                    },
+                    ast::Name(name) => match NameClass::classify(&sema, &name)? {
+                        NameClass::Definition(it) => Some(it),
+                        _ => None
+                    },
+                    _ => None
+                }
+            };
+            match def? {
+                Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
+                    Some(NavigationTarget::from_module_to_decl(db, module))
+                }
+                _ => None,
+            }
+        })
+        .collect();
+
+    Some(RangeInfo::new(range, info))
 }
 
 #[cfg(test)]
