@@ -113,6 +113,8 @@ register_builtin! {
     (cfg, Cfg) => cfg_expand,
     (core_panic, CorePanic) => panic_expand,
     (std_panic, StdPanic) => panic_expand,
+    (log_syntax, LogSyntax) => log_syntax_expand,
+    (trace_macros, TraceMacros) => trace_macros_expand,
 
     EAGER:
     (compile_error, CompileError) => compile_error_expand,
@@ -146,6 +148,22 @@ fn line_expand(
     };
 
     ExpandResult::ok(expanded)
+}
+
+fn log_syntax_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    _tt: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
+    ExpandResult::ok(quote! {})
+}
+
+fn trace_macros_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    _tt: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
+    ExpandResult::ok(quote! {})
 }
 
 fn stringify_expand(
