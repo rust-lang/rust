@@ -77,11 +77,11 @@
 
 /* Avoid using legacy CJK serif fonts in Windows like Batang. */
 @font-face {
-	font-family: 'Noto Sans KR';
-	src: url("noto-sans-kr-regular.woff2") format("woff2"),
-		url("noto-sans-kr-regular.woff") format("woff");
+	font-family: 'NanumBarunGothic';
+	src: url("NanumBarunGothic.ttf.woff2") format("woff2"),
+		url("NanumBarunGothic.ttf.woff") format("woff");
 	font-display: swap;
-	unicode-range: U+AC00-D7AF, U+3130-318F, U+1100-11FF, U+A960-A97F, U+D7B0-D7FF;
+	unicode-range: U+AC00-D7AF, U+1100-11FF, U+3130-318F, U+A960-A97F, U+D7B0-D7FF;
 }
 
 * {
@@ -108,7 +108,7 @@ html {
 /* General structure and fonts */
 
 body {
-	font: 16px/1.4 "Source Serif 4", "Noto Sans KR", serif;
+	font: 16px/1.4 "Source Serif 4", NanumBarunGothic, serif;
 	margin: 0;
 	position: relative;
 	padding: 10px 15px 20px 15px;
@@ -196,7 +196,7 @@ div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate, a.srclink,
 /* This selector is for the items listed in the "all items" page. */
 #main > ul.docblock > li > a {
-	font-family: "Fira Sans", Arial, sans-serif;
+	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
 .content ul.crate a.crate {
