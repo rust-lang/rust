@@ -1403,7 +1403,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             ty::Bound(..) | ty::Param(_) | ty::Error(_) => {
                 return Err(LayoutError::Unknown(ty));
             }
-            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
+
+            ty::Variant(ty, _) => return self.layout_of_uncached(ty),
         })
     }
 }

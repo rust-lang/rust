@@ -214,7 +214,7 @@ impl FlagComputation {
                 computation.add_ty(fn_sig.output());
             }),
 
-            &ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
+            &ty::Variant(ty, _) => self.add_kind(ty.kind()),
         }
     }
 

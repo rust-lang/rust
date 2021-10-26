@@ -211,7 +211,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 return ControlFlow::CONTINUE;
             }
 
-            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
+            ty::Variant(ty, _) => return self.visit_ty(ty),
         };
 
         if !self.seen.insert(adt_def.did) {

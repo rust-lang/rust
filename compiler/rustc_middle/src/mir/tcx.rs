@@ -12,18 +12,23 @@ use rustc_target::abi::VariantIdx;
 #[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct PlaceTy<'tcx> {
     pub ty: Ty<'tcx>,
-    /// Downcast to a particular variant of an enum, if included.
-    pub variant_index: Option<VariantIdx>,
 }
 
 // At least on 64 bit systems, `PlaceTy` should not be larger than two or three pointers.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PlaceTy<'_>, 16);
+static_assert_size!(PlaceTy<'_>, 8);
 
 impl<'tcx> PlaceTy<'tcx> {
     #[inline]
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
-        PlaceTy { ty, variant_index: None }
+        PlaceTy { ty }
+    }
+
+    pub fn variant_index(self) -> Option<VariantIdx> {
+        match self.ty.kind() {
+            ty::Variant(_, index) => Some(*index),
+            _ => None,
+        }
     }
 
     /// `place_ty.field_ty(tcx, f)` computes the type at a given field
@@ -35,15 +40,16 @@ impl<'tcx> PlaceTy<'tcx> {
     /// Note that the resulting type has not been normalized.
     pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: &Field) -> Ty<'tcx> {
         let answer = match self.ty.kind() {
+            ty::Variant(ty, variant_index) => match ty.kind() {
+                ty::Adt(adt_def, substs) => {
+                    assert!(adt_def.is_enum());
+                    let field_def = &adt_def.variants[*variant_index].fields[f.index()];
+                    field_def.ty(tcx, substs)
+                }
+                _ => bug!("unexpected type: {}", ty),
+            },
             ty::Adt(adt_def, substs) => {
-                let variant_def = match self.variant_index {
-                    None => adt_def.non_enum_variant(),
-                    Some(variant_index) => {
-                        assert!(adt_def.is_enum());
-                        &adt_def.variants[variant_index]
-                    }
-                };
-                let field_def = &variant_def.fields[f.index()];
+                let field_def = &adt_def.non_enum_variant().fields[f.index()];
                 field_def.ty(tcx, substs)
             }
             ty::Tuple(ref tys) => tys[f.index()].expect_ty(),
@@ -103,7 +109,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 })
             }
             ProjectionElem::Downcast(_name, index) => {
-                PlaceTy { ty: self.ty, variant_index: Some(index) }
+                PlaceTy { ty: tcx.mk_ty(ty::Variant(self.ty, index)) }
             }
             ProjectionElem::Field(ref f, ref fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
         };

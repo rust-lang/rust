@@ -1905,6 +1905,14 @@ impl<'tcx> TyS<'tcx> {
         !matches!(self.kind(), Param(_) | Infer(_) | Error(_))
     }
 
+    pub fn has_dtor(&self, tcx: TyCtxt<'tcx>) -> bool {
+        match self.kind() {
+            Adt(adt_def, _) => adt_def.has_dtor(tcx),
+            Variant(ty, _) => ty.has_dtor(tcx),
+            _ => false,
+        }
+    }
+
     /// Returns the type and mutability of `*ty`.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
@@ -2194,6 +2202,13 @@ impl<'tcx> TyS<'tcx> {
             }
 
             ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
+        }
+    }
+
+    pub fn strip_variant_type(&self) -> &Self {
+        match self.kind() {
+            ty::Variant(ty, ..) => *ty,
+            _ => self,
         }
     }
 }

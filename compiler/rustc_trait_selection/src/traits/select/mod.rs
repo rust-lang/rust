@@ -1998,7 +1998,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 t.rebind(vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)])
             }
 
-            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
+            ty::Variant(ty, _) => return self.constituent_types_for_ty(t.rebind(ty)),
         }
     }
 

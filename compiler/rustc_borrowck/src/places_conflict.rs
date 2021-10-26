@@ -243,10 +243,10 @@ fn place_components_conflict<'tcx>(
                     return false;
                 }
 
-                (ProjectionElem::Field { .. }, ty::Adt(def, _), AccessDepth::Drop) => {
+                (ProjectionElem::Field { .. }, _, AccessDepth::Drop) => {
                     // Drop can read/write arbitrary projections, so places
                     // conflict regardless of further projections.
-                    if def.has_dtor(tcx) {
+                    if base_ty.has_dtor(tcx) {
                         return true;
                     }
                 }

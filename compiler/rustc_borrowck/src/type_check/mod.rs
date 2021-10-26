@@ -556,7 +556,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let mut place_ty = PlaceTy::from_ty(self.body.local_decls[place.local].ty);
 
         for elem in place.projection.iter() {
-            if place_ty.variant_index.is_none() {
+            if place_ty.variant_index().is_none() {
                 if place_ty.ty.references_error() {
                     assert!(self.errors_reported);
                     return PlaceTy::from_ty(self.tcx().ty_error());
@@ -735,7 +735,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                             adt_def.variants.len()
                         ))
                     } else {
-                        PlaceTy { ty: base_ty, variant_index: Some(index) }
+                        PlaceTy { ty: self.tcx().mk_ty(ty::Variant(base_ty, index)) }
                     }
                 }
                 // We do not need to handle generators here, because this runs
@@ -802,9 +802,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         location: Location,
     ) -> Result<Ty<'tcx>, FieldAccessError> {
         let tcx = self.tcx();
+        let ty = base_ty.ty;
 
-        let (variant, substs) = match base_ty {
-            PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
+        let (variant, substs) = if let ty::Variant(ty, variant_index) = *ty.kind() {
+            match *ty.kind() {
                 ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
                 ty::Generator(def_id, substs, _) => {
                     let mut variants = substs.as_generator().state_tys(def_id, tcx);
@@ -822,8 +823,9 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     };
                 }
                 _ => bug!("can't have downcast of non-adt non-generator type"),
-            },
-            PlaceTy { ty, variant_index: None } => match *ty.kind() {
+            }
+        } else {
+            match *ty.kind() {
                 ty::Adt(adt_def, substs) if !adt_def.is_enum() => {
                     (&adt_def.variants[VariantIdx::new(0)], substs)
                 }
@@ -863,7 +865,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         base_ty
                     ));
                 }
-            },
+            }
         };
 
         if let Some(field) = variant.fields.get(field.index()) {

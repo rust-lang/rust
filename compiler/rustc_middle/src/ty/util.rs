@@ -712,7 +712,8 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Param(_)
             | ty::Placeholder(_)
             | ty::Projection(_) => false,
-            ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
+
+            ty::Variant(ty, _) => return ty.is_trivially_freeze(),
         }
     }
 
@@ -1026,7 +1027,8 @@ pub fn needs_drop_components(
         | ty::Infer(_)
         | ty::Closure(..)
         | ty::Generator(..) => Ok(smallvec![ty]),
-        ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
+
+        ty::Variant(ty, _) => return needs_drop_components(ty, target_layout),
     }
 }
 

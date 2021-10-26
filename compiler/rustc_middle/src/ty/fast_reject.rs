@@ -104,7 +104,7 @@ pub fn simplify_type(
         ty::Opaque(def_id, _) => Some(OpaqueSimplifiedType(def_id)),
         ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
-        ty::Variant(..) => unimplemented!("TODO(zhamlin)"),
+        ty::Variant(ty, _) => return simplify_type(tcx, ty, can_simplify_params),
     }
 }
 

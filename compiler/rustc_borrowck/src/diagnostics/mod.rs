@@ -400,6 +400,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                     self.infcx.tcx.hir().name(var_id).to_string()
                 }
+                ty::Variant(ty, index) => {
+                    assert_eq!(index, variant_index.unwrap());
+                    return self.describe_field_from_ty(ty, field, variant_index);
+                }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
                     // (https://github.com/rust-lang/rfcs/pull/1546)
