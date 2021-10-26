@@ -136,7 +136,6 @@ where
                     // `ManuallyDrop`. If it's a struct or enum without a `Drop`
                     // impl then check whether the field types need `Drop`.
                     ty::Adt(adt_def, substs) => {
-                        debug!("Got value {:?} with substs {:?}", adt_def, substs);
                         let tys = match (self.adt_components)(adt_def, substs) {
                             Err(e) => return Some(Err(e)),
                             Ok(tys) => tys,
@@ -190,16 +189,16 @@ fn drop_tys_helper<'tcx>(
 ) -> impl Iterator<Item = NeedsDropResult<Ty<'tcx>>> {
     let adt_components = move |adt_def: &ty::AdtDef, substs: SubstsRef<'tcx>| {
         if adt_def.is_manually_drop() {
-            debug!("adt_drop_tys: `{:?}` is manually drop", adt_def);
+            debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
             return Ok(Vec::new().into_iter());
         } else if let Some(dtor_info) = adt_has_dtor(adt_def) {
             match dtor_info {
                 DtorType::Significant => {
-                    debug!("adt_drop_tys: `{:?}` implements `Drop`", adt_def);
+                    debug!("drop_tys_helper: `{:?}` implements `Drop`", adt_def);
                     return Err(AlwaysRequiresDrop);
                 }
                 DtorType::Insignificant => {
-                    debug!("adt_drop_tys: `{:?}` drop is insignificant", adt_def);
+                    debug!("drop_tys_helper: `{:?}` drop is insignificant", adt_def);
 
                     // Since the destructor is insignificant, we just want to make sure all of
                     // the passed in type parameters are also insignificant.
@@ -208,15 +207,14 @@ fn drop_tys_helper<'tcx>(
                 }
             }
         } else if adt_def.is_union() {
-            debug!("adt_drop_tys: `{:?}` is a union", adt_def);
+            debug!("drop_tys_helper: `{:?}` is a union", adt_def);
             return Ok(Vec::new().into_iter());
         }
-        debug!("Path");
         Ok(adt_def
             .all_fields()
             .map(|field| {
                 let r = tcx.type_of(field.did).subst(tcx, substs);
-                debug!("Subst into {:?} with {:?} gettng {:?}", field, substs, r);
+                debug!("drop_tys_helper: Subst into {:?} with {:?} gettng {:?}", field, substs, r);
                 r
             })
             .collect::<Vec<_>>()
