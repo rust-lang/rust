@@ -182,6 +182,10 @@ The default depends on the [opt-level](#opt-level):
 This option enables instrumentation-based code coverage support. See the
 chapter on [instrumentation-based code coverage] for more information.
 
+Note that while the `-C instrument-coverage` option is stable, the profile data
+format produced by the resulting instrumentation may change, and may not work
+with coverage tools other than those built and shipped with the compiler.
+
 ## link-arg
 
 This flag lets you append a single extra argument to the linker invocation.
