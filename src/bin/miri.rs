@@ -25,7 +25,7 @@ use rustc_hir::{self as hir, def_id::LOCAL_CRATE, Node};
 use rustc_interface::interface::Config;
 use rustc_middle::{
     middle::exported_symbols::{ExportedSymbol, SymbolExportLevel},
-    ty::{query::Providers, TyCtxt},
+    ty::{query::ExternProviders, TyCtxt},
 };
 use rustc_session::{config::ErrorOutputType, search_paths::PathKind, CtfeBacktrace};
 
@@ -37,7 +37,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
     fn config(&mut self, config: &mut Config) {
         config.override_queries = Some(|_, _, external_providers| {
             external_providers.used_crate_source = |tcx, cnum| {
-                let mut providers = Providers::default();
+                let mut providers = ExternProviders::default();
                 rustc_metadata::provide_extern(&mut providers);
                 let mut crate_source = (providers.used_crate_source)(tcx, cnum);
                 // HACK: rustc will emit "crate ... required to be available in rlib format, but
