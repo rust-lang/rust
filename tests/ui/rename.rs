@@ -30,6 +30,9 @@
 #![allow(invalid_atomic_ordering)]
 #![allow(enum_intrinsics_non_enums)]
 // warn for the old lint name here, to test if the renaming worked
+#![warn(clippy::stutter)]
+#![warn(clippy::new_without_default_derive)]
+#![warn(clippy::const_static_lifetime)]
 #![warn(clippy::cyclomatic_complexity)]
 #![warn(clippy::mem_discriminant_non_enum)]
 #![warn(clippy::option_and_then_some)]
@@ -58,11 +61,4 @@
 #![warn(clippy::invalid_atomic_ordering)]
 #![warn(clippy::mem_discriminant_non_enum)]
 
-#[warn(clippy::stutter)]
 fn main() {}
-
-#[warn(clippy::new_without_default_derive)]
-struct Foo;
-
-#[warn(clippy::const_static_lifetime)]
-fn foo() {}

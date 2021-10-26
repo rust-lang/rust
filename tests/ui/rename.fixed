@@ -30,6 +30,9 @@
 #![allow(invalid_atomic_ordering)]
 #![allow(enum_intrinsics_non_enums)]
 // warn for the old lint name here, to test if the renaming worked
+#![warn(clippy::module_name_repetitions)]
+#![warn(clippy::new_without_default)]
+#![warn(clippy::redundant_static_lifetimes)]
 #![warn(clippy::cognitive_complexity)]
 #![warn(enum_intrinsics_non_enums)]
 #![warn(clippy::bind_instead_of_map)]
@@ -58,11 +61,4 @@
 #![warn(invalid_atomic_ordering)]
 #![warn(enum_intrinsics_non_enums)]
 
-#[warn(clippy::module_name_repetitions)]
 fn main() {}
-
-#[warn(clippy::new_without_default)]
-struct Foo;
-
-#[warn(clippy::redundant_static_lifetimes)]
-fn foo() {}
