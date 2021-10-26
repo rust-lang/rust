@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `PathBuf: From<Cow<'_, str>>` is not satisfied
+  --> $DIR/issue-90101.rs:6:10
+   |
+LL |     func(Path::new("hello").to_path_buf().to_string_lossy(), "world")
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<Cow<'_, str>>` is not implemented for `PathBuf`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the following implementations were found:
+             <PathBuf as From<&T>>
+             <PathBuf as From<Box<Path>>>
+             <PathBuf as From<Cow<'a, Path>>>
+             <PathBuf as From<OsString>>
+             <PathBuf as From<String>>
+   = note: required because of the requirements on the impl of `Into<PathBuf>` for `Cow<'_, str>`
+note: required by a bound in `func`
+  --> $DIR/issue-90101.rs:3:20
+   |
+LL | fn func(path: impl Into<PathBuf>, code: impl Into<String>) {}
+   |                    ^^^^^^^^^^^^^ required by this bound in `func`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

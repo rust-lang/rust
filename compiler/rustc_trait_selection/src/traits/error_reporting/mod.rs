@@ -1492,6 +1492,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
             }
+            ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
+                self.get_parent_trait_ref(&parent_code)
+            }
             _ => None,
         }
     }

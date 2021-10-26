@@ -51,9 +51,6 @@ LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
 error[E0277]: the trait bound `NonTrivialDrop: A` is not satisfied
   --> $DIR/const-drop-fail.rs:49:5
    |
-LL |         const _: () = check($exp);
-   |                       ----- required by a bound introduced by this call
-...
 LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `A` is not implemented for `NonTrivialDrop`
    |
