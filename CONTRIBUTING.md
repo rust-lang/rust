@@ -107,6 +107,41 @@ There's a test for the cargo wrapper in the `test-cargo-miri` directory; run
 `./run-test.py` in there to execute it. Like `./miri test`, this respects the
 `MIRI_TEST_TARGET` environment variable to execute the test for another target.
 
+## Configuring `rust-analyzer`
+
+To configure `rust-analyzer` and VS Code for working on Miri, save the following
+to `.vscode/settings.json` in your local Miri clone:
+
+```json
+{
+    "rust-analyzer.checkOnSave.overrideCommand": [
+        "./miri",
+        "check",
+        "--message-format=json"
+    ],
+    "rust-analyzer.rustfmt.extraArgs": [
+        "+nightly"
+    ],
+    "rust-analyzer.rustcSource": "discover",
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+        "./cargo-miri/Cargo.toml"
+    ]
+}
+```
+
+> #### Note
+>
+> If you are [building Miri with a locally built rustc][], set
+> `rust-analyzer.rustcSource` to the relative path from your Miri clone to the
+> root `Cargo.toml` of the locally built rustc. For example, the path might look
+> like `../rust/Cargo.toml`.
+
+See the rustc-dev-guide's docs on ["Configuring `rust-analyzer` for `rustc`"][rdg-r-a]
+for more information about configuring VS Code and `rust-analyzer`.
+
+[rdg-r-a]: https://rustc-dev-guide.rust-lang.org/building/suggested.html#configuring-rust-analyzer-for-rustc
+
 ## Advanced topic: other build environments
 
 We described above the simplest way to get a working build environment for Miri,
@@ -131,6 +166,8 @@ Miri working again, from implementing new features that rely on the updated
 rustc. This avoids blocking all Miri development on landing a big PR.
 
 ### Building Miri with a locally built rustc
+
+[building Miri with a locally built rustc]: #building-miri-with-a-locally-built-rustc
 
 A big part of the Miri driver lives in rustc, so working on Miri will sometimes
 require using a locally built rustc. The bug you want to fix may actually be on
