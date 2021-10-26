@@ -32,19 +32,32 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         _ => 0,
     })?;
 
-    let descended = sema.descend_into_macros_single(tok.clone());
-    if let Some(attr) = descended.ancestors().find_map(ast::Attr::cast) {
-        if let Some((path, tt)) = attr.as_simple_call() {
-            if path == "derive" {
-                let mut tt = tt.syntax().children_with_tokens().skip(1).join("");
-                tt.pop();
-                let expansions = sema.expand_derive_macro(&attr)?;
-                return Some(ExpandedMacro {
-                    name: tt,
-                    expansion: expansions.into_iter().map(insert_whitespaces).join(""),
-                });
-            }
+    // due to how Rust Analyzer works internally, we need to special case derive attributes,
+    // otherwise they might not get found, e.g. here only `#[attr]` would expand:
+    // ```
+    // #[attr]
+    // #[derive($0Foo)]
+    // struct Bar;
+    // ```
+
+    let derive = sema.descend_into_macros(tok.clone()).iter().find_map(|descended| {
+        let attr = descended.ancestors().find_map(ast::Attr::cast)?;
+        let (path, tt) = attr.as_simple_call()?;
+        if path == "derive" {
+            let mut tt = tt.syntax().children_with_tokens().skip(1).join("");
+            tt.pop();
+            let expansions = sema.expand_derive_macro(&attr)?;
+            return Some(ExpandedMacro {
+                name: tt,
+                expansion: expansions.into_iter().map(insert_whitespaces).join(""),
+            });
+        } else {
+            None
         }
+    });
+
+    if derive.is_some() {
+        return derive;
     }
 
     // FIXME: Intermix attribute and bang! expansions
@@ -356,6 +369,7 @@ fn main() {
 #[rustc_builtin_macro]
 pub macro Clone {}
 
+#[doc = ""]
 #[derive(C$0lone)]
 struct Foo {}
 "#,
