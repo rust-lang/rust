@@ -1,11 +1,13 @@
 error[E0277]: `Rc<Cell<i32>>` cannot be sent between threads safely
-  --> $DIR/auto-trait-leak2.rs:13:5
+  --> $DIR/auto-trait-leak2.rs:13:10
    |
 LL | fn before() -> impl Fn(i32) {
    |                ------------ within this `impl Fn<(i32,)>`
 ...
 LL |     send(before());
-   |     ^^^^ `Rc<Cell<i32>>` cannot be sent between threads safely
+   |     ---- ^^^^^^^^ `Rc<Cell<i32>>` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: within `impl Fn<(i32,)>`, the trait `Send` is not implemented for `Rc<Cell<i32>>`
    = note: required because it appears within the type `[closure@$DIR/auto-trait-leak2.rs:7:5: 7:22]`
@@ -17,10 +19,12 @@ LL | fn send<T: Send>(_: T) {}
    |            ^^^^ required by this bound in `send`
 
 error[E0277]: `Rc<Cell<i32>>` cannot be sent between threads safely
-  --> $DIR/auto-trait-leak2.rs:16:5
+  --> $DIR/auto-trait-leak2.rs:16:10
    |
 LL |     send(after());
-   |     ^^^^ `Rc<Cell<i32>>` cannot be sent between threads safely
+   |     ---- ^^^^^^^ `Rc<Cell<i32>>` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
 ...
 LL | fn after() -> impl Fn(i32) {
    |               ------------ within this `impl Fn<(i32,)>`

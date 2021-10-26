@@ -29,10 +29,12 @@ LL | fn test<T: Sync>(s: T) {}
    |            ^^^^ required by this bound in `test`
 
 error[E0277]: `UnsafeCell<NoSync>` cannot be shared between threads safely
-  --> $DIR/typeck-unsafe-always-share.rs:27:5
+  --> $DIR/typeck-unsafe-always-share.rs:27:10
    |
 LL |     test(ms);
-   |     ^^^^ `UnsafeCell<NoSync>` cannot be shared between threads safely
+   |     ---- ^^ `UnsafeCell<NoSync>` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: within `MySync<NoSync>`, the trait `Sync` is not implemented for `UnsafeCell<NoSync>`
 note: required because it appears within the type `MySync<NoSync>`

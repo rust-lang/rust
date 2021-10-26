@@ -1,8 +1,8 @@
 error: future cannot be shared between threads safely
-  --> $DIR/issue-64130-1-sync.rs:21:5
+  --> $DIR/issue-64130-1-sync.rs:21:13
    |
 LL |     is_sync(bar());
-   |     ^^^^^^^ future returned by `bar` is not `Sync`
+   |             ^^^^^ future returned by `bar` is not `Sync`
    |
    = help: within `impl Future`, the trait `Sync` is not implemented for `Foo`
 note: future is not `Sync` as this value is used across an await

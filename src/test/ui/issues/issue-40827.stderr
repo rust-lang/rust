@@ -1,8 +1,10 @@
 error[E0277]: `Rc<Foo>` cannot be shared between threads safely
-  --> $DIR/issue-40827.rs:14:5
+  --> $DIR/issue-40827.rs:14:7
    |
 LL |     f(Foo(Arc::new(Bar::B(None))));
-   |     ^ `Rc<Foo>` cannot be shared between threads safely
+   |     - ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Rc<Foo>` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: within `Bar`, the trait `Sync` is not implemented for `Rc<Foo>`
 note: required because it appears within the type `Bar`
@@ -23,10 +25,12 @@ LL | fn f<T: Send>(_: T) {}
    |         ^^^^ required by this bound in `f`
 
 error[E0277]: `Rc<Foo>` cannot be sent between threads safely
-  --> $DIR/issue-40827.rs:14:5
+  --> $DIR/issue-40827.rs:14:7
    |
 LL |     f(Foo(Arc::new(Bar::B(None))));
-   |     ^ `Rc<Foo>` cannot be sent between threads safely
+   |     - ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Rc<Foo>` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: within `Bar`, the trait `Send` is not implemented for `Rc<Foo>`
 note: required because it appears within the type `Bar`

@@ -1522,6 +1522,7 @@ impl Target {
             AmdGpuKernel => self.arch == "amdgcn",
             AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
             Wasm => ["wasm32", "wasm64"].contains(&&self.arch[..]),
+            Thiscall { .. } => self.arch == "x86",
             // On windows these fall-back to platform native calling convention (C) when the
             // architecture is not supported.
             //
@@ -1552,15 +1553,13 @@ impl Target {
             // > convention is used.
             //
             // -- https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
-            Stdcall { .. } | Fastcall | Thiscall { .. } | Vectorcall if self.is_like_windows => {
-                true
-            }
+            Stdcall { .. } | Fastcall | Vectorcall if self.is_like_windows => true,
             // Outside of Windows we want to only support these calling conventions for the
             // architectures for which these calling conventions are actually well defined.
-            Stdcall { .. } | Fastcall | Thiscall { .. } if self.arch == "x86" => true,
+            Stdcall { .. } | Fastcall if self.arch == "x86" => true,
             Vectorcall if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
             // Return a `None` for other cases so that we know to emit a future compat lint.
-            Stdcall { .. } | Fastcall | Thiscall { .. } | Vectorcall => return None,
+            Stdcall { .. } | Fastcall | Vectorcall => return None,
         })
     }
 

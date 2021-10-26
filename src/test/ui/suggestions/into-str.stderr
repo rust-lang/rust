@@ -1,8 +1,10 @@
 error[E0277]: the trait bound `&str: From<String>` is not satisfied
-  --> $DIR/into-str.rs:4:5
+  --> $DIR/into-str.rs:4:9
    |
 LL |     foo(String::new());
-   |     ^^^ the trait `From<String>` is not implemented for `&str`
+   |     --- ^^^^^^^^^^^^^ the trait `From<String>` is not implemented for `&str`
+   |     |
+   |     required by a bound introduced by this call
    |
    = note: to coerce a `String` into a `&str`, use `&*` as a prefix
    = note: required because of the requirements on the impl of `Into<&str>` for `String`
