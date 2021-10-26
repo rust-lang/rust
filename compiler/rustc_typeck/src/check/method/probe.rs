@@ -204,6 +204,7 @@ pub struct Pick<'tcx> {
     /// Indicates that we want to add an autoref (and maybe also unsize it), or if the receiver is
     /// `*mut T`, convert it to `*const T`.
     pub autoref_or_ptr_adjustment: Option<AutorefOrPtrAdjustment<'tcx>>,
+    pub self_ty: Ty<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1241,7 +1242,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         //
                         // We suppress warning if we're picking the method only because it is a
                         // suggestion.
-                        self.emit_unstable_name_collision_hint(p, &unstable_candidates, self_ty);
+                        self.emit_unstable_name_collision_hint(p, &unstable_candidates);
                     }
                 }
                 return Some(pick);
@@ -1285,7 +1286,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug!("applicable_candidates: {:?}", applicable_candidates);
 
         if applicable_candidates.len() > 1 {
-            if let Some(pick) = self.collapse_candidates_to_trait_pick(&applicable_candidates[..]) {
+            if let Some(pick) =
+                self.collapse_candidates_to_trait_pick(self_ty, &applicable_candidates[..])
+            {
                 return Some(Ok(pick));
             }
         }
@@ -1309,7 +1312,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         applicable_candidates.pop().map(|(probe, status)| {
             if status == ProbeResult::Match {
-                Ok(probe.to_unadjusted_pick())
+                Ok(probe.to_unadjusted_pick(self_ty))
             } else {
                 Err(MethodError::BadReturnType)
             }
@@ -1320,7 +1323,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         stable_pick: &Pick<'_>,
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
-        self_ty: Ty<'tcx>,
     ) {
         self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
@@ -1351,7 +1353,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             "use the fully qualified path to the associated const",
                             format!(
                                 "<{} as {}>::{}",
-                                self_ty,
+                                stable_pick.self_ty,
                                 self.tcx.def_path_str(def_id),
                                 stable_pick.item.ident
                             ),
@@ -1591,6 +1593,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// use, so it's ok to just commit to "using the method from the trait Foo".
     fn collapse_candidates_to_trait_pick(
         &self,
+        self_ty: Ty<'tcx>,
         probes: &[(&Candidate<'tcx>, ProbeResult)],
     ) -> Option<Pick<'tcx>> {
         // Do all probes correspond to the same trait?
@@ -1610,6 +1613,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             import_ids: probes[0].0.import_ids.clone(),
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
+            self_ty,
         })
     }
 
@@ -1828,7 +1832,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 }
 
 impl<'tcx> Candidate<'tcx> {
-    fn to_unadjusted_pick(&self) -> Pick<'tcx> {
+    fn to_unadjusted_pick(&self, self_ty: Ty<'tcx>) -> Pick<'tcx> {
         Pick {
             item: self.item,
             kind: match self.kind {
@@ -1852,6 +1856,7 @@ impl<'tcx> Candidate<'tcx> {
             import_ids: self.import_ids.clone(),
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
+            self_ty,
         }
     }
 }
