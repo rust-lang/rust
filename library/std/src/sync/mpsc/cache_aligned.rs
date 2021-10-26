@@ -2,10 +2,7 @@ use crate::ops::{Deref, DerefMut};
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(align(64))]
-pub(super) struct Aligner;
-
-#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(super) struct CacheAligned<T>(pub T, pub Aligner);
+pub(super) struct CacheAligned<T>(pub T);
 
 impl<T> Deref for CacheAligned<T> {
     type Target = T;
@@ -22,6 +19,6 @@ impl<T> DerefMut for CacheAligned<T> {
 
 impl<T> CacheAligned<T> {
     pub(super) fn new(t: T) -> Self {
-        CacheAligned(t, Aligner)
+        CacheAligned(t)
     }
 }
