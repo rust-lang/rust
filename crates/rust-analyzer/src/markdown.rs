@@ -25,6 +25,13 @@ pub(crate) fn format_docs(src: &str) -> String {
             }
         }
 
+        if in_code_block {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with("##") {
+                line = &trimmed[1..];
+            }
+        }
+
         processed_lines.push(line);
     }
     processed_lines.join("\n")
@@ -135,5 +142,15 @@ let a = 1;
             format_docs(comment),
             "```text\nfiller\ntext\n```\nSome comment.\n```rust\nlet a = 1;\n```"
         );
+    }
+
+    #[test]
+    fn test_format_docs_handles_escape_double_hashes() {
+        let comment = r#"```rust
+let s = "foo
+## bar # baz";
+```"#;
+
+        assert_eq!(format_docs(comment), "```rust\nlet s = \"foo\n# bar # baz\";\n```");
     }
 }
