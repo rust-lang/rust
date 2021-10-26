@@ -16,22 +16,44 @@
 #[cfg(test)]
 mod tests;
 
+#[cfg(bootstrap)]
 use core::array;
+#[cfg(bootstrap)]
 use core::convert::Infallible;
 
+#[cfg(bootstrap)]
 use crate::alloc::{AllocError, LayoutError};
+#[cfg(bootstrap)]
 use crate::any::TypeId;
+#[cfg(bootstrap)]
 use crate::backtrace::Backtrace;
+#[cfg(bootstrap)]
 use crate::borrow::Cow;
+#[cfg(bootstrap)]
 use crate::cell;
+#[cfg(bootstrap)]
 use crate::char;
-use crate::fmt::{self, Debug, Display};
+#[cfg(bootstrap)]
+use crate::fmt;
+use crate::fmt::Debug;
+#[cfg(bootstrap)]
+use crate::fmt::Display;
+#[cfg(bootstrap)]
 use crate::mem::transmute;
+#[cfg(bootstrap)]
 use crate::num;
+#[cfg(bootstrap)]
 use crate::str;
+#[cfg(bootstrap)]
 use crate::string;
+#[cfg(bootstrap)]
 use crate::sync::Arc;
+#[cfg(bootstrap)]
 use crate::time;
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::error::Error;
 
 /// `Error` is a trait representing the basic expectations for error values,
 /// i.e., values of type `E` in [`Result<T, E>`].
@@ -52,6 +74,7 @@ use crate::time;
 /// high-level module to provide its own errors while also revealing some of the
 /// implementation for debugging via `source` chains.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 pub trait Error: Debug + Display {
     /// The lower-level source of this error, if any.
     ///
@@ -159,6 +182,7 @@ pub trait Error: Debug + Display {
     }
 }
 
+#[cfg(bootstrap)]
 mod private {
     // This is a hack to prevent `type_id` from being overridden by `Error`
     // implementations, since that can enable unsound downcasting.
@@ -168,6 +192,7 @@ mod private {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     /// Converts a type of [`Error`] into a box of dyn [`Error`].
     ///
@@ -200,6 +225,7 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of
     /// dyn [`Error`] + [`Send`] + [`Sync`].
@@ -238,6 +264,7 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl From<String> for Box<dyn Error + Send + Sync> {
     /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
@@ -281,6 +308,7 @@ impl From<String> for Box<dyn Error + Send + Sync> {
 }
 
 #[stable(feature = "string_box_error", since = "1.6.0")]
+#[cfg(bootstrap)]
 impl From<String> for Box<dyn Error> {
     /// Converts a [`String`] into a box of dyn [`Error`].
     ///
@@ -302,6 +330,7 @@ impl From<String> for Box<dyn Error> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
@@ -325,6 +354,7 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
 }
 
 #[stable(feature = "string_box_error", since = "1.6.0")]
+#[cfg(bootstrap)]
 impl From<&str> for Box<dyn Error> {
     /// Converts a [`str`] into a box of dyn [`Error`].
     ///
@@ -346,6 +376,7 @@ impl From<&str> for Box<dyn Error> {
 }
 
 #[stable(feature = "cow_box_error", since = "1.22.0")]
+#[cfg(bootstrap)]
 impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`Cow`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
@@ -367,6 +398,7 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
 }
 
 #[stable(feature = "cow_box_error", since = "1.22.0")]
+#[cfg(bootstrap)]
 impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     /// Converts a [`Cow`] into a box of dyn [`Error`].
     ///
@@ -387,6 +419,7 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
 }
 
 #[unstable(feature = "never_type", issue = "35121")]
+#[cfg(bootstrap)]
 impl Error for ! {}
 
 #[unstable(
@@ -394,12 +427,15 @@ impl Error for ! {}
     reason = "the precise API and guarantees it provides may be tweaked.",
     issue = "32838"
 )]
+#[cfg(bootstrap)]
 impl Error for AllocError {}
 
 #[stable(feature = "alloc_layout", since = "1.28.0")]
+#[cfg(bootstrap)]
 impl Error for LayoutError {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl Error for str::ParseBoolError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -408,6 +444,7 @@ impl Error for str::ParseBoolError {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl Error for str::Utf8Error {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -416,6 +453,7 @@ impl Error for str::Utf8Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl Error for num::ParseIntError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -424,6 +462,7 @@ impl Error for num::ParseIntError {
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
+#[cfg(bootstrap)]
 impl Error for num::TryFromIntError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -432,6 +471,7 @@ impl Error for num::TryFromIntError {
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
+#[cfg(bootstrap)]
 impl Error for array::TryFromSliceError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -440,6 +480,7 @@ impl Error for array::TryFromSliceError {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl Error for num::ParseFloatError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -448,6 +489,7 @@ impl Error for num::ParseFloatError {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl Error for string::FromUtf8Error {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -456,6 +498,7 @@ impl Error for string::FromUtf8Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl Error for string::FromUtf16Error {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -464,6 +507,7 @@ impl Error for string::FromUtf16Error {
 }
 
 #[stable(feature = "str_parse_error2", since = "1.8.0")]
+#[cfg(bootstrap)]
 impl Error for Infallible {
     fn description(&self) -> &str {
         match *self {}
@@ -471,6 +515,7 @@ impl Error for Infallible {
 }
 
 #[stable(feature = "decode_utf16", since = "1.9.0")]
+#[cfg(bootstrap)]
 impl Error for char::DecodeUtf16Error {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -479,6 +524,7 @@ impl Error for char::DecodeUtf16Error {
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
+#[cfg(bootstrap)]
 impl<'a, K: Debug + Ord, V: Debug> Error
     for crate::collections::btree_map::OccupiedError<'a, K, V>
 {
@@ -489,6 +535,7 @@ impl<'a, K: Debug + Ord, V: Debug> Error
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
+#[cfg(bootstrap)]
 impl<'a, K: Debug, V: Debug> Error for crate::collections::hash_map::OccupiedError<'a, K, V> {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -497,6 +544,7 @@ impl<'a, K: Debug, V: Debug> Error for crate::collections::hash_map::OccupiedErr
 }
 
 #[stable(feature = "box_error", since = "1.8.0")]
+#[cfg(bootstrap)]
 impl<T: Error> Error for Box<T> {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
@@ -514,6 +562,7 @@ impl<T: Error> Error for Box<T> {
 }
 
 #[stable(feature = "error_by_ref", since = "1.51.0")]
+#[cfg(bootstrap)]
 impl<'a, T: Error + ?Sized> Error for &'a T {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
@@ -535,6 +584,7 @@ impl<'a, T: Error + ?Sized> Error for &'a T {
 }
 
 #[stable(feature = "arc_error", since = "1.52.0")]
+#[cfg(bootstrap)]
 impl<T: Error + ?Sized> Error for Arc<T> {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
@@ -556,6 +606,7 @@ impl<T: Error + ?Sized> Error for Arc<T> {
 }
 
 #[stable(feature = "fmt_error", since = "1.11.0")]
+#[cfg(bootstrap)]
 impl Error for fmt::Error {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -564,6 +615,7 @@ impl Error for fmt::Error {
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
+#[cfg(bootstrap)]
 impl Error for cell::BorrowError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -572,6 +624,7 @@ impl Error for cell::BorrowError {
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
+#[cfg(bootstrap)]
 impl Error for cell::BorrowMutError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -580,6 +633,7 @@ impl Error for cell::BorrowMutError {
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
+#[cfg(bootstrap)]
 impl Error for char::CharTryFromError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -588,6 +642,7 @@ impl Error for char::CharTryFromError {
 }
 
 #[stable(feature = "char_from_str", since = "1.20.0")]
+#[cfg(bootstrap)]
 impl Error for char::ParseCharError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
@@ -596,12 +651,15 @@ impl Error for char::ParseCharError {
 }
 
 #[stable(feature = "try_reserve", since = "1.57.0")]
+#[cfg(bootstrap)]
 impl Error for alloc::collections::TryReserveError {}
 
 #[unstable(feature = "duration_checked_float", issue = "83400")]
+#[cfg(bootstrap)]
 impl Error for time::FromSecsError {}
 
 // Copied from `any.rs`.
+#[cfg(bootstrap)]
 impl dyn Error + 'static {
     /// Returns `true` if the boxed type is the same as `T`
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -642,6 +700,7 @@ impl dyn Error + 'static {
     }
 }
 
+#[cfg(bootstrap)]
 impl dyn Error + 'static + Send {
     /// Forwards to the method defined on the type `dyn Error`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -665,6 +724,7 @@ impl dyn Error + 'static + Send {
     }
 }
 
+#[cfg(bootstrap)]
 impl dyn Error + 'static + Send + Sync {
     /// Forwards to the method defined on the type `dyn Error`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -688,6 +748,7 @@ impl dyn Error + 'static + Send + Sync {
     }
 }
 
+#[cfg(bootstrap)]
 impl dyn Error {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -782,6 +843,7 @@ impl<'a> Iterator for Chain<'a> {
     }
 }
 
+#[cfg(bootstrap)]
 impl dyn Error + Send {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -795,6 +857,7 @@ impl dyn Error + Send {
     }
 }
 
+#[cfg(bootstrap)]
 impl dyn Error + Send + Sync {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]

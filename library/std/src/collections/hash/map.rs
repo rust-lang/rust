@@ -3085,3 +3085,14 @@ fn assert_covariance() {
         d
     }
 }
+
+#[unstable(feature = "map_try_insert", issue = "82766")]
+#[cfg(not(bootstrap))]
+impl<'a, K: Debug, V: Debug> crate::error::Error
+    for crate::collections::hash_map::OccupiedError<'a, K, V>
+{
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "key already exists"
+    }
+}

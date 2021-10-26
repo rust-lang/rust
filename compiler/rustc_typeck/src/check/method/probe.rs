@@ -616,7 +616,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let lang_items = self.tcx.lang_items();
 
         match *self_ty.value.value.kind() {
-            ty::Dynamic(data, ..) if let Some(p) = data.principal() => {
+            ty::Dynamic(data, ..) if let Some(p) = data.principal_def_id() => {
                 // Subtle: we can't use `instantiate_query_response` here: using it will
                 // commit to all of the type equalities assumed by inference going through
                 // autoderef (see the `method-probe-no-guessing` test).
@@ -639,7 +639,50 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         .instantiate_canonical_with_fresh_inference_vars(self.span, self_ty);
 
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
-                self.assemble_inherent_impl_candidates_for_type(p.def_id());
+
+                let error_def_id = self.tcx.require_lang_item(hir::LangItem::Error, None);
+
+                if p != error_def_id {
+                    self.assemble_inherent_impl_candidates_for_type(p);
+                } else {
+                    let send_def_id = self.tcx.require_lang_item(hir::LangItem::Send, None);
+                    let sync_def_id = self.tcx.require_lang_item(hir::LangItem::Sync, None);
+
+                    let (mut is_send, mut is_sync) = (false, false);
+                    let bounds = data.auto_traits();
+
+                    for bound in bounds {
+                        if bound == send_def_id {
+                            is_send = true;
+                        } else if bound == sync_def_id {
+                            is_sync = true;
+                        } else {
+                            panic!("unexpected bound: {:?}", bound);
+                        }
+                    }
+
+                    match (is_send, is_sync) {
+                        (false, false) => {
+                            let lang_def_id = lang_items.error_impl();
+                            self.assemble_inherent_impl_for_primitive(lang_def_id);
+                            let lang_def_id = lang_items.error_alloc_impl();
+                            self.assemble_inherent_impl_for_primitive(lang_def_id);
+                        }
+                        (true, false) => {
+                            let lang_def_id = lang_items.errorsend_impl();
+                            self.assemble_inherent_impl_for_primitive(lang_def_id);
+                            let lang_def_id = lang_items.errorsend_alloc_impl();
+                            self.assemble_inherent_impl_for_primitive(lang_def_id);
+                        }
+                        (true, true) => {
+                            let lang_def_id = lang_items.errorsendsync_impl();
+                            self.assemble_inherent_impl_for_primitive(lang_def_id);
+                            let lang_def_id = lang_items.errorsendsync_alloc_impl();
+                            self.assemble_inherent_impl_for_primitive(lang_def_id);
+                        }
+                        (false, true) => panic!("unexpected combination of marker traits"),
+                    }
+                }
             }
             ty::Adt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);

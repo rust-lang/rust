@@ -201,7 +201,14 @@ language_item_table! {
     F64,                     sym::f64,                 f64_impl,                   Target::Impl,           GenericRequirement::None;
     F32Runtime,              sym::f32_runtime,         f32_runtime_impl,           Target::Impl,           GenericRequirement::None;
     F64Runtime,              sym::f64_runtime,         f64_runtime_impl,           Target::Impl,           GenericRequirement::None;
+    ErrorImpl,               sym::error_impl,          error_impl,                 Target::Impl,           GenericRequirement::None;
+    ErrorAlloc,              sym::error_alloc,         error_alloc_impl,           Target::Impl,           GenericRequirement::None;
+    ErrorSend,               sym::errorsend,           errorsend_impl,             Target::Impl,           GenericRequirement::None;
+    ErrorSendAlloc,          sym::errorsend_alloc,     errorsend_alloc_impl,       Target::Impl,           GenericRequirement::None;
+    ErrorSendSync,           sym::errorsendsync,       errorsendsync_impl,         Target::Impl,           GenericRequirement::None;
+    ErrorSendSyncAlloc,      sym::errorsendsync_alloc, errorsendsync_alloc_impl,   Target::Impl,           GenericRequirement::None;
 
+    Error,                   sym::error,               error_trait,                Target::Trait,          GenericRequirement::None;
     Sized,                   sym::sized,               sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
@@ -211,6 +218,7 @@ language_item_table! {
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
+    Send,                    sym::send,                send_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
     /// The associated item of the [`DiscriminantKind`] trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy,        GenericRequirement::None;

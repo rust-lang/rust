@@ -404,3 +404,11 @@ where
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+#[unstable(
+    feature = "allocator_api",
+    reason = "the precise API and guarantees it provides may be tweaked.",
+    issue = "32838"
+)]
+#[cfg(not(bootstrap))]
+impl crate::error::Error for AllocError {}

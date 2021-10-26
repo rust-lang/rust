@@ -2858,3 +2858,21 @@ impl From<char> for String {
         c.to_string()
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+impl core::error::Error for FromUtf8Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-8"
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+impl core::error::Error for FromUtf16Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-16"
+    }
+}

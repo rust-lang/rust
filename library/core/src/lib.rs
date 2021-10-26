@@ -297,6 +297,9 @@ pub mod clone;
 pub mod cmp;
 pub mod convert;
 pub mod default;
+#[unstable(feature = "error_in_core", issue = "none")]
+#[cfg(not(bootstrap))]
+pub mod error;
 pub mod marker;
 pub mod ops;
 

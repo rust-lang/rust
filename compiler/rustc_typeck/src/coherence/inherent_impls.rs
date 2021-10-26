@@ -56,8 +56,58 @@ impl<'tcx> ItemLikeVisitor<'_> for InherentCollect<'tcx> {
             ty::Foreign(did) => {
                 self.check_def_id(item, did);
             }
-            ty::Dynamic(data, ..) if data.principal_def_id().is_some() => {
-                self.check_def_id(item, data.principal_def_id().unwrap());
+            ty::Dynamic(data, ..) if let Some(p) = data.principal_def_id() => {
+                let error_def_id = self.tcx.require_lang_item(hir::LangItem::Error, None);
+
+                if p != error_def_id {
+                    self.check_def_id(item, p);
+                } else {
+                    let send_def_id = self.tcx.require_lang_item(hir::LangItem::Send, None);
+                    let sync_def_id = self.tcx.require_lang_item(hir::LangItem::Sync, None);
+                    let (mut is_send, mut is_sync) = (false, false);
+                    let bounds = data.auto_traits();
+
+                    for bound in bounds {
+                        if bound == send_def_id {
+                            is_send = true;
+                        } else if bound == sync_def_id {
+                            is_sync = true;
+                        } else {
+                            panic!("unexpected bound: {:?}", bound);
+                        }
+                    }
+
+                    match (is_send, is_sync) {
+                        (false, false) => self.check_primitive_impl(
+                            item.def_id,
+                            lang_items.error_impl(),
+                            lang_items.error_alloc_impl(),
+                            "error_alloc_impl",
+                            "dyn error",
+                            item.span,
+                            assoc_items,
+                        ),
+                        (true, false) => self.check_primitive_impl(
+                            item.def_id,
+                            lang_items.errorsend_impl(),
+                            lang_items.errorsend_alloc_impl(),
+                            "errorsend_alloc_impl",
+                            "dyn error",
+                            item.span,
+                            assoc_items,
+                        ),
+                        (true, true) => self.check_primitive_impl(
+                            item.def_id,
+                            lang_items.errorsendsync_impl(),
+                            lang_items.errorsendsync_alloc_impl(),
+                            "errorsendsync_alloc_impl",
+                            "dyn error",
+                            item.span,
+                            assoc_items,
+                        ),
+                        (false, true) => panic!("unexpected combination of marker traits"),
+                    }
+                }
             }
             ty::Dynamic(..) => {
                 struct_span_err!(

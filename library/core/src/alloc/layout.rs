@@ -442,3 +442,7 @@ impl fmt::Display for LayoutError {
         f.write_str("invalid parameters to Layout::from_size_align")
     }
 }
+
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[cfg(not(bootstrap))]
+impl crate::error::Error for LayoutError {}

@@ -35,6 +35,7 @@ use crate::hash::Hasher;
     message = "`{Self}` cannot be sent between threads safely",
     label = "`{Self}` cannot be sent between threads safely"
 )]
+#[cfg_attr(not(bootstrap), lang = "send")]
 pub unsafe auto trait Send {
     // empty.
 }

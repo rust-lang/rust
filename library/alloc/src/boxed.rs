@@ -132,11 +132,17 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(not(bootstrap))]
+use crate::string::String;
 use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
+#[cfg(not(bootstrap))]
+use core::error::Error;
 use core::fmt;
+#[cfg(not(bootstrap))]
+use core::fmt::{Debug, Display};
 use core::future::Future;
 use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
@@ -1958,5 +1964,296 @@ impl<S: ?Sized + Stream + Unpin> Stream for Box<S> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+impl<T: Error> Error for Box<T> {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        Error::description(&**self)
+    }
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn Error> {
+        Error::cause(&**self)
+    }
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&**self)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
+    /// Converts a type of [`Error`] into a box of dyn [`Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::fmt;
+    /// use std::mem;
+    ///
+    /// #[derive(Debug)]
+    /// struct AnError;
+    ///
+    /// impl fmt::Display for AnError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "An error")
+    ///     }
+    /// }
+    ///
+    /// impl Error for AnError {}
+    ///
+    /// let an_error = AnError;
+    /// assert!(0 == mem::size_of_val(&an_error));
+    /// let a_boxed_error = Box::<dyn Error>::from(an_error);
+    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: E) -> Box<dyn Error + 'a> {
+        Box::new(err)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
+    /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of
+    /// dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::fmt;
+    /// use std::mem;
+    ///
+    /// #[derive(Debug)]
+    /// struct AnError;
+    ///
+    /// impl fmt::Display for AnError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "An error")
+    ///     }
+    /// }
+    ///
+    /// impl Error for AnError {}
+    ///
+    /// unsafe impl Send for AnError {}
+    ///
+    /// unsafe impl Sync for AnError {}
+    ///
+    /// let an_error = AnError;
+    /// assert!(0 == mem::size_of_val(&an_error));
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(an_error);
+    /// assert!(
+    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: E) -> Box<dyn Error + Send + Sync + 'a> {
+        Box::new(err)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+impl From<String> for Box<dyn Error + Send + Sync> {
+    /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    ///
+    /// let a_string_error = "a string error".to_string();
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_string_error);
+    /// assert!(
+    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    #[inline]
+    fn from(err: String) -> Box<dyn Error + Send + Sync> {
+        struct StringError(String);
+
+        impl Error for StringError {
+            #[allow(deprecated)]
+            fn description(&self) -> &str {
+                &self.0
+            }
+        }
+
+        impl Display for StringError {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                Display::fmt(&self.0, f)
+            }
+        }
+
+        // Purposefully skip printing "StringError(..)"
+        impl Debug for StringError {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                Debug::fmt(&self.0, f)
+            }
+        }
+
+        Box::new(StringError(err))
+    }
+}
+
+#[stable(feature = "string_box_error", since = "1.6.0")]
+#[cfg(not(bootstrap))]
+impl From<String> for Box<dyn Error> {
+    /// Converts a [`String`] into a box of dyn [`Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    ///
+    /// let a_string_error = "a string error".to_string();
+    /// let a_boxed_error = Box::<dyn Error>::from(a_string_error);
+    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(str_err: String) -> Box<dyn Error> {
+        let err1: Box<dyn Error + Send + Sync> = From::from(str_err);
+        let err2: Box<dyn Error> = err1;
+        err2
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
+    /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// [`str`]: prim@str
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    ///
+    /// let a_str_error = "a str error";
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_str_error);
+    /// assert!(
+    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    #[inline]
+    fn from(err: &str) -> Box<dyn Error + Send + Sync + 'a> {
+        From::from(String::from(err))
+    }
+}
+
+#[stable(feature = "string_box_error", since = "1.6.0")]
+#[cfg(not(bootstrap))]
+impl From<&str> for Box<dyn Error> {
+    /// Converts a [`str`] into a box of dyn [`Error`].
+    ///
+    /// [`str`]: prim@str
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    ///
+    /// let a_str_error = "a str error";
+    /// let a_boxed_error = Box::<dyn Error>::from(a_str_error);
+    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: &str) -> Box<dyn Error> {
+        From::from(String::from(err))
+    }
+}
+
+#[stable(feature = "cow_box_error", since = "1.22.0")]
+#[cfg(not(bootstrap))]
+impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
+    /// Converts a [`Cow`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    /// use std::borrow::Cow;
+    ///
+    /// let a_cow_str_error = Cow::from("a str error");
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_cow_str_error);
+    /// assert!(
+    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: Cow<'b, str>) -> Box<dyn Error + Send + Sync + 'a> {
+        From::from(String::from(err))
+    }
+}
+
+#[stable(feature = "cow_box_error", since = "1.22.0")]
+#[cfg(not(bootstrap))]
+impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
+    /// Converts a [`Cow`] into a box of dyn [`Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    /// use std::borrow::Cow;
+    ///
+    /// let a_cow_str_error = Cow::from("a str error");
+    /// let a_boxed_error = Box::<dyn Error>::from(a_cow_str_error);
+    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: Cow<'a, str>) -> Box<dyn Error> {
+        From::from(String::from(err))
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[lang = "error_alloc"]
+impl dyn Error {
+    #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    /// Attempts to downcast the box to a concrete type.
+    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
+        if self.is::<T>() {
+            unsafe {
+                let raw: *mut dyn Error = Box::into_raw(self);
+                Ok(Box::from_raw(raw as *mut T))
+            }
+        } else {
+            Err(self)
+        }
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[lang = "errorsend_alloc"]
+impl dyn Error + Send {
+    #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    /// Attempts to downcast the box to a concrete type.
+    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
+        let err: Box<dyn Error> = self;
+        <dyn Error>::downcast(err).map_err(|s| unsafe {
+            // Reapply the `Send` marker.
+            mem::transmute::<Box<dyn Error>, Box<dyn Error + Send>>(s)
+        })
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[lang = "errorsendsync_alloc"]
+impl dyn Error + Send + Sync {
+    #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    /// Attempts to downcast the box to a concrete type.
+    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<Self>> {
+        let err: Box<dyn Error> = self;
+        <dyn Error>::downcast(err).map_err(|s| unsafe {
+            // Reapply the `Send + Sync` marker.
+            mem::transmute::<Box<dyn Error>, Box<dyn Error + Send + Sync>>(s)
+        })
     }
 }

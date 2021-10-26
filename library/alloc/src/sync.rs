@@ -39,6 +39,8 @@ use crate::rc::is_dangling;
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
+#[cfg(not(bootstrap))]
+use core::error::Error;
 
 #[cfg(test)]
 mod tests;
@@ -2641,4 +2643,22 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
 fn data_offset_align(align: usize) -> isize {
     let layout = Layout::new::<ArcInner<()>>();
     (layout.size() + layout.padding_needed_for(align)) as isize
+}
+
+#[stable(feature = "arc_error", since = "1.52.0")]
+#[cfg(not(bootstrap))]
+impl<T: Error + ?Sized> Error for Arc<T> {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        Error::description(&**self)
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn Error> {
+        Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&**self)
+    }
 }

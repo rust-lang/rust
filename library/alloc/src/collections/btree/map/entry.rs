@@ -514,3 +514,14 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
         old_kv
     }
 }
+
+#[unstable(feature = "map_try_insert", issue = "82766")]
+#[cfg(not(bootstrap))]
+impl<'a, K: Debug + Ord, V: Debug> core::error::Error
+    for crate::collections::btree_map::OccupiedError<'a, K, V>
+{
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "key already exists"
+    }
+}
