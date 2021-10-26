@@ -1,6 +1,4 @@
 //! Transforms markdown
-use std::borrow::Cow;
-
 use ide_db::helpers::rust_doc::is_rust_fence;
 
 const RUSTDOC_FENCE: &str = "```";
@@ -10,9 +8,8 @@ pub(crate) fn format_docs(src: &str) -> String {
     let mut in_code_block = false;
     let mut is_rust = false;
 
-    for line in src.lines() {
-        let mut line = Cow::from(line);
-        if in_code_block && is_rust && code_line_ignored_by_rustdoc(&line) {
+    for mut line in src.lines() {
+        if in_code_block && is_rust && code_line_ignored_by_rustdoc(line) {
             continue;
         }
 
@@ -23,15 +20,15 @@ pub(crate) fn format_docs(src: &str) -> String {
                 is_rust = is_rust_fence(header);
 
                 if is_rust {
-                    line = Cow::Borrowed("```rust");
+                    line = "```rust";
                 }
             }
         }
 
         if in_code_block {
-            let trimmed = line.trim();
+            let trimmed = line.trim_start();
             if trimmed.starts_with("##") {
-                line = Cow::Owned(line.replacen("##", "#", 1));
+                line = &trimmed[1..];
             }
         }
 
