@@ -1,4 +1,4 @@
-error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:101:13
    |
 LL |             m!();
@@ -7,6 +7,7 @@ LL |             m!();
 LL | include!();
    | ---------- in this macro invocation
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
    |
@@ -25,7 +26,7 @@ LL | include!();
    | ---------- in this macro invocation
    = note: this error originates in the macro `gen_gen_inner_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:139:42
    |
 LL |         macro_rules! gen_invoc { () => { m!() } }
@@ -34,6 +35,7 @@ LL |         macro_rules! gen_invoc { () => { m!() } }
 LL | include!();
    | ---------- in this macro invocation
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
    |
@@ -52,7 +54,7 @@ LL | include!();
    | ---------- in this macro invocation
    = note: this error originates in the macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:148:9
    |
 LL |         m!();
@@ -61,6 +63,7 @@ LL |         m!();
 LL | include!();
    | ---------- in this macro invocation
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
    |
@@ -79,7 +82,7 @@ LL | include!();
    | ---------- in this macro invocation
    = note: this error originates in the macro `include` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:164:9
    |
 LL |         m!();
@@ -88,6 +91,7 @@ LL |         m!();
 LL | include!();
    | ---------- in this macro invocation
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
    |
@@ -106,7 +110,7 @@ LL | include!();
    | ---------- in this macro invocation
    = note: this error originates in the macro `include` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:180:13
    |
 LL |             m!();
@@ -115,6 +119,7 @@ LL |             m!();
 LL | include!();
    | ---------- in this macro invocation
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
    |
@@ -133,7 +138,7 @@ LL | include!();
    | ---------- in this macro invocation
    = note: this error originates in the macro `gen_gen_inner_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:218:42
    |
 LL |         macro_rules! gen_invoc { () => { m!() } }
@@ -142,6 +147,7 @@ LL |         macro_rules! gen_invoc { () => { m!() } }
 LL | include!();
    | ---------- in this macro invocation
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
    |
@@ -160,7 +166,7 @@ LL | include!();
    | ---------- in this macro invocation
    = note: this error originates in the macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:232:9
    |
 LL |         m!();
@@ -169,6 +175,7 @@ LL |         m!();
 LL | include!();
    | ---------- in this macro invocation
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
    |
@@ -187,7 +194,7 @@ LL | include!();
    | ---------- in this macro invocation
    = note: this error originates in the macro `include` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:262:42
    |
 LL |         macro_rules! gen_invoc { () => { m!() } }
@@ -196,6 +203,7 @@ LL |         macro_rules! gen_invoc { () => { m!() } }
 LL | include!();
    | ---------- in this macro invocation
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
    |

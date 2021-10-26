@@ -1,9 +1,10 @@
-error[E0659]: `std` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `std` is ambiguous
   --> $DIR/ambiguity-macros.rs:7:5
    |
 LL | use std::io;
    |     ^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
    = note: `std` could refer to a built-in crate
    = help: use `::std` to refer to this crate unambiguously
 note: `std` could also refer to the module defined here

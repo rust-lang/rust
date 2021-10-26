@@ -1,9 +1,10 @@
-error[E0659]: `Foo` is ambiguous (glob import vs glob import in the same module)
+error[E0659]: `Foo` is ambiguous
   --> $DIR/rfc-1560-warning-cycle.rs:9:17
    |
 LL |         fn f(_: Foo) {}
    |                 ^^^ ambiguous name
    |
+   = note: ambiguous because of multiple glob imports of a name in the same module
 note: `Foo` could refer to the struct imported here
   --> $DIR/rfc-1560-warning-cycle.rs:7:13
    |

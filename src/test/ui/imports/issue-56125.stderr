@@ -4,12 +4,13 @@ error[E0432]: unresolved import `empty::issue_56125`
 LL |     use empty::issue_56125;
    |         ^^^^^^^^^^^^^^^^^^ no `issue_56125` in `m3::empty`
 
-error[E0659]: `issue_56125` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `issue_56125` is ambiguous
   --> $DIR/issue-56125.rs:6:9
    |
 LL |     use issue_56125::last_segment::*;
    |         ^^^^^^^^^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
    = note: `issue_56125` could refer to a crate passed with `--extern`
    = help: use `::issue_56125` to refer to this crate unambiguously
 note: `issue_56125` could also refer to the module imported here
@@ -19,12 +20,13 @@ LL |     use issue_56125::last_segment::*;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `self::issue_56125` to refer to this module unambiguously
 
-error[E0659]: `issue_56125` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `issue_56125` is ambiguous
   --> $DIR/issue-56125.rs:11:9
    |
 LL |     use issue_56125::non_last_segment::non_last_segment::*;
    |         ^^^^^^^^^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
    = note: `issue_56125` could refer to a crate passed with `--extern`
    = help: use `::issue_56125` to refer to this crate unambiguously
 note: `issue_56125` could also refer to the module imported here
@@ -34,12 +36,13 @@ LL |     use issue_56125::non_last_segment::non_last_segment::*;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `self::issue_56125` to refer to this module unambiguously
 
-error[E0659]: `issue_56125` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `issue_56125` is ambiguous
   --> $DIR/issue-56125.rs:18:9
    |
 LL |     use issue_56125::*;
    |         ^^^^^^^^^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
    = note: `issue_56125` could refer to a crate passed with `--extern`
    = help: use `::issue_56125` to refer to this crate unambiguously
 note: `issue_56125` could also refer to the module imported here

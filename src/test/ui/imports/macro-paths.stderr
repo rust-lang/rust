@@ -1,9 +1,10 @@
-error[E0659]: `bar` is ambiguous (glob import vs macro-expanded name in the same module during import/macro resolution)
+error[E0659]: `bar` is ambiguous
   --> $DIR/macro-paths.rs:13:5
    |
 LL |     bar::m! {
    |     ^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a name from a glob import and a macro-expanded name in the same module during import or macro resolution
 note: `bar` could refer to the module defined here
   --> $DIR/macro-paths.rs:14:9
    |
@@ -16,12 +17,13 @@ LL |     use foo::*;
    |         ^^^^^^
    = help: consider adding an explicit import of `bar` to disambiguate
 
-error[E0659]: `baz` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
+error[E0659]: `baz` is ambiguous
   --> $DIR/macro-paths.rs:23:5
    |
 LL |     baz::m! {
    |     ^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
 note: `baz` could refer to the module defined here
   --> $DIR/macro-paths.rs:24:9
    |

@@ -10,12 +10,13 @@ note: consider marking `legacy_macro` as `pub` in the imported module
 LL |     pub use legacy_macro as _;
    |             ^^^^^^^^^^^^^^^^^
 
-error[E0659]: `legacy_macro` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `legacy_macro` is ambiguous
   --> $DIR/macro-rules.rs:31:13
    |
 LL |         use legacy_macro as _;
    |             ^^^^^^^^^^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
 note: `legacy_macro` could refer to the macro defined here
   --> $DIR/macro-rules.rs:28:9
    |
