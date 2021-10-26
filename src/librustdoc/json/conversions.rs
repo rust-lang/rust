@@ -412,7 +412,7 @@ impl FromWithTcx<clean::Type> for Type {
                         .map(|t| {
                             clean::GenericBound::TraitBound(t, rustc_hir::TraitBoundModifier::None)
                         })
-                        .chain(lt.into_iter().map(clean::GenericBound::Outlives))
+                        .chain(lt.map(clean::GenericBound::Outlives))
                         .map(|bound| bound.into_tcx(tcx))
                         .collect(),
                 }
