@@ -1,3 +1,6 @@
+// NOTE: if you add a deprecated lint in this file, please add a corresponding test in
+// tests/ui/deprecated.rs
+
 /// This struct fakes the `Lint` declaration that is usually created by `declare_lint!`. This
 /// enables the simple extraction of the metadata without changing the current deprecation
 /// declaration.
