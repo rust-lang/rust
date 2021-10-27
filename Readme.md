@@ -29,9 +29,15 @@ cmake -G Ninja .. -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/p
 ninja
 ```
 
-Or, install Enzyme using [Homebrew](https://brew.sh):
+Or, install Enzyme using a package manager:
+
+[Homebrew](https://brew.sh)
 ```
 brew install enzyme
+```
+[Spack](https://spack.io)
+```
+spack install enzyme
 ```
 
 To get involved or if you have questions, please join our [mailing list](https://groups.google.com/d/forum/enzyme-dev).
