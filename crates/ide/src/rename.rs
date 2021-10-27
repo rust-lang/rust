@@ -147,22 +147,27 @@ fn find_definitions(
                     })
                     .map(|def| (name_like.clone(), def))
                     .ok_or_else(|| format_err!("No references found at position")),
-                ast::NameLike::NameRef(name_ref) => NameRefClass::classify(sema, name_ref)
-                    .map(|class| match class {
-                        NameRefClass::Definition(def) => def,
-                        NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
-                            Definition::Local(local_ref)
-                        }
-                    })
-                    .and_then(|def| {
-                        // if the name differs from the definitions name it has to be an alias
-                        if def.name(sema.db).map_or(false, |it| it.to_string() != name_ref.text()) {
-                            None
-                        } else {
-                            Some((name_like.clone(), def))
-                        }
-                    })
-                    .ok_or_else(|| format_err!("Renaming aliases is currently unsupported")),
+                ast::NameLike::NameRef(name_ref) => {
+                    NameRefClass::classify(sema, name_ref)
+                        .map(|class| match class {
+                            NameRefClass::Definition(def) => def,
+                            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                                Definition::Local(local_ref)
+                            }
+                        })
+                        .ok_or_else(|| format_err!("No references found at position"))
+                        .and_then(|def| {
+                            // if the name differs from the definitions name it has to be an alias
+                            if def
+                                .name(sema.db)
+                                .map_or(false, |it| it.to_string() != name_ref.text())
+                            {
+                                Err(format_err!("Renaming aliases is currently unsupported"))
+                            } else {
+                                Ok((name_like.clone(), def))
+                            }
+                        })
+                }
                 ast::NameLike::Lifetime(lifetime) => {
                     NameRefClass::classify_lifetime(sema, lifetime)
                         .and_then(|class| match class {
@@ -183,8 +188,8 @@ fn find_definitions(
         });
 
     // TODO avoid collect() somehow?
-    let v: RenameResult<Vec<(ast::NameLike, Definition)>> = symbols.collect();
-    match v {
+    let res: RenameResult<Vec<(ast::NameLike, Definition)>> = symbols.collect();
+    match res {
         // remove duplicates
         Ok(v) => {
             if v.is_empty() {
