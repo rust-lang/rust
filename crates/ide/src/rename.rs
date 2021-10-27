@@ -13,10 +13,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use stdx::{always, never};
-use syntax::{
-    ast::{self},
-    AstNode, SyntaxNode,
-};
+use syntax::{ast, AstNode, SyntaxNode};
 
 use text_edit::TextEdit;
 
