@@ -36,10 +36,11 @@ pub(crate) fn prepare_rename(
     let mut defs = find_definitions(&sema, syntax, position)?;
 
     // TODO:
-    // - is "No references found at position" the right error? (why does it not get caught by `find_definitions`... hmm)
+    // - `find_definitions` is implemented so that it returns a non-empty vec
+    //   in the `Ok` case. But that's not expressed by the type signature, hence `unwrap()`
+    //   here which ... wart.
     // - is "just take the first `name_like`" correct? If not, what do?
-    let (name_like, _def) =
-        defs.next().ok_or_else(|| format_err!("No references found at position"))?;
+    let (name_like, _def) = defs.next().unwrap();
     let frange = sema.original_range(name_like.syntax());
     always!(frange.range.contains_inclusive(position.offset) && frange.file_id == position.file_id);
     Ok(RangeInfo::new(frange.range, ()))
@@ -168,7 +169,13 @@ fn find_definitions(
     match v {
         // remove duplicates
         // TODO is "unique by `Definition`" correct?
-        Ok(v) => Ok(v.into_iter().unique_by(|t| t.1)),
+        Ok(v) => {
+            if v.is_empty() {
+                Err(format_err!("No references found at position"))
+            } else {
+                Ok(v.into_iter().unique_by(|t| t.1))
+            }
+        }
         Err(e) => Err(e),
     }
 }
