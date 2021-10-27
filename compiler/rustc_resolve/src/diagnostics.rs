@@ -1823,7 +1823,6 @@ crate fn show_candidates(
         let instead = if instead { " instead" } else { "" };
         let mut msg = format!("consider importing {} {}{}", determiner, kind, instead);
 
-        // Issue notes
         for note in accessible_path_strings.iter().map(|cand| cand.3.as_ref()).flatten() {
             err.note(note);
         }
