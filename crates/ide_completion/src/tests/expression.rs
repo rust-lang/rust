@@ -110,7 +110,7 @@ fn func(param0 @ (param1, param2): (i32, i32)) {
 }
 
 #[test]
-fn completes_all_the_things() {
+fn completes_all_the_things_in_fn_body() {
     cov_mark::check!(unqualified_skip_lifetime_completion);
     check(
         r#"
@@ -203,6 +203,223 @@ impl Unit {
             ev TupleV(…)  (u32)
             ct CONST
         "##]],
+    );
+}
+
+#[test]
+fn complete_in_block() {
+    check_empty(
+        r#"
+    fn foo() {
+        if true {
+            $0
+        }
+    }
+"#,
+        expect![[r#"
+            kw unsafe
+            kw fn
+            kw const
+            kw type
+            kw impl
+            kw extern
+            kw use
+            kw trait
+            kw static
+            kw mod
+            kw match
+            kw while
+            kw while let
+            kw loop
+            kw if
+            kw if let
+            kw for
+            kw true
+            kw false
+            kw let
+            kw return
+            sn pd
+            sn ppd
+            kw self
+            kw super
+            kw crate
+            fn foo()     fn()
+            bt u32
+        "#]],
+    )
+}
+
+#[test]
+fn complete_after_if_expr() {
+    check_empty(
+        r#"
+    fn foo() {
+        if true {}
+        $0
+    }
+"#,
+        expect![[r#"
+            kw unsafe
+            kw fn
+            kw const
+            kw type
+            kw impl
+            kw extern
+            kw use
+            kw trait
+            kw static
+            kw mod
+            kw match
+            kw while
+            kw while let
+            kw loop
+            kw if
+            kw if let
+            kw for
+            kw true
+            kw false
+            kw let
+            kw else
+            kw else if
+            kw return
+            sn pd
+            sn ppd
+            kw self
+            kw super
+            kw crate
+            fn foo()     fn()
+            bt u32
+        "#]],
+    )
+}
+
+#[test]
+fn complete_in_match_arm() {
+    check_empty(
+        r#"
+    fn foo() {
+        match () {
+            () => $0
+        }
+    }
+"#,
+        expect![[r#"
+            kw unsafe
+            kw match
+            kw while
+            kw while let
+            kw loop
+            kw if
+            kw if let
+            kw for
+            kw true
+            kw false
+            kw return
+            kw self
+            kw super
+            kw crate
+            fn foo()     fn()
+            bt u32
+        "#]],
+    )
+}
+
+#[test]
+fn completes_in_loop_ctx() {
+    check_empty(
+        r"fn my() { loop { $0 } }",
+        expect![[r#"
+            kw unsafe
+            kw fn
+            kw const
+            kw type
+            kw impl
+            kw extern
+            kw use
+            kw trait
+            kw static
+            kw mod
+            kw match
+            kw while
+            kw while let
+            kw loop
+            kw if
+            kw if let
+            kw for
+            kw true
+            kw false
+            kw let
+            kw continue
+            kw break
+            kw return
+            sn pd
+            sn ppd
+            kw self
+            kw super
+            kw crate
+            fn my()      fn()
+            bt u32
+        "#]],
+    );
+}
+
+#[test]
+fn completes_in_let_initializer() {
+    check_empty(
+        r#"fn main() { let _ = $0 }"#,
+        expect![[r#"
+            kw unsafe
+            kw match
+            kw while
+            kw while let
+            kw loop
+            kw if
+            kw if let
+            kw for
+            kw true
+            kw false
+            kw return
+            kw self
+            kw super
+            kw crate
+            fn main()    fn()
+            bt u32
+        "#]],
+    )
+}
+
+#[test]
+fn struct_initializer_field_expr() {
+    check_empty(
+        r#"
+struct Foo {
+    pub f: i32,
+}
+fn foo() {
+    Foo {
+        f: $0
+    }
+}
+"#,
+        expect![[r#"
+            kw unsafe
+            kw match
+            kw while
+            kw while let
+            kw loop
+            kw if
+            kw if let
+            kw for
+            kw true
+            kw false
+            kw return
+            kw self
+            kw super
+            kw crate
+            st Foo
+            fn foo()     fn()
+            bt u32
+        "#]],
     );
 }
 

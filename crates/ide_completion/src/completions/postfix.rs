@@ -270,12 +270,12 @@ mod tests {
     use expect_test::{expect, Expect};
 
     use crate::{
-        tests::{check_edit, check_edit_with_config, filtered_completion_list, TEST_CONFIG},
-        CompletionConfig, CompletionKind, Snippet,
+        tests::{check_edit, check_edit_with_config, completion_list, TEST_CONFIG},
+        CompletionConfig, Snippet,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Postfix);
+        let actual = completion_list(ra_fixture);
         expect.assert_eq(&actual)
     }
 

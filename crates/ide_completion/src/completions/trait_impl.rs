@@ -290,13 +290,10 @@ fn replacement_range(ctx: &CompletionContext, item: &SyntaxNode) -> TextRange {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{
-        tests::{check_edit, filtered_completion_list},
-        CompletionKind,
-    };
+    use crate::tests::{check_edit, completion_list_no_kw};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Magic);
+        let actual = completion_list_no_kw(ra_fixture);
         expect.assert_eq(&actual)
     }
 
@@ -313,7 +310,12 @@ impl Test for T {
     }
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
 
         check(
@@ -356,7 +358,23 @@ impl Test for T {
     }
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sn if    if expr {}
+                sn while while expr {}
+                sn not   !expr
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
+            "#]],
         );
 
         check(
@@ -368,7 +386,10 @@ impl Test for T {
     fn test(t$0)
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                st T
+            "#]],
         );
 
         check(
@@ -380,7 +401,10 @@ impl Test for T {
     fn test(f: fn $0)
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                st T
+            "#]],
         );
     }
 
@@ -395,7 +419,7 @@ impl Test for T {
     const TEST: fn $0
 }
 ",
-            expect![[""]],
+            expect![[r#""#]],
         );
 
         check(
@@ -407,7 +431,12 @@ impl Test for T {
     const TEST: T$0
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
 
         check(
@@ -419,7 +448,12 @@ impl Test for T {
     const TEST: u32 = f$0
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
 
         check(
@@ -433,7 +467,12 @@ impl Test for T {
     };
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
 
         check(
@@ -476,7 +515,12 @@ impl Test for T {
     type Test = T$0;
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
 
         check(
@@ -488,7 +532,12 @@ impl Test for T {
     type Test = fn $0;
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
     }
 

@@ -313,6 +313,7 @@ fn check_dbg(path: &Path, text: &str) {
         "handlers/remove_dbg.rs",
         // We have .dbg postfix
         "ide_completion/src/completions/postfix.rs",
+        "ide_completion/src/completions/keyword.rs",
         "ide_completion/src/tests/proc_macros.rs",
         // The documentation in string literals may contain anything for its own purposes
         "ide_completion/src/lib.rs",

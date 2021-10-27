@@ -20,6 +20,7 @@ mod record;
 mod type_pos;
 mod use_tree;
 mod visibility;
+mod flyimport;
 
 use std::mem;
 
@@ -77,10 +78,18 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
 };
 
 pub(crate) fn completion_list(ra_fixture: &str) -> String {
-    completion_list_with_config(TEST_CONFIG, ra_fixture)
+    completion_list_with_config(TEST_CONFIG, ra_fixture, true)
 }
 
-fn completion_list_with_config(config: CompletionConfig, ra_fixture: &str) -> String {
+pub(crate) fn completion_list_no_kw(ra_fixture: &str) -> String {
+    completion_list_with_config(TEST_CONFIG, ra_fixture, false)
+}
+
+fn completion_list_with_config(
+    config: CompletionConfig,
+    ra_fixture: &str,
+    include_keywords: bool,
+) -> String {
     // filter out all but one builtintype completion for smaller test outputs
     let items = get_all_items(config, ra_fixture);
     let mut bt_seen = false;
@@ -89,6 +98,8 @@ fn completion_list_with_config(config: CompletionConfig, ra_fixture: &str) -> St
         .filter(|it| {
             it.completion_kind != CompletionKind::BuiltinType || !mem::replace(&mut bt_seen, true)
         })
+        .filter(|it| include_keywords || it.completion_kind != CompletionKind::Keyword)
+        .filter(|it| include_keywords || it.completion_kind != CompletionKind::Snippet)
         .collect();
     render_completion_list(items)
 }
@@ -118,20 +129,6 @@ pub(crate) fn do_completion_with_config(
         .filter(|c| c.completion_kind == kind)
         .sorted_by(|l, r| l.label().cmp(r.label()))
         .collect()
-}
-
-pub(crate) fn filtered_completion_list(code: &str, kind: CompletionKind) -> String {
-    filtered_completion_list_with_config(TEST_CONFIG, code, kind)
-}
-
-pub(crate) fn filtered_completion_list_with_config(
-    config: CompletionConfig,
-    code: &str,
-    kind: CompletionKind,
-) -> String {
-    let kind_completions: Vec<CompletionItem> =
-        get_all_items(config, code).into_iter().filter(|c| c.completion_kind == kind).collect();
-    render_completion_list(kind_completions)
 }
 
 fn render_completion_list(completions: Vec<CompletionItem>) -> String {
@@ -252,5 +249,39 @@ fn foo() {
     preset!(foo$0);
 }
 "#,
+    );
+}
+
+#[test]
+fn no_completions_in_comments() {
+    cov_mark::check!(no_keyword_completion_in_comments);
+    assert_eq!(
+        completion_list(
+            r#"
+fn test() {
+let x = 2; // A comment$0
+}
+"#,
+        ),
+        String::new(),
+    );
+    assert_eq!(
+        completion_list(
+            r#"
+/*
+Some multi-line comment$0
+*/
+"#,
+        ),
+        String::new(),
+    );
+    assert_eq!(
+        completion_list(
+            r#"
+/// Some doc comment
+/// let test$0 = 1
+"#,
+        ),
+        String::new(),
     );
 }

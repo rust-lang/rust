@@ -134,7 +134,6 @@ impl<'a> CompletionContext<'a> {
         // check kind of macro-expanded token, but use range of original token
         let kind = self.token.kind();
         if kind == IDENT || kind == LIFETIME_IDENT || kind == UNDERSCORE || kind.is_keyword() {
-            cov_mark::hit!(completes_if_prefix_is_keyword);
             self.original_token.text_range()
         } else if kind == CHAR {
             // assume we are completing a lifetime but the user has only typed the '

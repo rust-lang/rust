@@ -250,13 +250,10 @@ fn add_enum_variants(acc: &mut Completions, ctx: &CompletionContext, e: hir::Enu
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{
-        tests::{check_edit, filtered_completion_list},
-        CompletionKind,
-    };
+    use crate::tests::{check_edit, completion_list_no_kw};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Reference);
+        let actual = completion_list_no_kw(ra_fixture);
         expect.assert_eq(&actual);
     }
 

@@ -99,13 +99,10 @@ fn complete_methods(
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{
-        tests::{check_edit, filtered_completion_list},
-        CompletionKind,
-    };
+    use crate::tests::{check_edit, completion_list_no_kw};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Reference);
+        let actual = completion_list_no_kw(ra_fixture);
         expect.assert_eq(&actual);
     }
 
@@ -122,6 +119,18 @@ fn foo(s: S) { s.$0 }
             expect![[r#"
                 fd foo   u32
                 me bar() fn(&self)
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         );
     }
@@ -138,6 +147,18 @@ impl S {
             expect![[r#"
                 fd the_field (u32,)
                 me foo()     fn(self)
+                sn ref       &expr
+                sn refm      &mut expr
+                sn match     match expr {}
+                sn box       Box::new(expr)
+                sn ok        Ok(expr)
+                sn err       Err(expr)
+                sn some      Some(expr)
+                sn dbg       dbg!(expr)
+                sn dbgr      dbg!(&expr)
+                sn call      function(expr)
+                sn let       let
+                sn letm      let mut
             "#]],
         )
     }
@@ -154,6 +175,18 @@ impl A {
             expect![[r#"
                 fd the_field (u32, i32)
                 me foo()     fn(&self)
+                sn ref       &expr
+                sn refm      &mut expr
+                sn match     match expr {}
+                sn box       Box::new(expr)
+                sn ok        Ok(expr)
+                sn err       Err(expr)
+                sn some      Some(expr)
+                sn dbg       dbg!(expr)
+                sn dbgr      dbg!(&expr)
+                sn call      function(expr)
+                sn let       let
+                sn letm      let mut
             "#]],
         )
     }
@@ -166,7 +199,18 @@ impl A {
 struct A { the_field: u32 }
 fn foo(a: A) { a.$0() }
 "#,
-            expect![[""]],
+            expect![[r#"
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+            "#]],
         );
     }
 
@@ -191,6 +235,18 @@ fn foo(a: lib::m::A) { a.$0 }
                 fd pub_field     u32
                 fd crate_field   u32
                 fd super_field   u32
+                sn ref           &expr
+                sn refm          &mut expr
+                sn match         match expr {}
+                sn box           Box::new(expr)
+                sn ok            Ok(expr)
+                sn err           Err(expr)
+                sn some          Some(expr)
+                sn dbg           dbg!(expr)
+                sn dbgr          dbg!(&expr)
+                sn call          function(expr)
+                sn let           let
+                sn letm          let mut
             "#]],
         );
 
@@ -210,6 +266,18 @@ fn foo(a: lib::m::A) { a.$0 }
 "#,
             expect![[r#"
                 fd pub_field u32
+                sn ref       &expr
+                sn refm      &mut expr
+                sn match     match expr {}
+                sn box       Box::new(expr)
+                sn ok        Ok(expr)
+                sn err       Err(expr)
+                sn some      Some(expr)
+                sn dbg       dbg!(expr)
+                sn dbgr      dbg!(&expr)
+                sn call      function(expr)
+                sn let       let
+                sn letm      let mut
             "#]],
         );
 
@@ -226,7 +294,19 @@ pub mod m {
 fn foo(a: lib::m::A) { a.$0 }
 "#,
             expect![[r#"
-                fd 1 f64
+                fd 1     f64
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         );
 
@@ -248,6 +328,18 @@ fn foo(a: lib::A) { a.$0 }
                 me private_method() fn(&self)
                 me crate_method()   fn(&self)
                 me pub_method()     fn(&self)
+                sn ref              &expr
+                sn refm             &mut expr
+                sn match            match expr {}
+                sn box              Box::new(expr)
+                sn ok               Ok(expr)
+                sn err              Err(expr)
+                sn some             Some(expr)
+                sn dbg              dbg!(expr)
+                sn dbgr             dbg!(&expr)
+                sn call             function(expr)
+                sn let              let
+                sn letm             let mut
             "#]],
         );
         check(
@@ -266,6 +358,18 @@ fn foo(a: lib::A) { a.$0 }
 "#,
             expect![[r#"
                 me pub_method() fn(&self)
+                sn ref          &expr
+                sn refm         &mut expr
+                sn match        match expr {}
+                sn box          Box::new(expr)
+                sn ok           Ok(expr)
+                sn err          Err(expr)
+                sn some         Some(expr)
+                sn dbg          dbg!(expr)
+                sn dbgr         dbg!(&expr)
+                sn call         function(expr)
+                sn let          let
+                sn letm         let mut
             "#]],
         );
     }
@@ -293,6 +397,18 @@ impl A {
             expect![[r#"
                 fd pub_field    u32
                 me pub_method() fn(&self)
+                sn ref          &expr
+                sn refm         &mut expr
+                sn match        match expr {}
+                sn box          Box::new(expr)
+                sn ok           Ok(expr)
+                sn err          Err(expr)
+                sn some         Some(expr)
+                sn dbg          dbg!(expr)
+                sn dbgr         dbg!(&expr)
+                sn call         function(expr)
+                sn let          let
+                sn letm         let mut
             "#]],
         )
     }
@@ -307,6 +423,18 @@ fn foo(u: U) { u.$0 }
             expect![[r#"
                 fd field u8
                 fd other u16
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         );
     }
@@ -326,6 +454,18 @@ fn foo(a: A<u32>) { a.$0 }
 "#,
             expect![[r#"
                 me the_method() fn(&self)
+                sn ref          &expr
+                sn refm         &mut expr
+                sn match        match expr {}
+                sn box          Box::new(expr)
+                sn ok           Ok(expr)
+                sn err          Err(expr)
+                sn some         Some(expr)
+                sn dbg          dbg!(expr)
+                sn dbgr         dbg!(&expr)
+                sn call         function(expr)
+                sn let          let
+                sn letm         let mut
             "#]],
         )
     }
@@ -341,6 +481,18 @@ fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
                 me the_method() (as Trait) fn(&self)
+                sn ref                    &expr
+                sn refm                   &mut expr
+                sn match                  match expr {}
+                sn box                    Box::new(expr)
+                sn ok                     Ok(expr)
+                sn err                    Err(expr)
+                sn some                   Some(expr)
+                sn dbg                    dbg!(expr)
+                sn dbgr                   dbg!(&expr)
+                sn call                   function(expr)
+                sn let                    let
+                sn letm                   let mut
             "#]],
         );
         check_edit(
@@ -371,6 +523,18 @@ fn foo(a: &A) { a.$0 }
 ",
             expect![[r#"
                 me the_method() (as Trait) fn(&self)
+                sn ref                    &expr
+                sn refm                   &mut expr
+                sn match                  match expr {}
+                sn box                    Box::new(expr)
+                sn ok                     Ok(expr)
+                sn err                    Err(expr)
+                sn some                   Some(expr)
+                sn dbg                    dbg!(expr)
+                sn dbgr                   dbg!(&expr)
+                sn call                   function(expr)
+                sn let                    let
+                sn letm                   let mut
             "#]],
         );
     }
@@ -389,6 +553,18 @@ fn foo(a: A) { a.$0 }
 ",
             expect![[r#"
                 me the_method() (as Trait) fn(&self)
+                sn ref                    &expr
+                sn refm                   &mut expr
+                sn match                  match expr {}
+                sn box                    Box::new(expr)
+                sn ok                     Ok(expr)
+                sn err                    Err(expr)
+                sn some                   Some(expr)
+                sn dbg                    dbg!(expr)
+                sn dbgr                   dbg!(&expr)
+                sn call                   function(expr)
+                sn let                    let
+                sn letm                   let mut
             "#]],
         );
     }
@@ -405,7 +581,20 @@ fn foo(a: A) {
    a.$0
 }
 "#,
-            expect![[""]],
+            expect![[r#"
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
+            "#]],
         );
     }
 
@@ -419,8 +608,20 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                fd 0 i32
-                fd 1 f64
+                fd 0     i32
+                fd 1     f64
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         );
     }
@@ -436,8 +637,20 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                fd 0 i32
-                fd 1 f64
+                fd 0     i32
+                fd 1     f64
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         );
     }
@@ -460,6 +673,18 @@ impl T {
 "#,
             expect![[r#"
                 me blah() fn(&self)
+                sn ref    &expr
+                sn refm   &mut expr
+                sn match  match expr {}
+                sn box    Box::new(expr)
+                sn ok     Ok(expr)
+                sn err    Err(expr)
+                sn some   Some(expr)
+                sn dbg    dbg!(expr)
+                sn dbgr   dbg!(&expr)
+                sn call   function(expr)
+                sn let    let
+                sn letm   let mut
             "#]],
         );
     }
@@ -475,6 +700,18 @@ const X: u32 = {
 "#,
             expect![[r#"
                 fd the_field u32
+                sn ref       &expr
+                sn refm      &mut expr
+                sn match     match expr {}
+                sn box       Box::new(expr)
+                sn ok        Ok(expr)
+                sn err       Err(expr)
+                sn some      Some(expr)
+                sn dbg       dbg!(expr)
+                sn dbgr      dbg!(&expr)
+                sn call      function(expr)
+                sn let       let
+                sn letm      let mut
             "#]],
         );
     }
@@ -491,6 +728,16 @@ fn foo(a: A) {
 "#,
             expect![[r#"
                 fd the_field u32
+                sn ref       &expr
+                sn refm      &mut expr
+                sn match     match expr {}
+                sn box       Box::new(expr)
+                sn ok        Ok(expr)
+                sn err       Err(expr)
+                sn some      Some(expr)
+                sn dbg       dbg!(expr)
+                sn dbgr      dbg!(&expr)
+                sn call      function(expr)
             "#]],
         );
     }
@@ -508,6 +755,16 @@ fn foo(a: A) {
 "#,
             expect![[r#"
                 fd the_field u32
+                sn ref       &expr
+                sn refm      &mut expr
+                sn match     match expr {}
+                sn box       Box::new(expr)
+                sn ok        Ok(expr)
+                sn err       Err(expr)
+                sn some      Some(expr)
+                sn dbg       dbg!(expr)
+                sn dbgr      dbg!(&expr)
+                sn call      function(expr)
             "#]],
         );
     }
@@ -524,6 +781,16 @@ fn foo(a: A) {
 "#,
             expect![[r#"
                 fd the_field u32
+                sn ref       &expr
+                sn refm      &mut expr
+                sn match     match expr {}
+                sn box       Box::new(expr)
+                sn ok        Ok(expr)
+                sn err       Err(expr)
+                sn some      Some(expr)
+                sn dbg       dbg!(expr)
+                sn dbgr      dbg!(&expr)
+                sn call      function(expr)
             "#]],
         );
     }
@@ -550,6 +817,16 @@ fn foo(a: A) {
 "#,
             expect![[r#"
                 fd the_field u32
+                sn ref       &expr
+                sn refm      &mut expr
+                sn match     match expr {}
+                sn box       Box::new(expr)
+                sn ok        Ok(expr)
+                sn err       Err(expr)
+                sn some      Some(expr)
+                sn dbg       dbg!(expr)
+                sn dbgr      dbg!(&expr)
+                sn call      function(expr)
             "#]],
         );
     }
@@ -569,6 +846,18 @@ fn foo() {
 "#,
             expect![[r#"
                 me the_method() fn(&self)
+                sn ref          &expr
+                sn refm         &mut expr
+                sn match        match expr {}
+                sn box          Box::new(expr)
+                sn ok           Ok(expr)
+                sn err          Err(expr)
+                sn some         Some(expr)
+                sn dbg          dbg!(expr)
+                sn dbgr         dbg!(&expr)
+                sn call         function(expr)
+                sn let          let
+                sn letm         let mut
             "#]],
         );
     }
@@ -584,6 +873,18 @@ fn main() { make_s!().f$0; }
 "#,
             expect![[r#"
                 me foo() fn(&self)
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         )
     }
@@ -612,6 +913,18 @@ mod foo {
         "#,
             expect![[r#"
                 me private() fn(&self)
+                sn ref       &expr
+                sn refm      &mut expr
+                sn match     match expr {}
+                sn box       Box::new(expr)
+                sn ok        Ok(expr)
+                sn err       Err(expr)
+                sn some      Some(expr)
+                sn dbg       dbg!(expr)
+                sn dbgr      dbg!(&expr)
+                sn call      function(expr)
+                sn let       let
+                sn letm      let mut
             "#]],
         );
     }
@@ -639,6 +952,16 @@ impl S {
         "#,
             expect![[r#"
                 me foo() fn(&self) -> &[u8]
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
             "#]],
         );
     }
@@ -654,6 +977,7 @@ impl Foo { fn foo(&self) { $0 } }"#,
                 lc self       &Foo
                 sp Self
                 st Foo
+                bt u32
                 fd self.field i32
                 me self.foo() fn(&self)
             "#]],
@@ -667,6 +991,7 @@ impl Foo { fn foo(&mut self) { $0 } }"#,
                 lc self       &mut Foo
                 sp Self
                 st Foo
+                bt u32
                 fd self.0     i32
                 me self.foo() fn(&mut self)
             "#]],
@@ -694,6 +1019,16 @@ fn f() {
     "#,
             expect![[r#"
                 me method() fn(&self)
+                sn ref      &expr
+                sn refm     &mut expr
+                sn match    match expr {}
+                sn box      Box::new(expr)
+                sn ok       Ok(expr)
+                sn err      Err(expr)
+                sn some     Some(expr)
+                sn dbg      dbg!(expr)
+                sn dbgr     dbg!(&expr)
+                sn call     function(expr)
             "#]],
         );
     }
@@ -716,6 +1051,18 @@ fn main() {
 "#,
             expect![[r#"
                 me into_iter() (as IntoIterator) fn(self) -> <Self as IntoIterator>::IntoIter
+                sn ref                    &expr
+                sn refm                   &mut expr
+                sn match                  match expr {}
+                sn box                    Box::new(expr)
+                sn ok                     Ok(expr)
+                sn err                    Err(expr)
+                sn some                   Some(expr)
+                sn dbg                    dbg!(expr)
+                sn dbgr                   dbg!(&expr)
+                sn call                   function(expr)
+                sn let                    let
+                sn letm                   let mut
             "#]],
         )
     }
