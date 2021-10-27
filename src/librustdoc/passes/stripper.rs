@@ -2,7 +2,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::middle::privacy::AccessLevels;
 use std::mem;
 
-use crate::clean::{self, GetDefId, Item, ItemIdSet};
+use crate::clean::{self, Item, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
 
 crate struct Stripper<'a> {
@@ -127,7 +127,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
             if imp.trait_.is_none() && imp.items.is_empty() {
                 return None;
             }
-            if let Some(did) = imp.for_.def_id() {
+            if let Some(did) = imp.for_.def_id_no_primitives() {
                 if did.is_local() && !imp.for_.is_assoc_ty() && !self.retained.contains(&did.into())
                 {
                     debug!("ImplStripper: impl item for stripped type; removing");
@@ -142,7 +142,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
             }
             if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
                 for typaram in generics {
-                    if let Some(did) = typaram.def_id() {
+                    if let Some(did) = typaram.def_id_no_primitives() {
                         if did.is_local() && !self.retained.contains(&did.into()) {
                             debug!(
                                 "ImplStripper: stripped item in trait's generics; removing impl"

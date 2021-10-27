@@ -14,9 +14,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
-use crate::clean::{
-    self, utils, Attributes, AttributesExt, GetDefId, ItemId, NestedAttributesExt, Type,
-};
+use crate::clean::{self, utils, Attributes, AttributesExt, ItemId, NestedAttributesExt, Type};
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
@@ -325,7 +323,7 @@ fn merge_attrs(
     }
 }
 
-/// Builds a specific implementation of a type. The `did` could be a type method or trait method.
+/// Inline an `impl`, inherent or of a trait. The `did` must be for an `impl`.
 crate fn build_impl(
     cx: &mut DocContext<'_>,
     parent_module: impl Into<Option<DefId>>,
@@ -376,7 +374,7 @@ crate fn build_impl(
     // Only inline impl if the implementing type is
     // reachable in rustdoc generated documentation
     if !did.is_local() {
-        if let Some(did) = for_.def_id() {
+        if let Some(did) = for_.def_id(&cx.cache) {
             if !cx.cache.access_levels.is_public(did) {
                 return;
             }
@@ -464,7 +462,7 @@ crate fn build_impl(
     }
 
     while let Some(ty) = stack.pop() {
-        if let Some(did) = ty.def_id() {
+        if let Some(did) = ty.def_id(&cx.cache) {
             if tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
                 return;
             }
@@ -481,7 +479,11 @@ crate fn build_impl(
     let (merged_attrs, cfg) = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
     trace!("merged_attrs={:?}", merged_attrs);
 
-    trace!("build_impl: impl {:?} for {:?}", trait_.as_ref().map(|t| t.def_id()), for_.def_id());
+    trace!(
+        "build_impl: impl {:?} for {:?}",
+        trait_.as_ref().map(|t| t.def_id()),
+        for_.def_id(&cx.cache)
+    );
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         None,

@@ -70,7 +70,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 
                 if let Some(prim) = target.primitive_type() {
                     cleaner.prims.insert(prim);
-                } else if let Some(did) = target.def_id() {
+                } else if let Some(did) = target.def_id(&cx.cache) {
                     cleaner.items.insert(did.into());
                 }
             }
@@ -187,7 +187,7 @@ impl BadImplStripper {
             true
         } else if let Some(prim) = ty.primitive_type() {
             self.prims.contains(&prim)
-        } else if let Some(did) = ty.def_id() {
+        } else if let Some(did) = ty.def_id_no_primitives() {
             self.keep_impl_with_def_id(did.into())
         } else {
             false

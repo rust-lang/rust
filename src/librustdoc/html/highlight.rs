@@ -469,22 +469,37 @@ impl<'a> Classifier<'a> {
             // Assume that '&' or '*' is the reference or dereference operator
             // or a reference or pointer type. Unless, of course, it looks like
             // a logical and or a multiplication operator: `&&` or `* `.
-            TokenKind::Star => match self.peek() {
-                Some(TokenKind::Whitespace) => Class::Op,
+            TokenKind::Star => match self.tokens.peek() {
+                Some((TokenKind::Whitespace, _)) => Class::Op,
+                Some((TokenKind::Ident, "mut")) => {
+                    self.next();
+                    sink(Highlight::Token { text: "*mut", class: Some(Class::RefKeyWord) });
+                    return;
+                }
+                Some((TokenKind::Ident, "const")) => {
+                    self.next();
+                    sink(Highlight::Token { text: "*const", class: Some(Class::RefKeyWord) });
+                    return;
+                }
                 _ => Class::RefKeyWord,
             },
-            TokenKind::And => match lookahead {
-                Some(TokenKind::And) => {
+            TokenKind::And => match self.tokens.peek() {
+                Some((TokenKind::And, _)) => {
                     self.next();
                     sink(Highlight::Token { text: "&&", class: Some(Class::Op) });
                     return;
                 }
-                Some(TokenKind::Eq) => {
+                Some((TokenKind::Eq, _)) => {
                     self.next();
                     sink(Highlight::Token { text: "&=", class: Some(Class::Op) });
                     return;
                 }
-                Some(TokenKind::Whitespace) => Class::Op,
+                Some((TokenKind::Whitespace, _)) => Class::Op,
+                Some((TokenKind::Ident, "mut")) => {
+                    self.next();
+                    sink(Highlight::Token { text: "&mut", class: Some(Class::RefKeyWord) });
+                    return;
+                }
                 _ => Class::RefKeyWord,
             },
 

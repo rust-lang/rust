@@ -62,7 +62,7 @@ use rustc_span::{
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, GetDefId, ItemId, RenderedLink, SelfTy};
+use crate::clean::{self, ItemId, RenderedLink, SelfTy};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -1184,8 +1184,8 @@ fn render_deref_methods(
     debug!("Render deref methods for {:#?}, target {:#?}", impl_.inner_impl().for_, target);
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
-    if let Some(did) = target.def_id_full(cache) {
-        if let Some(type_did) = impl_.inner_impl().for_.def_id_full(cache) {
+    if let Some(did) = target.def_id(cache) {
+        if let Some(type_did) = impl_.inner_impl().for_.def_id(cache) {
             // `impl Deref<Target = S> for S`
             if did == type_did {
                 // Avoid infinite cycles
@@ -1231,7 +1231,7 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
 fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
     let mut out = Buffer::html();
 
-    if let Some(did) = decl.output.def_id_full(cx.cache()) {
+    if let Some(did) = decl.output.as_return().and_then(|t| t.def_id(cx.cache())) {
         if let Some(impls) = cx.cache().impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
@@ -2074,8 +2074,8 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &[
         })
     {
         debug!("found target, real_target: {:?} {:?}", target, real_target);
-        if let Some(did) = target.def_id_full(c) {
-            if let Some(type_did) = impl_.inner_impl().for_.def_id_full(c) {
+        if let Some(did) = target.def_id(c) {
+            if let Some(type_did) = impl_.inner_impl().for_.def_id(c) {
                 // `impl Deref<Target = S> for S`
                 if did == type_did {
                     // Avoid infinite cycles
@@ -2085,7 +2085,7 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &[
         }
         let deref_mut = v.iter().any(|i| i.trait_did() == cx.tcx().lang_items().deref_mut_trait());
         let inner_impl = target
-            .def_id_full(c)
+            .def_id(c)
             .or_else(|| {
                 target.primitive_type().and_then(|prim| c.primitive_locations.get(&prim).cloned())
             })
@@ -2246,10 +2246,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
         let mut res = implementors
             .iter()
             .filter(|i| {
-                i.inner_impl()
-                    .for_
-                    .def_id_full(cache)
-                    .map_or(false, |d| !cache.paths.contains_key(&d))
+                i.inner_impl().for_.def_id(cache).map_or(false, |d| !cache.paths.contains_key(&d))
             })
             .filter_map(|i| extract_for_impl_name(&i.impl_item, cx))
             .collect::<Vec<_>>();

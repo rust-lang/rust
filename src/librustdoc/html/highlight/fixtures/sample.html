@@ -15,11 +15,11 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;linux&quot;</span>)]</span>
 <span class="kw">fn</span> <span class="ident">main</span>() -&gt; () {
     <span class="kw">let</span> <span class="ident">foo</span> <span class="op">=</span> <span class="bool-val">true</span> <span class="op">&amp;&amp;</span> <span class="bool-val">false</span> <span class="op">|</span><span class="op">|</span> <span class="bool-val">true</span>;
-    <span class="kw">let</span> <span class="kw">_</span>: <span class="kw-2">*</span><span class="kw">const</span> () <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">let</span> <span class="kw">_</span>: <span class="kw-2">*const</span> () <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">foo</span>;
     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="op">&amp;&amp;</span><span class="ident">foo</span>;
     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">foo</span>;
-    <span class="macro">mac!</span>(<span class="ident">foo</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">bar</span>);
+    <span class="macro">mac!</span>(<span class="ident">foo</span>, <span class="kw-2">&amp;mut</span> <span class="ident">bar</span>);
     <span class="macro">assert!</span>(<span class="self">self</span>.<span class="ident">length</span> <span class="op">&lt;</span> <span class="ident">N</span> <span class="op">&amp;&amp;</span> <span class="ident">index</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">length</span>);
     <span class="ident">::std::env::var</span>(<span class="string">&quot;gateau&quot;</span>).<span class="ident">is_ok</span>();
     <span class="attribute">#[<span class="ident">rustfmt::skip</span>]</span>

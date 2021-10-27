@@ -21,7 +21,7 @@ use super::{
     render_impl, render_stability_since_raw, write_srclink, AssocItemLink, Context,
     ImplRenderingParameters,
 };
-use crate::clean::{self, GetDefId};
+use crate::clean;
 use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
@@ -742,7 +742,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         }
 
         let (local, foreign) = implementors.iter().partition::<Vec<_>, _>(|i| {
-            i.inner_impl().for_.def_id_full(cache).map_or(true, |d| cache.paths.contains_key(&d))
+            i.inner_impl().for_.def_id(cache).map_or(true, |d| cache.paths.contains_key(&d))
         });
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =

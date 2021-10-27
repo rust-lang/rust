@@ -686,7 +686,7 @@ impl Wtf8 {
     }
 }
 
-/// Returns a slice of the given string for the byte range [`begin`..`end`).
+/// Returns a slice of the given string for the byte range \[`begin`..`end`).
 ///
 /// # Panics
 ///

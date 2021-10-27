@@ -383,7 +383,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
         let self_type = self.self_ty().clean(cx);
         Type::QPath {
             name: cx.tcx.associated_item(self.item_def_id).ident.name,
-            self_def_id: self_type.def_id(),
+            self_def_id: self_type.def_id(&cx.cache),
             self_type: box self_type,
             trait_,
         }
@@ -1883,7 +1883,7 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
     }
 
     let for_ = impl_.self_ty.clean(cx);
-    let type_alias = for_.def_id().and_then(|did| match tcx.def_kind(did) {
+    let type_alias = for_.def_id(&cx.cache).and_then(|did| match tcx.def_kind(did) {
         DefKind::TyAlias => Some(tcx.type_of(did).clean(cx)),
         _ => None,
     });

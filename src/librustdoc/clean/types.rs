@@ -1370,17 +1370,10 @@ crate enum FnRetTy {
     DefaultReturn,
 }
 
-impl GetDefId for FnRetTy {
-    fn def_id(&self) -> Option<DefId> {
-        match *self {
-            Return(ref ty) => ty.def_id(),
-            DefaultReturn => None,
-        }
-    }
-
-    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
-        match *self {
-            Return(ref ty) => ty.def_id_full(cache),
+impl FnRetTy {
+    crate fn as_return(&self) -> Option<&Type> {
+        match self {
+            Return(ret) => Some(ret),
             DefaultReturn => None,
         }
     }
@@ -1457,34 +1450,6 @@ crate enum Type {
 // `Type` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Type, 72);
-
-crate trait GetDefId {
-    /// Use this method to get the [`DefId`] of a [`clean`] AST node.
-    /// This will return [`None`] when called on a primitive [`clean::Type`].
-    /// Use [`Self::def_id_full`] if you want to include primitives.
-    ///
-    /// [`clean`]: crate::clean
-    /// [`clean::Type`]: crate::clean::Type
-    // FIXME: get rid of this function and always use `def_id_full`
-    fn def_id(&self) -> Option<DefId>;
-
-    /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
-    ///
-    /// See [`Self::def_id`] for more.
-    ///
-    /// [clean]: crate::clean
-    fn def_id_full(&self, cache: &Cache) -> Option<DefId>;
-}
-
-impl<T: GetDefId> GetDefId for Option<T> {
-    fn def_id(&self) -> Option<DefId> {
-        self.as_ref().and_then(|d| d.def_id())
-    }
-
-    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
-        self.as_ref().and_then(|d| d.def_id_full(cache))
-    }
-}
 
 impl Type {
     crate fn primitive_type(&self) -> Option<PrimitiveType> {
@@ -1564,17 +1529,27 @@ impl Type {
             QPath { ref self_type, .. } => return self_type.inner_def_id(cache),
             Generic(_) | Infer | ImplTrait(_) => return None,
         };
-        cache.and_then(|c| Primitive(t).def_id_full(c))
-    }
-}
-
-impl GetDefId for Type {
-    fn def_id(&self) -> Option<DefId> {
-        self.inner_def_id(None)
+        cache.and_then(|c| Primitive(t).def_id(c))
     }
 
-    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+    /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
+    ///
+    /// See [`Self::def_id_no_primitives`] for more.
+    ///
+    /// [clean]: crate::clean
+    crate fn def_id(&self, cache: &Cache) -> Option<DefId> {
         self.inner_def_id(Some(cache))
+    }
+
+    /// Use this method to get the [`DefId`] of a [`clean`] AST node.
+    /// This will return [`None`] when called on a primitive [`clean::Type`].
+    /// Use [`Self::def_id`] if you want to include primitives.
+    ///
+    /// [`clean`]: crate::clean
+    /// [`clean::Type`]: crate::clean::Type
+    // FIXME: get rid of this function and always use `def_id`
+    crate fn def_id_no_primitives(&self) -> Option<DefId> {
+        self.inner_def_id(None)
     }
 }
 
@@ -2090,16 +2065,6 @@ crate struct Typedef {
     /// If `item_type.is_none()`, `type_` is guarenteed to come from metadata (and therefore hold the
     /// final type).
     crate item_type: Option<Type>,
-}
-
-impl GetDefId for Typedef {
-    fn def_id(&self) -> Option<DefId> {
-        self.type_.def_id()
-    }
-
-    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
-        self.type_.def_id_full(cache)
-    }
 }
 
 #[derive(Clone, Debug)]
