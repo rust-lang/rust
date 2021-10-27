@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{Expr, GenericArg, GenericArgList},
+    ast::{Expr, GenericArg},
     ast::{LetStmt, Type::InferType},
     AstNode, TextRange,
 };
@@ -34,15 +34,13 @@ pub(crate) fn replace_turbofish_with_explicit_type(
 
     let initializer = let_stmt.initializer()?;
 
-    let (turbofish_range, turbofish_type) = match &initializer {
+    let generic_args = match &initializer {
         Expr::MethodCallExpr(ce) => {
-            let generic_args = ce.generic_arg_list()?;
-            (turbofish_range(&generic_args)?, turbofish_type(&generic_args)?)
+            ce.generic_arg_list()?
         }
         Expr::CallExpr(ce) => {
             if let Expr::PathExpr(pe) = ce.expr()? {
-                let generic_args = pe.path()?.segment()?.generic_arg_list()?;
-                (turbofish_range(&generic_args)?, turbofish_type(&generic_args)?)
+                pe.path()?.segment()?.generic_arg_list()?
             } else {
                 cov_mark::hit!(not_applicable_if_non_path_function_call);
                 return None;
@@ -53,6 +51,23 @@ pub(crate) fn replace_turbofish_with_explicit_type(
             return None;
         }
     };
+
+    // Find range of ::<_>
+    let colon2 = generic_args.coloncolon_token()?;
+    let r_angle = generic_args.r_angle_token()?;
+    let turbofish_range = TextRange::new(colon2.text_range().start(), r_angle.text_range().end());
+
+    let turbofish_args: Vec<GenericArg> = generic_args.generic_args().into_iter().collect();
+
+    // Find type of ::<_>
+    if turbofish_args.len() != 1 {
+        cov_mark::hit!(not_applicable_if_not_single_arg);
+        return None;
+    }
+
+    // An improvement would be to check that this is correctly part of the return value of the
+    // function call, or sub in the actual return type.
+    let turbofish_type = &turbofish_args[0];
 
     let initializer_start = initializer.syntax().text_range().start();
     if ctx.offset() > turbofish_range.end() || ctx.offset() < initializer_start {
@@ -67,7 +82,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
 
         return acc.add(
             AssistId("replace_turbofish_with_explicit_type", AssistKind::RefactorRewrite),
-            format!("Replace turbofish with explicit type `: <{}>`", turbofish_type),
+            "Replace turbofish with explicit type",
             TextRange::new(initializer_start, turbofish_range.end()),
             |builder| {
                 builder.insert(ident_range.end(), format!(": {}", turbofish_type));
@@ -82,41 +97,16 @@ pub(crate) fn replace_turbofish_with_explicit_type(
 
         return acc.add(
             AssistId("replace_turbofish_with_explicit_type", AssistKind::RefactorRewrite),
-            format!("Replace `_` with turbofish type `{}`", turbofish_type),
+            "Replace `_` with turbofish type",
             turbofish_range,
             |builder| {
-                builder.replace(underscore_range, turbofish_type);
+                builder.replace(underscore_range, turbofish_type.to_string());
                 builder.delete(turbofish_range);
             },
         );
     }
 
     None
-}
-
-/// Returns the type of the turbofish as a String.
-/// Returns None if there are 0 or >1 arguments.
-fn turbofish_type(generic_args: &GenericArgList) -> Option<String> {
-    let turbofish_args: Vec<GenericArg> = generic_args.generic_args().into_iter().collect();
-
-    if turbofish_args.len() != 1 {
-        cov_mark::hit!(not_applicable_if_not_single_arg);
-        return None;
-    }
-
-    // An improvement would be to check that this is correctly part of the return value of the
-    // function call, or sub in the actual return type.
-    let turbofish_type = turbofish_args[0].to_string();
-
-    Some(turbofish_type)
-}
-
-/// Returns the TextRange of the whole turbofish expression, and the generic argument as a String.
-fn turbofish_range(generic_args: &GenericArgList) -> Option<TextRange> {
-    let colon2 = generic_args.coloncolon_token()?;
-    let r_angle = generic_args.r_angle_token()?;
-
-    Some(TextRange::new(colon2.text_range().start(), r_angle.text_range().end()))
 }
 
 #[cfg(test)]
