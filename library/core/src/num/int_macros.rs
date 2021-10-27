@@ -608,8 +608,7 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_div(self, rhs: Self) -> Option<Self> {
-            // Using `&` helps LLVM see that it is the same check made in division.
-            if unlikely!(rhs == 0 || ((self == Self::MIN) & (rhs == -1))) {
+            if unlikely!(rhs == 0 || ((self == Self::MIN) && (rhs == -1))) {
                 None
             } else {
                 // SAFETY: div by zero and by INT_MIN have been checked above
