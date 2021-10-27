@@ -11,7 +11,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{patterns::ImmediateLocation, CompletionItem};
 
-use crate::{context::CompletionContext, item::CompletionKind, Completions};
+use crate::{context::CompletionContext, Completions};
 
 /// Complete mod declaration, i.e. `mod $0 ;`
 pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
@@ -80,8 +80,7 @@ pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
             if mod_under_caret.semicolon_token().is_none() {
                 label.push(';');
             }
-            let mut item = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), &label);
-            item.kind(SymbolKind::Module);
+            let item = CompletionItem::new(SymbolKind::Module, ctx.source_range(), &label);
             item.add_to(acc)
         });
 

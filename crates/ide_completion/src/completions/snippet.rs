@@ -6,12 +6,12 @@ use syntax::T;
 
 use crate::{
     context::PathCompletionContext, item::Builder, CompletionContext, CompletionItem,
-    CompletionItemKind, CompletionKind, Completions, SnippetScope,
+    CompletionItemKind, Completions, SnippetScope,
 };
 
 fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
-    let mut item = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), label);
-    item.insert_snippet(cap, snippet).kind(CompletionItemKind::Snippet);
+    let mut item = CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label);
+    item.insert_snippet(cap, snippet);
     item
 }
 

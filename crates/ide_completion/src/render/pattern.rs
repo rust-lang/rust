@@ -6,7 +6,6 @@ use itertools::Itertools;
 
 use crate::{
     context::{ParamKind, PatternContext},
-    item::CompletionKind,
     render::RenderContext,
     CompletionItem, CompletionItemKind,
 };
@@ -58,11 +57,8 @@ fn build_completion(
     pat: String,
     def: impl HasAttrs + Copy,
 ) -> CompletionItem {
-    let mut item = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name);
-    item.kind(CompletionItemKind::Binding)
-        .set_documentation(ctx.docs(def))
-        .set_deprecated(ctx.is_deprecated(def))
-        .detail(&pat);
+    let mut item = CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), name);
+    item.set_documentation(ctx.docs(def)).set_deprecated(ctx.is_deprecated(def)).detail(&pat);
     match ctx.snippet_cap() {
         Some(snippet_cap) => item.insert_snippet(snippet_cap, pat),
         None => item.insert_text(pat),

@@ -4,7 +4,7 @@ use hir::{db::HirDatabase, HasAttrs, HasVisibility, Name, StructKind};
 use ide_db::helpers::SnippetCap;
 use itertools::Itertools;
 
-use crate::{item::CompletionKind, render::RenderContext, CompletionItem, CompletionItemKind};
+use crate::{render::RenderContext, CompletionItem, CompletionItemKind};
 
 pub(crate) fn render_struct_literal(
     ctx: RenderContext<'_>,
@@ -33,11 +33,9 @@ fn build_completion(
     literal: String,
     def: impl HasAttrs + Copy,
 ) -> CompletionItem {
-    let mut item = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name + " {…}");
-    item.kind(CompletionItemKind::Snippet)
-        .set_documentation(ctx.docs(def))
-        .set_deprecated(ctx.is_deprecated(def))
-        .detail(&literal);
+    let mut item =
+        CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), name + " {…}");
+    item.set_documentation(ctx.docs(def)).set_deprecated(ctx.is_deprecated(def)).detail(&literal);
     match ctx.snippet_cap() {
         Some(snippet_cap) => item.insert_snippet(snippet_cap, literal),
         None => item.insert_text(literal),

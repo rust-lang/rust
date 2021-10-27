@@ -7,7 +7,7 @@ use ide_db::SymbolKind;
 use itertools::Itertools;
 
 use crate::{
-    item::{CompletionItem, CompletionKind, ImportEdit},
+    item::{CompletionItem, ImportEdit},
     render::{builder_ext::Params, compute_ref_match, compute_type_match, RenderContext},
     CompletionRelevance,
 };
@@ -61,12 +61,11 @@ impl<'a> EnumRender<'a> {
     }
     fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
         let mut item = CompletionItem::new(
-            CompletionKind::Reference,
+            SymbolKind::Variant,
             self.ctx.source_range(),
             self.qualified_name.to_string(),
         );
-        item.kind(SymbolKind::Variant)
-            .set_documentation(self.variant.docs(self.ctx.db()))
+        item.set_documentation(self.variant.docs(self.ctx.db()))
             .set_deprecated(self.ctx.is_deprecated(self.variant))
             .detail(self.detail());
 

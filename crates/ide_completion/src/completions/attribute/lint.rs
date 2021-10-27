@@ -4,7 +4,7 @@ use syntax::{ast, T};
 
 use crate::{
     context::CompletionContext,
-    item::{CompletionItem, CompletionItemKind, CompletionKind},
+    item::{CompletionItem, CompletionItemKind},
     Completions,
 };
 
@@ -58,9 +58,9 @@ pub(super) fn complete_lint(
             Some(qual) if !is_qualified => format!("{}::{}", qual, name),
             _ => name.to_owned(),
         };
-        let mut item = CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label);
-        item.kind(CompletionItemKind::Attribute)
-            .documentation(hir::Documentation::new(description.to_owned()));
+        let mut item =
+            CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), label);
+        item.documentation(hir::Documentation::new(description.to_owned()));
         item.add_to(acc)
     }
 }

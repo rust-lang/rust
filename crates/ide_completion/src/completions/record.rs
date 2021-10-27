@@ -3,8 +3,7 @@ use ide_db::{helpers::FamousDefs, SymbolKind};
 use syntax::{ast::Expr, T};
 
 use crate::{
-    item::CompletionKind, patterns::ImmediateLocation, CompletionContext, CompletionItem,
-    CompletionItemKind, Completions,
+    patterns::ImmediateLocation, CompletionContext, CompletionItem, CompletionItemKind, Completions,
 };
 
 pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
@@ -22,20 +21,17 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
             let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
             if impl_default_trait && !missing_fields.is_empty() && ctx.path_qual().is_none() {
                 let completion_text = "..Default::default()";
-                let mut item = CompletionItem::new(
-                    CompletionKind::Snippet,
-                    ctx.source_range(),
-                    completion_text,
-                );
+                let mut item =
+                    CompletionItem::new(SymbolKind::Field, ctx.source_range(), completion_text);
                 let completion_text =
                     completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);
-                item.insert_text(completion_text).kind(SymbolKind::Field);
+                item.insert_text(completion_text);
                 item.add_to(acc);
             }
             if ctx.previous_token_is(T![.]) {
                 let mut item =
-                    CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), "..");
-                item.insert_text(".").kind(CompletionItemKind::Snippet);
+                    CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), "..");
+                item.insert_text(".");
                 item.add_to(acc);
                 return None;
             }

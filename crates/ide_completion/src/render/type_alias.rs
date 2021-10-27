@@ -7,10 +7,7 @@ use syntax::{
     display::type_label,
 };
 
-use crate::{
-    item::{CompletionItem, CompletionKind},
-    render::RenderContext,
-};
+use crate::{item::CompletionItem, render::RenderContext};
 
 pub(crate) fn render_type_alias(
     ctx: RenderContext<'_>,
@@ -50,9 +47,8 @@ impl<'a> TypeAliasRender<'a> {
         let detail = self.detail();
 
         let mut item =
-            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name.clone());
-        item.kind(SymbolKind::TypeAlias)
-            .set_documentation(self.ctx.docs(self.type_alias))
+            CompletionItem::new(SymbolKind::TypeAlias, self.ctx.source_range(), name.clone());
+        item.set_documentation(self.ctx.docs(self.type_alias))
             .set_deprecated(
                 self.ctx.is_deprecated(self.type_alias)
                     || self.ctx.is_deprecated_assoc_item(self.type_alias),

@@ -38,7 +38,7 @@ use stdx::{format_to, trim_indent};
 use syntax::{AstNode, NodeOrToken, SyntaxElement};
 use test_utils::assert_eq_text;
 
-use crate::{item::CompletionKind, CompletionConfig, CompletionItem};
+use crate::{CompletionConfig, CompletionItem, CompletionItemKind};
 
 /// Lots of basic item definitions
 const BASE_ITEMS_FIXTURE: &str = r#"
@@ -96,10 +96,10 @@ fn completion_list_with_config(
     let items = items
         .into_iter()
         .filter(|it| {
-            it.completion_kind != CompletionKind::BuiltinType || !mem::replace(&mut bt_seen, true)
+            it.kind() != CompletionItemKind::BuiltinType || !mem::replace(&mut bt_seen, true)
         })
-        .filter(|it| include_keywords || it.completion_kind != CompletionKind::Keyword)
-        .filter(|it| include_keywords || it.completion_kind != CompletionKind::Snippet)
+        .filter(|it| include_keywords || it.kind() != CompletionItemKind::Keyword)
+        .filter(|it| include_keywords || it.kind() != CompletionItemKind::Snippet)
         .collect();
     render_completion_list(items)
 }
@@ -115,18 +115,18 @@ pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     (database, FilePosition { file_id, offset })
 }
 
-pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
+pub(crate) fn do_completion(code: &str, kind: CompletionItemKind) -> Vec<CompletionItem> {
     do_completion_with_config(TEST_CONFIG, code, kind)
 }
 
 pub(crate) fn do_completion_with_config(
     config: CompletionConfig,
     code: &str,
-    kind: CompletionKind,
+    kind: CompletionItemKind,
 ) -> Vec<CompletionItem> {
     get_all_items(config, code)
         .into_iter()
-        .filter(|c| c.completion_kind == kind)
+        .filter(|c| c.kind() == kind)
         .sorted_by(|l, r| l.label().cmp(r.label()))
         .collect()
 }
@@ -140,7 +140,7 @@ fn render_completion_list(completions: Vec<CompletionItem>) -> String {
     completions
         .into_iter()
         .map(|it| {
-            let tag = it.kind().unwrap().tag();
+            let tag = it.kind().tag();
             let var_name = format!("{} {}", tag, it.label());
             let mut buf = var_name;
             if let Some(detail) = it.detail() {

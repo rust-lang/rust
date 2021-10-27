@@ -7,10 +7,7 @@ use syntax::{
     display::const_label,
 };
 
-use crate::{
-    item::{CompletionItem, CompletionKind},
-    render::RenderContext,
-};
+use crate::{item::CompletionItem, render::RenderContext};
 
 pub(crate) fn render_const(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> {
     ConstRender::new(ctx, const_)?.render()
@@ -34,9 +31,8 @@ impl<'a> ConstRender<'a> {
         let detail = self.detail();
 
         let mut item =
-            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name.clone());
-        item.kind(SymbolKind::Const)
-            .set_documentation(self.ctx.docs(self.const_))
+            CompletionItem::new(SymbolKind::Const, self.ctx.source_range(), name.clone());
+        item.set_documentation(self.ctx.docs(self.const_))
             .set_deprecated(
                 self.ctx.is_deprecated(self.const_)
                     || self.ctx.is_deprecated_assoc_item(self.const_),

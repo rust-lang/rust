@@ -5,16 +5,14 @@ use std::iter;
 use syntax::SyntaxKind;
 
 use crate::{
-    completions::Completions, context::CompletionContext, item::CompletionKind, CompletionItem,
-    CompletionItemKind,
+    completions::Completions, context::CompletionContext, CompletionItem, CompletionItemKind,
 };
 
 pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
     let add_completion = |item: &str| {
         let mut completion =
-            CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), item);
+            CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), item);
         completion.insert_text(format!(r#""{}""#, item));
-        completion.kind(CompletionItemKind::Attribute);
         acc.add(completion.build());
     };
 
@@ -35,7 +33,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
             if let Some(krate) = ctx.krate {
                 krate.potential_cfg(ctx.db).get_cfg_values(&name).iter().for_each(|s| {
                     let mut item = CompletionItem::new(
-                        CompletionKind::Attribute,
+                        CompletionItemKind::Attribute,
                         ctx.source_range(),
                         s.as_str(),
                     );
@@ -49,7 +47,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
             if let Some(krate) = ctx.krate {
                 krate.potential_cfg(ctx.db).get_cfg_keys().iter().for_each(|s| {
                     let item = CompletionItem::new(
-                        CompletionKind::Attribute,
+                        CompletionItemKind::Attribute,
                         ctx.source_range(),
                         s.as_str(),
                     );

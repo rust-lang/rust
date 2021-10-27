@@ -6,7 +6,7 @@ use syntax::{SyntaxKind, T};
 
 use crate::{
     context::PathCompletionContext, patterns::ImmediateLocation, CompletionContext, CompletionItem,
-    CompletionItemKind, CompletionKind, Completions,
+    CompletionItemKind, Completions,
 };
 
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
@@ -158,8 +158,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 }
 
 fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet: &str) {
-    let mut item = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw);
-    item.kind(CompletionItemKind::Keyword);
+    let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
 
     match ctx.config.snippet_cap {
         Some(cap) => {

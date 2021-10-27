@@ -22,7 +22,7 @@ use crate::{
     context::{PathCompletionContext, PathKind},
     item::{CompletionRelevanceTypeMatch, ImportEdit},
     render::{enum_variant::render_variant, function::render_fn, macro_::render_macro},
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance,
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
 };
 /// Interface for data and methods required for items rendering.
 #[derive(Debug)]
@@ -85,7 +85,7 @@ pub(crate) fn render_field(
     let is_deprecated = ctx.is_deprecated(field);
     let name = field.name(ctx.db()).to_string();
     let mut item = CompletionItem::new(
-        CompletionKind::Reference,
+        SymbolKind::Field,
         ctx.source_range(),
         receiver.map_or_else(|| name.clone(), |receiver| format!("{}.{}", receiver, name)),
     );
@@ -94,8 +94,7 @@ pub(crate) fn render_field(
         exact_name_match: compute_exact_name_match(ctx.completion, name.as_str()),
         ..CompletionRelevance::default()
     });
-    item.kind(SymbolKind::Field)
-        .detail(ty.display(ctx.db()).to_string())
+    item.detail(ty.display(ctx.db()).to_string())
         .set_documentation(field.docs(ctx.db()))
         .set_deprecated(is_deprecated)
         .lookup_by(name.as_str());
@@ -118,13 +117,11 @@ pub(crate) fn render_tuple_field(
     ty: &hir::Type,
 ) -> CompletionItem {
     let mut item = CompletionItem::new(
-        CompletionKind::Reference,
+        SymbolKind::Field,
         ctx.source_range(),
         receiver.map_or_else(|| field.to_string(), |receiver| format!("{}.{}", receiver, field)),
     );
-    item.kind(SymbolKind::Field)
-        .detail(ty.display(ctx.db()).to_string())
-        .lookup_by(field.to_string());
+    item.detail(ty.display(ctx.db()).to_string()).lookup_by(field.to_string());
     item.build()
 }
 
@@ -147,10 +144,7 @@ pub(crate) fn render_resolution_with_import(
         hir::ScopeDef::ModuleDef(hir::ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db),
         _ => item_name(ctx.db(), import_edit.import.original_item)?,
     };
-    render_resolution_(ctx, local_name, Some(import_edit), &resolution).map(|mut item| {
-        item.completion_kind = CompletionKind::Magic;
-        item
-    })
+    render_resolution_(ctx, local_name, Some(import_edit), &resolution)
 }
 
 fn render_resolution_(
@@ -161,11 +155,6 @@ fn render_resolution_(
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_resolution");
     use hir::ModuleDef::*;
-
-    let completion_kind = match resolution {
-        hir::ScopeDef::ModuleDef(BuiltinType(..)) => CompletionKind::BuiltinType,
-        _ => CompletionKind::Reference,
-    };
 
     let kind = match resolution {
         hir::ScopeDef::ModuleDef(Function(func)) => {
@@ -208,11 +197,10 @@ fn render_resolution_(
         }
         hir::ScopeDef::Unknown => {
             let mut item = CompletionItem::new(
-                CompletionKind::Reference,
+                CompletionItemKind::UnresolvedReference,
                 ctx.source_range(),
                 local_name.to_string(),
             );
-            item.kind(CompletionItemKind::UnresolvedReference);
             if let Some(import_to_add) = import_to_add {
                 item.add_import(import_to_add);
             }
@@ -221,7 +209,7 @@ fn render_resolution_(
     };
 
     let local_name = local_name.to_string();
-    let mut item = CompletionItem::new(completion_kind, ctx.source_range(), local_name.clone());
+    let mut item = CompletionItem::new(kind, ctx.source_range(), local_name.clone());
     if let hir::ScopeDef::Local(local) = resolution {
         let ty = local.ty(ctx.db());
         if !ty.is_unknown() {
@@ -260,8 +248,7 @@ fn render_resolution_(
             }
         }
     }
-    item.kind(kind)
-        .set_documentation(scope_def_docs(ctx.db(), resolution))
+    item.set_documentation(scope_def_docs(ctx.db(), resolution))
         .set_deprecated(scope_def_is_deprecated(&ctx, resolution));
 
     if let Some(import_to_add) = import_to_add {
@@ -344,37 +331,54 @@ mod tests {
     use std::cmp;
 
     use expect_test::{expect, Expect};
+    use ide_db::SymbolKind;
     use itertools::Itertools;
 
     use crate::{
         item::CompletionRelevanceTypeMatch,
         tests::{check_edit, do_completion, get_all_items, TEST_CONFIG},
-        CompletionKind, CompletionRelevance,
+        CompletionItem, CompletionItemKind, CompletionRelevance,
     };
 
     #[track_caller]
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = do_completion(ra_fixture, CompletionKind::Reference);
+    fn check(ra_fixture: &str, kind: impl Into<CompletionItemKind>, expect: Expect) {
+        let actual = do_completion(ra_fixture, kind.into());
         expect.assert_debug_eq(&actual);
     }
 
     #[track_caller]
-    fn check_relevance(ra_fixture: &str, expect: Expect) {
-        check_relevance_for_kinds(&[CompletionKind::Reference], ra_fixture, expect)
+    fn check_kinds(ra_fixture: &str, kinds: &[CompletionItemKind], expect: Expect) {
+        let actual: Vec<_> =
+            kinds.iter().flat_map(|&kind| do_completion(ra_fixture, kind)).collect();
+        expect.assert_debug_eq(&actual);
     }
 
     #[track_caller]
-    fn check_relevance_for_kinds(kinds: &[CompletionKind], ra_fixture: &str, expect: Expect) {
+    fn check_relevance_for_kinds(ra_fixture: &str, kinds: &[CompletionItemKind], expect: Expect) {
         let mut actual = get_all_items(TEST_CONFIG, ra_fixture);
-        actual.retain(|it| kinds.contains(&it.completion_kind));
+        actual.retain(|it| kinds.contains(&it.kind()));
         actual.sort_by_key(|it| cmp::Reverse(it.relevance().score()));
+        check_relevance_(actual, expect);
+    }
 
+    #[track_caller]
+    fn check_relevance(ra_fixture: &str, expect: Expect) {
+        let mut actual = get_all_items(TEST_CONFIG, ra_fixture);
+        actual.retain(|it| it.kind() != CompletionItemKind::Snippet);
+        actual.retain(|it| it.kind() != CompletionItemKind::Keyword);
+        actual.retain(|it| it.kind() != CompletionItemKind::BuiltinType);
+        actual.sort_by_key(|it| cmp::Reverse(it.relevance().score()));
+        check_relevance_(actual, expect);
+    }
+
+    #[track_caller]
+    fn check_relevance_(actual: Vec<CompletionItem>, expect: Expect) {
         let actual = actual
             .into_iter()
             .flat_map(|it| {
                 let mut items = vec![];
 
-                let tag = it.kind().unwrap().tag();
+                let tag = it.kind().tag();
                 let relevance = display_relevance(it.relevance());
                 items.push(format!("{} {} {}\n", tag, it.label(), relevance));
 
@@ -418,6 +422,7 @@ enum Foo { Foo { x: i32, y: i32 } }
 
 fn main() { Foo::Fo$0 }
 "#,
+            SymbolKind::Variant,
             expect![[r#"
                 [
                     CompletionItem {
@@ -443,6 +448,7 @@ enum Foo { Foo (i32, i32) }
 
 fn main() { Foo::Fo$0 }
 "#,
+            SymbolKind::Variant,
             expect![[r#"
                 [
                     CompletionItem {
@@ -470,6 +476,7 @@ fn foo<T>(a: u32, b: u32, t: T) -> (u32, T) { (a, t) }
 
 fn main() { fo$0 }
 "#,
+            SymbolKind::Function,
             expect![[r#"
                 [
                     CompletionItem {
@@ -508,6 +515,7 @@ enum Foo { Foo }
 
 fn main() { Foo::Fo$0 }
 "#,
+            SymbolKind::Variant,
             expect![[r#"
                 [
                     CompletionItem {
@@ -527,15 +535,40 @@ fn main() { Foo::Fo$0 }
 
     #[test]
     fn lookup_enums_by_two_qualifiers() {
-        check(
+        check_kinds(
             r#"
 mod m {
     pub enum Spam { Foo, Bar(i32) }
 }
 fn main() { let _: m::Spam = S$0 }
 "#,
+            &[
+                CompletionItemKind::SymbolKind(SymbolKind::Function),
+                CompletionItemKind::SymbolKind(SymbolKind::Module),
+                CompletionItemKind::SymbolKind(SymbolKind::Variant),
+            ],
             expect![[r#"
                 [
+                    CompletionItem {
+                        label: "main()",
+                        source_range: 75..76,
+                        delete: 75..76,
+                        insert: "main()$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "main",
+                        detail: "fn()",
+                    },
+                    CompletionItem {
+                        label: "m",
+                        source_range: 75..76,
+                        delete: 75..76,
+                        insert: "m",
+                        kind: SymbolKind(
+                            Module,
+                        ),
+                    },
                     CompletionItem {
                         label: "Spam::Bar(…)",
                         source_range: 75..76,
@@ -557,15 +590,6 @@ fn main() { let _: m::Spam = S$0 }
                         trigger_call_info: true,
                     },
                     CompletionItem {
-                        label: "m",
-                        source_range: 75..76,
-                        delete: 75..76,
-                        insert: "m",
-                        kind: SymbolKind(
-                            Module,
-                        ),
-                    },
-                    CompletionItem {
                         label: "m::Spam::Foo",
                         source_range: 75..76,
                         delete: 75..76,
@@ -584,17 +608,6 @@ fn main() { let _: m::Spam = S$0 }
                             exact_postfix_snippet_match: false,
                         },
                     },
-                    CompletionItem {
-                        label: "main()",
-                        source_range: 75..76,
-                        delete: 75..76,
-                        insert: "main()$0",
-                        kind: SymbolKind(
-                            Function,
-                        ),
-                        lookup: "main",
-                        detail: "fn()",
-                    },
                 ]
             "#]],
         )
@@ -611,6 +624,7 @@ fn something_else_deprecated() {}
 
 fn main() { som$0 }
 "#,
+            SymbolKind::Function,
             expect![[r#"
                 [
                     CompletionItem {
@@ -657,6 +671,7 @@ fn main() { som$0 }
 struct A { #[deprecated] the_field: u32 }
 fn foo() { A { the$0 } }
 "#,
+            SymbolKind::Field,
             expect![[r#"
                 [
                     CompletionItem {
@@ -685,7 +700,7 @@ fn foo() { A { the$0 } }
 
     #[test]
     fn renders_docs() {
-        check(
+        check_kinds(
             r#"
 struct S {
     /// Field docs
@@ -695,6 +710,7 @@ impl S {
     /// Method docs
     fn bar(self) { self.$0 }
 }"#,
+            &[CompletionItemKind::Method, CompletionItemKind::SymbolKind(SymbolKind::Field)],
             expect![[r#"
                 [
                     CompletionItem {
@@ -726,7 +742,7 @@ impl S {
             "#]],
         );
 
-        check(
+        check_kinds(
             r#"
 use self::my$0;
 
@@ -740,18 +756,23 @@ enum E {
 }
 use self::E::*;
 "#,
+            &[
+                CompletionItemKind::SymbolKind(SymbolKind::Module),
+                CompletionItemKind::SymbolKind(SymbolKind::Variant),
+                CompletionItemKind::SymbolKind(SymbolKind::Enum),
+            ],
             expect![[r#"
                 [
                     CompletionItem {
-                        label: "E",
+                        label: "my",
                         source_range: 10..12,
                         delete: 10..12,
-                        insert: "E",
+                        insert: "my",
                         kind: SymbolKind(
-                            Enum,
+                            Module,
                         ),
                         documentation: Documentation(
-                            "enum docs",
+                            "mod docs",
                         ),
                     },
                     CompletionItem {
@@ -768,15 +789,15 @@ use self::E::*;
                         ),
                     },
                     CompletionItem {
-                        label: "my",
+                        label: "E",
                         source_range: 10..12,
                         delete: 10..12,
-                        insert: "my",
+                        insert: "E",
                         kind: SymbolKind(
-                            Module,
+                            Enum,
                         ),
                         documentation: Documentation(
-                            "mod docs",
+                            "enum docs",
                         ),
                     },
                 ]
@@ -795,6 +816,7 @@ impl S {
 }
 fn foo(s: S) { s.$0 }
 "#,
+            CompletionItemKind::Method,
             expect![[r#"
                 [
                     CompletionItem {
@@ -1318,18 +1340,28 @@ fn main() {
 
     #[test]
     fn struct_field_method_ref() {
-        check(
+        check_kinds(
             r#"
 struct Foo { bar: u32 }
 impl Foo { fn baz(&self) -> u32 { 0 } }
 
 fn foo(f: Foo) { let _: &u32 = f.b$0 }
 "#,
+            &[CompletionItemKind::Method, CompletionItemKind::SymbolKind(SymbolKind::Field)],
             // FIXME
             // Ideally we'd also suggest &f.bar and &f.baz() as exact
             // type matches. See #8058.
             expect![[r#"
                 [
+                    CompletionItem {
+                        label: "baz()",
+                        source_range: 98..99,
+                        delete: 98..99,
+                        insert: "baz()$0",
+                        kind: Method,
+                        lookup: "baz",
+                        detail: "fn(&self) -> u32",
+                    },
                     CompletionItem {
                         label: "bar",
                         source_range: 98..99,
@@ -1339,15 +1371,6 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                             Field,
                         ),
                         detail: "u32",
-                    },
-                    CompletionItem {
-                        label: "baz()",
-                        source_range: 98..99,
-                        delete: 98..99,
-                        insert: "baz()$0",
-                        kind: Method,
-                        lookup: "baz",
-                        detail: "fn(&self) -> u32",
                     },
                 ]
             "#]],
@@ -1387,7 +1410,6 @@ fn foo() {
     #[test]
     fn postfix_completion_relevance() {
         check_relevance_for_kinds(
-            &[CompletionKind::Postfix, CompletionKind::Magic],
             r#"
 mod ops {
     pub trait Not {
@@ -1404,7 +1426,8 @@ mod ops {
 fn main() {
     let _: bool = (9 > 2).not$0;
 }
-"#,
+    "#,
+            &[CompletionItemKind::Snippet, CompletionItemKind::Method],
             expect![[r#"
                 sn not [snippet]
                 me not() (use ops::Not) [type_could_unify]

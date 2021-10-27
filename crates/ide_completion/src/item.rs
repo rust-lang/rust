@@ -21,10 +21,6 @@ use text_edit::TextEdit;
 /// `CompletionItem`, use `new` method and the `Builder` struct.
 #[derive(Clone)]
 pub struct CompletionItem {
-    /// Used only internally in tests, to check only specific kind of
-    /// completion (postfix, keyword, reference, etc).
-    #[allow(unused)]
-    pub(crate) completion_kind: CompletionKind,
     /// Label in the completion pop up which identifies completion.
     label: String,
     /// Range of identifier that is being completed.
@@ -43,7 +39,7 @@ pub struct CompletionItem {
     is_snippet: bool,
 
     /// What item (struct, function, etc) are we completing.
-    kind: Option<CompletionItemKind>,
+    kind: CompletionItemKind,
 
     /// Lookup is used to check if completion item indeed can complete current
     /// ident.
@@ -92,9 +88,7 @@ impl fmt::Debug for CompletionItem {
         } else {
             s.field("text_edit", &self.text_edit);
         }
-        if let Some(kind) = self.kind().as_ref() {
-            s.field("kind", kind);
-        }
+        s.field("kind", &self.kind());
         if self.lookup() != self.label() {
             s.field("lookup", &self.lookup());
         }
@@ -270,32 +264,15 @@ impl CompletionItemKind {
     }
 }
 
-// FIXME remove this?
-/// Like [`CompletionItemKind`] but solely used for filtering test results.
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub(crate) enum CompletionKind {
-    /// Parser-based keyword completion.
-    Keyword,
-    /// Your usual "complete all valid identifiers".
-    Reference,
-    /// "Secret sauce" completions.
-    Magic,
-    Snippet,
-    Postfix,
-    BuiltinType,
-    Attribute,
-}
-
 impl CompletionItem {
     pub(crate) fn new(
-        completion_kind: CompletionKind,
+        kind: impl Into<CompletionItemKind>,
         source_range: TextRange,
         label: impl Into<String>,
     ) -> Builder {
         let label = label.into();
         Builder {
             source_range,
-            completion_kind,
             label,
             insert_text: None,
             is_snippet: false,
@@ -303,7 +280,7 @@ impl CompletionItem {
             detail: None,
             documentation: None,
             lookup: None,
-            kind: None,
+            kind: kind.into(),
             text_edit: None,
             deprecated: false,
             trigger_call_info: None,
@@ -342,7 +319,7 @@ impl CompletionItem {
         self.lookup.as_deref().unwrap_or(&self.label)
     }
 
-    pub fn kind(&self) -> Option<CompletionItemKind> {
+    pub fn kind(&self) -> CompletionItemKind {
         self.kind
     }
 
@@ -401,7 +378,6 @@ impl ImportEdit {
 #[derive(Clone)]
 pub(crate) struct Builder {
     source_range: TextRange,
-    completion_kind: CompletionKind,
     imports_to_add: SmallVec<[ImportEdit; 1]>,
     trait_name: Option<String>,
     label: String,
@@ -410,7 +386,7 @@ pub(crate) struct Builder {
     detail: Option<String>,
     documentation: Option<Documentation>,
     lookup: Option<String>,
-    kind: Option<CompletionItemKind>,
+    kind: CompletionItemKind,
     text_edit: Option<TextEdit>,
     deprecated: bool,
     trigger_call_info: Option<bool>,
@@ -454,7 +430,6 @@ impl Builder {
             documentation: self.documentation,
             lookup,
             kind: self.kind,
-            completion_kind: self.completion_kind,
             deprecated: self.deprecated,
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
             relevance: self.relevance,
@@ -486,10 +461,6 @@ impl Builder {
         let _ = cap;
         self.is_snippet = true;
         self.insert_text(snippet)
-    }
-    pub(crate) fn kind(&mut self, kind: impl Into<CompletionItemKind>) -> &mut Builder {
-        self.kind = Some(kind.into());
-        self
     }
     pub(crate) fn text_edit(&mut self, edit: TextEdit) -> &mut Builder {
         self.text_edit = Some(edit);

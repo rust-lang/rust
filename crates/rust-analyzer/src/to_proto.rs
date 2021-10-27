@@ -248,7 +248,7 @@ fn completion_item(
         label: item.label().to_string(),
         detail: item.detail().map(|it| it.to_string()),
         filter_text: Some(item.lookup().to_string()),
-        kind: item.kind().map(completion_item_kind),
+        kind: Some(completion_item_kind(item.kind())),
         text_edit: Some(text_edit),
         additional_text_edits: Some(additional_text_edits),
         documentation: item.documentation().map(documentation),
