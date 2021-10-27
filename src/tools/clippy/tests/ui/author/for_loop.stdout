@@ -11,11 +11,8 @@ if_chain! {
     // unimplemented: field checks
     if arms.len() == 1;
     if let ExprKind::Loop(ref body, ref label, LoopSource::ForLoop) = arms[0].body.kind;
-    if body.stmts.len() == 4;
-    if let StmtKind::Local(ref local) = body.stmts[0].kind;
-    if let PatKind::Binding(BindingAnnotation::Mutable, _, name, None) = local.pat.kind;
-    if name.as_str() == "__next";
-    if let StmtKind::Expr(ref e, _) = body.stmts[1].kind
+    if body.stmts.len() == 1;
+    if let StmtKind::Expr(ref e, _) = body.stmts[0].kind
     if let ExprKind::Match(ref expr2, ref arms1, MatchSource::ForLoopDesugar) = e.kind;
     if let ExprKind::Call(ref func1, ref args1) = expr2.kind;
     if let ExprKind::Path(ref path2) = func1.kind;
@@ -25,39 +22,27 @@ if_chain! {
     if let ExprKind::Path(ref path3) = inner.kind;
     if match_qpath(path3, &["iter"]);
     if arms1.len() == 2;
-    if let ExprKind::Assign(ref target, ref value, ref _span) = arms1[0].body.kind;
-    if let ExprKind::Path(ref path4) = target.kind;
-    if match_qpath(path4, &["__next"]);
-    if let ExprKind::Path(ref path5) = value.kind;
-    if match_qpath(path5, &["val"]);
-    if let PatKind::Struct(ref path6, ref fields1, false) = arms1[0].pat.kind;
-    if matches!(path6, QPath::LangItem(LangItem::OptionSome, _));
-    if fields1.len() == 1;
+    if let ExprKind::Break(ref destination, None) = arms1[0].body.kind;
+    if let PatKind::Struct(ref path4, ref fields1, false) = arms1[0].pat.kind;
+    if matches!(path4, QPath::LangItem(LangItem::OptionNone, _));
+    if fields1.len() == 0;
     // unimplemented: field checks
-    if let ExprKind::Break(ref destination, None) = arms1[1].body.kind;
-    if let PatKind::Struct(ref path7, ref fields2, false) = arms1[1].pat.kind;
-    if matches!(path7, QPath::LangItem(LangItem::OptionNone, _));
-    if fields2.len() == 0;
-    // unimplemented: field checks
-    if let StmtKind::Local(ref local1) = body.stmts[2].kind;
-    if let Some(ref init) = local1.init;
-    if let ExprKind::Path(ref path8) = init.kind;
-    if match_qpath(path8, &["__next"]);
-    if let PatKind::Binding(BindingAnnotation::Unannotated, _, name1, None) = local1.pat.kind;
-    if name1.as_str() == "y";
-    if let StmtKind::Expr(ref e1, _) = body.stmts[3].kind
-    if let ExprKind::Block(ref block) = e1.kind;
+    if let ExprKind::Block(ref block) = arms1[1].body.kind;
     if block.stmts.len() == 1;
-    if let StmtKind::Local(ref local2) = block.stmts[0].kind;
-    if let Some(ref init1) = local2.init;
-    if let ExprKind::Path(ref path9) = init1.kind;
-    if match_qpath(path9, &["y"]);
-    if let PatKind::Binding(BindingAnnotation::Unannotated, _, name2, None) = local2.pat.kind;
-    if name2.as_str() == "z";
+    if let StmtKind::Local(ref local) = block.stmts[0].kind;
+    if let Some(ref init) = local.init;
+    if let ExprKind::Path(ref path5) = init.kind;
+    if match_qpath(path5, &["y"]);
+    if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = local.pat.kind;
+    if name.as_str() == "z";
     if block.expr.is_none();
+    if let PatKind::Struct(ref path6, ref fields2, false) = arms1[1].pat.kind;
+    if matches!(path6, QPath::LangItem(LangItem::OptionSome, _));
+    if fields2.len() == 1;
+    // unimplemented: field checks
     if body.expr.is_none();
-    if let PatKind::Binding(BindingAnnotation::Mutable, _, name3, None) = arms[0].pat.kind;
-    if name3.as_str() == "iter";
+    if let PatKind::Binding(BindingAnnotation::Mutable, _, name1, None) = arms[0].pat.kind;
+    if name1.as_str() == "iter";
     then {
         // report your lint here
     }
