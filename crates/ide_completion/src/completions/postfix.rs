@@ -15,11 +15,9 @@ use syntax::{
 use text_edit::TextEdit;
 
 use crate::{
-    completions::postfix::format_like::add_format_like_completions,
-    context::CompletionContext,
-    item::{Builder, CompletionKind},
-    patterns::ImmediateLocation,
-    CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
+    completions::postfix::format_like::add_format_like_completions, context::CompletionContext,
+    item::Builder, patterns::ImmediateLocation, CompletionItem, CompletionItemKind,
+    CompletionRelevance, Completions, SnippetScope,
 };
 
 pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
@@ -45,8 +43,9 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 
     // Suggest .await syntax for types that implement Future trait
     if receiver_ty.impls_future(ctx.db) {
-        let mut item = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await");
-        item.kind(CompletionItemKind::Keyword).detail("expr.await");
+        let mut item =
+            CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), "await");
+        item.detail("expr.await");
         item.add_to(acc);
     }
 
@@ -224,8 +223,9 @@ fn build_postfix_snippet_builder<'ctx>(
     ) -> impl Fn(&str, &str, &str) -> Builder + 'ctx {
         move |label, detail, snippet| {
             let edit = TextEdit::replace(delete_range, snippet.to_string());
-            let mut item = CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label);
-            item.detail(detail).kind(CompletionItemKind::Snippet).snippet_edit(cap, edit);
+            let mut item =
+                CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label);
+            item.detail(detail).snippet_edit(cap, edit);
             if ctx.original_token.text() == label {
                 let relevance =
                     CompletionRelevance { exact_postfix_snippet_match: true, ..Default::default() };
@@ -270,12 +270,12 @@ mod tests {
     use expect_test::{expect, Expect};
 
     use crate::{
-        tests::{check_edit, check_edit_with_config, filtered_completion_list, TEST_CONFIG},
-        CompletionConfig, CompletionKind, Snippet,
+        tests::{check_edit, check_edit_with_config, completion_list, TEST_CONFIG},
+        CompletionConfig, Snippet,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Postfix);
+        let actual = completion_list(ra_fixture);
         expect.assert_eq(&actual)
     }
 

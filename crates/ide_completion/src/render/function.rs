@@ -7,7 +7,7 @@ use itertools::Itertools;
 use syntax::ast;
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance, ImportEdit},
+    item::{CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit},
     render::{
         builder_ext::Params, compute_exact_name_match, compute_ref_match, compute_type_match,
         RenderContext,
@@ -79,10 +79,8 @@ impl<'a> FunctionRender<'a> {
             Some(receiver) => format!("{}.{}", receiver, &self.name),
             None => self.name.clone(),
         };
-        let mut item =
-            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), call.clone());
-        item.kind(self.kind())
-            .set_documentation(self.ctx.docs(self.func))
+        let mut item = CompletionItem::new(self.kind(), self.ctx.source_range(), call.clone());
+        item.set_documentation(self.ctx.docs(self.func))
             .set_deprecated(
                 self.ctx.is_deprecated(self.func) || self.ctx.is_deprecated_assoc_item(self.func),
             )

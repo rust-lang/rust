@@ -21,7 +21,7 @@ use hir::known;
 use ide_db::SymbolKind;
 
 use crate::{
-    item::{Builder, CompletionKind},
+    item::Builder,
     render::{
         const_::render_const,
         enum_variant::render_variant,
@@ -76,8 +76,7 @@ impl Completions {
     }
 
     pub(crate) fn add_keyword(&mut self, ctx: &CompletionContext, keyword: &'static str) {
-        let mut item = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), keyword);
-        item.kind(CompletionItemKind::Keyword);
+        let item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), keyword);
         item.add_to(self);
     }
 
@@ -191,9 +190,7 @@ impl Completions {
     }
 
     pub(crate) fn add_static_lifetime(&mut self, ctx: &CompletionContext) {
-        let mut item =
-            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), "'static");
-        item.kind(CompletionItemKind::SymbolKind(SymbolKind::LifetimeParam));
+        let item = CompletionItem::new(SymbolKind::LifetimeParam, ctx.source_range(), "'static");
         self.add(item.build());
     }
 

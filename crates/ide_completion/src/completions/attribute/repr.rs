@@ -4,7 +4,7 @@ use syntax::ast;
 
 use crate::{
     context::CompletionContext,
-    item::{CompletionItem, CompletionItemKind, CompletionKind},
+    item::{CompletionItem, CompletionItemKind},
     Completions,
 };
 
@@ -30,8 +30,7 @@ pub(super) fn complete_repr(acc: &mut Completions, ctx: &CompletionContext, inpu
             }
 
             let mut item =
-                CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label);
-            item.kind(CompletionItemKind::Attribute);
+                CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), label);
             if let Some(lookup) = lookup {
                 item.lookup_by(lookup);
             }

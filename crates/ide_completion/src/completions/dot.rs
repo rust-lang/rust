@@ -99,13 +99,10 @@ fn complete_methods(
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{
-        tests::{check_edit, filtered_completion_list},
-        CompletionKind,
-    };
+    use crate::tests::{check_edit, completion_list_no_kw};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Reference);
+        let actual = completion_list_no_kw(ra_fixture);
         expect.assert_eq(&actual);
     }
 
@@ -166,7 +163,7 @@ impl A {
 struct A { the_field: u32 }
 fn foo(a: A) { a.$0() }
 "#,
-            expect![[""]],
+            expect![[r#""#]],
         );
     }
 
@@ -405,7 +402,7 @@ fn foo(a: A) {
    a.$0
 }
 "#,
-            expect![[""]],
+            expect![[r#""#]],
         );
     }
 
@@ -654,6 +651,7 @@ impl Foo { fn foo(&self) { $0 } }"#,
                 lc self       &Foo
                 sp Self
                 st Foo
+                bt u32
                 fd self.field i32
                 me self.foo() fn(&self)
             "#]],
@@ -667,6 +665,7 @@ impl Foo { fn foo(&mut self) { $0 } }"#,
                 lc self       &mut Foo
                 sp Self
                 st Foo
+                bt u32
                 fd self.0     i32
                 me self.foo() fn(&mut self)
             "#]],

@@ -8,7 +8,7 @@ use syntax::{
 
 use crate::{
     context::{ParamKind, PatternContext},
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
+    CompletionContext, CompletionItem, CompletionItemKind, Completions,
 };
 
 /// Complete repeated parameters, both name and type. For example, if all
@@ -75,7 +75,7 @@ fn add_new_item_to_acc(
     label: String,
     lookup: String,
 ) {
-    let mut item = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label);
-    item.kind(CompletionItemKind::Binding).lookup_by(lookup);
+    let mut item = CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), label);
+    item.lookup_by(lookup);
     item.add_to(acc)
 }

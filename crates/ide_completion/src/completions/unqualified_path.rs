@@ -117,24 +117,15 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{
-        tests::{check_edit, filtered_completion_list_with_config, TEST_CONFIG},
-        CompletionConfig, CompletionKind,
-    };
+    use crate::tests::{check_edit, completion_list_no_kw};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        check_with_config(TEST_CONFIG, ra_fixture, expect);
-    }
-
-    fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
-        let actual =
-            filtered_completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
+        let actual = completion_list_no_kw(ra_fixture);
         expect.assert_eq(&actual)
     }
 
     #[test]
     fn completes_if_prefix_is_keyword() {
-        cov_mark::check!(completes_if_prefix_is_keyword);
         check_edit(
             "wherewolf",
             r#"
@@ -188,6 +179,7 @@ pub mod prelude {
 "#,
             expect![[r#"
                 md std
+                bt u32
                 st Option
             "#]],
         );
@@ -217,6 +209,7 @@ mod macros {
                 fn f()        fn()
                 ma concat!(…) #[macro_export] macro_rules! concat
                 md std
+                bt u32
             "##]],
         );
     }
@@ -245,6 +238,7 @@ pub mod prelude {
             expect![[r#"
                 md std
                 md core
+                bt u32
                 st String
             "#]],
         );
@@ -273,6 +267,7 @@ pub mod prelude {
             expect![[r#"
                 fn f() fn()
                 md std
+                bt u32
             "#]],
         );
     }

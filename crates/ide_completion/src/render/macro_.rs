@@ -6,7 +6,7 @@ use syntax::display::macro_label;
 
 use crate::{
     context::CallKind,
-    item::{CompletionItem, CompletionKind, ImportEdit},
+    item::{CompletionItem, ImportEdit},
     render::RenderContext,
 };
 
@@ -47,9 +47,8 @@ impl<'a> MacroRender<'a> {
         } else {
             Some(self.ctx.source_range())
         }?;
-        let mut item = CompletionItem::new(CompletionKind::Reference, source_range, &self.label());
-        item.kind(SymbolKind::Macro)
-            .set_documentation(self.docs.clone())
+        let mut item = CompletionItem::new(SymbolKind::Macro, source_range, &self.label());
+        item.set_documentation(self.docs.clone())
             .set_deprecated(self.ctx.is_deprecated(self.macro_))
             .set_detail(self.detail());
 

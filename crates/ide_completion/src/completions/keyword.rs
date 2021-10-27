@@ -6,7 +6,7 @@ use syntax::{SyntaxKind, T};
 
 use crate::{
     context::PathCompletionContext, patterns::ImmediateLocation, CompletionContext, CompletionItem,
-    CompletionItemKind, CompletionKind, Completions,
+    CompletionItemKind, Completions,
 };
 
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
@@ -158,8 +158,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 }
 
 fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet: &str) {
-    let mut item = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw);
-    item.kind(CompletionItemKind::Keyword);
+    let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
 
     match ctx.config.snippet_cap {
         Some(cap) => {
@@ -181,183 +180,21 @@ fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{
-        tests::{check_edit, filtered_completion_list},
-        CompletionKind,
-    };
+    use crate::tests::{check_edit, completion_list};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Keyword);
+        let actual = completion_list(ra_fixture);
         expect.assert_eq(&actual)
     }
 
     #[test]
-    fn test_keywords_in_function() {
-        check(
-            r"fn quux() { $0 }",
-            expect![[r#"
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-                kw impl
-                kw extern
-                kw use
-                kw trait
-                kw static
-                kw mod
-                kw match
-                kw while
-                kw while let
-                kw loop
-                kw if
-                kw if let
-                kw for
-                kw true
-                kw false
-                kw let
-                kw return
-                kw self
-                kw super
-                kw crate
-            "#]],
-        );
-    }
-
-    #[test]
-    fn test_keywords_inside_block() {
-        check(
-            r"fn quux() { if true { $0 } }",
-            expect![[r#"
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-                kw impl
-                kw extern
-                kw use
-                kw trait
-                kw static
-                kw mod
-                kw match
-                kw while
-                kw while let
-                kw loop
-                kw if
-                kw if let
-                kw for
-                kw true
-                kw false
-                kw let
-                kw return
-                kw self
-                kw super
-                kw crate
-            "#]],
-        );
-    }
-
-    #[test]
-    fn test_keywords_after_if() {
-        check(
-            r#"fn quux() { if true { () } $0 }"#,
-            expect![[r#"
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-                kw impl
-                kw extern
-                kw use
-                kw trait
-                kw static
-                kw mod
-                kw match
-                kw while
-                kw while let
-                kw loop
-                kw if
-                kw if let
-                kw for
-                kw true
-                kw false
-                kw let
-                kw else
-                kw else if
-                kw return
-                kw self
-                kw super
-                kw crate
-            "#]],
-        );
+    fn test_else_edit_after_if() {
         check_edit(
             "else",
             r#"fn quux() { if true { () } $0 }"#,
             r#"fn quux() { if true { () } else {
     $0
 } }"#,
-        );
-    }
-
-    #[test]
-    fn test_keywords_in_match_arm() {
-        check(
-            r#"
-fn quux() -> i32 {
-    match () { () => $0 }
-}
-"#,
-            expect![[r#"
-                kw unsafe
-                kw match
-                kw while
-                kw while let
-                kw loop
-                kw if
-                kw if let
-                kw for
-                kw true
-                kw false
-                kw return
-                kw self
-                kw super
-                kw crate
-            "#]],
-        );
-    }
-
-    #[test]
-    fn test_keywords_in_loop() {
-        check(
-            r"fn my() { loop { $0 } }",
-            expect![[r#"
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-                kw impl
-                kw extern
-                kw use
-                kw trait
-                kw static
-                kw mod
-                kw match
-                kw while
-                kw while let
-                kw loop
-                kw if
-                kw if let
-                kw for
-                kw true
-                kw false
-                kw let
-                kw continue
-                kw break
-                kw return
-                kw self
-                kw super
-                kw crate
-            "#]],
         );
     }
 
@@ -369,35 +206,9 @@ fn quux() -> i32 {
                 kw fn
                 kw trait
                 kw impl
+                sn pd
+                sn ppd
             "#]],
-        );
-    }
-
-    #[test]
-    fn no_keyword_completion_in_comments() {
-        cov_mark::check!(no_keyword_completion_in_comments);
-        check(
-            r#"
-fn test() {
-    let x = 2; // A comment$0
-}
-"#,
-            expect![[""]],
-        );
-        check(
-            r#"
-/*
-Some multi-line comment$0
-*/
-"#,
-            expect![[""]],
-        );
-        check(
-            r#"
-/// Some doc comment
-/// let test$0 = 1
-"#,
-            expect![[""]],
         );
     }
 
@@ -413,6 +224,18 @@ fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
                 kw await expr.await
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         );
 
@@ -427,81 +250,20 @@ fn foo() {
 "#,
             expect![[r#"
                 kw await expr.await
+                sn ref   &expr
+                sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
+                sn err   Err(expr)
+                sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         )
-    }
-
-    #[test]
-    fn after_let() {
-        check(
-            r#"fn main() { let _ = $0 }"#,
-            expect![[r#"
-                kw unsafe
-                kw match
-                kw while
-                kw while let
-                kw loop
-                kw if
-                kw if let
-                kw for
-                kw true
-                kw false
-                kw return
-                kw self
-                kw super
-                kw crate
-            "#]],
-        )
-    }
-
-    #[test]
-    fn skip_struct_initializer() {
-        cov_mark::check!(no_keyword_completion_in_record_lit);
-        check(
-            r#"
-struct Foo {
-    pub f: i32,
-}
-fn foo() {
-    Foo {
-        $0
-    }
-}
-"#,
-            expect![[r#""#]],
-        );
-    }
-
-    #[test]
-    fn struct_initializer_field_expr() {
-        check(
-            r#"
-struct Foo {
-    pub f: i32,
-}
-fn foo() {
-    Foo {
-        f: $0
-    }
-}
-"#,
-            expect![[r#"
-                kw unsafe
-                kw match
-                kw while
-                kw while let
-                kw loop
-                kw if
-                kw if let
-                kw for
-                kw true
-                kw false
-                kw return
-                kw self
-                kw super
-                kw crate
-            "#]],
-        );
     }
 
     #[test]

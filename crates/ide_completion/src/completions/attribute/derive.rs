@@ -7,7 +7,7 @@ use syntax::ast;
 
 use crate::{
     context::CompletionContext,
-    item::{CompletionItem, CompletionItemKind, CompletionKind},
+    item::{CompletionItem, CompletionItemKind},
     Completions,
 };
 
@@ -56,8 +56,8 @@ pub(super) fn complete_derive(
             _ => (&*name, None),
         };
 
-        let mut item = CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label);
-        item.kind(CompletionItemKind::Attribute);
+        let mut item =
+            CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), label);
         if let Some(docs) = mac.docs(ctx.db) {
             item.documentation(docs);
         }

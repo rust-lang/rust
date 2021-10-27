@@ -40,7 +40,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions};
+use crate::{CompletionContext, CompletionItem, CompletionItemKind, Completions};
 
 #[derive(Debug, PartialEq, Eq)]
 enum ImplCompletionKind {
@@ -141,14 +141,14 @@ fn add_function_impl(
         format!("fn {}(..)", fn_name)
     };
 
-    let mut item = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label);
-    item.lookup_by(fn_name).set_documentation(func.docs(ctx.db));
-
     let completion_kind = if func.self_param(ctx.db).is_some() {
         CompletionItemKind::Method
     } else {
         CompletionItemKind::SymbolKind(SymbolKind::Function)
     };
+    let mut item = CompletionItem::new(completion_kind, ctx.source_range(), label);
+    item.lookup_by(fn_name).set_documentation(func.docs(ctx.db));
+
     let range = replacement_range(ctx, fn_def_node);
 
     if let Some(source) = func.source(ctx.db) {
@@ -170,7 +170,6 @@ fn add_function_impl(
                     item.text_edit(TextEdit::replace(range, header));
                 }
             };
-            item.kind(completion_kind);
             item.add_to(acc);
         }
     }
@@ -211,10 +210,9 @@ fn add_type_alias_impl(
     let snippet = format!("type {} = ", alias_name);
 
     let range = replacement_range(ctx, type_def_node);
-    let mut item = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone());
+    let mut item = CompletionItem::new(SymbolKind::TypeAlias, ctx.source_range(), snippet.clone());
     item.text_edit(TextEdit::replace(range, snippet))
         .lookup_by(alias_name)
-        .kind(SymbolKind::TypeAlias)
         .set_documentation(type_alias.docs(ctx.db));
     item.add_to(acc);
 }
@@ -241,10 +239,9 @@ fn add_const_impl(
 
                 let range = replacement_range(ctx, const_def_node);
                 let mut item =
-                    CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone());
+                    CompletionItem::new(SymbolKind::Const, ctx.source_range(), snippet.clone());
                 item.text_edit(TextEdit::replace(range, snippet))
                     .lookup_by(const_name)
-                    .kind(SymbolKind::Const)
                     .set_documentation(const_.docs(ctx.db));
                 item.add_to(acc);
             }
@@ -290,13 +287,10 @@ fn replacement_range(ctx: &CompletionContext, item: &SyntaxNode) -> TextRange {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{
-        tests::{check_edit, filtered_completion_list},
-        CompletionKind,
-    };
+    use crate::tests::{check_edit, completion_list_no_kw};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Magic);
+        let actual = completion_list_no_kw(ra_fixture);
         expect.assert_eq(&actual)
     }
 
@@ -313,7 +307,12 @@ impl Test for T {
     }
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
 
         check(
@@ -356,7 +355,7 @@ impl Test for T {
     }
 }
 ",
-            expect![[""]],
+            expect![[r#""#]],
         );
 
         check(
@@ -368,7 +367,10 @@ impl Test for T {
     fn test(t$0)
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                st T
+            "#]],
         );
 
         check(
@@ -380,7 +382,10 @@ impl Test for T {
     fn test(f: fn $0)
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                st T
+            "#]],
         );
     }
 
@@ -395,7 +400,7 @@ impl Test for T {
     const TEST: fn $0
 }
 ",
-            expect![[""]],
+            expect![[r#""#]],
         );
 
         check(
@@ -407,7 +412,12 @@ impl Test for T {
     const TEST: T$0
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
 
         check(
@@ -419,7 +429,12 @@ impl Test for T {
     const TEST: u32 = f$0
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
 
         check(
@@ -433,7 +448,12 @@ impl Test for T {
     };
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
 
         check(
@@ -476,7 +496,12 @@ impl Test for T {
     type Test = T$0;
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
 
         check(
@@ -488,7 +513,12 @@ impl Test for T {
     type Test = fn $0;
 }
 ",
-            expect![[""]],
+            expect![[r#"
+                sp Self
+                tt Test
+                st T
+                bt u32
+            "#]],
         );
     }
 

@@ -24,7 +24,7 @@ use ide_db::{
 use syntax::algo;
 use text_edit::TextEdit;
 
-use crate::{completions::Completions, context::CompletionContext, item::CompletionKind};
+use crate::{completions::Completions, context::CompletionContext};
 
 pub use crate::{
     config::CompletionConfig,
