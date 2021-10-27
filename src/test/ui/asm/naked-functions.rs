@@ -7,11 +7,15 @@
 #![feature(llvm_asm)]
 #![feature(naked_functions)]
 #![feature(or_patterns)]
+#![feature(asm_const, asm_sym)]
 #![crate_type = "lib"]
 #![allow(deprecated)] // llvm_asm!
 
 #[repr(C)]
-pub struct P { x: u8, y: u16 }
+pub struct P {
+    x: u8,
+    y: u16,
+}
 
 #[naked]
 pub unsafe extern "C" fn patterns(
@@ -143,21 +147,27 @@ pub unsafe fn default_abi() {
 }
 
 #[naked]
-pub unsafe extern "Rust" fn rust_abi() {
+pub unsafe fn rust_abi() {
     //~^ WARN Rust ABI is unsupported in naked functions
     asm!("", options(noreturn));
 }
 
 #[naked]
 pub extern "C" fn valid_a<T>() -> T {
-    unsafe { asm!("", options(noreturn)); }
+    unsafe {
+        asm!("", options(noreturn));
+    }
 }
 
 #[naked]
 pub extern "C" fn valid_b() {
-    unsafe { { {
-        asm!("", options(noreturn)); ; ; ;
-    } ; }  ; }
+    unsafe {
+        {
+            {
+                asm!("", options(noreturn));
+            };
+        };
+    }
 }
 
 #[naked]

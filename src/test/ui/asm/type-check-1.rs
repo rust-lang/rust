@@ -3,7 +3,7 @@
 // ignore-spirv
 // ignore-wasm32
 
-#![feature(asm, global_asm)]
+#![feature(asm, global_asm, asm_const)]
 
 fn main() {
     unsafe {
