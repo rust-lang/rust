@@ -12,7 +12,7 @@ use ide_db::{
     RootDatabase,
 };
 use itertools::Itertools;
-use stdx::{always, never};
+use stdx::never;
 use syntax::{ast, AstNode, SyntaxNode};
 
 use text_edit::TextEdit;
@@ -33,17 +33,35 @@ pub(crate) fn prepare_rename(
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
 
-    let mut defs = find_definitions(&sema, syntax, position)?;
+    let res = find_definitions(&sema, syntax, position)?
+        .map(|(name_like, def)| {
+            // ensure all ranges are valid
 
-    // TODO:
-    // - `find_definitions` is implemented so that it returns a non-empty vec
-    //   in the `Ok` case. But that's not expressed by the type signature, hence `unwrap()`
-    //   here which ... wart.
-    // - is "just take the first `name_like`" correct? If not, what do?
-    let (name_like, _def) = defs.next().unwrap();
-    let frange = sema.original_range(name_like.syntax());
-    always!(frange.range.contains_inclusive(position.offset) && frange.file_id == position.file_id);
-    Ok(RangeInfo::new(frange.range, ()))
+            if def.range_for_rename(&sema).is_none() {
+                bail!("No references found at position")
+            }
+            let frange = sema.original_range(name_like.syntax());
+            if frange.range.contains_inclusive(position.offset)
+                && frange.file_id == position.file_id
+            {
+                Ok(frange.range)
+            } else {
+                bail!("invalid text range")
+            }
+        })
+        .reduce(|acc, cur| match acc {
+            // ensure all ranges are the same
+            Ok(acc_inner) if cur.is_ok() && acc_inner == cur.unwrap() => acc,
+            Err(e) => Err(e),
+            _ => bail!("inconsistent text range"),
+        });
+
+    match res {
+        // ensure at least one definition was found
+        // TODO this duplicates work done at the end of `find_definitions`
+        Some(res) => res.map(|range| RangeInfo::new(range, ())),
+        None => bail!("No references found at position"),
+    }
 }
 
 // Feature: Rename
