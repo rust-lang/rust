@@ -265,22 +265,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def) = instance.def {
-            let mut is_const_fn = true;
-
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
             if !ecx.tcx.is_const_fn_raw(def.did) {
                 // allow calling functions marked with #[default_method_body_is_const].
                 if !ecx.tcx.has_attr(def.did, sym::default_method_body_is_const) {
-                    is_const_fn = false;
+                    // We certainly do *not* want to actually call the fn
+                    // though, so be sure we return here.
+                    throw_unsup_format!("calling non-const function `{}`", instance)
                 }
-            }
-
-            if !is_const_fn {
-                // We certainly do *not* want to actually call the fn
-                // though, so be sure we return here.
-                throw_unsup_format!("calling non-const function `{}`", instance)
             }
 
             if let Some(new_instance) = ecx.hook_special_const_fn(instance, args)? {
