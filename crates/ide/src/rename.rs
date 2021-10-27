@@ -36,9 +36,10 @@ pub(crate) fn prepare_rename(
     let mut defs = find_definitions(&sema, syntax, position)?;
 
     // TODO:
-    // - empty case possible or already caught by `find_definitions`?
-    // - is "just take the first" correct? If not, what do?
-    let (name_like, _def) = defs.next().unwrap();
+    // - is "No references found at position" the right error? (why does it not get caught by `find_definitions`... hmm)
+    // - is "just take the first `name_like`" correct? If not, what do?
+    let (name_like, _def) =
+        defs.next().ok_or_else(|| format_err!("No references found at position"))?;
     let frange = sema.original_range(name_like.syntax());
     always!(frange.range.contains_inclusive(position.offset) && frange.file_id == position.file_id);
     Ok(RangeInfo::new(frange.range, ()))
