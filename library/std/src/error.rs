@@ -814,7 +814,7 @@ impl dyn Error + Send + Sync {
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust
 /// #![feature(error_reporter)]
 /// #![feature(negative_impls)]
 ///
