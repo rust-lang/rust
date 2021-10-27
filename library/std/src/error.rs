@@ -837,8 +837,8 @@ impl dyn Error + Send + Sync {
 /// impl<'a> Error for SuperError<'a> {}
 ///
 /// // Note that the error doesn't need to be `Send` or `Sync`.
-/// impl !Send for SuperError {}
-/// impl !Sync for SuperError {}
+/// impl<'a> !Send for SuperError<'a> {}
+/// impl<'a> !Sync for SuperError<'a> {}
 ///
 /// fn main() {
 ///     let msg = String::from("Huzzah!");
