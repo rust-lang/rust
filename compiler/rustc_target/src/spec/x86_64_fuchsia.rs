@@ -6,7 +6,7 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(64);
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
-    base.supported_sanitizers = SanitizerSet::ADDRESS;
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI;
 
     Target {
         llvm_target: "x86_64-fuchsia".to_string(),

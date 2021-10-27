@@ -8,8 +8,11 @@ pub fn target() -> Target {
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
     base.static_position_independent_executables = true;
-    base.supported_sanitizers =
-        SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::MEMORY | SanitizerSet::THREAD;
+    base.supported_sanitizers = SanitizerSet::ADDRESS
+        | SanitizerSet::CFI
+        | SanitizerSet::LEAK
+        | SanitizerSet::MEMORY
+        | SanitizerSet::THREAD;
 
     Target {
         llvm_target: "x86_64-unknown-linux-musl".to_string(),

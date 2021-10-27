@@ -10,6 +10,7 @@ pub fn target() -> Target {
             mcount: "\u{1}_mcount".to_string(),
             max_atomic_width: Some(128),
             supported_sanitizers: SanitizerSet::ADDRESS
+                | SanitizerSet::CFI
                 | SanitizerSet::LEAK
                 | SanitizerSet::MEMORY
                 | SanitizerSet::THREAD

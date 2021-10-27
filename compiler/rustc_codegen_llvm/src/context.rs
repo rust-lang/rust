@@ -221,6 +221,15 @@ pub unsafe fn create_module(
         llvm::LLVMRustAddModuleFlag(llmod, avoid_plt, 1);
     }
 
+    if sess.is_sanitizer_cfi_enabled() {
+        // FIXME(rcvalle): Add support for non canonical jump tables.
+        let canonical_jump_tables = "CFI Canonical Jump Tables\0".as_ptr().cast();
+        // FIXME(rcvalle): Add it with Override behavior flag--LLVMRustAddModuleFlag adds it with
+        // Warning behavior flag. Add support for specifying the behavior flag to
+        // LLVMRustAddModuleFlag.
+        llvm::LLVMRustAddModuleFlag(llmod, canonical_jump_tables, 1);
+    }
+
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
     if sess.target.is_like_msvc {
         match sess.opts.cg.control_flow_guard {
@@ -778,6 +787,8 @@ impl CodegenCx<'b, 'tcx> {
         if self.sess().instrument_coverage() {
             ifn!("llvm.instrprof.increment", fn(i8p, t_i64, t_i32, t_i32) -> void);
         }
+
+        ifn!("llvm.type.test", fn(i8p, self.type_metadata()) -> i1);
 
         if self.sess().opts.debuginfo != DebugInfo::None {
             ifn!("llvm.dbg.declare", fn(self.type_metadata(), self.type_metadata()) -> void);

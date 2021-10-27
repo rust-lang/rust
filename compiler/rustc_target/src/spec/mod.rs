@@ -602,6 +602,7 @@ bitflags::bitflags! {
         const MEMORY  = 1 << 2;
         const THREAD  = 1 << 3;
         const HWADDRESS = 1 << 4;
+        const CFI     = 1 << 5;
     }
 }
 
@@ -612,6 +613,7 @@ impl SanitizerSet {
     fn as_str(self) -> Option<&'static str> {
         Some(match self {
             SanitizerSet::ADDRESS => "address",
+            SanitizerSet::CFI => "cfi",
             SanitizerSet::LEAK => "leak",
             SanitizerSet::MEMORY => "memory",
             SanitizerSet::THREAD => "thread",
@@ -644,6 +646,7 @@ impl IntoIterator for SanitizerSet {
     fn into_iter(self) -> Self::IntoIter {
         [
             SanitizerSet::ADDRESS,
+            SanitizerSet::CFI,
             SanitizerSet::LEAK,
             SanitizerSet::MEMORY,
             SanitizerSet::THREAD,
@@ -1804,6 +1807,7 @@ impl Target {
                         for s in a {
                             base.$key_name |= match s.as_string() {
                                 Some("address") => SanitizerSet::ADDRESS,
+                                Some("cfi") => SanitizerSet::CFI,
                                 Some("leak") => SanitizerSet::LEAK,
                                 Some("memory") => SanitizerSet::MEMORY,
                                 Some("thread") => SanitizerSet::THREAD,

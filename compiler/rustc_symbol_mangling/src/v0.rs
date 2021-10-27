@@ -9,6 +9,7 @@ use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
+use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 
@@ -53,6 +54,41 @@ pub(super) fn mangle(
         cx = cx.print_def_path(instantiating_crate.as_def_id(), &[]).unwrap();
     }
     std::mem::take(&mut cx.out)
+}
+
+pub(super) fn mangle_typeid_for_fnabi(
+    _tcx: TyCtxt<'tcx>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+) -> String {
+    // LLVM uses type metadata to allow IR modules to aggregate pointers by their types.[1] This
+    // type metadata is used by LLVM Control Flow Integrity to test whether a given pointer is
+    // associated with a type identifier (i.e., test type membership).
+    //
+    // Clang uses the Itanium C++ ABI's[2] virtual tables and RTTI typeinfo structure name[3] as
+    // type metadata identifiers for function pointers. The typeinfo name encoding is a
+    // two-character code (i.e., “TS”) prefixed to the type encoding for the function.
+    //
+    // For cross-language LLVM CFI support, a compatible encoding must be used by either
+    //
+    //  a. Using a superset of types that encompasses types used by Clang (i.e., Itanium C++ ABI's
+    //     type encodings[4]), or at least types used at the FFI boundary.
+    //  b. Reducing the types to the least common denominator between types used by Clang (or at
+    //     least types used at the FFI boundary) and Rust compilers (if even possible).
+    //  c. Creating a new ABI for cross-language CFI and using it for Clang and Rust compilers (and
+    //     possibly other compilers).
+    //
+    // Option (b) may weaken the protection for Rust-compiled only code, so it should be provided
+    // as an alternative to a Rust-specific encoding for when mixing Rust and C and C++ -compiled
+    // code. Option (c) would require changes to Clang to use the new ABI.
+    //
+    // [1] https://llvm.org/docs/TypeMetadata.html
+    // [2] https://itanium-cxx-abi.github.io/cxx-abi/abi.html
+    // [3] https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-special-vtables
+    // [4] https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-type
+    //
+    // FIXME(rcvalle): See comment above.
+    let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
+    format!("typeid{}", arg_count)
 }
 
 struct BinderLevel {

@@ -8,7 +8,7 @@ pub fn target() -> Target {
         arch: "aarch64".to_string(),
         options: TargetOptions {
             max_atomic_width: Some(128),
-            supported_sanitizers: SanitizerSet::ADDRESS,
+            supported_sanitizers: SanitizerSet::ADDRESS | SanitizerSet::CFI,
             ..super::fuchsia_base::opts()
         },
     }
