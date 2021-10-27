@@ -58,7 +58,7 @@ impl SourceChange {
     pub fn merge(mut self, other: SourceChange) -> SourceChange {
         self.extend(other.source_file_edits);
         self.extend(other.file_system_edits);
-        self.is_snippet |= other.is_snippet; // TODO correct?
+        self.is_snippet |= other.is_snippet;
         self
     }
 }

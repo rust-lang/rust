@@ -168,7 +168,6 @@ fn find_definitions(
     let v: RenameResult<Vec<(ast::NameLike, Definition)>> = symbols.collect();
     match v {
         // remove duplicates
-        // TODO is "unique by `Definition`" correct?
         Ok(v) => {
             if v.is_empty() {
                 Err(format_err!("No references found at position"))
