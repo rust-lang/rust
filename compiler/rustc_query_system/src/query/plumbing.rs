@@ -520,7 +520,20 @@ where
         if let Some(result) = result {
             // If `-Zincremental-verify-ich` is specified, re-hash results from
             // the cache and make sure that they have the expected fingerprint.
-            if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
+            let prev_fingerprint = tcx
+                .dep_context()
+                .dep_graph()
+                .prev_fingerprint_of(dep_node)
+                .unwrap_or(Fingerprint::ZERO);
+            // A fingerprint is 128 bits, and this checks if 5 of those bits are
+            // zero. If the fingerprint is fully random (as we hope for), this
+            // should limit us to checking every `2^5`th hash. This reduces the
+            // number of hashes we check low enough that the overhead of
+            // verification is acceptable to always enable.
+            let try_verify = prev_fingerprint.as_value().1 & 0x1f == 0;
+            if try_verify
+                || unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich)
+            {
                 incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
             }
 
