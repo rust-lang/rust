@@ -186,7 +186,6 @@ fn find_definitions(
             res
         });
 
-    // TODO avoid collect() somehow?
     let res: RenameResult<Vec<(ast::NameLike, Definition)>> = symbols.collect();
     match res {
         // remove duplicates
