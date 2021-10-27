@@ -1251,6 +1251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.lang_items().deref_trait(),
                 self.tcx.lang_items().deref_mut_trait(),
                 self.tcx.lang_items().drop_trait(),
+                self.tcx.get_diagnostic_item(sym::AsRef),
             ];
             // Try alternative arbitrary self types that could fulfill this call.
             // FIXME: probe for all types that *could* be arbitrary self-types, not
