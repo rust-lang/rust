@@ -257,6 +257,7 @@
 #![feature(const_cstr_unchecked)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_format_args)]
 #![feature(const_io_structs)]
 #![feature(const_ip)]

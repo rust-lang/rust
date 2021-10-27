@@ -34,13 +34,10 @@ use crate::panic::{Location, PanicInfo};
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
-pub fn panic(expr: &'static str) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
-        super::intrinsics::abort()
-    }
-
+pub const fn panic(expr: &'static str) -> ! {
     // Use Arguments::new_v1 instead of format_args!("{}", expr) to potentially
     // reduce size overhead. The format_args! macro uses str's Display trait to
     // write expr, which calls Formatter::pad, which must accommodate string
@@ -52,15 +49,16 @@ pub fn panic(expr: &'static str) -> ! {
 
 #[inline]
 #[track_caller]
-#[lang = "panic_str"] // needed for const-evaluated panics
-pub fn panic_str(expr: &str) -> ! {
-    panic_fmt(format_args!("{}", expr));
+#[lang = "panic_str"] // needed for `non-fmt-panics` lint
+pub const fn panic_str(expr: &str) -> ! {
+    panic_display(&expr);
 }
 
 #[inline]
 #[track_caller]
 #[lang = "panic_display"] // needed for const-evaluated panics
-pub fn panic_display<T: fmt::Display>(x: &T) -> ! {
+#[rustc_do_not_const_check] // hooked by const-eval
+pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));
 }
 
@@ -89,7 +87,8 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[lang = "panic_fmt"] // needed for const-evaluated panics
-pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
+#[rustc_do_not_const_check] // hooked by const-eval
+pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }

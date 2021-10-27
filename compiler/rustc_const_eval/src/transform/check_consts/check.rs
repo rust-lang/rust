@@ -24,7 +24,7 @@ use std::ops::Deref;
 use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
-use super::{is_lang_panic_fn, is_lang_special_const_fn, ConstCx, Qualif};
+use super::{ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
 
 // We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
@@ -918,31 +918,27 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                 }
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
-                if is_lang_special_const_fn(tcx, callee) {
-                    // `begin_panic` and `panic_display` are generic functions that accept
-                    // types other than str. Check to enforce that only str can be used in
-                    // const-eval.
 
-                    // const-eval of the `begin_panic` fn assumes the argument is `&str`
-                    if Some(callee) == tcx.lang_items().begin_panic_fn() {
-                        match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
-                            ty::Ref(_, ty, _) if ty.is_str() => (),
-                            _ => self.check_op(ops::PanicNonStr),
-                        }
+                // `begin_panic` and `panic_display` are generic functions that accept
+                // types other than str. Check to enforce that only str can be used in
+                // const-eval.
+
+                // const-eval of the `begin_panic` fn assumes the argument is `&str`
+                if Some(callee) == tcx.lang_items().begin_panic_fn() {
+                    match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                        ty::Ref(_, ty, _) if ty.is_str() => return,
+                        _ => self.check_op(ops::PanicNonStr),
                     }
+                }
 
-                    // const-eval of the `panic_display` fn assumes the argument is `&&str`
-                    if Some(callee) == tcx.lang_items().panic_display() {
-                        match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
-                            ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
-                                {}
-                            _ => self.check_op(ops::PanicNonStr),
+                // const-eval of the `panic_display` fn assumes the argument is `&&str`
+                if Some(callee) == tcx.lang_items().panic_display() {
+                    match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                        ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
+                        {
+                            return;
                         }
-                    }
-
-                    if is_lang_panic_fn(tcx, callee) {
-                        // run stability check on non-panic special const fns.
-                        return;
+                        _ => self.check_op(ops::PanicNonStr),
                     }
                 }
 
