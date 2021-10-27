@@ -2460,7 +2460,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// ```
     #[inline]
     #[unstable(feature = "entry_insert", issue = "65225")]
-    pub fn insert(self, value: V) -> OccupiedEntry<'a, K, V> {
+    pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
         match self {
             Occupied(mut entry) => {
                 entry.insert(value);
