@@ -3,6 +3,7 @@
 //! This is mostly front-end for [`ide_db::rename`], but it also includes the
 //! tests. This module also implements a couple of magic tricks, like renaming
 //! `self` and to `self` (to switch between associated function and method).
+
 use hir::{AsAssocItem, InFile, Semantics};
 use ide_db::{
     base_db::FileId,
@@ -10,8 +11,12 @@ use ide_db::{
     rename::{bail, format_err, source_edit_from_references, IdentifierKind},
     RootDatabase,
 };
+use itertools::Itertools;
 use stdx::{always, never};
-use syntax::{ast, AstNode, SyntaxNode};
+use syntax::{
+    ast::{self},
+    AstNode, SyntaxNode,
+};
 
 use text_edit::TextEdit;
 
@@ -31,11 +36,12 @@ pub(crate) fn prepare_rename(
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
 
-    let (name_like, def) = find_definition(&sema, syntax, position)?;
-    if def.range_for_rename(&sema).is_none() {
-        bail!("No references found at position")
-    }
+    let mut defs = find_definitions(&sema, syntax, position)?;
 
+    // TODO:
+    // - empty case possible or already caught by `find_definitions`?
+    // - is "just take the first" correct? If not, what do?
+    let (name_like, _def) = defs.next().unwrap();
     let frange = sema.original_range(name_like.syntax());
     always!(frange.range.contains_inclusive(position.offset) && frange.file_id == position.file_id);
     Ok(RangeInfo::new(frange.range, ()))
@@ -61,20 +67,26 @@ pub(crate) fn rename(
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
 
-    let (_name_like, def) = find_definition(&sema, syntax, position)?;
+    let defs = find_definitions(&sema, syntax, position)?;
 
-    if let Definition::Local(local) = def {
-        if let Some(self_param) = local.as_self_param(sema.db) {
-            cov_mark::hit!(rename_self_to_param);
-            return rename_self_to_param(&sema, local, self_param, new_name);
-        }
-        if new_name == "self" {
-            cov_mark::hit!(rename_to_self);
-            return rename_to_self(&sema, local);
-        }
-    }
-
-    def.rename(&sema, new_name)
+    let ops: RenameResult<Vec<SourceChange>> = defs
+        .map(|(_namelike, def)| {
+            if let Definition::Local(local) = def {
+                if let Some(self_param) = local.as_self_param(sema.db) {
+                    cov_mark::hit!(rename_self_to_param);
+                    return rename_self_to_param(&sema, local, self_param, new_name);
+                }
+                if new_name == "self" {
+                    cov_mark::hit!(rename_to_self);
+                    return rename_to_self(&sema, local);
+                }
+            }
+            def.rename(&sema, new_name)
+        })
+        .collect();
+    ops?.into_iter()
+        .reduce(|acc, elem| acc.merge(elem))
+        .ok_or_else(|| format_err!("No references found at position"))
 }
 
 /// Called by the client when it is about to rename a file.
@@ -91,59 +103,76 @@ pub(crate) fn will_rename_file(
     Some(change)
 }
 
-fn find_definition(
+fn find_definitions(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
-) -> RenameResult<(ast::NameLike, Definition)> {
-    let name_like = sema
-        .find_node_at_offset_with_descend::<ast::NameLike>(syntax, position.offset)
-        .ok_or_else(|| format_err!("No references found at position"))?;
+) -> RenameResult<impl Iterator<Item = (ast::NameLike, Definition)>> {
+    let symbols = sema
+        .find_nodes_at_offset_with_descend::<ast::NameLike>(syntax, position.offset)
+        .map(|name_like| {
+            let res = match &name_like {
+                // renaming aliases would rename the item being aliased as the HIR doesn't track aliases yet
+                ast::NameLike::Name(name)
+                    if name
+                        .syntax()
+                        .parent()
+                        .map_or(false, |it| ast::Rename::can_cast(it.kind())) =>
+                {
+                    bail!("Renaming aliases is currently unsupported")
+                }
+                ast::NameLike::Name(name) => NameClass::classify(sema, name)
+                    .map(|class| match class {
+                        NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+                        NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                            Definition::Local(local_def)
+                        }
+                    })
+                    .map(|def| (name_like.clone(), def))
+                    .ok_or_else(|| format_err!("No references found at position")),
+                ast::NameLike::NameRef(name_ref) => NameRefClass::classify(sema, name_ref)
+                    .map(|class| match class {
+                        NameRefClass::Definition(def) => def,
+                        NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                            Definition::Local(local_ref)
+                        }
+                    })
+                    .and_then(|def| {
+                        // if the name differs from the definitions name it has to be an alias
+                        if def.name(sema.db).map_or(false, |it| it.to_string() != name_ref.text()) {
+                            None
+                        } else {
+                            Some((name_like.clone(), def))
+                        }
+                    })
+                    .ok_or_else(|| format_err!("Renaming aliases is currently unsupported")),
+                ast::NameLike::Lifetime(lifetime) => {
+                    NameRefClass::classify_lifetime(sema, lifetime)
+                        .and_then(|class| match class {
+                            NameRefClass::Definition(def) => Some(def),
+                            _ => None,
+                        })
+                        .or_else(|| {
+                            NameClass::classify_lifetime(sema, lifetime).and_then(|it| match it {
+                                NameClass::Definition(it) => Some(it),
+                                _ => None,
+                            })
+                        })
+                        .map(|def| (name_like, def))
+                        .ok_or_else(|| format_err!("No references found at position"))
+                }
+            };
+            res
+        });
 
-    let def = match &name_like {
-        // renaming aliases would rename the item being aliased as the HIR doesn't track aliases yet
-        ast::NameLike::Name(name)
-            if name.syntax().parent().map_or(false, |it| ast::Rename::can_cast(it.kind())) =>
-        {
-            bail!("Renaming aliases is currently unsupported")
-        }
-        ast::NameLike::Name(name) => NameClass::classify(sema, name).map(|class| match class {
-            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-            NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
-                Definition::Local(local_def)
-            }
-        }),
-        ast::NameLike::NameRef(name_ref) => {
-            if let Some(def) = NameRefClass::classify(sema, name_ref).map(|class| match class {
-                NameRefClass::Definition(def) => def,
-                NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
-                    Definition::Local(local_ref)
-                }
-            }) {
-                // if the name differs from the definitions name it has to be an alias
-                if def.name(sema.db).map_or(false, |it| it.to_string() != name_ref.text()) {
-                    bail!("Renaming aliases is currently unsupported");
-                }
-                Some(def)
-            } else {
-                None
-            }
-        }
-        ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, lifetime)
-            .and_then(|class| match class {
-                NameRefClass::Definition(def) => Some(def),
-                _ => None,
-            })
-            .or_else(|| {
-                NameClass::classify_lifetime(sema, lifetime).and_then(|it| match it {
-                    NameClass::Definition(it) => Some(it),
-                    _ => None,
-                })
-            }),
+    // TODO avoid collect() somehow?
+    let v: RenameResult<Vec<(ast::NameLike, Definition)>> = symbols.collect();
+    match v {
+        // remove duplicates
+        // TODO is "unique by `Definition`" correct?
+        Ok(v) => Ok(v.into_iter().unique_by(|t| t.1)),
+        Err(e) => Err(e),
     }
-    .ok_or_else(|| format_err!("No references found at position"))?;
-
-    Ok((name_like, def))
 }
 
 fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameResult<SourceChange> {

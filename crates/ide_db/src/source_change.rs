@@ -54,11 +54,24 @@ impl SourceChange {
     pub fn get_source_edit(&self, file_id: FileId) -> Option<&TextEdit> {
         self.source_file_edits.get(&file_id)
     }
+
+    pub fn merge(mut self, other: SourceChange) -> SourceChange {
+        self.extend(other.source_file_edits);
+        self.extend(other.file_system_edits);
+        self.is_snippet |= other.is_snippet; // TODO correct?
+        self
+    }
 }
 
 impl Extend<(FileId, TextEdit)> for SourceChange {
     fn extend<T: IntoIterator<Item = (FileId, TextEdit)>>(&mut self, iter: T) {
         iter.into_iter().for_each(|(file_id, edit)| self.insert_source_edit(file_id, edit));
+    }
+}
+
+impl Extend<FileSystemEdit> for SourceChange {
+    fn extend<T: IntoIterator<Item = FileSystemEdit>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|edit| self.push_file_system_edit(edit));
     }
 }
 
