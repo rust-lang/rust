@@ -1,0 +1,16 @@
+error: functions cannot be const-stable if they are unstable
+  --> $DIR/incompatible_stability.rs:7:1
+   |
+LL | const fn foo() {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(rustc::incompatible_stability)]` on by default
+
+error: functions cannot be const-stable if they are unstable
+  --> $DIR/incompatible_stability.rs:13:5
+   |
+LL |     const fn foo() {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

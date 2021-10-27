@@ -358,3 +358,47 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
         }
     }
 }
+
+declare_tool_lint! {
+    pub rustc::INCOMPATIBLE_STABILITY,
+    Deny,
+    "check that an unstable item is not const-stable"
+}
+
+declare_lint_pass!(IncompatibleStability => [INCOMPATIBLE_STABILITY]);
+
+impl LateLintPass<'_> for IncompatibleStability {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'_>,
+        kind: rustc_hir::intravisit::FnKind<'_>,
+        _: &FnDecl<'_>,
+        _: &Body<'_>,
+        span: rustc_span::Span,
+        hir_id: HirId,
+    ) {
+        use rustc_attr::{ConstStability, Stability, StabilityLevel};
+
+        // Perform a cheap check up-front to avoid unnecessary querying.
+        if kind.constness() == rustc_hir::Constness::NotConst {
+            return;
+        }
+
+        if !matches!(
+            cx.tcx.lookup_stability(hir_id.owner),
+            Some(Stability { level: StabilityLevel::Unstable { .. }, .. })
+        ) {
+            return;
+        }
+        if !matches!(
+            cx.tcx.lookup_const_stability(hir_id.owner),
+            Some(ConstStability { level: StabilityLevel::Stable { .. }, .. })
+        ) {
+            return;
+        }
+
+        cx.struct_span_lint(INCOMPATIBLE_STABILITY, span, |lint| {
+            lint.build("functions cannot be const-stable if they are unstable").emit();
+        });
+    }
+}

@@ -492,6 +492,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_pass(|| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
     store.register_late_pass(|| Box::new(TyTyKind));
+    store.register_lints(&IncompatibleStability::get_lints());
+    store.register_late_pass(|| Box::new(IncompatibleStability));
     store.register_group(
         false,
         "rustc::internal",
@@ -504,6 +506,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(TY_PASS_BY_REFERENCE),
             LintId::of(USAGE_OF_QUALIFIED_TY),
             LintId::of(EXISTING_DOC_KEYWORD),
+            LintId::of(INCOMPATIBLE_STABILITY),
         ],
     );
 }
