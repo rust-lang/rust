@@ -811,6 +811,8 @@ impl dyn Error + Send + Sync {
 /// An error reporter that exposes the entire error chain for printing.
 /// It also exposes options for formatting the error chain, either entirely on a single line,
 /// or in multi-line format with each cause in the error chain on a new line.
+/// `Report` only requires that the wrapped error implements `Error`. It doesn't require that the
+/// wrapped error be `Send`, `Sync`, or `'static`.
 ///
 /// # Examples
 ///
@@ -822,68 +824,31 @@ impl dyn Error + Send + Sync {
 /// use std::fmt;
 ///
 /// #[derive(Debug)]
-/// struct SuperError {
-///     side: SuperErrorSideKick,
+/// struct SuperError<'a> {
+///     side: &'a str,
 /// }
 ///
-/// impl fmt::Display for SuperError {
+/// impl<'a> fmt::Display for SuperError<'a> {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         write!(f, "SuperError is here!")
+///         write!(f, "SuperError is here: {}", self.side)
 ///     }
 /// }
 ///
-/// impl Error for SuperError {
-///     fn source(&self) -> Option<&(dyn Error + 'static)> {
-///         Some(&self.side)
-///     }
-/// }
-///
-/// #[derive(Debug)]
-/// struct SuperErrorSideKick;
-///
-/// impl fmt::Display for SuperErrorSideKick {
-///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         write!(f, "SuperErrorSideKick is here!")
-///     }
-/// }
-///
-/// impl Error for SuperErrorSideKick {}
+/// impl<'a> Error for SuperError<'a> {}
 ///
 /// // Note that the error doesn't need to be `Send` or `Sync`.
 /// impl !Send for SuperError {}
 /// impl !Sync for SuperError {}
 ///
 /// fn main() {
-///     let error = SuperError { side: SuperErrorSideKick };
+///     let msg = String::from("Huzzah!");
+///     let error = SuperError { side: &msg };
 ///     let report = Report::new(&error).pretty(true);
 ///
 ///     println!("{}", report);
 /// }
 /// ```
-///
-/// `Report` only requires that the wrapped error implements `Error`. It doesn't require that the
-/// wrapped error be `Send`, `Sync`, or `'static`.
-///
-/// ```rust
-/// # #![feature(error_reporter)]
-/// # use std::fmt;
-/// # use std::error::{Error, Report};
-/// #[derive(Debug)]
-/// struct SuperError<'a> {
-///     side: &'a str,
-/// }
-/// impl<'a> fmt::Display for SuperError<'a> {
-///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         write!(f, "SuperError is here: {}", self.side)
-///     }
-/// }
-/// impl<'a> Error for SuperError<'a> {}
-/// fn main() {
-///     let msg = String::from("Huzzah!");
-///     let report = Report::new(SuperError { side: &msg });
-///     println!("{}", report);
-/// }
-/// ```
+
 #[unstable(feature = "error_reporter", issue = "90172")]
 pub struct Report<E> {
     /// The error being reported.
