@@ -401,4 +401,29 @@ impl LateLintPass<'_> for IncompatibleStability {
             lint.build("functions cannot be const-stable if they are unstable").emit();
         });
     }
+
+    fn check_foreign_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::ForeignItem<'_>) {
+        use rustc_attr::{ConstStability, Stability, StabilityLevel};
+
+        if !matches!(item.kind, rustc_hir::ForeignItemKind::Fn(..)) {
+            return;
+        }
+
+        if !matches!(
+            cx.tcx.lookup_stability(item.def_id),
+            Some(Stability { level: StabilityLevel::Unstable { .. }, .. })
+        ) {
+            return;
+        }
+        if !matches!(
+            cx.tcx.lookup_const_stability(item.def_id),
+            Some(ConstStability { level: StabilityLevel::Stable { .. }, .. })
+        ) {
+            return;
+        }
+
+        cx.struct_span_lint(INCOMPATIBLE_STABILITY, item.span, |lint| {
+            lint.build("functions cannot be const-stable if they are unstable").emit();
+        });
+    }
 }

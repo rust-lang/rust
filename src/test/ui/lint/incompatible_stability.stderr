@@ -12,5 +12,11 @@ error: functions cannot be const-stable if they are unstable
 LL |     const fn foo() {}
    |     ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: functions cannot be const-stable if they are unstable
+  --> $DIR/incompatible_stability.rs:20:9
+   |
+LL |         pub fn transmute<T, U>(_: T) -> U;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 
