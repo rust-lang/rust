@@ -25,7 +25,7 @@ use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
 use crate::cell;
 use crate::char;
-use crate::fmt::{self, Debug, Display, Write};
+use crate::fmt::{self, Debug, Display};
 use crate::mem::transmute;
 use crate::num;
 use crate::str;
@@ -816,6 +816,7 @@ impl dyn Error + Send + Sync {
 ///
 /// ```
 /// #![feature(error_reporter)]
+/// #![feature(negative_impls)]
 ///
 /// use std::error::{Error, Report};
 /// use std::fmt;
@@ -848,6 +849,10 @@ impl dyn Error + Send + Sync {
 ///
 /// impl Error for SuperErrorSideKick {}
 ///
+/// // Note that the error doesn't need to be `Send` or `Sync`.
+/// impl !Send for SuperError {}
+/// impl !Sync for SuperError {}
+///
 /// fn main() {
 ///     let error = SuperError { side: SuperErrorSideKick };
 ///     let report = Report::new(&error).pretty(true);
@@ -855,10 +860,37 @@ impl dyn Error + Send + Sync {
 ///     println!("{}", report);
 /// }
 /// ```
+///
+/// `Report` only requires that the wrapped error implements `Error`. It doesn't require that the
+/// wrapped error be `Send`, `Sync`, or `'static`.
+///
+/// ```rust
+/// # #![feature(error_reporter)]
+/// # use std::fmt;
+/// # use std::error::{Error, Report};
+/// #[derive(Debug)]
+/// struct SuperError<'a> {
+///     side: &'a str,
+/// }
+/// impl<'a> fmt::Display for SuperError<'a> {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         write!(f, "SuperError is here: {}", self.side)
+///     }
+/// }
+/// impl<'a> Error for SuperError<'a> {}
+/// fn main() {
+///     let msg = String::from("Huzzah!");
+///     let report = Report::new(SuperError { side: &msg });
+///     println!("{}", report);
+/// }
+/// ```
 #[unstable(feature = "error_reporter", issue = "90172")]
 pub struct Report<E> {
+    /// The error being reported.
     error: E,
+    /// Whether a backtrace should be included as part of the report.
     show_backtrace: bool,
+    /// Whether the report should be pretty-printed.
     pretty: bool,
 }
 
@@ -911,18 +943,15 @@ where
             write!(f, "\n\nCaused by:")?;
 
             let multiple = cause.source().is_some();
-            let format = if multiple {
-                Format::Numbered { ind: 0 }
-            } else {
-                Format::Uniform { indentation: "    " }
-            };
 
-            for error in cause.chain() {
+            for (ind, error) in cause.chain().enumerate() {
                 writeln!(f)?;
 
-                let mut indented = Indented { inner: f, needs_indent: true, format };
-
-                write!(indented, "{}", error)?;
+                if multiple {
+                    write!(f, "{: >4}: {}", ind, Indented { source: error })?;
+                } else {
+                    write!(f, "    {}", error)?;
+                }
             }
         }
 
@@ -930,14 +959,10 @@ where
             let backtrace = error.backtrace();
 
             if let Some(backtrace) = backtrace {
-                let mut backtrace = backtrace.to_string();
+                let backtrace = backtrace.to_string();
 
-                write!(f, "\n\n")?;
-                writeln!(f, "Stack backtrace:")?;
-
-                backtrace.truncate(backtrace.trim_end().len());
-
-                write!(f, "{}", backtrace)?;
+                f.write_str("\n\nStack backtrace:\n")?;
+                f.write_str(backtrace.trim_end())?;
             }
         }
 
@@ -977,76 +1002,26 @@ where
     }
 }
 
-/// Encapsulates how error sources are indented and formatted.
-struct Indented<'a, D: ?Sized> {
-    inner: &'a mut D,
-    needs_indent: bool,
-    format: Format,
+/// Wrapper type for indenting the inner source.
+struct Indented<D> {
+    source: D,
 }
 
-/// The possible variants that error sources can be formatted as.
-#[derive(Clone, Copy)]
-enum Format {
-    /// Insert uniform indentation before every line.
-    ///
-    /// This format takes a static string as input and inserts it after every newline.
-    Uniform {
-        /// The string to insert as indentation.
-        indentation: &'static str,
-    },
-    /// Inserts a number before the first line.
-    ///
-    /// This format hard codes the indentation level to match the indentation from
-    /// `std::backtrace::Backtrace`.
-    Numbered {
-        /// The index to insert before the first line of output.
-        ind: usize,
-    },
-}
-
-impl<D> Write for Indented<'_, D>
+impl<D> fmt::Display for Indented<D>
 where
-    D: Write + ?Sized,
+    D: fmt::Display,
 {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        for (ind, line) in s.split('\n').enumerate() {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let source = self.source.to_string();
+
+        for (ind, line) in source.trim().split('\n').filter(|l| !l.is_empty()).enumerate() {
             if ind > 0 {
-                self.inner.write_char('\n')?;
-                self.needs_indent = true;
+                write!(f, "\n      {}", line)?;
+            } else {
+                write!(f, "{}", line)?;
             }
-
-            if self.needs_indent {
-                if line.is_empty() {
-                    continue;
-                }
-
-                self.format.insert_indentation(ind, &mut self.inner)?;
-                self.needs_indent = false;
-            }
-
-            self.inner.write_fmt(format_args!("{}", line))?;
         }
 
         Ok(())
-    }
-}
-
-impl Format {
-    /// Write the specified formatting to the write buffer.
-    fn insert_indentation(&mut self, line: usize, f: &mut dyn Write) -> fmt::Result {
-        match self {
-            Format::Uniform { indentation } => {
-                write!(f, "{}", indentation)
-            }
-            Format::Numbered { ind } => {
-                if line == 0 {
-                    write!(f, "{: >4}: ", ind)?;
-                    *ind += 1;
-                    Ok(())
-                } else {
-                    write!(f, "      ")
-                }
-            }
-        }
     }
 }
