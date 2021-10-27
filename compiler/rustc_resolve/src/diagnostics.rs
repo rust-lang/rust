@@ -66,6 +66,8 @@ crate struct ImportSuggestion {
     pub descr: &'static str,
     pub path: Path,
     pub accessible: bool,
+    /// An extra note that should be issued if this item is suggested
+    pub note: Option<String>,
 }
 
 /// Adjust the impl span so that just the `impl` keyword is taken by removing
@@ -872,11 +874,38 @@ impl<'a> Resolver<'a> {
                         }
 
                         if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
+                            // See if we're recommending TryFrom, TryInto, or FromIterator and add
+                            // a note about editions
+                            let note = if let Some(did) = did {
+                                let requires_note = !did.is_local()
+                                    && this.cstore().item_attrs(did, this.session).iter().any(
+                                        |attr| {
+                                            if attr.has_name(sym::rustc_diagnostic_item) {
+                                                [sym::TryInto, sym::TryFrom, sym::FromIterator]
+                                                    .map(|x| Some(x))
+                                                    .contains(&attr.value_str())
+                                            } else {
+                                                false
+                                            }
+                                        },
+                                    );
+
+                                requires_note.then(|| {
+                                    format!(
+                                        "'{}' is included in the prelude starting in Edition 2021",
+                                        path_names_to_string(&path)
+                                    )
+                                })
+                            } else {
+                                None
+                            };
+
                             candidates.push(ImportSuggestion {
                                 did,
                                 descr: res.descr(),
                                 path,
                                 accessible: child_accessible,
+                                note,
                             });
                         }
                     }
@@ -1764,12 +1793,14 @@ crate fn show_candidates(
         return;
     }
 
-    let mut accessible_path_strings: Vec<(String, &str, Option<DefId>)> = Vec::new();
-    let mut inaccessible_path_strings: Vec<(String, &str, Option<DefId>)> = Vec::new();
+    let mut accessible_path_strings: Vec<(String, &str, Option<DefId>, &Option<String>)> =
+        Vec::new();
+    let mut inaccessible_path_strings: Vec<(String, &str, Option<DefId>, &Option<String>)> =
+        Vec::new();
 
     candidates.iter().for_each(|c| {
         (if c.accessible { &mut accessible_path_strings } else { &mut inaccessible_path_strings })
-            .push((path_names_to_string(&c.path), c.descr, c.did))
+            .push((path_names_to_string(&c.path), c.descr, c.did, &c.note))
     });
 
     // we want consistent results across executions, but candidates are produced
@@ -1791,6 +1822,10 @@ crate fn show_candidates(
 
         let instead = if instead { " instead" } else { "" };
         let mut msg = format!("consider importing {} {}{}", determiner, kind, instead);
+
+        for note in accessible_path_strings.iter().map(|cand| cand.3.as_ref()).flatten() {
+            err.note(note);
+        }
 
         if let Some(span) = use_placement_span {
             for candidate in &mut accessible_path_strings {
@@ -1820,7 +1855,7 @@ crate fn show_candidates(
         assert!(!inaccessible_path_strings.is_empty());
 
         if inaccessible_path_strings.len() == 1 {
-            let (name, descr, def_id) = &inaccessible_path_strings[0];
+            let (name, descr, def_id, note) = &inaccessible_path_strings[0];
             let msg = format!("{} `{}` exists but is inaccessible", descr, name);
 
             if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
@@ -1832,12 +1867,15 @@ crate fn show_candidates(
             } else {
                 err.note(&msg);
             }
+            if let Some(note) = (*note).as_deref() {
+                err.note(note);
+            }
         } else {
-            let (_, descr_first, _) = &inaccessible_path_strings[0];
+            let (_, descr_first, _, _) = &inaccessible_path_strings[0];
             let descr = if inaccessible_path_strings
                 .iter()
                 .skip(1)
-                .all(|(_, descr, _)| descr == descr_first)
+                .all(|(_, descr, _, _)| descr == descr_first)
             {
                 descr_first.to_string()
             } else {
@@ -1848,7 +1886,7 @@ crate fn show_candidates(
             let mut has_colon = false;
 
             let mut spans = Vec::new();
-            for (name, _, def_id) in &inaccessible_path_strings {
+            for (name, _, def_id, _) in &inaccessible_path_strings {
                 if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
                     let span = definitions.def_span(local_def_id);
                     let span = session.source_map().guess_head_span(span);
@@ -1866,6 +1904,10 @@ crate fn show_candidates(
             let mut multi_span = MultiSpan::from_spans(spans.iter().map(|(_, sp)| *sp).collect());
             for (name, span) in spans {
                 multi_span.push_span_label(span, format!("`{}`: not accessible", name));
+            }
+
+            for note in inaccessible_path_strings.iter().map(|cand| cand.3.as_ref()).flatten() {
+                err.note(note);
             }
 
             err.span_note(multi_span, &msg);
