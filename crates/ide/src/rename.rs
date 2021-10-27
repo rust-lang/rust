@@ -12,7 +12,7 @@ use ide_db::{
     RootDatabase,
 };
 use itertools::Itertools;
-use stdx::never;
+use stdx::{always, never};
 use syntax::{ast, AstNode, SyntaxNode};
 
 use text_edit::TextEdit;
@@ -41,13 +41,12 @@ pub(crate) fn prepare_rename(
                 bail!("No references found at position")
             }
             let frange = sema.original_range(name_like.syntax());
-            if frange.range.contains_inclusive(position.offset)
-                && frange.file_id == position.file_id
-            {
-                Ok(frange.range)
-            } else {
-                bail!("invalid text range")
-            }
+
+            always!(
+                frange.range.contains_inclusive(position.offset)
+                    && frange.file_id == position.file_id
+            );
+            Ok(frange.range)
         })
         .reduce(|acc, cur| match (acc, cur) {
             // ensure all ranges are the same
