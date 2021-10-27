@@ -35,9 +35,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
     let initializer = let_stmt.initializer()?;
 
     let generic_args = match &initializer {
-        Expr::MethodCallExpr(ce) => {
-            ce.generic_arg_list()?
-        }
+        Expr::MethodCallExpr(ce) => ce.generic_arg_list()?,
         Expr::CallExpr(ce) => {
             if let Expr::PathExpr(pe) = ce.expr()? {
                 pe.path()?.segment()?.generic_arg_list()?
