@@ -1103,7 +1103,7 @@ compat_fn! {
         GetSystemTimeAsFileTime(lpSystemTimeAsFileTime)
     }
 
-    // >= Win11
+    // >= Win11 / Server 2022
     // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppath2a
     pub fn GetTempPath2W(nBufferLength: DWORD, lpBuffer: LPCWSTR) -> DWORD {
         GetTempPathW(nBufferLength, lpBuffer)
