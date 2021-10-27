@@ -55,6 +55,8 @@ macro_rules! impl_from {
                 small as Self
             }
         }
+
+        impl_from_ref! { $Small, $Large }
     };
     ($Small: ty, $Large: ty, #[$attr:meta]) => {
         impl_from!($Small,
@@ -65,6 +67,21 @@ macro_rules! impl_from {
                            "` to `",
                            stringify!($Large),
                            "` losslessly."));
+    }
+}
+
+macro_rules! impl_from_ref {
+    ($Small: ty, $Large: ty) => {
+        #[stable(feature = "num_from_num_ref", since = "1.60.0")]
+        #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
+        #[doc = concat!("Converts `&", stringify!($Small), "` to `", stringify!($Large), "` losslessly.")]
+        #[doc = concat!("See the documentation of the `", stringify!($Small), "` to `", stringify!($Large), "` conversion.")]
+        impl const From<&$Small> for $Large {
+            #[inline]
+            fn from(small: &$Small) -> Self {
+                From::from(*small)
+            }
+        }
     }
 }
 
@@ -98,30 +115,40 @@ impl_from_bool! { i128, #[stable(feature = "from_bool", since = "1.28.0")] }
 impl_from_bool! { isize, #[stable(feature = "from_bool", since = "1.28.0")] }
 
 // Unsigned -> Unsigned
+impl_from_ref! { u8, u8 }
 impl_from! { u8, u16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, u128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u8, usize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from_ref! { u16, u16 }
 impl_from! { u16, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, u128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from_ref! { u32, u32 }
 impl_from! { u32, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u32, u128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from_ref! { u64, u64 }
 impl_from! { u64, u128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from_ref! { u128, u128 }
 
 // Signed -> Signed
+impl_from_ref! { i8, i8 }
 impl_from! { i8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i8, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { i8, isize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from_ref! { i16, i16 }
 impl_from! { i16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i16, i128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from_ref! { i32, i32 }
 impl_from! { i32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i32, i128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from_ref! { i64, i64 }
 impl_from! { i64, i128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from_ref! { i128, i128 }
 
 // Unsigned -> Signed
 impl_from! { u8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }

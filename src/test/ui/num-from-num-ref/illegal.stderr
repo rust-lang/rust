@@ -1,0 +1,234 @@
+error[E0277]: the trait bound `i8: From<&i16>` is not satisfied
+  --> $DIR/illegal.rs:5:17
+   |
+LL |     let _: i8 = From::from(&1_i16);
+   |                 ^^^^^^^^^^ the trait `From<&i16>` is not implemented for `i8`
+   |
+   = help: the following implementations were found:
+             <i8 as From<&bool>>
+             <i8 as From<&i8>>
+             <i8 as From<NonZeroI8>>
+             <i8 as From<bool>>
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i16: From<&i32>` is not satisfied
+  --> $DIR/illegal.rs:6:18
+   |
+LL |     let _: i16 = From::from(&1_i32);
+   |                  ^^^^^^^^^^ the trait `From<&i32>` is not implemented for `i16`
+   |
+   = help: the following implementations were found:
+             <i16 as From<&bool>>
+             <i16 as From<&i16>>
+             <i16 as From<&i8>>
+             <i16 as From<&u8>>
+           and 4 others
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i32: From<&i64>` is not satisfied
+  --> $DIR/illegal.rs:7:18
+   |
+LL |     let _: i32 = From::from(&1_i64);
+   |                  ^^^^^^^^^^ the trait `From<&i64>` is not implemented for `i32`
+   |
+   = help: the following implementations were found:
+             <i32 as From<&bool>>
+             <i32 as From<&i16>>
+             <i32 as From<&i32>>
+             <i32 as From<&i8>>
+           and 8 others
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i64: From<&i128>` is not satisfied
+  --> $DIR/illegal.rs:8:18
+   |
+LL |     let _: i64 = From::from(&1_i128);
+   |                  ^^^^^^^^^^ the trait `From<&i128>` is not implemented for `i64`
+   |
+   = help: the following implementations were found:
+             <i64 as From<&bool>>
+             <i64 as From<&i16>>
+             <i64 as From<&i32>>
+             <i64 as From<&i64>>
+           and 12 others
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u8: From<&u16>` is not satisfied
+  --> $DIR/illegal.rs:11:17
+   |
+LL |     let _: u8 = From::from(&1_u16);
+   |                 ^^^^^^^^^^ the trait `From<&u16>` is not implemented for `u8`
+   |
+   = help: the following implementations were found:
+             <u8 as From<&bool>>
+             <u8 as From<&u8>>
+             <u8 as From<NonZeroU8>>
+             <u8 as From<bool>>
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u16: From<&u32>` is not satisfied
+  --> $DIR/illegal.rs:12:18
+   |
+LL |     let _: u16 = From::from(&1_u32);
+   |                  ^^^^^^^^^^ the trait `From<&u32>` is not implemented for `u16`
+   |
+   = help: the following implementations were found:
+             <u16 as From<&bool>>
+             <u16 as From<&u16>>
+             <u16 as From<&u8>>
+             <u16 as From<NonZeroU16>>
+           and 2 others
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u32: From<&u64>` is not satisfied
+  --> $DIR/illegal.rs:13:18
+   |
+LL |     let _: u32 = From::from(&1_u64);
+   |                  ^^^^^^^^^^ the trait `From<&u64>` is not implemented for `u32`
+   |
+   = help: the following implementations were found:
+             <u32 as From<&bool>>
+             <u32 as From<&u16>>
+             <u32 as From<&u32>>
+             <u32 as From<&u8>>
+           and 6 others
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u64: From<&u128>` is not satisfied
+  --> $DIR/illegal.rs:14:18
+   |
+LL |     let _: u64 = From::from(&1_u128);
+   |                  ^^^^^^^^^^ the trait `From<&u128>` is not implemented for `u64`
+   |
+   = help: the following implementations were found:
+             <u64 as From<&bool>>
+             <u64 as From<&u16>>
+             <u64 as From<&u32>>
+             <u64 as From<&u64>>
+           and 7 others
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i8: From<&u8>` is not satisfied
+  --> $DIR/illegal.rs:17:17
+   |
+LL |     let _: i8 = From::from(&1_u8);
+   |                 ^^^^^^^^^^ the trait `From<&u8>` is not implemented for `i8`
+   |
+   = help: the following implementations were found:
+             <i8 as From<&bool>>
+             <i8 as From<&i8>>
+             <i8 as From<NonZeroI8>>
+             <i8 as From<bool>>
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u16: From<&i8>` is not satisfied
+  --> $DIR/illegal.rs:18:18
+   |
+LL |     let _: u16 = From::from(&1_i8);
+   |                  ^^^^^^^^^^ the trait `From<&i8>` is not implemented for `u16`
+   |
+   = help: the following implementations were found:
+             <u16 as From<&bool>>
+             <u16 as From<&u16>>
+             <u16 as From<&u8>>
+             <u16 as From<NonZeroU16>>
+           and 2 others
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i32: From<&u32>` is not satisfied
+  --> $DIR/illegal.rs:19:18
+   |
+LL |     let _: i32 = From::from(&1_u32);
+   |                  ^^^^^^^^^^ the trait `From<&u32>` is not implemented for `i32`
+   |
+   = help: the following implementations were found:
+             <i32 as From<&bool>>
+             <i32 as From<&i16>>
+             <i32 as From<&i32>>
+             <i32 as From<&i8>>
+           and 8 others
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u64: From<&i32>` is not satisfied
+  --> $DIR/illegal.rs:20:18
+   |
+LL |     let _: u64 = From::from(&1_i32);
+   |                  ^^^^^^^^^^ the trait `From<&i32>` is not implemented for `u64`
+   |
+   = help: the following implementations were found:
+             <u64 as From<&bool>>
+             <u64 as From<&u16>>
+             <u64 as From<&u32>>
+             <u64 as From<&u64>>
+           and 7 others
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i128: From<&u128>` is not satisfied
+  --> $DIR/illegal.rs:21:19
+   |
+LL |     let _: i128 = From::from(&1_u128);
+   |                   ^^^^^^^^^^ the trait `From<&u128>` is not implemented for `i128`
+   |
+   = help: the following implementations were found:
+             <i128 as From<&bool>>
+             <i128 as From<&i128>>
+             <i128 as From<&i16>>
+             <i128 as From<&i32>>
+           and 16 others
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

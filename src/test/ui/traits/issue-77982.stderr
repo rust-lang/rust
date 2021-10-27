@@ -49,7 +49,7 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect(
            - impl From<NonZeroU32> for u32;
            - impl From<bool> for u32;
            - impl From<char> for u32;
-           and 3 more
+           and 7 more
 note: required by `from`
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    |
