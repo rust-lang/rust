@@ -210,7 +210,7 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                         // break if there is a nonascii byte
                         let zu = contains_nonascii(*block);
                         let zv = contains_nonascii(*block.offset(1));
-                        if zu | zv {
+                        if zu || zv {
                             break;
                         }
                     }
