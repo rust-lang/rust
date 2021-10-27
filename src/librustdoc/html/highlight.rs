@@ -98,7 +98,17 @@ fn write_code(
     decoration_info: Option<DecorationInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
-    let src = src.replace("\r\n", "\n");
+    let replaced;
+    // We don't typically expect to find carriage returns in the src text here,
+    // and at minimum replace(...) needs to allocate a new String and copy over,
+    // which can add up. This does mean we traverse src twice looking for
+    // carriage returns, but that's generally pretty fast.
+    let src = if src.contains("\r") {
+        replaced = src.replace("\r\n", "\n");
+        replaced.as_str()
+    } else {
+        src
+    };
     Classifier::new(
         &src,
         edition,
