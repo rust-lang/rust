@@ -7,9 +7,7 @@ use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{
-    FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
-};
+use crate::clean::types::{FnDecl, FnRetTy, GenericBound, Generics, Type, WherePredicate};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
@@ -278,7 +276,7 @@ crate fn get_real_types<'tcx>(
     res: &mut FxHashSet<(Type, ItemType)>,
 ) -> usize {
     fn insert(res: &mut FxHashSet<(Type, ItemType)>, tcx: TyCtxt<'_>, ty: Type) -> usize {
-        if let Some(kind) = ty.def_id().map(|did| tcx.def_kind(did).into()) {
+        if let Some(kind) = ty.def_id_no_primitives().map(|did| tcx.def_kind(did).into()) {
             res.insert((ty, kind));
             1
         } else if ty.is_primitive() {
@@ -298,7 +296,9 @@ crate fn get_real_types<'tcx>(
 
     if let Type::Generic(arg_s) = *arg {
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
-            WherePredicate::BoundPredicate { ty, .. } => ty.def_id() == arg.def_id(),
+            WherePredicate::BoundPredicate { ty, .. } => {
+                ty.def_id_no_primitives() == arg.def_id_no_primitives()
+            }
             _ => false,
         }) {
             let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
@@ -365,7 +365,8 @@ crate fn get_all_types<'tcx>(
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            if let Some(kind) = arg.type_.def_id().map(|did| tcx.def_kind(did).into()) {
+            if let Some(kind) = arg.type_.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
+            {
                 all_types.insert((arg.type_.clone(), kind));
             }
         }
@@ -376,7 +377,9 @@ crate fn get_all_types<'tcx>(
             let mut ret = FxHashSet::default();
             get_real_types(generics, return_type, tcx, 0, &mut ret);
             if ret.is_empty() {
-                if let Some(kind) = return_type.def_id().map(|did| tcx.def_kind(did).into()) {
+                if let Some(kind) =
+                    return_type.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
+                {
                     ret.insert((return_type.clone(), kind));
                 }
             }
