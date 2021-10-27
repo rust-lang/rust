@@ -1525,7 +1525,7 @@ macro_rules! uint_impl {
             //   to generate optimal code for now, and LLVM doesn't have an equivalent intrinsic
             let (a, b) = self.overflowing_add(rhs);
             let (c, d) = a.overflowing_add(carry as $SelfT);
-            (c, b | d)
+            (c, b || d)
         }
 
         /// Calculates `self` + `rhs` with a signed `rhs`
