@@ -737,7 +737,6 @@ impl Duration {
     /// # Examples
     /// ```
     /// #![feature(duration_checked_float)]
-    ///
     /// use std::time::Duration;
     ///
     /// let dur = Duration::try_from_secs_f64(2.7);
@@ -799,7 +798,6 @@ impl Duration {
     /// # Examples
     /// ```
     /// #![feature(duration_checked_float)]
-    ///
     /// use std::time::Duration;
     ///
     /// let dur = Duration::try_from_secs_f32(2.7);
@@ -1258,7 +1256,6 @@ impl fmt::Debug for Duration {
 ///
 /// ```
 /// #![feature(duration_checked_float)]
-///
 /// use std::time::Duration;
 ///
 /// if let Err(e) = Duration::try_from_secs_f32(-1.0) {
