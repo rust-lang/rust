@@ -1,6 +1,4 @@
-use super::{
-    get_span_of_entire_for_loop, make_iterator_snippet, IncrementVisitor, InitializeVisitor, EXPLICIT_COUNTER_LOOP,
-};
+use super::{make_iterator_snippet, IncrementVisitor, InitializeVisitor, EXPLICIT_COUNTER_LOOP};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{get_enclosing_block, is_integer_const};
@@ -37,12 +35,10 @@ pub(super) fn check<'tcx>(
                 then {
                     let mut applicability = Applicability::MachineApplicable;
 
-                    let for_span = get_span_of_entire_for_loop(expr);
-
                     span_lint_and_sugg(
                         cx,
                         EXPLICIT_COUNTER_LOOP,
-                        for_span.with_hi(arg.span.hi()),
+                        expr.span.with_hi(arg.span.hi()),
                         &format!("the variable `{}` is used as a loop counter", name),
                         "consider using",
                         format!(

@@ -1,4 +1,4 @@
-use super::{get_span_of_entire_for_loop, SINGLE_ELEMENT_LOOP};
+use super::SINGLE_ELEMENT_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::single_segment_path;
 use clippy_utils::source::{indent_of, snippet};
@@ -30,7 +30,6 @@ pub(super) fn check<'tcx>(
         if !block.stmts.is_empty();
 
         then {
-            let for_span = get_span_of_entire_for_loop(expr);
             let mut block_str = snippet(cx, block.span, "..").into_owned();
             block_str.remove(0);
             block_str.pop();
@@ -39,7 +38,7 @@ pub(super) fn check<'tcx>(
             span_lint_and_sugg(
                 cx,
                 SINGLE_ELEMENT_LOOP,
-                for_span,
+                expr.span,
                 "for loop over a single element",
                 "try",
                 format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0)), target.name, list_item_name, block_str),
