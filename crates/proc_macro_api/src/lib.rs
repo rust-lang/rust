@@ -167,7 +167,7 @@ impl ProcMacro {
         let request = msg::Request::ExpandMacro(task);
         let response = self.process.lock().unwrap_or_else(|e| e.into_inner()).send_task(request)?;
         match response {
-            msg::Response::ExpandMacro(it) => Ok(it.map(|it| it.to_subtree())),
+            msg::Response::ExpandMacro(it) => Ok(it.map(FlatTree::to_subtree)),
             msg::Response::ListMacros { .. } => {
                 Err(ServerError { message: "unexpected response".to_string(), io: None })
             }
