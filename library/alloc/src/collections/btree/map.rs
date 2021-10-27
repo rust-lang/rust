@@ -55,7 +55,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// performance on *small* nodes of elements which are cheap to compare. However in the future we
 /// would like to further explore choosing the optimal search strategy based on the choice of B,
 /// and possibly other factors. Using linear search, searching for a random element is expected
-/// to take O(B * log(n)) comparisons, which is generally worse than a BST. In practice,
+/// to take B * log(n) comparisons, which is generally worse than a BST. In practice,
 /// however, performance is excellent.
 ///
 /// It is a logic error for a key to be modified in such a way that the key's ordering relative to
