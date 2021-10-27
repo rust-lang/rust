@@ -209,10 +209,6 @@ details.undocumented > summary::before {
 	border-color: #66afe9;
 }
 
-.search-input:disabled {
-	background-color: #e6e6e6;
-}
-
 #crate-search + .search-input:focus {
 	box-shadow: 0 0 8px #078dd8;
 }
