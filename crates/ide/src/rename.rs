@@ -49,10 +49,10 @@ pub(crate) fn prepare_rename(
                 bail!("invalid text range")
             }
         })
-        .reduce(|acc, cur| match acc {
+        .reduce(|acc, cur| match (acc, cur) {
             // ensure all ranges are the same
-            Ok(acc_inner) if cur.is_ok() && acc_inner == cur.unwrap() => acc,
-            Err(e) => Err(e),
+            (Ok(acc_inner), Ok(cur_inner)) if acc_inner == cur_inner => Ok(acc_inner),
+            (Err(e), _) => Err(e),
             _ => bail!("inconsistent text range"),
         });
 
