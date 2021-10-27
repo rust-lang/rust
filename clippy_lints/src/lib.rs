@@ -777,7 +777,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(match_str_case_mismatch::MatchStrCaseMismatch));
     store.register_late_pass(move || Box::new(format_args::FormatArgs));
     store.register_late_pass(|| Box::new(trailing_empty_array::TrailingEmptyArray));
-
+    // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
 #[rustfmt::skip]
