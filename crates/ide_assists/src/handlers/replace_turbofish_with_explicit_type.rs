@@ -1,5 +1,5 @@
 use syntax::{
-    ast::Expr,
+    ast::{Expr, GenericArg, GenericArgList},
     ast::{LetStmt, Type::InferType},
     AstNode, TextRange,
 };
@@ -34,33 +34,31 @@ pub(crate) fn replace_turbofish_with_explicit_type(
 
     let initializer = let_stmt.initializer()?;
 
-    let (turbofish_start, turbofish_type, turbofish_end) = if let Expr::CallExpr(ce) = initializer {
-        if let Expr::PathExpr(pe) = ce.expr()? {
-            let path = pe.path()?;
-
-            let generic_args = path.segment()?.generic_arg_list()?;
-
-            let colon2 = generic_args.coloncolon_token()?;
-            let r_angle = generic_args.r_angle_token()?;
-
-            let turbofish_args_as_string = generic_args
-                .generic_args()
-                .into_iter()
-                .map(|a| -> String { a.to_string() })
-                .collect::<Vec<String>>()
-                .join(", ");
-
-            (colon2.text_range().start(), turbofish_args_as_string, r_angle.text_range().end())
-        } else {
-            cov_mark::hit!(not_applicable_if_non_path_function_call);
+    let (turbofish_range, turbofish_type) = match &initializer {
+        Expr::MethodCallExpr(ce) => {
+            let generic_args = ce.generic_arg_list()?;
+            (turbofish_range(&generic_args)?, turbofish_type(&generic_args)?)
+        }
+        Expr::CallExpr(ce) => {
+            if let Expr::PathExpr(pe) = ce.expr()? {
+                let generic_args = pe.path()?.segment()?.generic_arg_list()?;
+                (turbofish_range(&generic_args)?, turbofish_type(&generic_args)?)
+            } else {
+                cov_mark::hit!(not_applicable_if_non_path_function_call);
+                return None;
+            }
+        }
+        _ => {
+            cov_mark::hit!(not_applicable_if_non_function_call_initializer);
             return None;
         }
-    } else {
-        cov_mark::hit!(not_applicable_if_non_function_call_initializer);
-        return None;
     };
 
-    let turbofish_range = TextRange::new(turbofish_start, turbofish_end);
+    let initializer_start = initializer.syntax().text_range().start();
+    if ctx.offset() > turbofish_range.end() || ctx.offset() < initializer_start {
+        cov_mark::hit!(not_applicable_outside_turbofish);
+        return None;
+    }
 
     if let None = let_stmt.colon_token() {
         // If there's no colon in a let statement, then there is no explicit type.
@@ -70,7 +68,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
         return acc.add(
             AssistId("replace_turbofish_with_explicit_type", AssistKind::RefactorRewrite),
             format!("Replace turbofish with explicit type `: <{}>`", turbofish_type),
-            turbofish_range,
+            TextRange::new(initializer_start, turbofish_range.end()),
             |builder| {
                 builder.insert(ident_range.end(), format!(": {}", turbofish_type));
                 builder.delete(turbofish_range);
@@ -94,6 +92,31 @@ pub(crate) fn replace_turbofish_with_explicit_type(
     }
 
     None
+}
+
+/// Returns the type of the turbofish as a String.
+/// Returns None if there are 0 or >1 arguments.
+fn turbofish_type(generic_args: &GenericArgList) -> Option<String> {
+    let turbofish_args: Vec<GenericArg> = generic_args.generic_args().into_iter().collect();
+
+    if turbofish_args.len() != 1 {
+        cov_mark::hit!(not_applicable_if_not_single_arg);
+        return None;
+    }
+
+    // An improvement would be to check that this is correctly part of the return value of the
+    // function call, or sub in the actual return type.
+    let turbofish_type = turbofish_args[0].to_string();
+
+    Some(turbofish_type)
+}
+
+/// Returns the TextRange of the whole turbofish expression, and the generic argument as a String.
+fn turbofish_range(generic_args: &GenericArgList) -> Option<TextRange> {
+    let colon2 = generic_args.coloncolon_token()?;
+    let r_angle = generic_args.r_angle_token()?;
+
+    Some(TextRange::new(colon2.text_range().start(), r_angle.text_range().end()))
 }
 
 #[cfg(test)]
@@ -122,6 +145,26 @@ fn main() {
     }
 
     #[test]
+    fn replaces_method_calls() {
+        // foo.make() is a method call which uses a different expr in the let initializer
+        check_assist(
+            replace_turbofish_with_explicit_type,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let a = foo.make$0::<Vec<String>>();
+}
+"#,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let a: Vec<String> = foo.make();
+}
+"#,
+        );
+    }
+
+    #[test]
     fn replace_turbofish_target() {
         check_assist_target(
             replace_turbofish_with_explicit_type,
@@ -131,7 +174,21 @@ fn main() {
     let a = $0make::<Vec<String>>();
 }
 "#,
-            r#"::<Vec<String>>"#,
+            r#"make::<Vec<String>>"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_outside_turbofish() {
+        cov_mark::check!(not_applicable_outside_turbofish);
+        check_assist_not_applicable(
+            replace_turbofish_with_explicit_type,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let $0a = make::<Vec<String>>();
+}
+"#,
         );
     }
 
@@ -177,6 +234,20 @@ fn main() {
 fn make<T>() -> T {}
 fn main() {
     $0let a = (|| {})();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn non_applicable_multiple_generic_args() {
+        cov_mark::check!(not_applicable_if_not_single_arg);
+        check_assist_not_applicable(
+            replace_turbofish_with_explicit_type,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let a = make$0::<Vec<String>, i32>();
 }
 "#,
         );
