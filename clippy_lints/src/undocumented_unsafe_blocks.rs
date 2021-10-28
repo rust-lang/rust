@@ -145,8 +145,9 @@ impl UndocumentedUnsafeBlocks {
         let file_name = source_map.span_to_filename(between_span);
         let source_file = source_map.get_source_file(&file_name)?;
 
-        let lex_start = (between_span.lo().0 + 1) as usize;
-        let src_str = source_file.src.as_ref()?[lex_start..between_span.hi().0 as usize].to_string();
+        let lex_start = (between_span.lo().0 - source_file.start_pos.0 + 1) as usize;
+        let lex_end = (between_span.hi().0 - source_file.start_pos.0) as usize;
+        let src_str = source_file.src.as_ref()?[lex_start..lex_end].to_string();
 
         let mut pos = 0;
         let mut comment = false;
