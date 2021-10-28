@@ -49,8 +49,10 @@ crate struct DocContext<'tcx> {
     ///
     /// Most of this logic is copied from rustc_lint::late.
     crate param_env: ParamEnv<'tcx>,
-    /// Later on moved through `clean::Crate` into `cache`
-    crate external_traits: RefCell<FxHashMap<DefId, clean::TraitWithExtraInfo>>,
+    /// Traits defined outside the current crate.
+    ///
+    /// Later on moved into `cache`.
+    crate external_traits: FxHashMap<DefId, clean::TraitWithExtraInfo>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     crate active_extern_traits: FxHashSet<DefId>,
@@ -375,7 +377,6 @@ crate fn run_global_ctxt(
         let mut sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
         sized_trait.is_auto = true;
         ctxt.external_traits
-            .borrow_mut()
             .insert(sized_trait_did, TraitWithExtraInfo { trait_: sized_trait, is_notable: false });
     }
 
@@ -494,7 +495,7 @@ crate fn run_global_ctxt(
 
     let render_options = ctxt.render_options;
     let mut cache = ctxt.cache;
-    cache.traits = ctxt.external_traits.into_inner();
+    cache.traits = ctxt.external_traits;
     krate = tcx.sess.time("create_format_cache", || cache.populate(tcx, krate, &render_options));
 
     // The main crate doc comments are always collapsed.
