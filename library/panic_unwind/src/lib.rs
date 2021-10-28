@@ -57,6 +57,7 @@ cfg_if::cfg_if! {
     } else {
         // Targets that don't support unwinding.
         // - arch=wasm32
+        // - arch=wasm64
         // - os=none ("bare metal" targets)
         // - os=uefi
         // - os=espidf

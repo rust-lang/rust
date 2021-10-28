@@ -1,8 +1,8 @@
-//! This is an implementation of a global allocator on the wasm32 platform when
+//! This is an implementation of a global allocator on the wasm platform when
 //! emscripten is not in use. In that situation there's no actual runtime for us
 //! to lean on for allocation, so instead we provide our own!
 //!
-//! The wasm32 instruction set has two instructions for getting the current
+//! The wasm instruction set has two instructions for getting the current
 //! amount of memory and growing the amount of memory. These instructions are the
 //! foundation on which we're able to build an allocator, so we do so! Note that
 //! the instructions are also pretty "global" and this is the "global" allocator
