@@ -270,7 +270,7 @@ fn test_proc_macros(proc_macros: &[String]) -> (Vec<ProcMacro>, String) {
 pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
-#[proc_macro_derive(derive_identity)]
+#[proc_macro_derive(DeriveIdentity)]
 pub fn derive_identity(item: TokenStream) -> TokenStream {
     item
 }
@@ -290,7 +290,7 @@ pub fn mirror(input: TokenStream) -> TokenStream {
             expander: Arc::new(IdentityProcMacroExpander),
         },
         ProcMacro {
-            name: "derive_identity".into(),
+            name: "DeriveIdentity".into(),
             kind: crate::ProcMacroKind::CustomDerive,
             expander: Arc::new(IdentityProcMacroExpander),
         },
@@ -306,7 +306,7 @@ pub fn mirror(input: TokenStream) -> TokenStream {
         },
     ]
     .into_iter()
-    .filter(|pm| proc_macros.iter().any(|name| name == pm.name))
+    .filter(|pm| proc_macros.iter().any(|name| name == &stdx::to_lower_snake_case(&pm.name)))
     .collect();
     (proc_macros, source.into())
 }

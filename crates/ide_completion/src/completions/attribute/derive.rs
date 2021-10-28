@@ -1,14 +1,15 @@
 //! Completion for derives
 use hir::{HasAttrs, MacroDef, MacroKind};
-use ide_db::helpers::FamousDefs;
+use ide_db::helpers::{import_assets::ImportAssets, insert_use::ImportScope, FamousDefs};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use syntax::ast;
+use syntax::{ast, SyntaxKind};
 
 use crate::{
+    completions::flyimport::compute_fuzzy_completion_order_key,
     context::CompletionContext,
     item::{CompletionItem, CompletionItemKind},
-    Completions,
+    Completions, ImportEdit,
 };
 
 pub(super) fn complete_derive(
@@ -66,6 +67,8 @@ pub(super) fn complete_derive(
         }
         item.add_to(acc);
     }
+
+    flyimport_attribute(ctx, acc);
 }
 
 fn get_derives_in_scope(ctx: &CompletionContext) -> Vec<(hir::Name, MacroDef)> {
@@ -78,6 +81,50 @@ fn get_derives_in_scope(ctx: &CompletionContext) -> Vec<(hir::Name, MacroDef)> {
         }
     });
     result
+}
+
+fn flyimport_attribute(ctx: &CompletionContext, acc: &mut Completions) -> Option<()> {
+    if ctx.token.kind() != SyntaxKind::IDENT {
+        return None;
+    };
+    let potential_import_name = ctx.token.to_string();
+    let module = ctx.scope.module()?;
+    let parent = ctx.token.parent()?;
+    let user_input_lowercased = potential_import_name.to_lowercase();
+    let import_assets = ImportAssets::for_fuzzy_path(
+        module,
+        None,
+        potential_import_name,
+        &ctx.sema,
+        parent.clone(),
+    )?;
+    let import_scope = ImportScope::find_insert_use_container_with_macros(&parent, &ctx.sema)?;
+    acc.add_all(
+        import_assets
+            .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
+            .into_iter()
+            .filter_map(|import| match import.original_item {
+                hir::ItemInNs::Macros(mac) => Some((import, mac)),
+                _ => None,
+            })
+            .filter(|&(_, mac)| !ctx.is_item_hidden(&hir::ItemInNs::Macros(mac)))
+            .sorted_by_key(|(import, _)| {
+                compute_fuzzy_completion_order_key(&import.import_path, &user_input_lowercased)
+            })
+            .filter_map(|(import, mac)| {
+                let mut item = CompletionItem::new(
+                    CompletionItemKind::Attribute,
+                    ctx.source_range(),
+                    mac.name(ctx.db)?.to_string(),
+                );
+                item.add_import(ImportEdit { import, scope: import_scope.clone() });
+                if let Some(docs) = mac.docs(ctx.db) {
+                    item.documentation(docs);
+                }
+                Some(item.build())
+            }),
+    );
+    Some(())
 }
 
 struct DeriveDependencies {

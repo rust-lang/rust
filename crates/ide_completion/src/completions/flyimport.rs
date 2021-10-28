@@ -125,12 +125,12 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         }
     };
 
-    let _p = profile::span("import_on_the_fly").detail(|| potential_import_name.to_string());
+    let _p = profile::span("import_on_the_fly").detail(|| potential_import_name.clone());
 
     let user_input_lowercased = potential_import_name.to_lowercase();
     let import_assets = import_assets(ctx, potential_import_name)?;
     let import_scope = ImportScope::find_insert_use_container_with_macros(
-        position_for_import(ctx, Some(import_assets.import_candidate()))?,
+        &position_for_import(ctx, Some(import_assets.import_candidate()))?,
         &ctx.sema,
     )?;
 
@@ -158,21 +158,19 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     Some(())
 }
 
-pub(crate) fn position_for_import<'a>(
-    ctx: &'a CompletionContext,
+pub(crate) fn position_for_import(
+    ctx: &CompletionContext,
     import_candidate: Option<&ImportCandidate>,
-) -> Option<&'a SyntaxNode> {
-    Some(match import_candidate {
-        Some(ImportCandidate::Path(_)) => ctx.name_syntax.as_ref()?.syntax(),
-        Some(ImportCandidate::TraitAssocItem(_)) => ctx.path_qual()?.syntax(),
-        Some(ImportCandidate::TraitMethod(_)) => ctx.dot_receiver()?.syntax(),
-        None => ctx
-            .name_syntax
-            .as_ref()
-            .map(|name_ref| name_ref.syntax())
-            .or_else(|| ctx.path_qual().map(|path| path.syntax()))
-            .or_else(|| ctx.dot_receiver().map(|expr| expr.syntax()))?,
-    })
+) -> Option<SyntaxNode> {
+    Some(
+        match import_candidate {
+            Some(ImportCandidate::Path(_)) => ctx.name_syntax.as_ref()?.syntax(),
+            Some(ImportCandidate::TraitAssocItem(_)) => ctx.path_qual()?.syntax(),
+            Some(ImportCandidate::TraitMethod(_)) => ctx.dot_receiver()?.syntax(),
+            None => return ctx.original_token.parent(),
+        }
+        .clone(),
+    )
 }
 
 fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAssets> {
@@ -205,7 +203,7 @@ fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAs
     }
 }
 
-fn compute_fuzzy_completion_order_key(
+pub(crate) fn compute_fuzzy_completion_order_key(
     proposed_mod_path: &hir::ModPath,
     user_input_lowercased: &str,
 ) -> usize {
