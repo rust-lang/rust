@@ -1,5 +1,5 @@
 error[E0422]: cannot find struct, variant or union type `MyStruct` in this scope
-  --> $DIR/cross-crate-glob-hygiene.rs:16:13
+  --> $DIR/cross-crate-glob-hygiene.rs:21:13
    |
 LL |     let x = my_struct!(create);
    |             ^^^^^^^^^^^^^^^^^^ not found in this scope

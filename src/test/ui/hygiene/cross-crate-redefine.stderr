@@ -1,5 +1,5 @@
 error[E0428]: the name `MyStruct` is defined multiple times
-  --> $DIR/cross-crate-redefine.rs:7:1
+  --> $DIR/cross-crate-redefine.rs:10:1
    |
 LL | my_struct!(define);
    | ^^^^^^^^^^^^^^^^^^ `MyStruct` redefined here

@@ -1,3 +1,6 @@
+// Check that an item defined by a 2.0 macro in another crate cannot be used in
+// another crate.
+
 // aux-build:pub_hygiene.rs
 
 extern crate pub_hygiene;

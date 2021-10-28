@@ -1,3 +1,6 @@
+// Test that fields on a struct defined in another crate are resolved correctly
+// their names differ only in `SyntaxContext`.
+
 // run-pass
 // aux-build:fields.rs
 

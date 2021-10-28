@@ -1,3 +1,7 @@
+// Test that methods defined in another crate are resolved correctly their
+// names differ only in `SyntaxContext`. This also checks that any name
+// resolution done when monomorphizing is correct.
+
 // run-pass
 // aux-build:methods.rs
 

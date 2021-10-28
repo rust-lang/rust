@@ -1,3 +1,8 @@
+// Check that globs cannot import hygienic identifiers from a macro expansion
+// in another crate. `my_struct` is a `macro_rules` macro, so the struct it
+// defines is only not imported because `my_struct` is defined by a macros 2.0
+// macro.
+
 // aux-build:use_by_macro.rs
 
 extern crate use_by_macro;

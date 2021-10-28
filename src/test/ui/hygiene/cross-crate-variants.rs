@@ -1,3 +1,6 @@
+// Test that variants of an enum defined in another crate are resolved
+// correctly when their names differ only in `SyntaxContext`.
+
 // run-pass
 // aux-build:variants.rs
 
