@@ -1,8 +1,6 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
 use crate::array;
-use crate::intrinsics::is_aligned_and_not_null;
-use crate::mem;
 use crate::ptr;
 
 /// Forms a slice from a pointer and a length.
@@ -85,12 +83,10 @@ use crate::ptr;
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
-    debug_assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
-    debug_assert!(
-        mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
-        "attempt to create slice covering at least half the address space"
-    );
+#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "none")]
+pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
+    debug_check_data_len(data, len);
+
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
     unsafe { &*ptr::slice_from_raw_parts(data, len) }
 }
@@ -126,15 +122,46 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
-    debug_assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
-    debug_assert!(
-        mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
-        "attempt to create slice covering at least half the address space"
-    );
+#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "none")]
+pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
+    debug_check_data_len(data as _, len);
+
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
     unsafe { &mut *ptr::slice_from_raw_parts_mut(data, len) }
 }
+
+// In debug builds checks that `data` pointer is aligned and non-null and that slice with given `len` would cover less than half the address space
+#[cfg(all(not(bootstrap), debug_assertions))]
+#[unstable(feature = "const_slice_from_raw_parts", issue = "none")]
+#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "none")]
+const fn debug_check_data_len<T>(data: *const T, len: usize) {
+    fn rt_check<T>(data: *const T) {
+        use crate::intrinsics::is_aligned_and_not_null;
+
+        assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
+    }
+
+    const fn ctfe_check<T>(_data: *const T) {
+        // It's impossible to check alignment in const fn.
+        //
+        // CTFE engine checks that the pointer is aligned and not null.
+    }
+
+    // SAFETY:
+    // - `calling from_raw_parts[_mut]` with arguments that fail to fulfil checks made here is UB, so unless UB is already triggered this is noop
+    // - CTFE makes the same checks as `rt_check`, so behavior change is not observable due to compilation error
+    unsafe {
+        crate::intrinsics::const_eval_select((data,), ctfe_check, rt_check);
+    }
+
+    assert!(
+        crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
+        "attempt to create slice covering at least half the address space"
+    );
+}
+
+#[cfg(not(all(not(bootstrap), debug_assertions)))]
+const fn debug_check_data_len<T>(_data: *const T, _len: usize) {}
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
