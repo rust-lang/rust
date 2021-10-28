@@ -1289,6 +1289,21 @@ mod tests {
             .to_string();
         schema.push_str(",\n");
 
+        let mut new_schema = schema.clone();
+        let url_matches = schema.match_indices("https://");
+        let mut cnt = 0;
+        for (idx, _) in url_matches {
+            let link = &schema[idx..];
+            // matching on whitespace to ignore normal links
+            if let Some(link_end) = link.find(|c| c == ' ' || c == '[') {
+                if link.chars().nth(link_end) == Some('[') {
+                    new_schema.insert(idx + cnt, '(');
+                    new_schema.insert(idx + link_end + cnt + 1, ')');
+                    cnt = cnt + 2;
+                }
+            }
+        }
+
         let package_json_path = project_root().join("editors/code/package.json");
         let mut package_json = fs::read_to_string(&package_json_path).unwrap();
 
@@ -1299,9 +1314,9 @@ mod tests {
         let end = package_json.find(end_marker).unwrap();
 
         let p = remove_ws(&package_json[start..end]);
-        let s = remove_ws(&schema);
+        let s = remove_ws(&new_schema);
         if !p.contains(&s) {
-            package_json.replace_range(start..end, &schema);
+            package_json.replace_range(start..end, &new_schema);
             ensure_file_contents(&package_json_path, &package_json)
         }
     }
