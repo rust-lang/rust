@@ -3,7 +3,7 @@
 use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
-    helpers::{try_resolve_derive_input_at, FamousDefs},
+    helpers::{try_resolve_derive_input, FamousDefs},
     RootDatabase, SymbolKind,
 };
 use rustc_hash::FxHashMap;
@@ -56,8 +56,8 @@ fn token(
             T![?] => HlTag::Operator(HlOperator::Other) | HlMod::ControlFlow,
             IDENT if parent_matches::<ast::TokenTree>(&token) => {
                 if let Some(attr) = token.ancestors().nth(2).and_then(ast::Attr::cast) {
-                    match try_resolve_derive_input_at(sema, &attr, &token) {
-                        Some(makro) => highlight_def(sema, krate, Definition::Macro(makro)),
+                    match try_resolve_derive_input(sema, &attr, &ast::Ident::cast(token).unwrap()) {
+                        Some(res) => highlight_def(sema, krate, Definition::from(res)),
                         None => HlTag::None.into(),
                     }
                 } else {

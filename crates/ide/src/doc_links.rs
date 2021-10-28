@@ -4,7 +4,7 @@ mod intra_doc_links;
 
 use either::Either;
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
-use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
+use pulldown_cmark_to_cmark::{cmark_with_options, Options as CMarkOptions};
 use stdx::format_to;
 use url::Url;
 
@@ -65,7 +65,7 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
         doc,
         &mut out,
         None,
-        CmarkOptions { code_block_backticks: 3, ..Default::default() },
+        CMarkOptions { code_block_backticks: 3, ..Default::default() },
     )
     .ok();
     out
@@ -103,7 +103,7 @@ pub(crate) fn remove_links(markdown: &str) -> String {
         doc,
         &mut out,
         None,
-        CmarkOptions { code_block_backticks: 3, ..Default::default() },
+        CMarkOptions { code_block_backticks: 3, ..Default::default() },
     )
     .ok();
     out

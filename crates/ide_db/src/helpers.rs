@@ -7,14 +7,16 @@ pub mod merge_imports;
 pub mod node_ext;
 pub mod rust_doc;
 
-use std::collections::VecDeque;
+use std::{collections::VecDeque, iter};
 
 use base_db::FileId;
 use either::Either;
-use hir::{ItemInNs, MacroDef, ModuleDef, Name, Semantics};
+use hir::{ItemInNs, MacroDef, ModuleDef, Name, PathResolution, Semantics};
+use itertools::Itertools;
 use syntax::{
-    ast::{self, make, HasLoopBody},
-    AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxToken, TokenAtOffset, WalkEvent, T,
+    ast::{self, make, HasLoopBody, Ident},
+    AstNode, AstToken, Direction, SyntaxElement, SyntaxKind, SyntaxToken, TokenAtOffset, WalkEvent,
+    T,
 };
 
 use crate::RootDatabase;
@@ -29,33 +31,59 @@ pub fn item_name(db: &RootDatabase, item: ItemInNs) -> Option<Name> {
     }
 }
 
-/// Resolves the path at the cursor token as a derive macro if it inside a token tree of a derive attribute.
-pub fn try_resolve_derive_input_at(
+/// Parses and returns the derive path at the cursor position in the given attribute, if it is a derive.
+/// This special case is required because the derive macro is a compiler builtin that discards the input derives.
+///
+/// The returned path is synthesized from TokenTree tokens and as such cannot be used with the [`Semantics`].
+pub fn get_path_in_derive_attr(
     sema: &hir::Semantics<RootDatabase>,
-    derive_attr: &ast::Attr,
-    cursor: &SyntaxToken,
-) -> Option<MacroDef> {
-    use itertools::Itertools;
-    if cursor.kind() != T![ident] {
+    attr: &ast::Attr,
+    cursor: &Ident,
+) -> Option<ast::Path> {
+    let cursor = cursor.syntax();
+    let path = attr.path()?;
+    let tt = attr.token_tree()?;
+    if !tt.syntax().text_range().contains_range(cursor.text_range()) {
         return None;
     }
-    let tt = match derive_attr.as_simple_call() {
-        Some((name, tt))
-            if name == "derive" && tt.syntax().text_range().contains_range(cursor.text_range()) =>
-        {
-            tt
-        }
-        _ => return None,
-    };
-    let tokens: Vec<_> = cursor
+    let scope = sema.scope(attr.syntax());
+    let resolved_attr = sema.resolve_path(&path)?;
+    let derive = FamousDefs(sema, scope.krate()).core_macros_builtin_derive()?;
+    if PathResolution::Macro(derive) != resolved_attr {
+        return None;
+    }
+
+    let first = cursor
         .siblings_with_tokens(Direction::Prev)
-        .flat_map(SyntaxElement::into_token)
+        .filter_map(SyntaxElement::into_token)
         .take_while(|tok| tok.kind() != T!['('] && tok.kind() != T![,])
-        .collect();
-    let path = ast::Path::parse(&tokens.into_iter().rev().join("")).ok()?;
-    sema.scope(tt.syntax())
-        .speculative_resolve_as_mac(&path)
-        .filter(|mac| mac.kind() == hir::MacroKind::Derive)
+        .last()?;
+    let path_tokens = first
+        .siblings_with_tokens(Direction::Next)
+        .filter_map(SyntaxElement::into_token)
+        .take_while(|tok| tok != cursor);
+
+    ast::Path::parse(&path_tokens.chain(iter::once(cursor.clone())).join("")).ok()
+}
+
+/// Parses and resolves the path at the cursor position in the given attribute, if it is a derive.
+/// This special case is required because the derive macro is a compiler builtin that discards the input derives.
+pub fn try_resolve_derive_input(
+    sema: &hir::Semantics<RootDatabase>,
+    attr: &ast::Attr,
+    cursor: &Ident,
+) -> Option<PathResolution> {
+    let path = get_path_in_derive_attr(sema, attr, cursor)?;
+    let scope = sema.scope(attr.syntax());
+    // FIXME: This double resolve shouldn't be necessary
+    // It's only here so we prefer macros over other namespaces
+    match scope.speculative_resolve_as_mac(&path) {
+        Some(mac) if mac.kind() == hir::MacroKind::Derive => Some(PathResolution::Macro(mac)),
+        Some(_) => return None,
+        None => scope
+            .speculative_resolve(&path)
+            .filter(|res| matches!(res, PathResolution::Def(ModuleDef::Module(_)))),
+    }
 }
 
 /// Picks the token with the highest rank returned by the passed in function.

@@ -1371,6 +1371,7 @@ impl Twait for Stwuct {
     fn goto_def_derive_input() {
         check(
             r#"
+//- minicore:derive
 #[rustc_builtin_macro]
 pub macro Copy {}
        // ^^^^
@@ -1380,6 +1381,7 @@ struct Foo;
         );
         check(
             r#"
+//- minicore:derive
 mod foo {
     #[rustc_builtin_macro]
     pub macro Copy {}

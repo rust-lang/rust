@@ -11,18 +11,10 @@ fn test_highlighting() {
     check_highlighting(
         r#"
 //- proc_macros: identity, mirror
+//- minicore: derive, copy
 //- /main.rs crate:main deps:foo
 use inner::{self as inner_mod};
 mod inner {}
-
-#[rustc_builtin_macro]
-macro Copy {}
-
-// Needed for function consuming vs normal
-pub mod marker {
-    #[lang = "copy"]
-    pub trait Copy {}
-}
 
 #[proc_macros::identity]
 pub mod ops {
