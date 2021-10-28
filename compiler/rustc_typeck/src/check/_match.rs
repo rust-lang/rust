@@ -6,7 +6,6 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyS};
 use rustc_span::{MultiSpan, Span};
-use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
