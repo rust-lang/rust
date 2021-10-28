@@ -28,6 +28,11 @@ pub fn target() -> Target {
     lld_args.push("--no-entry".to_string());
     lld_args.push("-mwasm64".to_string());
 
+    // Any engine that implements wasm64 will surely implement the rest of these
+    // features since they were all merged into the official spec by the time
+    // wasm64 was designed.
+    options.features = "+bulk-memory,+mutable-globals,+sign-ext,+nontrapping-fptoint".to_string();
+
     Target {
         llvm_target: "wasm64-unknown-unknown".to_string(),
         pointer_width: 64,
