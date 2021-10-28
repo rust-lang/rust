@@ -5,7 +5,6 @@
 #![feature(try_blocks)]
 #![feature(associated_type_defaults)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 use rustc_ast::MacroDef;
 use rustc_attr as attr;

@@ -93,7 +93,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate rustc_middle;

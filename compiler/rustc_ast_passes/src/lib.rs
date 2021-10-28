@@ -7,7 +7,6 @@
 #![feature(iter_is_partitioned)]
 #![feature(box_patterns)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 pub mod ast_validation;
 pub mod feature_gate;

@@ -8,7 +8,6 @@
 #![feature(nll)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate tracing;
@@ -847,7 +846,7 @@ Available lint options:
     let builtin = sort_lints(sess, builtin);
 
     let (plugin_groups, builtin_groups): (Vec<_>, _) =
-        lint_store.get_lint_groups().partition(|&(.., p)| p);
+        lint_store.get_lint_groups().iter().cloned().partition(|&(.., p)| p);
     let plugin_groups = sort_lint_groups(plugin_groups);
     let builtin_groups = sort_lint_groups(builtin_groups);
 

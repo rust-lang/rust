@@ -5,7 +5,6 @@
 #![feature(nll)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 mod callbacks;
 pub mod interface;
