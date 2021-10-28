@@ -2,17 +2,17 @@
 
 extern crate unstable;
 
-use unstable::Foo;
+use unstable::UnstableEnum;
 
 fn main() {
-    match Foo::Stable {
-        Foo::Stable => {}
+    match UnstableEnum::Stable {
+        UnstableEnum::Stable => {}
     }
     //~^^^ non-exhaustive patterns: `Stable2` and `_` not covered
 
-    match Foo::Stable {
-        Foo::Stable => {}
-        Foo::Stable2 => {}
+    match UnstableEnum::Stable {
+        UnstableEnum::Stable => {}
+        UnstableEnum::Stable2 => {}
     }
     //~^^^^ non-exhaustive patterns: `_` not covered
 }
