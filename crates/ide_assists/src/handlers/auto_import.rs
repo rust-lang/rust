@@ -3,7 +3,7 @@ use ide_db::helpers::{
     insert_use::{insert_use, ImportScope},
     mod_path_to_ast,
 };
-use syntax::{ast, AstNode, AstToken, SyntaxNode};
+use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxElement};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 
@@ -90,9 +90,18 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
         return None;
     }
 
-    let range = ctx.sema.original_range(&syntax_under_caret).range;
+    let range = match &syntax_under_caret {
+        NodeOrToken::Node(node) => ctx.sema.original_range(node).range,
+        NodeOrToken::Token(token) => token.text_range(),
+    };
     let group_label = group_label(import_assets.import_candidate());
-    let scope = ImportScope::find_insert_use_container_with_macros(&syntax_under_caret, &ctx.sema)?;
+    let scope = ImportScope::find_insert_use_container_with_macros(
+        &match syntax_under_caret {
+            NodeOrToken::Node(it) => it,
+            NodeOrToken::Token(it) => it.parent()?,
+        },
+        &ctx.sema,
+    )?;
 
     // we aren't interested in different namespaces
     proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
@@ -115,23 +124,24 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     Some(())
 }
 
-pub(super) fn find_importable_node(ctx: &AssistContext) -> Option<(ImportAssets, SyntaxNode)> {
+pub(super) fn find_importable_node(ctx: &AssistContext) -> Option<(ImportAssets, SyntaxElement)> {
     if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
         ImportAssets::for_exact_path(&path_under_caret, &ctx.sema)
-            .zip(Some(path_under_caret.syntax().clone()))
+            .zip(Some(path_under_caret.syntax().clone().into()))
     } else if let Some(method_under_caret) =
         ctx.find_node_at_offset_with_descend::<ast::MethodCallExpr>()
     {
         ImportAssets::for_method_call(&method_under_caret, &ctx.sema)
-            .zip(Some(method_under_caret.syntax().clone()))
+            .zip(Some(method_under_caret.syntax().clone().into()))
     } else if let Some(pat) = ctx
         .find_node_at_offset_with_descend::<ast::IdentPat>()
         .filter(ast::IdentPat::is_simple_ident)
     {
-        ImportAssets::for_ident_pat(&ctx.sema, &pat).zip(Some(pat.syntax().clone()))
+        ImportAssets::for_ident_pat(&ctx.sema, &pat).zip(Some(pat.syntax().clone().into()))
     } else {
+        // FIXME: Descend?
         let ident = ctx.find_token_at_offset()?;
-        ImportAssets::for_derive_ident(&ctx.sema, &ident).zip(ident.syntax().parent())
+        ImportAssets::for_derive_ident(&ctx.sema, &ident).zip(Some(ident.syntax().clone().into()))
     }
 }
 
@@ -1028,6 +1038,32 @@ mod foo {
 fn foo() {
     let Foo;
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn works_in_derives() {
+        check_assist(
+            auto_import,
+            r#"
+//- minicore:derive
+mod foo {
+    #[rustc_builtin_macro]
+    pub macro Copy {}
+}
+#[derive(Copy$0)]
+struct Foo;
+"#,
+            r#"
+use foo::Copy;
+
+mod foo {
+    #[rustc_builtin_macro]
+    pub macro Copy {}
+}
+#[derive(Copy)]
+struct Foo;
 "#,
         );
     }

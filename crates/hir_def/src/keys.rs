@@ -31,7 +31,7 @@ pub const TYPE_PARAM: Key<ast::TypeParam, TypeParamId> = Key::new();
 pub const LIFETIME_PARAM: Key<ast::LifetimeParam, LifetimeParamId> = Key::new();
 pub const CONST_PARAM: Key<ast::ConstParam, ConstParamId> = Key::new();
 
-pub const MACRO: Key<ast::MacroCall, MacroDefId> = Key::new();
+pub const MACRO: Key<ast::Macro, MacroDefId> = Key::new();
 pub const ATTR_MACRO: Key<ast::Item, MacroCallId> = Key::new();
 pub const DERIVE_MACRO: Key<ast::Attr, Box<[MacroCallId]>> = Key::new();
 

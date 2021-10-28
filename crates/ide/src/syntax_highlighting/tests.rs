@@ -707,6 +707,7 @@ pub mod module {
 }
 
 /// ```
+/// macro_rules! noop { ($expr:expr) => { $expr }}
 /// noop!(1);
 /// ```
 macro_rules! noop {
