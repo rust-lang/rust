@@ -1278,8 +1278,7 @@ impl str {
             finished: false,
         })
     }
-    
-    
+
     /// An iterator over substrings of this string slice, separated by
     /// characters matched by a pattern. Differs from the iterator produced by
     /// `split` in that `split_rinclusive` leaves the matched part as the

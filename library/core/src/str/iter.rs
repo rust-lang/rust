@@ -648,7 +648,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
             None => self.get_end(),
         }
     }
-    
+
     #[inline]
     fn next_rinclusive(&mut self) -> Option<&'a str> {
         if self.finished {
@@ -760,7 +760,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
             },
         }
     }
-    
+
     #[inline]
     fn next_back_rinclusive(&mut self) -> Option<&'a str>
     where
@@ -1456,7 +1456,7 @@ impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
 /// An iterator over the substrings of a string,
 /// new substrings beginning when matching to a predicate function.
 /// Unlike `Split`, it contains the matched part as the start
-/// of each subslice - besides the first, which is the contents 
+/// of each subslice - besides the first, which is the contents
 /// up until the first match.
 ///
 /// This struct is created by the [`split_rinclusive`] method on [`str`].
