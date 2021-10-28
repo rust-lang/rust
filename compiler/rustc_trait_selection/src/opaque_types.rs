@@ -29,15 +29,6 @@ pub trait InferCtxtExt<'tcx> {
         opaque_defn: &OpaqueTypeDecl<'tcx>,
     );
 
-    /*private*/
-    fn generate_member_constraint(
-        &self,
-        concrete_ty: Ty<'tcx>,
-        opaque_defn: &OpaqueTypeDecl<'tcx>,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        first_own_region_index: usize,
-    );
-
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
@@ -285,31 +276,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             hir::OpaqueTyOrigin::TyAlias => 0,
         };
 
-        // The regions that appear in the hidden type must be equal to
-        // one of the regions in scope for the opaque type.
-        self.generate_member_constraint(
-            concrete_ty,
-            opaque_defn,
-            opaque_type_key,
-            first_own_region,
-        );
-    }
+        // For a case like `impl Foo<'a, 'b>`, we would generate a constraint
+        // `'r in ['a, 'b, 'static]` for each region `'r` that appears in the
+        // hidden type (i.e., it must be equal to `'a`, `'b`, or `'static`).
+        //
+        // `conflict1` and `conflict2` are the two region bounds that we
+        // detected which were unrelated. They are used for diagnostics.
 
-    /// As a fallback, we sometimes generate an "in constraint". For
-    /// a case like `impl Foo<'a, 'b>`, where `'a` and `'b` cannot be
-    /// related, we would generate a constraint `'r in ['a, 'b,
-    /// 'static]` for each region `'r` that appears in the hidden type
-    /// (i.e., it must be equal to `'a`, `'b`, or `'static`).
-    ///
-    /// `conflict1` and `conflict2` are the two region bounds that we
-    /// detected which were unrelated. They are used for diagnostics.
-    fn generate_member_constraint(
-        &self,
-        concrete_ty: Ty<'tcx>,
-        opaque_defn: &OpaqueTypeDecl<'tcx>,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        first_own_region: usize,
-    ) {
         // Create the set of choice regions: each region in the hidden
         // type can be equal to any of the region parameters of the
         // opaque type definition.
