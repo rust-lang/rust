@@ -1449,11 +1449,11 @@ impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
 /// See its documentation for more.
 ///
 /// [`split_rinclusive`]: str::split_rinclusive
-#[unstable(feature = "split_rinclusive", issue = "none)]
+#[unstable(feature = "split_rinclusive", issue = "none")]
 #[derive(Clone)]
 pub struct SplitRInclusive<'a, P: Pattern<'a>>(pub(super) SplitInternal<'a, P>);
 
-#[unstable(feature = "split_rinclusive", issue = "none)]
+#[unstable(feature = "split_rinclusive", issue = "none")]
 impl<'a, P: Pattern<'a>> Iterator for SplitRInclusive<'a, P> {
     type Item = &'a str;
 
@@ -1463,14 +1463,14 @@ impl<'a, P: Pattern<'a>> Iterator for SplitRInclusive<'a, P> {
     }
 }
 
-#[unstable(feature = "split_rinclusive", issue = "none)]
+#[unstable(feature = "split_rinclusive", issue = "none")]
 impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitRInclusive<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitRInclusive").field("0", &self.0).finish()
     }
 }
 
-#[unstable(feature = "split_rinclusive", issue = "none)]
+#[unstable(feature = "split_rinclusive", issue = "none")]
 impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     for SplitRInclusive<'a, P>
 {
@@ -1480,7 +1480,7 @@ impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     }
 }
 
-#[unstable(feature = "split_rinclusive", issue = "none)]
+#[unstable(feature = "split_rinclusive", issue = "none")]
 impl<'a, P: Pattern<'a>> FusedIterator for SplitRInclusive<'a, P> {}
 
 impl<'a, P: Pattern<'a>> SplitRInclusive<'a, P> {
@@ -1498,7 +1498,7 @@ impl<'a, P: Pattern<'a>> SplitRInclusive<'a, P> {
     /// assert_eq!(split.as_str(), "");
     /// ```
     #[inline]
-    #[unstable(feature = "split_rinclusive", issue = "none)]
+    #[unstable(feature = "split_rinclusive", issue = "none")]
     pub fn as_str(&self) -> &'a str {
         self.0.as_str()
     }
