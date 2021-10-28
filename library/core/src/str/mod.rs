@@ -1285,6 +1285,8 @@ impl str {
     /// `split` in that `split_rinclusive` leaves the matched part as the
     /// beginning of the next substring, except possibly the first which is whatever before the first match.
     ///
+    /// Put another way, a match is the start of a new substring.
+    ///
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
