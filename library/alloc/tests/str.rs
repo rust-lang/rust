@@ -1371,10 +1371,6 @@ fn test_split_char_iterator_rinclusive_rev() {
     let split: Vec<&str> = data.split_rinclusive('\n').rev().collect();
     assert_eq!(split, ["\n", "\nLittle lämb", "\nMäry häd ä little lämb"]);
 
-    // Note that the predicate is stateful and thus dependent
-    // on the iteration order.
-    // (A different predicate is needed for reverse iterator vs normal iterator.)
-    // Not sure if anything can be done though.
     let uppercase_separated = "SheepSharkTurtleCat";
     let split: Vec<&str> = uppercase_separated
         .split_rinclusive(char::is_uppercase)
