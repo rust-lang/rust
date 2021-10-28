@@ -64,7 +64,7 @@ use facts::AllFacts;
 
 use self::path_utils::*;
 
-mod borrow_set;
+pub mod borrow_set;
 mod borrowck_errors;
 mod constraint_generation;
 mod constraints;
