@@ -1,9 +1,4 @@
-#![allow(
-    unused,
-    clippy::many_single_char_names,
-    clippy::redundant_clone,
-    clippy::if_then_panic
-)]
+#![allow(unused, clippy::many_single_char_names, clippy::redundant_clone)]
 #![warn(clippy::ptr_arg)]
 
 use std::borrow::Cow;

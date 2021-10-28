@@ -76,7 +76,6 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(get_last_with_len::GET_LAST_WITH_LEN),
     LintId::of(identity_op::IDENTITY_OP),
     LintId::of(if_let_mutex::IF_LET_MUTEX),
-    LintId::of(if_then_panic::IF_THEN_PANIC),
     LintId::of(indexing_slicing::OUT_OF_BOUNDS_INDEXING),
     LintId::of(infinite_iter::INFINITE_ITER),
     LintId::of(inherent_to_string::INHERENT_TO_STRING),
