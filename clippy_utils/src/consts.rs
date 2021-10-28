@@ -155,6 +155,19 @@ impl Constant {
             _ => None,
         }
     }
+
+    /// Returns the integer value or `None` if `self` or `val_type` is not integer type.
+    pub fn int_value(&self, cx: &LateContext<'_>, val_type: Ty<'_>) -> Option<FullInt> {
+        if let Constant::Int(const_int) = *self {
+            match *val_type.kind() {
+                ty::Int(ity) => Some(FullInt::S(sext(cx.tcx, const_int, ity))),
+                ty::Uint(_) => Some(FullInt::U(const_int)),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
 }
 
 /// Parses a `LitKind` to a `Constant`.
@@ -200,6 +213,61 @@ pub fn constant_simple<'tcx>(
     e: &Expr<'_>,
 ) -> Option<Constant> {
     constant(lcx, typeck_results, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
+}
+
+pub fn constant_full_int(
+    lcx: &LateContext<'tcx>,
+    typeck_results: &ty::TypeckResults<'tcx>,
+    e: &Expr<'_>,
+) -> Option<FullInt> {
+    constant_simple(lcx, typeck_results, e)?.int_value(lcx, typeck_results.expr_ty(e))
+}
+
+#[derive(Copy, Clone, Debug, Eq)]
+pub enum FullInt {
+    S(i128),
+    U(u128),
+}
+
+impl FullInt {
+    #[allow(clippy::cast_sign_loss)]
+    #[must_use]
+    fn cmp_s_u(s: i128, u: u128) -> Ordering {
+        if s < 0 {
+            Ordering::Less
+        } else if u > (i128::MAX as u128) {
+            Ordering::Greater
+        } else {
+            (s as u128).cmp(&u)
+        }
+    }
+}
+
+impl PartialEq for FullInt {
+    #[must_use]
+    fn eq(&self, other: &Self) -> bool {
+        self.partial_cmp(other).expect("`partial_cmp` only returns `Some(_)`") == Ordering::Equal
+    }
+}
+
+impl PartialOrd for FullInt {
+    #[must_use]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(match (self, other) {
+            (&Self::S(s), &Self::S(o)) => s.cmp(&o),
+            (&Self::U(s), &Self::U(o)) => s.cmp(&o),
+            (&Self::S(s), &Self::U(o)) => Self::cmp_s_u(s, o),
+            (&Self::U(s), &Self::S(o)) => Self::cmp_s_u(o, s).reverse(),
+        })
+    }
+}
+
+impl Ord for FullInt {
+    #[must_use]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other)
+            .expect("`partial_cmp` for FullInt can never return `None`")
+    }
 }
 
 /// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckResults`.
