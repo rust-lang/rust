@@ -1,0 +1,24 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/invalid-union.rs:41:1
+   |
+LL | fn main() {
+   | ^^^^^^^^^ type validation failed at .<deref>.y.<enum-variant(B)>.0: encountered `UnsafeCell` in a `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               ╾─alloc7──╼                                     │ ╾──╼
+           }
+
+error: erroneous constant used
+  --> $DIR/invalid-union.rs:42:25
+   |
+LL |     let _: &'static _ = &C;
+   |                         ^^ referenced constant has errors
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
