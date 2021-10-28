@@ -1548,7 +1548,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // the param_env so that it can be given the lowest priority. See
         // #50825 for the motivation for this.
         let is_global =
-            |cand: &ty::PolyTraitRef<'_>| cand.is_known_global() && !cand.has_late_bound_regions();
+            |cand: &ty::PolyTraitRef<'tcx>| cand.is_global(self.infcx.tcx) && !cand.has_late_bound_regions();
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
         // and `DiscriminantKindCandidate` to anything else.
