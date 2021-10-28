@@ -23,8 +23,6 @@ pub trait InferCtxtExt<'tcx> {
         value_span: Span,
     ) -> InferOk<'tcx, T>;
 
-    fn constrain_opaque_types(&self);
-
     fn constrain_opaque_type(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
@@ -254,14 +252,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// - `opaque_types` -- the map produced by `instantiate_opaque_types`
     /// - `free_region_relations` -- something that can be used to relate
     ///   the free regions (`'a`) that appear in the impl trait.
-    fn constrain_opaque_types(&self) {
-        let opaque_types = self.inner.borrow().opaque_types.clone();
-        for (opaque_type_key, opaque_defn) in opaque_types {
-            self.constrain_opaque_type(opaque_type_key, &opaque_defn);
-        }
-    }
-
-    /// See `constrain_opaque_types` for documentation.
     #[instrument(level = "debug", skip(self))]
     fn constrain_opaque_type(
         &self,
@@ -363,7 +353,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// purpose of this function is to do that translation.
     ///
     /// (*) C1 and C2 were introduced in the comments on
-    /// `constrain_opaque_types`. Read that comment for more context.
+    /// `constrain_opaque_type`. Read that comment for more context.
     ///
     /// # Parameters
     ///

@@ -88,7 +88,6 @@ use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId};
 use rustc_middle::ty::adjustment;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
-use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use std::ops::Deref;
 
 // a variation on try that just returns unit
@@ -340,8 +339,6 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.link_fn_params(body.params);
         self.visit_body(body);
         self.visit_region_obligations(body_id.hir_id);
-
-        self.constrain_opaque_types();
     }
 
     fn visit_region_obligations(&mut self, hir_id: hir::HirId) {
