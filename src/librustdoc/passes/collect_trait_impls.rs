@@ -31,9 +31,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 
     for &cnum in cx.tcx.crates(()).iter() {
         for &(did, _) in cx.tcx.all_trait_implementations(cnum).iter() {
-            cx.tcx.sess.prof.generic_activity("build_extern_trait_impl").run(|| {
-                inline::build_impl(cx, None, did, None, &mut new_items);
-            });
+            inline::build_impl(cx, None, did, None, &mut new_items);
         }
     }
 
