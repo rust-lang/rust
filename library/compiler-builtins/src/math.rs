@@ -16,7 +16,7 @@ macro_rules! no_mangle {
 
 #[cfg(any(
     all(
-        target_arch = "wasm32",
+        any(target_arch = "wasm32", target_arch = "wasm64"),
         target_os = "unknown",
         not(target_env = "wasi")
     ),
@@ -66,7 +66,7 @@ no_mangle! {
 
 #[cfg(any(
     all(
-        target_arch = "wasm32",
+        any(target_arch = "wasm32", target_arch = "wasm64"),
         target_os = "unknown",
         not(target_env = "wasi")
     ),
