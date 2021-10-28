@@ -1,4 +1,4 @@
-error: symbol-name(_RMCsCRATE_HASH_1cINtB0_8UnsignedKhb_E)
+error: symbol-name(_RMCsCRATE_HASH_1cINtB<REF>_8UnsignedKhb_E)
   --> $DIR/const-generics-demangling.rs:8:1
    |
 LL | #[rustc_symbol_name]
@@ -16,7 +16,7 @@ error: demangling-alt(<c::Unsigned<11>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs_CsCRATE_HASH_1cINtB2_6SignedKsn98_E)
+error: symbol-name(_RMs_CsCRATE_HASH_1cINtB<REF>_6SignedKsn98_E)
   --> $DIR/const-generics-demangling.rs:16:1
    |
 LL | #[rustc_symbol_name]
@@ -34,7 +34,7 @@ error: demangling-alt(<c::Signed<-152>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs0_CsCRATE_HASH_1cINtB3_4BoolKb1_E)
+error: symbol-name(_RMs0_CsCRATE_HASH_1cINtB<REF>_4BoolKb1_E)
   --> $DIR/const-generics-demangling.rs:24:1
    |
 LL | #[rustc_symbol_name]
@@ -52,7 +52,7 @@ error: demangling-alt(<c::Bool<true>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs1_CsCRATE_HASH_1cINtB3_4CharKc2202_E)
+error: symbol-name(_RMs1_CsCRATE_HASH_1cINtB<REF>_4CharKc2202_E)
   --> $DIR/const-generics-demangling.rs:32:1
    |
 LL | #[rustc_symbol_name]

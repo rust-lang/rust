@@ -1,4 +1,4 @@
-error: symbol-name(_RNvMNtCsCRATE_HASH_5impl13fooNtB2_3Foo3bar)
+error: symbol-name(_RNvMNtCsCRATE_HASH_5impl13fooNtB<REF>_3Foo3bar)
   --> $DIR/impl1.rs:14:9
    |
 LL |         #[rustc_symbol_name]
@@ -22,7 +22,7 @@ error: def-path(foo::Foo::bar)
 LL |         #[rustc_def_path]
    |         ^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RNvMNtCsCRATE_HASH_5impl13barNtNtB4_3foo3Foo3baz)
+error: symbol-name(_RNvMNtCsCRATE_HASH_5impl13barNtNtB<REF>_3foo3Foo3baz)
   --> $DIR/impl1.rs:32:9
    |
 LL |         #[rustc_symbol_name]
@@ -46,7 +46,7 @@ error: def-path(bar::<impl foo::Foo>::baz)
 LL |         #[rustc_def_path]
    |         ^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RNvXNCNvCsCRATE_HASH_5impl14mains_0ARDNtB6_3Foop5AssocFG_KCRL0_hvEuNtB6_9AutoTraitEL_j3_NtB2_3Bar6method)
+error: symbol-name(_RNvXNCNvCsCRATE_HASH_5impl14mains_0ARDNtB<REF>_3Foop5AssocFG_KCRL0_hvEuNtB<REF>_9AutoTraitEL_j3_NtB<REF>_3Bar6method)
   --> $DIR/impl1.rs:62:13
    |
 LL |             #[rustc_symbol_name]

@@ -1,4 +1,4 @@
-error: symbol-name(_RMCsCRATE_HASH_1cINtB0_7RefByteKRh7b_E)
+error: symbol-name(_RMCsCRATE_HASH_1cINtB<REF>_7RefByteKRh7b_E)
   --> $DIR/const-generics-structural-demangling.rs:14:1
    |
 LL | #[rustc_symbol_name]
@@ -16,7 +16,7 @@ error: demangling-alt(<c::RefByte<{&123}>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs_CsCRATE_HASH_1cINtB2_6RefZstKRAEE)
+error: symbol-name(_RMs_CsCRATE_HASH_1cINtB<REF>_6RefZstKRAEE)
   --> $DIR/const-generics-structural-demangling.rs:24:1
    |
 LL | #[rustc_symbol_name]
@@ -34,7 +34,7 @@ error: demangling-alt(<c::RefZst<{&[]}>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs0_CsCRATE_HASH_1cINtB3_11Array3BytesKAh1_h2_h3_EE)
+error: symbol-name(_RMs0_CsCRATE_HASH_1cINtB<REF>_11Array3BytesKAh1_h2_h3_EE)
   --> $DIR/const-generics-structural-demangling.rs:32:1
    |
 LL | #[rustc_symbol_name]
@@ -52,7 +52,7 @@ error: demangling-alt(<c::Array3Bytes<{[1, 2, 3]}>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs1_CsCRATE_HASH_1cINtB3_13TupleByteBoolKTh1_b0_EE)
+error: symbol-name(_RMs1_CsCRATE_HASH_1cINtB<REF>_13TupleByteBoolKTh1_b0_EE)
   --> $DIR/const-generics-structural-demangling.rs:40:1
    |
 LL | #[rustc_symbol_name]
@@ -70,7 +70,7 @@ error: demangling-alt(<c::TupleByteBool<{(1, false)}>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs2_CsCRATE_HASH_1cINtB3_11OptionUsizeKVNtINtNtCsCRATE_HASH_4core6option6OptionjE4NoneUE)
+error: symbol-name(_RMs2_CsCRATE_HASH_1cINtB<REF>_11OptionUsizeKVNtINtNtCsCRATE_HASH_4core6option6OptionjE4NoneUE)
   --> $DIR/const-generics-structural-demangling.rs:50:1
    |
 LL | #[rustc_symbol_name]
@@ -88,7 +88,7 @@ error: demangling-alt(<c::OptionUsize<{core::option::Option::<usize>::None}>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs3_CsCRATE_HASH_1cINtB3_11OptionUsizeKVNtINtNtCsCRATE_HASH_4core6option6OptionjE4SomeTj0_EE)
+error: symbol-name(_RMs3_CsCRATE_HASH_1cINtB<REF>_11OptionUsizeKVNtINtNtCsCRATE_HASH_4core6option6OptionjE4SomeTj0_EE)
   --> $DIR/const-generics-structural-demangling.rs:58:1
    |
 LL | #[rustc_symbol_name]
@@ -106,7 +106,7 @@ error: demangling-alt(<c::OptionUsize<{core::option::Option::<usize>::Some(0)}>>
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs4_CsCRATE_HASH_1cINtB3_4Foo_KVNtB3_3FooS1sRe616263_2chc78_5sliceRAh1_h2_h3_EEE)
+error: symbol-name(_RMs4_CsCRATE_HASH_1cINtB<REF>_4Foo_KVNtB<REF>_3FooS1sRe616263_2chc78_5sliceRAh1_h2_h3_EEE)
   --> $DIR/const-generics-structural-demangling.rs:72:1
    |
 LL | #[rustc_symbol_name]
@@ -124,7 +124,7 @@ error: demangling-alt(<c::Foo_<{c::Foo { s: "abc", ch: 'x', slice: &[1, 2, 3] }}
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs9_CsCRATE_HASH_1cINtB3_4Bar_KVNtB3_3BarS1xh7b_s_1xt1000_EE)
+error: symbol-name(_RMs9_CsCRATE_HASH_1cINtB<REF>_4Bar_KVNtB<REF>_3BarS1xh7b_s_1xt1000_EE)
   --> $DIR/const-generics-structural-demangling.rs:88:5
    |
 LL |     #[rustc_symbol_name]

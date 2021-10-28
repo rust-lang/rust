@@ -3513,6 +3513,9 @@ impl<'test> TestCx<'test> {
         const V0_CRATE_HASH_PREFIX_REGEX: &str = r"_R.*?Cs[0-9a-zA-Z]+_";
         const V0_CRATE_HASH_REGEX: &str = r"Cs[0-9a-zA-Z]+_";
         const V0_CRATE_HASH_PLACEHOLDER: &str = r"CsCRATE_HASH_";
+        const V0_BACK_REF_PREFIX_REGEX: &str = r"\(_R.*?B[0-9a-zA-Z]_";
+        const V0_BACK_REF_REGEX: &str = r"B[0-9a-zA-Z]_";
+        const V0_BACK_REF_PLACEHOLDER: &str = r"B<REF>_";
         const LEGACY_SYMBOL_HASH_REGEX: &str = r"h[\w]{16}E?\)";
         const LEGACY_SYMBOL_HASH_PLACEHOLDER: &str = r"h<SYMBOL_HASH>)";
         let test_name = self
@@ -3545,6 +3548,16 @@ impl<'test> TestCx<'test> {
             normalized = Regex::new(V0_CRATE_HASH_REGEX)
                 .unwrap()
                 .replace_all(&normalized, V0_CRATE_HASH_PLACEHOLDER)
+                .into_owned();
+        }
+        let back_ref_prefix_re = Regex::new(V0_BACK_REF_PREFIX_REGEX).unwrap();
+        if back_ref_prefix_re.is_match(&normalized) {
+            // Normalize back references (see RFC 2603)
+            let back_ref_regex = format!("{}", V0_BACK_REF_REGEX);
+            let back_ref_placeholder = format!("{}", V0_BACK_REF_PLACEHOLDER);
+            normalized = Regex::new(&back_ref_regex)
+                .unwrap()
+                .replace_all(&normalized, back_ref_placeholder)
                 .into_owned();
         }
         // Normalize legacy mangled symbols
