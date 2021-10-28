@@ -101,6 +101,17 @@ impl ChildBySource for ModuleId {
 impl ChildBySource for ItemScope {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         self.declarations().for_each(|item| add_module_def(db, file_id, res, item));
+        self.macros().for_each(|(_, makro)| {
+            let ast_id = makro.ast_id();
+            if ast_id.either(|it| it.file_id, |it| it.file_id) == file_id {
+                let src = match ast_id {
+                    Either::Left(ast_id) => ast_id.with_value(ast_id.to_node(db.upcast())),
+                    // FIXME: Do we need to add proc-macros into a PROCMACRO dynmap here?
+                    Either::Right(_fn) => return,
+                };
+                res[keys::MACRO].insert(src, makro);
+            }
+        });
         self.unnamed_consts().for_each(|konst| {
             let src = konst.lookup(db).source(db);
             res[keys::CONST].insert(src, konst);

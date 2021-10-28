@@ -1907,7 +1907,7 @@ impl ModCollector<'_, '_> {
         let mac = &self.item_tree[id];
         let ast_id = InFile::new(self.file_id(), mac.ast_id.upcast());
 
-        // Case 1: bulitin macros
+        // Case 1: builtin macros
         let attrs = self.item_tree.attrs(self.def_collector.db, krate, ModItem::from(id).into());
         if attrs.by_key("rustc_builtin_macro").exists() {
             let macro_id = find_builtin_macro(&mac.name, krate, ast_id)

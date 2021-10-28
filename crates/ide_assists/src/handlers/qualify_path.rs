@@ -9,7 +9,7 @@ use ide_db::RootDatabase;
 use syntax::{
     ast,
     ast::{make, HasArgList},
-    AstNode,
+    AstNode, NodeOrToken,
 };
 
 use crate::{
@@ -42,32 +42,39 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         return None;
     }
 
-    let range = ctx.sema.original_range(&syntax_under_caret).range;
+    let range = match &syntax_under_caret {
+        NodeOrToken::Node(node) => ctx.sema.original_range(node).range,
+        NodeOrToken::Token(token) => token.text_range(),
+    };
     let candidate = import_assets.import_candidate();
-    let qualify_candidate = match candidate {
-        ImportCandidate::Path(candidate) if candidate.qualifier.is_some() => {
-            cov_mark::hit!(qualify_path_qualifier_start);
-            let path = ast::Path::cast(syntax_under_caret)?;
-            let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
-            QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
-        }
-        ImportCandidate::Path(_) => {
-            cov_mark::hit!(qualify_path_unqualified_name);
-            let path = ast::Path::cast(syntax_under_caret)?;
-            let generics = path.segment()?.generic_arg_list();
-            QualifyCandidate::UnqualifiedName(generics)
-        }
-        ImportCandidate::TraitAssocItem(_) => {
-            cov_mark::hit!(qualify_path_trait_assoc_item);
-            let path = ast::Path::cast(syntax_under_caret)?;
-            let (qualifier, segment) = (path.qualifier()?, path.segment()?);
-            QualifyCandidate::TraitAssocItem(qualifier, segment)
-        }
-        ImportCandidate::TraitMethod(_) => {
-            cov_mark::hit!(qualify_path_trait_method);
-            let mcall_expr = ast::MethodCallExpr::cast(syntax_under_caret)?;
-            QualifyCandidate::TraitMethod(ctx.sema.db, mcall_expr)
-        }
+    let qualify_candidate = match syntax_under_caret {
+        NodeOrToken::Node(syntax_under_caret) => match candidate {
+            ImportCandidate::Path(candidate) if candidate.qualifier.is_some() => {
+                cov_mark::hit!(qualify_path_qualifier_start);
+                let path = ast::Path::cast(syntax_under_caret)?;
+                let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
+                QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
+            }
+            ImportCandidate::Path(_) => {
+                cov_mark::hit!(qualify_path_unqualified_name);
+                let path = ast::Path::cast(syntax_under_caret)?;
+                let generics = path.segment()?.generic_arg_list();
+                QualifyCandidate::UnqualifiedName(generics)
+            }
+            ImportCandidate::TraitAssocItem(_) => {
+                cov_mark::hit!(qualify_path_trait_assoc_item);
+                let path = ast::Path::cast(syntax_under_caret)?;
+                let (qualifier, segment) = (path.qualifier()?, path.segment()?);
+                QualifyCandidate::TraitAssocItem(qualifier, segment)
+            }
+            ImportCandidate::TraitMethod(_) => {
+                cov_mark::hit!(qualify_path_trait_method);
+                let mcall_expr = ast::MethodCallExpr::cast(syntax_under_caret)?;
+                QualifyCandidate::TraitMethod(ctx.sema.db, mcall_expr)
+            }
+        },
+        // derive attribute path
+        NodeOrToken::Token(_) => QualifyCandidate::UnqualifiedName(None),
     };
 
     // we aren't interested in different namespaces
@@ -1236,6 +1243,30 @@ fn main() {
     let test_struct = test_mod::TestStruct {};
     test_mod::TestTrait::test_method::<()>(&test_struct)
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn works_in_derives() {
+        check_assist(
+            qualify_path,
+            r#"
+//- minicore:derive
+mod foo {
+    #[rustc_builtin_macro]
+    pub macro Copy {}
+}
+#[derive(Copy$0)]
+struct Foo;
+"#,
+            r#"
+mod foo {
+    #[rustc_builtin_macro]
+    pub macro Copy {}
+}
+#[derive(foo::Copy)]
+struct Foo;
 "#,
         );
     }

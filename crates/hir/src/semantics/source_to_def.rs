@@ -299,8 +299,14 @@ impl SourceToDefCtx<'_, '_> {
         dyn_map[keys::CONST_PARAM].get(&src).copied()
     }
 
-    // FIXME: use DynMap as well?
     pub(super) fn macro_to_def(&mut self, src: InFile<ast::Macro>) -> Option<MacroDefId> {
+        let makro = self.dyn_map(src.as_ref()).and_then(|it| it[keys::MACRO].get(&src).copied());
+        if let res @ Some(_) = makro {
+            return res;
+        }
+
+        // Not all macros are recorded in the dyn map, only the ones behaving like items, so fall back
+        // for the non-item like definitions.
         let file_ast_id = self.db.ast_id_map(src.file_id).ast_id(&src.value);
         let ast_id = AstId::new(src.file_id, file_ast_id.upcast());
         let kind = MacroDefKind::Declarative(ast_id);
