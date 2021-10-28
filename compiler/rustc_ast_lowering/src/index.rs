@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::definitions;
@@ -9,14 +10,13 @@ use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, DUMMY_SP};
 
-use std::iter::repeat;
 use tracing::debug;
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
     /// Source map
     source_map: &'a SourceMap,
-    bodies: &'a IndexVec<ItemLocalId, Option<&'hir Body<'hir>>>,
+    bodies: &'a SortedMap<ItemLocalId, &'hir Body<'hir>>,
 
     /// Outputs
     nodes: IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>,
@@ -30,21 +30,11 @@ pub(super) struct NodeCollector<'a, 'hir> {
     definitions: &'a definitions::Definitions,
 }
 
-fn insert_vec_map<K: Idx, V: Clone>(map: &mut IndexVec<K, Option<V>>, k: K, v: V) {
-    let i = k.index();
-    let len = map.len();
-    if i >= len {
-        map.extend(repeat(None).take(i - len + 1));
-    }
-    debug_assert!(map[k].is_none());
-    map[k] = Some(v);
-}
-
 pub(super) fn index_hir<'hir>(
     sess: &Session,
     definitions: &definitions::Definitions,
     item: hir::OwnerNode<'hir>,
-    bodies: &IndexVec<ItemLocalId, Option<&'hir Body<'hir>>>,
+    bodies: &SortedMap<ItemLocalId, &'hir Body<'hir>>,
 ) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, FxHashMap<LocalDefId, ItemLocalId>) {
     let mut nodes = IndexVec::new();
     // This node's parent should never be accessed: the owner's parent is computed by the
@@ -94,11 +84,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             }
         }
 
-        insert_vec_map(
-            &mut self.nodes,
-            hir_id.local_id,
-            ParentedNode { parent: self.parent_node, node: node },
-        );
+        self.nodes.insert(hir_id.local_id, ParentedNode { parent: self.parent_node, node: node });
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_node_id: HirId, f: F) {
@@ -144,7 +130,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_nested_body(&mut self, id: BodyId) {
         debug_assert_eq!(id.hir_id.owner, self.owner);
-        let body = self.bodies[id.hir_id.local_id].unwrap();
+        let body = self.bodies[&id.hir_id.local_id];
         self.visit_body(body);
     }
 

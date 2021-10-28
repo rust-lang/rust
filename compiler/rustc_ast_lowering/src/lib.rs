@@ -45,6 +45,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
@@ -67,7 +68,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
 use tracing::{debug, trace};
 
 macro_rules! arena_vec {
@@ -104,9 +104,9 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// The items being lowered are collected here.
     owners: IndexVec<LocalDefId, Option<hir::OwnerInfo<'hir>>>,
     /// Bodies inside the owner being lowered.
-    bodies: IndexVec<hir::ItemLocalId, Option<&'hir hir::Body<'hir>>>,
+    bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
     /// Attributes inside the owner being lowered.
-    attrs: BTreeMap<hir::ItemLocalId, &'hir [Attribute]>,
+    attrs: SortedMap<hir::ItemLocalId, &'hir [Attribute]>,
 
     generator_kind: Option<hir::GeneratorKind>,
 
@@ -301,8 +301,8 @@ pub fn lower_crate<'a, 'hir>(
         nt_to_tokenstream,
         arena,
         owners,
-        bodies: IndexVec::new(),
-        attrs: BTreeMap::default(),
+        bodies: Vec::new(),
+        attrs: SortedMap::new(),
         catch_scope: None,
         loop_scope: None,
         is_in_loop_condition: false,
@@ -479,7 +479,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> hir::OwnerInfo<'hir> {
         let attrs = std::mem::take(&mut self.attrs);
-        let bodies = std::mem::take(&mut self.bodies);
+        let mut bodies = std::mem::take(&mut self.bodies);
         let local_node_ids = std::mem::take(&mut self.local_node_ids);
         let trait_map = local_node_ids
             .into_iter()
@@ -491,13 +491,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .collect();
 
         #[cfg(debug_assertions)]
-        for (&id, attrs) in attrs.iter() {
+        for (id, attrs) in attrs.iter() {
             // Verify that we do not store empty slices in the map.
             if attrs.is_empty() {
                 panic!("Stored empty attributes for {:?}", id);
             }
         }
 
+        bodies.sort_by_key(|(k, _)| *k);
+        let bodies = SortedMap::from_presorted_elements(bodies);
         let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
         let (nodes, parenting) =
             index::index_hir(self.sess, self.resolver.definitions(), node, &bodies);
@@ -518,7 +520,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn hash_owner(
         &mut self,
         node: hir::OwnerNode<'hir>,
-        bodies: &IndexVec<hir::ItemLocalId, Option<&'hir hir::Body<'hir>>>,
+        bodies: &SortedMap<hir::ItemLocalId, &'hir hir::Body<'hir>>,
     ) -> (Fingerprint, Fingerprint) {
         let mut hcx = self.resolver.create_stable_hashing_context();
         let mut stable_hasher = StableHasher::new();
