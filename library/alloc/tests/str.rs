@@ -1383,7 +1383,7 @@ fn test_split_char_iterator_rinclusive_rev() {
     let uppercase_separated = "SheepSharkTurtleCat";
     let mut term_char = true;
     let split: Vec<&str> = uppercase_separated
-        .split_inclusive(|c: char| {
+        .split_rinclusive(|c: char| {
             let split = term_char && c.is_uppercase();
             term_char = c.is_uppercase();
             split
