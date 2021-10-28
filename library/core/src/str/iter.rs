@@ -1487,7 +1487,7 @@ impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitRInclusive<'a
 #[unstable(feature = "split_rinclusive", issue = "none")]
 impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitRInclusive<'a, P> {
     fn clone(&self) -> Self {
-        SplitInclusive(self.0.clone())
+        SplitRInclusive(self.0.clone())
     }
 }
 
