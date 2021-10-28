@@ -1325,6 +1325,26 @@ fn test_split_char_iterator_inclusive() {
     assert_eq!(split, ["SheeP", "SharK", "TurtlE", "CaT"]);
 }
 
+
+#[test]
+fn test_split_char_iterator_rinclusive() {
+    let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+    let split: Vec<&str> = data.split_rinclusive('\n').collect();
+    assert_eq!(split, ["", "\nMäry häd ä little lämb", "\nLittle lämb", "\n"]);
+
+    let uppercase_separated = "SheepSharkTurtleCat";
+    let mut first_char = true;
+    let split: Vec<&str> = uppercase_separated
+        .split_rinclusive(|c: char| {
+            let split = !first_char && c.is_uppercase();
+            first_char = split;
+            split
+        })
+        .collect();
+    assert_eq!(split, ["Sheep", "Shark", "Turtle", "Cat"]);
+}
+
 #[test]
 fn test_split_char_iterator_inclusive_rev() {
     let data = "\nMäry häd ä little lämb\nLittle lämb\n";
@@ -1347,6 +1367,30 @@ fn test_split_char_iterator_inclusive_rev() {
         .rev()
         .collect();
     assert_eq!(split, ["CaT", "TurtlE", "SharK", "SheeP"]);
+}
+
+#[test]
+fn test_split_char_iterator_rinclusive_rev() {
+    let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+    let split: Vec<&str> = data.split_rinclusive('\n').rev().collect();
+    assert_eq!(split, ["\n", "\nLittle lämb", "\nMäry häd ä little lämb", ""]);
+
+    // Note that the predicate is stateful and thus dependent
+    // on the iteration order.
+    // (A different predicate is needed for reverse iterator vs normal iterator.)
+    // Not sure if anything can be done though.
+    let uppercase_separated = "SheepSharkTurtleCat";
+    let mut term_char = true;
+    let split: Vec<&str> = uppercase_separated
+        .split_inclusive(|c: char| {
+            let split = term_char && c.is_uppercase();
+            term_char = c.is_uppercase();
+            split
+        })
+        .rev()
+        .collect();
+    assert_eq!(split, ["Cat", "Turtle", "Shark", "Sheep", ""]);
 }
 
 #[test]
