@@ -62,8 +62,7 @@ impl fmt::Debug for c_void {
 #[cfg(any(
     all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
-    target_arch = "wasm32",
-    target_arch = "wasm64",
+    target_family = "wasm",
     target_arch = "asmjs",
     windows
 ))]
@@ -86,8 +85,7 @@ pub struct VaListImpl<'f> {
 #[cfg(any(
     all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
-    target_arch = "wasm32",
-    target_arch = "wasm64",
+    target_family = "wasm",
     target_arch = "asmjs",
     windows
 ))]
@@ -187,8 +185,7 @@ pub struct VaList<'a, 'f: 'a> {
             not(target_arch = "x86_64")
         ),
         all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
-        target_arch = "wasm32",
-        target_arch = "wasm64",
+        target_family = "wasm",
         target_arch = "asmjs",
         windows
     ))]
@@ -197,8 +194,7 @@ pub struct VaList<'a, 'f: 'a> {
     #[cfg(all(
         any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
         any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
-        not(target_arch = "wasm32"),
-        not(target_arch = "wasm64"),
+        not(target_family = "wasm"),
         not(target_arch = "asmjs"),
         not(windows)
     ))]
@@ -210,8 +206,7 @@ pub struct VaList<'a, 'f: 'a> {
 #[cfg(any(
     all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
-    target_arch = "wasm32",
-    target_arch = "wasm64",
+    target_family = "wasm",
     target_arch = "asmjs",
     windows
 ))]
@@ -232,8 +227,7 @@ impl<'f> VaListImpl<'f> {
 #[cfg(all(
     any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
     any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
-    not(target_arch = "wasm32"),
-    not(target_arch = "wasm64"),
+    not(target_family = "wasm"),
     not(target_arch = "asmjs"),
     not(windows)
 ))]

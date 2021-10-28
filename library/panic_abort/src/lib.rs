@@ -117,8 +117,7 @@ pub unsafe extern "C-unwind" fn __rust_start_panic(_payload: *mut &mut dyn BoxMe
 pub mod personalities {
     #[rustc_std_internal_symbol]
     #[cfg(not(any(
-        all(target_arch = "wasm32", not(target_os = "emscripten")),
-        all(target_arch = "wasm64", not(target_os = "emscripten")),
+        all(target_family = "wasm", not(target_os = "emscripten")),
         all(target_os = "windows", target_env = "gnu", target_arch = "x86_64",),
     )))]
     pub extern "C" fn rust_eh_personality() {}
