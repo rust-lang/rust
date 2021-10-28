@@ -8,6 +8,7 @@ test = false
 doctest = false
 
 [dependencies]
+itertools = "0.9"
 rustc_arena = { path = "../rustc_arena" }
 tracing = "0.1"
 rustc_macros = { path = "../rustc_macros" }
