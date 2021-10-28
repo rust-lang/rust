@@ -53,6 +53,8 @@
     issue = "none"
 )]
 #![allow(missing_docs)]
+// intrinsics are never stable but may need to be const-stable for other items
+#![cfg_attr(not(bootstrap), allow(rustc::incompatible_stability))]
 
 use crate::marker::DiscriminantKind;
 use crate::mem;

@@ -628,7 +628,7 @@ macro_rules! saturating_int_impl {
             /// ```
             #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
-            #[rustc_const_stable(feature = "const_reverse_bits", since = "1.37.0")]
+            #[rustc_const_unstable(feature = "saturating_int_impl", issue = "87920")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn reverse_bits(self) -> Self {
