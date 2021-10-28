@@ -1,0 +1,15 @@
+error: unsafe block missing a safety comment
+  --> $DIR/auxiliary/ice-7868-aux.rs:2:5
+   |
+LL |     unsafe { 0 };
+   |     ^^^^^^^^^^^^
+   |
+   = note: `-D clippy::undocumented-unsafe-blocks` implied by `-D warnings`
+help: consider adding a safety comment
+   |
+LL ~     // Safety: ...
+LL ~     unsafe { 0 };
+   |
+
+error: aborting due to previous error
+
