@@ -634,6 +634,26 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
             None => self.get_end(),
         }
     }
+    
+    #[inline]
+    fn next_rinclusive(&mut self) -> Option<&'a str> {
+        if self.finished {
+            return None;
+        }
+
+        let haystack = self.matcher.haystack();
+        match self.matcher.next_match() {
+            // SAFETY: `Searcher` guarantees that `a` and `b` lie on unicode boundaries,
+            // and self.start is either the start of the original string,
+            // or `b` was assigned to it, so it also lies on unicode boundary.
+            Some((a, _)) => unsafe {
+                let elt = haystack.get_unchecked(self.start..a);
+                self.start = a;
+                Some(elt)
+            },
+            None => self.get_end(),
+        }
+    }
 
     #[inline]
     fn next_back(&mut self) -> Option<&'a str>
@@ -701,6 +721,49 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
             Some((_, b)) => unsafe {
                 let elt = haystack.get_unchecked(b..self.end);
                 self.end = b;
+                Some(elt)
+            },
+            // SAFETY: self.start is either the start of the original string,
+            // or start of a substring that represents the part of the string that hasn't
+            // iterated yet. Either way, it is guaranteed to lie on unicode boundary.
+            // self.end is either the end of the original string,
+            // or `b` was assigned to it, so it also lies on unicode boundary.
+            None => unsafe {
+                self.finished = true;
+                Some(haystack.get_unchecked(self.start..self.end))
+            },
+        }
+    }
+    
+    #[inline]
+    fn next_back_rinclusive(&mut self) -> Option<&'a str>
+    where
+        P::Searcher: ReverseSearcher<'a>,
+    {
+        if self.finished {
+            return None;
+        }
+
+        if !self.allow_trailing_empty {
+            self.allow_trailing_empty = true;
+            match self.next_back_rinclusive() {
+                Some(elt) if !elt.is_empty() => return Some(elt),
+                _ => {
+                    if self.finished {
+                        return None;
+                    }
+                }
+            }
+        }
+
+        let haystack = self.matcher.haystack();
+        match self.matcher.next_match_back() {
+            // SAFETY: `Searcher` guarantees that `a` lies on unicode boundary,
+            // and self.end is either the end of the original string,
+            // or `a` was assigned to it, so it also lies on unicode boundary.
+            Some((a, _)) => unsafe {
+                let elt = haystack.get_unchecked(a..self.end);
+                self.end = a;
                 Some(elt)
             },
             // SAFETY: self.start is either the start of the original string,
@@ -1371,6 +1434,71 @@ impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
     /// ```
     #[inline]
     #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+    pub fn as_str(&self) -> &'a str {
+        self.0.as_str()
+    }
+}
+
+/// An iterator over the substrings of a string,
+/// new substrings beginning when matching to a predicate function.
+/// Unlike `Split`, it contains the matched part as the start
+/// of each subslice - besides the first, which is the contents 
+/// up until the first match.
+///
+/// This struct is created by the [`split_rinclusive`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`split_rinclusive`]: str::split_rinclusive
+#[stable(feature = "split_rinclusive", since = "1.51.0")]
+#[derive(Clone)]
+pub struct SplitRInclusive<'a, P: Pattern<'a>>(pub(super) SplitInternal<'a, P>);
+
+#[stable(feature = "split_rinclusive", since = "1.51.0")]
+impl<'a, P: Pattern<'a>> Iterator for SplitRInclusive<'a, P> {
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        self.0.next_rinclusive()
+    }
+}
+
+#[stable(feature = "split_rinclusive", since = "1.51.0")]
+impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitRInclusive<'a, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SplitRInclusive").field("0", &self.0).finish()
+    }
+}
+
+#[stable(feature = "split_rinclusive", since = "1.51.0")]
+impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
+    for SplitRInclusive<'a, P>
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a str> {
+        self.0.next_back_rinclusive()
+    }
+}
+
+#[stable(feature = "split_rinclusive", since = "1.51.0")]
+impl<'a, P: Pattern<'a>> FusedIterator for SplitRInclusive<'a, P> {}
+
+impl<'a, P: Pattern<'a>> SplitRInclusive<'a, P> {
+    /// Returns remainder of the splitted string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_split_rinclusive_as_str)]
+    /// let mut split = "Mary had a little lamb".split_rinclusive(' ');
+    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// split.next();
+    /// assert_eq!(split.as_str(), " had a little lamb");
+    /// split.by_ref().for_each(drop);
+    /// assert_eq!(split.as_str(), "");
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_split_rinclusive_as_str", issue = "77998")]
     pub fn as_str(&self) -> &'a str {
         self.0.as_str()
     }
