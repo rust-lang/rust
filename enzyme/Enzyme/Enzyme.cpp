@@ -978,6 +978,12 @@ public:
                          ? aug->fn->getReturnType()
                          : cast<StructType>(aug->fn->getReturnType())
                                ->getElementType(tapeIdx);
+        } else {
+          if (sizeOnly) {
+            CI->replaceAllUsesWith(ConstantInt::get(CI->getType(), 0, false));
+            CI->eraseFromParent();
+            return true;
+          }
         }
         if (sizeOnly) {
           auto size = DL.getTypeSizeInBits(tapeType) / 8;
