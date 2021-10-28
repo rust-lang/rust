@@ -138,13 +138,12 @@ impl Cache {
     /// in `krate` due to the data being moved into the `Cache`.
     crate fn populate(
         &mut self,
-        mut krate: clean::Crate,
         tcx: TyCtxt<'_>,
+        mut krate: clean::Crate,
         render_options: &RenderOptions,
     ) -> clean::Crate {
         // Crawl the crate to build various caches used for the output
         debug!(?self.crate_version);
-        self.traits = krate.external_traits.take();
         let RenderOptions { extern_html_root_takes_precedence, output: dst, .. } = render_options;
 
         // Cache where all our extern crates are located

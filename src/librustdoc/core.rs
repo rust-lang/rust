@@ -494,7 +494,9 @@ crate fn run_global_ctxt(
 
     let render_options = ctxt.render_options;
     let mut cache = ctxt.cache;
-    krate = tcx.sess.time("create_format_cache", || cache.populate(krate, tcx, &render_options));
+    // FIXME: remove this `take` once the Rc is gone
+    cache.traits = ctxt.external_traits.take();
+    krate = tcx.sess.time("create_format_cache", || cache.populate(tcx, krate, &render_options));
 
     // The main crate doc comments are always collapsed.
     krate.collapsed = true;
