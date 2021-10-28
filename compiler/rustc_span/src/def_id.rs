@@ -126,14 +126,17 @@ impl Borrow<Fingerprint> for DefPathHash {
     }
 }
 
-/// A [`StableCrateId`] is a 64 bit hash of the crate name combined with all
-/// `-Cmetadata` arguments. It is to [`CrateNum`] what [`DefPathHash`] is to
+/// A [`StableCrateId`] is a 64-bit hash of a crate name, together with all
+/// `-Cmetadata` arguments, and some other data. It is to [`CrateNum`] what [`DefPathHash`] is to
 /// [`DefId`]. It is stable across compilation sessions.
 ///
-/// Since the ID is a hash value there is a (very small) chance that two crates
+/// Since the ID is a hash value, there is a small chance that two crates
 /// end up with the same [`StableCrateId`]. The compiler will check for such
 /// collisions when loading crates and abort compilation in order to avoid
 /// further trouble.
+///
+/// See the discussion in [`DefId`] for more information
+/// on the possibility of hash collisions in rustc,
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub struct StableCrateId(pub(crate) u64);
@@ -174,8 +177,14 @@ impl StableCrateId {
         // Also incorporate the rustc version. Otherwise, with -Zsymbol-mangling-version=v0
         // and no -Cmetadata, symbols from the same crate compiled with different versions of
         // rustc are named the same.
-        let rustc_version = option_env!("CFG_VERSION").unwrap_or("unknown version").as_bytes();
-        hasher.write(rustc_version);
+        //
+        // RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER is used to inject rustc version information
+        // during testing.
+        if let Some(val) = std::env::var_os("RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER") {
+            hasher.write(val.to_string_lossy().into_owned().as_bytes())
+        } else {
+            hasher.write(option_env!("CFG_VERSION").unwrap_or("unknown version").as_bytes());
+        }
 
         StableCrateId(hasher.finish())
     }

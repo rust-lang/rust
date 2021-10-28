@@ -1,4 +1,4 @@
-error: symbol-name(_RNvMNtCsCRATE_HASH_11issue_609253fooINtB2_3FooNtNtB4_4llvm3FooE3foo)
+error: symbol-name(_RNvMNtCsCRATE_HASH_11issue_609253fooINtB<REF>_3FooNtNtB<REF>_4llvm3FooE3foo)
   --> $DIR/issue-60925.rs:21:9
    |
 LL |         #[rustc_symbol_name]

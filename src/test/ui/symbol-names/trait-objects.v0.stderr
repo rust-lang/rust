@@ -1,4 +1,4 @@
-error: symbol-name(_RNvXCsCRATE_HASH_13trait_objectsRDG_INtNtNtCsCRATE_HASH_4core3ops8function5FnMutTRL0_hEEp6OutputuEL_NtB2_3Bar6method)
+error: symbol-name(_RNvXCsCRATE_HASH_13trait_objectsRDG_INtNtNtCsCRATE_HASH_4core3ops8function5FnMutTRL0_hEEp6OutputuEL_NtB<REF>_3Bar6method)
   --> $DIR/trait-objects.rs:15:5
    |
 LL |     #[rustc_symbol_name]
@@ -16,7 +16,7 @@ error: demangling-alt(<&dyn for<'a> core::ops::function::FnMut<(&'a u8,), Output
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RNvXs_CsCRATE_HASH_13trait_objectsRDG_INtNtNtCsCRATE_HASH_4core3ops8function5FnMutTRL0_hEEp6OutputuNtNtBI_6marker4SendEL_NtB4_3Foo6method)
+error: symbol-name(_RNvXs_CsCRATE_HASH_13trait_objectsRDG_INtNtNtCsCRATE_HASH_4core3ops8function5FnMutTRL0_hEEp6OutputuNtNtB<REF>_6marker4SendEL_NtB<REF>_3Foo6method)
   --> $DIR/trait-objects.rs:27:5
    |
 LL |     #[rustc_symbol_name]
@@ -34,7 +34,7 @@ error: demangling-alt(<&dyn for<'a> core::ops::function::FnMut<(&'a u8,), Output
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RNvXs0_CsCRATE_HASH_13trait_objectsRDG_INtNtNtCsCRATE_HASH_4core3ops8function5FnMutTRL0_hEEp6OutputuNtNtBJ_6marker4SendEL_NtB5_3Baz6method)
+error: symbol-name(_RNvXs0_CsCRATE_HASH_13trait_objectsRDG_INtNtNtCsCRATE_HASH_4core3ops8function5FnMutTRL0_hEEp6OutputuNtNtB<REF>_6marker4SendEL_NtB<REF>_3Baz6method)
   --> $DIR/trait-objects.rs:39:5
    |
 LL |     #[rustc_symbol_name]
