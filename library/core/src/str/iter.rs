@@ -1464,7 +1464,6 @@ impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
 ///
 /// [`split_rinclusive`]: str::split_rinclusive
 #[unstable(feature = "split_rinclusive", issue = "none")]
-#[derive(Clone)]
 pub struct SplitRInclusive<'a, P: Pattern<'a>>(pub(super) SplitInternal<'a, P>);
 
 #[unstable(feature = "split_rinclusive", issue = "none")]
@@ -1481,6 +1480,14 @@ impl<'a, P: Pattern<'a>> Iterator for SplitRInclusive<'a, P> {
 impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitRInclusive<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitRInclusive").field("0", &self.0).finish()
+    }
+}
+
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+#[unstable(feature = "split_rinclusive", issue = "none")]
+impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitRInclusive<'a, P> {
+    fn clone(&self) -> Self {
+        SplitInclusive(self.0.clone())
     }
 }
 
