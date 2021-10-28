@@ -266,12 +266,10 @@ enum E { X(Foo) }
     fn derives() {
         check_all_ranges(
             r#"
+//- minicore:derive
 #[rustc_builtin_macro]
 pub macro Copy {}
         //^^^^
-#[rustc_builtin_macro]
-pub macro derive {}
-        //^^^^^^
 #[derive(Copy)]
 //^^^^^^ ^^^^
 struct Hello(i32);

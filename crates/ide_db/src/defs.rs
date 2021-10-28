@@ -12,10 +12,10 @@ use hir::{
 };
 use syntax::{
     ast::{self, AstNode},
-    match_ast, SyntaxKind, SyntaxNode, SyntaxToken,
+    match_ast, AstToken, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
-use crate::{helpers::try_resolve_derive_input_at, RootDatabase};
+use crate::{helpers::try_resolve_derive_input, RootDatabase};
 
 // FIXME: a more precise name would probably be `Symbol`?
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -38,19 +38,20 @@ impl Definition {
             Some(parent) => parent,
             None => return Default::default(),
         };
-        let attr = parent
-            .ancestors()
-            .find_map(ast::TokenTree::cast)
-            .and_then(|tt| tt.parent_meta())
-            .and_then(|meta| meta.parent_attr());
-        if let Some(attr) = attr {
-            try_resolve_derive_input_at(&sema, &attr, &token)
-                .map(Definition::Macro)
-                .into_iter()
-                .collect()
-        } else {
-            Self::from_node(sema, &parent)
+        if let Some(ident) = ast::Ident::cast(token.clone()) {
+            let attr = parent
+                .ancestors()
+                .find_map(ast::TokenTree::cast)
+                .and_then(|tt| tt.parent_meta())
+                .and_then(|meta| meta.parent_attr());
+            if let Some(attr) = attr {
+                return try_resolve_derive_input(&sema, &attr, &ident)
+                    .map(Into::into)
+                    .into_iter()
+                    .collect();
+            }
         }
+        Self::from_node(sema, &parent)
     }
 
     pub fn from_node(sema: &Semantics<RootDatabase>, node: &SyntaxNode) -> ArrayVec<Definition, 2> {

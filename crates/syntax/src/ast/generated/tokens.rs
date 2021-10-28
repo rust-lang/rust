@@ -131,3 +131,24 @@ impl AstToken for FloatNumber {
     }
     fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Ident {
+    pub(crate) syntax: SyntaxToken,
+}
+impl std::fmt::Display for Ident {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.syntax, f)
+    }
+}
+impl AstToken for Ident {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IDENT }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
+}

@@ -3,7 +3,7 @@ use ide_db::helpers::{
     insert_use::{insert_use, ImportScope},
     mod_path_to_ast,
 };
-use syntax::{ast, AstNode, SyntaxNode};
+use syntax::{ast, AstNode, AstToken, SyntaxNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 
@@ -128,9 +128,10 @@ pub(super) fn find_importable_node(ctx: &AssistContext) -> Option<(ImportAssets,
         .find_node_at_offset_with_descend::<ast::IdentPat>()
         .filter(ast::IdentPat::is_simple_ident)
     {
-        ImportAssets::for_ident_pat(&pat, &ctx.sema).zip(Some(pat.syntax().clone()))
+        ImportAssets::for_ident_pat(&ctx.sema, &pat).zip(Some(pat.syntax().clone()))
     } else {
-        None
+        let ident = ctx.find_token_at_offset()?;
+        ImportAssets::for_derive_ident(&ctx.sema, &ident).zip(ident.syntax().parent())
     }
 }
 

@@ -673,7 +673,7 @@ pub(crate) fn location(
     Ok(loc)
 }
 
-/// Perefer using `location_link`, if the client has the cap.
+/// Prefer using `location_link`, if the client has the cap.
 pub(crate) fn location_from_nav(
     snap: &GlobalStateSnapshot,
     nav: NavigationTarget,

@@ -3651,6 +3651,7 @@ use crate as foo$0;
 fn hover_attribute_in_macro() {
     check(
         r#"
+//- minicore:derive
 macro_rules! identity {
     ($struct:item) => {
         $struct
@@ -3681,6 +3682,7 @@ identity!{
 fn hover_derive_input() {
     check(
         r#"
+//- minicore:derive
 #[rustc_builtin_macro]
 pub macro Copy {}
 #[derive(Copy$0)]
@@ -3700,6 +3702,7 @@ struct Foo;
     );
     check(
         r#"
+//- minicore:derive
 mod foo {
     #[rustc_builtin_macro]
     pub macro Copy {}
