@@ -1233,6 +1233,7 @@ impl str {
             end: self.len(),
             matcher: pat.into_searcher(self),
             allow_trailing_empty: true,
+            allow_leading_empty: true,
             finished: false,
         })
     }
@@ -1273,6 +1274,7 @@ impl str {
             end: self.len(),
             matcher: pat.into_searcher(self),
             allow_trailing_empty: false,
+            allow_leading_empty: true,
             finished: false,
         })
     }
@@ -1298,12 +1300,12 @@ impl str {
     /// ```
     ///
     /// If the first element of the string is matched,
-    /// the first substring will be an empty string.
+    /// the leading empty string is omitted.
     ///
     /// ```
     /// let v: Vec<&str> = "MaryHadALittleLamb"
     ///     .split_rinclusive(char::is_uppercase).collect();
-    /// assert_eq!(v, ["", "Mary", "Had", "A", "Little", "Lamb]);
+    /// assert_eq!(v, ["Mary", "Had", "A", "Little", "Lamb]);
     /// ```
     ///
     /// If the last element of the string is matched,
@@ -1322,6 +1324,7 @@ impl str {
             end: self.len(),
             matcher: pat.into_searcher(self),
             allow_trailing_empty: false,
+            allow_leading_empty: false,
             finished: false,
         })
     }

@@ -564,6 +564,7 @@ pub(super) struct SplitInternal<'a, P: Pattern<'a>> {
     pub(super) end: usize,
     pub(super) matcher: P::Searcher,
     pub(super) allow_trailing_empty: bool,
+    pub(super) allow_leading_empty: bool,
     pub(super) finished: bool,
 }
 
@@ -577,6 +578,7 @@ where
             .field("end", &self.end)
             .field("matcher", &self.matcher)
             .field("allow_trailing_empty", &self.allow_trailing_empty)
+            .field("allow_leading_empty", &self.allow_leading_empty)
             .field("finished", &self.finished)
             .finish()
     }
@@ -601,6 +603,18 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
     fn next(&mut self) -> Option<&'a str> {
         if self.finished {
             return None;
+        }
+
+        if !self.allow_leading_empty {
+            self.allow_leading_empty = true;
+            match self.next() {
+                Some(elt) if !elt.is_empty() => return Some(elt),
+                _ => {
+                    if self.finished {
+                        return None;
+                    }
+                }
+            }
         }
 
         let haystack = self.matcher.haystack();
@@ -641,11 +655,23 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
             return None;
         }
 
+        if !self.allow_leading_empty {
+            self.allow_leading_empty = true;
+            match self.next_rinclusive() {
+                Some(elt) if !elt.is_empty() => return Some(elt),
+                _ => {
+                    if self.finished {
+                        return None;
+                    }
+                }
+            }
+        }
+
         let haystack = self.matcher.haystack();
         match self.matcher.next_match() {
-            // SAFETY: `Searcher` guarantees that `a` and `b` lie on unicode boundaries,
+            // SAFETY: `Searcher` guarantees that `a` lies on unicode boundaries,
             // and self.start is either the start of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
+            // or `a` was assigned to it, so it also lies on unicode boundary.
             Some((a, _)) => unsafe {
                 let elt = haystack.get_unchecked(self.start..a);
                 self.start = a;
@@ -744,18 +770,6 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
             return None;
         }
 
-        if !self.allow_trailing_empty {
-            self.allow_trailing_empty = true;
-            match self.next_back_rinclusive() {
-                Some(elt) if !elt.is_empty() => return Some(elt),
-                _ => {
-                    if self.finished {
-                        return None;
-                    }
-                }
-            }
-        }
-
         let haystack = self.matcher.haystack();
         match self.matcher.next_match_back() {
             // SAFETY: `Searcher` guarantees that `a` lies on unicode boundary,
@@ -770,7 +784,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
             // or start of a substring that represents the part of the string that hasn't
             // iterated yet. Either way, it is guaranteed to lie on unicode boundary.
             // self.end is either the end of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
+            // or `a` was assigned to it, so it also lies on unicode boundary.
             None => unsafe {
                 self.finished = true;
                 Some(haystack.get_unchecked(self.start..self.end))

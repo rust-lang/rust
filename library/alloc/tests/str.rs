@@ -1331,7 +1331,7 @@ fn test_split_char_iterator_rinclusive() {
     let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
     let split: Vec<&str> = data.split_rinclusive('\n').collect();
-    assert_eq!(split, ["", "\nMäry häd ä little lämb", "\nLittle lämb", "\n"]);
+    assert_eq!(split, ["\nMäry häd ä little lämb", "\nLittle lämb", "\n"]);
 
     let uppercase_separated = "SheepSharkTurtleCat";
     let mut first_char = true;
@@ -1374,7 +1374,7 @@ fn test_split_char_iterator_rinclusive_rev() {
     let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
     let split: Vec<&str> = data.split_rinclusive('\n').rev().collect();
-    assert_eq!(split, ["\n", "\nLittle lämb", "\nMäry häd ä little lämb", ""]);
+    assert_eq!(split, ["\n", "\nLittle lämb", "\nMäry häd ä little lämb"]);
 
     // Note that the predicate is stateful and thus dependent
     // on the iteration order.
@@ -1390,7 +1390,7 @@ fn test_split_char_iterator_rinclusive_rev() {
         })
         .rev()
         .collect();
-    assert_eq!(split, ["Cat", "Turtle", "Shark", "Sheep", ""]);
+    assert_eq!(split, ["Cat", "Turtle", "Shark", "Sheep"]);
 }
 
 #[test]
