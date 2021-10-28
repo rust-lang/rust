@@ -26,10 +26,12 @@ LL | more code
    |      ^^^^
 ```
 
-- Description (`error`, `warning`, etc.).
+- Level (`error`, `warning`, etc.). It indicates the severity of the message.
+  (See [diagnostic levels](#diagnostic-levels))
 - Code (for example, for "mismatched types", it is `E0308`). It helps
   users get more information about the current error through an extended
-  description of the problem in the error code index.
+  description of the problem in the error code index. Diagnostics created
+  by lints don't have a code in the emitted message.
 - Message. It is the main description of the problem. It should be general and
   able to stand on its own, so that it can make sense even in isolation.
 - Diagnostic window. This contains several things:
@@ -61,7 +63,11 @@ error: the fobrulator needs to be krontrificated
 ```
 
 When code or an identifier must appear in a message or label, it should be
-surrounded with backticks: `` `foo.bar` ``.
+surrounded with backticks:
+
+```txt
+error: the identifier `foo.bar` is invalid
+```
 
 ### Error explanations
 
