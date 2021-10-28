@@ -1,10 +1,8 @@
-use std::cell::RefCell;
 use std::default::Default;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::lazy::SyncOnceCell as OnceCell;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
 
@@ -120,8 +118,6 @@ crate struct Crate {
     crate module: Item,
     crate externs: Vec<ExternalCrate>,
     crate primitives: ThinVec<(DefId, PrimitiveType)>,
-    /// Only here so that they can be filtered through the rustdoc passes.
-    crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
     crate collapsed: bool,
 }
 
