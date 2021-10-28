@@ -1198,8 +1198,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         }
 
-        if let EntryKind::Mod(data) = kind {
-            for exp in data.decode((self, sess)).reexports.decode((self, sess)) {
+        if let EntryKind::Mod(exports) = kind {
+            for exp in exports.decode((self, sess)) {
                 match exp.res {
                     Res::Def(DefKind::Macro(..), _) => {}
                     _ if macros_only => continue,
