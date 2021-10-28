@@ -120,8 +120,6 @@ pub enum SyntaxKind {
     LIFETIME_IDENT,
     COMMENT,
     SHEBANG,
-    L_DOLLAR,
-    R_DOLLAR,
     SOURCE_FILE,
     STRUCT,
     UNION,
