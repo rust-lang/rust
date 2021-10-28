@@ -18,7 +18,9 @@ graphs and desugaring), you may enjoy the
 ## Introduction to MIR
 
 MIR is defined in the [`compiler/rustc_middle/src/mir/`][mir] module, but much of the code
-that manipulates it is found in [`compiler/rustc_mir`][mirmanip].
+that manipulates it is found in [`compiler/rustc_mir_build`][mirmanip_build],
+[`compiler/rustc_mir_transform`][mirmanip_transform], and
+[`compiler/rustc_mir_dataflow`][mirmanip_dataflow].
 
 [RFC 1211]: https://rust-lang.github.io/rfcs/1211-mir.html
 
@@ -258,7 +260,9 @@ See the const-eval WG's [docs on promotion](https://github.com/rust-lang/const-e
 
 
 [mir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html
-[mirmanip]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/index.html
+[mirmanip_build]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/index.html
+[mirmanip_transform]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html
+[mirmanip_dataflow]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/index.html
 [`Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Body.html
 [newtype'd]: ../appendix/glossary.html#newtype
 [basicblocks]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Body.html#structfield.basic_blocks

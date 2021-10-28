@@ -27,11 +27,11 @@ HIR. Doing borrow checking on MIR has several advantages:
 ### Major phases of the borrow checker
 
 The borrow checker source is found in
-[the `rustc_mir::borrow_check` module][b_c]. The main entry point is
+[the `rustc_borrow_ck` crate][b_c]. The main entry point is
 the [`mir_borrowck`] query.
 
-[b_c]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html
-[`mir_borrowck`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/fn.mir_borrowck.html
+[b_c]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/index.html
+[`mir_borrowck`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/fn.mir_borrowck.html
 
 - We first create a **local copy** of the MIR. In the coming steps,
   we will modify this copy in place to modify the types and things to
@@ -56,4 +56,4 @@ the [`mir_borrowck`] query.
   require an error to be reported. Doing this check requires the results of all
   the previous analyses.
 
-[`replace_regions_in_mir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/fn.replace_regions_in_mir.html
+[`replace_regions_in_mir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/nll/fn.replace_regions_in_mir.html

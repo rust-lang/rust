@@ -100,11 +100,11 @@ further queries need to be executed in order to get at something as simple as a
 Future evaluations of the same constants will not actually invoke
 Miri, but just use the cached result.
 
-[`Operand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/enum.Operand.html
-[`Immediate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/enum.Immediate.html
+[`Operand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/enum.Operand.html
+[`Immediate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/enum.Immediate.html
 [`ConstValue`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/enum.ConstValue.html
 [`Scalar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/enum.Scalar.html
-[`op_to_const`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/const_eval/eval_queries/fn.op_to_const.html
+[`op_to_const`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/const_eval/eval_queries/fn.op_to_const.html
 
 ## Datastructures
 
@@ -183,7 +183,7 @@ needed to support circular statics, where we need to have a `Pointer` to a
 `static` for which we cannot yet have an `Allocation` as we do not know the
 bytes of its value.
 
-[`Memory`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/struct.Memory.html
+[`Memory`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/struct.Memory.html
 [`Allocation`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/struct.Allocation.html
 [`Pointer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/struct.Pointer.html
 [`GlobalAlloc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/enum.GlobalAlloc.html
@@ -209,7 +209,7 @@ values.
 
 Although the main entry point to constant evaluation is the `tcx.const_eval_*`
 functions, there are additional functions in
-[rustc_mir/src/const_eval.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/const_eval/index.html)
+[rustc_const_eval/src/const_eval](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/index.html)
 that allow accessing the fields of a `ConstValue` (`ByRef` or otherwise). You should
 never have to access an `Allocation` directly except for translating it to the
 compilation target (at the moment just LLVM).
@@ -220,7 +220,7 @@ function with no arguments, except that constants do not allow local (named)
 variables at the time of writing this guide.
 
 A stack frame is defined by the `Frame` type in
-[rustc_mir/src/interpret/eval_context.rs](https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir/src/interpret/eval_context.rs)
+[rustc_const_eval/src/interpret/eval_context.rs](https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/eval_context.rs)
 and contains all the local
 variables memory (`None` at the start of evaluation). Each frame refers to the
 evaluation of either the root constant or subsequent calls to `const fn`. The
@@ -232,7 +232,7 @@ The frames are just a `Vec<Frame>`, there's no way to actually refer to a
 memory that can be referred to are `Allocation`s.
 
 Miri now calls the `step` method (in
-[rustc_mir/src/interpret/step.rs](https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir/src/interpret/step.rs)
+[rustc_const_eval/src/interpret/step.rs](https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/step.rs)
 ) until it either returns an error or has no further statements to execute. Each
 statement will now initialize or modify the locals or the virtual memory
 referred to by a local. This might require evaluating other constants or

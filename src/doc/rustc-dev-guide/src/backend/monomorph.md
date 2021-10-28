@@ -49,7 +49,7 @@ for them. Collector will also add things like statics to that list.
 
 See [the collector rustdocs][collect] for more info.
 
-[collect]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/monomorphize/collector/index.html
+[collect]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_monomorphize/collector/index.html
 
 The monomorphization collector is run just before MIR lowering and codegen.
 [`rustc_codegen_ssa::base::codegen_crate`][codegen1] calls the
@@ -76,9 +76,9 @@ or more modules in Crate B.
 
 For more details about the partitioner read the module level [documentation].
 
-[mono]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/monomorphize/partitioning/fn.collect_and_partition_mono_items.html
+[mono]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_monomorphize/partitioning/fn.collect_and_partition_mono_items.html
 [codegen1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html
-[documentation]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/monomorphize/partitioning/index.html
+[documentation]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_monomorphize/partitioning/index.html
 
 ## Polymorphization
 
@@ -90,7 +90,7 @@ In addition to MIR optimizations, rustc attempts to determine when fewer
 copies of functions are necessary and avoid making those copies - known
 as "polymorphization". When a function-like item is found during
 monomorphization collection, the
-[`rustc_mir::monomorphize::polymorphize::unused_generic_params`][polymorph]
+[`rustc_mir_monomorphize::polymorphize::unused_generic_params`][polymorph]
 query is invoked, which traverses the MIR of the item to determine on which
 generic parameters the item might not need duplicated.
 
@@ -149,7 +149,7 @@ More details on polymorphization are available in the
 implementation.
 
 [miropt]: ../mir/optimizations.md
-[polymorph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/monomorphize/polymorphize/fn.unused_generic_params.html
+[polymorph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_monomorphize/polymorphize/fn.unused_generic_params.html
 [inst]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/instance/struct.Instance.html
 [inst_polymorph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/instance/struct.Instance.html#method.polymorphize
 [thesis]: https://davidtw.co/media/masters_dissertation.pdf

@@ -268,14 +268,14 @@ Percentage : 43%
 
 Tree
 | matched `{do_mir_borrowck}` (43% total, 0% self)
-: | rustc_mir::borrow_check::nll::compute_regions (20% total, 0% self)
-: : | rustc_mir::borrow_check::nll::type_check::type_check_internal (13% total, 0% self)
+: | rustc_borrowck::nll::compute_regions (20% total, 0% self)
+: : | rustc_borrowck::nll::type_check::type_check_internal (13% total, 0% self)
 : : : | core::ops::function::FnOnce::call_once (5% total, 0% self)
-: : : : | rustc_mir::borrow_check::nll::type_check::liveness::generate (5% total, 3% self)
-: : : | <rustc_mir::borrow_check::nll::type_check::TypeVerifier<'a, 'b, 'tcx> as rustc::mir::visit::Visitor<'tcx>>::visit_mir (3% total, 0% self)
+: : : : | rustc_borrowck::nll::type_check::liveness::generate (5% total, 3% self)
+: : : | <rustc_borrowck::nll::type_check::TypeVerifier<'a, 'b, 'tcx> as rustc::mir::visit::Visitor<'tcx>>::visit_mir (3% total, 0% self)
 : | rustc::mir::visit::Visitor::visit_mir (8% total, 6% self)
-: | <rustc_mir::borrow_check::MirBorrowckCtxt<'cx, 'tcx> as rustc_mir::dataflow::DataflowResultsConsumer<'cx, 'tcx>>::visit_statement_entry (5% total, 0% self)
-: | rustc_mir::dataflow::do_dataflow (3% total, 0% self)
+: | <rustc_borrowck::MirBorrowckCtxt<'cx, 'tcx> as rustc_mir_dataflow::DataflowResultsConsumer<'cx, 'tcx>>::visit_statement_entry (5% total, 0% self)
+: | rustc_mir_dataflow::do_dataflow (3% total, 0% self)
 ```
 
 What happens with `--tree-callees` is that
@@ -319,10 +319,10 @@ Percentage : 100%
 
 Tree
 | matched `{do_mir_borrowck}` (100% total, 0% self)
-: | rustc_mir::borrow_check::nll::compute_regions (47% total, 0% self) [...]
+: | rustc_borrowck::nll::compute_regions (47% total, 0% self) [...]
 : | rustc::mir::visit::Visitor::visit_mir (19% total, 15% self) [...]
-: | <rustc_mir::borrow_check::MirBorrowckCtxt<'cx, 'tcx> as rustc_mir::dataflow::DataflowResultsConsumer<'cx, 'tcx>>::visit_statement_entry (13% total, 0% self) [...]
-: | rustc_mir::dataflow::do_dataflow (8% total, 1% self) [...]
+: | <rustc_borrowck::MirBorrowckCtxt<'cx, 'tcx> as rustc_mir_dataflow::DataflowResultsConsumer<'cx, 'tcx>>::visit_statement_entry (13% total, 0% self) [...]
+: | rustc_mir_dataflow::do_dataflow (8% total, 1% self) [...]
 ```
 
 Here you see that `compute_regions` came up as "47% total" — that

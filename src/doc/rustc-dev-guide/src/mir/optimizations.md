@@ -21,7 +21,7 @@ for a given [`DefId`][defid]. This query makes sure that the borrow checker has
 run and that some validation has occurred. Then, it [steals][steal] the MIR,
 optimizes it, and returns the improved MIR.
 
-[optmir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.optimized_mir.html
+[optmir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.optimized_mir.html
 [query]: https://rustc-dev-guide.rust-lang.org/query.html
 [defid]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#def-id
 [steal]: https://rustc-dev-guide.rust-lang.org/mir/passes.html?highlight=steal#stealing
@@ -42,7 +42,7 @@ optimizes it, and returns the improved MIR.
    test output before you implement the optimization is so that you (and your
    reviewers) can see a before/after diff of what the optimization changed.
 
-4. Implement a new optimization in [`compiler/rustc_mir/src/transform`].
+4. Implement a new optimization in [`compiler/rustc_mir_transform/src`].
    The fastest and easiest way to do this is to
 
    1. pick a small optimization (such as [`no_landing_pads`]) and copy it
@@ -71,9 +71,10 @@ If you have any questions along the way, feel free to ask in
 `#t-compiler/wg-mir-opt` on Zulip.
 
 [mir-opt-test-readme]: https://github.com/rust-lang/rust/blob/master/src/test/mir-opt/README.md
-[`compiler/rustc_mir/src/transform`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_mir/src/transform
-[`no_landing_pads`]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir/src/transform/no_landing_pads.rs
-[`run_optimization_passes()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.run_optimization_passes.html
+[`compiler/rustc_mir_transform/src`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_mir_transform/src
+<!--- TODO: Change NoLandingPads. [#1232](https://github.com/rust-lang/rustc-dev-guide/issues/1232) -->
+[`no_landing_pads`]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/no_landing_pads.rs
+[`run_optimization_passes()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.run_optimization_passes.html
 
 ## Defining optimization passes
 
@@ -81,11 +82,11 @@ The list of passes run and the order in which they are run is defined by the
 [`run_optimization_passes`][rop] function. It contains an array of passes to
 run.  Each pass in the array is a struct that implements the [`MirPass`] trait.
 The array is an array of `&dyn MirPass` trait objects. Typically, a pass is
-implemented in its own submodule of the [`rustc_mir::transform`][trans] module.
+implemented in its own module of the [`rustc_mir_transform`][trans] crate.
 
-[rop]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.run_optimization_passes.html
-[`MirPass`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/trait.MirPass.html
-[trans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/index.html
+[rop]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.run_optimization_passes.html
+[`MirPass`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/trait.MirPass.html
+[trans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html
 
 Some examples of passes are:
 - `CleanupNonCodegenStatements`: remove some of the info that is only needed for
@@ -94,7 +95,7 @@ Some examples of passes are:
 
 You can see the ["Implementors" section of the `MirPass` rustdocs][impl] for more examples.
 
-[impl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/trait.MirPass.html#implementors
+[impl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/trait.MirPass.html#implementors
 [constprop]: https://en.wikipedia.org/wiki/Constant_folding#Constant_propagation
 
 ## MIR optimization levels

@@ -29,7 +29,7 @@ paths roughly correspond to the concept of a [`Place`] from MIR, but
 they are indexed in ways that enable us to do move analysis more
 efficiently.
 
-[`MovePath`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePath.html
+[`MovePath`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MovePath.html
 [`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Place.html
 
 ## Move path indices
@@ -45,9 +45,9 @@ access the [`MovePath::place`] field like so:
 move_data.move_paths[mpi].place
 ```
 
-[move_paths]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MoveData.html#structfield.move_paths
-[`MovePath::place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePath.html#structfield.place
-[`MovePathIndex`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePathIndex.html
+[move_paths]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MoveData.html#structfield.move_paths
+[`MovePath::place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MovePath.html#structfield.place
+[`MovePathIndex`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MovePathIndex.html
 
 ## Building move paths
 
@@ -60,8 +60,8 @@ corresponding [`MovePathIndex`]. It also records when/where that
 particular move path is moved/initialized, but we'll get to that in a
 later section.
 
-[`Gatherer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/builder/struct.Gatherer.html
-[`MoveData::gather_moves`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MoveData.html#method.gather_moves
+[`Gatherer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/builder/struct.Gatherer.html
+[`MoveData::gather_moves`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MoveData.html#method.gather_moves
 
 ### Illegal move paths
 
@@ -82,7 +82,7 @@ those just discussed, the function returns an `Err`. This in turn
 means we don't have to bother tracking whether those places are
 initialized (which lowers overhead).
 
-[`move_path_for`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/builder/struct.Gatherer.html#method.move_path_for
+[`move_path_for`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/builder/struct.Gatherer.html#method.move_path_for
 
 ## Looking up a move-path
 
@@ -90,9 +90,9 @@ If you have a [`Place`] and you would like to convert it to a [`MovePathIndex`],
 can do that using the [`MovePathLookup`] structure found in the [`rev_lookup`] field
 of [`MoveData`]. There are two different methods:
 
-[`MoveData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MoveData.html
-[`MovePathLookup`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePathLookup.html
-[`rev_lookup`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MoveData.html#structfield.rev_lookup
+[`MoveData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MoveData.html
+[`MovePathLookup`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MovePathLookup.html
+[`rev_lookup`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MoveData.html#structfield.rev_lookup
 
 - [`find_local`], which takes a [`mir::Local`] representing a local
   variable. This is the easier method, because we **always** create a
@@ -105,10 +105,10 @@ of [`MoveData`]. There are two different methods:
   that exists (e.g., for `foo[1]`, it might return just the path for
   `foo`).
 
-[`find`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePathLookup.html#method.find
-[`find_local`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePathLookup.html#method.find_local
+[`find`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MovePathLookup.html#method.find
+[`find_local`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MovePathLookup.html#method.find_local
 [`mir::Local`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html
-[`LookupResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/enum.LookupResult.html
+[`LookupResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/enum.LookupResult.html
 
 ## Cross-references
 
@@ -126,4 +126,4 @@ whether a move-path (e.g., `a.b`) or any child of that move-path
 (e.g.,`a.b.c`) matches a given predicate.
 
 [`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Place.html
-[`find_in_move_path_or_its_descendants`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MoveData.html#method.find_in_move_path_or_its_descendants
+[`find_in_move_path_or_its_descendants`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MoveData.html#method.find_in_move_path_or_its_descendants

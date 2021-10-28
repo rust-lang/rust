@@ -27,7 +27,7 @@ where we want to access the MIR for type checking or other purposes:
 A `MirPass` is some bit of code that processes the MIR, typically –
 but not always – transforming it along the way somehow. For example,
 it might perform an optimization. The `MirPass` trait itself is found
-in [the `rustc_mir::transform` module][mirtransform], and it
+in [the `rustc_mir_transform` crate][mirtransform], and it
 basically consists of one method, `run_pass`, that simply gets an
 `&mut Mir` (along with the tcx and some information about where it
 came from). The MIR is therefore modified in place (which helps to
@@ -96,6 +96,7 @@ This mechanism is a bit dodgy. There is a discussion of more elegant
 alternatives in [rust-lang/rust#41710].
 
 [rust-lang/rust#41710]: https://github.com/rust-lang/rust/issues/41710
-[mirtransform]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/
-[`NoLandingPads`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/no_landing_pads/struct.NoLandingPads.html
+[mirtransform]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/
+<!--- TODO: Change NoLandingPads. [#1232](https://github.com/rust-lang/rustc-dev-guide/issues/1232) -->
+[`NoLandingPads`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/no_landing_pads/struct.NoLandingPads.html
 [MIR visitor]: ./visitor.html
