@@ -153,7 +153,7 @@ example, if you want your doctests to fail if they produce any warnings, you cou
 These forms of the `#[doc]` attribute are used on individual items, to control how
 they are documented.
 
-## `#[doc(no_inline)]`/`#[doc(inline)]`
+### `#[doc(no_inline)]`/`#[doc(inline)]`
 
 These attributes are used on `use` statements, and control where the documentation shows
 up. For example, consider this Rust code:
@@ -219,7 +219,54 @@ Now we'll have a `Re-exports` line, and `Bar` will not link to anywhere.
 One special case: In Rust 2018 and later, if you `pub use` one of your dependencies, `rustdoc` will
 not eagerly inline it as a module unless you add `#[doc(inline)]`.
 
-## `#[doc(hidden)]`
+### `#[doc(hidden)]`
 
 Any item annotated with `#[doc(hidden)]` will not appear in the documentation, unless
 the `strip-hidden` pass is removed.
+
+### `alias`
+
+This attribute adds an alias in the search index.
+
+Let's take an example:
+
+```rust,no_run
+#[doc(alias = "TheAlias")]
+pub struct SomeType;
+```
+
+So now, if you enter "TheAlias" in the search, it'll display `SomeType`.
+Of course, if you enter `SomeType` it'll return `SomeType` as expected!
+
+#### FFI example
+
+This doc attribute is especially useful when writing bindings for a C library.
+For example, let's say we have a C function that looks like this:
+
+```c
+int lib_name_do_something(Obj *obj);
+```
+
+It takes a pointer to an `Obj` type and returns an integer. In Rust, it might
+be written like this:
+
+```ignore (using non-existing ffi types)
+pub struct Obj {
+    inner: *mut ffi::Obj,
+}
+
+impl Obj {
+    pub fn do_something(&mut self) -> i32 {
+        unsafe { ffi::lib_name_do_something(self.inner) }
+    }
+}
+```
+
+The function has been turned into a method to make it more convenient to use.
+However, if you want to look for the Rust equivalent of `lib_name_do_something`,
+you have no way to do so.
+
+To get around this limitation, we just add `#[doc(alias = "lib_name_do_something")]`
+on the `do_something` method and then it's all good!
+Users can now look for `lib_name_do_something` in our crate directly and find
+`Obj::do_something`.
