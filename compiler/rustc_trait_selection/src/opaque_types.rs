@@ -1,18 +1,15 @@
 use crate::traits::{self, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{InferCtxt, InferOk};
-use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
+use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
 use rustc_span::Span;
-
-use std::ops::ControlFlow;
 
 pub trait InferCtxtExt<'tcx> {
     fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
@@ -22,12 +19,6 @@ pub trait InferCtxtExt<'tcx> {
         value: T,
         value_span: Span,
     ) -> InferOk<'tcx, T>;
-
-    fn constrain_opaque_type(
-        &self,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        opaque_defn: &OpaqueTypeDecl<'tcx>,
-    );
 
     fn infer_opaque_definition_from_instantiation(
         &self,
@@ -79,236 +70,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             Instantiator { infcx: self, body_id, param_env, value_span, obligations: vec![] };
         let value = instantiator.instantiate_opaque_types_in_map(value);
         InferOk { value, obligations: instantiator.obligations }
-    }
-
-    /// Given the map `opaque_types` containing the opaque
-    /// `impl Trait` types whose underlying, hidden types are being
-    /// inferred, this method adds constraints to the regions
-    /// appearing in those underlying hidden types to ensure that they
-    /// at least do not refer to random scopes within the current
-    /// function. These constraints are not (quite) sufficient to
-    /// guarantee that the regions are actually legal values; that
-    /// final condition is imposed after region inference is done.
-    ///
-    /// # The Problem
-    ///
-    /// Let's work through an example to explain how it works. Assume
-    /// the current function is as follows:
-    ///
-    /// ```text
-    /// fn foo<'a, 'b>(..) -> (impl Bar<'a>, impl Bar<'b>)
-    /// ```
-    ///
-    /// Here, we have two `impl Trait` types whose values are being
-    /// inferred (the `impl Bar<'a>` and the `impl
-    /// Bar<'b>`). Conceptually, this is sugar for a setup where we
-    /// define underlying opaque types (`Foo1`, `Foo2`) and then, in
-    /// the return type of `foo`, we *reference* those definitions:
-    ///
-    /// ```text
-    /// type Foo1<'x> = impl Bar<'x>;
-    /// type Foo2<'x> = impl Bar<'x>;
-    /// fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
-    ///                    //  ^^^^ ^^
-    ///                    //  |    |
-    ///                    //  |    substs
-    ///                    //  def_id
-    /// ```
-    ///
-    /// As indicating in the comments above, each of those references
-    /// is (in the compiler) basically a substitution (`substs`)
-    /// applied to the type of a suitable `def_id` (which identifies
-    /// `Foo1` or `Foo2`).
-    ///
-    /// Now, at this point in compilation, what we have done is to
-    /// replace each of the references (`Foo1<'a>`, `Foo2<'b>`) with
-    /// fresh inference variables C1 and C2. We wish to use the values
-    /// of these variables to infer the underlying types of `Foo1` and
-    /// `Foo2`. That is, this gives rise to higher-order (pattern) unification
-    /// constraints like:
-    ///
-    /// ```text
-    /// for<'a> (Foo1<'a> = C1)
-    /// for<'b> (Foo1<'b> = C2)
-    /// ```
-    ///
-    /// For these equation to be satisfiable, the types `C1` and `C2`
-    /// can only refer to a limited set of regions. For example, `C1`
-    /// can only refer to `'static` and `'a`, and `C2` can only refer
-    /// to `'static` and `'b`. The job of this function is to impose that
-    /// constraint.
-    ///
-    /// Up to this point, C1 and C2 are basically just random type
-    /// inference variables, and hence they may contain arbitrary
-    /// regions. In fact, it is fairly likely that they do! Consider
-    /// this possible definition of `foo`:
-    ///
-    /// ```text
-    /// fn foo<'a, 'b>(x: &'a i32, y: &'b i32) -> (impl Bar<'a>, impl Bar<'b>) {
-    ///         (&*x, &*y)
-    ///     }
-    /// ```
-    ///
-    /// Here, the values for the concrete types of the two impl
-    /// traits will include inference variables:
-    ///
-    /// ```text
-    /// &'0 i32
-    /// &'1 i32
-    /// ```
-    ///
-    /// Ordinarily, the subtyping rules would ensure that these are
-    /// sufficiently large. But since `impl Bar<'a>` isn't a specific
-    /// type per se, we don't get such constraints by default. This
-    /// is where this function comes into play. It adds extra
-    /// constraints to ensure that all the regions which appear in the
-    /// inferred type are regions that could validly appear.
-    ///
-    /// This is actually a bit of a tricky constraint in general. We
-    /// want to say that each variable (e.g., `'0`) can only take on
-    /// values that were supplied as arguments to the opaque type
-    /// (e.g., `'a` for `Foo1<'a>`) or `'static`, which is always in
-    /// scope. We don't have a constraint quite of this kind in the current
-    /// region checker.
-    ///
-    /// # The Solution
-    ///
-    /// We generally prefer to make `<=` constraints, since they
-    /// integrate best into the region solver. To do that, we find the
-    /// "minimum" of all the arguments that appear in the substs: that
-    /// is, some region which is less than all the others. In the case
-    /// of `Foo1<'a>`, that would be `'a` (it's the only choice, after
-    /// all). Then we apply that as a least bound to the variables
-    /// (e.g., `'a <= '0`).
-    ///
-    /// In some cases, there is no minimum. Consider this example:
-    ///
-    /// ```text
-    /// fn baz<'a, 'b>() -> impl Trait<'a, 'b> { ... }
-    /// ```
-    ///
-    /// Here we would report a more complex "in constraint", like `'r
-    /// in ['a, 'b, 'static]` (where `'r` is some region appearing in
-    /// the hidden type).
-    ///
-    /// # Constrain regions, not the hidden concrete type
-    ///
-    /// Note that generating constraints on each region `Rc` is *not*
-    /// the same as generating an outlives constraint on `Tc` iself.
-    /// For example, if we had a function like this:
-    ///
-    /// ```rust
-    /// fn foo<'a, T>(x: &'a u32, y: T) -> impl Foo<'a> {
-    ///   (x, y)
-    /// }
-    ///
-    /// // Equivalent to:
-    /// type FooReturn<'a, T> = impl Foo<'a>;
-    /// fn foo<'a, T>(..) -> FooReturn<'a, T> { .. }
-    /// ```
-    ///
-    /// then the hidden type `Tc` would be `(&'0 u32, T)` (where `'0`
-    /// is an inference variable). If we generated a constraint that
-    /// `Tc: 'a`, then this would incorrectly require that `T: 'a` --
-    /// but this is not necessary, because the opaque type we
-    /// create will be allowed to reference `T`. So we only generate a
-    /// constraint that `'0: 'a`.
-    ///
-    /// # The `free_region_relations` parameter
-    ///
-    /// The `free_region_relations` argument is used to find the
-    /// "minimum" of the regions supplied to a given opaque type.
-    /// It must be a relation that can answer whether `'a <= 'b`,
-    /// where `'a` and `'b` are regions that appear in the "substs"
-    /// for the opaque type references (the `<'a>` in `Foo1<'a>`).
-    ///
-    /// Note that we do not impose the constraints based on the
-    /// generic regions from the `Foo1` definition (e.g., `'x`). This
-    /// is because the constraints we are imposing here is basically
-    /// the concern of the one generating the constraining type C1,
-    /// which is the current function. It also means that we can
-    /// take "implied bounds" into account in some cases:
-    ///
-    /// ```text
-    /// trait SomeTrait<'a, 'b> { }
-    /// fn foo<'a, 'b>(_: &'a &'b u32) -> impl SomeTrait<'a, 'b> { .. }
-    /// ```
-    ///
-    /// Here, the fact that `'b: 'a` is known only because of the
-    /// implied bounds from the `&'a &'b u32` parameter, and is not
-    /// "inherent" to the opaque type definition.
-    ///
-    /// # Parameters
-    ///
-    /// - `opaque_types` -- the map produced by `instantiate_opaque_types`
-    /// - `free_region_relations` -- something that can be used to relate
-    ///   the free regions (`'a`) that appear in the impl trait.
-    #[instrument(level = "debug", skip(self))]
-    fn constrain_opaque_type(
-        &self,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        opaque_defn: &OpaqueTypeDecl<'tcx>,
-    ) {
-        let def_id = opaque_type_key.def_id;
-
-        let tcx = self.tcx;
-
-        let concrete_ty = self.resolve_vars_if_possible(opaque_defn.concrete_ty);
-
-        debug!(?concrete_ty);
-
-        let first_own_region = match opaque_defn.origin {
-            hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => {
-                // We lower
-                //
-                // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
-                //
-                // into
-                //
-                // type foo::<'p0..'pn>::Foo<'q0..'qm>
-                // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
-                //
-                // For these types we only iterate over `'l0..lm` below.
-                tcx.generics_of(def_id).parent_count
-            }
-            // These opaque type inherit all lifetime parameters from their
-            // parent, so we have to check them all.
-            hir::OpaqueTyOrigin::TyAlias => 0,
-        };
-
-        // For a case like `impl Foo<'a, 'b>`, we would generate a constraint
-        // `'r in ['a, 'b, 'static]` for each region `'r` that appears in the
-        // hidden type (i.e., it must be equal to `'a`, `'b`, or `'static`).
-        //
-        // `conflict1` and `conflict2` are the two region bounds that we
-        // detected which were unrelated. They are used for diagnostics.
-
-        // Create the set of choice regions: each region in the hidden
-        // type can be equal to any of the region parameters of the
-        // opaque type definition.
-        let choice_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
-            opaque_type_key.substs[first_own_region..]
-                .iter()
-                .filter_map(|arg| match arg.unpack() {
-                    GenericArgKind::Lifetime(r) => Some(r),
-                    GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
-                })
-                .chain(std::iter::once(self.tcx.lifetimes.re_static))
-                .collect(),
-        );
-
-        concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-            tcx: self.tcx,
-            op: |r| {
-                self.member_constraint(
-                    opaque_type_key.def_id,
-                    opaque_defn.definition_span,
-                    concrete_ty,
-                    r,
-                    &choice_regions,
-                )
-            },
-        });
     }
 
     /// Given the fully resolved, instantiated type for an opaque
@@ -369,83 +130,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         debug!(?definition_ty);
 
         definition_ty
-    }
-}
-
-// Visitor that requires that (almost) all regions in the type visited outlive
-// `least_region`. We cannot use `push_outlives_components` because regions in
-// closure signatures are not included in their outlives components. We need to
-// ensure all regions outlive the given bound so that we don't end up with,
-// say, `ReVar` appearing in a return type and causing ICEs when other
-// functions end up with region constraints involving regions from other
-// functions.
-//
-// We also cannot use `for_each_free_region` because for closures it includes
-// the regions parameters from the enclosing item.
-//
-// We ignore any type parameters because impl trait values are assumed to
-// capture all the in-scope type parameters.
-struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP> {
-    tcx: TyCtxt<'tcx>,
-    op: OP,
-}
-
-impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
-where
-    OP: FnMut(ty::Region<'tcx>),
-{
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        Some(self.tcx)
-    }
-
-    fn visit_binder<T: TypeFoldable<'tcx>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
-        t.as_ref().skip_binder().visit_with(self);
-        ControlFlow::CONTINUE
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match *r {
-            // ignore bound regions, keep visiting
-            ty::ReLateBound(_, _) => ControlFlow::CONTINUE,
-            _ => {
-                (self.op)(r);
-                ControlFlow::CONTINUE
-            }
-        }
-    }
-
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        // We're only interested in types involving regions
-        if !ty.flags().intersects(ty::TypeFlags::HAS_POTENTIAL_FREE_REGIONS) {
-            return ControlFlow::CONTINUE;
-        }
-
-        match ty.kind() {
-            ty::Closure(_, ref substs) => {
-                // Skip lifetime parameters of the enclosing item(s)
-
-                substs.as_closure().tupled_upvars_ty().visit_with(self);
-                substs.as_closure().sig_as_fn_ptr_ty().visit_with(self);
-            }
-
-            ty::Generator(_, ref substs, _) => {
-                // Skip lifetime parameters of the enclosing item(s)
-                // Also skip the witness type, because that has no free regions.
-
-                substs.as_generator().tupled_upvars_ty().visit_with(self);
-                substs.as_generator().return_ty().visit_with(self);
-                substs.as_generator().yield_ty().visit_with(self);
-                substs.as_generator().resume_ty().visit_with(self);
-            }
-            _ => {
-                ty.super_visit_with(self);
-            }
-        }
-
-        ControlFlow::CONTINUE
     }
 }
 
