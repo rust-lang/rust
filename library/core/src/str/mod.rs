@@ -68,6 +68,9 @@ pub use iter::SplitAsciiWhitespace;
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::SplitInclusive;
 
+#[stable(feature = "split_rinclusive", since = "1.51.0")]
+pub use iter::SplitRInclusive;
+
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::{next_code_point, utf8_char_width};
 
@@ -1266,6 +1269,55 @@ impl str {
     #[inline]
     pub fn split_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
         SplitInclusive(SplitInternal {
+            start: 0,
+            end: self.len(),
+            matcher: pat.into_searcher(self),
+            allow_trailing_empty: false,
+            finished: false,
+        })
+    }
+    
+    
+    /// An iterator over substrings of this string slice, separated by
+    /// characters matched by a pattern. Differs from the iterator produced by
+    /// `split` in that `split_rinclusive` leaves the matched part as the
+    /// beginning of the next substring, except possibly the first which is whatever before the first match.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
+    ///     .split_rinclusive('\n').collect();
+    /// assert_eq!(v, ["Mary had a little lamb", "\nlittle lamb", "\nlittle lamb."]);
+    /// ```
+    ///
+    /// If the first element of the string is matched,
+    /// the first substring will be an empty string.
+    ///
+    /// ```
+    /// let v: Vec<&str> = "MaryHadALittleLamb"
+    ///     .split_rinclusive(char::is_uppercase).collect();
+    /// assert_eq!(v, ["", "Mary", "Had", "A", "Little", "Lamb]);
+    /// ```
+    ///
+    /// If the last element of the string is matched,
+    /// that element will be considered the final substring returned by the iterator.
+    ///
+    /// ```
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb.\n"
+    ///     .split_rinclusive('\n').collect();
+    /// assert_eq!(v, ["Mary had a little lamb", "\nlittle lamb", "\nlittle lamb.", "\n"]);
+    /// ```
+    #[stable(feature = "split_rinclusive", since = "1.51.0")]
+    #[inline]
+    pub fn split_rinclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitRInclusive<'a, P> {
+        SplitRInclusive(SplitInternal {
             start: 0,
             end: self.len(),
             matcher: pat.into_searcher(self),
