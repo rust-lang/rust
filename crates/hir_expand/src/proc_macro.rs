@@ -1,8 +1,9 @@
 //! Proc Macro Expander stub
 
-use crate::db::AstDatabase;
-use base_db::{CrateId, ProcMacroExpansionError, ProcMacroId};
+use base_db::{CrateId, ProcMacroExpansionError, ProcMacroId, ProcMacroKind};
 use mbe::ExpandResult;
+
+use crate::db::AstDatabase;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ProcMacroExpander {
@@ -36,20 +37,29 @@ impl ProcMacroExpander {
                 let krate_graph = db.crate_graph();
                 let proc_macro = match krate_graph[self.krate].proc_macro.get(id.0 as usize) {
                     Some(proc_macro) => proc_macro,
-                    None => return ExpandResult::str_err("No derive macro found.".to_string()),
+                    None => return ExpandResult::str_err("No proc-macro found.".to_string()),
                 };
 
                 // Proc macros have access to the environment variables of the invoking crate.
                 let env = &krate_graph[calling_crate].env;
-
-                proc_macro
-                    .expander
-                    .expand(tt, attr_arg, env)
-                    .map_err(|err| match err {
-                        ProcMacroExpansionError::Panic(text) => mbe::ExpandError::Other(text),
-                        ProcMacroExpansionError::System(text) => mbe::ExpandError::Other(text),
-                    })
-                    .into()
+                match proc_macro.expander.expand(tt, attr_arg, env) {
+                    Ok(t) => ExpandResult::ok(t),
+                    Err(err) => match err {
+                        // Don't discard the item in case something unexpected happened while expanding attributes
+                        ProcMacroExpansionError::System(text)
+                            if proc_macro.kind == ProcMacroKind::Attr =>
+                        {
+                            ExpandResult {
+                                value: tt.clone(),
+                                err: Some(mbe::ExpandError::Other(text)),
+                            }
+                        }
+                        ProcMacroExpansionError::System(text)
+                        | ProcMacroExpansionError::Panic(text) => {
+                            ExpandResult::only_err(mbe::ExpandError::Other(text))
+                        }
+                    },
+                }
             }
             None => ExpandResult::only_err(mbe::ExpandError::UnresolvedProcMacro),
         }
