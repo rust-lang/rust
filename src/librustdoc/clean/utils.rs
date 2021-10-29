@@ -57,7 +57,6 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     }
 
     let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
-    let src = local_crate.src(cx.tcx);
     let name = local_crate.name(cx.tcx);
     let primitives = local_crate.primitives(cx.tcx);
     let keywords = local_crate.keywords(cx.tcx);
@@ -81,7 +80,6 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     Crate {
         name,
-        src,
         module,
         externs,
         primitives,

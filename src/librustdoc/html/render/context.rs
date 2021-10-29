@@ -405,7 +405,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             ..
         } = options;
 
-        let src_root = match krate.src {
+        let src_root = match krate.src(tcx) {
             FileName::Real(ref p) => match p.local_path_if_available().parent() {
                 Some(p) => p.to_path_buf(),
                 None => PathBuf::new(),

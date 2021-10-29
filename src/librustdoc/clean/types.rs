@@ -117,7 +117,6 @@ impl From<DefId> for ItemId {
 #[derive(Clone, Debug)]
 crate struct Crate {
     crate name: Symbol,
-    crate src: FileName,
     crate module: Item,
     crate externs: Vec<ExternalCrate>,
     crate primitives: ThinVec<(DefId, PrimitiveType)>,
@@ -128,7 +127,13 @@ crate struct Crate {
 
 // `Crate` is frequently moved by-value. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Crate, 168);
+rustc_data_structures::static_assert_size!(Crate, 104);
+
+impl Crate {
+    crate fn src(&self, tcx: TyCtxt<'_>) -> FileName {
+        ExternalCrate::LOCAL.src(tcx)
+    }
+}
 
 /// This struct is used to wrap additional information added by rustdoc on a `trait` item.
 #[derive(Clone, Debug)]
