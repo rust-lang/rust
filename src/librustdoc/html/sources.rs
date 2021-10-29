@@ -18,7 +18,7 @@ use std::path::{Component, Path, PathBuf};
 
 crate fn render(cx: &mut Context<'_>, krate: clean::Crate) -> Result<clean::Crate, Error> {
     info!("emitting source files");
-    let dst = cx.dst.join("src").join(&*krate.name.as_str());
+    let dst = cx.dst.join("src").join(&*krate.name(cx.tcx()).as_str());
     cx.shared.ensure_dir(&dst)?;
     let mut folder = SourceCollector { dst, cx, emitted_local_sources: FxHashSet::default() };
     Ok(folder.fold_crate(krate))

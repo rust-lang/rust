@@ -116,7 +116,6 @@ impl From<DefId> for ItemId {
 /// The crate currently being documented.
 #[derive(Clone, Debug)]
 crate struct Crate {
-    crate name: Symbol,
     crate module: Item,
     crate externs: Vec<ExternalCrate>,
     crate primitives: ThinVec<(DefId, PrimitiveType)>,
@@ -130,6 +129,10 @@ crate struct Crate {
 rustc_data_structures::static_assert_size!(Crate, 104);
 
 impl Crate {
+    crate fn name(&self, tcx: TyCtxt<'_>) -> Symbol {
+        ExternalCrate::LOCAL.name(tcx)
+    }
+
     crate fn src(&self, tcx: TyCtxt<'_>) -> FileName {
         ExternalCrate::LOCAL.src(tcx)
     }
