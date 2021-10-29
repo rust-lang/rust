@@ -16,7 +16,7 @@ error: unused import: `super::a`
 LL |     use super::a;
    |         ^^^^^^^^
    |
-help: consider adding a `#[cfg(test)]` to the module named `test` in which this import is
+help: consider adding a `#[cfg(test)]` to the parent module
   --> $DIR/unused-imports-in-test-module.rs:8:1
    |
 LL | mod test {
@@ -28,11 +28,35 @@ error: unused import: `crate::b`
 LL |         use crate::b;
    |             ^^^^^^^^
    |
-help: consider adding a `#[cfg(test)]` to the module named `test` in which this import is
+help: consider adding a `#[cfg(test)]` to the parent module
   --> $DIR/unused-imports-in-test-module.rs:8:1
    |
 LL | mod test {
    | ^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-module.rs:17:9
+   |
+LL |     use super::a;
+   |         ^^^^^^^^
+   |
+help: consider adding a `#[cfg(test)]` to the parent module
+  --> $DIR/unused-imports-in-test-module.rs:16:1
+   |
+LL | mod test_a {
+   | ^^^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-module.rs:20:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+   |
+help: consider adding a `#[cfg(test)]` to the parent module
+  --> $DIR/unused-imports-in-test-module.rs:16:1
+   |
+LL | mod test_a {
+   | ^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 

@@ -13,4 +13,12 @@ mod test {
     }
 }
 
+mod test_a {
+    use super::a;  //~ ERROR unused import: `super::a`
+
+    fn foo() {
+        use crate::b;  //~ ERROR unused import: `crate::b`
+    }
+}
+
 fn main() {}

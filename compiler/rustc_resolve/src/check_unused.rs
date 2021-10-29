@@ -320,7 +320,7 @@ impl Resolver<'_> {
                 visitor.r.local_def_id(unused.use_tree_id).to_def_id(),
             );
             let test_module_span = match module_to_string(parent_module) {
-                Some(module) if module == "test" => Some(parent_module.span),
+                Some(module) if module.contains("test") => Some(parent_module.span),
                 _ => None,
             };
 
