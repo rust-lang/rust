@@ -125,6 +125,10 @@ crate struct Crate {
     crate collapsed: bool,
 }
 
+// `Crate` is frequently moved by-value. Make sure it doesn't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Crate, 168);
+
 /// This struct is used to wrap additional information added by rustdoc on a `trait` item.
 #[derive(Clone, Debug)]
 crate struct TraitWithExtraInfo {
