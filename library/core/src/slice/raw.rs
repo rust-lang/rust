@@ -141,17 +141,18 @@ const fn debug_check_data_len<T>(data: *const T, len: usize) {
         assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
     }
 
-    const fn ctfe_check<T>(_data: *const T) {
-        // It's impossible to check alignment in const fn.
-        //
-        // CTFE engine checks that the pointer is aligned and not null.
-    }
+    const fn noop<T>(_: *const T) {}
 
     // SAFETY:
-    // - `calling from_raw_parts[_mut]` with arguments that fail to fulfil checks made here is UB, so unless UB is already triggered this is noop
-    // - CTFE makes the same checks as `rt_check`, so behavior change is not observable due to compilation error
+    //
+    // `rt_check` is just a debug assert to hint users that they are causing UB,
+    // it is not required for safety (the safety must be guatanteed by
+    // the `from_raw_parts[_mut]` caller).
+    //
+    // Since the checks are not required, we ignore them in CTFE as they can't
+    // be done there (alignment does not make much sense there).
     unsafe {
-        crate::intrinsics::const_eval_select((data,), ctfe_check, rt_check);
+        crate::intrinsics::const_eval_select((data,), noop, rt_check);
     }
 
     assert!(
