@@ -7,4 +7,11 @@ fn main() {
     } else {
         2 == 2;
     };
+
+    let a = true;
+
+    #[clippy::author]
+    if let true = a {
+    } else {
+    };
 }
