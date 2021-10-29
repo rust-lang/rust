@@ -36,15 +36,15 @@ declare dso_local double @_Z16__enzyme_fwddiffz(...)
 
 ; CHECK: define internal double @fwddiffe_Z6squared(double %x, double %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call = call double* @_Z6toHeapd(double %x)
 ; CHECK-NEXT:   %0 = call { double*, double* } @fwddiffe_Z6toHeapd(double %x, double %"x'")
-; CHECK-NEXT:   %1 = extractvalue { double*, double* } %0, 1
-; CHECK-NEXT:   %2 = load double, double* %call, align 8
+; CHECK-NEXT:   %1 = extractvalue { double*, double* } %0, 0
+; CHECK-NEXT:   %2 = extractvalue { double*, double* } %0, 1
 ; CHECK-NEXT:   %3 = load double, double* %1, align 8
-; CHECK-NEXT:   %4 = fmul fast double %3, %x
-; CHECK-NEXT:   %5 = fmul fast double %"x'", %2
-; CHECK-NEXT:   %6 = fadd fast double %4, %5
-; CHECK-NEXT:   ret double %6
+; CHECK-NEXT:   %4 = load double, double* %2, align 8
+; CHECK-NEXT:   %5 = fmul fast double %4, %x
+; CHECK-NEXT:   %6 = fmul fast double %"x'", %3
+; CHECK-NEXT:   %7 = fadd fast double %5, %6
+; CHECK-NEXT:   ret double %7
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { double*, double* } @fwddiffe_Z6toHeapd(double %x, double %"x'")

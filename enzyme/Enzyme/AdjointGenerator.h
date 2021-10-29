@@ -7903,8 +7903,6 @@ public:
       IRBuilder<> Builder2(&call);
       getForwardBuilder(Builder2);
 
-      bool retUsed = subretused;
-
       SmallVector<Value *, 8> args;
       std::vector<DIFFE_TYPE> argsInverted;
       std::map<int, Type *> gradByVal;
@@ -7970,7 +7968,7 @@ public:
 
       auto newcalled = gutils->Logic.CreateForwardDiff(
           cast<Function>(called), subretType, argsInverted, gutils->TLI,
-          TR.analyzer.interprocedural, /*returnValue*/ retUsed,
+          TR.analyzer.interprocedural, /*returnValue*/ subretused,
           /*subdretptr*/ false, DerivativeMode::ForwardMode, nullptr,
           nextTypeInfo, {});
 
@@ -7989,30 +7987,46 @@ public:
       }
 #endif
 
-      if (!newcalled->getReturnType()->isVoidTy()) {
-        bool structret = retUsed && subretType != DIFFE_TYPE::CONSTANT;
-        auto newcall = gutils->getNewFromOriginal(orig);
-        Value *diffe;
-        if (structret) {
-          diffe = Builder2.CreateExtractValue(diffes, 1);
-        } else {
-          diffe = diffes;
-        }
+      auto newcall = gutils->getNewFromOriginal(orig);
+      auto ifound = gutils->invertedPointers.find(orig);
+      Value *primal = nullptr;
+      Value *diffe = nullptr;
 
-        auto ifound = gutils->invertedPointers.find(orig);
-        if (ifound != gutils->invertedPointers.end()) {
-          auto placeholder = cast<PHINode>(&*ifound->second);
-          gutils->replaceAWithB(placeholder, diffe);
-          gutils->erase(placeholder);
-        } else {
-          gutils->replaceAWithB(newcall, diffe);
+      if (subretused && subretType != DIFFE_TYPE::CONSTANT) {
+        primal = Builder2.CreateExtractValue(diffes, 0);
+        diffe = Builder2.CreateExtractValue(diffes, 1);
+      } else if (!newcalled->getReturnType()->isVoidTy()) {
+        diffe = diffes;
+      }
+
+      if (ifound != gutils->invertedPointers.end()) {
+        auto placeholder = cast<PHINode>(&*ifound->second);
+        if (primal) {
+          gutils->replaceAWithB(newcall, primal);
           gutils->erase(newcall);
+        }
+        if (diffe) {
+          gutils->replaceAWithB(placeholder, diffe);
+        } else {
+          gutils->invertedPointers.erase(ifound);
+        }
+        gutils->erase(placeholder);
+      } else {
+        if (primal && diffe) {
+          gutils->replaceAWithB(newcall, primal);
           if (!gutils->isConstantValue(&call)) {
             setDiffe(&call, diffe, Builder2);
           }
+          gutils->erase(newcall);
+        } else if (diffe) {
+          gutils->replaceAWithB(newcall, diffe);
+          if (!gutils->isConstantValue(&call)) {
+            setDiffe(&call, diffe, Builder2);
+          }
+          gutils->erase(newcall);
+        } else {
+          eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
         }
-      } else {
-        eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       }
 
       return;
