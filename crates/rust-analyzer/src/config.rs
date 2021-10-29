@@ -1290,6 +1290,8 @@ mod tests {
         schema.push_str(",\n");
 
         // Transform the asciidoc form link to markdown style.
+        //
+        // https://link[text] => [text](https://link)
         let url_matches = schema.match_indices("https://");
         let mut url_offsets = url_matches.map(|(idx, _)| idx).collect::<Vec<usize>>();
         url_offsets.reverse();
@@ -1298,8 +1300,14 @@ mod tests {
             // matching on whitespace to ignore normal links
             if let Some(link_end) = link.find(|c| c == ' ' || c == '[') {
                 if link.chars().nth(link_end) == Some('[') {
-                    schema.insert(idx, '(');
-                    schema.insert(idx + link_end + 1, ')');
+                    if let Some(link_text_end) = link.find(']') {
+                        let link_text = link[link_end..(link_text_end + 1)].to_string();
+
+                        schema.replace_range((idx + link_end)..(idx + link_text_end + 1), "");
+                        schema.insert(idx, '(');
+                        schema.insert(idx + link_end + 1, ')');
+                        schema.insert_str(idx, &link_text);
+                    }
                 }
             }
         }
