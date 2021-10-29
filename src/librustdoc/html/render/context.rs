@@ -151,6 +151,7 @@ impl SharedContext<'_> {
 }
 
 impl<'tcx> Context<'tcx> {
+    #[inline(always)]
     pub(crate) fn tcx(&self) -> TyCtxt<'tcx> {
         self.shared.tcx
     }
