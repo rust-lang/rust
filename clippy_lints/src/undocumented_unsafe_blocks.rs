@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::is_lint_allowed;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
-use clippy_utils::{in_macro, is_lint_allowed};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, HirId, Local, UnsafeSource};
@@ -134,7 +134,7 @@ impl UndocumentedUnsafeBlocks {
 
         let enclosing_scope_span = map.opt_span(enclosing_hir_id)?;
 
-        let between_span = if in_macro(block_span) {
+        let between_span = if block_span.from_expansion() {
             self.macro_expansion = true;
             enclosing_scope_span.with_hi(block_span.hi())
         } else {

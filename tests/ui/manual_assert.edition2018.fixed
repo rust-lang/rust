@@ -2,7 +2,9 @@
 // [edition2018] edition:2018
 // [edition2021] edition:2021
 // run-rustfix
+
 #![warn(clippy::manual_assert)]
+#![allow(clippy::nonminimal_bool)]
 
 fn main() {
     let a = vec![1, 2, 3];

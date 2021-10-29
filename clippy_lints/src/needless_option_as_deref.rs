@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
@@ -38,7 +37,7 @@ declare_lint_pass!(OptionNeedlessDeref=> [
 
 impl<'tcx> LateLintPass<'tcx> for OptionNeedlessDeref {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() || in_macro(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
         let typeck = cx.typeck_results();

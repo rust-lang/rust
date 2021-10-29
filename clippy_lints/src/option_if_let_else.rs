@@ -3,7 +3,7 @@ use clippy_utils::higher;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
-    can_move_expr_to_closure, eager_or_lazy, in_constant, in_macro, is_else_clause, is_lang_ctor, peel_hir_expr_while,
+    can_move_expr_to_closure, eager_or_lazy, in_constant, is_else_clause, is_lang_ctor, peel_hir_expr_while,
     CaptureKind,
 };
 use if_chain::if_chain;
@@ -126,7 +126,7 @@ fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: boo
 /// this construct is found, or None if this construct is not found.
 fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionIfLetElseOccurence> {
     if_chain! {
-        if !in_macro(expr.span); // Don't lint macros, because it behaves weirdly
+        if !expr.span.from_expansion(); // Don't lint macros, because it behaves weirdly
         if !in_constant(cx, expr.hir_id);
         if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: Some(if_else) })
             = higher::IfLet::hir(cx, expr);

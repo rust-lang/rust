@@ -8,9 +8,9 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
-    get_parent_expr, in_macro, is_expn_of, is_lang_ctor, is_lint_allowed, is_refutable, is_unit_expr, is_wild,
-    meets_msrv, msrvs, path_to_local, path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns,
-    remove_blocks, strip_pat_refs,
+    get_parent_expr, is_expn_of, is_lang_ctor, is_lint_allowed, is_refutable, is_unit_expr, is_wild, meets_msrv, msrvs,
+    path_to_local, path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns, remove_blocks,
+    strip_pat_refs,
 };
 use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use core::array;
@@ -26,7 +26,6 @@ use rustc_hir::{
 };
 use rustc_hir::{HirIdMap, HirIdSet};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty, TyS, VariantDef};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -602,7 +601,7 @@ impl_lint_pass!(Matches => [
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) || in_macro(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
 
@@ -641,8 +640,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
         if_chain! {
-            if !in_external_macro(cx.sess(), local.span);
-            if !in_macro(local.span);
+            if !local.span.from_expansion();
             if let Some(expr) = local.init;
             if let ExprKind::Match(target, arms, MatchSource::Normal) = expr.kind;
             if arms.len() == 1 && arms[0].guard.is_none();
@@ -677,8 +675,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
         if_chain! {
-            if !in_external_macro(cx.sess(), pat.span);
-            if !in_macro(pat.span);
+            if !pat.span.from_expansion();
             if let PatKind::Struct(QPath::Resolved(_, path), fields, true) = pat.kind;
             if let Some(def_id) = path.res.opt_def_id();
             let ty = cx.tcx.type_of(def_id);
@@ -705,7 +702,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
 #[rustfmt::skip]
 fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
-        if in_macro(expr.span) {
+        if expr.span.from_expansion() {
             // Don't lint match expressions present in
             // macro_rules! block
             return;
@@ -1448,7 +1445,7 @@ fn find_bool_lit(ex: &ExprKind<'_>, is_if_let: bool) -> Option<bool> {
 
 #[allow(clippy::too_many_lines)]
 fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], expr: &Expr<'_>) {
-    if in_macro(expr.span) || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
+    if expr.span.from_expansion() || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
     }
 

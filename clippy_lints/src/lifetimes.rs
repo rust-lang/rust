@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{in_macro, trait_ref_of_method};
+use clippy_utils::trait_ref_of_method;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::intravisit::{
     walk_fn_decl, walk_generic_param, walk_generics, walk_item, walk_param_bound, walk_poly_trait_ref, walk_ty,
@@ -128,7 +128,7 @@ fn check_fn_inner<'tcx>(
     span: Span,
     report_extra_lifetimes: bool,
 ) {
-    if in_macro(span) || has_where_lifetimes(cx, &generics.where_clause) {
+    if span.from_expansion() || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
 

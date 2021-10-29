@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use clippy_utils::paths;
 use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_ref_to_diagnostic_item};
@@ -40,7 +39,7 @@ declare_lint_pass!(StrlenOnCStrings => [STRLEN_ON_C_STRINGS]);
 
 impl LateLintPass<'tcx> for StrlenOnCStrings {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if in_macro(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
 

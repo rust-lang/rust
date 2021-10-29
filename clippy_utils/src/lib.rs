@@ -250,12 +250,6 @@ pub fn is_lang_ctor(cx: &LateContext<'_>, qpath: &QPath<'_>, lang_item: LangItem
     false
 }
 
-/// Returns `true` if this `span` was expanded by any macro.
-#[must_use]
-pub fn in_macro(span: Span) -> bool {
-    span.from_expansion() && !matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
-}
-
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
     matches!(
         expr.kind,

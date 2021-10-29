@@ -4,7 +4,7 @@
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{snippet_opt, snippet_with_applicability, snippet_with_context};
-use clippy_utils::{get_parent_expr, in_macro, path_to_local};
+use clippy_utils::{get_parent_expr, path_to_local};
 use if_chain::if_chain;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_data_structures::fx::FxIndexMap;
@@ -157,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
             if let Some(opt_prev_pat) = self.ref_locals.get_mut(&id) {
                 // This binding id has been seen before. Add this pattern to the list of changes.
                 if let Some(prev_pat) = opt_prev_pat {
-                    if in_macro(pat.span) {
+                    if pat.span.from_expansion() {
                         // Doesn't match the context of the previous pattern. Can't lint here.
                         *opt_prev_pat = None;
                     } else {
@@ -174,7 +174,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
             }
 
             if_chain! {
-                if !in_macro(pat.span);
+                if !pat.span.from_expansion();
                 if let ty::Ref(_, tam, _) = *cx.typeck_results().pat_ty(pat).kind();
                 // only lint immutable refs, because borrowed `&mut T` cannot be moved out
                 if let ty::Ref(_, _, Mutability::Not) = *tam.kind();
@@ -248,12 +248,12 @@ impl NeedlessBorrow {
                             span,
                             kind: ExprKind::Unary(UnOp::Deref, _),
                             ..
-                        }) if !in_macro(span) => {
+                        }) if !span.from_expansion() => {
                             // Remove explicit deref.
                             let snip = snippet_with_context(cx, e.span, span.ctxt(), "..", &mut pat.app).0;
                             pat.replacements.push((span, snip.into()));
                         },
-                        Some(parent) if !in_macro(parent.span) => {
+                        Some(parent) if !parent.span.from_expansion() => {
                             // Double reference might be needed at this point.
                             if parent.precedence().order() == PREC_POSTFIX {
                                 // Parentheses would be needed here, don't lint.
@@ -264,7 +264,7 @@ impl NeedlessBorrow {
                                 pat.replacements.push((e.span, format!("&{}", snip)));
                             }
                         },
-                        _ if !in_macro(e.span) => {
+                        _ if !e.span.from_expansion() => {
                             // Double reference might be needed at this point.
                             pat.always_deref = false;
                             let snip = snippet_with_applicability(cx, e.span, "..", &mut pat.app);

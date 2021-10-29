@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_test_module_or_function;
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::{in_macro, is_test_module_or_function};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -196,7 +196,7 @@ impl LateLintPass<'_> for WildcardImports {
 
 impl WildcardImports {
     fn check_exceptions(&self, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
-        in_macro(item.span)
+        item.span.from_expansion()
             || is_prelude_import(segments)
             || (is_super_only_import(segments) && self.test_modules_deep > 0)
     }

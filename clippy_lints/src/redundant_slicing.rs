@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{get_parent_expr, in_macro};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
@@ -43,7 +43,7 @@ declare_lint_pass!(RedundantSlicing => [REDUNDANT_SLICING]);
 
 impl LateLintPass<'_> for RedundantSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_macro(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
 
