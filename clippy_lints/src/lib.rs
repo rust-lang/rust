@@ -668,7 +668,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(double_parens::DoubleParens));
     store.register_late_pass(|| Box::new(to_string_in_display::ToStringInDisplay::new()));
     store.register_early_pass(|| Box::new(unsafe_removed_from_name::UnsafeNameRemoval));
-    store.register_early_pass(|| Box::new(if_not_else::IfNotElse));
     store.register_early_pass(|| Box::new(else_if_without_else::ElseIfWithoutElse));
     store.register_early_pass(|| Box::new(int_plus_one::IntPlusOne));
     store.register_early_pass(|| Box::new(formatting::Formatting));
@@ -722,6 +721,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(option_if_let_else::OptionIfLetElse));
     store.register_late_pass(|| Box::new(future_not_send::FutureNotSend));
     store.register_late_pass(|| Box::new(if_let_mutex::IfLetMutex));
+    store.register_late_pass(|| Box::new(if_not_else::IfNotElse));
     store.register_late_pass(|| Box::new(equatable_if_let::PatternEquality));
     store.register_late_pass(|| Box::new(mut_mutex_lock::MutMutexLock));
     store.register_late_pass(|| Box::new(match_on_vec_items::MatchOnVecItems));
