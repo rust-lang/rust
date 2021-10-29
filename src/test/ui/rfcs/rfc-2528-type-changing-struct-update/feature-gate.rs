@@ -17,10 +17,11 @@ fn update_to_state2() {
         common_field1: "hello",
         common_field2: 2,
     };
-    // FIXME: this should trigger feature gate
     let m2: Machine<State2> = Machine {
         state: State2,
-        ..m1 //~ ERROR mismatched types
+        ..m1
+        //~^ ERROR type changing struct updating is experimental [E0658]
+        //~| ERROR mismatched types [E0308]
     };
     assert_eq!(State2, m2.state);
 }

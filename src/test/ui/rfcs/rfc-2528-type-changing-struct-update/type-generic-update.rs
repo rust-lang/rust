@@ -50,7 +50,6 @@ fn fail_update() {
     let m3 = Machine::<i32, i32> {
         ..m1
         //~^ ERROR mismatched types [E0308]
-        //~| ERROR mismatched types [E0308]
     };
 }
 
