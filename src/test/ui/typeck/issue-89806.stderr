@@ -3,23 +3,6 @@ error[E0599]: no method named `as_ref` found for type `u8` in the current scope
    |
 LL |     0u8.as_ref();
    |         ^^^^^^ method not found in `u8`
-   |
-  ::: $SRC_DIR/core/src/pin.rs:LL:COL
-   |
-LL |     pub fn as_ref(&self) -> Pin<&P::Target> {
-   |            ------
-   |            |
-   |            the method is available for `Pin<&mut u8>` here
-   |            the method is available for `Pin<&u8>` here
-   |
-help: consider wrapping the receiver expression with the appropriate type
-   |
-LL |     Pin::new(&mut 0u8).as_ref();
-   |     +++++++++++++    +
-help: consider wrapping the receiver expression with the appropriate type
-   |
-LL |     Pin::new(&0u8).as_ref();
-   |     ++++++++++   +
 
 error: aborting due to previous error
 
