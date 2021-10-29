@@ -47,8 +47,18 @@ where
         }
     }
 
-    fn assign_qualif_direct(&mut self, place: &mir::Place<'tcx>, value: bool) {
+    fn assign_qualif_direct(&mut self, place: &mir::Place<'tcx>, mut value: bool) {
         debug_assert!(!place.is_indirect());
+
+        if !value {
+            for (base, _elem) in place.iter_projections() {
+                let base_ty = base.ty(self.ccx.body, self.ccx.tcx);
+                if base_ty.ty.is_union() && Q::in_any_value_of_ty(self.ccx, base_ty.ty) {
+                    value = true;
+                    break;
+                }
+            }
+        }
 
         match (value, place.as_ref()) {
             (true, mir::PlaceRef { local, .. }) => {

@@ -258,6 +258,9 @@ where
                 if Q::in_adt_inherently(cx, def, substs) {
                     return true;
                 }
+                if def.is_union() && Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)) {
+                    return true;
+                }
             }
 
             // Otherwise, proceed structurally...
