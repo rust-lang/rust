@@ -33,7 +33,6 @@ mod iter_nth_zero;
 mod iter_skip_next;
 mod iterator_step_by_zero;
 mod manual_saturating_arithmetic;
-mod manual_split_once;
 mod manual_str_repeat;
 mod map_collect_result_unit;
 mod map_flatten;
@@ -50,6 +49,7 @@ mod single_char_insert_string;
 mod single_char_pattern;
 mod single_char_push_string;
 mod skip_while_next;
+mod str_splitn;
 mod string_extend_chars;
 mod suspicious_map;
 mod suspicious_splitn;
@@ -1798,6 +1798,30 @@ declare_clippy_lint! {
     "replace `.splitn(2, pat)` with `.split_once(pat)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `str::splitn` (or `str::rsplitn`) where using `str::split` would be the same.
+    /// ### Why is this bad?
+    /// The function `split` is simpler and there is no performance difference in these cases, considering
+    /// that both functions return a lazy iterator.
+    /// ### Example
+    /// ```rust
+    /// // Bad
+    /// let str = "key=value=add";
+    /// let _ = str.splitn(3, '=').next().unwrap();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// // Good
+    /// let str = "key=value=add";
+    /// let _ = str.split('=').next().unwrap();
+    /// ```
+    #[clippy::version = "1.58.0"]
+    pub NEEDLESS_SPLITN,
+    complexity,
+    "usages of `str::splitn` that can be replaced with `str::split`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -1876,7 +1900,8 @@ impl_lint_pass!(Methods => [
     SUSPICIOUS_SPLITN,
     MANUAL_STR_REPEAT,
     EXTEND_WITH_DRAIN,
-    MANUAL_SPLIT_ONCE
+    MANUAL_SPLIT_ONCE,
+    NEEDLESS_SPLITN
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2208,7 +2233,10 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
                     suspicious_splitn::check(cx, name, expr, recv, count);
                     if count == 2 && meets_msrv(msrv, &msrvs::STR_SPLIT_ONCE) {
-                        manual_split_once::check(cx, name, expr, recv, pat_arg);
+                        str_splitn::check_manual_split_once(cx, name, expr, recv, pat_arg);
+                    }
+                    if count >= 2 {
+                        str_splitn::check_needless_splitn(cx, name, expr, recv, pat_arg, count);
                     }
                 }
             },

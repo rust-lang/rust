@@ -2,7 +2,7 @@
 
 #![feature(custom_inner_attributes)]
 #![warn(clippy::manual_split_once)]
-#![allow(clippy::iter_skip_next, clippy::iter_nth_zero)]
+#![allow(clippy::iter_skip_next, clippy::iter_nth_zero, clippy::needless_splitn)]
 
 extern crate itertools;
 
