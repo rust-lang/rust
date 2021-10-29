@@ -23,7 +23,7 @@ use crate::type_error_struct;
 
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use rustc_ast as ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
@@ -1264,109 +1264,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .emit_err(StructExprNonExhaustive { span: expr.span, what: adt.variant_descr() });
         }
 
-        let (error_happened, mut remaining_fields) = self.check_expr_struct_fields(
+        self.check_expr_struct_fields(
             adt_ty,
             expected,
             expr.hir_id,
             qpath.span(),
             variant,
             fields,
-            base_expr.is_none(),
+            base_expr,
             expr.span,
         );
-        if let Some(base_expr) = base_expr {
-            // If check_expr_struct_fields hit an error, do not attempt to populate
-            // the fields with the base_expr. This could cause us to hit errors later
-            // when certain fields are assumed to exist that in fact do not.
-            if !error_happened {
-                // FIXME: We are currently creating two branches here in order to maintain
-                // consistency. But they should be merged as much as possible.
-                if self.tcx.features().type_changing_struct_update {
-                    let base_ty = self.check_expr(base_expr);
-                    match (adt_ty.kind(), base_ty.kind()) {
-                        (ty::Adt(adt, substs), ty::Adt(base_adt, base_subs)) if adt == base_adt => {
-                            if !adt.is_struct() {
-                                self.tcx.sess.emit_err(FunctionalRecordUpdateOnNonStruct {
-                                    span: base_expr.span,
-                                });
-                            };
-                            let fru_field_types = variant
-                                .fields
-                                .iter()
-                                .map(|f| {
-                                    let fru_ty = self.normalize_associated_types_in(
-                                        expr.span,
-                                        self.field_ty(base_expr.span, f, base_subs),
-                                    );
-                                    let ident = self.tcx.adjust_ident(f.ident, variant.def_id);
-                                    if remaining_fields.remove(&ident) {
-                                        let target_ty = self.field_ty(base_expr.span, f, substs);
-                                        let cause = self.misc(base_expr.span);
-                                        match self.at(&cause, self.param_env).sup(target_ty, fru_ty)
-                                        {
-                                            Ok(InferOk { obligations, value: () }) => {
-                                                self.register_predicates(obligations)
-                                            }
-                                            // FIXME: Needs better diagnostics here
-                                            Err(_) => self
-                                                .report_mismatched_types(
-                                                    &cause,
-                                                    target_ty,
-                                                    fru_ty,
-                                                    FieldMisMatch(variant.ident.name, ident.name),
-                                                )
-                                                .emit(),
-                                        }
-                                    }
-                                    fru_ty
-                                })
-                                .collect();
 
-                            self.typeck_results
-                                .borrow_mut()
-                                .fru_field_types_mut()
-                                .insert(expr.hir_id, fru_field_types);
-                        }
-                        _ => {
-                            self.report_mismatched_types(
-                                &self.misc(base_expr.span),
-                                adt_ty,
-                                base_ty,
-                                Mismatch,
-                            )
-                            .emit();
-                        }
-                    }
-                } else {
-                    self.check_expr_has_type_or_error(base_expr, adt_ty, |_| {});
-                    match adt_ty.kind() {
-                        ty::Adt(adt, substs) if adt.is_struct() => {
-                            let fru_field_types = adt
-                                .non_enum_variant()
-                                .fields
-                                .iter()
-                                .map(|f| {
-                                    self.normalize_associated_types_in(
-                                        expr.span,
-                                        f.ty(self.tcx, substs),
-                                    )
-                                })
-                                .collect();
-
-                            self.typeck_results
-                                .borrow_mut()
-                                .fru_field_types_mut()
-                                .insert(expr.hir_id, fru_field_types);
-                        }
-                        _ => {
-                            self.tcx.sess.emit_err(FunctionalRecordUpdateOnNonStruct {
-                                span: base_expr.span,
-                            });
-                        }
-                    }
-                };
-            }
-        }
         self.require_type_is_sized(adt_ty, expr.span, traits::StructInitializerSized);
         adt_ty
     }
@@ -1379,9 +1287,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         variant: &'tcx ty::VariantDef,
         ast_fields: &'tcx [hir::ExprField<'tcx>],
-        check_completeness: bool,
+        base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
         expr_span: Span,
-    ) -> (bool, FxHashSet<Ident>) {
+    ) {
         let tcx = self.tcx;
 
         let adt_ty_hint = self
@@ -1456,7 +1364,89 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
                 .emit();
             }
-        } else if check_completeness && !error_happened && !remaining_fields.is_empty() {
+        }
+
+        // If check_expr_struct_fields hit an error, do not attempt to populate
+        // the fields with the base_expr. This could cause us to hit errors later
+        // when certain fields are assumed to exist that in fact do not.
+        if error_happened {
+            return;
+        }
+
+        if let Some(base_expr) = base_expr {
+            // FIXME: We are currently creating two branches here in order to maintain
+            // consistency. But they should be merged as much as possible.
+            let fru_tys = if self.tcx.features().type_changing_struct_update {
+                let base_ty = self.check_expr(base_expr);
+                match (adt_ty.kind(), base_ty.kind()) {
+                    (ty::Adt(adt, substs), ty::Adt(base_adt, base_subs)) if adt == base_adt => {
+                        if !adt.is_struct() {
+                            self.tcx.sess.emit_err(FunctionalRecordUpdateOnNonStruct {
+                                span: base_expr.span,
+                            });
+                        };
+                        variant
+                            .fields
+                            .iter()
+                            .map(|f| {
+                                let fru_ty = self.normalize_associated_types_in(
+                                    expr_span,
+                                    self.field_ty(base_expr.span, f, base_subs),
+                                );
+                                let ident = self.tcx.adjust_ident(f.ident, variant.def_id);
+                                if let Some(_) = remaining_fields.remove(&ident) {
+                                    let target_ty = self.field_ty(base_expr.span, f, substs);
+                                    let cause = self.misc(base_expr.span);
+                                    match self.at(&cause, self.param_env).sup(target_ty, fru_ty) {
+                                        Ok(InferOk { obligations, value: () }) => {
+                                            self.register_predicates(obligations)
+                                        }
+                                        // FIXME: Need better diagnostics for `FieldMisMatch` error
+                                        Err(_) => self
+                                            .report_mismatched_types(
+                                                &cause,
+                                                target_ty,
+                                                fru_ty,
+                                                FieldMisMatch(variant.ident.name, ident.name),
+                                            )
+                                            .emit(),
+                                    }
+                                }
+                                fru_ty
+                            })
+                            .collect()
+                    }
+                    _ => {
+                        return self
+                            .report_mismatched_types(
+                                &self.misc(base_expr.span),
+                                adt_ty,
+                                base_ty,
+                                Mismatch,
+                            )
+                            .emit();
+                    }
+                }
+            } else {
+                self.check_expr_has_type_or_error(base_expr, adt_ty, |_| {});
+                match adt_ty.kind() {
+                    ty::Adt(adt, substs) if adt.is_struct() => variant
+                        .fields
+                        .iter()
+                        .map(|f| {
+                            self.normalize_associated_types_in(expr_span, f.ty(self.tcx, substs))
+                        })
+                        .collect(),
+                    _ => {
+                        return self
+                            .tcx
+                            .sess
+                            .emit_err(FunctionalRecordUpdateOnNonStruct { span: base_expr.span });
+                    }
+                }
+            };
+            self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr_id, fru_tys);
+        } else if kind_name != "union" && !remaining_fields.is_empty() {
             let inaccessible_remaining_fields = remaining_fields.iter().any(|(_, (_, field))| {
                 !field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
             });
@@ -1464,11 +1454,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if inaccessible_remaining_fields {
                 self.report_inaccessible_fields(adt_ty, span);
             } else {
-                self.report_missing_fields(adt_ty, span, remaining_fields.clone());
+                self.report_missing_fields(adt_ty, span, remaining_fields);
             }
         }
-
-        (error_happened, remaining_fields.iter().map(|(ident, _)| ident.clone()).collect())
     }
 
     fn check_struct_fields_on_error(
