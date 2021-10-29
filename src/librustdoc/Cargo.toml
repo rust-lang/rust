@@ -10,7 +10,7 @@ path = "lib.rs"
 arrayvec = { version = "0.7", default-features = false }
 pulldown-cmark = { version = "0.8", default-features = false }
 minifier = "0.0.41"
-rayon = { version = "0.3.0", package = "rustc-rayon" }
+rayon = "1.3.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 smallvec = "1.6.1"
