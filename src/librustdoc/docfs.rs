@@ -15,15 +15,6 @@ use std::path::{Path, PathBuf};
 use std::string::ToString;
 use std::sync::mpsc::Sender;
 
-macro_rules! try_err {
-    ($e:expr, $file:expr) => {
-        match $e {
-            Ok(e) => e,
-            Err(e) => return Err(E::new(e, $file)),
-        }
-    };
-}
-
 crate trait PathError {
     fn new<S, P: AsRef<Path>>(e: S, path: P) -> Self
     where
@@ -75,7 +66,7 @@ impl DocFS {
                 });
             });
         } else {
-            try_err!(fs::write(&path, contents), path);
+            fs::write(&path, contents).map_err(|e| E::new(e, path))?;
         }
         Ok(())
     }
