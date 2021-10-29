@@ -155,3 +155,7 @@ mod issue6509 {
         let _ = str.clone().clone();
     }
 }
+
+// No error for types behind an alias (#7699)
+type A = Vec<u8>;
+fn aliased(a: &A) {}
