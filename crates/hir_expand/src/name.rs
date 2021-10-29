@@ -63,8 +63,8 @@ impl Name {
     /// Ideally, we want a `gensym` semantics for missing names -- each missing
     /// name is equal only to itself. It's not clear how to implement this in
     /// salsa though, so we punt on that bit for a moment.
-    pub fn missing() -> Name {
-        Name::new_text("[missing name]".into())
+    pub const fn missing() -> Name {
+        Name::new_inline("[missing name]")
     }
 
     /// Returns the tuple index this name represents if it is a tuple field.

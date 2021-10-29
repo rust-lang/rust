@@ -1623,7 +1623,12 @@ impl MacroDef {
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         match self.source(db)?.value {
             Either::Left(it) => it.name().map(|it| it.as_name()),
-            Either::Right(it) => it.name().map(|it| it.as_name()),
+            Either::Right(_) => {
+                let krate = self.id.krate;
+                let def_map = db.crate_def_map(krate);
+                let (_, name) = def_map.exported_proc_macros().find(|&(id, _)| id == self.id)?;
+                Some(name)
+            }
         }
     }
 
