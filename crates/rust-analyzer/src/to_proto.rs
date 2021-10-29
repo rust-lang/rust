@@ -1202,9 +1202,16 @@ pub(crate) fn reference_title(count: usize) -> String {
     }
 }
 
-pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
+pub(crate) fn markup_content(
+    markup: Markup,
+    kind: ide::HoverDocFormat,
+) -> lsp_types::MarkupContent {
+    let kind = match kind {
+        ide::HoverDocFormat::Markdown => lsp_types::MarkupKind::Markdown,
+        ide::HoverDocFormat::PlainText => lsp_types::MarkupKind::PlainText,
+    };
     let value = crate::markdown::format_docs(markup.as_str());
-    lsp_types::MarkupContent { kind: lsp_types::MarkupKind::Markdown, value }
+    lsp_types::MarkupContent { kind, value }
 }
 
 pub(crate) fn rename_error(err: RenameError) -> crate::LspError {

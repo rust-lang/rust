@@ -920,9 +920,14 @@ pub(crate) fn handle_hover(
 
     let line_index = snap.file_line_index(file_range.file_id)?;
     let range = to_proto::range(&line_index, info.range);
+    let markup_kind =
+        snap.config.hover().documentation.map_or(ide::HoverDocFormat::Markdown, |kind| kind);
     let hover = lsp_ext::Hover {
         hover: lsp_types::Hover {
-            contents: HoverContents::Markup(to_proto::markup_content(info.info.markup)),
+            contents: HoverContents::Markup(to_proto::markup_content(
+                info.info.markup,
+                markup_kind,
+            )),
             range: Some(range),
         },
         actions: if snap.config.hover_actions().none() {

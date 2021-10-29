@@ -136,6 +136,7 @@ impl LsifManager<'_> {
                 result: lsp_types::Hover {
                     contents: lsp_types::HoverContents::Markup(to_proto::markup_content(
                         hover.markup,
+                        ide::HoverDocFormat::Markdown,
                     )),
                     range: None,
                 },
