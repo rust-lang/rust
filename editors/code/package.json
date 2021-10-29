@@ -436,7 +436,7 @@
                     ]
                 },
                 "rust-analyzer.assist.importGroup": {
-                    "markdownDescription": "Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.",
+                    "markdownDescription": "Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.",
                     "default": true,
                     "type": "boolean"
                 },
