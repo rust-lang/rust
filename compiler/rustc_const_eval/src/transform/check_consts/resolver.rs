@@ -5,7 +5,11 @@
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Local, Location, Statement, StatementKind};
+use rustc_mir_dataflow::fmt::DebugWithContext;
+use rustc_mir_dataflow::JoinSemiLattice;
+use rustc_span::DUMMY_SP;
 
+use std::fmt;
 use std::marker::PhantomData;
 
 use super::{qualifs, ConstCx, Qualif};
@@ -13,13 +17,13 @@ use super::{qualifs, ConstCx, Qualif};
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.
 ///
-/// This transfer does nothing when encountering an indirect assignment. Consumers should rely on
-/// the `MaybeMutBorrowedLocals` dataflow pass to see if a `Local` may have become qualified via
-/// an indirect assignment or function call.
+/// To account for indirect assignments, data flow conservatively assumes that local becomes
+/// qualified immediately after it is borrowed or its address escapes. The borrow must allow for
+/// mutation, which includes shared borrows of places with interior mutability. The type of
+/// borrowed place must contain the qualif.
 struct TransferFunction<'a, 'mir, 'tcx, Q> {
     ccx: &'a ConstCx<'mir, 'tcx>,
-    qualifs_per_local: &'a mut BitSet<Local>,
-
+    state: &'a mut State,
     _qualif: PhantomData<Q>,
 }
 
@@ -27,17 +31,18 @@ impl<Q> TransferFunction<'a, 'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    fn new(ccx: &'a ConstCx<'mir, 'tcx>, qualifs_per_local: &'a mut BitSet<Local>) -> Self {
-        TransferFunction { ccx, qualifs_per_local, _qualif: PhantomData }
+    fn new(ccx: &'a ConstCx<'mir, 'tcx>, state: &'a mut State) -> Self {
+        TransferFunction { ccx, state, _qualif: PhantomData }
     }
 
     fn initialize_state(&mut self) {
-        self.qualifs_per_local.clear();
+        self.state.qualif.clear();
+        self.state.borrow.clear();
 
         for arg in self.ccx.body.args_iter() {
             let arg_ty = self.ccx.body.local_decls[arg].ty;
             if Q::in_any_value_of_ty(self.ccx, arg_ty) {
-                self.qualifs_per_local.insert(arg);
+                self.state.qualif.insert(arg);
             }
         }
     }
@@ -47,7 +52,7 @@ where
 
         match (value, place.as_ref()) {
             (true, mir::PlaceRef { local, .. }) => {
-                self.qualifs_per_local.insert(local);
+                self.state.qualif.insert(local);
             }
 
             // For now, we do not clear the qualif if a local is overwritten in full by
@@ -55,7 +60,7 @@ where
             // with aggregates where we overwrite all fields with assignments, which would not
             // get this feature.
             (false, mir::PlaceRef { local: _, projection: &[] }) => {
-                // self.qualifs_per_local.remove(*local);
+                // self.state.qualif.remove(*local);
             }
 
             _ => {}
@@ -78,6 +83,29 @@ where
             self.assign_qualif_direct(&return_place, qualif);
         }
     }
+
+    fn address_of_allows_mutation(&self, mt: mir::Mutability, place: mir::Place<'tcx>) -> bool {
+        match mt {
+            mir::Mutability::Mut => true,
+            mir::Mutability::Not => self.shared_borrow_allows_mutation(place),
+        }
+    }
+
+    fn ref_allows_mutation(&self, kind: mir::BorrowKind, place: mir::Place<'tcx>) -> bool {
+        match kind {
+            mir::BorrowKind::Mut { .. } => true,
+            mir::BorrowKind::Shared | mir::BorrowKind::Shallow | mir::BorrowKind::Unique => {
+                self.shared_borrow_allows_mutation(place)
+            }
+        }
+    }
+
+    fn shared_borrow_allows_mutation(&self, place: mir::Place<'tcx>) -> bool {
+        !place
+            .ty(self.ccx.body, self.ccx.tcx)
+            .ty
+            .is_freeze(self.ccx.tcx.at(DUMMY_SP), self.ccx.param_env)
+    }
 }
 
 impl<Q> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx, Q>
@@ -95,7 +123,12 @@ where
         // it no longer needs to be dropped.
         if let mir::Operand::Move(place) = operand {
             if let Some(local) = place.as_local() {
-                self.qualifs_per_local.remove(local);
+                // For backward compatibility with the MaybeMutBorrowedLocals used in an earlier
+                // implementation we retain qualif if a local had been borrowed before. This might
+                // not be strictly necessary since the local is no longer initialized.
+                if !self.state.borrow.contains(local) {
+                    self.state.qualif.remove(local);
+                }
             }
         }
     }
@@ -106,11 +139,8 @@ where
         rvalue: &mir::Rvalue<'tcx>,
         location: Location,
     ) {
-        let qualif = qualifs::in_rvalue::<Q, _>(
-            self.ccx,
-            &mut |l| self.qualifs_per_local.contains(l),
-            rvalue,
-        );
+        let qualif =
+            qualifs::in_rvalue::<Q, _>(self.ccx, &mut |l| self.state.qualif.contains(l), rvalue);
         if !place.is_indirect() {
             self.assign_qualif_direct(place, qualif);
         }
@@ -120,10 +150,53 @@ where
         self.super_assign(place, rvalue, location);
     }
 
+    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
+        self.super_rvalue(rvalue, location);
+
+        match rvalue {
+            mir::Rvalue::AddressOf(mt, borrowed_place) => {
+                if !borrowed_place.is_indirect()
+                    && self.address_of_allows_mutation(*mt, *borrowed_place)
+                {
+                    let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
+                    if Q::in_any_value_of_ty(self.ccx, place_ty) {
+                        self.state.qualif.insert(borrowed_place.local);
+                        self.state.borrow.insert(borrowed_place.local);
+                    }
+                }
+            }
+
+            mir::Rvalue::Ref(_, kind, borrowed_place) => {
+                if !borrowed_place.is_indirect() && self.ref_allows_mutation(*kind, *borrowed_place)
+                {
+                    let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
+                    if Q::in_any_value_of_ty(self.ccx, place_ty) {
+                        self.state.qualif.insert(borrowed_place.local);
+                        self.state.borrow.insert(borrowed_place.local);
+                    }
+                }
+            }
+
+            mir::Rvalue::Cast(..)
+            | mir::Rvalue::ShallowInitBox(..)
+            | mir::Rvalue::Use(..)
+            | mir::Rvalue::ThreadLocalRef(..)
+            | mir::Rvalue::Repeat(..)
+            | mir::Rvalue::Len(..)
+            | mir::Rvalue::BinaryOp(..)
+            | mir::Rvalue::CheckedBinaryOp(..)
+            | mir::Rvalue::NullaryOp(..)
+            | mir::Rvalue::UnaryOp(..)
+            | mir::Rvalue::Discriminant(..)
+            | mir::Rvalue::Aggregate(..) => {}
+        }
+    }
+
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::StorageDead(local) => {
-                self.qualifs_per_local.remove(local);
+                self.state.qualif.remove(local);
+                self.state.borrow.remove(local);
             }
             _ => self.super_statement(statement, location),
         }
@@ -136,7 +209,7 @@ where
         if let mir::TerminatorKind::DropAndReplace { value, place, .. } = &terminator.kind {
             let qualif = qualifs::in_operand::<Q, _>(
                 self.ccx,
-                &mut |l| self.qualifs_per_local.contains(l),
+                &mut |l| self.state.qualif.contains(l),
                 value,
             );
 
@@ -144,6 +217,9 @@ where
                 self.assign_qualif_direct(place, qualif);
             }
         }
+
+        // We ignore borrow on drop because custom drop impls are not allowed in consts.
+        // FIXME: Reconsider if accounting for borrows in drops is necessary for const drop.
 
         // We need to assign qualifs to the dropped location before visiting the operand that
         // replaces it since qualifs can be cleared on move.
@@ -165,11 +241,60 @@ where
         FlowSensitiveAnalysis { ccx, _qualif: PhantomData }
     }
 
-    fn transfer_function(
-        &self,
-        state: &'a mut BitSet<Local>,
-    ) -> TransferFunction<'a, 'mir, 'tcx, Q> {
+    fn transfer_function(&self, state: &'a mut State) -> TransferFunction<'a, 'mir, 'tcx, Q> {
         TransferFunction::<Q>::new(self.ccx, state)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct State {
+    /// Describes whether a local contains qualif.
+    pub qualif: BitSet<Local>,
+    /// Describes whether a local's address escaped and it might become qualified as a result an
+    /// indirect mutation.
+    pub borrow: BitSet<Local>,
+}
+
+impl State {
+    #[inline]
+    pub(super) fn contains(&self, local: Local) -> bool {
+        self.qualif.contains(local)
+    }
+}
+
+impl<C> DebugWithContext<C> for State {
+    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("qualif: ")?;
+        self.qualif.fmt_with(ctxt, f)?;
+        f.write_str(" borrow: ")?;
+        self.borrow.fmt_with(ctxt, f)?;
+        Ok(())
+    }
+
+    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self == old {
+            return Ok(());
+        }
+
+        if self.qualif != old.qualif {
+            f.write_str("qualif: ")?;
+            self.qualif.fmt_diff_with(&old.qualif, ctxt, f)?;
+            f.write_str("\n")?;
+        }
+
+        if self.borrow != old.borrow {
+            f.write_str("borrow: ")?;
+            self.qualif.fmt_diff_with(&old.borrow, ctxt, f)?;
+            f.write_str("\n")?;
+        }
+
+        Ok(())
+    }
+}
+
+impl JoinSemiLattice for State {
+    fn join(&mut self, other: &Self) -> bool {
+        self.qualif.join(&other.qualif) || self.borrow.join(&other.borrow)
     }
 }
 
@@ -177,12 +302,15 @@ impl<Q> rustc_mir_dataflow::AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '
 where
     Q: Qualif,
 {
-    type Domain = BitSet<Local>;
+    type Domain = State;
 
     const NAME: &'static str = Q::ANALYSIS_NAME;
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
-        BitSet::new_empty(body.local_decls.len())
+        State {
+            qualif: BitSet::new_empty(body.local_decls.len()),
+            borrow: BitSet::new_empty(body.local_decls.len()),
+        }
     }
 
     fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut Self::Domain) {

@@ -12,7 +12,6 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
-use rustc_mir_dataflow::impls::MaybeMutBorrowedLocals;
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -27,12 +26,6 @@ use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
 
-// We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
-// through a pointer prior to the given point. This is okay even though `MaybeMutBorrowedLocals`
-// kills locals upon `StorageDead` because a local will never be used after a `StorageDead`.
-type IndirectlyMutableResults<'mir, 'tcx> =
-    rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, MaybeMutBorrowedLocals<'mir, 'tcx>>;
-
 type QualifResults<'mir, 'tcx, Q> =
     rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
 
@@ -41,36 +34,9 @@ pub struct Qualifs<'mir, 'tcx> {
     has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
     needs_drop: Option<QualifResults<'mir, 'tcx, NeedsDrop>>,
     needs_non_const_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,
-    indirectly_mutable: Option<IndirectlyMutableResults<'mir, 'tcx>>,
 }
 
 impl Qualifs<'mir, 'tcx> {
-    pub fn indirectly_mutable(
-        &mut self,
-        ccx: &'mir ConstCx<'mir, 'tcx>,
-        local: Local,
-        location: Location,
-    ) -> bool {
-        let indirectly_mutable = self.indirectly_mutable.get_or_insert_with(|| {
-            let ConstCx { tcx, body, param_env, .. } = *ccx;
-
-            // We can use `unsound_ignore_borrow_on_drop` here because custom drop impls are not
-            // allowed in a const.
-            //
-            // FIXME(ecstaticmorse): Someday we want to allow custom drop impls. How do we do this
-            // without breaking stable code?
-            MaybeMutBorrowedLocals::mut_borrows_only(tcx, &body, param_env)
-                .unsound_ignore_borrow_on_drop()
-                .into_engine(tcx, &body)
-                .pass_name("const_qualification")
-                .iterate_to_fixpoint()
-                .into_results_cursor(&body)
-        });
-
-        indirectly_mutable.seek_before_primary_effect(location);
-        indirectly_mutable.get().contains(local)
-    }
-
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
@@ -95,7 +61,7 @@ impl Qualifs<'mir, 'tcx> {
         });
 
         needs_drop.seek_before_primary_effect(location);
-        needs_drop.get().contains(local) || self.indirectly_mutable(ccx, local, location)
+        needs_drop.get().contains(local)
     }
 
     /// Returns `true` if `local` is `NeedsNonConstDrop` at the given `Location`.
@@ -122,7 +88,7 @@ impl Qualifs<'mir, 'tcx> {
         });
 
         needs_non_const_drop.seek_before_primary_effect(location);
-        needs_non_const_drop.get().contains(local) || self.indirectly_mutable(ccx, local, location)
+        needs_non_const_drop.get().contains(local)
     }
 
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
@@ -149,7 +115,7 @@ impl Qualifs<'mir, 'tcx> {
         });
 
         has_mut_interior.seek_before_primary_effect(location);
-        has_mut_interior.get().contains(local) || self.indirectly_mutable(ccx, local, location)
+        has_mut_interior.get().contains(local)
     }
 
     fn in_return_place(
@@ -195,7 +161,7 @@ impl Qualifs<'mir, 'tcx> {
                     .into_results_cursor(&ccx.body);
 
                 cursor.seek_after_primary_effect(return_loc);
-                cursor.contains(RETURN_PLACE)
+                cursor.get().contains(RETURN_PLACE)
             }
         };
 
