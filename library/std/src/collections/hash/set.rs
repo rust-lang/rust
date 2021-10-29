@@ -185,7 +185,6 @@ impl<T, S> HashSet<T, S> {
     /// }
     /// ```
     #[inline]
-    #[cfg_attr(not(bootstrap), rustc_lint_query_instability)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { base: self.base.iter() }
@@ -245,7 +244,6 @@ impl<T, S> HashSet<T, S> {
     /// assert!(set.is_empty());
     /// ```
     #[inline]
-    #[cfg_attr(not(bootstrap), rustc_lint_query_instability)]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<'_, T> {
         Drain { base: self.base.drain() }
@@ -284,7 +282,6 @@ impl<T, S> HashSet<T, S> {
     /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// ```
     #[inline]
-    #[cfg_attr(not(bootstrap), rustc_lint_query_instability)]
     #[unstable(feature = "hash_drain_filter", issue = "59618")]
     pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, T, F>
     where
@@ -509,7 +506,6 @@ where
     /// assert_eq!(diff, [4].iter().collect());
     /// ```
     #[inline]
-    #[cfg_attr(not(bootstrap), rustc_lint_query_instability)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, S>) -> Difference<'a, T, S> {
         Difference { iter: self.iter(), other }
@@ -537,7 +533,6 @@ where
     /// assert_eq!(diff1, [1, 4].iter().collect());
     /// ```
     #[inline]
-    #[cfg_attr(not(bootstrap), rustc_lint_query_instability)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symmetric_difference<'a>(
         &'a self,
@@ -565,7 +560,6 @@ where
     /// assert_eq!(intersection, [2, 3].iter().collect());
     /// ```
     #[inline]
-    #[cfg_attr(not(bootstrap), rustc_lint_query_instability)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
         if self.len() <= other.len() {
@@ -594,7 +588,6 @@ where
     /// assert_eq!(union, [1, 2, 3, 4].iter().collect());
     /// ```
     #[inline]
-    #[cfg_attr(not(bootstrap), rustc_lint_query_instability)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
         if self.len() >= other.len() {
@@ -929,7 +922,6 @@ where
     /// set.retain(|&k| k % 2 == 0);
     /// assert_eq!(set.len(), 3);
     /// ```
-    #[cfg_attr(not(bootstrap), rustc_lint_query_instability)]
     #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     pub fn retain<F>(&mut self, f: F)
     where
@@ -1411,7 +1403,6 @@ impl<'a, T, S> IntoIterator for &'a HashSet<T, S> {
     type IntoIter = Iter<'a, T>;
 
     #[inline]
-    #[cfg_attr(not(bootstrap), rustc_lint_query_instability)]
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
     }
@@ -1443,7 +1434,6 @@ impl<T, S> IntoIterator for HashSet<T, S> {
     /// }
     /// ```
     #[inline]
-    #[cfg_attr(not(bootstrap), rustc_lint_query_instability)]
     fn into_iter(self) -> IntoIter<T> {
         IntoIter { base: self.base.into_iter() }
     }

@@ -22,7 +22,6 @@
 #![feature(crate_visibility_modifier)]
 #![feature(control_flow_enum)]
 #![recursion_limit = "512"] // For rustdoc
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate rustc_macros;

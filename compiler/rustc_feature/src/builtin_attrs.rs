@@ -460,9 +460,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Prevents field reads in the marked trait or method to be considered
     // during dead code analysis.
     rustc_attr!(rustc_trivial_field_reads, Normal, template!(Word), INTERNAL_UNSTABLE),
-    // Used by the `rustc::potential_query_instability` lint to warn methods which
-    // might not be stable during incremental compilation.
-    rustc_attr!(rustc_lint_query_instability, Normal, template!(Word), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Const related:
