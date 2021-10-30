@@ -20,7 +20,7 @@ pub struct VecGraph<N: Idx> {
 impl<N: Idx> VecGraph<N> {
     pub fn new(num_nodes: usize, mut edge_pairs: Vec<(N, N)>) -> Self {
         // Sort the edges by the source -- this is important.
-        edge_pairs.sort();
+        edge_pairs.sort_by_key(|&edge_pairs| (edge_pairs.0.index(), edge_pairs.1.index()));
 
         let num_edges = edge_pairs.len();
 

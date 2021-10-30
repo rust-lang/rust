@@ -675,7 +675,7 @@ impl<T: Idx> SparseBitSet<T> {
 
     fn insert(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
-        let changed = if let Some(i) = self.elems.iter().position(|&e| e >= elem) {
+        let changed = if let Some(i) = self.elems.iter().position(|&e| e.index() >= elem.index()) {
             if self.elems[i] == elem {
                 // `elem` is already in the set.
                 false

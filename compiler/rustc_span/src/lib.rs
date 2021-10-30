@@ -424,7 +424,7 @@ impl FileName {
 /// `SpanData` is public because `Span` uses a thread-local interner and can't be
 /// sent to other threads, but some pieces of performance infra run in a separate thread.
 /// Using `Span` is generally preferred.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct SpanData {
     pub lo: BytePos,
     pub hi: BytePos,
@@ -432,6 +432,36 @@ pub struct SpanData {
     /// code was created by a macro expansion.
     pub ctxt: SyntaxContext,
     pub parent: Option<LocalDefId>,
+}
+
+// Order spans by position in the file.
+impl Ord for SpanData {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let SpanData {
+            lo: s_lo,
+            hi: s_hi,
+            ctxt: s_ctxt,
+            // `LocalDefId` does not implement `Ord`.
+            // The other fields are enough to determine in-file order.
+            parent: _,
+        } = self;
+        let SpanData {
+            lo: o_lo,
+            hi: o_hi,
+            ctxt: o_ctxt,
+            // `LocalDefId` does not implement `Ord`.
+            // The other fields are enough to determine in-file order.
+            parent: _,
+        } = other;
+
+        (s_lo, s_hi, s_ctxt).cmp(&(o_lo, o_hi, o_ctxt))
+    }
+}
+
+impl PartialOrd for SpanData {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl SpanData {

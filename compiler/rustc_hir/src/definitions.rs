@@ -101,7 +101,11 @@ impl DefPathTable {
 pub struct Definitions {
     table: DefPathTable,
 
-    // FIXME(eddyb) ideally all `LocalDefId`s would be HIR owners.
+    /// Only [`LocalDefId`]s for items and item-like are HIR owners.
+    /// The associated `HirId` has a `local_id` of `0`.
+    /// Generic parameters and closures are also assigned a `LocalDefId` but are not HIR owners.
+    /// Their `HirId`s are defined by their position while lowering the enclosing owner.
+    // FIXME(cjgillot) Some `LocalDefId`s from `use` items are dropped during lowering and lack a `HirId`.
     pub(super) def_id_to_hir_id: IndexVec<LocalDefId, Option<hir::HirId>>,
     /// The reverse mapping of `def_id_to_hir_id`.
     pub(super) hir_id_to_def_id: FxHashMap<hir::HirId, LocalDefId>,

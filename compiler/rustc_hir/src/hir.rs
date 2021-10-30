@@ -1203,7 +1203,7 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
 pub struct BodyId {
     pub hir_id: HirId,
 }
@@ -1980,7 +1980,7 @@ pub struct FnSig<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug)]
 pub struct TraitItemId {
     pub def_id: LocalDefId,
 }
@@ -2043,7 +2043,7 @@ pub enum TraitItemKind<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug)]
 pub struct ImplItemId {
     pub def_id: LocalDefId,
 }
@@ -2644,7 +2644,7 @@ impl<'hir> VariantData<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, Hash)]
 pub struct ItemId {
     pub def_id: LocalDefId,
 }
@@ -2883,7 +2883,7 @@ pub enum AssocItemKind {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug)]
 pub struct ForeignItemId {
     pub def_id: LocalDefId,
 }

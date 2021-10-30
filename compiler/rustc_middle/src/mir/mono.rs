@@ -6,7 +6,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_hir::{HirId, ItemId};
+use rustc_hir::ItemId;
 use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
@@ -355,7 +355,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey<'tcx>(Option<HirId>, SymbolName<'tcx>);
+        pub struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
@@ -366,10 +366,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceDef::Item(def) => def
-                                .did
-                                .as_local()
-                                .map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id)),
+                            InstanceDef::Item(def) => Some(def.did.index.as_usize()),
                             InstanceDef::VtableShim(..)
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
@@ -380,10 +377,10 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::CloneShim(..) => None,
                         }
                     }
-                    MonoItem::Static(def_id) => {
-                        def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
+                    MonoItem::Static(def_id) => Some(def_id.index.as_usize()),
+                    MonoItem::GlobalAsm(item_id) => {
+                        Some(item_id.def_id.to_def_id().index.as_usize())
                     }
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.hir_id()),
                 },
                 item.symbol_name(tcx),
             )
