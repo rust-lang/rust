@@ -1,6 +1,10 @@
+use super::{c, fill_utf16_buf, to_u16s};
 use crate::ffi::OsStr;
+use crate::io;
 use crate::mem;
+use crate::path::Path;
 use crate::path::Prefix;
+use crate::ptr;
 
 #[cfg(test)]
 mod tests;
@@ -140,4 +144,101 @@ fn parse_next_component(path: &OsStr, verbatim: bool) -> (&OsStr, &OsStr) {
         }
         None => (path, OsStr::new("")),
     }
+}
+
+/// Returns a UTF-16 encoded path capable of bypassing the legacy `MAX_PATH` limits.
+///
+/// This path may or may not have a verbatim prefix.
+pub(crate) fn maybe_verbatim(path: &Path) -> io::Result<Vec<u16>> {
+    // Normally the MAX_PATH is 260 UTF-16 code units (including the NULL).
+    // However, for APIs such as CreateDirectory[1], the limit is 248.
+    //
+    // [1]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createdirectorya#parameters
+    const LEGACY_MAX_PATH: usize = 248;
+    // UTF-16 encoded code points, used in parsing and building UTF-16 paths.
+    // All of these are in the ASCII range so they can be cast directly to `u16`.
+    const SEP: u16 = b'\\' as _;
+    const ALT_SEP: u16 = b'/' as _;
+    const QUERY: u16 = b'?' as _;
+    const COLON: u16 = b':' as _;
+    const DOT: u16 = b'.' as _;
+    const U: u16 = b'U' as _;
+    const N: u16 = b'N' as _;
+    const C: u16 = b'C' as _;
+
+    // \\?\
+    const VERBATIM_PREFIX: &[u16] = &[SEP, SEP, QUERY, SEP];
+    // \??\
+    const NT_PREFIX: &[u16] = &[SEP, QUERY, QUERY, SEP];
+    // \\?\UNC\
+    const UNC_PREFIX: &[u16] = &[SEP, SEP, QUERY, SEP, U, N, C, SEP];
+
+    let mut path = to_u16s(path)?;
+    if path.starts_with(VERBATIM_PREFIX) || path.starts_with(NT_PREFIX) {
+        // Early return for paths that are already verbatim.
+        return Ok(path);
+    } else if path.len() < LEGACY_MAX_PATH {
+        // Early return if an absolute path is less < 260 UTF-16 code units.
+        // This is an optimization to avoid calling `GetFullPathNameW` unnecessarily.
+        match path.as_slice() {
+            // Starts with `D:`, `D:\`, `D:/`, etc.
+            // Does not match if the path starts with a `\` or `/`.
+            [drive, COLON, 0] | [drive, COLON, SEP | ALT_SEP, ..]
+                if *drive != SEP && *drive != ALT_SEP =>
+            {
+                return Ok(path);
+            }
+            // Starts with `\\`, `//`, etc
+            [SEP | ALT_SEP, SEP | ALT_SEP, ..] => return Ok(path),
+            _ => {}
+        }
+    }
+
+    // Firstly, get the absolute path using `GetFullPathNameW`.
+    // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew
+    let lpfilename = path.as_ptr();
+    fill_utf16_buf(
+        // SAFETY: `fill_utf16_buf` ensures the `buffer` and `size` are valid.
+        // `lpfilename` is a pointer to a null terminated string that is not
+        // invalidated until after `GetFullPathNameW` returns successfully.
+        |buffer, size| unsafe {
+            // While the docs for `GetFullPathNameW` have the standard note
+            // about needing a `\\?\` path for a long lpfilename, this does not
+            // appear to be true in practice.
+            // See:
+            // https://stackoverflow.com/questions/38036943/getfullpathnamew-and-long-windows-file-paths
+            // https://googleprojectzero.blogspot.com/2016/02/the-definitive-guide-on-win32-to-nt.html
+            c::GetFullPathNameW(lpfilename, size, buffer, ptr::null_mut())
+        },
+        |mut absolute| {
+            path.clear();
+
+            // Secondly, add the verbatim prefix. This is easier here because we know the
+            // path is now absolute and fully normalized (e.g. `/` has been changed to `\`).
+            let prefix = match absolute {
+                // C:\ => \\?\C:\
+                [_, COLON, SEP, ..] => VERBATIM_PREFIX,
+                // \\.\ => \\?\
+                [SEP, SEP, DOT, SEP, ..] => {
+                    absolute = &absolute[4..];
+                    VERBATIM_PREFIX
+                }
+                // Leave \\?\ and \??\ as-is.
+                [SEP, SEP, QUERY, SEP, ..] | [SEP, QUERY, QUERY, SEP, ..] => &[],
+                // \\ => \\?\UNC\
+                [SEP, SEP, ..] => {
+                    absolute = &absolute[2..];
+                    UNC_PREFIX
+                }
+                // Anything else we leave alone.
+                _ => &[],
+            };
+
+            path.reserve_exact(prefix.len() + absolute.len() + 1);
+            path.extend_from_slice(prefix);
+            path.extend_from_slice(absolute);
+            path.push(0);
+        },
+    )?;
+    Ok(path)
 }
