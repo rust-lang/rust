@@ -589,9 +589,6 @@ declare_features! (
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (active, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391), None),
 
-    /// Lessens the requirements for structs to implement `Unsize`.
-    (active, relaxed_struct_unsize, "1.51.0", Some(81793), None),
-
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995), None),
 

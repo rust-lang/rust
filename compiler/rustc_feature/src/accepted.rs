@@ -297,6 +297,8 @@ declare_features! (
     (accepted, macro_attributes_in_derive_output, "1.57.0", Some(81119), None),
     /// Allows panicking during const eval (producing compile-time errors).
     (accepted, const_panic, "1.57.0", Some(51999), None),
+    /// Lessens the requirements for structs to implement `Unsize`.
+    (accepted, relaxed_struct_unsize, "1.58.0", Some(81793), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

@@ -1,4 +1,3 @@
-#![feature(relaxed_struct_unsize)]
 // run-pass
 // Test that we allow unsizing even if there is an unchanged param in the
 // field getting unsized.
