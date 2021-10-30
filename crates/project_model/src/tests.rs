@@ -121,6 +121,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             1,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -178,6 +181,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             6,
                         ),
                         edition: Edition2015,
+                        version: Some(
+                            "0.2.98",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -244,6 +250,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             3,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -310,6 +319,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             5,
                         ),
                         edition: Edition2015,
+                        version: Some(
+                            "0.2.98",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -366,6 +378,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             2,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -432,6 +447,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             7,
                         ),
                         edition: Edition2015,
+                        version: Some(
+                            "0.2.98",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -488,6 +506,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             4,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -576,6 +597,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             1,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -635,6 +659,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             6,
                         ),
                         edition: Edition2015,
+                        version: Some(
+                            "0.2.98",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -701,6 +728,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             3,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -769,6 +799,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             5,
                         ),
                         edition: Edition2015,
+                        version: Some(
+                            "0.2.98",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -825,6 +858,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             2,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -893,6 +929,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             7,
                         ),
                         edition: Edition2015,
+                        version: Some(
+                            "0.2.98",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -949,6 +988,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             4,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1030,6 +1072,9 @@ fn cargo_hello_world_project_model() {
                             1,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1089,6 +1134,9 @@ fn cargo_hello_world_project_model() {
                             6,
                         ),
                         edition: Edition2015,
+                        version: Some(
+                            "0.2.98",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1157,6 +1205,9 @@ fn cargo_hello_world_project_model() {
                             3,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1225,6 +1276,9 @@ fn cargo_hello_world_project_model() {
                             5,
                         ),
                         edition: Edition2015,
+                        version: Some(
+                            "0.2.98",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1283,6 +1337,9 @@ fn cargo_hello_world_project_model() {
                             2,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1351,6 +1408,9 @@ fn cargo_hello_world_project_model() {
                             7,
                         ),
                         edition: Edition2015,
+                        version: Some(
+                            "0.2.98",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1409,6 +1469,9 @@ fn cargo_hello_world_project_model() {
                             4,
                         ),
                         edition: Edition2018,
+                        version: Some(
+                            "0.1.0",
+                        ),
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1490,6 +1553,7 @@ fn rust_project_hello_world_project_model() {
                             1,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1527,6 +1591,7 @@ fn rust_project_hello_world_project_model() {
                             11,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1554,6 +1619,7 @@ fn rust_project_hello_world_project_model() {
                             8,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1581,6 +1647,7 @@ fn rust_project_hello_world_project_model() {
                             5,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1618,6 +1685,7 @@ fn rust_project_hello_world_project_model() {
                             2,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1645,6 +1713,7 @@ fn rust_project_hello_world_project_model() {
                             12,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1709,6 +1778,7 @@ fn rust_project_hello_world_project_model() {
                             9,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1736,6 +1806,7 @@ fn rust_project_hello_world_project_model() {
                             6,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1763,6 +1834,7 @@ fn rust_project_hello_world_project_model() {
                             3,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1790,6 +1862,7 @@ fn rust_project_hello_world_project_model() {
                             10,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1817,6 +1890,7 @@ fn rust_project_hello_world_project_model() {
                             7,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
@@ -1926,6 +2000,7 @@ fn rust_project_hello_world_project_model() {
                             4,
                         ),
                         edition: Edition2018,
+                        version: None,
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(

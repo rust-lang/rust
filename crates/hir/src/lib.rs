@@ -183,6 +183,10 @@ impl Crate {
         db.crate_graph()[self.id].edition
     }
 
+    pub fn version(self, db: &dyn HirDatabase) -> Option<String> {
+        db.crate_graph()[self.id].version.clone()
+    }
+
     pub fn display_name(self, db: &dyn HirDatabase) -> Option<CrateDisplayName> {
         db.crate_graph()[self.id].display_name.clone()
     }

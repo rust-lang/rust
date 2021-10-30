@@ -219,6 +219,7 @@ impl Analysis {
             file_id,
             Edition::CURRENT,
             None,
+            None,
             cfg_options.clone(),
             cfg_options,
             Env::default(),
