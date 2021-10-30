@@ -308,12 +308,12 @@ fn test_next_up() {
     let smallest_normal = f32::from_bits(0x0080_0000);
 
     // Check that NaNs roundtrip.
-    let nan0 = f32::NAN.to_bits();
-    let nan1 = f32::NAN.to_bits() ^ 0x002a_aaaa;
-    let nan2 = f32::NAN.to_bits() ^ 0x0055_5555;
-    assert_eq!(f32::from_bits(nan0).next_up().to_bits(), nan0);
-    assert_eq!(f32::from_bits(nan1).next_up().to_bits(), nan1);
-    assert_eq!(f32::from_bits(nan2).next_up().to_bits(), nan2);
+    let nan0 = f32::NAN;
+    let nan1 = f32::from_bits(f32::NAN.to_bits() ^ 0x002a_aaaa);
+    let nan2 = f32::from_bits(f32::NAN.to_bits() ^ 0x0055_5555);
+    assert_eq!(nan0.next_up().to_bits(), nan0.to_bits());
+    assert_eq!(nan1.next_up().to_bits(), nan1.to_bits());
+    assert_eq!(nan2.next_up().to_bits(), nan2.to_bits());
 
     assert_eq!(f32::NEG_INFINITY.next_up(), f32::MIN);
     assert_eq!(f32::MIN.next_up(), -max_down);
@@ -339,12 +339,12 @@ fn test_next_down() {
     let smallest_normal = f32::from_bits(0x0080_0000);
 
     // Check that NaNs roundtrip.
-    let nan0 = f32::NAN.to_bits();
-    let nan1 = f32::NAN.to_bits() ^ 0x002a_aaaa;
-    let nan2 = f32::NAN.to_bits() ^ 0x0055_5555;
-    assert_eq!(f32::from_bits(nan0).next_down().to_bits(), nan0);
-    assert_eq!(f32::from_bits(nan1).next_down().to_bits(), nan1);
-    assert_eq!(f32::from_bits(nan2).next_down().to_bits(), nan2);
+    let nan0 = f32::NAN;
+    let nan1 = f32::from_bits(f32::NAN.to_bits() ^ 0x002a_aaaa);
+    let nan2 = f32::from_bits(f32::NAN.to_bits() ^ 0x0055_5555);
+    assert_eq!(nan0.next_down().to_bits(), nan0.to_bits());
+    assert_eq!(nan1.next_down().to_bits(), nan1.to_bits());
+    assert_eq!(nan2.next_down().to_bits(), nan2.to_bits());
 
     assert_eq!(f32::NEG_INFINITY.next_down(), f32::NEG_INFINITY);
     assert_eq!(f32::MIN.next_down(), f32::NEG_INFINITY);
