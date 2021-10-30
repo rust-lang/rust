@@ -47,9 +47,10 @@
 //!   `Box<Custom>`. `Custom` also has alignment >= 4, so the bottom two bits
 //!   are free to use for the tag.
 //!
-//!   The only important thing to note is that `ptr::add` and `ptr::sub` are
-//!   used to tag the pointer, rather than bitwise operations. This should
-//!   preserve the pointer's provenance, which would otherwise be lost.
+//!   The only important thing to note is that `ptr::wrapping_add` and
+//!   `ptr::wrapping_sub` are used to tag the pointer, rather than bitwise
+//!   operations. This should preserve the pointer's provenance, which would
+//!   otherwise be lost.
 //!
 //! - **Tag 0b10**: Holds the data for `ErrorData::Os(i32)`. We store the `i32`
 //!   in the pointer's most significant 32 bits, and don't use the bits `2..32`
@@ -126,11 +127,14 @@ impl Repr {
         // Should only be possible if an allocator handed out a pointer with
         // wrong alignment.
         debug_assert_eq!((p as usize & TAG_MASK), 0);
-        // Safety: We know `TAG_CUSTOM <= size_of::<Custom>()` (static_assert at
+        // Note: We know `TAG_CUSTOM <= size_of::<Custom>()` (static_assert at
         // end of file), and both the start and end of the expression must be
         // valid without address space wraparound due to `Box`'s semantics.
-        // Note: `add` is used as a provenance-preserving way of pointer tagging.
-        let tagged = unsafe { p.add(TAG_CUSTOM).cast::<()>() };
+        //
+        // This means it would be correct to implement this using `ptr::add`
+        // (rather than `ptr::wrapping_add`), but it's unclear this would give
+        // any benefit, so we just use `wrapping_add` instead.
+        let tagged = p.wrapping_add(TAG_CUSTOM).cast::<()>();
         // Safety: the above safety comment also means the result can't be null.
         let res = Self(unsafe { NonNull::new_unchecked(tagged) });
         // quickly smoke-check we encoded the right thing (This generally will
@@ -238,7 +242,10 @@ where
         }
         TAG_SIMPLE_MESSAGE => ErrorData::SimpleMessage(&*ptr.cast::<SimpleMessage>().as_ptr()),
         TAG_CUSTOM => {
-            let custom = ptr.as_ptr().cast::<u8>().sub(TAG_CUSTOM).cast::<Custom>();
+            // It would be correct for us to use `ptr::sub` here (see the
+            // comment above the `wrapping_add` call in `new_custom` for why),
+            // but it isn't clear that it makes a difference, so we don't.
+            let custom = ptr.as_ptr().cast::<u8>().wrapping_sub(TAG_CUSTOM).cast::<Custom>();
             ErrorData::Custom(make_custom(custom))
         }
         _ => {
@@ -337,7 +344,7 @@ static_assert!(align_of::<SimpleMessage>() >= 4);
 static_assert!(align_of::<Custom>() >= 4);
 
 // This is obviously true (`TAG_CUSTOM` is `0b01`), but our implementation of
-// `Repr::new_custom` and such would be UB if it were not, so we check.
+// `Repr::new_custom` and such would be wrong if it were not, so we check.
 static_assert!(size_of::<Custom>() >= TAG_CUSTOM);
 // These two store a payload which is allowed to be zero, so they must be
 // non-zero to preserve the `NonNull`'s range invariant.
