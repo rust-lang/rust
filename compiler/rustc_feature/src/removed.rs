@@ -76,6 +76,12 @@ declare_features! (
     /// Allows the use of `#[derive(Anything)]` as sugar for `#[derive_Anything]`.
     (removed, custom_derive, "1.32.0", Some(29644), None,
      Some("subsumed by `#[proc_macro_derive]`")),
+    /// Allows using `#[doc(keyword = "...")]`.
+    (removed, doc_keyword, "1.28.0", Some(51315), None,
+     Some("merged into `#![feature(rustdoc_internals)]`")),
+    /// Allows using `doc(primitive)` without a future-incompat warning.
+    (removed, doc_primitive, "1.56.0", Some(88070), None,
+     Some("merged into `#![feature(rustdoc_internals)]`")),
     /// Allows `#[doc(spotlight)]`.
     /// The attribute was renamed to `#[doc(notable_trait)]`
     /// and the feature to `doc_notable_trait`.

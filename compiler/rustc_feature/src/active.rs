@@ -206,6 +206,8 @@ declare_features! (
     (active, rustc_allow_const_fn_unstable, "1.49.0", Some(69399), None),
     /// Allows using compiler's own crates.
     (active, rustc_private, "1.0.0", Some(27812), None),
+    /// Allows using internal rustdoc features like `doc(primitive)` or `doc(keyword)`.
+    (active, rustdoc_internals, "1.58.0", Some(90418), None),
     /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
     (active, start, "1.0.0", Some(29633), None),
     /// Allows using `#[structural_match]` which indicates that a type is structurally matchable.
@@ -366,12 +368,8 @@ declare_features! (
     (active, doc_cfg, "1.21.0", Some(43781), None),
     /// Allows `#[doc(cfg_hide(...))]`.
     (active, doc_cfg_hide, "1.57.0", Some(43781), None),
-    /// Allows using `#[doc(keyword = "...")]`.
-    (active, doc_keyword, "1.28.0", Some(51315), None),
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
-    /// Allows using doc(primitive) without a future-incompat warning
-    (active, doc_primitive, "1.56.0", Some(88070), None),
     /// Allows `X..Y` patterns.
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.

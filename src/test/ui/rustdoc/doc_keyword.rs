@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
-#![feature(doc_keyword)]
+#![feature(rustdoc_internals)]
 
 #![doc(keyword = "hello")] //~ ERROR
 
