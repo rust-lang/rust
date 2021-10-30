@@ -230,16 +230,9 @@ pub enum FullInt {
 }
 
 impl FullInt {
-    #[allow(clippy::cast_sign_loss)]
     #[must_use]
     fn cmp_s_u(s: i128, u: u128) -> Ordering {
-        if s < 0 {
-            Ordering::Less
-        } else if u > (i128::MAX as u128) {
-            Ordering::Greater
-        } else {
-            (s as u128).cmp(&u)
-        }
+        u128::try_from(s).map_or(Ordering::Less, |x| x.cmp(&u))
     }
 }
 
