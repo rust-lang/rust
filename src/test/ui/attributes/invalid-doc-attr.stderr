@@ -29,7 +29,7 @@ LL | pub fn foo() {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
-   = note: read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#docno_inlinedocinline for more information
+   = note: read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline for more information
 
 error: this attribute can only be applied at the crate level
   --> $DIR/invalid-doc-attr.rs:15:12
@@ -72,7 +72,7 @@ LL |     pub fn baz() {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
-   = note: read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#docno_inlinedocinline for more information
+   = note: read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline for more information
 
 error: aborting due to 6 previous errors
 
