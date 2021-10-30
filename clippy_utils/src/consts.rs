@@ -253,11 +253,11 @@ impl PartialOrd for FullInt {
 impl Ord for FullInt {
     #[must_use]
     fn cmp(&self, other: &Self) -> Ordering {
-        match (self, other) {
-            (&Self::S(s), &Self::S(o)) => s.cmp(&o),
-            (&Self::U(s), &Self::U(o)) => s.cmp(&o),
-            (&Self::S(s), &Self::U(o)) => Self::cmp_s_u(s, o),
-            (&Self::U(s), &Self::S(o)) => Self::cmp_s_u(o, s).reverse(),
+        match (*self, *other) {
+            (Self::S(s), Self::S(o)) => s.cmp(&o),
+            (Self::U(s), Self::U(o)) => s.cmp(&o),
+            (Self::S(s), Self::U(o)) => Self::cmp_s_u(s, o),
+            (Self::U(s), Self::S(o)) => Self::cmp_s_u(o, s).reverse(),
         }
     }
 }
