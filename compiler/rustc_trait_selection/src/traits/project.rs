@@ -20,6 +20,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt as _;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
@@ -943,6 +944,11 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             } else {
                 Normalized { value: projected_ty, obligations: projected_obligations }
             };
+
+            let mut deduped: FxHashSet<_> = Default::default();
+            result
+                .obligations
+                .drain_filter(|sub_obligation| !deduped.insert(sub_obligation.clone()));
 
             let mut canonical =
                 SelectionContext::with_query_mode(selcx.infcx(), TraitQueryMode::Canonical);
