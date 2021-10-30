@@ -850,7 +850,6 @@ pub struct ForExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for ForExpr {}
-impl ast::HasLoopBody for ForExpr {}
 impl ForExpr {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }

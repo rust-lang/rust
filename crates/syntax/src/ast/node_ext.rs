@@ -754,6 +754,15 @@ impl ast::GenericParamList {
     }
 }
 
+impl ast::HasLoopBody for ast::ForExpr {
+    fn loop_body(&self) -> Option<ast::BlockExpr> {
+        let mut exprs = support::children(self.syntax());
+        let first = exprs.next();
+        let second = exprs.next();
+        second.or(first)
+    }
+}
+
 impl ast::HasDocComments for ast::SourceFile {}
 impl ast::HasDocComments for ast::Fn {}
 impl ast::HasDocComments for ast::Struct {}
