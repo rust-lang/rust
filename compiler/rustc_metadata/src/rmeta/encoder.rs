@@ -1086,11 +1086,11 @@ impl EncodeContext<'a, 'tcx> {
             Lazy::empty()
         };
 
-        let data = ModData { reexports, expansion: tcx.expn_that_defined(local_def_id) };
-
-        record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
+        record!(self.tables.kind[def_id] <- EntryKind::Mod(reexports));
         if self.is_proc_macro {
             record!(self.tables.children[def_id] <- &[]);
+            // Encode this here because we don't do it in encode_def_ids.
+            record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));
         } else {
             record!(self.tables.children[def_id] <- md.item_ids.iter().map(|item_id| {
                 item_id.def_id.local_def_index

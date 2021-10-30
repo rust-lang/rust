@@ -1,0 +1,11 @@
+error[E0422]: cannot find struct, variant or union type `MyStruct` in this scope
+  --> $DIR/cross-crate-glob-hygiene.rs:21:13
+   |
+LL |     let x = my_struct!(create);
+   |             ^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: this error originates in the macro `my_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0422`.
