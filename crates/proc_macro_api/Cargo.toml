@@ -24,6 +24,6 @@ profile = { path = "../profile", version = "0.0.0" }
 # base_db = { path = "../base_db", version = "0.0.0" }
 
 [dependencies.object]
-version = "0.26"
+version = "0.27"
 default-features = false
 features = ["std", "read_core", "elf", "macho", "pe"]
