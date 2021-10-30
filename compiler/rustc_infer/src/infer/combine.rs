@@ -866,6 +866,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn tys(&mut self, t: Ty<'tcx>, _t: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug_assert_eq!(t, _t);
         debug!("ConstInferUnifier: t={:?}", t);
@@ -941,6 +942,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn consts(
         &mut self,
         c: &'tcx ty::Const<'tcx>,
@@ -951,29 +953,38 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
 
         match c.val {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
-                let mut inner = self.infcx.inner.borrow_mut();
-                let variable_table = &mut inner.const_unification_table();
-
                 // Check if the current unification would end up
                 // unifying `target_vid` with a const which contains
                 // an inference variable which is unioned with `target_vid`.
                 //
                 // Not doing so can easily result in stack overflows.
-                if variable_table.unioned(self.target_vid, vid) {
+                if self
+                    .infcx
+                    .inner
+                    .borrow_mut()
+                    .const_unification_table()
+                    .unioned(self.target_vid, vid)
+                {
                     return Err(TypeError::CyclicConst(c));
                 }
 
-                let var_value = variable_table.probe_value(vid);
+                let var_value =
+                    self.infcx.inner.borrow_mut().const_unification_table().probe_value(vid);
                 match var_value.val {
                     ConstVariableValue::Known { value: u } => self.consts(u, u),
                     ConstVariableValue::Unknown { universe } => {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
                         } else {
-                            let new_var_id = variable_table.new_key(ConstVarValue {
-                                origin: var_value.origin,
-                                val: ConstVariableValue::Unknown { universe: self.for_universe },
-                            });
+                            let new_var_id =
+                                self.infcx.inner.borrow_mut().const_unification_table().new_key(
+                                    ConstVarValue {
+                                        origin: var_value.origin,
+                                        val: ConstVariableValue::Unknown {
+                                            universe: self.for_universe,
+                                        },
+                                    },
+                                );
                             Ok(self.tcx().mk_const_var(new_var_id, c.ty))
                         }
                     }
