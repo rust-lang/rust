@@ -292,7 +292,8 @@ pub(super) fn default_anon_const_substs(tcx: TyCtxt<'_>, def_id: DefId) -> Subst
     // Getting this wrong can lead to ICE and unsoundness, so we assert it here.
     for arg in substs.iter() {
         let allowed_flags = ty::TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS
-            | ty::TypeFlags::STILL_FURTHER_SPECIALIZABLE;
+            | ty::TypeFlags::STILL_FURTHER_SPECIALIZABLE
+            | ty::TypeFlags::HAS_ERROR;
         assert!(!arg.has_type_flags(!allowed_flags));
     }
     substs
