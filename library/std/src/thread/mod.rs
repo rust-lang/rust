@@ -257,6 +257,7 @@ pub const fn require_unstable_const_init_thread_local() {}
 /// [`unwrap`]: crate::result::Result::unwrap
 /// [naming-threads]: ./index.html#naming-threads
 /// [stack-size]: ./index.html#stack-size
+#[must_use = "must eventually spawn the thread"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Builder {
