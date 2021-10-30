@@ -2,10 +2,10 @@
 use stdarch_test::assert_instr;
 
 extern "C" {
-    #[link_name = "llvm.wasm.memory.grow.i32"]
-    fn llvm_memory_grow(mem: u32, pages: i32) -> i32;
-    #[link_name = "llvm.wasm.memory.size.i32"]
-    fn llvm_memory_size(mem: u32) -> i32;
+    #[link_name = "llvm.wasm.memory.grow"]
+    fn llvm_memory_grow(mem: u32, pages: usize) -> usize;
+    #[link_name = "llvm.wasm.memory.size"]
+    fn llvm_memory_size(mem: u32) -> usize;
 }
 
 /// Corresponding intrinsic to wasm's [`memory.size` instruction][instr]
@@ -27,7 +27,7 @@ extern "C" {
 #[doc(alias("memory.size"))]
 pub fn memory_size<const MEM: u32>() -> usize {
     static_assert!(MEM: u32 where MEM == 0);
-    unsafe { llvm_memory_size(MEM) as usize }
+    unsafe { llvm_memory_size(MEM) }
 }
 
 /// Corresponding intrinsic to wasm's [`memory.grow` instruction][instr]
@@ -53,6 +53,6 @@ pub fn memory_size<const MEM: u32>() -> usize {
 pub fn memory_grow<const MEM: u32>(delta: usize) -> usize {
     unsafe {
         static_assert!(MEM: u32 where MEM == 0);
-        llvm_memory_grow(MEM, delta as i32) as isize as usize
+        llvm_memory_grow(MEM, delta)
     }
 }
