@@ -613,8 +613,8 @@ fn test_ord_absence() {
         set.is_empty();
         set.len();
         set.clear();
-        set.iter();
-        set.into_iter();
+        let _ = set.iter();
+        let _ = set.into_iter();
     }
 
     fn set_debug<K: Debug>(set: BTreeSet<K>) {
