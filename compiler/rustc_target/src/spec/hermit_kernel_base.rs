@@ -8,7 +8,6 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
-        os: "hermit".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         disable_redzone: true,
         linker: Some("rust-lld".to_owned()),

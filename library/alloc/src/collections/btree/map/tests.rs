@@ -744,35 +744,35 @@ fn test_range_equal_empty_cases() {
 #[should_panic]
 fn test_range_equal_excluded() {
     let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    map.range((Excluded(2), Excluded(2)));
+    let _ = map.range((Excluded(2), Excluded(2)));
 }
 
 #[test]
 #[should_panic]
 fn test_range_backwards_1() {
     let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    map.range((Included(3), Included(2)));
+    let _ = map.range((Included(3), Included(2)));
 }
 
 #[test]
 #[should_panic]
 fn test_range_backwards_2() {
     let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    map.range((Included(3), Excluded(2)));
+    let _ = map.range((Included(3), Excluded(2)));
 }
 
 #[test]
 #[should_panic]
 fn test_range_backwards_3() {
     let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    map.range((Excluded(3), Included(2)));
+    let _ = map.range((Excluded(3), Included(2)));
 }
 
 #[test]
 #[should_panic]
 fn test_range_backwards_4() {
     let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    map.range((Excluded(3), Excluded(2)));
+    let _ = map.range((Excluded(3), Excluded(2)));
 }
 
 #[test]
@@ -783,7 +783,7 @@ fn test_range_finding_ill_order_in_map() {
     // we cause a different panic than `test_range_backwards_1` does.
     // A more refined `should_panic` would be welcome.
     if Cyclic3::C < Cyclic3::A {
-        map.range(Cyclic3::C..=Cyclic3::A);
+        let _ = map.range(Cyclic3::C..=Cyclic3::A);
     }
 }
 
@@ -824,7 +824,7 @@ fn test_range_finding_ill_order_in_range_ord() {
     }
 
     let map = (0..12).map(|i| (CompositeKey(i, EvilTwin(i)), ())).collect::<BTreeMap<_, _>>();
-    map.range(EvilTwin(5)..=EvilTwin(7));
+    let _ = map.range(EvilTwin(5)..=EvilTwin(7));
 }
 
 #[test]
@@ -1239,32 +1239,32 @@ fn test_borrow() {
 
     #[allow(dead_code)]
     fn get<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
-        v.get(t);
+        let _ = v.get(t);
     }
 
     #[allow(dead_code)]
     fn get_mut<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
-        v.get_mut(t);
+        let _ = v.get_mut(t);
     }
 
     #[allow(dead_code)]
     fn get_key_value<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
-        v.get_key_value(t);
+        let _ = v.get_key_value(t);
     }
 
     #[allow(dead_code)]
     fn contains_key<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
-        v.contains_key(t);
+        let _ = v.contains_key(t);
     }
 
     #[allow(dead_code)]
     fn range<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: T) {
-        v.range(t..);
+        let _ = v.range(t..);
     }
 
     #[allow(dead_code)]
     fn range_mut<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: T) {
-        v.range_mut(t..);
+        let _ = v.range_mut(t..);
     }
 
     #[allow(dead_code)]

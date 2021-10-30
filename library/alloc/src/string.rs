@@ -898,6 +898,7 @@ impl String {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
         self.vec.capacity()
@@ -1823,6 +1824,7 @@ impl FromUtf8Error {
     /// // the first byte is invalid here
     /// assert_eq!(1, error.valid_up_to());
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn utf8_error(&self) -> Utf8Error {
         self.error
