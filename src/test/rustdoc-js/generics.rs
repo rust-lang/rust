@@ -19,3 +19,8 @@ pub fn extracreditlabhomework(
 pub fn redherringmatchforextracredit(
     _param: ExtraCreditStructMulti<ExtraCreditInnerMulti, ()>
 ) { loop {} }
+
+pub trait TraitCat {}
+pub trait TraitDog {}
+
+pub fn gamma<T: TraitCat + TraitDog>(t: T) {}
