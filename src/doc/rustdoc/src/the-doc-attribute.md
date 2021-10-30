@@ -153,7 +153,9 @@ example, if you want your doctests to fail if they produce any warnings, you cou
 These forms of the `#[doc]` attribute are used on individual items, to control how
 they are documented.
 
-### `#[doc(no_inline)]`/`#[doc(inline)]`
+### `inline` and `no_inline`
+
+<span id="docno_inlinedocinline"></span>
 
 These attributes are used on `use` statements, and control where the documentation shows
 up. For example, consider this Rust code:
@@ -219,7 +221,9 @@ Now we'll have a `Re-exports` line, and `Bar` will not link to anywhere.
 One special case: In Rust 2018 and later, if you `pub use` one of your dependencies, `rustdoc` will
 not eagerly inline it as a module unless you add `#[doc(inline)]`.
 
-### `#[doc(hidden)]`
+### `hidden`
+
+<span id="dochidden"></span>
 
 Any item annotated with `#[doc(hidden)]` will not appear in the documentation, unless
 the `strip-hidden` pass is removed.

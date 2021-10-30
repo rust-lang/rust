@@ -1663,7 +1663,7 @@ impl str {
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rmatch_indices`] method can be used.
     ///
-    /// [`rmatch_indices`]: str::match_indices
+    /// [`rmatch_indices`]: str::rmatch_indices
     ///
     /// # Examples
     ///
