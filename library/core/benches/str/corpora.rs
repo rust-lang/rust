@@ -42,7 +42,7 @@ pub mod en {
 }
 
 pub mod zh {
-    pub const SMALL: &str = "度惊人且内存利用率极高";
+    pub const SMALL: &str = "速度惊人且内存利用率极高";
     define_consts! {
         "Rust   速度惊人且内存利用率极高。由于\
          没有运行时和垃圾回收，它能够胜任对性能要\
