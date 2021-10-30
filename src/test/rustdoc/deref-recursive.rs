@@ -1,5 +1,6 @@
 // #26207: Show all methods reachable via Deref impls, recursing through multiple dereferencing
 // levels if needed.
+// For `Deref` on foreign types, look at `deref-recursive-pathbuf.rs`.
 
 // @has 'foo/struct.Foo.html'
 // @has '-' '//*[@id="deref-methods-Bar"]' 'Methods from Deref<Target = Bar>'
