@@ -229,44 +229,35 @@ pub enum FullInt {
     U(u128),
 }
 
-impl FullInt {
-    #[allow(clippy::cast_sign_loss)]
-    #[must_use]
-    fn cmp_s_u(s: i128, u: u128) -> Ordering {
-        if s < 0 {
-            Ordering::Less
-        } else if u > (i128::MAX as u128) {
-            Ordering::Greater
-        } else {
-            (s as u128).cmp(&u)
-        }
-    }
-}
-
 impl PartialEq for FullInt {
     #[must_use]
     fn eq(&self, other: &Self) -> bool {
-        self.partial_cmp(other).expect("`partial_cmp` only returns `Some(_)`") == Ordering::Equal
+        self.cmp(other) == Ordering::Equal
     }
 }
 
 impl PartialOrd for FullInt {
     #[must_use]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(match (self, other) {
-            (&Self::S(s), &Self::S(o)) => s.cmp(&o),
-            (&Self::U(s), &Self::U(o)) => s.cmp(&o),
-            (&Self::S(s), &Self::U(o)) => Self::cmp_s_u(s, o),
-            (&Self::U(s), &Self::S(o)) => Self::cmp_s_u(o, s).reverse(),
-        })
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for FullInt {
     #[must_use]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect("`partial_cmp` for FullInt can never return `None`")
+        use FullInt::{S, U};
+
+        fn cmp_s_u(s: i128, u: u128) -> Ordering {
+            u128::try_from(s).map_or(Ordering::Less, |x| x.cmp(&u))
+        }
+
+        match (*self, *other) {
+            (S(s), S(o)) => s.cmp(&o),
+            (U(s), U(o)) => s.cmp(&o),
+            (S(s), U(o)) => cmp_s_u(s, o),
+            (U(s), S(o)) => cmp_s_u(o, s).reverse(),
+        }
     }
 }
 
