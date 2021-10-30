@@ -134,7 +134,7 @@ h1, h2, h3, h4 {
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
 }
-h5, h6 {
+.docblock h3, .docblock h4, h5, h6 {
 	margin: 15px 0 5px 0;
 }
 h1.fqn {
@@ -149,7 +149,14 @@ h1.fqn {
 h1.fqn > .in-band > a:hover {
 	text-decoration: underline;
 }
-h2, h3, h4 {
+/* The only headings that get underlines are:
+	 Markdown-generated headings within the top-doc
+	 Rustdoc-generated h2 section headings (e.g. "Implementations", "Required Methods", etc)
+	Underlines elsewhere in the documentation break up visual flow and tend to invert
+	section hierarchies. */
+h2,
+.top-doc h3,
+.top-doc h4 {
 	border-bottom: 1px solid;
 }
 h3.code-header {
