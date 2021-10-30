@@ -29,12 +29,11 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
 
     let mut externs = Vec::new();
-    for &cnum in cx.tcx.crates(()).iter() {
+    for &cnum in cx.tcx.crates(()) {
         externs.push(ExternalCrate { crate_num: cnum });
         // Analyze doc-reachability for extern items
         LibEmbargoVisitor::new(cx).visit_lib(cnum);
     }
-    externs.sort_unstable_by_key(|e| e.crate_num);
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
