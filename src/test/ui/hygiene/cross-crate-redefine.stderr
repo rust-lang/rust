@@ -1,0 +1,15 @@
+error[E0428]: the name `MyStruct` is defined multiple times
+  --> $DIR/cross-crate-redefine.rs:10:1
+   |
+LL | my_struct!(define);
+   | ^^^^^^^^^^^^^^^^^^ `MyStruct` redefined here
+LL |
+LL | my_struct!(define);
+   | ------------------ previous definition of the type `MyStruct` here
+   |
+   = note: `MyStruct` must be defined only once in the type namespace of this module
+   = note: this error originates in the macro `my_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0428`.

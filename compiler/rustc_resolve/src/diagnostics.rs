@@ -842,9 +842,11 @@ impl<'a> Resolver<'a> {
 
                 // collect results based on the filter function
                 // avoid suggesting anything from the same module in which we are resolving
+                // avoid suggesting anything with a hygienic name
                 if ident.name == lookup_ident.name
                     && ns == namespace
                     && !ptr::eq(in_module, parent_scope.module)
+                    && !ident.span.normalize_to_macros_2_0().from_expansion()
                 {
                     let res = name_binding.res();
                     if filter_fn(res) {

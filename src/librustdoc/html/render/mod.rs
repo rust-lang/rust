@@ -1055,6 +1055,19 @@ fn render_assoc_items(
     it: DefId,
     what: AssocItemRender<'_>,
 ) {
+    let mut derefs = FxHashSet::default();
+    derefs.insert(it);
+    render_assoc_items_inner(w, cx, containing_item, it, what, &mut derefs)
+}
+
+fn render_assoc_items_inner(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    containing_item: &clean::Item,
+    it: DefId,
+    what: AssocItemRender<'_>,
+    derefs: &mut FxHashSet<DefId>,
+) {
     info!("Documenting associated items of {:?}", containing_item.name);
     let cache = cx.cache();
     let v = match cache.impls.get(&it) {
@@ -1063,9 +1076,10 @@ fn render_assoc_items(
     };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
+        let mut tmp_buf = Buffer::empty_from(w);
         let render_mode = match what {
             AssocItemRender::All => {
-                w.write_str(
+                tmp_buf.write_str(
                     "<h2 id=\"implementations\" class=\"small-section-header\">\
                          Implementations<a href=\"#implementations\" class=\"anchor\"></a>\
                     </h2>",
@@ -1073,21 +1087,28 @@ fn render_assoc_items(
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
+                let id =
+                    cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
+                if let Some(def_id) = type_.def_id(cx.cache()) {
+                    cx.deref_id_map.borrow_mut().insert(def_id, id.clone());
+                }
                 write!(
-                    w,
-                    "<h2 id=\"deref-methods\" class=\"small-section-header\">\
+                    tmp_buf,
+                    "<h2 id=\"{id}\" class=\"small-section-header\">\
                          <span>Methods from {trait_}&lt;Target = {type_}&gt;</span>\
-                         <a href=\"#deref-methods\" class=\"anchor\"></a>\
+                         <a href=\"#{id}\" class=\"anchor\"></a>\
                      </h2>",
+                    id = id,
                     trait_ = trait_.print(cx),
                     type_ = type_.print(cx),
                 );
                 RenderMode::ForDeref { mut_: deref_mut_ }
             }
         };
+        let mut impls_buf = Buffer::empty_from(w);
         for i in &non_trait {
             render_impl(
-                w,
+                &mut impls_buf,
                 cx,
                 i,
                 containing_item,
@@ -1104,18 +1125,27 @@ fn render_assoc_items(
                 },
             );
         }
+        if !impls_buf.is_empty() {
+            w.push_buffer(tmp_buf);
+            w.push_buffer(impls_buf);
+        }
     }
-    if let AssocItemRender::DerefFor { .. } = what {
-        return;
-    }
+
     if !traits.is_empty() {
         let deref_impl =
             traits.iter().find(|t| t.trait_did() == cx.tcx().lang_items().deref_trait());
         if let Some(impl_) = deref_impl {
             let has_deref_mut =
                 traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
-            render_deref_methods(w, cx, impl_, containing_item, has_deref_mut);
+            render_deref_methods(w, cx, impl_, containing_item, has_deref_mut, derefs);
         }
+
+        // If we were already one level into rendering deref methods, we don't want to render
+        // anything after recursing into any further deref methods above.
+        if let AssocItemRender::DerefFor { .. } = what {
+            return;
+        }
+
         let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) =
             traits.iter().partition(|t| t.inner_impl().synthetic);
         let (blanket_impl, concrete): (Vec<&&Impl>, _) =
@@ -1167,6 +1197,7 @@ fn render_deref_methods(
     impl_: &Impl,
     container_item: &clean::Item,
     deref_mut: bool,
+    derefs: &mut FxHashSet<DefId>,
 ) {
     let cache = cx.cache();
     let deref_type = impl_.inner_impl().trait_.as_ref().unwrap();
@@ -1188,16 +1219,16 @@ fn render_deref_methods(
     if let Some(did) = target.def_id(cache) {
         if let Some(type_did) = impl_.inner_impl().for_.def_id(cache) {
             // `impl Deref<Target = S> for S`
-            if did == type_did {
+            if did == type_did || !derefs.insert(did) {
                 // Avoid infinite cycles
                 return;
             }
         }
-        render_assoc_items(w, cx, container_item, did, what);
+        render_assoc_items_inner(w, cx, container_item, did, what, derefs);
     } else {
         if let Some(prim) = target.primitive_type() {
             if let Some(&did) = cache.primitive_locations.get(&prim) {
-                render_assoc_items(w, cx, container_item, did, what);
+                render_assoc_items_inner(w, cx, container_item, did, what, derefs);
             }
         }
     }
@@ -1987,7 +2018,9 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             if let Some(impl_) =
                 v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
             {
-                sidebar_deref_methods(cx, out, impl_, v);
+                let mut derefs = FxHashSet::default();
+                derefs.insert(did);
+                sidebar_deref_methods(cx, out, impl_, v, &mut derefs);
             }
 
             let format_impls = |impls: Vec<&Impl>| {
@@ -2061,7 +2094,13 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
     }
 }
 
-fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &[Impl]) {
+fn sidebar_deref_methods(
+    cx: &Context<'_>,
+    out: &mut Buffer,
+    impl_: &Impl,
+    v: &[Impl],
+    derefs: &mut FxHashSet<DefId>,
+) {
     let c = cx.cache();
 
     debug!("found Deref: {:?}", impl_);
@@ -2078,7 +2117,7 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &[
         if let Some(did) = target.def_id(c) {
             if let Some(type_did) = impl_.inner_impl().for_.def_id(c) {
                 // `impl Deref<Target = S> for S`
-                if did == type_did {
+                if did == type_did || !derefs.insert(did) {
                     // Avoid infinite cycles
                     return;
                 }
@@ -2102,9 +2141,17 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &[
                 })
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
+                let map;
+                let id = if let Some(target_def_id) = real_target.def_id(c) {
+                    map = cx.deref_id_map.borrow();
+                    map.get(&target_def_id).expect("Deref section without derived id")
+                } else {
+                    "deref-methods"
+                };
                 write!(
                     out,
-                    "<h3 class=\"sidebar-title\"><a href=\"#deref-methods\">Methods from {}&lt;Target={}&gt;</a></h3>",
+                    "<h3 class=\"sidebar-title\"><a href=\"#{}\">Methods from {}&lt;Target={}&gt;</a></h3>",
+                    id,
                     Escape(&format!("{:#}", impl_.inner_impl().trait_.as_ref().unwrap().print(cx))),
                     Escape(&format!("{:#}", real_target.print(cx))),
                 );
@@ -2115,6 +2162,21 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &[
                     write!(out, "{}", link);
                 }
                 out.push_str("</div>");
+            }
+        }
+
+        // Recurse into any further impls that might exist for `target`
+        if let Some(target_did) = target.def_id_no_primitives() {
+            if let Some(target_impls) = c.impls.get(&target_did) {
+                if let Some(target_deref_impl) = target_impls.iter().find(|i| {
+                    i.inner_impl()
+                        .trait_
+                        .as_ref()
+                        .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
+                        .unwrap_or(false)
+                }) {
+                    sidebar_deref_methods(cx, out, target_deref_impl, target_impls, derefs);
+                }
             }
         }
     }

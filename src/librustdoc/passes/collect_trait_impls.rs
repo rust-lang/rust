@@ -3,7 +3,8 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
 
@@ -51,12 +52,35 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     }
 
     let mut cleaner = BadImplStripper { prims, items: crate_items };
+    let mut type_did_to_deref_target: FxHashMap<DefId, &Type> = FxHashMap::default();
+
+    // Follow all `Deref` targets of included items and recursively add them as valid
+    fn add_deref_target(
+        map: &FxHashMap<DefId, &Type>,
+        cleaner: &mut BadImplStripper,
+        type_did: DefId,
+    ) {
+        if let Some(target) = map.get(&type_did) {
+            debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
+            if let Some(target_prim) = target.primitive_type() {
+                cleaner.prims.insert(target_prim);
+            } else if let Some(target_did) = target.def_id_no_primitives() {
+                // `impl Deref<Target = S> for S`
+                if target_did == type_did {
+                    // Avoid infinite cycles
+                    return;
+                }
+                cleaner.items.insert(target_did.into());
+                add_deref_target(map, cleaner, target_did);
+            }
+        }
+    }
 
     // scan through included items ahead of time to splice in Deref targets to the "valid" sets
     for it in &new_items {
         if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
-            if cleaner.keep_impl(for_)
-                && trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait()
+            if trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait()
+                && cleaner.keep_impl(for_, true)
             {
                 let target = items
                     .iter()
@@ -71,16 +95,26 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
                 } else if let Some(did) = target.def_id(&cx.cache) {
                     cleaner.items.insert(did.into());
                 }
+                if let Some(for_did) = for_.def_id_no_primitives() {
+                    if type_did_to_deref_target.insert(for_did, target).is_none() {
+                        // Since only the `DefId` portion of the `Type` instances is known to be same for both the
+                        // `Deref` target type and the impl for type positions, this map of types is keyed by
+                        // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
+                        if cleaner.keep_impl_with_def_id(for_did.into()) {
+                            add_deref_target(&type_did_to_deref_target, &mut cleaner, for_did);
+                        }
+                    }
+                }
             }
         }
     }
 
     new_items.retain(|it| {
         if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
-            cleaner.keep_impl(for_)
-                || trait_
-                    .as_ref()
-                    .map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
+            cleaner.keep_impl(
+                for_,
+                trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
+            ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
                 || blanket_impl.is_some()
         } else {
             true
@@ -179,14 +213,14 @@ struct BadImplStripper {
 }
 
 impl BadImplStripper {
-    fn keep_impl(&self, ty: &Type) -> bool {
+    fn keep_impl(&self, ty: &Type, is_deref: bool) -> bool {
         if let Generic(_) = ty {
             // keep impls made on generics
             true
         } else if let Some(prim) = ty.primitive_type() {
             self.prims.contains(&prim)
         } else if let Some(did) = ty.def_id_no_primitives() {
-            self.keep_impl_with_def_id(did.into())
+            is_deref || self.keep_impl_with_def_id(did.into())
         } else {
             false
         }

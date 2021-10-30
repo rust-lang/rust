@@ -145,17 +145,11 @@ impl<'a> Resolver<'a> {
                     } else {
                         def_key.disambiguated_data.data.get_opt_name().expect("module without name")
                     };
-                    let expn_id = if def_kind == DefKind::Mod {
-                        self.cstore().module_expansion_untracked(def_id, &self.session)
-                    } else {
-                        // FIXME: Parent expansions for enums and traits are not kept in metadata.
-                        ExpnId::root()
-                    };
 
                     Some(self.new_module(
                         parent,
                         ModuleKind::Def(def_kind, def_id, name),
-                        expn_id,
+                        self.cstore().module_expansion_untracked(def_id, &self.session),
                         self.cstore().get_span_untracked(def_id, &self.session),
                         // FIXME: Account for `#[no_implicit_prelude]` attributes.
                         parent.map_or(false, |module| module.no_implicit_prelude),
