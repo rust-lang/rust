@@ -687,12 +687,13 @@ rustc_queries! {
         desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
-    /// The signature of functions.
+    /// Computes the signature of the function.
     query fn_sig(key: DefId) -> ty::PolyFnSig<'tcx> {
         desc { |tcx| "computing function signature of `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }
 
+    /// Performs lint checking for the module.
     query lint_mod(key: LocalDefId) -> () {
         desc { |tcx| "linting {}", describe_as_module(key, tcx) }
     }
@@ -702,6 +703,7 @@ rustc_queries! {
         desc { |tcx| "checking attributes in {}", describe_as_module(key, tcx) }
     }
 
+    /// Checks for uses of unstable APIs in the module.
     query check_mod_unstable_api_usage(key: LocalDefId) -> () {
         desc { |tcx| "checking for unstable API usage in {}", describe_as_module(key, tcx) }
     }
@@ -928,6 +930,7 @@ rustc_queries! {
         desc { |tcx| "computing drop scopes for `{}`", tcx.def_path_str(def_id) }
     }
 
+    /// Generates a MIR body for the shim.
     query mir_shims(key: ty::InstanceDef<'tcx>) -> mir::Body<'tcx> {
         storage(ArenaCacheSelector<'tcx>)
         desc { |tcx| "generating MIR shim for `{}`", tcx.def_path_str(key.def_id()) }
@@ -946,11 +949,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Gets the span for the definition.
     query def_span(def_id: DefId) -> Span {
         desc { |tcx| "looking up span for `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 
+    /// Gets the span for the identifier of the definition.
     query def_ident_span(def_id: DefId) -> Option<Span> {
         desc { |tcx| "looking up span for `{}`'s identifier", tcx.def_path_str(def_id) }
         separate_provide_extern
@@ -1466,6 +1471,8 @@ rustc_queries! {
         desc { "fetching what a dependency looks like" }
         separate_provide_extern
     }
+
+    /// Gets the name of the crate.
     query crate_name(_: CrateNum) -> Symbol {
         eval_always
         desc { "fetching what a crate is named" }
