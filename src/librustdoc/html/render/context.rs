@@ -22,8 +22,7 @@ use super::{
     BASIC_KEYWORDS,
 };
 
-use crate::clean;
-use crate::clean::ExternalCrate;
+use crate::clean::{self, ExternalCrate};
 use crate::config::RenderOptions;
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
@@ -35,6 +34,7 @@ use crate::html::format::Buffer;
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
 use crate::html::{layout, sources};
 use crate::scrape_examples::AllCallLocations;
+use crate::try_err;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls

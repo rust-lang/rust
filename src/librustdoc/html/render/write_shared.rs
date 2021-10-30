@@ -17,6 +17,7 @@ use crate::config::{EmitType, RenderOptions};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::html::{layout, static_files};
+use crate::{try_err, try_none};
 
 static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
     map! {

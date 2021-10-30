@@ -77,6 +77,7 @@ use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
 use crate::scrape_examples::CallData;
+use crate::try_none;
 
 /// A pair of name and its optional document.
 crate type NameDoc = (String, Option<String>);
