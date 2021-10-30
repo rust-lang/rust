@@ -117,10 +117,10 @@ else
 	# that it is compiled with the expectation that pthreads is dynamically
 	# linked as a DLL and will fail to link with a statically linked libpthread.
 	#
-	# So we end up with the following hack: we link use static-nobundle to only
+	# So we end up with the following hack: we link use static:-bundle to only
 	# link the parts of libstdc++ that we actually use, which doesn't include
 	# the dependency on the pthreads DLL.
-	EXTRARSCXXFLAGS := -l static-nobundle=stdc++
+	EXTRARSCXXFLAGS := -l static:-bundle=stdc++ -Z unstable-options
 endif
 else
 ifeq ($(UNAME),Darwin)
