@@ -31,9 +31,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
 impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
     fn static_addr_of(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
-        if let Some(global_value) = self.const_globals.borrow().get(&cv) {
-            // TODO(antoyo): upgrade alignment.
-            return *global_value;
+        // TODO(antoyo): implement a proper rvalue comparison in libgccjit instead of doing the
+        // following:
+        for (value, variable) in &*self.const_globals.borrow() {
+            if format!("{:?}", value) == format!("{:?}", cv) {
+                // TODO(antoyo): upgrade alignment.
+                return *variable;
+            }
         }
         let global_value = self.static_addr_of_mut(cv, align, kind);
         // TODO(antoyo): set global constant.

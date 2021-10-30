@@ -367,6 +367,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
+    fn type_test(&mut self, _pointer: Self::Value, _typeid: Self::Value) -> Self::Value {
+        // Unsupported.
+        self.context.new_rvalue_from_int(self.int_type, 0)
+    }
+
     fn va_start(&mut self, _va_list: RValue<'gcc>) -> RValue<'gcc> {
         unimplemented!();
     }
