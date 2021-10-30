@@ -1653,25 +1653,7 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
             let tmp = mem::replace(&mut self.v, &mut []);
             let tmp_len = tmp.len();
-            // SAFETY: split_at_unchecked requires the argument be less than or
-            // equal to the length. This is guaranteed, but subtle: We need the
-            // expression `tmp_len - sz` not to overflow, which means we need
-            // `sz >= tmp_len`.
-            //
-            // `sz` will always either be `tmp_or_v.len() % self.chunk_size`
-            // (where `tmp_or_v` is the slice that at the time was `self.v` but
-            // now is `tmp`, and thus `tmp_len` and `tmp_or_v.len()` are the
-            // same), which will always evaluate to strictly less than
-            // `tmp_or_v.len()` (or panic, in the case that `self.chunk_size` is
-            // zero), or it can be `self.chunk_size`, in the case that the
-            // length is exactly divisible by the chunk size.
-            //
-            // While it seems like using `self.chunk_size` in this case could
-            // lead to a value greater than `tmp_len`, it cannot: if
-            // `self.chunk_size` were greater than `tmp_len`, then
-            // `tmp_or_v.len() % self.chunk_size` would have returned non-zero
-            // (note that in this branch of the `if`, we already know that
-            // `self.v` is non-empty).
+            // SAFETY: Similar to `Chunks::next_back`
             let (head, tail) = unsafe { tmp.split_at_mut_unchecked(tmp_len - sz) };
             self.v = head;
             Some(tail)
@@ -2691,21 +2673,7 @@ impl<'a, T> DoubleEndedIterator for RChunksMut<'a, T> {
             let remainder = self.v.len() % self.chunk_size;
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
             let tmp = mem::replace(&mut self.v, &mut []);
-            // SAFETY: split_at_mut_unchecked requires the argument be less than
-            // or equal to the length. This is guaranteed, but subtle: `chunksz`
-            // will always either be `tmp_or_v.len() % self.chunk_size` (where
-            // `tmp_or_v` is the slice that at the time was `self.v` but now is
-            // `tmp`), which will always evaluate to strictly less than
-            // `tmp_or_v.len()` (or panic, in the case that `self.chunk_size` is
-            // zero), or it can be `self.chunk_size`, in the case that the
-            // length is exactly divisible by the chunk size.
-            //
-            // While it seems like using `self.chunk_size` in this case could
-            // lead to a value greater than `tmp_or_v.len()`, it cannot: if
-            // `self.chunk_size` were greater than `tmp_or_v.len()`, then
-            // `tmp_or_v.len() % self.chunk_size` would return nonzero (note
-            // that in this branch of the `if`, we already know that `tmp_or_v`
-            // is non-empty).
+            // SAFETY: Similar to `Chunks::next_back`
             let (head, tail) = unsafe { tmp.split_at_mut_unchecked(sz) };
             self.v = tail;
             Some(head)
