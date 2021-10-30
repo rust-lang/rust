@@ -229,13 +229,6 @@ pub enum FullInt {
     U(u128),
 }
 
-impl FullInt {
-    #[must_use]
-    fn cmp_s_u(s: i128, u: u128) -> Ordering {
-        u128::try_from(s).map_or(Ordering::Less, |x| x.cmp(&u))
-    }
-}
-
 impl PartialEq for FullInt {
     #[must_use]
     fn eq(&self, other: &Self) -> bool {
@@ -255,11 +248,15 @@ impl Ord for FullInt {
     fn cmp(&self, other: &Self) -> Ordering {
         use FullInt::{S, U};
 
+        fn cmp_s_u(s: i128, u: u128) -> Ordering {
+            u128::try_from(s).map_or(Ordering::Less, |x| x.cmp(&u))
+        }
+
         match (*self, *other) {
             (S(s), S(o)) => s.cmp(&o),
             (U(s), U(o)) => s.cmp(&o),
-            (S(s), U(o)) => Self::cmp_s_u(s, o),
-            (U(s), S(o)) => Self::cmp_s_u(o, s).reverse(),
+            (S(s), U(o)) => cmp_s_u(s, o),
+            (U(s), S(o)) => cmp_s_u(o, s).reverse(),
         }
     }
 }
