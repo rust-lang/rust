@@ -23,9 +23,9 @@ fn main() {
         return;
     }
 
-    // Forcibly enable memory intrinsics on wasm32 & SGX as we don't have a libc to
+    // Forcibly enable memory intrinsics on wasm & SGX as we don't have a libc to
     // provide them.
-    if (target.contains("wasm32") && !target.contains("wasi"))
+    if (target.contains("wasm") && !target.contains("wasi"))
         || (target.contains("sgx") && target.contains("fortanix"))
         || target.contains("-none")
         || target.contains("nvptx")
@@ -50,13 +50,13 @@ fn main() {
     if !cfg!(feature = "mangled-names") && cfg!(feature = "c") {
         // Don't use a C compiler for these targets:
         //
-        // * wasm32 - clang 8 for wasm is somewhat hard to come by and it's
+        // * wasm - clang for wasm is somewhat hard to come by and it's
         //   unlikely that the C is really that much better than our own Rust.
         // * nvptx - everything is bitcode, not compatible with mixed C/Rust
         // * riscv - the rust-lang/rust distribution container doesn't have a C
         //   compiler nor is cc-rs ready for compilation to riscv (at this
         //   time). This can probably be removed in the future
-        if !target.contains("wasm32") && !target.contains("nvptx") && !target.starts_with("riscv") {
+        if !target.contains("wasm") && !target.contains("nvptx") && !target.starts_with("riscv") {
             #[cfg(feature = "c")]
             c::compile(&llvm_target, &target);
         }
