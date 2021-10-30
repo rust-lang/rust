@@ -128,3 +128,55 @@ fn windows_env_unicode_case() {
         }
     }
 }
+
+// UWP applications run in a restricted environment which means this test may not work.
+#[cfg(not(target_vendor = "uwp"))]
+#[test]
+fn windows_exe_resolver() {
+    use super::resolve_exe;
+    use crate::io;
+
+    // Test a full path, with and without the `exe` extension.
+    let mut current_exe = env::current_exe().unwrap();
+    assert!(resolve_exe(current_exe.as_ref(), None).is_ok());
+    current_exe.set_extension("");
+    assert!(resolve_exe(current_exe.as_ref(), None).is_ok());
+
+    // Test lone file names.
+    assert!(resolve_exe(OsStr::new("cmd"), None).is_ok());
+    assert!(resolve_exe(OsStr::new("cmd.exe"), None).is_ok());
+    assert!(resolve_exe(OsStr::new("cmd.EXE"), None).is_ok());
+    assert!(resolve_exe(OsStr::new("fc"), None).is_ok());
+
+    // Invalid file names should return InvalidInput.
+    assert_eq!(resolve_exe(OsStr::new(""), None).unwrap_err().kind(), io::ErrorKind::InvalidInput);
+    assert_eq!(
+        resolve_exe(OsStr::new("\0"), None).unwrap_err().kind(),
+        io::ErrorKind::InvalidInput
+    );
+    // Trailing slash, therefore there's no file name component.
+    assert_eq!(
+        resolve_exe(OsStr::new(r"C:\Path\to\"), None).unwrap_err().kind(),
+        io::ErrorKind::InvalidInput
+    );
+
+    /*
+    Some of the following tests may need to be changed if you are deliberately
+    changing the behaviour of `resolve_exe`.
+    */
+
+    let paths = env::var_os("PATH").unwrap();
+    env::set_var("PATH", "");
+
+    assert_eq!(resolve_exe(OsStr::new("rustc"), None).unwrap_err().kind(), io::ErrorKind::NotFound);
+
+    let child_paths = Some(paths.as_os_str());
+    assert!(resolve_exe(OsStr::new("rustc"), child_paths).is_ok());
+
+    // The resolver looks in system directories even when `PATH` is empty.
+    assert!(resolve_exe(OsStr::new("cmd.exe"), None).is_ok());
+
+    // The application's directory is also searched.
+    let current_exe = env::current_exe().unwrap();
+    assert!(resolve_exe(current_exe.file_name().unwrap().as_ref(), None).is_ok());
+}
