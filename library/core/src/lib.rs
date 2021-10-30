@@ -117,6 +117,7 @@
 #![feature(const_maybe_uninit_as_ptr)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_num_from_num)]
+#![feature(const_ops)]
 #![feature(const_option)]
 #![feature(const_pin)]
 #![feature(const_replace)]
