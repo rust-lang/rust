@@ -246,27 +246,26 @@ impl FullInt {
 impl PartialEq for FullInt {
     #[must_use]
     fn eq(&self, other: &Self) -> bool {
-        self.partial_cmp(other).expect("`partial_cmp` only returns `Some(_)`") == Ordering::Equal
+        self.cmp(other) == Ordering::Equal
     }
 }
 
 impl PartialOrd for FullInt {
     #[must_use]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(match (self, other) {
-            (&Self::S(s), &Self::S(o)) => s.cmp(&o),
-            (&Self::U(s), &Self::U(o)) => s.cmp(&o),
-            (&Self::S(s), &Self::U(o)) => Self::cmp_s_u(s, o),
-            (&Self::U(s), &Self::S(o)) => Self::cmp_s_u(o, s).reverse(),
-        })
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for FullInt {
     #[must_use]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect("`partial_cmp` for FullInt can never return `None`")
+        match (self, other) {
+            (&Self::S(s), &Self::S(o)) => s.cmp(&o),
+            (&Self::U(s), &Self::U(o)) => s.cmp(&o),
+            (&Self::S(s), &Self::U(o)) => Self::cmp_s_u(s, o),
+            (&Self::U(s), &Self::S(o)) => Self::cmp_s_u(o, s).reverse(),
+        }
     }
 }
 
