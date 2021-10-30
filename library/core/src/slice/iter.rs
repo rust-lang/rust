@@ -1475,22 +1475,19 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
             let remainder = self.v.len() % self.chunk_size;
             let chunksz = if remainder != 0 { remainder } else { self.chunk_size };
             // SAFETY: split_at_unchecked requires the argument be less than or
-            // equal to the length. This is guaranteed, but subtle: We need the
-            // expression `self.v.len() - sz` not to overflow, which means we
-            // need `sz >= tmp_len`.
-            //
-            // `sz` will always either be `self.v.len() % self.chunk_size`,
-            // which will always evaluate to strictly less than `self.v.len()`
-            // (or panic, in the case that `self.chunk_size` is zero), or it can
-            // be `self.chunk_size`, in the case that the length is exactly
+            // equal to the length. This is guaranteed, but subtle: `chunksz`
+            // will always either be `self.v.len() % self.chunk_size`, which
+            // will always evaluate to strictly less than `self.v.len()` (or
+            // panic, in the case that `self.chunk_size` is zero), or it can be
+            // `self.chunk_size`, in the case that the length is exactly
             // divisible by the chunk size.
             //
             // While it seems like using `self.chunk_size` in this case could
             // lead to a value greater than `self.v.len()`, it cannot: if
             // `self.chunk_size` were greater than `self.v.len()`, then
-            // `self.v.len() % self.chunk_size` would have returned non-zero
-            // (note that in this branch of the `if`, we already know that
-            // `self.v` is non-empty).
+            // `self.v.len() % self.chunk_size` would return nonzero (note that
+            // in this branch of the `if`, we already know that `self.v` is
+            // non-empty).
             let (fst, snd) = unsafe { self.v.split_at_unchecked(self.v.len() - chunksz) };
             self.v = fst;
             Some(snd)
@@ -2524,20 +2521,7 @@ impl<'a, T> DoubleEndedIterator for RChunks<'a, T> {
         } else {
             let remainder = self.v.len() % self.chunk_size;
             let chunksz = if remainder != 0 { remainder } else { self.chunk_size };
-            // SAFETY: split_at_unchecked requires the argument be less than or
-            // equal to the length. This is guaranteed, but subtle: `chunksz`
-            // will always either be `self.v.len() % self.chunk_size`, which
-            // will always evaluate to strictly less than `self.v.len()` (or
-            // panic, in the case that `self.chunk_size` is zero), or it can be
-            // `self.chunk_size`, in the case that the length is exactly
-            // divisible by the chunk size.
-            //
-            // While it seems like using `self.chunk_size` in this case could
-            // lead to a value greater than `self.v.len()`, it cannot: if
-            // `self.chunk_size` were greater than `self.v.len()`, then
-            // `self.v.len() % self.chunk_size` would return nonzero (note that
-            // in this branch of the `if`, we already know that `self.v` is
-            // non-empty).
+            // SAFETY: similar to Chunks::next_back
             let (fst, snd) = unsafe { self.v.split_at_unchecked(chunksz) };
             self.v = snd;
             Some(fst)
