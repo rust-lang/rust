@@ -2423,13 +2423,14 @@ impl<'a, T> Iterator for RChunks<'a, T> {
         if self.v.is_empty() {
             None
         } else {
-            let chunksz = cmp::min(self.v.len(), self.chunk_size);
+            let len = self.v.len();
+            let chunksz = cmp::min(len, self.chunk_size);
             // SAFETY: split_at_unchecked just requires the argument be less
-            // than the length. This could only happen if the expression
-            // `self.v.len() - chunksz` overflows. This could only happen if
-            // `chunksz > self.v.len()`, which is impossible as we initialize it
-            // as the `min` of `self.v.len()` and `self.chunk_size`.
-            let (fst, snd) = unsafe { self.v.split_at_unchecked(self.v.len() - chunksz) };
+            // than the length. This could only happen if the expression `len -
+            // chunksz` overflows. This could only happen if `chunksz > len`,
+            // which is impossible as we initialize it as the `min` of `len` and
+            // `self.chunk_size`.
+            let (fst, snd) = unsafe { self.v.split_at_unchecked(len - chunksz) };
             self.v = fst;
             Some(snd)
         }
