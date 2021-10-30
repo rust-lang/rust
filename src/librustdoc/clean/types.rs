@@ -113,6 +113,7 @@ impl From<DefId> for ItemId {
     }
 }
 
+/// The crate currently being documented.
 #[derive(Clone, Debug)]
 crate struct Crate {
     crate name: Symbol,
@@ -142,6 +143,8 @@ crate struct ExternalCrate {
 }
 
 impl ExternalCrate {
+    const LOCAL: Self = Self { crate_num: LOCAL_CRATE };
+
     #[inline]
     crate fn def_id(&self) -> DefId {
         DefId { krate: self.crate_num, index: CRATE_DEF_INDEX }
