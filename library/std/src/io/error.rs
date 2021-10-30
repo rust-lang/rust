@@ -88,7 +88,6 @@ enum ErrorData<C> {
 // requires an alignment >= 4 (note that `#[repr(align)]` will not reduce the
 // alignment required by the struct, only increase it).
 #[repr(align(4))]
-#[doc(hidden)]
 pub(crate) struct SimpleMessage {
     kind: ErrorKind,
     message: &'static str,

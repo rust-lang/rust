@@ -2,17 +2,29 @@
 //! 64-bit pointers.
 //!
 //! (Note that `bitpacked` vs `unpacked` here has no relationship to
-//! `#[repr(packed)]`, it just refers to attempting to use any available
-//! bits in a more clever manner than `rustc`'s default layout algorithm would).
+//! `#[repr(packed)]`, it just refers to attempting to use any available bits in
+//! a more clever manner than `rustc`'s default layout algorithm would).
 //!
-//! Conceptually, it stores the same information as the "unpacked" equivalent we
-//! use on other targets: `repr_unpacked::Repr` (see repr_unpacked.rs), however
-//! it packs it into a 64bit non-zero value.
+//! Conceptually, it stores the same data as the "unpacked" equivalent we use on
+//! other targets. Specifically, you can imagine it as an optimized following
+//! data (which is equivalent to what's stored by `repr_unpacked::Repr`, e.g.
+//! `super::ErrorData<Box<Custom>>`):
+//!
+//! ```ignore (exposition-only)
+//! enum ErrorData {
+//!    Os(i32),
+//!    Simple(ErrorKind),
+//!    SimpleMessage(&'static SimpleMessage),
+//!    Custom(Box<Custom>),
+//! }
+//! ```
+//!
+//! However, it packs this data into a 64bit non-zero value.
 //!
 //! This optimization not only allows `io::Error` to occupy a single pointer,
 //! but improves `io::Result` as well, especially for situations like
-//! `Result<()>` (which is now 64 bits) or `Result<u64>` (which i), which are
-//! quite common.
+//! `io::Result<()>` (which is now 64 bits) or `io::Result<u64>` (which is now
+//! 128 bits), which are quite common.
 //!
 //! # Layout
 //! Tagged values are 64 bits, with the 2 least significant bits used for the
