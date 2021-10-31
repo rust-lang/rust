@@ -487,6 +487,7 @@ impl Stdin {
     ///     println!("got a chunk: {}", String::from_utf8_lossy(&split.unwrap()));
     /// }
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[unstable(feature = "stdin_forwarders", issue = "87096")]
     pub fn split(self, byte: u8) -> Split<StdinLock<'static>> {
         self.into_locked().split(byte)

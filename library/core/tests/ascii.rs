@@ -115,7 +115,7 @@ fn test_eq_ignore_ascii_case() {
 #[test]
 fn inference_works() {
     let x = "a".to_string();
-    x.eq_ignore_ascii_case("A");
+    let _ = x.eq_ignore_ascii_case("A");
 }
 
 // Shorthands used by the is_ascii_* tests.

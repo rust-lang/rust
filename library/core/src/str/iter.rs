@@ -27,6 +27,7 @@ use super::{IsAsciiWhitespace, IsNotEmpty, IsWhitespace};
 /// [`char`]: prim@char
 /// [`chars`]: str::chars
 #[derive(Clone)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
     pub(super) iter: slice::Iter<'a, u8>,
@@ -125,6 +126,7 @@ impl<'a> Chars<'a> {
 /// [`char`]: prim@char
 /// [`char_indices`]: str::char_indices
 #[derive(Clone, Debug)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CharIndices<'a> {
     pub(super) front_offset: usize,
@@ -1089,6 +1091,7 @@ generate_pattern_iterators! {
 ///
 /// [`lines`]: str::lines
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
 pub struct Lines<'a>(pub(super) Map<SplitTerminator<'a, char>, LinesAnyMap>);
 
@@ -1128,6 +1131,7 @@ impl FusedIterator for Lines<'_> {}
 /// [`lines_any`]: str::lines_any
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
 #[allow(deprecated)]
 pub struct LinesAny<'a>(pub(super) Lines<'a>);
