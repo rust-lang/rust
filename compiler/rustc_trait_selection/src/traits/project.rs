@@ -946,13 +946,13 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             };
 
             let mut deduped: SsoHashSet<_> = Default::default();
-            result
-                .obligations
-                .drain_filter(|sub_obligation| !deduped.insert(sub_obligation.clone()));
-
             let mut canonical =
                 SelectionContext::with_query_mode(selcx.infcx(), TraitQueryMode::Canonical);
+
             result.obligations.drain_filter(|projected_obligation| {
+                if !deduped.insert(projected_obligation.clone()) {
+                    return true;
+                }
                 // If any global obligations always apply, considering regions, then we don't
                 // need to include them. The `is_global` check rules out inference variables,
                 // so there's no need for the caller of `opt_normalize_projection_type`
