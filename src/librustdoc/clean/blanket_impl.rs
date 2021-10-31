@@ -106,7 +106,6 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     visibility: Inherited,
                     def_id: ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                     kind: box ImplItem(Impl {
-                        span: Span::new(self.cx.tcx.def_span(impl_def_id)),
                         unsafety: hir::Unsafety::Normal,
                         generics: (
                             self.cx.tcx.generics_of(impl_def_id),

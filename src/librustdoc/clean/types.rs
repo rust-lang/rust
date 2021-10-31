@@ -391,12 +391,19 @@ impl Item {
             ItemKind::StrippedItem(k) => k,
             _ => &*self.kind,
         };
-        if let ItemKind::ModuleItem(Module { span, .. }) | ItemKind::ImplItem(Impl { span, .. }) =
-            kind
-        {
-            *span
-        } else {
-            self.def_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(Span::dummy)
+        match kind {
+            ItemKind::ModuleItem(Module { span, .. }) => *span,
+            ItemKind::ImplItem(Impl { synthetic: true, .. }) => Span::dummy(),
+            ItemKind::ImplItem(Impl { blanket_impl: Some(_), .. }) => {
+                if let ItemId::Blanket { impl_id, .. } = self.def_id {
+                    rustc_span(impl_id, tcx)
+                } else {
+                    panic!("blanket impl item has non-blanket ID")
+                }
+            }
+            _ => {
+                self.def_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(Span::dummy)
+            }
         }
     }
 
@@ -2165,7 +2172,6 @@ impl Constant {
 
 #[derive(Clone, Debug)]
 crate struct Impl {
-    crate span: Span,
     crate unsafety: hir::Unsafety,
     crate generics: Generics,
     crate trait_: Option<Path>,

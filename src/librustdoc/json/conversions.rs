@@ -509,7 +509,6 @@ impl FromWithTcx<clean::Impl> for Impl {
             negative_polarity,
             synthetic,
             blanket_impl,
-            span: _span,
         } = impl_;
         // FIXME: should `trait_` be a clean::Path equivalent in JSON?
         let trait_ = trait_.map(|path| {

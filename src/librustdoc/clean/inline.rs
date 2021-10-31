@@ -490,7 +490,6 @@ crate fn build_impl(
         did,
         None,
         clean::ImplItem(clean::Impl {
-            span: clean::types::rustc_span(did, cx.tcx),
             unsafety: hir::Unsafety::Normal,
             generics,
             trait_,
