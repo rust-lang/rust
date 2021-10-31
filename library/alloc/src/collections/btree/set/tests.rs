@@ -610,8 +610,8 @@ fn test_send() {
 #[test]
 fn test_ord_absence() {
     fn set<K>(mut set: BTreeSet<K>) {
-        set.is_empty();
-        set.len();
+        let _ = set.is_empty();
+        let _ = set.len();
         set.clear();
         let _ = set.iter();
         let _ = set.into_iter();

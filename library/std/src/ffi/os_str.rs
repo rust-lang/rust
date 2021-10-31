@@ -669,6 +669,7 @@ impl OsStr {
     /// assert!(!os_str.is_empty());
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[must_use]
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.inner.is_empty()
@@ -700,6 +701,7 @@ impl OsStr {
     /// assert_eq!(os_str.len(), 3);
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[must_use]
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.inner.len()
