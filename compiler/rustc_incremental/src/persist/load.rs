@@ -6,6 +6,7 @@ use rustc_middle::dep_graph::{SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::OnDiskCache;
 use rustc_serialize::opaque::Decoder;
 use rustc_serialize::Decodable;
+use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::Session;
 use std::path::Path;
 
@@ -16,6 +17,7 @@ use super::work_product;
 
 type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;
 
+#[derive(Debug)]
 pub enum LoadResult<T> {
     Ok { data: T },
     DataOutOfDate,
@@ -24,6 +26,26 @@ pub enum LoadResult<T> {
 
 impl<T: Default> LoadResult<T> {
     pub fn open(self, sess: &Session) -> T {
+        // Check for errors when using `-Zassert-incremental-state`
+        match (sess.opts.assert_incr_state, &self) {
+            (Some(IncrementalStateAssertion::NotLoaded), LoadResult::Ok { .. }) => {
+                sess.fatal(
+                    "We asserted that the incremental cache should not be loaded, \
+                         but it was loaded.",
+                );
+            }
+            (
+                Some(IncrementalStateAssertion::Loaded),
+                LoadResult::Error { .. } | LoadResult::DataOutOfDate,
+            ) => {
+                sess.fatal(
+                    "We asserted that an existing incremental cache directory should \
+                         be successfully loaded, but it was not.",
+                );
+            }
+            _ => {}
+        };
+
         match self {
             LoadResult::Error { message } => {
                 sess.warn(&message);
@@ -33,7 +55,7 @@ impl<T: Default> LoadResult<T> {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
                     sess.err(&format!(
                         "Failed to delete invalidated or incompatible \
-                                      incremental compilation session directory contents `{}`: {}.",
+                         incremental compilation session directory contents `{}`: {}.",
                         dep_graph_path(sess).display(),
                         err
                     ));

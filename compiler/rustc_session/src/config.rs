@@ -165,6 +165,18 @@ pub enum LinkerPluginLto {
     Disabled,
 }
 
+/// Used with `-Z assert-incr-state`.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum IncrementalStateAssertion {
+    /// Found and loaded an existing session directory.
+    ///
+    /// Note that this says nothing about whether any particular query
+    /// will be found to be red or green.
+    Loaded,
+    /// Did not load an existing session directory.
+    NotLoaded,
+}
+
 impl LinkerPluginLto {
     pub fn enabled(&self) -> bool {
         match *self {
@@ -704,6 +716,7 @@ pub fn host_triple() -> &'static str {
 impl Default for Options {
     fn default() -> Options {
         Options {
+            assert_incr_state: None,
             crate_types: Vec::new(),
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
@@ -1626,6 +1639,21 @@ fn select_debuginfo(
     }
 }
 
+crate fn parse_assert_incr_state(
+    opt_assertion: &Option<String>,
+    error_format: ErrorOutputType,
+) -> Option<IncrementalStateAssertion> {
+    match opt_assertion {
+        Some(s) if s.as_str() == "loaded" => Some(IncrementalStateAssertion::Loaded),
+        Some(s) if s.as_str() == "not-loaded" => Some(IncrementalStateAssertion::NotLoaded),
+        Some(s) => early_error(
+            error_format,
+            &format!("unexpected incremental state assertion value: {}", s),
+        ),
+        None => None,
+    }
+}
+
 fn parse_native_lib_kind(
     matches: &getopts::Matches,
     kind: &str,
@@ -2015,6 +2043,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
 
+    let assert_incr_state =
+        parse_assert_incr_state(&debugging_opts.assert_incr_state, error_format);
+
     if debugging_opts.profile && incremental.is_some() {
         early_error(
             error_format,
@@ -2179,6 +2210,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     };
 
     Options {
+        assert_incr_state,
         crate_types,
         optimize: opt_level,
         debuginfo,
