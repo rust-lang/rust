@@ -268,7 +268,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let has_lifetimes =
             generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
-        if !generic_args.parenthesized && !has_lifetimes {
+        if !generic_args.parenthesized && !has_lifetimes && expected_lifetimes > 0 {
             // Note: these spans are used for diagnostics when they can't be inferred.
             // See rustc_resolve::late::lifetimes::LifetimeContext::add_missing_lifetime_specifiers_label
             let elided_lifetime_span = if generic_args.span.is_empty() {
@@ -286,49 +286,43 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 .map(GenericArg::Lifetime)
                 .chain(generic_args.args.into_iter())
                 .collect();
-            if expected_lifetimes > 0 && param_mode == ParamMode::Explicit {
+            // In create-parameter mode we error here because we don't want to support
+            // deprecated impl elision in new features like impl elision and `async fn`,
+            // both of which work using the `CreateParameter` mode:
+            //
+            //     impl Foo for std::cell::Ref<u32> // note lack of '_
+            //     async fn foo(_: std::cell::Ref<u32>) { ... }
+            if let (ParamMode::Explicit, AnonymousLifetimeMode::CreateParameter) =
+                (param_mode, self.anonymous_lifetime_mode)
+            {
                 let anon_lt_suggestion = vec!["'_"; expected_lifetimes].join(", ");
                 let no_non_lt_args = generic_args.args.len() == expected_lifetimes;
                 let no_bindings = generic_args.bindings.is_empty();
-                let (incl_angl_brckt, insertion_sp, suggestion) = if no_non_lt_args && no_bindings {
+                let (incl_angl_brckt, suggestion) = if no_non_lt_args && no_bindings {
                     // If there are no generic args, our suggestion can include the angle brackets.
-                    (true, path_span.shrink_to_hi(), format!("<{}>", anon_lt_suggestion))
+                    (true, format!("<{}>", anon_lt_suggestion))
                 } else {
                     // Otherwise we'll insert a `'_, ` right after the opening bracket.
-                    let span = generic_args
-                        .span
-                        .with_lo(generic_args.span.lo() + BytePos(1))
-                        .shrink_to_lo();
-                    (false, span, format!("{}, ", anon_lt_suggestion))
+                    (false, format!("{}, ", anon_lt_suggestion))
                 };
-                match self.anonymous_lifetime_mode {
-                    // In create-parameter mode we error here because we don't want to support
-                    // deprecated impl elision in new features like impl elision and `async fn`,
-                    // both of which work using the `CreateParameter` mode:
-                    //
-                    //     impl Foo for std::cell::Ref<u32> // note lack of '_
-                    //     async fn foo(_: std::cell::Ref<u32>) { ... }
-                    AnonymousLifetimeMode::CreateParameter => {
-                        let mut err = struct_span_err!(
-                            self.sess,
-                            path_span,
-                            E0726,
-                            "implicit elided lifetime not allowed here"
-                        );
-                        rustc_errors::add_elided_lifetime_in_path_suggestion(
-                            &self.sess.source_map(),
-                            &mut err,
-                            expected_lifetimes,
-                            path_span,
-                            incl_angl_brckt,
-                            insertion_sp,
-                            suggestion,
-                        );
-                        err.note("assuming a `'static` lifetime...");
-                        err.emit();
-                    }
-                    AnonymousLifetimeMode::PassThrough | AnonymousLifetimeMode::ReportError => {}
-                }
+                let insertion_sp = elided_lifetime_span.shrink_to_hi();
+                let mut err = struct_span_err!(
+                    self.sess,
+                    path_span,
+                    E0726,
+                    "implicit elided lifetime not allowed here"
+                );
+                rustc_errors::add_elided_lifetime_in_path_suggestion(
+                    &self.sess.source_map(),
+                    &mut err,
+                    expected_lifetimes,
+                    path_span,
+                    incl_angl_brckt,
+                    insertion_sp,
+                    suggestion,
+                );
+                err.note("assuming a `'static` lifetime...");
+                err.emit();
             }
         }
 
