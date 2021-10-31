@@ -204,6 +204,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 /// assert!(p.is_null());
 /// ```
 #[inline(always)]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
@@ -223,6 +224,7 @@ pub const fn null<T>() -> *const T {
 /// assert!(p.is_null());
 /// ```
 #[inline(always)]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]

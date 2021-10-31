@@ -29,6 +29,7 @@ struct PtrBack<T: Front>(Vec<T::Back>);
 
 struct M(PtrBack<Vec<M>>);
 
+#[allow(unused_must_use)]
 fn main() {
     std::mem::size_of::<M>();
 }
