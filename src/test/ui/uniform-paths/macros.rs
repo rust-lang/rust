@@ -31,6 +31,6 @@ m2!();
 
 fn main() {
     Foo(());
-    std_io::stdout();
+    let _ = std_io::stdout();
     local_io(());
 }

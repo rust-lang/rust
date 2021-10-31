@@ -20,7 +20,7 @@ use self::std::io as local_io;
 
 fn main() {
     Foo(());
-    std_io::stdout();
+    let _ = std_io::stdout();
     local_io(());
 
     {
@@ -28,6 +28,6 @@ fn main() {
         // scope is allowed, when both resolve to the same definition.
         use ::std::io as std_io;
         use std_io::stdout;
-        stdout();
+        let _ = stdout();
     }
 }

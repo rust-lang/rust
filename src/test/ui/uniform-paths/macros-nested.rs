@@ -46,8 +46,8 @@ mod bar {
 
 fn main() {
     foo::Foo(());
-    foo::std_io::stdout();
+    let _ = foo::std_io::stdout();
     foo::local_io(());
-    io::stdout();
-    bar::io::stdout();
+    let _ = io::stdout();
+    let _ = bar::io::stdout();
 }

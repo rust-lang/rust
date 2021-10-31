@@ -518,6 +518,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub const fn octets(&self) -> [u8; 4] {
         // This returns the order we want because s_addr is stored in big-endian.
@@ -1284,6 +1285,7 @@ impl Ipv6Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub const fn segments(&self) -> [u16; 8] {
         // All elements in `s6_addr` must be big endian.
@@ -1594,6 +1596,7 @@ impl Ipv6Addr {
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
     #[inline]
     pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
         if self.is_multicast() {
@@ -1744,6 +1747,7 @@ impl Ipv6Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
     #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
+    #[must_use]
     #[inline]
     pub const fn octets(&self) -> [u8; 16] {
         self.inner.s6_addr

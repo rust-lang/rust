@@ -13,8 +13,8 @@ mod bar {
 }
 
 fn main() {
-    io::stdout();
-    self::std::io::stdout();
-    foo::my_std::io::stdout();
-    bar::std::io::stdout();
+    let _ = io::stdout();
+    let _ = self::std::io::stdout();
+    let _ = foo::my_std::io::stdout();
+    let _ = bar::std::io::stdout();
 }
