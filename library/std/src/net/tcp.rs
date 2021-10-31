@@ -90,6 +90,7 @@ pub struct TcpListener(net_imp::TcpListener);
 /// See its documentation for more.
 ///
 /// [`accept`]: TcpListener::accept
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Incoming<'a> {

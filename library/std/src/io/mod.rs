@@ -1308,6 +1308,7 @@ pub struct Initializer(bool);
 impl Initializer {
     /// Returns a new `Initializer` which will zero out buffers.
     #[unstable(feature = "read_initializer", issue = "42788")]
+    #[must_use]
     #[inline]
     pub fn zeroing() -> Initializer {
         Initializer(true)
@@ -1322,6 +1323,7 @@ impl Initializer {
     /// the method accurately reflects the number of bytes that have been
     /// written to the head of the buffer.
     #[unstable(feature = "read_initializer", issue = "42788")]
+    #[must_use]
     #[inline]
     pub unsafe fn nop() -> Initializer {
         Initializer(false)
@@ -1329,6 +1331,7 @@ impl Initializer {
 
     /// Indicates if a buffer should be initialized.
     #[unstable(feature = "read_initializer", issue = "42788")]
+    #[must_use]
     #[inline]
     pub fn should_initialize(&self) -> bool {
         self.0

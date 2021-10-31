@@ -301,6 +301,7 @@ pub struct StdinLock<'a> {
 ///     Ok(())
 /// }
 /// ```
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
     static INSTANCE: SyncOnceCell<Mutex<BufReader<StdinRaw>>> = SyncOnceCell::new();
@@ -674,6 +675,7 @@ static STDOUT: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = Sy
 ///     Ok(())
 /// }
 /// ```
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
     Stdout {
@@ -954,6 +956,7 @@ pub struct StderrLock<'a> {
 ///     Ok(())
 /// }
 /// ```
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
     // Note that unlike `stdout()` we don't use `at_exit` here to register a

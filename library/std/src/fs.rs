@@ -374,6 +374,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[unstable(feature = "with_options", issue = "65439")]
     pub fn with_options() -> OpenOptions {
         OpenOptions::new()
@@ -983,6 +984,7 @@ impl Metadata {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn file_type(&self) -> FileType {
         FileType(self.0.file_type())
@@ -1100,6 +1102,7 @@ impl Metadata {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn permissions(&self) -> Permissions {
         Permissions(self.0.perm())
@@ -1247,6 +1250,7 @@ impl Permissions {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use = "call `set_readonly` to modify the readonly flag"]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn readonly(&self) -> bool {
         self.0.readonly()
@@ -1441,6 +1445,7 @@ impl DirEntry {
     /// ```
     ///
     /// The exact text, of course, depends on what files you have in `.`.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn path(&self) -> PathBuf {
         self.0.path()
@@ -1536,6 +1541,7 @@ impl DirEntry {
     ///     }
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn file_name(&self) -> OsString {
         self.0.file_name()

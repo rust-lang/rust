@@ -32,6 +32,7 @@ pub struct Empty;
 /// io::empty().read_to_string(&mut buffer).unwrap();
 /// assert!(buffer.is_empty());
 /// ```
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
 pub const fn empty() -> Empty {
@@ -112,6 +113,7 @@ pub struct Repeat {
 /// io::repeat(0b101).read_exact(&mut buffer).unwrap();
 /// assert_eq!(buffer, [0b101, 0b101, 0b101]);
 /// ```
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
 pub const fn repeat(byte: u8) -> Repeat {
@@ -192,6 +194,7 @@ pub struct Sink;
 /// let num_bytes = io::sink().write(&buffer).unwrap();
 /// assert_eq!(num_bytes, 5);
 /// ```
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
 pub const fn sink() -> Sink {

@@ -239,6 +239,7 @@ impl OsString {
     /// assert!(os_string.capacity() >= 10);
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[must_use]
     #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
@@ -709,6 +710,7 @@ impl OsStr {
 
     /// Converts a <code>[Box]<[OsStr]></code> into an [`OsString`] without copying or allocating.
     #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
+    #[must_use = "`self` will be dropped if the result is not used"]
     pub fn into_os_string(self: Box<OsStr>) -> OsString {
         let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut Slice) };
         OsString { inner: Buf::from_box(boxed) }

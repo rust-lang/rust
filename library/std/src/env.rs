@@ -113,6 +113,7 @@ pub struct VarsOs {
 /// ```
 ///
 /// [`env::vars_os()`]: vars_os
+#[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn vars() -> Vars {
     Vars { inner: vars_os() }
@@ -140,6 +141,7 @@ pub fn vars() -> Vars {
 ///     println!("{:?}: {:?}", key, value);
 /// }
 /// ```
+#[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn vars_os() -> VarsOs {
     VarsOs { inner: os_imp::env() }
@@ -244,6 +246,7 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
+#[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
     _var_os(key.as_ref())
@@ -384,6 +387,7 @@ fn _remove_var(key: &OsStr) {
 /// documentation for more.
 ///
 /// [`env::split_paths()`]: split_paths
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "env", since = "1.0.0")]
 pub struct SplitPaths<'a> {
     inner: os_imp::SplitPaths<'a>,
@@ -564,6 +568,7 @@ impl Error for JoinPathsError {
     reason = "This function's behavior is unexpected and probably not what you want. \
               Consider using a crate from crates.io instead."
 )]
+#[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn home_dir() -> Option<PathBuf> {
     os_imp::home_dir()
@@ -603,6 +608,7 @@ pub fn home_dir() -> Option<PathBuf> {
 ///     println!("Temporary directory: {}", dir.display());
 /// }
 /// ```
+#[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn temp_dir() -> PathBuf {
     os_imp::temp_dir()
@@ -690,6 +696,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 /// should not be relied upon for security purposes.
 ///
 /// [`env::args()`]: args
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Args {
     inner: ArgsOs,
@@ -706,6 +713,7 @@ pub struct Args {
 /// should not be relied upon for security purposes.
 ///
 /// [`env::args_os()`]: args_os
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "env", since = "1.0.0")]
 pub struct ArgsOs {
     inner: sys::args::Args,

@@ -44,10 +44,10 @@ mod bar {
 
 fn main() {
     foo::Foo(());
-    foo::std_io::stdout();
+    let _ = foo::std_io::stdout();
     foo::local_io(());
-    io::stdout();
-    bar::io::stdout();
+    let _ = io::stdout();
+    let _ = bar::io::stdout();
     bar::std();
     bar::std!();
 
@@ -56,6 +56,6 @@ fn main() {
         // scope is allowed, when both resolve to the same definition.
         use std::io;
         use io::stdout;
-        stdout();
+        let _ = stdout();
     }
 }
