@@ -33,6 +33,7 @@ impl HasIter {
     }
 }
 
+#[allow(unused_must_use)]
 fn main() {
     let mut vec = vec![0, 1, 2, 3];
     let mut boxed_slice: Box<[u8]> = Box::new([0, 1, 2, 3]);
@@ -50,7 +51,7 @@ fn main() {
     linked_list.push_back(1);
     binary_heap.push(1);
 
-    let _ = &vec[..].len();
+    &vec[..].len();
     vec.len();
     boxed_slice.len();
     vec_deque.len();
@@ -62,13 +63,13 @@ fn main() {
     binary_heap.len();
 
     vec.len();
-    let _ = &vec[..].len();
+    &vec[..].len();
     vec_deque.len();
     hash_map.len();
     b_tree_map.len();
     linked_list.len();
 
-    let _ = &vec[..].len();
+    &vec[..].len();
     vec.len();
     vec_deque.len();
     hash_set.len();

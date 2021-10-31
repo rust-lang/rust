@@ -365,6 +365,7 @@ impl<'a> IntoIterator for &'a UnixListener {
 /// }
 /// ```
 #[derive(Debug)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct Incoming<'a> {
     listener: &'a UnixListener,

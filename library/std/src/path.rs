@@ -422,6 +422,7 @@ impl<'a> PrefixComponent<'a> {
     /// See [`Prefix`]'s documentation for more information on the different
     /// kinds of prefixes.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     #[inline]
     pub fn kind(&self) -> Prefix<'a> {
         self.parsed
@@ -583,6 +584,7 @@ impl AsRef<Path> for Component<'_> {
 ///
 /// [`components`]: Path::components
 #[derive(Clone)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
     // The path left to parse components from
@@ -609,6 +611,7 @@ pub struct Components<'a> {
 ///
 /// [`iter`]: Path::iter
 #[derive(Clone)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a> {
     inner: Components<'a>,
@@ -1051,6 +1054,7 @@ fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cm
 ///
 /// [`ancestors`]: Path::ancestors
 #[derive(Copy, Clone, Debug)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "path_ancestors", since = "1.28.0")]
 pub struct Ancestors<'a> {
     next: Option<&'a Path>,
@@ -1459,6 +1463,7 @@ impl PathBuf {
     ///
     /// [`capacity`]: OsString::capacity
     #[stable(feature = "path_buf_capacity", since = "1.44.0")]
+    #[must_use]
     #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
@@ -2103,6 +2108,7 @@ impl Path {
     /// assert_eq!(grand_parent.parent(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn parent(&self) -> Option<&Path> {
         let mut comps = self.components();
         let comp = comps.next_back();
@@ -2169,6 +2175,7 @@ impl Path {
     /// assert_eq!(None, Path::new("/").file_name());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn file_name(&self) -> Option<&OsStr> {
         self.components().next_back().and_then(|p| match p {
             Component::Normal(p) => Some(p),
@@ -2241,6 +2248,7 @@ impl Path {
     /// assert!(!Path::new("/etc/foo.rs").starts_with("/etc/foo"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn starts_with<P: AsRef<Path>>(&self, base: P) -> bool {
         self._starts_with(base.as_ref())
     }
@@ -2268,6 +2276,7 @@ impl Path {
     /// assert!(!path.ends_with("conf")); // use .extension() instead
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn ends_with<P: AsRef<Path>>(&self, child: P) -> bool {
         self._ends_with(child.as_ref())
     }
@@ -2303,6 +2312,7 @@ impl Path {
     /// [`Path::file_prefix`]: Path::file_prefix
     ///
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn file_stem(&self) -> Option<&OsStr> {
         self.file_name().map(rsplit_file_at_dot).and_then(|(before, after)| before.or(after))
     }
@@ -2336,6 +2346,7 @@ impl Path {
     /// [`Path::file_stem`]: Path::file_stem
     ///
     #[unstable(feature = "path_file_prefix", issue = "86319")]
+    #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
         self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
     }
@@ -2360,6 +2371,7 @@ impl Path {
     /// assert_eq!("gz", Path::new("foo.tar.gz").extension().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn extension(&self) -> Option<&OsStr> {
         self.file_name().map(rsplit_file_at_dot).and_then(|(before, after)| before.and(after))
     }
@@ -2403,6 +2415,7 @@ impl Path {
     /// assert_eq!(path.with_file_name("var"), PathBuf::from("/var"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn with_file_name<S: AsRef<OsStr>>(&self, file_name: S) -> PathBuf {
         self._with_file_name(file_name.as_ref())
     }
@@ -2660,6 +2673,7 @@ impl Path {
     /// This is a convenience function that coerces errors to false. If you want to
     /// check errors, call [`fs::metadata`].
     #[stable(feature = "path_ext", since = "1.5.0")]
+    #[must_use]
     #[inline]
     pub fn exists(&self) -> bool {
         fs::metadata(self).is_ok()
@@ -2786,6 +2800,7 @@ impl Path {
     /// Converts a [`Box<Path>`](Box) into a [`PathBuf`] without copying or
     /// allocating.
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
+    #[must_use = "`self` will be dropped if the result is not used"]
     pub fn into_path_buf(self: Box<Path>) -> PathBuf {
         let rw = Box::into_raw(self) as *mut OsStr;
         let inner = unsafe { Box::from_raw(rw) };

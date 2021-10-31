@@ -106,6 +106,7 @@ impl CommandEnv {
 /// This struct is created by
 /// [`Command::get_envs`][crate::process::Command::get_envs]. See its
 /// documentation for more.
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "command_access", since = "1.57.0")]
 #[derive(Debug)]
 pub struct CommandEnvs<'a> {

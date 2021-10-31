@@ -449,6 +449,7 @@ impl<T> NonNull<[T]> {
     /// ```
     #[unstable(feature = "slice_ptr_len", issue = "71146")]
     #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[must_use]
     #[inline]
     pub const fn len(self) -> usize {
         self.as_ptr().len()

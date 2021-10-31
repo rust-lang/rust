@@ -1707,6 +1707,7 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
 impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
     /// Gets a reference to the key in the entry.
     #[inline]
+    #[must_use]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn key(&self) -> &K {
         self.base.key()
@@ -1714,6 +1715,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
 
     /// Gets a mutable reference to the key in the entry.
     #[inline]
+    #[must_use]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn key_mut(&mut self) -> &mut K {
         self.base.key_mut()
@@ -1730,6 +1732,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
 
     /// Gets a reference to the value in the entry.
     #[inline]
+    #[must_use]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn get(&self) -> &V {
         self.base.get()
@@ -1746,6 +1749,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
 
     /// Gets a mutable reference to the value in the entry.
     #[inline]
+    #[must_use]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn get_mut(&mut self) -> &mut V {
         self.base.get_mut()
@@ -1753,6 +1757,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
 
     /// Gets a reference to the key and value in the entry.
     #[inline]
+    #[must_use]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn get_key_value(&mut self) -> (&K, &V) {
         self.base.get_key_value()
