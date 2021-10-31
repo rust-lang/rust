@@ -1,208 +1,184 @@
-error: you should put `foo_bar` between ticks in the documentation
-  --> $DIR/doc.rs:8:9
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:9:9
    |
 LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
-   |         ^^^^^^^
+   |         ^^^^^^^ help: try: ``foo_bar``
    |
    = note: `-D clippy::doc-markdown` implied by `-D warnings`
 
-error: you should put `foo::bar` between ticks in the documentation
-  --> $DIR/doc.rs:8:51
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:9:51
    |
 LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
-   |                                                   ^^^^^^^^
+   |                                                   ^^^^^^^^ help: try: ``foo::bar``
 
-error: you should put `Foo::some_fun` between ticks in the documentation
-  --> $DIR/doc.rs:9:83
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:10:83
    |
 LL | /// Markdown is _weird_. I mean _really weird_. This /_ is ok. So is `_`. But not Foo::some_fun
-   |                                                                                   ^^^^^^^^^^^^^
+   |                                                                                   ^^^^^^^^^^^^^ help: try: ``Foo::some_fun``
 
-error: you should put `::a::global:path` between ticks in the documentation
-  --> $DIR/doc.rs:11:13
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:12:13
    |
 LL | /// Here be ::a::global:path, and _::another::global::path_.  :: is not a path though.
-   |             ^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^ help: try: ``::a::global:path``
 
-error: you should put `::another::global::path` between ticks in the documentation
-  --> $DIR/doc.rs:11:36
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:12:36
    |
 LL | /// Here be ::a::global:path, and _::another::global::path_.  :: is not a path though.
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``::another::global::path``
 
-error: you should put `::awesome::global::blob::` between ticks in the documentation
-  --> $DIR/doc.rs:12:25
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:13:25
    |
 LL | /// Import an item from ::awesome::global::blob:: (Intended postfix)
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``::awesome::global::blob::``
 
-error: you should put `::Cat` between ticks in the documentation
-  --> $DIR/doc.rs:13:31
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:14:31
    |
 LL | /// These are the options for ::Cat: (Intended trailing single colon, shouldn't be linted)
-   |                               ^^^^^
+   |                               ^^^^^ help: try: ``::Cat``
 
-error: you should put `NotInCodeBlock` between ticks in the documentation
-  --> $DIR/doc.rs:14:22
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:15:22
    |
 LL | /// That's not code ~NotInCodeBlock~.
-   |                      ^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^^^^^ help: try: ``NotInCodeBlock``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:15:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:16:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:29:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:30:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:36:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:37:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:50:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:51:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:73:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:74:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `link_with_underscores` between ticks in the documentation
-  --> $DIR/doc.rs:77:22
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:78:22
    |
 LL | /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
-   |                      ^^^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^^^^^^^^^^^^ help: try: ``link_with_underscores``
 
-error: you should put `inline_link2` between ticks in the documentation
-  --> $DIR/doc.rs:80:21
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:81:21
    |
 LL | /// It can also be [inline_link2].
-   |                     ^^^^^^^^^^^^
+   |                     ^^^^^^^^^^^^ help: try: ``inline_link2``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:90:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:91:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `CamelCaseThing` between ticks in the documentation
-  --> $DIR/doc.rs:98:8
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:99:8
    |
 LL | /// ## CamelCaseThing
-   |        ^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^ help: try: ``CamelCaseThing``
 
-error: you should put `CamelCaseThing` between ticks in the documentation
-  --> $DIR/doc.rs:101:7
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:102:7
    |
 LL | /// # CamelCaseThing
-   |       ^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^ help: try: ``CamelCaseThing``
 
-error: you should put `CamelCaseThing` between ticks in the documentation
-  --> $DIR/doc.rs:103:22
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:104:22
    |
 LL | /// Not a title #897 CamelCaseThing
-   |                      ^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^^^^^ help: try: ``CamelCaseThing``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:104:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:105:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:111:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:112:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:124:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:125:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `FooBar` between ticks in the documentation
-  --> $DIR/doc.rs:135:43
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:136:43
    |
 LL | /** E.g., serialization of an empty list: FooBar
-   |                                           ^^^^^^
+   |                                           ^^^^^^ help: try: ``FooBar``
 
-error: you should put `BarQuz` between ticks in the documentation
-  --> $DIR/doc.rs:140:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:141:5
    |
 LL | And BarQuz too.
-   |     ^^^^^^
+   |     ^^^^^^ help: try: ``BarQuz``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:141:1
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:142:1
    |
 LL | be_sure_we_got_to_the_end_of_it
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `FooBar` between ticks in the documentation
-  --> $DIR/doc.rs:146:43
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:147:43
    |
 LL | /** E.g., serialization of an empty list: FooBar
-   |                                           ^^^^^^
+   |                                           ^^^^^^ help: try: ``FooBar``
 
-error: you should put `BarQuz` between ticks in the documentation
-  --> $DIR/doc.rs:151:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:152:5
    |
 LL | And BarQuz too.
-   |     ^^^^^^
+   |     ^^^^^^ help: try: ``BarQuz``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:152:1
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:153:1
    |
 LL | be_sure_we_got_to_the_end_of_it
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
-  --> $DIR/doc.rs:163:5
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:164:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
 
-error: you should put bare URLs between `<`/`>` or make a proper Markdown link
-  --> $DIR/doc.rs:190:13
-   |
-LL | /// Not ok: http://www.unicode.org
-   |             ^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should put bare URLs between `<`/`>` or make a proper Markdown link
-  --> $DIR/doc.rs:191:13
-   |
-LL | /// Not ok: https://www.unicode.org
-   |             ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should put bare URLs between `<`/`>` or make a proper Markdown link
-  --> $DIR/doc.rs:192:13
-   |
-LL | /// Not ok: http://www.unicode.org/
-   |             ^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should put bare URLs between `<`/`>` or make a proper Markdown link
-  --> $DIR/doc.rs:193:13
-   |
-LL | /// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should put `mycrate::Collection` between ticks in the documentation
-  --> $DIR/doc.rs:196:22
+error: item in documentation is missing backticks
+  --> $DIR/doc.rs:183:22
    |
 LL | /// An iterator over mycrate::Collection's values.
-   |                      ^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^^^^^^^^^^ help: try: ``mycrate::Collection``
 
-error: aborting due to 34 previous errors
+error: aborting due to 30 previous errors
 
