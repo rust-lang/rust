@@ -222,7 +222,7 @@ impl Clean<Lifetime> for hir::Lifetime {
             | rl::Region::Free(_, node_id),
         ) = def
         {
-            if let Some(lt) = cx.lt_substs.get(&node_id).cloned() {
+            if let Some(lt) = cx.substs.get(&node_id).and_then(|p| p.as_lt()).cloned() {
                 return lt;
             }
         }
@@ -1157,7 +1157,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
     match qpath {
         hir::QPath::Resolved(None, ref path) => {
             if let Res::Def(DefKind::TyParam, did) = path.res {
-                if let Some(new_ty) = cx.ty_substs.get(&did).cloned() {
+                if let Some(new_ty) = cx.substs.get(&did).and_then(|p| p.as_ty()).cloned() {
                     return new_ty;
                 }
                 if let Some(bounds) = cx.impl_trait_bounds.remove(&did.into()) {
@@ -1227,9 +1227,7 @@ fn maybe_expand_private_type_alias(cx: &mut DocContext<'_>, path: &hir::Path<'_>
     let hir::ItemKind::TyAlias(ty, generics) = alias else { return None };
 
     let provided_params = &path.segments.last().expect("segments were empty");
-    let mut ty_substs = FxHashMap::default();
-    let mut lt_substs = FxHashMap::default();
-    let mut ct_substs = FxHashMap::default();
+    let mut substs = FxHashMap::default();
     let generic_args = provided_params.args();
 
     let mut indices: hir::GenericParamCount = Default::default();
@@ -1254,7 +1252,7 @@ fn maybe_expand_private_type_alias(cx: &mut DocContext<'_>, path: &hir::Path<'_>
                     } else {
                         self::types::Lifetime::elided()
                     };
-                    lt_substs.insert(lt_def_id.to_def_id(), cleaned);
+                    substs.insert(lt_def_id.to_def_id(), SubstParam::Lifetime(cleaned));
                 }
                 indices.lifetimes += 1;
             }
@@ -1272,9 +1270,9 @@ fn maybe_expand_private_type_alias(cx: &mut DocContext<'_>, path: &hir::Path<'_>
                     _ => None,
                 });
                 if let Some(ty) = type_ {
-                    ty_substs.insert(ty_param_def_id.to_def_id(), ty.clean(cx));
+                    substs.insert(ty_param_def_id.to_def_id(), SubstParam::Type(ty.clean(cx)));
                 } else if let Some(default) = *default {
-                    ty_substs.insert(ty_param_def_id.to_def_id(), default.clean(cx));
+                    substs.insert(ty_param_def_id.to_def_id(), SubstParam::Type(default.clean(cx)));
                 }
                 indices.types += 1;
             }
@@ -1292,7 +1290,8 @@ fn maybe_expand_private_type_alias(cx: &mut DocContext<'_>, path: &hir::Path<'_>
                     _ => None,
                 });
                 if let Some(ct) = const_ {
-                    ct_substs.insert(const_param_def_id.to_def_id(), ct.clean(cx));
+                    substs
+                        .insert(const_param_def_id.to_def_id(), SubstParam::Constant(ct.clean(cx)));
                 }
                 // FIXME(const_generics_defaults)
                 indices.consts += 1;
@@ -1300,7 +1299,7 @@ fn maybe_expand_private_type_alias(cx: &mut DocContext<'_>, path: &hir::Path<'_>
         }
     }
 
-    Some(cx.enter_alias(ty_substs, lt_substs, ct_substs, |cx| ty.clean(cx)))
+    Some(cx.enter_alias(substs, |cx| ty.clean(cx)))
 }
 
 impl Clean<Type> for hir::Ty<'_> {
