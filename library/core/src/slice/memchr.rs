@@ -37,6 +37,7 @@ fn repeat_byte(b: u8) -> usize {
 }
 
 /// Returns the first index matching the byte `x` in `text`.
+#[must_use]
 #[inline]
 pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     // Fast path for small slices
@@ -91,6 +92,7 @@ fn memchr_general_case(x: u8, text: &[u8]) -> Option<usize> {
 }
 
 /// Returns the last index matching the byte `x` in `text`.
+#[must_use]
 pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     // Scan for a single byte value by reading two `usize` words at a time.
     //
