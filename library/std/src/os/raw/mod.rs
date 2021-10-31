@@ -171,3 +171,10 @@ pub type c_size_t = usize;
 /// platforms where this is not the case.
 #[unstable(feature = "c_size_t", issue = "88345")]
 pub type c_ptrdiff_t = isize;
+
+/// Equivalent to C's `ssize_t` (on POSIX) or `SSIZE_T` (on Windows) type.
+///
+/// This type is currently always [`isize`], however in the future there may be
+/// platforms where this is not the case.
+#[unstable(feature = "c_size_t", issue = "88345")]
+pub type c_ssize_t = isize;
