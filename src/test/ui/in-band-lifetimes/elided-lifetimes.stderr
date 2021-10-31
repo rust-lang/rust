@@ -47,8 +47,20 @@ help: consider using the `'_` lifetime
 LL | fn inspect_matched_set(set: MatchedSet<'_, '_>) {
    |                             ~~~~~~~~~~~~~~~~~~
 
+error[E0106]: missing lifetime specifiers
+  --> $DIR/elided-lifetimes.rs:55:20
+   |
+LL | fn match_sets() -> MatchedSet {
+   |                    ^^^^^^^^^^ expected 2 lifetime parameters
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime
+   |
+LL | fn match_sets() -> MatchedSet<'static, 'static> {
+   |                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:60:36
+  --> $DIR/elided-lifetimes.rs:69:36
    |
 LL |         fn $fn_name(gift: &str) -> $type_name {
    |                                    ^^^^^^^^^^ expected named lifetime parameter
@@ -63,7 +75,22 @@ LL |         fn $fn_name(gift: &str) -> $type_name<'_> {
    |                                    ~~~~~~~~~~~~~~
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:84:22
+  --> $DIR/elided-lifetimes.rs:69:36
+   |
+LL |         fn $fn_name(gift: &str) -> $type_name {
+   |                                    ^^^^^^^^^^ expected named lifetime parameter
+...
+LL | autowrapper!(AutowrappedAgain, autowrap_gift_again, 'a);
+   | ------------------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `autowrapper` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using the `'_` lifetime
+   |
+LL |         fn $fn_name(gift: &str) -> $type_name<'_> {
+   |                                    ~~~~~~~~~~~~~~
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetimes.rs:101:22
    |
 LL |     let loyalty: Ref<(u32, char)> = honesty.borrow();
    |                      ^ expected named lifetime parameter
@@ -74,7 +101,7 @@ LL |     let loyalty: Ref<'_, (u32, char)> = honesty.borrow();
    |                      +++
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:75:13
+  --> $DIR/elided-lifetimes.rs:92:13
    |
 LL |         Ref<($($types),*)>
    |             ^ expected named lifetime parameter
@@ -88,5 +115,6 @@ help: consider using the `'_` lifetime
 LL |         Ref<'_, ($($types),*)>
    |             +++
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 
+For more information about this error, try `rustc --explain E0106`.

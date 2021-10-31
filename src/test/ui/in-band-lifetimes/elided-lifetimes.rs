@@ -51,6 +51,15 @@ fn inspect_matched_set(set: MatchedSet) {
     println!("{} {}", set.one, set.another);
 }
 
+// Verify that the lint does not fire, because the added `'_` wouldn't be resolved correctly.
+fn match_sets() -> MatchedSet {
+    //~^ ERROR missing lifetime specifiers
+    //~| NOTE expected 2 lifetime parameters
+    //~| HELP this function's return type contains a borrowed value
+    //~| HELP consider using the `'static` lifetime
+    MatchedSet { one: "one", another: "another" }
+}
+
 macro_rules! autowrapper {
     ($type_name:ident, $fn_name:ident, $lt:lifetime) => {
         struct $type_name<$lt> {
@@ -61,12 +70,20 @@ macro_rules! autowrapper {
             //~^ ERROR hidden lifetime parameters in types are deprecated
             //~| NOTE expected named lifetime parameter
             //~| HELP consider using the `'_` lifetime
+            //~| ERROR hidden lifetime parameters in types are deprecated
+            //~| NOTE expected named lifetime parameter
+            //~| HELP consider using the `'_` lifetime
             $type_name { gift }
         }
     }
 }
 
 autowrapper!(Autowrapped, autowrap_gift, 'a);
+//~^ NOTE in this expansion of autowrapper!
+//~| NOTE in this expansion of autowrapper!
+
+// Verify that rustfix does not try to apply the fix twice.
+autowrapper!(AutowrappedAgain, autowrap_gift_again, 'a);
 //~^ NOTE in this expansion of autowrapper!
 //~| NOTE in this expansion of autowrapper!
 
