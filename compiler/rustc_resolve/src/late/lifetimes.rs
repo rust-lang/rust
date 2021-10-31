@@ -3076,49 +3076,53 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::Elision { ref elide, ref s, .. } => {
-                    let lifetime = match *elide {
-                        Elide::FreshLateAnon(named_late_bound_vars, ref counter) => {
-                            for lifetime_ref in lifetime_refs {
-                                let lifetime = Region::late_anon(named_late_bound_vars, counter)
-                                    .shifted(late_depth);
+                Scope::Elision {
+                    elide: Elide::FreshLateAnon(named_late_bound_vars, ref counter),
+                    ..
+                } => {
+                    for lifetime_ref in lifetime_refs {
+                        let lifetime =
+                            Region::late_anon(named_late_bound_vars, counter).shifted(late_depth);
 
-                                self.insert_lifetime(lifetime_ref, lifetime);
-                            }
-                            return;
-                        }
-                        Elide::Exact(l) => l.shifted(late_depth),
-                        Elide::Error(ref e) => {
-                            let mut scope = s;
-                            loop {
-                                match scope {
-                                    Scope::Binder { ref lifetimes, s, .. } => {
-                                        // Collect named lifetimes for suggestions.
-                                        for name in lifetimes.keys() {
-                                            if let hir::ParamName::Plain(name) = name {
-                                                lifetime_names.insert(name.name);
-                                                lifetime_spans.push(name.span);
-                                            }
-                                        }
-                                        scope = s;
-                                    }
-                                    Scope::ObjectLifetimeDefault { ref s, .. }
-                                    | Scope::Elision { ref s, .. }
-                                    | Scope::TraitRefBoundary { ref s, .. } => {
-                                        scope = s;
-                                    }
-                                    _ => break,
-                                }
-                            }
-                            break Some(&e[..]);
-                        }
-                        Elide::Forbid => break None,
-                    };
+                        self.insert_lifetime(lifetime_ref, lifetime);
+                    }
+                    return;
+                }
+
+                Scope::Elision { elide: Elide::Exact(l), .. } => {
+                    let lifetime = l.shifted(late_depth);
                     for lifetime_ref in lifetime_refs {
                         self.insert_lifetime(lifetime_ref, lifetime);
                     }
                     return;
                 }
+
+                Scope::Elision { elide: Elide::Error(ref e), ref s, .. } => {
+                    let mut scope = s;
+                    loop {
+                        match scope {
+                            Scope::Binder { ref lifetimes, s, .. } => {
+                                // Collect named lifetimes for suggestions.
+                                for name in lifetimes.keys() {
+                                    if let hir::ParamName::Plain(name) = name {
+                                        lifetime_names.insert(name.name);
+                                        lifetime_spans.push(name.span);
+                                    }
+                                }
+                                scope = s;
+                            }
+                            Scope::ObjectLifetimeDefault { ref s, .. }
+                            | Scope::Elision { ref s, .. }
+                            | Scope::TraitRefBoundary { ref s, .. } => {
+                                scope = s;
+                            }
+                            _ => break,
+                        }
+                    }
+                    break Some(&e[..]);
+                }
+
+                Scope::Elision { elide: Elide::Forbid, .. } => break None,
 
                 Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
