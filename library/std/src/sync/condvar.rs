@@ -61,6 +61,7 @@ impl WaitTimeoutResult {
     ///     }
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "wait_timeout", since = "1.5.0")]
     pub fn timed_out(&self) -> bool {
         self.0

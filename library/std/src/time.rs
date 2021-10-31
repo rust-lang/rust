@@ -239,6 +239,7 @@ impl Instant {
     ///
     /// let now = Instant::now();
     /// ```
+    #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn now() -> Instant {
         let os_now = time::Instant::now();
@@ -306,6 +307,7 @@ impl Instant {
     /// let new_now = Instant::now();
     /// println!("{:?}", new_now.duration_since(now));
     /// ```
+    #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn duration_since(&self, earlier: Instant) -> Duration {
         self.0.checked_sub_instant(&earlier.0).expect("supplied instant is later than self")
@@ -326,6 +328,7 @@ impl Instant {
     /// println!("{:?}", new_now.checked_duration_since(now));
     /// println!("{:?}", now.checked_duration_since(new_now)); // None
     /// ```
+    #[must_use]
     #[stable(feature = "checked_duration_since", since = "1.39.0")]
     pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
         self.0.checked_sub_instant(&earlier.0)
@@ -346,6 +349,7 @@ impl Instant {
     /// println!("{:?}", new_now.saturating_duration_since(now));
     /// println!("{:?}", now.saturating_duration_since(new_now)); // 0ns
     /// ```
+    #[must_use]
     #[stable(feature = "checked_duration_since", since = "1.39.0")]
     pub fn saturating_duration_since(&self, earlier: Instant) -> Duration {
         self.checked_duration_since(earlier).unwrap_or_default()
@@ -370,6 +374,7 @@ impl Instant {
     /// sleep(three_secs);
     /// assert!(instant.elapsed() >= three_secs);
     /// ```
+    #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn elapsed(&self) -> Duration {
         Instant::now() - *self
@@ -476,6 +481,7 @@ impl SystemTime {
     ///
     /// let sys_time = SystemTime::now();
     /// ```
+    #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn now() -> SystemTime {
         SystemTime(time::SystemTime::now())
@@ -644,6 +650,7 @@ impl SystemTimeError {
     ///     Err(e) => println!("SystemTimeError difference: {:?}", e.duration()),
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn duration(&self) -> Duration {
         self.0

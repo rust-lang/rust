@@ -48,7 +48,7 @@ fn instant_monotonic_concurrent() -> crate::thread::Result<()> {
 #[test]
 fn instant_elapsed() {
     let a = Instant::now();
-    a.elapsed();
+    let _ = a.elapsed();
 }
 
 #[test]
@@ -93,7 +93,7 @@ fn instant_math_is_associative() {
 #[should_panic]
 fn instant_duration_since_panic() {
     let a = Instant::now();
-    (a - Duration::SECOND).duration_since(a);
+    let _ = (a - Duration::SECOND).duration_since(a);
 }
 
 #[test]

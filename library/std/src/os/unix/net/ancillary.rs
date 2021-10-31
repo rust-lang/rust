@@ -201,6 +201,7 @@ impl SocketCred {
     }
 
     /// Get the current PID.
+    #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_pid(&self) -> libc::pid_t {
         self.0.pid
@@ -213,6 +214,7 @@ impl SocketCred {
     }
 
     /// Get the current UID.
+    #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_uid(&self) -> libc::uid_t {
         self.0.uid
@@ -225,6 +227,7 @@ impl SocketCred {
     }
 
     /// Get the current GID.
+    #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_gid(&self) -> libc::gid_t {
         self.0.gid
@@ -330,6 +333,7 @@ impl<'a> AncillaryData<'a> {
 }
 
 /// This struct is used to iterate through the control messages.
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub struct Messages<'a> {
     buffer: &'a [u8],
@@ -425,6 +429,7 @@ impl<'a> SocketAncillary<'a> {
     }
 
     /// Returns the capacity of the buffer.
+    #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn capacity(&self) -> usize {
         self.buffer.len()
@@ -473,6 +478,7 @@ impl<'a> SocketAncillary<'a> {
     ///     Ok(())
     /// }
     /// ```
+    #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn truncated(&self) -> bool {
         self.truncated
