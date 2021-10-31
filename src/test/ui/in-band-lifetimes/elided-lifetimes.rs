@@ -96,6 +96,14 @@ macro_rules! anytuple_ref_ty {
     }
 }
 
+#[allow(elided_lifetimes_in_paths)]
+mod blah {
+    struct Thing<'a>(&'a i32);
+    struct Bar<T>(T);
+
+    fn foo(b: Bar<Thing>) {}
+}
+
 fn main() {
     let honesty = RefCell::new((4, 'e'));
     let loyalty: Ref<(u32, char)> = honesty.borrow();
