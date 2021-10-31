@@ -1,3 +1,15 @@
+# We need recent curl, OpenSSL and CA certificates, so we can download further
+# dependencies in the debian:6 image. We use an ubuntu 20.04 image download
+# those.
+FROM ubuntu:20.04
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates
+WORKDIR /tmp
+COPY host-x86_64/dist-x86_64-linux/download-openssl-curl.sh /tmp/
+RUN ./download-openssl-curl.sh
+
 # We use Debian 6 (glibc 2.11, kernel 2.6.32) as a common base for other
 # distros that still need Rust support: RHEL 6 (glibc 2.12, kernel 2.6.32) and
 # SLES 11 SP4 (glibc 2.11, kernel 3.0).
@@ -14,8 +26,6 @@ RUN apt-get update && \
     apt-get install --allow-unauthenticated -y --no-install-recommends \
       automake \
       bzip2 \
-      ca-certificates \
-      curl \
       file \
       g++ \
       g++-multilib \
@@ -34,11 +44,6 @@ RUN apt-get update && \
       xz-utils \
       zlib1g-dev
 
-# Install new Let's Encrypt root CA certificate and remove the expired one.
-COPY host-x86_64/shared/ISRG_Root_X1.crt /usr/local/share/ca-certificates/ISRG_Root_X1.crt
-RUN sed -i '/mozilla\/DST_Root_CA_X3\.crt/d' /etc/ca-certificates.conf
-RUN /usr/sbin/update-ca-certificates
-
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib32:/rustroot/lib
 ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
@@ -50,6 +55,7 @@ COPY host-x86_64/dist-x86_64-linux/shared.sh /tmp/
 # static.rust-lang.org. This'll be used to link into libcurl below (and used
 # later as well), so build a copy of OpenSSL with dynamic libraries into our
 # generic root.
+COPY --from=0 /tmp/openssl.tar.gz /tmp/openssl.tar.gz
 COPY host-x86_64/dist-x86_64-linux/build-openssl.sh /tmp/
 RUN ./build-openssl.sh
 
@@ -59,8 +65,13 @@ RUN ./build-openssl.sh
 #
 # Note that we also disable a bunch of optional features of curl that we don't
 # really need.
+COPY --from=0 /tmp/curl.tar.xz /tmp/curl.tar.xz
 COPY host-x86_64/dist-x86_64-linux/build-curl.sh /tmp/
-RUN ./build-curl.sh && apt-get remove -y curl
+RUN ./build-curl.sh
+
+# Use up-to-date curl CA bundle
+COPY --from=0 /tmp/cacert.pem /tmp/cacert.pem
+ENV CURL_CA_BUNDLE /tmp/cacert.pem
 
 # binutils < 2.22 has a bug where the 32-bit executables it generates
 # immediately segfault in Rust, so we need to install our own binutils.
