@@ -160,6 +160,7 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>) {
 ///
 /// panic!("Normal panic");
 /// ```
+#[must_use]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
     if thread::panicking() {
@@ -284,11 +285,13 @@ pub mod panic_count {
     }
 
     // Disregards ALWAYS_ABORT_FLAG
+    #[must_use]
     pub fn get_count() -> usize {
         LOCAL_PANIC_COUNT.with(|c| c.get())
     }
 
     // Disregards ALWAYS_ABORT_FLAG
+    #[must_use]
     #[inline]
     pub fn count_is_zero() -> bool {
         if GLOBAL_PANIC_COUNT.load(Ordering::Relaxed) & !ALWAYS_ABORT_FLAG == 0 {

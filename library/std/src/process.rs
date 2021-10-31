@@ -948,6 +948,7 @@ impl Command {
     /// let cmd = Command::new("echo");
     /// assert_eq!(cmd.get_program(), "echo");
     /// ```
+    #[must_use]
     #[stable(feature = "command_access", since = "1.57.0")]
     pub fn get_program(&self) -> &OsStr {
         self.inner.get_program()
@@ -1021,6 +1022,7 @@ impl Command {
     /// cmd.current_dir("/bin");
     /// assert_eq!(cmd.get_current_dir(), Some(Path::new("/bin")));
     /// ```
+    #[must_use]
     #[stable(feature = "command_access", since = "1.57.0")]
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.inner.get_current_dir()
@@ -1053,6 +1055,7 @@ impl AsInnerMut<imp::Command> for Command {
 ///
 /// This struct is created by [`Command::get_args`]. See its documentation for
 /// more.
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "command_access", since = "1.57.0")]
 #[derive(Debug)]
 pub struct CommandArgs<'a> {
@@ -1183,6 +1186,7 @@ impl Stdio {
     /// its entire stdin before writing more than a pipe buffer's worth of output.
     /// The size of a pipe buffer varies on different targets.
     ///
+    #[must_use]
     #[stable(feature = "process", since = "1.0.0")]
     pub fn piped() -> Stdio {
         Stdio(imp::Stdio::MakePipe)
@@ -1222,6 +1226,7 @@ impl Stdio {
     /// print!("You piped in the reverse of: ");
     /// io::stdout().write_all(&output.stdout).unwrap();
     /// ```
+    #[must_use]
     #[stable(feature = "process", since = "1.0.0")]
     pub fn inherit() -> Stdio {
         Stdio(imp::Stdio::Inherit)
@@ -1261,6 +1266,7 @@ impl Stdio {
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     /// // Ignores any piped-in input
     /// ```
+    #[must_use]
     #[stable(feature = "process", since = "1.0.0")]
     pub fn null() -> Stdio {
         Stdio(imp::Stdio::Null)
@@ -1462,6 +1468,7 @@ impl ExitStatus {
     ///     println!("failed to create 'projects/' directory: {}", status);
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "process", since = "1.0.0")]
     pub fn success(&self) -> bool {
         self.0.exit_ok().is_ok()
@@ -1493,6 +1500,7 @@ impl ExitStatus {
     ///     None       => println!("Process terminated by signal")
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "process", since = "1.0.0")]
     pub fn code(&self) -> Option<i32> {
         self.0.code()
@@ -1580,6 +1588,7 @@ impl ExitStatusError {
     /// assert_eq!(bad.code(), Some(1));
     /// # } // #[cfg(unix)]
     /// ```
+    #[must_use]
     pub fn code(&self) -> Option<i32> {
         self.code_nonzero().map(Into::into)
     }
@@ -1605,11 +1614,13 @@ impl ExitStatusError {
     /// assert_eq!(bad.code_nonzero().unwrap(), NonZeroI32::try_from(1).unwrap());
     /// # } // cfg!(unix)
     /// ```
+    #[must_use]
     pub fn code_nonzero(&self) -> Option<NonZeroI32> {
         self.0.code()
     }
 
     /// Converts an `ExitStatusError` (back) to an `ExitStatus`.
+    #[must_use]
     pub fn into_status(&self) -> ExitStatus {
         ExitStatus(self.0.into())
     }
@@ -1718,6 +1729,7 @@ impl Child {
     ///     println!("ls command didn't start");
     /// }
     /// ```
+    #[must_use]
     #[stable(feature = "process_id", since = "1.3.0")]
     pub fn id(&self) -> u32 {
         self.handle.id()
@@ -1988,6 +2000,7 @@ pub fn abort() -> ! {
 /// ```
 ///
 ///
+#[must_use]
 #[stable(feature = "getpid", since = "1.26.0")]
 pub fn id() -> u32 {
     crate::sys::os::getpid()

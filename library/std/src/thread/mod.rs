@@ -649,6 +649,7 @@ where
 ///
 /// handler.join().unwrap();
 /// ```
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn current() -> Thread {
     thread_info::current_thread().expect(
@@ -737,6 +738,7 @@ pub fn yield_now() {
 ///
 /// [Mutex]: crate::sync::Mutex
 #[inline]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
     panicking::panicking()
@@ -1131,6 +1133,7 @@ impl Thread {
     /// assert!(thread::current().id() != other_thread_id);
     /// ```
     #[stable(feature = "thread_id", since = "1.19.0")]
+    #[must_use]
     pub fn id(&self) -> ThreadId {
         self.inner.id
     }
@@ -1173,6 +1176,7 @@ impl Thread {
     ///
     /// [naming-threads]: ./index.html#naming-threads
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn name(&self) -> Option<&str> {
         self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) })
     }
@@ -1360,6 +1364,7 @@ impl<T> JoinHandle<T> {
     /// println!("thread id: {:?}", thread.id());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn thread(&self) -> &Thread {
         &self.0.thread
     }
