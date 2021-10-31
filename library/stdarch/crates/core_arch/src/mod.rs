@@ -173,6 +173,17 @@ pub mod arch {
         pub use crate::core_arch::wasm32::*;
     }
 
+    /// Platform-specific intrinsics for the `wasm` target family.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_family = "wasm", doc))]
+    #[doc(cfg(target_family = "wasm"))]
+    #[stable(feature = "simd_wasm32", since = "1.33.0")]
+    pub mod wasm {
+        #[stable(feature = "simd_wasm32", since = "1.33.0")]
+        pub use crate::core_arch::wasm32::*;
+    }
+
     /// Platform-specific intrinsics for the `mips` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
@@ -240,8 +251,8 @@ mod aarch64;
 #[doc(cfg(any(target_arch = "arm")))]
 mod arm;
 
-#[cfg(any(target_arch = "wasm32", target_arch = "wasm64", doc))]
-#[doc(cfg(any(target_arch = "wasm32", target_arch = "wasm64")))]
+#[cfg(any(target_family = "wasm", doc))]
+#[doc(cfg(target_family = "wasm"))]
 mod wasm32;
 
 #[cfg(any(target_arch = "mips", target_arch = "mips64", doc))]
