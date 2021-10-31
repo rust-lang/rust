@@ -81,6 +81,7 @@ pub use std::alloc::Global;
 /// }
 /// ```
 #[stable(feature = "global_alloc", since = "1.28.0")]
+#[must_use = "losing the pointer will leak memory"]
 #[inline]
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     unsafe { __rust_alloc(layout.size(), layout.align()) }
@@ -117,6 +118,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 ///
 /// See [`GlobalAlloc::realloc`].
 #[stable(feature = "global_alloc", since = "1.28.0")]
+#[must_use = "losing the pointer will leak memory"]
 #[inline]
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
     unsafe { __rust_realloc(ptr, layout.size(), layout.align(), new_size) }
@@ -150,6 +152,7 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// }
 /// ```
 #[stable(feature = "global_alloc", since = "1.28.0")]
+#[must_use = "losing the pointer will leak memory"]
 #[inline]
 pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     unsafe { __rust_alloc_zeroed(layout.size(), layout.align()) }

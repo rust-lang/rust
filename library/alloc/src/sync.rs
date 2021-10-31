@@ -804,6 +804,7 @@ impl<T: ?Sized> Arc<T> {
     /// let x_ptr = Arc::into_raw(x);
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
+    #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub fn into_raw(this: Self) -> *const T {
         let ptr = Self::as_ptr(&this);
