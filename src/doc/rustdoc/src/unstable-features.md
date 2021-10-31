@@ -134,9 +134,27 @@ Book][unstable-masked] and [its tracking issue][issue-masked].
 
 ## Document primitives
 
+This is for Rust compiler internal use only.
+
 Since primitive types are defined in the compiler, there's no place to attach documentation
-attributes. The `#[doc(primitive)]` attribute is used by the standard library to provide a way to generate
-documentation for primitive types, and requires `#![feature(doc_primitive)]` to enable.
+attributes. The `#[doc(primitive)]` attribute is used by the standard library to provide a way
+to generate documentation for primitive types, and requires `#![feature(doc_primitive)]` to enable.
+
+## Document keywords
+
+This is for Rust compiler internal use only.
+
+Rust keywords are documented in the standard library (look for `match` for example).
+
+To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
+
+```rust
+#![feature(doc_keyword)]
+
+/// Some documentation about the keyword.
+#[doc(keyword = "keyword")]
+mod empty_mod {}
+```
 
 ## Unstable command-line arguments
 
