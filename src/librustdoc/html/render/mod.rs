@@ -1054,7 +1054,7 @@ fn render_assoc_items_inner(
             AssocItemRender::All => {
                 tmp_buf.write_str(
                     "<h2 id=\"implementations\" class=\"small-section-header\">\
-                         Implementations<a href=\"#implementations\" class=\"anchor\"></a>\
+                         <a href=\"#implementations\">Implementations</a>\
                     </h2>",
                 );
                 RenderMode::Normal
@@ -1068,8 +1068,8 @@ fn render_assoc_items_inner(
                 write!(
                     tmp_buf,
                     "<h2 id=\"{id}\" class=\"small-section-header\">\
-                         <span>Methods from {trait_}&lt;Target = {type_}&gt;</span>\
                          <a href=\"#{id}\" class=\"anchor\"></a>\
+                         <span>Methods from {trait_}&lt;Target = {type_}&gt;</span>\
                      </h2>",
                     id = id,
                     trait_ = trait_.print(cx),
@@ -1131,7 +1131,7 @@ fn render_assoc_items_inner(
             write!(
                 w,
                 "<h2 id=\"trait-implementations\" class=\"small-section-header\">\
-                     Trait Implementations<a href=\"#trait-implementations\" class=\"anchor\"></a>\
+                     <a href=\"#trait-implementations\">Trait Implementations</a>\
                  </h2>\
                  <div id=\"trait-implementations-list\">{}</div>",
                 impls
@@ -1141,8 +1141,7 @@ fn render_assoc_items_inner(
         if !synthetic.is_empty() {
             w.write_str(
                 "<h2 id=\"synthetic-implementations\" class=\"small-section-header\">\
-                     Auto Trait Implementations\
-                     <a href=\"#synthetic-implementations\" class=\"anchor\"></a>\
+                     <a href=\"#synthetic-implementations\">Auto Trait Implementations</a>\
                  </h2>\
                  <div id=\"synthetic-implementations-list\">",
             );
@@ -1153,8 +1152,9 @@ fn render_assoc_items_inner(
         if !blanket_impl.is_empty() {
             w.write_str(
                 "<h2 id=\"blanket-implementations\" class=\"small-section-header\">\
-                     Blanket Implementations\
-                     <a href=\"#blanket-implementations\" class=\"anchor\"></a>\
+                     <a href=\"#blanket-implementations\">\
+                        Blanket Implementations\
+                    </a>\
                  </h2>\
                  <div id=\"blanket-implementations-list\">",
             );

@@ -23,7 +23,7 @@ assert-css: (".in-band a", {"color": "rgb(0, 0, 0)"})
 
 // We move the cursor over the "Implementations" title so the anchor is displayed.
 move-cursor-to: "h2#implementations"
-assert-css: ("h2#implementations a.anchor", {"color": "rgb(0, 0, 0)"})
+assert-css: ("h2#implementations", {"color": "rgb(0, 0, 0)"})
 
 // Same thing with the impl block title.
 move-cursor-to: "#impl"

@@ -660,7 +660,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         write!(
             w,
             "<h2 id=\"{0}\" class=\"small-section-header\">\
-                {1}<a href=\"#{0}\" class=\"anchor\"></a>\
+                <a href=\"#{0}\">{1}</a>\
              </h2>{2}",
             id, title, extra_content
         )
@@ -1001,7 +1001,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
         write!(
             w,
             "<h2 id=\"fields\" class=\"fields small-section-header\">\
-                   Fields<a href=\"#fields\" class=\"anchor\"></a></h2>"
+                   <a href=\"#fields\">Fields</a></h2>"
         );
         for (field, ty) in fields {
             let name = field.name.as_ref().expect("union field name");
@@ -1108,7 +1108,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
         write!(
             w,
             "<h2 id=\"variants\" class=\"variants small-section-header\">\
-                   Variants{}<a href=\"#variants\" class=\"anchor\"></a></h2>",
+                   <a href=\"#variants\">Variants{}</a></h2>",
             document_non_exhaustive_header(it)
         );
         document_non_exhaustive(w, it);
@@ -1300,7 +1300,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             write!(
                 w,
                 "<h2 id=\"fields\" class=\"fields small-section-header\">\
-                     {}{}<a href=\"#fields\" class=\"anchor\"></a>\
+                     <a href=\"#fields\">{}{}</a>\
                  </h2>",
                 if let CtorKind::Fictive = s.struct_type { "Fields" } else { "Tuple Fields" },
                 document_non_exhaustive_header(it)
@@ -1732,7 +1732,8 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
         return;
     }
 
-    writeln!(w, "<h2 class=\"small-section-header\">Layout</h2>");
+    writeln!(w, "<h2 id=\"layout\" class=\"small-section-header\">");
+    writeln!(w, "<a href=\"#layout\">Layout</a></h2>");
     writeln!(w, "<div class=\"docblock\">");
 
     let tcx = cx.tcx();

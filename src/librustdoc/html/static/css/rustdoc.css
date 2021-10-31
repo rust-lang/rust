@@ -1129,11 +1129,17 @@ a.test-arrow:hover{
 	text-decoration: none;
 }
 
+.small-section-header:hover > a:before,
 .section-header:hover a:before {
 	position: absolute;
 	left: -25px;
 	padding-right: 10px; /* avoid gap that causes hover to disappear */
 	content: '\2002\00a7\2002';
+}
+
+#deref-methods-str > a.anchor:before {
+	position: relative;
+	left: -0.5em;
 }
 
 .section-header:hover a {
