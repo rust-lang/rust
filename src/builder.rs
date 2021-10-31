@@ -623,8 +623,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn neg(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): use new_unary_op()?
-        self.cx.context.new_rvalue_from_long(a.get_type(), 0) - a
+        self.cx.context.new_unary_op(None, UnaryOp::Minus, a.get_type(), a)
     }
 
     fn fneg(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
