@@ -79,6 +79,7 @@ impl<'a> Location<'a> {
     /// assert_ne!(this_location.line(), another_location.line());
     /// assert_ne!(this_location.column(), another_location.column());
     /// ```
+    #[must_use]
     #[stable(feature = "track_caller", since = "1.46.0")]
     #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
     #[track_caller]
@@ -119,6 +120,7 @@ impl<'a> Location<'a> {
     ///
     /// panic!("Normal panic");
     /// ```
+    #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn file(&self) -> &str {
         self.file
@@ -141,6 +143,7 @@ impl<'a> Location<'a> {
     ///
     /// panic!("Normal panic");
     /// ```
+    #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn line(&self) -> u32 {
         self.line
@@ -163,6 +166,7 @@ impl<'a> Location<'a> {
     ///
     /// panic!("Normal panic");
     /// ```
+    #[must_use]
     #[stable(feature = "panic_col", since = "1.25.0")]
     pub fn column(&self) -> u32 {
         self.col

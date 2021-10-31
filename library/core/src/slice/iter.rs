@@ -1724,6 +1724,7 @@ impl<'a, T> ChunksExact<'a, T> {
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
+    #[must_use]
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     pub fn remainder(&self) -> &'a [T] {
         self.rem
@@ -2153,6 +2154,7 @@ impl<'a, T, const N: usize> ArrayChunks<'a, T, N> {
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `N-1`
     /// elements.
+    #[must_use]
     #[unstable(feature = "array_chunks", issue = "74985")]
     pub fn remainder(&self) -> &'a [T] {
         self.rem
@@ -2728,6 +2730,7 @@ impl<'a, T> RChunksExact<'a, T> {
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
+    #[must_use]
     #[stable(feature = "rchunks", since = "1.31.0")]
     pub fn remainder(&self) -> &'a [T] {
         self.rem

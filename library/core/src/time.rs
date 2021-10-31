@@ -357,6 +357,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
     #[rustc_const_stable(feature = "duration_extras", since = "1.32.0")]
+    #[must_use]
     #[inline]
     pub const fn subsec_millis(&self) -> u32 {
         self.nanos / NANOS_PER_MILLI
@@ -379,6 +380,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
     #[rustc_const_stable(feature = "duration_extras", since = "1.32.0")]
+    #[must_use]
     #[inline]
     pub const fn subsec_micros(&self) -> u32 {
         self.nanos / NANOS_PER_MICRO
@@ -401,6 +403,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[rustc_const_stable(feature = "duration", since = "1.32.0")]
+    #[must_use]
     #[inline]
     pub const fn subsec_nanos(&self) -> u32 {
         self.nanos

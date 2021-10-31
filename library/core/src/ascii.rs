@@ -18,6 +18,7 @@ use crate::str::from_utf8_unchecked;
 ///
 /// This `struct` is created by the [`escape_default`] function. See its
 /// documentation for more.
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct EscapeDefault {

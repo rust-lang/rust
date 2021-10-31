@@ -167,6 +167,7 @@ impl<'a> Context<'a> {
 
     /// Returns a reference to the `Waker` for the current task.
     #[stable(feature = "futures_api", since = "1.36.0")]
+    #[must_use]
     #[inline]
     pub fn waker(&self) -> &'a Waker {
         &self.waker
@@ -242,6 +243,7 @@ impl Waker {
     ///
     /// This function is primarily used for optimization purposes.
     #[inline]
+    #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn will_wake(&self, other: &Waker) -> bool {
         self.waker == other.waker
