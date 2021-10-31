@@ -2751,7 +2751,7 @@ impl Path {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
 
-    /// Returns true if the path exists on disk and is pointing at a symbolic link.
+    /// Returns `true` if the path exists on disk and is pointing at a symbolic link.
     ///
     /// This function will not traverse symbolic links.
     /// In case of a broken symbolic link this will also return true.
@@ -2763,7 +2763,6 @@ impl Path {
     ///
     #[cfg_attr(unix, doc = "```no_run")]
     #[cfg_attr(not(unix), doc = "```ignore")]
-    /// #![feature(is_symlink)]
     /// use std::path::Path;
     /// use std::os::unix::fs::symlink;
     ///
@@ -2772,8 +2771,14 @@ impl Path {
     /// assert_eq!(link_path.is_symlink(), true);
     /// assert_eq!(link_path.exists(), false);
     /// ```
-    #[unstable(feature = "is_symlink", issue = "85748")]
+    ///
+    /// # See Also
+    ///
+    /// This is a convenience function that coerces errors to false. If you want to
+    /// check errors, call [`fs::symlink_metadata`] and handle its [`Result`]. Then call
+    /// [`fs::Metadata::is_symlink`] if it was [`Ok`].
     #[must_use]
+    #[stable(feature = "is_symlink", since = "1.57.0")]
     pub fn is_symlink(&self) -> bool {
         fs::symlink_metadata(self).map(|m| m.is_symlink()).unwrap_or(false)
     }
