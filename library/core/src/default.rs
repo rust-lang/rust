@@ -155,6 +155,7 @@ pub trait Default: Sized {
 /// }
 /// ```
 #[unstable(feature = "default_free_fn", issue = "73014")]
+#[must_use]
 #[inline]
 pub fn default<T: Default>() -> T {
     Default::default()

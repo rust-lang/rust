@@ -90,6 +90,7 @@ where
 #[lang = "get_context"]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
+#[must_use]
 #[inline]
 pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
     // SAFETY: the caller must guarantee that `cx.0` is a valid pointer

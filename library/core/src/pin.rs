@@ -705,6 +705,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     ///
     /// ["pinning projections"]: self#projections-and-structural-pinning
     #[inline(always)]
+    #[must_use]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn get_ref(self) -> &'a T {

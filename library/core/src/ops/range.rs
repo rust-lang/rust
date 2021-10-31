@@ -743,6 +743,7 @@ impl<T: Clone> Bound<&T> {
     /// assert_eq!((1..12).start_bound(), Included(&1));
     /// assert_eq!((1..12).start_bound().cloned(), Included(1));
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "bound_cloned", since = "1.55.0")]
     pub fn cloned(self) -> Bound<T> {
         match self {
