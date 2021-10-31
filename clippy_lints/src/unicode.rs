@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// let x = String::from("\u{20ac}");
     /// ```
     pub NON_ASCII_LITERAL,
-    pedantic,
+    restriction,
     "using any literal non-ASCII chars in a string literal instead of using the `\\u` escape"
 }
 
