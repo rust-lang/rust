@@ -113,16 +113,29 @@ impl From<DefId> for ItemId {
     }
 }
 
+/// The crate currently being documented.
 #[derive(Clone, Debug)]
 crate struct Crate {
-    crate name: Symbol,
-    crate src: FileName,
     crate module: Item,
     crate externs: Vec<ExternalCrate>,
     crate primitives: ThinVec<(DefId, PrimitiveType)>,
     /// Only here so that they can be filtered through the rustdoc passes.
     crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
     crate collapsed: bool,
+}
+
+// `Crate` is frequently moved by-value. Make sure it doesn't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Crate, 104);
+
+impl Crate {
+    crate fn name(&self, tcx: TyCtxt<'_>) -> Symbol {
+        ExternalCrate::LOCAL.name(tcx)
+    }
+
+    crate fn src(&self, tcx: TyCtxt<'_>) -> FileName {
+        ExternalCrate::LOCAL.src(tcx)
+    }
 }
 
 /// This struct is used to wrap additional information added by rustdoc on a `trait` item.
@@ -138,6 +151,8 @@ crate struct ExternalCrate {
 }
 
 impl ExternalCrate {
+    const LOCAL: Self = Self { crate_num: LOCAL_CRATE };
+
     #[inline]
     crate fn def_id(&self) -> DefId {
         DefId { krate: self.crate_num, index: CRATE_DEF_INDEX }

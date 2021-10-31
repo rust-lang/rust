@@ -172,7 +172,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     // Collect the index into a string
     format!(
         r#""{}":{}"#,
-        krate.name,
+        krate.name(tcx),
         serde_json::to_string(&CrateData {
             doc: crate_doc,
             items: crate_items,

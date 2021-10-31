@@ -408,7 +408,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             ..
         } = options;
 
-        let src_root = match krate.src {
+        let src_root = match krate.src(tcx) {
             FileName::Real(ref p) => match p.local_path_if_available().parent() {
                 Some(p) => p.to_path_buf(),
                 None => PathBuf::new(),
@@ -419,14 +419,14 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let mut playground = None;
         if let Some(url) = playground_url {
             playground =
-                Some(markdown::Playground { crate_name: Some(krate.name.to_string()), url });
+                Some(markdown::Playground { crate_name: Some(krate.name(tcx).to_string()), url });
         }
         let mut layout = layout::Layout {
             logo: String::new(),
             favicon: String::new(),
             external_html,
             default_settings,
-            krate: krate.name.to_string(),
+            krate: krate.name(tcx).to_string(),
             css_file_extension: extension_css,
             generate_search_filter,
             scrape_examples_extension: !call_locations.is_empty(),
@@ -447,7 +447,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 }
                 (sym::html_playground_url, Some(s)) => {
                     playground = Some(markdown::Playground {
-                        crate_name: Some(krate.name.to_string()),
+                        crate_name: Some(krate.name(tcx).to_string()),
                         url: s.to_string(),
                     });
                 }
