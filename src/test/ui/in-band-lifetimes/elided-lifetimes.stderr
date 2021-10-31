@@ -90,7 +90,7 @@ LL |         fn $fn_name(gift: &str) -> $type_name<'_> {
    |                                    ~~~~~~~~~~~~~~
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:101:22
+  --> $DIR/elided-lifetimes.rs:109:22
    |
 LL |     let loyalty: Ref<(u32, char)> = honesty.borrow();
    |                      ^ expected named lifetime parameter

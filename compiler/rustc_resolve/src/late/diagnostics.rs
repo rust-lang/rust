@@ -1951,38 +1951,35 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
     }
 
     crate fn report_elided_lifetime_in_ty(&self, lifetime_refs: &[&hir::Lifetime]) {
-        let missing_lifetimes = lifetime_refs
-            .iter()
-            .filter(|a| matches!(a, hir::Lifetime { name: hir::LifetimeName::ImplicitMissing, .. }))
-            .count();
+        let Some(missing_lifetime) = lifetime_refs.iter().find(|lt| {
+            lt.name == hir::LifetimeName::ImplicitMissing
+        }) else { return };
 
-        if missing_lifetimes > 0 {
-            let mut spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
-            spans.sort();
-            let mut spans_dedup = spans.clone();
-            spans_dedup.dedup();
-            let spans_with_counts: Vec<_> = spans_dedup
-                .into_iter()
-                .map(|sp| (sp, spans.iter().filter(|nsp| *nsp == &sp).count()))
-                .collect();
+        let mut spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
+        spans.sort();
+        let mut spans_dedup = spans.clone();
+        spans_dedup.dedup();
+        let spans_with_counts: Vec<_> = spans_dedup
+            .into_iter()
+            .map(|sp| (sp, spans.iter().filter(|nsp| *nsp == &sp).count()))
+            .collect();
 
-            self.tcx.struct_span_lint_hir(
-                rustc_session::lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
-                hir::CRATE_HIR_ID,
-                spans,
-                |lint| {
-                    let mut db = lint.build("hidden lifetime parameters in types are deprecated");
-                    self.add_missing_lifetime_specifiers_label(
-                        &mut db,
-                        spans_with_counts,
-                        &FxHashSet::from_iter([kw::UnderscoreLifetime]),
-                        Vec::new(),
-                        &[],
-                    );
-                    db.emit()
-                },
-            );
-        }
+        self.tcx.struct_span_lint_hir(
+            rustc_session::lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
+            missing_lifetime.hir_id,
+            spans,
+            |lint| {
+                let mut db = lint.build("hidden lifetime parameters in types are deprecated");
+                self.add_missing_lifetime_specifiers_label(
+                    &mut db,
+                    spans_with_counts,
+                    &FxHashSet::from_iter([kw::UnderscoreLifetime]),
+                    Vec::new(),
+                    &[],
+                );
+                db.emit()
+            },
+        );
     }
 
     // FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
