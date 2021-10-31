@@ -285,6 +285,7 @@ target | std | host | notes
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
 `x86_64-unknown-hermit` | ? |  |
 `x86_64-unknown-l4re-uclibc` | ? |  |
+[`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * |  | Freestanding/bare-metal x86_64, softfloat
 `x86_64-unknown-none-hermitkernel` | ? |  | HermitCore kernel
 `x86_64-unknown-none-linuxkernel` | * |  | Linux kernel modules
 `x86_64-unknown-openbsd` | ✓ | ✓ | 64-bit OpenBSD

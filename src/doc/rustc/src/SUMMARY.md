@@ -15,6 +15,7 @@
 - [Platform Support](platform-support.md)
     - [aarch64-apple-ios-sim](platform-support/aarch64-apple-ios-sim.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
+    - [x86_64-unknown-none](platform-support/x86_64-unknown-none.md)
 - [Target Tier Policy](target-tier-policy.md)
 - [Targets](targets/index.md)
     - [Built-in Targets](targets/built-in.md)
