@@ -7,5 +7,5 @@ fn g(_: impl Send) {}
 
 fn main() {
     g(issue_67893::run())
-    //~^ ERROR: `MutexGuard<'_, ()>` cannot be sent between threads safely
+    //~^ ERROR generator cannot be sent between threads safely
 }

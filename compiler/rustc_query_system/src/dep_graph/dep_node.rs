@@ -60,8 +60,11 @@ impl<K: DepKind> DepNode<K> {
     /// Creates a new, parameterless DepNode. This method will assert
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.
-    pub fn new_no_params(kind: K) -> DepNode<K> {
-        debug_assert!(!kind.has_params());
+    pub fn new_no_params<Ctxt>(tcx: Ctxt, kind: K) -> DepNode<K>
+    where
+        Ctxt: super::DepContext<DepKind = K>,
+    {
+        debug_assert_eq!(tcx.fingerprint_style(kind), FingerprintStyle::Unit);
         DepNode { kind, hash: Fingerprint::ZERO.into() }
     }
 
@@ -75,7 +78,7 @@ impl<K: DepKind> DepNode<K> {
 
         #[cfg(debug_assertions)]
         {
-            if !kind.fingerprint_style().reconstructible()
+            if !tcx.fingerprint_style(kind).reconstructible()
                 && (tcx.sess().opts.debugging_opts.incremental_info
                     || tcx.sess().opts.debugging_opts.query_dep_graph)
             {
@@ -121,11 +124,12 @@ impl<Ctxt: DepContext, T> DepNodeParams<Ctxt> for T
 where
     T: for<'a> HashStable<StableHashingContext<'a>> + fmt::Debug,
 {
-    #[inline]
+    #[inline(always)]
     default fn fingerprint_style() -> FingerprintStyle {
         FingerprintStyle::Opaque
     }
 
+    #[inline(always)]
     default fn to_fingerprint(&self, tcx: Ctxt) -> Fingerprint {
         let mut hcx = tcx.create_stable_hashing_context();
         let mut hasher = StableHasher::new();
@@ -135,10 +139,12 @@ where
         hasher.finish()
     }
 
+    #[inline(always)]
     default fn to_debug_str(&self, _: Ctxt) -> String {
         format!("{:?}", *self)
     }
 
+    #[inline(always)]
     default fn recover(_: Ctxt, _: &DepNode<Ctxt::DepKind>) -> Option<Self> {
         None
     }

@@ -14,13 +14,11 @@ use spans::{CoverageSpan, CoverageSpans};
 
 use crate::MirPass;
 
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir;
-use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::dump_enabled;
@@ -29,7 +27,6 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{CharPos, ExpnKind, Pos, SourceFile, Span, Symbol};
@@ -66,7 +63,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
         }
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(mir_source.def_id().expect_local());
-        let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
+        let is_fn_like = tcx.hir().get(hir_id).fn_kind().is_some();
 
         // Only instrument functions, methods, and closures (not constants since they are evaluated
         // at compile time by Miri).
@@ -76,7 +73,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
         // be tricky if const expressions have no corresponding statements in the enclosing MIR.
         // Closures are carved out by their initial `Assign` statement.)
         if !is_fn_like {
-            trace!("InstrumentCoverage skipped for {:?} (not an FnLikeNode)", mir_source.def_id());
+            trace!("InstrumentCoverage skipped for {:?} (not an fn-like)", mir_source.def_id());
             return;
         }
 
@@ -574,15 +571,13 @@ fn get_body_span<'tcx>(
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {
+    // FIXME(cjgillot) Stop hashing HIR manually here.
     let mut hcx = tcx.create_no_span_stable_hashing_context();
-    hash(&mut hcx, &hir_body.value).to_smaller_hash()
-}
-
-fn hash(
-    hcx: &mut StableHashingContext<'tcx>,
-    node: &impl HashStable<StableHashingContext<'tcx>>,
-) -> Fingerprint {
     let mut stable_hasher = StableHasher::new();
-    node.hash_stable(hcx, &mut stable_hasher);
+    let owner = hir_body.id().hir_id.owner;
+    let bodies = &tcx.hir_owner_nodes(owner).as_ref().unwrap().bodies;
+    hcx.with_hir_bodies(false, owner, bodies, |hcx| {
+        hir_body.value.hash_stable(hcx, &mut stable_hasher)
+    });
     stable_hasher.finish()
 }

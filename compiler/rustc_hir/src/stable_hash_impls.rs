@@ -1,8 +1,8 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 
 use crate::hir::{
-    BodyId, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item, ItemId, Mod, TraitItem,
-    TraitItemId, Ty, VisibilityKind,
+    AttributeMap, BodyId, Crate, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item,
+    ItemId, Mod, OwnerNodes, TraitCandidate, TraitItem, TraitItemId, Ty, VisibilityKind,
 };
 use crate::hir_id::{HirId, ItemLocalId};
 use rustc_span::def_id::DefPathHash;
@@ -21,6 +21,7 @@ pub trait HashStableContext:
     fn hash_hir_ty(&mut self, _: &Ty<'_>, hasher: &mut StableHasher);
     fn hash_hir_visibility_kind(&mut self, _: &VisibilityKind<'_>, hasher: &mut StableHasher);
     fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F);
+    fn hash_hir_trait_candidate(&mut self, _: &TraitCandidate, hasher: &mut StableHasher);
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
@@ -207,5 +208,37 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Item<'_> {
             vis.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         });
+    }
+}
+
+impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'tcx> {
+    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+        // We ignore the `nodes` and `bodies` fields since these refer to information included in
+        // `hash` which is hashed in the collector and used for the crate hash.
+        let OwnerNodes { hash_including_bodies, hash_without_bodies: _, nodes: _, bodies: _ } =
+            *self;
+        hash_including_bodies.hash_stable(hcx, hasher);
+    }
+}
+
+impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap<'tcx> {
+    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+        // We ignore the `map` since it refers to information included in `hash` which is hashed in
+        // the collector and used for the crate hash.
+        let AttributeMap { hash, map: _ } = *self;
+        hash.hash_stable(hcx, hasher);
+    }
+}
+
+impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Crate<'_> {
+    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+        let Crate { owners: _, hir_hash } = self;
+        hir_hash.hash_stable(hcx, hasher)
+    }
+}
+
+impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitCandidate {
+    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+        hcx.hash_hir_trait_candidate(self, hasher)
     }
 }

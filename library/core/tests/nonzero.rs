@@ -204,9 +204,9 @@ fn nonzero_const() {
     // test that the methods of `NonZeroX>` are usable in a const context
     // Note: only tests NonZero8
 
-    const NONZERO: NonZeroU8 = unsafe { NonZeroU8::new_unchecked(5) };
+    const NONZERO_U8: NonZeroU8 = unsafe { NonZeroU8::new_unchecked(5) };
 
-    const GET: u8 = NONZERO.get();
+    const GET: u8 = NONZERO_U8.get();
     assert_eq!(GET, 5);
 
     const ZERO: Option<NonZeroU8> = NonZeroU8::new(0);
@@ -214,6 +214,12 @@ fn nonzero_const() {
 
     const ONE: Option<NonZeroU8> = NonZeroU8::new(1);
     assert!(ONE.is_some());
+
+    const FROM_NONZERO_U8: u8 = u8::from(NONZERO_U8);
+    assert_eq!(FROM_NONZERO_U8, 5);
+
+    const NONZERO_CONVERT: NonZeroU32 = NonZeroU32::from(NONZERO_U8);
+    assert_eq!(NONZERO_CONVERT.get(), 5);
 }
 
 #[test]

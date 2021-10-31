@@ -374,7 +374,6 @@ impl<'a> Arguments<'a> {
     ///    valid index of `args`.
     /// 3. Every [`Count::Param`] within `fmt` must contain a valid index of
     ///    `args`.
-    #[cfg(not(bootstrap))]
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
@@ -384,19 +383,6 @@ impl<'a> Arguments<'a> {
         args: &'a [ArgumentV1<'a>],
         fmt: &'a [rt::v1::Argument],
         _unsafe_arg: UnsafeArg,
-    ) -> Arguments<'a> {
-        Arguments { pieces, fmt: Some(fmt), args }
-    }
-
-    #[cfg(bootstrap)]
-    #[doc(hidden)]
-    #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
-    pub const unsafe fn new_v1_formatted(
-        pieces: &'a [&'static str],
-        args: &'a [ArgumentV1<'a>],
-        fmt: &'a [rt::v1::Argument],
     ) -> Arguments<'a> {
         Arguments { pieces, fmt: Some(fmt), args }
     }
@@ -619,7 +605,7 @@ impl Display for Arguments<'_> {
 )]
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "Debug"]
-#[cfg_attr(not(bootstrap), rustc_trivial_field_reads)]
+#[rustc_trivial_field_reads]
 pub trait Debug {
     /// Formats the value using the given formatter.
     ///

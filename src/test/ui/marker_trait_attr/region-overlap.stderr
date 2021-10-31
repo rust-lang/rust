@@ -4,7 +4,13 @@ error[E0283]: type annotations needed
 LL | impl<'a> A for (&'static (), &'a ()) {}
    |          ^ cannot infer type for tuple `(&'static (), &'a ())`
    |
-   = note: cannot satisfy `(&'static (), &'a ()): A`
+note: multiple `impl`s satisfying `(&'static (), &'a ()): A` found
+  --> $DIR/region-overlap.rs:5:1
+   |
+LL | impl<'a> A for (&'static (), &'a ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<'a> A for (&'a (), &'static ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `A`
   --> $DIR/region-overlap.rs:4:1
    |
@@ -17,7 +23,13 @@ error[E0283]: type annotations needed
 LL | impl<'a> A for (&'a (), &'static ()) {}
    |          ^ cannot infer type for tuple `(&'a (), &'static ())`
    |
-   = note: cannot satisfy `(&'a (), &'static ()): A`
+note: multiple `impl`s satisfying `(&'a (), &'static ()): A` found
+  --> $DIR/region-overlap.rs:5:1
+   |
+LL | impl<'a> A for (&'static (), &'a ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<'a> A for (&'a (), &'static ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `A`
   --> $DIR/region-overlap.rs:4:1
    |

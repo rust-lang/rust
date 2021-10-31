@@ -9,7 +9,6 @@ use rustc_hir::Node;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
-use rustc_span;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -87,13 +86,21 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // the rexport defines the path that a user will actually see. Accordingly,
         // we add the rexport as an item here, and then skip over the original
         // definition in `visit_item()` below.
+        //
+        // We also skip `#[macro_export] macro_rules!` that have already been inserted,
+        // it can happen if within the same module a `#[macro_export] macro_rules!`
+        // is declared but also a reexport of itself producing two exports of the same
+        // macro in the same module.
+        let mut inserted = FxHashSet::default();
         for export in self.cx.tcx.module_exports(CRATE_DEF_ID).unwrap_or(&[]) {
             if let Res::Def(DefKind::Macro(_), def_id) = export.res {
                 if let Some(local_def_id) = def_id.as_local() {
                     if self.cx.tcx.has_attr(def_id, sym::macro_export) {
-                        let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
-                        let item = self.cx.tcx.hir().expect_item(hir_id);
-                        top_level_module.items.push((item, None));
+                        if inserted.insert(def_id) {
+                            let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
+                            let item = self.cx.tcx.hir().expect_item(hir_id);
+                            top_level_module.items.push((item, None));
+                        }
                     }
                 }
             }
@@ -269,7 +276,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             _ if self.inlining && !is_pub => {}
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
-            hir::ItemKind::Use(ref path, kind) => {
+            hir::ItemKind::Use(path, kind) => {
                 let is_glob = kind == hir::UseKind::Glob;
 
                 // Struct and variant constructors and proc macro stubs always show up alongside

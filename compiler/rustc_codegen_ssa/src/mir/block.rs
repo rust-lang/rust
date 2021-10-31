@@ -19,6 +19,7 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
+use rustc_symbol_mangling::typeid_for_fnabi;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
@@ -818,11 +819,42 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_argument(&mut bx, location, &mut llargs, last_arg);
         }
 
-        let fn_ptr = match (llfn, instance) {
-            (Some(llfn), _) => llfn,
-            (None, Some(instance)) => bx.get_fn_addr(instance),
+        let (is_indirect_call, fn_ptr) = match (llfn, instance) {
+            (Some(llfn), _) => (true, llfn),
+            (None, Some(instance)) => (false, bx.get_fn_addr(instance)),
             _ => span_bug!(span, "no llfn for call"),
         };
+
+        // For backends that support CFI using type membership (i.e., testing whether a given
+        // pointer is associated with a type identifier).
+        if bx.tcx().sess.is_sanitizer_cfi_enabled() && is_indirect_call {
+            // Emit type metadata and checks.
+            // FIXME(rcvalle): Add support for generalized identifiers.
+            // FIXME(rcvalle): Create distinct unnamed MDNodes for internal identifiers.
+            let typeid = typeid_for_fnabi(bx.tcx(), fn_abi);
+            let typeid_metadata = bx.typeid_metadata(typeid.clone());
+
+            // Test whether the function pointer is associated with the type identifier.
+            let cond = bx.type_test(fn_ptr, typeid_metadata);
+            let mut bx_pass = bx.build_sibling_block("type_test.pass");
+            let mut bx_fail = bx.build_sibling_block("type_test.fail");
+            bx.cond_br(cond, bx_pass.llbb(), bx_fail.llbb());
+
+            helper.do_call(
+                self,
+                &mut bx_pass,
+                fn_abi,
+                fn_ptr,
+                &llargs,
+                destination.as_ref().map(|&(_, target)| (ret_dest, target)),
+                cleanup,
+            );
+
+            bx_fail.abort();
+            bx_fail.unreachable();
+
+            return;
+        }
 
         helper.do_call(
             self,
@@ -845,6 +877,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         options: ast::InlineAsmOptions,
         line_spans: &[Span],
         destination: Option<mir::BasicBlock>,
+        instance: Instance<'_>,
     ) {
         let span = terminator.source_info.span;
 
@@ -898,7 +931,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             })
             .collect();
 
-        bx.codegen_inline_asm(template, &operands, options, line_spans);
+        bx.codegen_inline_asm(template, &operands, options, line_spans, instance);
 
         if let Some(target) = destination {
             helper.funclet_br(self, &mut bx, target);
@@ -1029,6 +1062,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     options,
                     line_spans,
                     destination,
+                    self.instance,
                 );
             }
         }

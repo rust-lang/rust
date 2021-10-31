@@ -4,12 +4,13 @@ error[E0425]: cannot find value `NonExistent` in this scope
 LL |     NonExistent;
    |     ^^^^^^^^^^^ not found in this scope
 
-error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
+error[E0659]: `repr` is ambiguous
   --> $DIR/ambiguous-builtin-attrs.rs:9:3
    |
 LL | #[repr(C)]
    |   ^^^^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a builtin attribute
    = note: `repr` could refer to a built-in attribute
 note: `repr` could also refer to the attribute macro imported here
   --> $DIR/ambiguous-builtin-attrs.rs:6:5
@@ -18,12 +19,13 @@ LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
    = help: use `crate::repr` to refer to this attribute macro unambiguously
 
-error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
+error[E0659]: `repr` is ambiguous
   --> $DIR/ambiguous-builtin-attrs.rs:11:19
    |
 LL | #[cfg_attr(all(), repr(C))]
    |                   ^^^^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a builtin attribute
    = note: `repr` could refer to a built-in attribute
 note: `repr` could also refer to the attribute macro imported here
   --> $DIR/ambiguous-builtin-attrs.rs:6:5
@@ -32,12 +34,13 @@ LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
    = help: use `crate::repr` to refer to this attribute macro unambiguously
 
-error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
+error[E0659]: `repr` is ambiguous
   --> $DIR/ambiguous-builtin-attrs.rs:20:34
    |
 LL | fn non_macro_expanded_location<#[repr(C)] T>() {
    |                                  ^^^^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a builtin attribute
    = note: `repr` could refer to a built-in attribute
 note: `repr` could also refer to the attribute macro imported here
   --> $DIR/ambiguous-builtin-attrs.rs:6:5
@@ -46,12 +49,13 @@ LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
    = help: use `crate::repr` to refer to this attribute macro unambiguously
 
-error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
+error[E0659]: `repr` is ambiguous
   --> $DIR/ambiguous-builtin-attrs.rs:24:11
    |
 LL |         #[repr(C)]
    |           ^^^^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a builtin attribute
    = note: `repr` could refer to a built-in attribute
 note: `repr` could also refer to the attribute macro imported here
   --> $DIR/ambiguous-builtin-attrs.rs:6:5
@@ -60,12 +64,13 @@ LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
    = help: use `crate::repr` to refer to this attribute macro unambiguously
 
-error[E0659]: `allow` is ambiguous (built-in attribute vs any other name)
+error[E0659]: `allow` is ambiguous
   --> $DIR/ambiguous-builtin-attrs.rs:38:3
    |
 LL | #[allow(unused)]
    |   ^^^^^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a builtin attribute
    = note: `allow` could refer to a built-in attribute
 note: `allow` could also refer to the built-in attribute imported here
   --> $DIR/ambiguous-builtin-attrs.rs:37:5
@@ -74,12 +79,13 @@ LL | use deny as allow;
    |     ^^^^^^^^^^^^^
    = help: use `crate::allow` to refer to this built-in attribute unambiguously
 
-error[E0659]: `feature` is ambiguous (built-in attribute vs any other name)
+error[E0659]: `feature` is ambiguous
   --> $DIR/ambiguous-builtin-attrs.rs:3:4
    |
 LL | #![feature(decl_macro)]
    |    ^^^^^^^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a builtin attribute
    = note: `feature` could refer to a built-in attribute
 note: `feature` could also refer to the attribute macro imported here
   --> $DIR/ambiguous-builtin-attrs.rs:6:5

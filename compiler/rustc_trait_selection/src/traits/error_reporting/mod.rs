@@ -34,6 +34,7 @@ use std::iter;
 
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::AtExt as _;
+use crate::traits::specialize::to_pretty_impl_header;
 use on_unimplemented::InferCtxtExt as _;
 use suggestions::InferCtxtExt as _;
 
@@ -241,6 +242,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut span = obligation.cause.span;
 
         let mut err = match *error {
+            SelectionError::Ambiguous(ref impls) => {
+                let mut err = self.tcx.sess.struct_span_err(
+                    obligation.cause.span,
+                    &format!("multiple applicable `impl`s for `{}`", obligation.predicate),
+                );
+                self.annotate_source_of_ambiguity(&mut err, impls, obligation.predicate);
+                err.emit();
+                return;
+            }
             SelectionError::Unimplemented => {
                 // If this obligation was generated as a result of well-formedness checking, see if we
                 // can get a better error message by performing HIR-based well-formedness checking.
@@ -1138,6 +1148,13 @@ trait InferCtxtPrivExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
     );
 
+    fn annotate_source_of_ambiguity(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        impls: &[DefId],
+        predicate: ty::Predicate<'tcx>,
+    );
+
     fn maybe_suggest_unsized_generics(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -1475,6 +1492,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
             }
+            ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
+                self.get_parent_trait_ref(&parent_code)
+            }
             _ => None,
         }
     }
@@ -1549,11 +1569,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             ?predicate, ?obligation.cause.code,
         );
 
-        // Ambiguity errors are often caused as fallout from earlier
-        // errors. So just ignore them if this infcx is tainted.
-        if self.is_tainted_by_errors() {
-            return;
-        }
+        // Ambiguity errors are often caused as fallout from earlier errors.
+        // We ignore them if this `infcx` is tainted in some cases below.
 
         let bound_predicate = predicate.kind();
         let mut err = match bound_predicate.skip_binder() {
@@ -1601,10 +1618,19 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
-                    self.emit_inference_failure_err(body_id, span, subst, vec![], ErrorCode::E0282)
+                    if !self.is_tainted_by_errors() {
+                        self.emit_inference_failure_err(
+                            body_id,
+                            span,
+                            subst,
+                            vec![],
+                            ErrorCode::E0282,
+                        )
                         .emit();
+                    }
                     return;
                 }
+
                 let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                 let mut err = self.emit_inference_failure_err(
                     body_id,
@@ -1613,7 +1639,29 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     impl_candidates,
                     ErrorCode::E0283,
                 );
-                err.note(&format!("cannot satisfy `{}`", predicate));
+
+                let obligation = Obligation::new(
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                    trait_ref.to_poly_trait_predicate(),
+                );
+                let mut selcx = SelectionContext::with_query_mode(
+                    &self,
+                    crate::traits::TraitQueryMode::Standard,
+                );
+                match selcx.select_from_obligation(&obligation) {
+                    Err(SelectionError::Ambiguous(impls)) if impls.len() > 1 => {
+                        self.annotate_source_of_ambiguity(&mut err, &impls, predicate);
+                    }
+                    _ => {
+                        if self.is_tainted_by_errors() {
+                            err.cancel();
+                            return;
+                        }
+                        err.note(&format!("cannot satisfy `{}`", predicate));
+                    }
+                }
+
                 if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 } else if let (
@@ -1674,7 +1722,10 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             ty::PredicateKind::WellFormed(arg) => {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
-                if arg.references_error() || self.tcx.sess.has_errors() {
+                if arg.references_error()
+                    || self.tcx.sess.has_errors()
+                    || self.is_tainted_by_errors()
+                {
                     return;
                 }
 
@@ -1682,7 +1733,10 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             ty::PredicateKind::Subtype(data) => {
-                if data.references_error() || self.tcx.sess.has_errors() {
+                if data.references_error()
+                    || self.tcx.sess.has_errors()
+                    || self.is_tainted_by_errors()
+                {
                     // no need to overload user in such cases
                     return;
                 }
@@ -1694,7 +1748,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             ty::PredicateKind::Projection(data) => {
                 let self_ty = data.projection_ty.self_ty();
                 let ty = data.ty;
-                if predicate.references_error() {
+                if predicate.references_error() || self.is_tainted_by_errors() {
                     return;
                 }
                 if self_ty.needs_infer() && ty.needs_infer() {
@@ -1722,7 +1776,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             _ => {
-                if self.tcx.sess.has_errors() {
+                if self.tcx.sess.has_errors() || self.is_tainted_by_errors() {
                     return;
                 }
                 let mut err = struct_span_err!(
@@ -1738,6 +1792,96 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
         self.note_obligation_cause(&mut err, obligation);
         err.emit();
+    }
+
+    fn annotate_source_of_ambiguity(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        impls: &[DefId],
+        predicate: ty::Predicate<'tcx>,
+    ) {
+        let mut spans = vec![];
+        let mut crates = vec![];
+        let mut post = vec![];
+        for def_id in impls {
+            match self.tcx.span_of_impl(*def_id) {
+                Ok(span) => spans.push(self.tcx.sess.source_map().guess_head_span(span)),
+                Err(name) => {
+                    crates.push(name);
+                    if let Some(header) = to_pretty_impl_header(self.tcx, *def_id) {
+                        post.push(header);
+                    }
+                }
+            }
+        }
+        let msg = format!("multiple `impl`s satisfying `{}` found", predicate);
+        let mut crate_names: Vec<_> = crates.iter().map(|n| format!("`{}`", n)).collect();
+        crate_names.sort();
+        crate_names.dedup();
+        post.sort();
+        post.dedup();
+
+        if self.is_tainted_by_errors()
+            && crate_names.len() == 1
+            && crate_names[0] == "`core`"
+            && spans.len() == 0
+        {
+            // Avoid complaining about other inference issues for expressions like
+            // `42 >> 1`, where the types are still `{integer}`, but we want to
+            // Do we need `trait_ref.skip_binder().self_ty().is_numeric() &&` too?
+            err.cancel();
+            return;
+        }
+        let post = if post.len() > 4 {
+            format!(
+                ":\n{}\nand {} more",
+                post.iter().map(|p| format!("- {}", p)).take(4).collect::<Vec<_>>().join("\n"),
+                post.len() - 4,
+            )
+        } else if post.len() > 1 || (post.len() == 1 && post[0].contains("\n")) {
+            format!(":\n{}", post.iter().map(|p| format!("- {}", p)).collect::<Vec<_>>().join("\n"),)
+        } else if post.len() == 1 {
+            format!(": `{}`", post[0])
+        } else {
+            String::new()
+        };
+
+        match (spans.len(), crates.len(), crate_names.len()) {
+            (0, 0, 0) => {
+                err.note(&format!("cannot satisfy `{}`", predicate));
+            }
+            (0, _, 1) => {
+                err.note(&format!("{} in the `{}` crate{}", msg, crates[0], post,));
+            }
+            (0, _, _) => {
+                err.note(&format!(
+                    "{} in the following crates: {}{}",
+                    msg,
+                    crate_names.join(", "),
+                    post,
+                ));
+            }
+            (_, 0, 0) => {
+                let span: MultiSpan = spans.into();
+                err.span_note(span, &msg);
+            }
+            (_, 1, 1) => {
+                let span: MultiSpan = spans.into();
+                err.span_note(span, &msg);
+                err.note(
+                    &format!("and another `impl` found in the `{}` crate{}", crates[0], post,),
+                );
+            }
+            _ => {
+                let span: MultiSpan = spans.into();
+                err.span_note(span, &msg);
+                err.note(&format!(
+                    "and more `impl`s found in the following crates: {}{}",
+                    crate_names.join(", "),
+                    post,
+                ));
+            }
+        }
     }
 
     /// Returns `true` if the trait predicate may apply for *some* assignment

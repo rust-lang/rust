@@ -1,6 +1,5 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
@@ -44,8 +43,8 @@ fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         } else {
             false
         }
-    } else if let Some(fn_like) = FnLikeNode::from_node(node) {
-        if fn_like.constness() == hir::Constness::Const {
+    } else if let Some(fn_kind) = node.fn_kind() {
+        if fn_kind.constness() == hir::Constness::Const {
             return true;
         }
 

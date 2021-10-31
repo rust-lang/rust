@@ -1120,20 +1120,15 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(saturating_div)]
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".saturating_div(2), 2);")]
         ///
         /// ```
         ///
         /// ```should_panic
-        /// #![feature(saturating_div)]
-        ///
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".saturating_div(0);")]
         ///
         /// ```
-        #[unstable(feature = "saturating_div", issue = "87920")]
-        #[rustc_const_unstable(feature = "saturating_div", issue = "87920")]
+        #[stable(feature = "saturating_div", since = "1.58.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1530,7 +1525,7 @@ macro_rules! uint_impl {
             //   to generate optimal code for now, and LLVM doesn't have an equivalent intrinsic
             let (a, b) = self.overflowing_add(rhs);
             let (c, d) = a.overflowing_add(carry as $SelfT);
-            (c, b | d)
+            (c, b || d)
         }
 
         /// Calculates `self` + `rhs` with a signed `rhs`
@@ -1611,7 +1606,7 @@ macro_rules! uint_impl {
             //   to generate optimal code for now, and LLVM doesn't have an equivalent intrinsic
             let (a, b) = self.overflowing_sub(rhs);
             let (c, d) = a.overflowing_sub(borrow as $SelfT);
-            (c, b | d)
+            (c, b || d)
         }
 
         /// Computes the absolute difference between `self` and `other`.

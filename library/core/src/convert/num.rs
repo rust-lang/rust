@@ -390,7 +390,8 @@ use crate::num::NonZeroUsize;
 macro_rules! nzint_impl_from {
     ($Small: ty, $Large: ty, #[$attr:meta], $doc: expr) => {
         #[$attr]
-        impl From<$Small> for $Large {
+        #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
+        impl const From<$Small> for $Large {
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
             // Rustdocs on functions do not.
             #[doc = $doc]
@@ -398,7 +399,7 @@ macro_rules! nzint_impl_from {
             fn from(small: $Small) -> Self {
                 // SAFETY: input type guarantees the value is non-zero
                 unsafe {
-                    Self::new_unchecked(small.get().into())
+                    Self::new_unchecked(From::from(small.get()))
                 }
             }
         }

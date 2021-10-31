@@ -440,16 +440,28 @@ pub struct DerivedObligationCause<'tcx> {
 
 #[derive(Clone, Debug, TypeFoldable, Lift)]
 pub enum SelectionError<'tcx> {
+    /// The trait is not implemented.
     Unimplemented,
+    /// After a closure impl has selected, its "outputs" were evaluated
+    /// (which for closures includes the "input" type params) and they
+    /// didn't resolve. See `confirm_poly_trait_refs` for more.
     OutputTypeParameterMismatch(
         ty::PolyTraitRef<'tcx>,
         ty::PolyTraitRef<'tcx>,
         ty::error::TypeError<'tcx>,
     ),
+    /// The trait pointed by `DefId` is not object safe.
     TraitNotObjectSafe(DefId),
+    /// A given constant couldn't be evaluated.
     NotConstEvaluatable(NotConstEvaluatable),
+    /// Exceeded the recursion depth during type projection.
     Overflow,
+    /// Signaling that an error has already been emitted, to avoid
+    /// multiple errors being shown.
     ErrorReporting,
+    /// Multiple applicable `impl`s where found. The `DefId`s correspond to
+    /// all the `impl`s' Items.
+    Ambiguous(Vec<DefId>),
 }
 
 /// When performing resolution, it is typically the case that there

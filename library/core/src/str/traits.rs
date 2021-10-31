@@ -234,7 +234,7 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
 /// Implements substring slicing with syntax `&self[.. end]` or `&mut
 /// self[.. end]`.
 ///
-/// Returns a slice of the given string from the byte range [`0`, `end`).
+/// Returns a slice of the given string from the byte range \[0, `end`).
 /// Equivalent to `&self[0 .. end]` or `&mut self[0 .. end]`.
 ///
 /// This operation is *O*(1).
@@ -304,9 +304,8 @@ unsafe impl SliceIndex<str> for ops::RangeTo<usize> {
 /// Implements substring slicing with syntax `&self[begin ..]` or `&mut
 /// self[begin ..]`.
 ///
-/// Returns a slice of the given string from the byte range [`begin`,
-/// `len`). Equivalent to `&self[begin .. len]` or `&mut self[begin ..
-/// len]`.
+/// Returns a slice of the given string from the byte range \[`begin`, `len`).
+/// Equivalent to `&self[begin .. len]` or `&mut self[begin .. len]`.
 ///
 /// This operation is *O*(1).
 ///
@@ -433,7 +432,7 @@ unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
 /// Implements substring slicing with syntax `&self[..= end]` or `&mut
 /// self[..= end]`.
 ///
-/// Returns a slice of the given string from the byte range [0, `end`].
+/// Returns a slice of the given string from the byte range \[0, `end`\].
 /// Equivalent to `&self [0 .. end + 1]`, except if `end` has the maximum
 /// value for `usize`.
 ///

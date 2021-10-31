@@ -3,6 +3,7 @@ mod transmute_float_to_int;
 mod transmute_int_to_bool;
 mod transmute_int_to_char;
 mod transmute_int_to_float;
+mod transmute_num_to_bytes;
 mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
@@ -263,6 +264,28 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for transmutes from a number to an array of `u8`
+    ///
+    /// ### Why this is bad?
+    /// Transmutes are dangerous and error-prone, whereas `to_ne_bytes`
+    /// is intuitive and safe.
+    ///
+    /// ### Example
+    /// ```rust
+    /// unsafe {
+    ///     let x: [u8; 8] = std::mem::transmute(1i64);
+    /// }
+    ///
+    /// // should be
+    /// let x: [u8; 8] = 0i64.to_ne_bytes();
+    /// ```
+    pub TRANSMUTE_NUM_TO_BYTES,
+    complexity,
+    "transmutes from a number to an array of `u8`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for transmutes from a pointer to a pointer, or
     /// from a reference to a reference.
     ///
@@ -330,6 +353,7 @@ declare_lint_pass!(Transmute => [
     TRANSMUTE_INT_TO_BOOL,
     TRANSMUTE_INT_TO_FLOAT,
     TRANSMUTE_FLOAT_TO_INT,
+    TRANSMUTE_NUM_TO_BYTES,
     UNSOUND_COLLECTION_TRANSMUTE,
     TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
 ]);
@@ -365,6 +389,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 linted |= transmute_int_to_bool::check(cx, e, from_ty, to_ty, args);
                 linted |= transmute_int_to_float::check(cx, e, from_ty, to_ty, args, const_context);
                 linted |= transmute_float_to_int::check(cx, e, from_ty, to_ty, args, const_context);
+                linted |= transmute_num_to_bytes::check(cx, e, from_ty, to_ty, args, const_context);
                 linted |= unsound_collection_transmute::check(cx, e, from_ty, to_ty);
 
                 if !linted {

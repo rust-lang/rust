@@ -597,7 +597,7 @@ crate fn href_relative_parts<'a>(fqp: &'a [String], relative_to_fqp: &'a [String
 
 /// Used when rendering a `ResolvedPath` structure. This invokes the `path`
 /// rendering function with the necessary arguments for linking to a local path.
-fn resolved_path<'a, 'cx: 'a>(
+fn resolved_path<'cx>(
     w: &mut fmt::Formatter<'_>,
     did: DefId,
     path: &clean::Path,
@@ -696,7 +696,7 @@ fn primitive_link(
 
 /// Helper to render type parameters
 fn tybounds<'a, 'tcx: 'a>(
-    bounds: &'a Vec<clean::PolyTrait>,
+    bounds: &'a [clean::PolyTrait],
     lt: &'a Option<clean::Lifetime>,
     cx: &'a Context<'tcx>,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -886,7 +886,7 @@ fn fmt_type<'cx>(
                     if bounds.len() > 1 || trait_lt.is_some() =>
                 {
                     write!(f, "{}{}{}(", amp, lt, m)?;
-                    fmt_type(&ty, f, use_absolute, cx)?;
+                    fmt_type(ty, f, use_absolute, cx)?;
                     write!(f, ")")
                 }
                 clean::Generic(..) => {
@@ -896,11 +896,11 @@ fn fmt_type<'cx>(
                         &format!("{}{}{}", amp, lt, m),
                         cx,
                     )?;
-                    fmt_type(&ty, f, use_absolute, cx)
+                    fmt_type(ty, f, use_absolute, cx)
                 }
                 _ => {
                     write!(f, "{}{}{}", amp, lt, m)?;
-                    fmt_type(&ty, f, use_absolute, cx)
+                    fmt_type(ty, f, use_absolute, cx)
                 }
             }
         }

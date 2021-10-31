@@ -36,7 +36,7 @@ enum QueryModifier {
     Storage(Type),
 
     /// Cache the query to disk if the `Expr` returns true.
-    Cache(Option<(IdentOrWild, IdentOrWild)>, Block),
+    Cache(Option<IdentOrWild>, Block),
 
     /// Custom code to load the query from disk.
     LoadCached(Ident, Ident, Block),
@@ -55,6 +55,9 @@ enum QueryModifier {
 
     /// Always evaluate the query, ignoring its dependencies
     EvalAlways(Ident),
+
+    /// Use a separate query provider for local and extern crates
+    SeparateProvideExtern(Ident),
 }
 
 impl Parse for QueryModifier {
@@ -87,9 +90,7 @@ impl Parse for QueryModifier {
                 let args;
                 parenthesized!(args in input);
                 let tcx = args.parse()?;
-                args.parse::<Token![,]>()?;
-                let value = args.parse()?;
-                Some((tcx, value))
+                Some(tcx)
             } else {
                 None
             };
@@ -120,6 +121,8 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::Anon(modifier))
         } else if modifier == "eval_always" {
             Ok(QueryModifier::EvalAlways(modifier))
+        } else if modifier == "separate_provide_extern" {
+            Ok(QueryModifier::SeparateProvideExtern(modifier))
         } else {
             Err(Error::new(modifier.span(), "unknown query modifier"))
         }
@@ -197,7 +200,7 @@ struct QueryModifiers {
     storage: Option<Type>,
 
     /// Cache the query to disk if the `Block` returns true.
-    cache: Option<(Option<(IdentOrWild, IdentOrWild)>, Block)>,
+    cache: Option<(Option<IdentOrWild>, Block)>,
 
     /// Custom code to load the query from disk.
     load_cached: Option<(Ident, Ident, Block)>,
@@ -216,6 +219,9 @@ struct QueryModifiers {
 
     // Always evaluate the query, ignoring its dependencies
     eval_always: Option<Ident>,
+
+    /// Use a separate query provider for local and extern crates
+    separate_provide_extern: Option<Ident>,
 }
 
 /// Process query modifiers into a struct, erroring on duplicates
@@ -229,6 +235,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut no_hash = None;
     let mut anon = None;
     let mut eval_always = None;
+    let mut separate_provide_extern = None;
     for modifier in query.modifiers.0.drain(..) {
         match modifier {
             QueryModifier::LoadCached(tcx, id, block) => {
@@ -319,6 +326,15 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 eval_always = Some(ident);
             }
+            QueryModifier::SeparateProvideExtern(ident) => {
+                if separate_provide_extern.is_some() {
+                    panic!(
+                        "duplicate modifier `separate_provide_extern` for query `{}`",
+                        query.name
+                    );
+                }
+                separate_provide_extern = Some(ident);
+            }
         }
     }
     let desc = desc.unwrap_or_else(|| {
@@ -334,6 +350,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
         no_hash,
         anon,
         eval_always,
+        separate_provide_extern,
     }
 }
 
@@ -351,51 +368,30 @@ fn add_query_description_impl(
         let try_load_from_disk = if let Some((tcx, id, block)) = modifiers.load_cached.as_ref() {
             // Use custom code to load the query from disk
             quote! {
-                #[inline]
-                fn try_load_from_disk(
-                    #tcx: QueryCtxt<'tcx>,
-                    #id: SerializedDepNodeIndex
-                ) -> Option<Self::Value> {
-                    #block
-                }
+                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
+                    = Some(|#tcx, #id| { #block });
             }
         } else {
             // Use the default code to load the query from disk
             quote! {
-                #[inline]
-                fn try_load_from_disk(
-                    tcx: QueryCtxt<'tcx>,
-                    id: SerializedDepNodeIndex
-                ) -> Option<Self::Value> {
-                    tcx.on_disk_cache().as_ref()?.try_load_query_result(*tcx, id)
-                }
+                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
+                    = Some(|tcx, id| tcx.on_disk_cache().as_ref()?.try_load_query_result(*tcx, id));
             }
         };
 
         let tcx = args
             .as_ref()
             .map(|t| {
-                let t = &(t.0).0;
-                quote! { #t }
-            })
-            .unwrap_or_else(|| quote! { _ });
-        let value = args
-            .as_ref()
-            .map(|t| {
-                let t = &(t.1).0;
+                let t = &t.0;
                 quote! { #t }
             })
             .unwrap_or_else(|| quote! { _ });
         // expr is a `Block`, meaning that `{ #expr }` gets expanded
         // to `{ { stmts... } }`, which triggers the `unused_braces` lint.
         quote! {
-            #[inline]
             #[allow(unused_variables, unused_braces)]
-            fn cache_on_disk(
-                #tcx: QueryCtxt<'tcx>,
-                #key: &Self::Key,
-                #value: Option<&Self::Value>
-            ) -> bool {
+            #[inline]
+            fn cache_on_disk(#tcx: TyCtxt<'tcx>, #key: &Self::Key) -> bool {
                 #expr
             }
 
@@ -405,7 +401,14 @@ fn add_query_description_impl(
         if modifiers.load_cached.is_some() {
             panic!("load_cached modifier on query `{}` without a cache modifier", name);
         }
-        quote! {}
+        quote! {
+            #[inline]
+            fn cache_on_disk(_: TyCtxt<'tcx>, _: &Self::Key) -> bool {
+                false
+            }
+
+            const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>> = None;
+        }
     };
 
     let (tcx, desc) = modifiers.desc;
@@ -413,17 +416,17 @@ fn add_query_description_impl(
 
     let desc = quote! {
         #[allow(unused_variables)]
-        fn describe(tcx: QueryCtxt<'tcx>, key: Self::Key) -> String {
+        fn describe(tcx: QueryCtxt<$tcx>, key: Self::Key) -> String {
             let (#tcx, #key) = (*tcx, key);
             ::rustc_middle::ty::print::with_no_trimmed_paths(|| format!(#desc).into())
         }
     };
 
     impls.extend(quote! {
-        impl<'tcx> QueryDescription<QueryCtxt<'tcx>> for queries::#name<'tcx> {
+        (#name<$tcx:tt>) => {
             #desc
             #cache
-        }
+        };
     });
 }
 
@@ -478,6 +481,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         if let Some(eval_always) = &modifiers.eval_always {
             attributes.push(quote! { (#eval_always) });
         };
+        // Pass on the separate_provide_extern modifier
+        if let Some(separate_provide_extern) = &modifiers.separate_provide_extern {
+            attributes.push(quote! { (#separate_provide_extern) });
+        }
 
         // This uses the span of the query definition for the commas,
         // which can be important if we later encounter any ambiguity
@@ -531,7 +538,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         }
         #[macro_export]
         macro_rules! rustc_query_description {
-            () => { #query_description_stream }
+            #query_description_stream
         }
     })
 }

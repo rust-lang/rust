@@ -389,7 +389,6 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
         let _: Loss = sig::shift_right(&mut sig, &mut exp, trailing_zeros as usize);
 
         // Change the exponent from 2^e to 10^e.
-        #[allow(clippy::comparison_chain)]
         if exp == 0 {
             // Nothing to do.
         } else if exp > 0 {
@@ -2527,7 +2526,6 @@ mod sig {
         if *a_sign ^ b_sign {
             let (reverse, loss);
 
-            #[allow(clippy::comparison_chain)]
             if bits == 0 {
                 reverse = cmp(a_sig, b_sig) == Ordering::Less;
                 loss = Loss::ExactlyZero;

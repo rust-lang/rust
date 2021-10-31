@@ -5,7 +5,9 @@ use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::InstrumentCoverage;
 use rustc_session::config::Strip;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
-use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
+use rustc_session::config::{
+    rustc_optgroups, ErrorOutputType, ExternLocation, LocationDetail, Options, Passes,
+};
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::config::{
     Externs, OutputType, OutputTypes, SymbolManglingVersion, WasiExecModel,
@@ -733,6 +735,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(instrument_mcount, true);
     tracked!(link_only, true);
     tracked!(llvm_plugins, vec![String::from("plugin_name")]);
+    tracked!(location_detail, LocationDetail { file: true, line: false, column: false });
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(mir_emit_retag, true);
     tracked!(mir_opt_level, Some(4));
@@ -741,6 +744,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(new_llvm_pass_manager, Some(true));
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
+    tracked!(no_unique_section_names, true);
     tracked!(no_profiler_runtime, true);
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);

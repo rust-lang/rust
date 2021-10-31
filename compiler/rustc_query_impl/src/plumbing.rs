@@ -2,20 +2,17 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::{on_disk_cache, queries, Queries};
-use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
+use crate::{on_disk_cache, Queries};
+use rustc_middle::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::HasDepContext;
-use rustc_query_system::query::{
-    QueryContext, QueryDescription, QueryJobId, QueryMap, QuerySideEffects,
-};
+use rustc_query_system::query::{QueryContext, QueryJobId, QueryMap, QuerySideEffects};
 
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, Handler};
 use rustc_serialize::opaque;
-use rustc_span::def_id::LocalDefId;
 
 use std::any::Any;
 
@@ -51,36 +48,6 @@ impl QueryContext for QueryCtxt<'tcx> {
 
     fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>> {
         self.queries.try_collect_active_jobs(**self)
-    }
-
-    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode) {
-        let cb = &super::QUERY_CALLBACKS[dep_node.kind as usize];
-        (cb.try_load_from_on_disk_cache)(*self, dep_node)
-    }
-
-    fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool {
-        debug!("try_force_from_dep_node({:?}) --- trying to force", dep_node);
-
-        // We must avoid ever having to call `force_from_dep_node()` for a
-        // `DepNode::codegen_unit`:
-        // Since we cannot reconstruct the query key of a `DepNode::codegen_unit`, we
-        // would always end up having to evaluate the first caller of the
-        // `codegen_unit` query that *is* reconstructible. This might very well be
-        // the `compile_codegen_unit` query, thus re-codegenning the whole CGU just
-        // to re-trigger calling the `codegen_unit` query with the right key. At
-        // that point we would already have re-done all the work we are trying to
-        // avoid doing in the first place.
-        // The solution is simple: Just explicitly call the `codegen_unit` query for
-        // each CGU, right after partitioning. This way `try_mark_green` will always
-        // hit the cache instead of having to go through `force_from_dep_node`.
-        // This assertion makes sure, we actually keep applying the solution above.
-        debug_assert!(
-            dep_node.kind != DepKind::codegen_unit,
-            "calling force_from_dep_node() on DepKind::codegen_unit"
-        );
-
-        let cb = &super::QUERY_CALLBACKS[dep_node.kind as usize];
-        (cb.force_from_dep_node)(*self, dep_node)
     }
 
     // Interactions with on_disk_cache
@@ -193,60 +160,6 @@ impl<'tcx> QueryCtxt<'tcx> {
     }
 }
 
-/// This struct stores metadata about each Query.
-///
-/// Information is retrieved by indexing the `QUERIES` array using the integer value
-/// of the `DepKind`. Overall, this allows to implement `QueryContext` using this manual
-/// jump table instead of large matches.
-pub struct QueryStruct {
-    /// The red/green evaluation system will try to mark a specific DepNode in the
-    /// dependency graph as green by recursively trying to mark the dependencies of
-    /// that `DepNode` as green. While doing so, it will sometimes encounter a `DepNode`
-    /// where we don't know if it is red or green and we therefore actually have
-    /// to recompute its value in order to find out. Since the only piece of
-    /// information that we have at that point is the `DepNode` we are trying to
-    /// re-evaluate, we need some way to re-run a query from just that. This is what
-    /// `force_from_dep_node()` implements.
-    ///
-    /// In the general case, a `DepNode` consists of a `DepKind` and an opaque
-    /// GUID/fingerprint that will uniquely identify the node. This GUID/fingerprint
-    /// is usually constructed by computing a stable hash of the query-key that the
-    /// `DepNode` corresponds to. Consequently, it is not in general possible to go
-    /// back from hash to query-key (since hash functions are not reversible). For
-    /// this reason `force_from_dep_node()` is expected to fail from time to time
-    /// because we just cannot find out, from the `DepNode` alone, what the
-    /// corresponding query-key is and therefore cannot re-run the query.
-    ///
-    /// The system deals with this case letting `try_mark_green` fail which forces
-    /// the root query to be re-evaluated.
-    ///
-    /// Now, if `force_from_dep_node()` would always fail, it would be pretty useless.
-    /// Fortunately, we can use some contextual information that will allow us to
-    /// reconstruct query-keys for certain kinds of `DepNode`s. In particular, we
-    /// enforce by construction that the GUID/fingerprint of certain `DepNode`s is a
-    /// valid `DefPathHash`. Since we also always build a huge table that maps every
-    /// `DefPathHash` in the current codebase to the corresponding `DefId`, we have
-    /// everything we need to re-run the query.
-    ///
-    /// Take the `mir_promoted` query as an example. Like many other queries, it
-    /// just has a single parameter: the `DefId` of the item it will compute the
-    /// validated MIR for. Now, when we call `force_from_dep_node()` on a `DepNode`
-    /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
-    /// is actually a `DefPathHash`, and can therefore just look up the corresponding
-    /// `DefId` in `tcx.def_path_hash_to_def_id`.
-    ///
-    /// When you implement a new query, it will likely have a corresponding new
-    /// `DepKind`, and you'll have to support it here in `force_from_dep_node()`. As
-    /// a rule of thumb, if your query takes a `DefId` or `LocalDefId` as sole parameter,
-    /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
-    /// add it to the "We don't have enough information to reconstruct..." group in
-    /// the match below.
-    pub(crate) force_from_dep_node: fn(tcx: QueryCtxt<'_>, dep_node: &DepNode) -> bool,
-
-    /// Invoke a query to put the on-disk cached value in memory.
-    pub(crate) try_load_from_on_disk_cache: fn(QueryCtxt<'_>, &DepNode),
-}
-
 macro_rules! handle_cycle_error {
     ([][$tcx: expr, $error:expr]) => {{
         $error.emit();
@@ -291,14 +204,30 @@ macro_rules! is_eval_always {
 }
 
 macro_rules! hash_result {
-    ([][$hcx:expr, $result:expr]) => {{
-        dep_graph::hash_result($hcx, &$result)
+    ([]) => {{
+        Some(dep_graph::hash_result)
     }};
-    ([(no_hash) $($rest:tt)*][$hcx:expr, $result:expr]) => {{
+    ([(no_hash) $($rest:tt)*]) => {{
         None
     }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        hash_result!([$($modifiers)*])
+    };
+}
+
+macro_rules! get_provider {
+    ([][$tcx:expr, $name:ident, $key:expr]) => {{
+        $tcx.queries.local_providers.$name
+    }};
+    ([(separate_provide_extern) $($rest:tt)*][$tcx:expr, $name:ident, $key:expr]) => {{
+        if $key.query_crate_is_local() {
+            $tcx.queries.local_providers.$name
+        } else {
+            $tcx.queries.extern_providers.$name
+        }
+    }};
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
-        hash_result!([$($modifiers)*][$($args)*])
+        get_provider!([$($modifiers)*][$($args)*])
     };
 }
 
@@ -374,10 +303,8 @@ macro_rules! define_queries {
             const NAME: &'static str = stringify!($name);
         }
 
-        impl<$tcx> QueryAccessors<QueryCtxt<$tcx>> for queries::$name<$tcx> {
-            const ANON: bool = is_anon!([$($modifiers)*]);
-            const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
-            const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$name;
+        impl<$tcx> QueryDescription<QueryCtxt<$tcx>> for queries::$name<$tcx> {
+            rustc_query_description! { $name<$tcx> }
 
             type Cache = query_storage::$name<$tcx>;
 
@@ -396,32 +323,25 @@ macro_rules! define_queries {
             }
 
             #[inline]
-            fn compute_fn(tcx: QueryCtxt<'tcx>, key: &Self::Key) ->
-                fn(TyCtxt<'tcx>, Self::Key) -> Self::Value
+            fn make_vtable(tcx: QueryCtxt<'tcx>, key: &Self::Key) ->
+                QueryVtable<QueryCtxt<$tcx>, Self::Key, Self::Value>
             {
-                if key.query_crate_is_local() {
-                    tcx.queries.local_providers.$name
-                } else {
-                    tcx.queries.extern_providers.$name
+                let compute = get_provider!([$($modifiers)*][tcx, $name, key]);
+                let cache_on_disk = Self::cache_on_disk(tcx.tcx, key);
+                QueryVtable {
+                    anon: is_anon!([$($modifiers)*]),
+                    eval_always: is_eval_always!([$($modifiers)*]),
+                    dep_kind: dep_graph::DepKind::$name,
+                    hash_result: hash_result!([$($modifiers)*]),
+                    handle_cycle_error: |tcx, mut error| handle_cycle_error!([$($modifiers)*][tcx, error]),
+                    compute,
+                    cache_on_disk,
+                    try_load_from_disk: Self::TRY_LOAD_FROM_DISK,
                 }
-            }
-
-            fn hash_result(
-                _hcx: &mut StableHashingContext<'_>,
-                _result: &Self::Value
-            ) -> Option<Fingerprint> {
-                hash_result!([$($modifiers)*][_hcx, _result])
-            }
-
-            fn handle_cycle_error(
-                tcx: QueryCtxt<'tcx>,
-                mut error: DiagnosticBuilder<'_>,
-            ) -> Self::Value {
-                handle_cycle_error!([$($modifiers)*][tcx, error])
             }
         })*
 
-        #[allow(non_upper_case_globals)]
+        #[allow(nonstandard_style)]
         pub mod query_callbacks {
             use super::*;
             use rustc_middle::dep_graph::DepNode;
@@ -431,68 +351,100 @@ macro_rules! define_queries {
             use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
-            pub const Null: QueryStruct = QueryStruct {
-                force_from_dep_node: |_, dep_node| bug!("force_from_dep_node: encountered {:?}", dep_node),
-                try_load_from_on_disk_cache: |_, _| {},
-            };
+            pub fn Null() -> DepKindStruct {
+                DepKindStruct {
+                    is_anon: false,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Unit,
+                    force_from_dep_node: Some(|_, dep_node| bug!("force_from_dep_node: encountered {:?}", dep_node)),
+                    try_load_from_on_disk_cache: None,
+                }
+            }
 
-            pub const TraitSelect: QueryStruct = QueryStruct {
-                force_from_dep_node: |_, _| false,
-                try_load_from_on_disk_cache: |_, _| {},
-            };
+            pub fn TraitSelect() -> DepKindStruct {
+                DepKindStruct {
+                    is_anon: true,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Unit,
+                    force_from_dep_node: None,
+                    try_load_from_on_disk_cache: None,
+                }
+            }
 
-            pub const CompileCodegenUnit: QueryStruct = QueryStruct {
-                force_from_dep_node: |_, _| false,
-                try_load_from_on_disk_cache: |_, _| {},
-            };
+            pub fn CompileCodegenUnit() -> DepKindStruct {
+                DepKindStruct {
+                    is_anon: false,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Opaque,
+                    force_from_dep_node: None,
+                    try_load_from_on_disk_cache: None,
+                }
+            }
 
-            pub const CompileMonoItem: QueryStruct = QueryStruct {
-                force_from_dep_node: |_, _| false,
-                try_load_from_on_disk_cache: |_, _| {},
-            };
+            pub fn CompileMonoItem() -> DepKindStruct {
+                DepKindStruct {
+                    is_anon: false,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Opaque,
+                    force_from_dep_node: None,
+                    try_load_from_on_disk_cache: None,
+                }
+            }
 
-            $(pub const $name: QueryStruct = {
-                const is_anon: bool = is_anon!([$($modifiers)*]);
+            $(pub fn $name()-> DepKindStruct {
+                let is_anon = is_anon!([$($modifiers)*]);
+                let is_eval_always = is_eval_always!([$($modifiers)*]);
+
+                let fingerprint_style =
+                    <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>::fingerprint_style();
+
+                if is_anon || !fingerprint_style.reconstructible() {
+                    return DepKindStruct {
+                        is_anon,
+                        is_eval_always,
+                        fingerprint_style,
+                        force_from_dep_node: None,
+                        try_load_from_on_disk_cache: None,
+                    }
+                }
 
                 #[inline(always)]
-                fn fingerprint_style() -> FingerprintStyle {
-                    <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>
-                        ::fingerprint_style()
+                fn recover<'tcx>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> Option<query_keys::$name<'tcx>> {
+                    <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, &dep_node)
                 }
 
-                fn recover<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<query_keys::$name<'tcx>> {
-                    <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node)
-                }
-
-                fn force_from_dep_node(tcx: QueryCtxt<'_>, dep_node: &DepNode) -> bool {
-                    force_query::<queries::$name<'_>, _>(tcx, dep_node)
-                }
-
-                fn try_load_from_on_disk_cache(tcx: QueryCtxt<'_>, dep_node: &DepNode) {
-                    if is_anon {
-                        return
+                fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: DepNode) -> bool {
+                    if let Some(key) = recover(tcx, dep_node) {
+                        let tcx = QueryCtxt::from_tcx(tcx);
+                        force_query::<queries::$name<'_>, _>(tcx, key, dep_node);
+                        true
+                    } else {
+                        false
                     }
+                }
 
-                    if !fingerprint_style().reconstructible() {
-                        return
-                    }
+                fn try_load_from_on_disk_cache(tcx: TyCtxt<'_>, dep_node: DepNode) {
+                    debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
-                    debug_assert!(tcx.dep_graph.is_green(dep_node));
-
-                    let key = recover(*tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
-                    if queries::$name::cache_on_disk(tcx, &key, None) {
+                    let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
+                    if queries::$name::cache_on_disk(tcx, &key) {
                         let _ = tcx.$name(key);
                     }
                 }
 
-                QueryStruct {
-                    force_from_dep_node,
-                    try_load_from_on_disk_cache,
+                DepKindStruct {
+                    is_anon,
+                    is_eval_always,
+                    fingerprint_style,
+                    force_from_dep_node: Some(force_from_dep_node),
+                    try_load_from_on_disk_cache: Some(try_load_from_on_disk_cache),
                 }
-            };)*
+            })*
         }
 
-        static QUERY_CALLBACKS: &[QueryStruct] = &make_dep_kind_array!(query_callbacks);
+        pub fn query_callbacks<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindStruct] {
+            arena.alloc_from_iter(make_dep_kind_array!(query_callbacks))
+        }
     }
 }
 
@@ -504,7 +456,7 @@ macro_rules! define_queries_struct {
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Queries<$tcx> {
             local_providers: Box<Providers>,
-            extern_providers: Box<Providers>,
+            extern_providers: Box<ExternProviders>,
 
             pub on_disk_cache: Option<OnDiskCache<$tcx>>,
 
@@ -517,7 +469,7 @@ macro_rules! define_queries_struct {
         impl<$tcx> Queries<$tcx> {
             pub fn new(
                 local_providers: Providers,
-                extern_providers: Providers,
+                extern_providers: ExternProviders,
                 on_disk_cache: Option<OnDiskCache<$tcx>>,
             ) -> Self {
                 Queries {
@@ -575,13 +527,3 @@ macro_rules! define_queries_struct {
         }
     };
 }
-
-fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
-    if def_id.is_top_level_module() {
-        "top-level module".to_string()
-    } else {
-        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
-    }
-}
-
-rustc_query_description! {}

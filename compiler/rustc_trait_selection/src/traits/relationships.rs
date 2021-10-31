@@ -44,6 +44,7 @@ pub(crate) fn update<'tcx, T>(
                             ty::PredicateKind::Trait(ty::TraitPredicate {
                                 trait_ref,
                                 constness: predicate.constness,
+                                polarity: predicate.polarity,
                             })
                         })
                         .to_predicate(infcx.tcx),

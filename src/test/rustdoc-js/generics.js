@@ -1,10 +1,12 @@
 // exact-check
 
 const QUERY = [
-  '"R<P>"',
-  '"P"',
-  'P',
-  '"ExtraCreditStructMulti<ExtraCreditInnerMulti, ExtraCreditInnerMulti>"',
+    '"R<P>"',
+    '"P"',
+    'P',
+    '"ExtraCreditStructMulti<ExtraCreditInnerMulti, ExtraCreditInnerMulti>"',
+    'TraitCat',
+    'TraitDog',
 ];
 
 const EXPECTED = [
@@ -30,9 +32,11 @@ const EXPECTED = [
     {
         'returned': [
             { 'path': 'generics', 'name': 'alef' },
+            { 'path': 'generics', 'name': 'bet' },
         ],
         'in_args': [
             { 'path': 'generics', 'name': 'alpha' },
+            { 'path': 'generics', 'name': 'beta' },
         ],
     },
     {
@@ -40,5 +44,15 @@ const EXPECTED = [
             { 'path': 'generics', 'name': 'extracreditlabhomework' },
         ],
         'returned': [],
+    },
+    {
+        'in_args': [
+            { 'path': 'generics', 'name': 'gamma' },
+        ],
+    },
+    {
+        'in_args': [
+            { 'path': 'generics', 'name': 'gamma' },
+        ],
     },
 ];

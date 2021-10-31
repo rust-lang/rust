@@ -68,6 +68,12 @@ changelog-seen = 2
 # Indicates whether the LLVM assertions are enabled or not
 #assertions = false
 
+# Indicates whether the LLVM testsuite is enabled in the build or not. Does
+# not execute the tests as part of the build as part of x.py build et al,
+# just makes it possible to do `ninja check-llvm` in the staged LLVM build
+# directory when doing LLVM development as part of Rust development.
+#tests = false
+
 # Indicates whether the LLVM plugin is enabled or not
 #plugins = false
 
@@ -603,7 +609,11 @@ changelog-seen = 2
 
 # Enable symbol-mangling-version v0. This can be helpful when profiling rustc,
 # as generics will be preserved in symbols (rather than erased into opaque T).
-#new-symbol-mangling = false
+# When no setting is given, the new scheme will be used when compiling the
+# compiler and its tools and the legacy scheme will be used when compiling the
+# standard library.
+# If an explicit setting is given, it will be used for all parts of the codebase.
+#new-symbol-mangling = true|false (see comment)
 
 # =============================================================================
 # Options for specific targets

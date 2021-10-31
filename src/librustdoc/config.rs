@@ -25,6 +25,7 @@ use crate::html::render::StylePath;
 use crate::html::static_files;
 use crate::opts;
 use crate::passes::{self, Condition, DefaultPassOption};
+use crate::scrape_examples::{AllCallLocations, ScrapeExamplesOptions};
 use crate::theme;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -158,6 +159,10 @@ crate struct Options {
     crate json_unused_externs: bool,
     /// Whether to skip capturing stdout and stderr of tests.
     crate nocapture: bool,
+
+    /// Configuration for scraping examples from the current crate. If this option is Some(..) then
+    /// the compiler will scrape examples and not generate documentation.
+    crate scrape_examples_options: Option<ScrapeExamplesOptions>,
 }
 
 impl fmt::Debug for Options {
@@ -202,6 +207,7 @@ impl fmt::Debug for Options {
             .field("run_check", &self.run_check)
             .field("no_run", &self.no_run)
             .field("nocapture", &self.nocapture)
+            .field("scrape_examples_options", &self.scrape_examples_options)
             .finish()
     }
 }
@@ -280,6 +286,7 @@ crate struct RenderOptions {
     crate emit: Vec<EmitType>,
     /// If `true`, HTML source pages will generate links for items to their definition.
     crate generate_link_to_definition: bool,
+    crate call_locations: AllCallLocations,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -314,13 +321,13 @@ impl Options {
     /// been printed, returns `Err` with the exit code.
     crate fn from_matches(matches: &getopts::Matches) -> Result<Options, i32> {
         // Check for unstable options.
-        nightly_options::check_nightly_options(&matches, &opts());
+        nightly_options::check_nightly_options(matches, &opts());
 
         if matches.opt_present("h") || matches.opt_present("help") {
             crate::usage("rustdoc");
             return Err(0);
         } else if matches.opt_present("version") {
-            rustc_driver::version("rustdoc", &matches);
+            rustc_driver::version("rustdoc", matches);
             return Err(0);
         }
 
@@ -356,10 +363,10 @@ impl Options {
             return Err(0);
         }
 
-        let color = config::parse_color(&matches);
+        let color = config::parse_color(matches);
         let config::JsonConfig { json_rendered, json_unused_externs, .. } =
-            config::parse_json(&matches);
-        let error_format = config::parse_error_format(&matches, color, json_rendered);
+            config::parse_json(matches);
+        let error_format = config::parse_error_format(matches, color, json_rendered);
 
         let codegen_options = CodegenOptions::build(matches, error_format);
         let debugging_opts = DebuggingOptions::build(matches, error_format);
@@ -367,7 +374,7 @@ impl Options {
         let diag = new_handler(error_format, None, &debugging_opts);
 
         // check for deprecated options
-        check_deprecated_options(&matches, &diag);
+        check_deprecated_options(matches, &diag);
 
         let mut emit = Vec::new();
         for list in matches.opt_strs("emit") {
@@ -433,8 +440,8 @@ impl Options {
             .iter()
             .map(|s| SearchPath::from_cli_opt(s, error_format))
             .collect();
-        let externs = parse_externs(&matches, &debugging_opts, error_format);
-        let extern_html_root_urls = match parse_extern_html_roots(&matches) {
+        let externs = parse_externs(matches, &debugging_opts, error_format);
+        let extern_html_root_urls = match parse_extern_html_roots(matches) {
             Ok(ex) => ex,
             Err(err) => {
                 diag.struct_err(err).emit();
@@ -553,7 +560,7 @@ impl Options {
             }
         }
 
-        let edition = config::parse_crate_edition(&matches);
+        let edition = config::parse_crate_edition(matches);
 
         let mut id_map = html::markdown::IdMap::new();
         let external_html = match ExternalHtml::load(
@@ -562,7 +569,7 @@ impl Options {
             &matches.opt_strs("html-after-content"),
             &matches.opt_strs("markdown-before-content"),
             &matches.opt_strs("markdown-after-content"),
-            nightly_options::match_is_nightly_build(&matches),
+            nightly_options::match_is_nightly_build(matches),
             &diag,
             &mut id_map,
             edition,
@@ -671,6 +678,10 @@ impl Options {
             return Err(1);
         }
 
+        let scrape_examples_options = ScrapeExamplesOptions::new(&matches, &diag)?;
+        let with_examples = matches.opt_strs("with-examples");
+        let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
+
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
         Ok(Options {
@@ -737,10 +748,12 @@ impl Options {
                 ),
                 emit,
                 generate_link_to_definition,
+                call_locations,
             },
             crate_name,
             output_format,
             json_unused_externs,
+            scrape_examples_options,
         })
     }
 

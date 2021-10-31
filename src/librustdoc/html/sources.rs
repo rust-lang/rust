@@ -67,7 +67,7 @@ impl LocalSourcesCollector<'_, '_> {
         }
 
         let mut href = String::new();
-        clean_path(&self.src_root, &p, false, |component| {
+        clean_path(self.src_root, &p, false, |component| {
             href.push_str(&component.to_string_lossy());
             href.push('/');
         });
@@ -168,7 +168,7 @@ impl SourceCollector<'_, 'tcx> {
         };
 
         // Remove the utf-8 BOM if any
-        let contents = if contents.starts_with('\u{feff}') { &contents[3..] } else { &contents };
+        let contents = contents.strip_prefix('\u{feff}').unwrap_or(&contents);
 
         // Create the intermediate directories
         let mut cur = self.dst.clone();
@@ -204,7 +204,16 @@ impl SourceCollector<'_, 'tcx> {
             &page,
             "",
             |buf: &mut _| {
-                print_src(buf, contents, self.cx.shared.edition(), file_span, &self.cx, &root_path)
+                print_src(
+                    buf,
+                    contents,
+                    self.cx.shared.edition(),
+                    file_span,
+                    self.cx,
+                    &root_path,
+                    None,
+                    SourceContext::Standalone,
+                )
             },
             &self.cx.shared.style_files,
         );
@@ -241,15 +250,22 @@ where
     }
 }
 
+crate enum SourceContext {
+    Standalone,
+    Embedded { offset: usize },
+}
+
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-fn print_src(
+crate fn print_src(
     buf: &mut Buffer,
     s: &str,
     edition: Edition,
     file_span: rustc_span::Span,
     context: &Context<'_>,
     root_path: &str,
+    decoration_info: Option<highlight::DecorationInfo>,
+    source_context: SourceContext,
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
@@ -261,7 +277,14 @@ fn print_src(
     }
     line_numbers.write_str("<pre class=\"line-numbers\">");
     for i in 1..=lines {
-        writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i, cols);
+        match source_context {
+            SourceContext::Standalone => {
+                writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i, cols)
+            }
+            SourceContext::Embedded { offset } => {
+                writeln!(line_numbers, "<span>{0:1$}</span>", i + offset, cols)
+            }
+        }
     }
     line_numbers.write_str("</pre>");
     highlight::render_with_highlighting(
@@ -273,5 +296,6 @@ fn print_src(
         edition,
         Some(line_numbers),
         Some(highlight::ContextInfo { context, file_span, root_path }),
+        decoration_info,
     );
 }

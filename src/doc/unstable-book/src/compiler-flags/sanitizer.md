@@ -1,19 +1,24 @@
 # `sanitizer`
 
-The tracking issue for this feature is: [#39699](https://github.com/rust-lang/rust/issues/39699).
+The tracking issues for this feature are:
+
+* [#39699](https://github.com/rust-lang/rust/issues/39699).
+* [#89653](https://github.com/rust-lang/rust/issues/89653).
 
 ------------------------
 
 This feature allows for use of one of following sanitizers:
 
 * [AddressSanitizer][clang-asan] a fast memory error detector.
+* [ControlFlowIntegrity][clang-cfi] LLVM Control Flow Integrity (CFI) provides
+  forward-edge control flow protection.
 * [HWAddressSanitizer][clang-hwasan] a memory error detector similar to
   AddressSanitizer, but based on partial hardware assistance.
 * [LeakSanitizer][clang-lsan] a run-time memory leak detector.
 * [MemorySanitizer][clang-msan] a detector of uninitialized reads.
 * [ThreadSanitizer][clang-tsan] a fast data race detector.
 
-To enable a sanitizer compile with `-Zsanitizer=address`,
+To enable a sanitizer compile with `-Zsanitizer=address`,`-Zsanitizer=cfi`,
 `-Zsanitizer=hwaddress`, `-Zsanitizer=leak`, `-Zsanitizer=memory` or
 `-Zsanitizer=thread`.
 
@@ -176,6 +181,176 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
   Shadow gap:              cc
 ==39249==ABORTING
 ```
+
+# ControlFlowIntegrity
+
+The LLVM Control Flow Integrity (CFI) support in the Rust compiler initially
+provides forward-edge control flow protection for Rust-compiled code only by
+aggregating function pointers in groups identified by their number of arguments.
+
+Forward-edge control flow protection for C or C++ and Rust -compiled code "mixed
+binaries" (i.e., for when C or C++ and Rust -compiled code share the same
+virtual address space) will be provided in later work by defining and using
+compatible type identifiers (see Type metadata in the design document in the
+tracking issue [#89653](https://github.com/rust-lang/rust/issues/89653)).
+
+LLVM CFI can be enabled with -Zsanitizer=cfi and requires LTO (i.e., -Clto).
+
+## Example
+
+```text
+#![feature(asm, naked_functions)]
+
+use std::mem;
+
+fn add_one(x: i32) -> i32 {
+    x + 1
+}
+
+#[naked]
+pub extern "C" fn add_two(x: i32) {
+    // x + 2 preceeded by a landing pad/nop block
+    unsafe {
+        asm!(
+            "
+             nop
+             nop
+             nop
+             nop
+             nop
+             nop
+             nop
+             nop
+             nop
+             lea rax, [rdi+2]
+             ret
+        ",
+            options(noreturn)
+        );
+    }
+}
+
+fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
+    f(arg) + f(arg)
+}
+
+fn main() {
+    let answer = do_twice(add_one, 5);
+
+    println!("The answer is: {}", answer);
+
+    println!("With CFI enabled, you should not see the next answer");
+    let f: fn(i32) -> i32 = unsafe {
+        // Offsets 0-8 make it land in the landing pad/nop block, and offsets 1-8 are
+        // invalid branch/call destinations (i.e., within the body of the function).
+        mem::transmute::<*const u8, fn(i32) -> i32>((add_two as *const u8).offset(5))
+    };
+    let next_answer = do_twice(f, 5);
+
+    println!("The next answer is: {}", next_answer);
+}
+```
+Fig. 1. Modified example from the [Advanced Functions and
+Closures][rust-book-ch19-05] chapter of the [The Rust Programming
+Language][rust-book] book.
+
+[//]: # (FIXME: Replace with output from cargo using nightly when #89652 is merged)
+
+```shell
+$ rustc rust_cfi.rs -o rust_cfi
+$ ./rust_cfi
+The answer is: 12
+With CFI enabled, you should not see the next answer
+The next answer is: 14
+$
+```
+Fig. 2. Build and execution of the modified example with LLVM CFI disabled.
+
+[//]: # (FIXME: Replace with output from cargo using nightly when #89652 is merged)
+
+```shell
+$ rustc -Clto -Zsanitizer=cfi rust_cfi.rs -o rust_cfi
+$ ./rust_cfi
+The answer is: 12
+With CFI enabled, you should not see the next answer
+Illegal instruction
+$
+```
+Fig. 3. Build and execution of the modified example with LLVM CFI enabled.
+
+When LLVM CFI is enabled, if there are any attempts to change/hijack control
+flow using an indirect branch/call to an invalid destination, the execution is
+terminated (see Fig. 3).
+
+```rust
+use std::mem;
+
+fn add_one(x: i32) -> i32 {
+    x + 1
+}
+
+fn add_two(x: i32, _y: i32) -> i32 {
+    x + 2
+}
+
+fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
+    f(arg) + f(arg)
+}
+
+fn main() {
+    let answer = do_twice(add_one, 5);
+
+    println!("The answer is: {}", answer);
+
+    println!("With CFI enabled, you should not see the next answer");
+    let f: fn(i32) -> i32 =
+        unsafe { mem::transmute::<*const u8, fn(i32) -> i32>(add_two as *const u8) };
+    let next_answer = do_twice(f, 5);
+
+    println!("The next answer is: {}", next_answer);
+}
+```
+Fig. 4. Another modified example from the [Advanced Functions and
+Closures][rust-book-ch19-05] chapter of the [The Rust Programming
+Language][rust-book] book.
+
+[//]: # (FIXME: Replace with output from cargo using nightly when #89652 is merged)
+
+```shell
+$ rustc rust_cfi.rs -o rust_cfi
+$ ./rust_cfi
+The answer is: 12
+With CFI enabled, you should not see the next answer
+The next answer is: 14
+$
+```
+Fig. 5. Build and execution of the modified example with LLVM CFI disabled.
+
+[//]: # (FIXME: Replace with output from cargo using nightly when #89652 is merged)
+
+```shell
+$ rustc -Clto -Zsanitizer=cfi rust_cfi.rs -o rust_cfi
+$ ./rust_cfi
+The answer is: 12
+With CFI enabled, you should not see the next answer
+Illegal instruction
+$
+```
+Fig. 6. Build and execution of the modified example with LLVM CFI enabled.
+
+When LLVM CFI is enabled, if there are any attempts to change/hijack control
+flow using an indirect branch/call to a function with different number of
+arguments than intended/passed in the call/branch site, the execution is also
+terminated (see Fig. 6).
+
+Forward-edge control flow protection not only by aggregating function pointers
+in groups identified by their number of arguments, but also their argument
+types, will also be provided in later work by defining and using compatible type
+identifiers (see Type metadata in the design document in the tracking
+issue [#89653](https://github.com/rust-lang/rust/issues/89653)).
+
+[rust-book-ch19-05]: https://doc.rust-lang.org/book/ch19-05-advanced-functions-and-closures.html
+[rust-book]: https://doc.rust-lang.org/book/title-page.html
 
 # HWAddressSanitizer
 
@@ -404,12 +579,14 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 
 * [Sanitizers project page](https://github.com/google/sanitizers/wiki/)
 * [AddressSanitizer in Clang][clang-asan]
+* [ControlFlowIntegrity in Clang][clang-cfi]
 * [HWAddressSanitizer in Clang][clang-hwasan]
 * [LeakSanitizer in Clang][clang-lsan]
 * [MemorySanitizer in Clang][clang-msan]
 * [ThreadSanitizer in Clang][clang-tsan]
 
 [clang-asan]: https://clang.llvm.org/docs/AddressSanitizer.html
+[clang-cfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html
 [clang-hwasan]: https://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html
 [clang-lsan]: https://clang.llvm.org/docs/LeakSanitizer.html
 [clang-msan]: https://clang.llvm.org/docs/MemorySanitizer.html

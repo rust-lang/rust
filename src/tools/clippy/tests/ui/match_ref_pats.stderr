@@ -15,21 +15,6 @@ LL ~             Some(v) => println!("{:?}", v),
 LL ~             None => println!("none"),
    |
 
-error: you don't need to add `&` to all patterns
-  --> $DIR/match_ref_pats.rs:18:5
-   |
-LL | /     match tup {
-LL | |         &(v, 1) => println!("{}", v),
-LL | |         _ => println!("none"),
-LL | |     }
-   | |_____^
-   |
-help: instead of prefixing all patterns with `&`, you can dereference the expression
-   |
-LL ~     match *tup {
-LL ~         (v, 1) => println!("{}", v),
-   |
-
 error: you don't need to add `&` to both the expression and the patterns
   --> $DIR/match_ref_pats.rs:24:5
    |
@@ -54,52 +39,30 @@ LL |     if let &None = a {
    |
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
-error: you don't need to add `&` to all patterns
-  --> $DIR/match_ref_pats.rs:36:5
-   |
-LL | /     if let &None = a {
-LL | |         println!("none");
-LL | |     }
-   | |_____^
-   |
-help: instead of prefixing all patterns with `&`, you can dereference the expression
-   |
-LL |     if let None = *a {
-   |            ~~~~   ~~
-
 error: redundant pattern matching, consider using `is_none()`
   --> $DIR/match_ref_pats.rs:41:12
    |
 LL |     if let &None = &b {
    |     -------^^^^^----- help: try this: `if b.is_none()`
 
-error: you don't need to add `&` to both the expression and the patterns
-  --> $DIR/match_ref_pats.rs:41:5
-   |
-LL | /     if let &None = &b {
-LL | |         println!("none");
-LL | |     }
-   | |_____^
-   |
-help: try
-   |
-LL |     if let None = b {
-   |            ~~~~   ~
-
 error: you don't need to add `&` to all patterns
-  --> $DIR/match_ref_pats.rs:68:9
+  --> $DIR/match_ref_pats.rs:101:9
    |
-LL | /         match foo_variant!(0) {
-LL | |             &Foo::A => println!("A"),
+LL | /         match foobar_variant!(0) {
+LL | |             &FooBar::Foo => println!("Foo"),
+LL | |             &FooBar::Bar => println!("Bar"),
+LL | |             &FooBar::FooBar => println!("FooBar"),
 LL | |             _ => println!("Wild"),
 LL | |         }
    | |_________^
    |
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
-LL ~         match *foo_variant!(0) {
-LL ~             Foo::A => println!("A"),
+LL ~         match *foobar_variant!(0) {
+LL ~             FooBar::Foo => println!("Foo"),
+LL ~             FooBar::Bar => println!("Bar"),
+LL ~             FooBar::FooBar => println!("FooBar"),
    |
 
-error: aborting due to 8 previous errors
+error: aborting due to 5 previous errors
 

@@ -1,8 +1,10 @@
 error[E0277]: `NoSend` cannot be sent between threads safely
-  --> $DIR/no_send-enum.rs:16:5
+  --> $DIR/no_send-enum.rs:16:9
    |
 LL |     bar(x);
-   |     ^^^ `NoSend` cannot be sent between threads safely
+   |     --- ^ `NoSend` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: within `Foo`, the trait `Send` is not implemented for `NoSend`
 note: required because it appears within the type `Foo`

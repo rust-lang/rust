@@ -1,21 +1,11 @@
-error[E0283]: type annotations needed
+error[E0282]: type annotations needed
   --> $DIR/issue-16966.rs:2:5
    |
 LL |     panic!(std::default::Default::default());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `M` declared on the function `begin_panic`
    |
-   = note: cannot satisfy `_: Any`
-note: required by a bound in `begin_panic`
-  --> $SRC_DIR/std/src/panicking.rs:LL:COL
-   |
-LL | pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
-   |                       ^^^ required by this bound in `begin_panic`
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider specifying the type argument in the function call
-   |
-LL |         $crate::rt::begin_panic::<M>($msg)
-   |                                +++++
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0282`.

@@ -6,9 +6,9 @@ LL |     let _x = NonZeroU32::new(5).unwrap();
    |
 help: consider importing one of these items
    |
-LL | use std::num::NonZeroU32;
-   |
 LL | use core::num::NonZeroU32;
+   |
+LL | use std::num::NonZeroU32;
    |
 
 error: aborting due to previous error

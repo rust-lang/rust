@@ -77,6 +77,13 @@ overflow-checks = false
 # per-crate configuration isn't specifiable in the environment.
 codegen-units = 10000
 
+[profile.release.package.rustc-rayon-core]
+# The rustc fork of Rayon has deadlock detection code which intermittently
+# causes overflows in the CI (see https://github.com/rust-lang/rust/issues/90227)
+# so we turn overflow checks off for now.
+# FIXME: This workaround should be removed once #90227 is fixed.
+overflow-checks = false
+
 # These dependencies of the standard library implement symbolication for
 # backtraces on most platforms. Their debuginfo causes both linking to be slower
 # (more data to chew through) and binaries to be larger without really all that

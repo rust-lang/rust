@@ -362,11 +362,7 @@ impl DropTree {
         blocks: &IndexVec<DropIdx, Option<BasicBlock>>,
     ) {
         for (drop_idx, drop_data) in self.drops.iter_enumerated().rev() {
-            let block = if let Some(block) = blocks[drop_idx] {
-                block
-            } else {
-                continue;
-            };
+            let Some(block) = blocks[drop_idx] else { continue };
             match drop_data.0.kind {
                 DropKind::Value => {
                     let terminator = TerminatorKind::Drop {

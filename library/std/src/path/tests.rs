@@ -1271,6 +1271,7 @@ pub fn test_push() {
         tp!(r"\\?\A:\x\y", "/foo", r"\\?\A:\foo");
         tp!(r"\\?\A:", r"..\foo\.", r"\\?\A:\foo");
         tp!(r"\\?\A:\x\y", r".\foo\.", r"\\?\A:\x\y\foo");
+        tp!(r"\\?\A:\x\y", r"", r"\\?\A:\x\y\");
     }
 }
 

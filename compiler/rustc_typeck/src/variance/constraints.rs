@@ -223,8 +223,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }
                 GenericArgKind::Type(ty) => self.add_constraints_from_ty(current, ty, variance_i),
-                GenericArgKind::Const(_) => {
-                    // Consts impose no constraints.
+                GenericArgKind::Const(val) => {
+                    self.add_constraints_from_const(current, val, variance_i)
                 }
             }
         }
@@ -263,7 +263,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_mt(current, &ty::TypeAndMut { ty, mutbl }, variance);
             }
 
-            ty::Array(typ, _) => {
+            ty::Array(typ, len) => {
+                self.add_constraints_from_const(current, len, variance);
                 self.add_constraints_from_ty(current, typ, variance);
             }
 
@@ -385,10 +386,29 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }
                 GenericArgKind::Type(ty) => self.add_constraints_from_ty(current, ty, variance_i),
-                GenericArgKind::Const(_) => {
-                    // Consts impose no constraints.
+                GenericArgKind::Const(val) => {
+                    self.add_constraints_from_const(current, val, variance)
                 }
             }
+        }
+    }
+
+    /// Adds constraints appropriate for a const expression `val`
+    /// in a context with ambient variance `variance`
+    fn add_constraints_from_const(
+        &mut self,
+        current: &CurrentItem,
+        val: &ty::Const<'tcx>,
+        variance: VarianceTermPtr<'a>,
+    ) {
+        debug!("add_constraints_from_const(val={:?}, variance={:?})", val, variance);
+
+        match &val.val {
+            ty::ConstKind::Unevaluated(uv) => {
+                let substs = uv.substs(self.tcx());
+                self.add_constraints_from_invariant_substs(current, substs, variance);
+            }
+            _ => {}
         }
     }
 

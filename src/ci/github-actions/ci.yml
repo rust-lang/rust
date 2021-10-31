@@ -284,7 +284,7 @@ jobs:
           - name: mingw-check
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-10
+          - name: x86_64-gnu-llvm-12
             <<: *job-linux-xl
 
           - name: x86_64-gnu-tools
@@ -431,7 +431,7 @@ jobs:
           - name: x86_64-gnu-distcheck
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-10
+          - name: x86_64-gnu-llvm-12
             env:
               RUST_BACKTRACE: 1
             <<: *job-linux-xl
@@ -448,14 +448,17 @@ jobs:
           #  macOS Builders  #
           ####################
 
+          # Only generate documentation for x86_64-apple-darwin, not other
+          # tier 2 targets produced by this builder.
           - name: dist-x86_64-apple
             env:
-              SCRIPT: ./x.py dist
+              SCRIPT: ./x.py dist --exclude src/doc --exclude extended && ./x.py dist --target=x86_64-apple-darwin src/doc && ./x.py dist extended
               RUST_CONFIGURE_ARGS: --host=x86_64-apple-darwin --target=x86_64-apple-darwin,aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-macos-xl
 
@@ -467,6 +470,7 @@ jobs:
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
             <<: *job-macos-xl
 
           - name: x86_64-apple
@@ -478,6 +482,7 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
             <<: *job-macos-xl
 
           # This target only needs to support 11.0 and up as nothing else supports the hardware
@@ -499,6 +504,7 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 11.0
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
               # Corresponds to 16K page size
               #
@@ -666,7 +672,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - *dist-x86_64-linux
+          - &dist-x86_64-linux
+            name: dist-x86_64-linux
+            <<: *job-linux-xl
 
   master:
     name: master

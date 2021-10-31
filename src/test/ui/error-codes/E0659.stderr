@@ -1,9 +1,10 @@
-error[E0659]: `foo` is ambiguous (glob import vs glob import in the same module)
+error[E0659]: `foo` is ambiguous
   --> $DIR/E0659.rs:15:15
    |
 LL |     collider::foo();
    |               ^^^ ambiguous name
    |
+   = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
   --> $DIR/E0659.rs:10:13
    |

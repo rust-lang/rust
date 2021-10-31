@@ -277,7 +277,6 @@ pub struct Build {
 struct Crate {
     name: Interned<String>,
     deps: HashSet<Interned<String>>,
-    id: String,
     path: PathBuf,
 }
 

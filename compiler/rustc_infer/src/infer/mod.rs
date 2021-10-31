@@ -417,9 +417,6 @@ pub enum SubregionOrigin<'tcx> {
     /// (&'a &'b T) where a >= b
     ReferenceOutlivesReferent(Ty<'tcx>, Span),
 
-    /// Region in return type of invoked fn must enclose call
-    CallReturn(Span),
-
     /// Comparing the signature and requirements of an impl method against
     /// the containing trait.
     CompareImplMethodObligation {
@@ -1803,7 +1800,6 @@ impl<'tcx> SubregionOrigin<'tcx> {
             ReborrowUpvar(a, _) => a,
             DataBorrowed(_, a) => a,
             ReferenceOutlivesReferent(_, a) => a,
-            CallReturn(a) => a,
             CompareImplMethodObligation { span, .. } => span,
             CompareImplTypeObligation { span, .. } => span,
         }

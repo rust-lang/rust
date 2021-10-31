@@ -21,7 +21,8 @@ pub fn in_any_value_of_ty(
 ) -> ConstQualifs {
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
-        needs_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
+        needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
+        needs_non_const_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
         custom_eq: CustomEq::in_any_value_of_ty(cx, ty),
         error_occured,
     }
@@ -44,6 +45,9 @@ pub trait Qualif {
 
     /// Whether this `Qualif` is cleared when a local is moved from.
     const IS_CLEARED_ON_MOVE: bool = false;
+
+    /// Whether this `Qualif` might be evaluated after the promotion and can encounter a promoted.
+    const ALLOW_PROMOTED: bool = false;
 
     /// Extracts the field of `ConstQualifs` that corresponds to this `Qualif`.
     fn in_qualifs(qualifs: &ConstQualifs) -> bool;
@@ -98,17 +102,40 @@ impl Qualif for HasMutInterior {
 }
 
 /// Constant containing an ADT that implements `Drop`.
-/// This must be ruled out (a) because we cannot run `Drop` during compile-time
-/// as that might not be a `const fn`, and (b) because implicit promotion would
-/// remove side-effects that occur as part of dropping that value.
+/// This must be ruled out because implicit promotion would remove side-effects
+/// that occur as part of dropping that value. N.B., the implicit promotion has
+/// to reject const Drop implementations because even if side-effects are ruled
+/// out through other means, the execution of the drop could diverge.
+pub struct NeedsDrop;
+
+impl Qualif for NeedsDrop {
+    const ANALYSIS_NAME: &'static str = "flow_needs_drop";
+    const IS_CLEARED_ON_MOVE: bool = true;
+
+    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
+        qualifs.needs_drop
+    }
+
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+        ty.needs_drop(cx.tcx, cx.param_env)
+    }
+
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
+        adt.has_dtor(cx.tcx)
+    }
+}
+
+/// Constant containing an ADT that implements non-const `Drop`.
+/// This must be ruled out because we cannot run `Drop` during compile-time.
 pub struct NeedsNonConstDrop;
 
 impl Qualif for NeedsNonConstDrop {
     const ANALYSIS_NAME: &'static str = "flow_needs_nonconst_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
+    const ALLOW_PROMOTED: bool = true;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
-        qualifs.needs_drop
+        qualifs.needs_non_const_drop
     }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, mut ty: Ty<'tcx>) -> bool {
@@ -122,9 +149,7 @@ impl Qualif for NeedsNonConstDrop {
             Ok([..]) => {}
         }
 
-        let drop_trait = if let Some(did) = cx.tcx.lang_items().drop_trait() {
-            did
-        } else {
+        let Some(drop_trait) = cx.tcx.lang_items().drop_trait() else {
             // there is no way to define a type that needs non-const drop
             // without having the lang item present.
             return false;
@@ -137,6 +162,7 @@ impl Qualif for NeedsNonConstDrop {
             ty::Binder::dummy(ty::TraitPredicate {
                 trait_ref,
                 constness: ty::BoundConstness::ConstIfConst,
+                polarity: ty::ImplPolarity::Positive,
             }),
         );
 
@@ -232,6 +258,9 @@ where
                 if Q::in_adt_inherently(cx, def, substs) {
                     return true;
                 }
+                if def.is_union() && Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)) {
+                    return true;
+                }
             }
 
             // Otherwise, proceed structurally...
@@ -289,9 +318,12 @@ where
     // Check the qualifs of the value of `const` items.
     if let Some(ct) = constant.literal.const_for_ty() {
         if let ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs_: _, promoted }) = ct.val {
-            assert!(promoted.is_none());
+            // Use qualifs of the type for the promoted. Promoteds in MIR body should be possible
+            // only for `NeedsNonConstDrop` with precise drop checking. This is the only const
+            // check performed after the promotion. Verify that with an assertion.
+            assert!(promoted.is_none() || Q::ALLOW_PROMOTED);
             // Don't peek inside trait associated constants.
-            if cx.tcx.trait_of_item(def.did).is_none() {
+            if promoted.is_none() && cx.tcx.trait_of_item(def.did).is_none() {
                 let qualifs = if let Some((did, param_did)) = def.as_const_arg() {
                     cx.tcx.at(constant.span).mir_const_qualif_const_arg((did, param_did))
                 } else {

@@ -10,7 +10,7 @@ pub mod util;
 
 use rustc_hir as hir;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Const, Ty};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::Span;
 
 pub use self::FulfillmentErrorCode::*;
@@ -54,6 +54,20 @@ pub struct Obligation<'tcx, T> {
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
+
+impl PredicateObligation<'tcx> {
+    /// Flips the polarity of the inner predicate.
+    ///
+    /// Given `T: Trait` predicate it returns `T: !Trait` and given `T: !Trait` returns `T: Trait`.
+    pub fn flip_polarity(&self, tcx: TyCtxt<'tcx>) -> Option<PredicateObligation<'tcx>> {
+        Some(PredicateObligation {
+            cause: self.cause.clone(),
+            param_env: self.param_env,
+            predicate: self.predicate.flip_polarity(tcx)?,
+            recursion_depth: self.recursion_depth,
+        })
+    }
+}
 
 // `PredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -129,6 +143,10 @@ impl<'tcx> FulfillmentError<'tcx> {
 }
 
 impl<'tcx> TraitObligation<'tcx> {
+    pub fn polarity(&self) -> ty::ImplPolarity {
+        self.predicate.skip_binder().polarity
+    }
+
     pub fn self_ty(&self) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.predicate.map_bound(|p| p.self_ty())
     }

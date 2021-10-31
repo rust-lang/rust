@@ -737,7 +737,6 @@ impl Duration {
     /// # Examples
     /// ```
     /// #![feature(duration_checked_float)]
-    ///
     /// use std::time::Duration;
     ///
     /// let dur = Duration::try_from_secs_f64(2.7);
@@ -756,7 +755,7 @@ impl Duration {
         } else if nanos >= MAX_NANOS_F64 {
             Err(FromSecsError { kind: FromSecsErrorKind::Overflow })
         } else if nanos < 0.0 {
-            Err(FromSecsError { kind: FromSecsErrorKind::Underflow })
+            Err(FromSecsError { kind: FromSecsErrorKind::Negative })
         } else {
             let nanos = nanos as u128;
             Ok(Duration {
@@ -799,7 +798,6 @@ impl Duration {
     /// # Examples
     /// ```
     /// #![feature(duration_checked_float)]
-    ///
     /// use std::time::Duration;
     ///
     /// let dur = Duration::try_from_secs_f32(2.7);
@@ -818,7 +816,7 @@ impl Duration {
         } else if nanos >= MAX_NANOS_F32 {
             Err(FromSecsError { kind: FromSecsErrorKind::Overflow })
         } else if nanos < 0.0 {
-            Err(FromSecsError { kind: FromSecsErrorKind::Underflow })
+            Err(FromSecsError { kind: FromSecsErrorKind::Negative })
         } else {
             let nanos = nanos as u128;
             Ok(Duration {
@@ -1258,7 +1256,6 @@ impl fmt::Debug for Duration {
 ///
 /// ```
 /// #![feature(duration_checked_float)]
-///
 /// use std::time::Duration;
 ///
 /// if let Err(e) = Duration::try_from_secs_f32(-1.0) {
@@ -1274,11 +1271,9 @@ pub struct FromSecsError {
 impl FromSecsError {
     const fn description(&self) -> &'static str {
         match self.kind {
-            FromSecsErrorKind::NonFinite => {
-                "got non-finite value when converting float to duration"
-            }
+            FromSecsErrorKind::NonFinite => "non-finite value when converting float to duration",
             FromSecsErrorKind::Overflow => "overflow when converting float to duration",
-            FromSecsErrorKind::Underflow => "underflow when converting float to duration",
+            FromSecsErrorKind::Negative => "negative value when converting float to duration",
         }
     }
 }
@@ -1292,10 +1287,10 @@ impl fmt::Display for FromSecsError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum FromSecsErrorKind {
-    // Value is not a finite value (either infinity or NaN).
+    // Value is not a finite value (either + or - infinity or NaN).
     NonFinite,
     // Value is too large to store in a `Duration`.
     Overflow,
-    // Value is less than `0.0`.
-    Underflow,
+    // Value is negative.
+    Negative,
 }

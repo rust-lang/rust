@@ -2,9 +2,13 @@
 <html>
     <head>
       <meta name="viewport" content="width=device-width">
+      <title>Rustfmt</title>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/3.0.1/github-markdown.css" />
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/styles/github-gist.min.css">
       <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/vue@2.6.10/dist/vue.js"></script>
+      <script src="https://unpkg.com/vue-async-computed@3.8.1"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/highlight.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
       <style>
         @media (max-width: 767px) {
@@ -38,6 +42,15 @@
         .searchCondition > div {
           margin-right: 30px;
         }
+        .header-link {
+          position: relative;
+        }
+        .header-link:hover::before {
+          position: absolute;
+          left: -2em;
+          padding-right: 0.5em;
+          content: '\2002\00a7\2002';
+        }
       </style>
     </head>
     <body>
@@ -59,6 +72,14 @@
                   <label for="stable">stable: </label>
                   <input type="checkbox" id="stable" v-model="shouldStable">
               </div>
+              <div>
+                  <label for="viewVersion">version: </label>
+                  <select name="viewVersion" id="viewVersion" v-model="viewVersion">
+                    <option v-for="option in versionOptions" v-bind:value="option">
+                      {{ option }}
+                    </option>
+                  </select>
+              </div>
             </div>
             <div v-html="aboutHtml"></div>
             <div v-html="configurationAboutHtml"></div>
@@ -66,63 +87,155 @@
           </article>
         </div>
         <script>
-            const ConfigurationMdUrl = 'https://raw.githubusercontent.com/rust-lang/rustfmt/master/Configurations.md';
+            const RusfmtTagsUrl = 'https://api.github.com/repos/rust-lang/rustfmt/tags';
+            const RustfmtLatestUrl = 'https://api.github.com/repos/rust-lang/rustfmt/releases/latest';
             const UrlHash = window.location.hash.replace(/^#/, '');
+            const queryParams = new URLSearchParams(window.location.search);
+            const searchParam = queryParams.get('search');
+            const searchTerm = null !== searchParam ? searchParam : '';
+            const versionParam = queryParams.get('version');
+            const parseVersionParam = (version) => {
+              if (version === 'master') return 'master';
+              if (version.startsWith('v')) return version;
+              return `v${version}`;
+            };
+            const versionNumber = null !== versionParam ? parseVersionParam(versionParam) : 'master';
             new Vue({
               el: '#app',
-              data() {
-                const configurationDescriptions = [];
-                configurationDescriptions.links = {};
-                return {
-                  aboutHtml: '',
-                  configurationAboutHtml: '',
-                  searchCondition: UrlHash,
-                  configurationDescriptions,
-                  shouldStable: false
-                }
+              data: {
+                aboutHtml: '',
+                configurationAboutHtml: '',
+                configurationDescriptions: [],
+                searchCondition: searchTerm,
+                shouldStable: false,
+                viewVersion: versionNumber,
+                oldViewVersion: undefined,
+                versionOptions: ['master'],
+                scrolledOnce: false,
               },
-              computed: {
-                outputHtml() {
-                  const ast = this.configurationDescriptions
-                                  .filter(({ head, text, stable }) => {
+              asyncComputed: {
+                async updateVersion() {
+                  let latest;
+                  try {
+                    latest = (await axios.get(RustfmtLatestUrl)).data;
+                  } catch(err) {
+                      console.log(err);
+                    return;
+                  }
+                  if (versionParam == null) {
+                    this.viewVersion = latest.name;
+                  }
+                },
+                async outputHtml() {
+                  if (this.viewVersion !== this.oldViewVersion) {
+                    const ConfigurationMdUrl =
+                      `https://raw.githubusercontent.com/rust-lang/rustfmt/${this.viewVersion}/Configurations.md`;
+                    let res;
+                    try {
+                      res = await axios.get(ConfigurationMdUrl).catch(e => { throw e });
+                    } catch(e) {
+                      this.handleReqFailure(e);
+                      return;
+                    }
+                    const {
+                      about,
+                      configurationAbout,
+                      configurationDescriptions
+                    } = parseMarkdownAst(res.data);
+                    this.aboutHtml = marked.parser(about);
+                    this.configurationAboutHtml = marked.parser(configurationAbout);
+                    this.configurationDescriptions = configurationDescriptions;
+                    this.oldViewVersion = this.viewVersion;
+                  }
 
-                                    if (
-                                      text.includes(this.searchCondition) === false &&
-                                      head.includes(this.searchCondition) === false
-                                    ) {
-                                      return false;
-                                    }
-                                    return (this.shouldStable)
-                                      ? stable === true
-                                      : true;
-                                  })
-                                  .reduce((stack, { value }) => {
-                                    return stack.concat(value);
-                                  }, []);
+                  const ast = this.configurationDescriptions
+                      .filter(({ head, text, stable }) => {
+                        if (text.includes(this.searchCondition) === false &&
+                          head.includes(this.searchCondition) === false) {
+                          return false;
+                        }
+                        return (this.shouldStable)
+                          ? stable === true
+                          : true;
+                      })
+                      .reduce((stack, { value }) => {
+                        return stack.concat(value);
+                      }, []);
                   ast.links = {};
-                  return marked.parser(ast);
+
+                  queryParams.set('version', this.viewVersion);
+                  queryParams.set('search', this.searchCondition);
+                  const curUrl = window.location.pathname +
+                    '?' + queryParams.toString() + window.location.hash;
+                  history.pushState(null, '', curUrl);
+
+                  const renderer = new marked.Renderer();
+                  renderer.heading = function(text, level) {
+                    const id = htmlToId(text);
+                    return `<h${level}>
+                              <a id="${id}" href="#${id}" name="${id}" class="header-link">${text}</a>
+                            </h${level}>`;
+                  };
+
+                  return marked.parser(ast, {
+                    highlight(code, lang) {
+                      return hljs.highlight(lang ? lang : 'rust', code).value;
+                    },
+                    headerIds: true,
+                    headerPrefix: '',
+                    renderer,
+                  });
                 }
               },
               created: async function() {
-                const res = await axios.get(ConfigurationMdUrl);
-                const {
-                  about,
-                  configurationAbout,
-                  configurationDescriptions
-                } = parseMarkdownAst(res.data);
-                this.aboutHtml = marked.parser(about);
-                this.configurationAboutHtml = marked.parser(configurationAbout);
-                this.configurationDescriptions = configurationDescriptions;
+                let tags;
+                try {
+                  tags = (await axios.get(RusfmtTagsUrl)).data;
+                } catch(e) {
+                  this.handleReqFailure(e);
+                  return;
+                }
+
+                const excludedTagVersions = new Set(['v0.7', 'v0.8.1']);
+
+                const tagOptions = tags
+                  .map(tag => tag.name)
+                  .filter(tag => tag.startsWith('v') && !excludedTagVersions.has(tag));
+                this.versionOptions = this.versionOptions.concat(tagOptions);
               },
-              mounted() {
+              updated() {
                 if (UrlHash === '') return;
-                const interval = setInterval(() => {
+                this.$nextTick(() => {
                   const target = document.querySelector(`#${UrlHash}`);
-                  if (target != null) {
+                  if (target != null && !this.scrolledOnce) {
                     target.scrollIntoView(true);
-                    clearInterval(interval);
+                    this.scrolledOnce = true;
                   }
-                }, 100);
+                });
+              },
+              methods: {
+                handleReqFailure(e) {
+                  if (e.response.status === 404) {
+                    this.aboutHtml =
+                      "<p>Failed to get configuration options for this version, please select the version from the dropdown above.</p>";
+                  } else if (
+                    e.response.status === 403 &&
+                    e.response.headers["X-RateLimit-Remaining"] === 0
+                  ) {
+                    const resetDate = new Date(
+                      e.response.headers['X-RateLimit-Reset'] * 1000
+                    ).toLocaleString();
+                    this.aboutHtml =
+                      `<p>You have hit the GitHub API rate limit; documentation cannot be updated.` +
+                      `<p>The rate limit will be reset at ${resetDate}.</p>`;
+                  } else {
+                    this.aboutHtml =
+                      `<p>Ecountered an error when fetching documentation data:</p>` +
+                      `<pre><code>${e.response.data}</code></pre>` +
+                      `<p>We would appreciate <a href="https://github.com/rust-lang/rustfmt/issues/new?template=bug_report.md">a bug report</a>.` +
+                      `<p>Try refreshing the page.</p>`;
+                  }
+                }
               }
             });
             const extractDepthOnes = (ast) => {
@@ -155,7 +268,9 @@
                     head: val[0].text,
                     value: val,
                     stable: val.some((elem) => {
-                      return !!elem.text && elem.text.includes("**Stable**: Yes")
+                      return elem.type === "list" &&
+                        !!elem.raw &&
+                        elem.raw.includes("**Stable**: Yes");
                     }),
                     text: val.reduce((result, next) => {
                       return next.text != null
@@ -185,6 +300,11 @@
                 configurationAbout: configurationAbout.value,
                 configurationDescriptions
               };
+            }
+            function htmlToId(text) {
+              const tmpl = document.createElement('template');
+              tmpl.innerHTML = text.trim();
+              return encodeURIComponent(CSS.escape(tmpl.content.textContent));
             }
         </script>
     </body>

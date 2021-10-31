@@ -1,8 +1,10 @@
 error[E0277]: the trait bound `(): _Contains<&C>` is not satisfied
-  --> $DIR/issue-85848.rs:24:5
+  --> $DIR/issue-85848.rs:24:29
    |
 LL |     writes_to_specific_path(&cap);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `_Contains<&C>` is not implemented for `()`
+   |     ----------------------- ^^^^ the trait `_Contains<&C>` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required because of the requirements on the impl of `Contains<(), true>` for `&C`
   --> $DIR/issue-85848.rs:21:12
@@ -21,10 +23,12 @@ LL | fn writes_to_specific_path<C: Delegates<()>>(cap: &C) {}
    |                               ^^^^^^^^^^^^^ required by this bound in `writes_to_specific_path`
 
 error: unconstrained generic constant
-  --> $DIR/issue-85848.rs:24:5
+  --> $DIR/issue-85848.rs:24:29
    |
 LL |     writes_to_specific_path(&cap);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ----------------------- ^^^^
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: try adding a `where` bound using this expression: `where [(); { contains::<T, U>() }]:`
 note: required because of the requirements on the impl of `Contains<(), true>` for `&C`

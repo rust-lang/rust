@@ -40,3 +40,4 @@ ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target $TARGETS
 # running with assertions again is not useful
 ENV NO_DEBUG_ASSERTIONS=1
 ENV NO_LLVM_ASSERTIONS=1
+ENV NO_OVERFLOW_CHECKS=1

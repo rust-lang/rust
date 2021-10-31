@@ -1,5 +1,6 @@
-error[E0659]: `main` is ambiguous (glob import vs glob import in the same module)
+error[E0659]: `main` is ambiguous
    |
+   = note: ambiguous because of multiple glob imports of a name in the same module
 note: `main` could refer to the function imported here
   --> $DIR/imported_main_conflict.rs:6:5
    |

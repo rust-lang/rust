@@ -1,20 +1,10 @@
-error[E0277]: `MutexGuard<'_, ()>` cannot be sent between threads safely
-  --> $DIR/issue-67893.rs:9:5
+error: generator cannot be sent between threads safely
+  --> $DIR/issue-67893.rs:9:7
    |
 LL |     g(issue_67893::run())
-   |     ^ `MutexGuard<'_, ()>` cannot be sent between threads safely
-   |
-  ::: $DIR/auxiliary/issue_67893.rs:7:20
-   |
-LL | pub async fn run() {
-   |                    - within this `impl Future`
+   |       ^^^^^^^^^^^^^^^^^^ generator is not `Send`
    |
    = help: within `impl Future`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
-   = note: required because it appears within the type `for<'r, 's, 't0, 't1, 't2, 't3> {ResumeTy, Arc<Mutex<()>>, &'r Mutex<()>, Result<MutexGuard<'s, ()>, PoisonError<MutexGuard<'t0, ()>>>, &'t1 MutexGuard<'t2, ()>, MutexGuard<'t3, ()>, (), impl Future}`
-   = note: required because it appears within the type `[static generator@run::{closure#0}]`
-   = note: required because it appears within the type `from_generator::GenFuture<[static generator@run::{closure#0}]>`
-   = note: required because it appears within the type `impl Future`
-   = note: required because it appears within the type `impl Future`
 note: required by a bound in `g`
   --> $DIR/issue-67893.rs:6:14
    |
@@ -23,4 +13,3 @@ LL | fn g(_: impl Send) {}
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.

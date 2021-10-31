@@ -241,7 +241,8 @@ impl<T, E> Poll<Option<Result<T, E>>> {
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
-impl<T> From<T> for Poll<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T> const From<T> for Poll<T> {
     /// Convert to a `Ready` variant.
     ///
     /// # Example

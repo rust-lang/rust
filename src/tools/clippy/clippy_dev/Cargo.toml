@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 bytecount = "0.6"
 clap = "2.33"
+indoc = "1.0"
 itertools = "0.10"
 opener = "0.5"
 regex = "1.5"

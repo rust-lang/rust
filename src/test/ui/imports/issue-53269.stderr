@@ -4,12 +4,13 @@ error[E0432]: unresolved import `nonexistent_module`
 LL |     use nonexistent_module::mac;
    |         ^^^^^^^^^^^^^^^^^^ maybe a missing crate `nonexistent_module`?
 
-error[E0659]: `mac` is ambiguous (`macro_rules` vs non-`macro_rules` from other module)
+error[E0659]: `mac` is ambiguous
   --> $DIR/issue-53269.rs:8:5
    |
 LL |     mac!();
    |     ^^^ ambiguous name
    |
+   = note: ambiguous because of a conflict between a `macro_rules` name and a non-`macro_rules` name from another module
 note: `mac` could refer to the macro defined here
   --> $DIR/issue-53269.rs:3:1
    |

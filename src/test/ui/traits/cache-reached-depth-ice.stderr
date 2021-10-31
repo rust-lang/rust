@@ -1,4 +1,4 @@
-error: evaluate(Binder(TraitPredicate(<A as std::marker::Send>), [])) = Ok(EvaluatedToOk)
+error: evaluate(Binder(TraitPredicate(<A as std::marker::Send>, polarity:Positive), [])) = Ok(EvaluatedToOk)
   --> $DIR/cache-reached-depth-ice.rs:43:5
    |
 LL | fn test<X: ?Sized + Send>() {}

@@ -447,9 +447,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
-            let (invoc, ext) = if let Some(invoc) = invocations.pop() {
-                invoc
-            } else {
+            let Some((invoc, ext)) = invocations.pop() else {
                 self.resolve_imports();
                 if undetermined_invocations.is_empty() {
                     break;

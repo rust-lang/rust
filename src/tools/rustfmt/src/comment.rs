@@ -10,7 +10,8 @@ use crate::rewrite::RewriteContext;
 use crate::shape::{Indent, Shape};
 use crate::string::{rewrite_string, StringFormat};
 use crate::utils::{
-    count_newlines, first_line_width, last_line_width, trim_left_preserve_layout, unicode_str_width,
+    count_newlines, first_line_width, last_line_width, trim_left_preserve_layout,
+    trimmed_last_line_width, unicode_str_width,
 };
 use crate::{ErrorKind, FormattingError};
 
@@ -171,11 +172,12 @@ pub(crate) fn combine_strs_with_missing_comments(
         String::with_capacity(prev_str.len() + next_str.len() + shape.indent.width() + 128);
     result.push_str(prev_str);
     let mut allow_one_line = !prev_str.contains('\n') && !next_str.contains('\n');
-    let first_sep = if prev_str.is_empty() || next_str.is_empty() {
-        ""
-    } else {
-        " "
-    };
+    let first_sep =
+        if prev_str.is_empty() || next_str.is_empty() || trimmed_last_line_width(prev_str) == 0 {
+            ""
+        } else {
+            " "
+        };
     let mut one_line_width =
         last_line_width(prev_str) + first_line_width(next_str) + first_sep.len();
 
@@ -184,7 +186,7 @@ pub(crate) fn combine_strs_with_missing_comments(
     let missing_comment = rewrite_missing_comment(span, shape, context)?;
 
     if missing_comment.is_empty() {
-        if allow_extend && prev_str.len() + first_sep.len() + next_str.len() <= shape.width {
+        if allow_extend && one_line_width <= shape.width {
             result.push_str(first_sep);
         } else if !prev_str.is_empty() {
             result.push_str(&indent.to_string_with_newline(config))
@@ -392,28 +394,26 @@ fn identify_comment(
     }
 }
 
-/// Attributes for code blocks in rustdoc.
-/// See <https://doc.rust-lang.org/rustdoc/print.html#attributes>.
+/// Enum indicating if the code block contains rust based on attributes
 enum CodeBlockAttribute {
     Rust,
-    Ignore,
-    Text,
-    ShouldPanic,
-    NoRun,
-    CompileFail,
+    NotRust,
 }
 
 impl CodeBlockAttribute {
-    fn new(attribute: &str) -> CodeBlockAttribute {
-        match attribute {
-            "rust" | "" => CodeBlockAttribute::Rust,
-            "ignore" => CodeBlockAttribute::Ignore,
-            "text" => CodeBlockAttribute::Text,
-            "should_panic" => CodeBlockAttribute::ShouldPanic,
-            "no_run" => CodeBlockAttribute::NoRun,
-            "compile_fail" => CodeBlockAttribute::CompileFail,
-            _ => CodeBlockAttribute::Text,
+    /// Parse comma separated attributes list. Return rust only if all
+    /// attributes are valid rust attributes
+    /// See <https://doc.rust-lang.org/rustdoc/print.html#attributes>
+    fn new(attributes: &str) -> CodeBlockAttribute {
+        for attribute in attributes.split(",") {
+            match attribute.trim() {
+                "" | "rust" | "should_panic" | "no_run" | "edition2015" | "edition2018"
+                | "edition2021" => (),
+                "ignore" | "compile_fail" | "text" => return CodeBlockAttribute::NotRust,
+                _ => return CodeBlockAttribute::NotRust,
+            }
         }
+        CodeBlockAttribute::Rust
     }
 }
 
@@ -647,25 +647,21 @@ impl<'a> CommentRewrite<'a> {
         } else if self.code_block_attr.is_some() {
             if line.starts_with("```") {
                 let code_block = match self.code_block_attr.as_ref().unwrap() {
-                    CodeBlockAttribute::Ignore | CodeBlockAttribute::Text => {
-                        trim_custom_comment_prefix(&self.code_block_buffer)
-                    }
-                    _ if self.code_block_buffer.is_empty() => String::new(),
-                    _ => {
+                    CodeBlockAttribute::Rust
+                        if self.fmt.config.format_code_in_doc_comments()
+                            && !self.code_block_buffer.is_empty() =>
+                    {
                         let mut config = self.fmt.config.clone();
                         config.set().wrap_comments(false);
-                        if config.format_code_in_doc_comments() {
-                            if let Some(s) =
-                                crate::format_code_block(&self.code_block_buffer, &config, false)
-                            {
-                                trim_custom_comment_prefix(&s.snippet)
-                            } else {
-                                trim_custom_comment_prefix(&self.code_block_buffer)
-                            }
+                        if let Some(s) =
+                            crate::format_code_block(&self.code_block_buffer, &config, false)
+                        {
+                            trim_custom_comment_prefix(&s.snippet)
                         } else {
                             trim_custom_comment_prefix(&self.code_block_buffer)
                         }
                     }
+                    _ => trim_custom_comment_prefix(&self.code_block_buffer),
                 };
                 if !code_block.is_empty() {
                     self.result.push_str(&self.comment_line_separator);

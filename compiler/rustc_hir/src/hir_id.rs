@@ -56,6 +56,10 @@ rustc_index::newtype_index! {
     pub struct ItemLocalId { .. }
 }
 rustc_data_structures::impl_stable_hash_via_hash!(ItemLocalId);
+impl ItemLocalId {
+    /// Signal local id which should never be used.
+    pub const INVALID: ItemLocalId = ItemLocalId::MAX;
+}
 
 /// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_INDEX`.
 pub const CRATE_HIR_ID: HirId = HirId {

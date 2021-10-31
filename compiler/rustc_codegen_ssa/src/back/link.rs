@@ -174,9 +174,8 @@ pub fn each_linked_rlib(
             _ => {}
         }
     }
-    let fmts = match fmts {
-        Some(f) => f,
-        None => return Err("could not find formats for rlibs".to_string()),
+    let Some(fmts) = fmts else {
+        return Err("could not find formats for rlibs".to_string());
     };
     for &cnum in crates {
         match fmts.get(cnum.as_usize() - 1) {

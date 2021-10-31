@@ -9,7 +9,7 @@ use rustc_errors::ErrorReported;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::{
     config::{self, OutputFilenames, PrintRequest},
@@ -80,7 +80,7 @@ pub trait CodegenBackend {
     }
 
     fn provide(&self, _providers: &mut Providers) {}
-    fn provide_extern(&self, _providers: &mut Providers) {}
+    fn provide_extern(&self, _providers: &mut ExternProviders) {}
     fn codegen_crate<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,

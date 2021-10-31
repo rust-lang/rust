@@ -765,7 +765,7 @@ impl CheckAttrVisitor<'tcx> {
                             "not a `use` item",
                         );
                     }
-                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#docno_inlinedocinline for more information")
+                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline for more information")
                         .emit();
                 },
             );

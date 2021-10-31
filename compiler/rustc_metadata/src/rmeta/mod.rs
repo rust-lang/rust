@@ -346,7 +346,7 @@ enum EntryKind {
     Union(Lazy<VariantData>, ReprOptions),
     Fn(Lazy<FnData>),
     ForeignFn(Lazy<FnData>),
-    Mod(Lazy<ModData>),
+    Mod(Lazy<[Export]>),
     MacroDef(Lazy<MacroDef>),
     ProcMacro(MacroKind),
     Closure,
@@ -363,12 +363,6 @@ enum EntryKind {
 /// Used by rustdoc.
 #[derive(Encodable, Decodable)]
 struct RenderedConst(String);
-
-#[derive(MetadataEncodable, MetadataDecodable)]
-struct ModData {
-    reexports: Lazy<[Export]>,
-    expansion: ExpnId,
-}
 
 #[derive(MetadataEncodable, MetadataDecodable)]
 struct FnData {

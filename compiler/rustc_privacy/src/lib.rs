@@ -23,7 +23,7 @@ use rustc_middle::span_bug;
 use rustc_middle::thir::abstract_const::Node as ACNode;
 use rustc_middle::ty::fold::TypeVisitor;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
@@ -124,9 +124,11 @@ where
 
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<V::BreakTy> {
         match predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref, constness: _ }) => {
-                self.visit_trait(trait_ref)
-            }
+            ty::PredicateKind::Trait(ty::TraitPredicate {
+                trait_ref,
+                constness: _,
+                polarity: _,
+            }) => self.visit_trait(trait_ref),
             ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
                 ty.visit_with(self)?;
                 self.visit_projection_ty(projection_ty)
@@ -153,11 +155,8 @@ where
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
     ) -> ControlFlow<V::BreakTy> {
-        const_evaluatable::walk_abstract_const(tcx, ct, |node| match node.root() {
-            ACNode::Leaf(leaf) => {
-                let leaf = leaf.subst(tcx, ct.substs);
-                self.visit_const(leaf)
-            }
+        const_evaluatable::walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
+            ACNode::Leaf(leaf) => self.visit_const(leaf),
             ACNode::Cast(_, _, ty) => self.visit_ty(ty),
             ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
                 ControlFlow::CONTINUE

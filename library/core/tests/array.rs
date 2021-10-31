@@ -7,6 +7,11 @@ fn array_from_ref() {
     let value: String = "Hello World!".into();
     let arr: &[String; 1] = array::from_ref(&value);
     assert_eq!(&[value.clone()], arr);
+
+    const VALUE: &&str = &"Hello World!";
+    const ARR: &[&str; 1] = array::from_ref(VALUE);
+    assert_eq!(&[*VALUE], ARR);
+    assert!(core::ptr::eq(VALUE, &ARR[0]));
 }
 
 #[test]
@@ -435,4 +440,37 @@ where
     let result = std::panic::catch_unwind(f);
     std::panic::set_hook(prev_hook);
     result
+}
+
+#[test]
+fn array_split_array_mut() {
+    let mut v = [1, 2, 3, 4, 5, 6];
+
+    {
+        let (left, right) = v.split_array_mut::<0>();
+        assert_eq!(left, &mut []);
+        assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
+    }
+
+    {
+        let (left, right) = v.split_array_mut::<6>();
+        assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
+        assert_eq!(right, &mut []);
+    }
+}
+
+#[should_panic]
+#[test]
+fn array_split_array_ref_out_of_bounds() {
+    let v = [1, 2, 3, 4, 5, 6];
+
+    v.split_array_ref::<7>();
+}
+
+#[should_panic]
+#[test]
+fn array_split_array_mut_out_of_bounds() {
+    let mut v = [1, 2, 3, 4, 5, 6];
+
+    v.split_array_mut::<7>();
 }

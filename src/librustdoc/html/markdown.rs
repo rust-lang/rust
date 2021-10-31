@@ -178,7 +178,7 @@ fn map_line(s: &str) -> Line<'_> {
         Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
     } else if let Some(stripped) = trimmed.strip_prefix("# ") {
         // # text
-        Line::Hidden(&stripped)
+        Line::Hidden(stripped)
     } else if trimmed == "#" {
         // We cannot handle '#text' because it could be #[attr].
         Line::Hidden("")
@@ -258,7 +258,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let parse_result = match kind {
             CodeBlockKind::Fenced(ref lang) => {
                 let parse_result =
-                    LangString::parse_without_check(&lang, self.check_error_codes, false);
+                    LangString::parse_without_check(lang, self.check_error_codes, false);
                 if !parse_result.rust {
                     return Some(Event::Html(
                         format!(
@@ -358,6 +358,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             playground_button.as_deref(),
             tooltip,
             edition,
+            None,
             None,
             None,
         );
@@ -668,7 +669,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
         loop {
             match self.inner.next() {
                 Some((Event::FootnoteReference(ref reference), range)) => {
-                    let entry = self.get_entry(&reference);
+                    let entry = self.get_entry(reference);
                     let reference = format!(
                         "<sup id=\"fnref{0}\"><a href=\"#fn{0}\">{0}</a></sup>",
                         (*entry).1
@@ -903,7 +904,7 @@ impl LangString {
         string
             .split(|c| c == ',' || c == ' ' || c == '\t')
             .map(str::trim)
-            .map(|token| if token.chars().next() == Some('.') { &token[1..] } else { token })
+            .map(|token| token.strip_prefix('.').unwrap_or(token))
             .filter(|token| !token.is_empty())
     }
 
@@ -973,7 +974,10 @@ impl LangString {
                 }
                 x if extra.is_some() => {
                     let s = x.to_lowercase();
-                    match if s == "compile-fail" || s == "compile_fail" || s == "compilefail" {
+                    if let Some((flag, help)) = if s == "compile-fail"
+                        || s == "compile_fail"
+                        || s == "compilefail"
+                    {
                         Some((
                             "compile_fail",
                             "the code block will either not be tested if not marked as a rust one \
@@ -1006,15 +1010,12 @@ impl LangString {
                     } else {
                         None
                     } {
-                        Some((flag, help)) => {
-                            if let Some(ref extra) = extra {
-                                extra.error_invalid_codeblock_attr(
-                                    &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
-                                    help,
-                                );
-                            }
+                        if let Some(extra) = extra {
+                            extra.error_invalid_codeblock_attr(
+                                &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
+                                help,
+                            );
                         }
-                        None => {}
                     }
                     seen_other_tags = true;
                 }
@@ -1050,13 +1051,10 @@ impl Markdown<'_> {
             return String::new();
         }
         let mut replacer = |broken_link: BrokenLink<'_>| {
-            if let Some(link) =
-                links.iter().find(|link| &*link.original_text == broken_link.reference)
-            {
-                Some((link.href.as_str().into(), link.new_text.as_str().into()))
-            } else {
-                None
-            }
+            links
+                .iter()
+                .find(|link| &*link.original_text == broken_link.reference)
+                .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
         };
 
         let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut replacer));
@@ -1134,13 +1132,10 @@ impl MarkdownSummaryLine<'_> {
         }
 
         let mut replacer = |broken_link: BrokenLink<'_>| {
-            if let Some(link) =
-                links.iter().find(|link| &*link.original_text == broken_link.reference)
-            {
-                Some((link.href.as_str().into(), link.new_text.as_str().into()))
-            } else {
-                None
-            }
+            links
+                .iter()
+                .find(|link| &*link.original_text == broken_link.reference)
+                .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
         };
 
         let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
@@ -1171,13 +1166,10 @@ fn markdown_summary_with_limit(
     }
 
     let mut replacer = |broken_link: BrokenLink<'_>| {
-        if let Some(link) =
-            link_names.iter().find(|link| &*link.original_text == broken_link.reference)
-        {
-            Some((link.href.as_str().into(), link.new_text.as_str().into()))
-        } else {
-            None
-        }
+        link_names
+            .iter()
+            .find(|link| &*link.original_text == broken_link.reference)
+            .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
     };
 
     let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
@@ -1412,7 +1404,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
                 CodeBlockKind::Indented => {
                     // The ending of the offset goes too far sometime so we reduce it by one in
                     // these cases.
-                    if offset.end > offset.start && md.get(offset.end..=offset.end) == Some(&"\n") {
+                    if offset.end > offset.start && md.get(offset.end..=offset.end) == Some("\n") {
                         (
                             LangString::default(),
                             offset.start,

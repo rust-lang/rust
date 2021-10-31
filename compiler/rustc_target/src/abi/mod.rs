@@ -1117,7 +1117,7 @@ impl Niche {
         // In practice this means that enums with `count > 1` are unlikely to claim niche zero, since they have to fit perfectly.
         // If niche zero is already reserved, the selection of bounds are of little interest.
         let move_start = |v: WrappingRange| {
-            let start = v.start.wrapping_sub(1) & max_value;
+            let start = v.start.wrapping_sub(count) & max_value;
             Some((start, Scalar { value, valid_range: v.with_start(start) }))
         };
         let move_end = |v: WrappingRange| {

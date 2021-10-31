@@ -6,6 +6,21 @@ LL |     let mut x = Vec::new();
    |         |
    |         consider giving `x` the explicit type `Vec<T>`, where the type parameter `T` is specified
 
+error[E0283]: type annotations needed
+  --> $DIR/method-ambig-one-trait-unknown-int-type.rs:26:7
+   |
+LL |     x.foo();
+   |       ^^^ cannot infer type for struct `Vec<_>`
+   |
+note: multiple `impl`s satisfying `Vec<_>: Foo` found
+  --> $DIR/method-ambig-one-trait-unknown-int-type.rs:9:1
+   |
+LL | impl Foo for Vec<usize> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl Foo for Vec<isize> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0308]: mismatched types
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:33:20
    |
@@ -19,7 +34,7 @@ help: you can convert an `isize` to a `usize` and panic if the converted value d
 LL |     let y: usize = x.foo().try_into().unwrap();
    |                           ++++++++++++++++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0282, E0308.
+Some errors have detailed explanations: E0282, E0283, E0308.
 For more information about an error, try `rustc --explain E0282`.

@@ -14,7 +14,6 @@ struct Output {
 
 #[derive(Deserialize)]
 struct Package {
-    id: String,
     name: String,
     source: Option<String>,
     manifest_path: String,
@@ -50,7 +49,7 @@ pub fn build(build: &mut Build) {
                 .filter(|dep| dep.source.is_none())
                 .map(|dep| INTERNER.intern_string(dep.name))
                 .collect();
-            build.crates.insert(name, Crate { name, id: package.id, deps, path });
+            build.crates.insert(name, Crate { name, deps, path });
         }
     }
 }

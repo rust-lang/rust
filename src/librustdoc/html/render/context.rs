@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -22,8 +22,7 @@ use super::{
     BASIC_KEYWORDS,
 };
 
-use crate::clean;
-use crate::clean::ExternalCrate;
+use crate::clean::{self, ExternalCrate};
 use crate::config::RenderOptions;
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
@@ -34,6 +33,8 @@ use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
 use crate::html::{layout, sources};
+use crate::scrape_examples::AllCallLocations;
+use crate::try_err;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -53,6 +54,9 @@ crate struct Context<'tcx> {
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
     pub(super) render_redirect_pages: bool,
+    /// Tracks section IDs for `Deref` targets so they match in both the main
+    /// body and the sidebar.
+    pub(super) deref_id_map: RefCell<FxHashMap<DefId, String>>,
     /// The map used to ensure all generated 'id=' attributes are unique.
     pub(super) id_map: RefCell<IdMap>,
     /// Shared mutable state.
@@ -69,7 +73,7 @@ crate struct Context<'tcx> {
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 104);
+rustc_data_structures::static_assert_size!(Context<'_>, 144);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 crate struct SharedContext<'tcx> {
@@ -123,6 +127,8 @@ crate struct SharedContext<'tcx> {
     crate span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
     crate cache: Cache,
+
+    crate call_locations: AllCallLocations,
 }
 
 impl SharedContext<'_> {
@@ -157,7 +163,7 @@ impl<'tcx> Context<'tcx> {
     }
 
     pub(super) fn sess(&self) -> &'tcx Session {
-        &self.shared.tcx.sess
+        self.shared.tcx.sess
     }
 
     pub(super) fn derive_id(&self, id: String) -> String {
@@ -185,7 +191,7 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(&doc));
+        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(doc));
         let desc = if let Some(desc) = desc {
             desc
         } else if it.is_crate() {
@@ -291,10 +297,10 @@ impl<'tcx> Context<'tcx> {
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
     pub(super) fn src_href(&self, item: &clean::Item) -> Option<String> {
-        self.href_from_span(item.span(self.tcx()))
+        self.href_from_span(item.span(self.tcx()), true)
     }
 
-    crate fn href_from_span(&self, span: clean::Span) -> Option<String> {
+    crate fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
         if span.is_dummy() {
             return None;
         }
@@ -341,16 +347,26 @@ impl<'tcx> Context<'tcx> {
             (&*symbol, &path)
         };
 
-        let loline = span.lo(self.sess()).line;
-        let hiline = span.hi(self.sess()).line;
-        let lines =
-            if loline == hiline { loline.to_string() } else { format!("{}-{}", loline, hiline) };
+        let anchor = if with_lines {
+            let loline = span.lo(self.sess()).line;
+            let hiline = span.hi(self.sess()).line;
+            format!(
+                "#{}",
+                if loline == hiline {
+                    loline.to_string()
+                } else {
+                    format!("{}-{}", loline, hiline)
+                }
+            )
+        } else {
+            "".to_string()
+        };
         Some(format!(
-            "{root}src/{krate}/{path}#{lines}",
+            "{root}src/{krate}/{path}{anchor}",
             root = Escape(&root),
             krate = krate,
             path = path,
-            lines = lines
+            anchor = anchor
         ))
     }
 }
@@ -388,6 +404,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_redirect_map,
             show_type_layout,
             generate_link_to_definition,
+            call_locations,
             ..
         } = options;
 
@@ -412,6 +429,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             krate: krate.name.to_string(),
             css_file_extension: extension_css,
             generate_search_filter,
+            scrape_examples_extension: !call_locations.is_empty(),
         };
         let mut issue_tracker_base_url = None;
         let mut include_sources = true;
@@ -474,6 +492,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             templates,
             span_correspondance_map: matches,
             cache,
+            call_locations,
         };
 
         // Add the default themes to the `Vec` of stylepaths
@@ -497,6 +516,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             dst,
             render_redirect_pages: false,
             id_map: RefCell::new(id_map),
+            deref_id_map: RefCell::new(FxHashMap::default()),
             shared: Rc::new(scx),
             include_sources,
         };
@@ -520,6 +540,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: self.current.clone(),
             dst: self.dst.clone(),
             render_redirect_pages: self.render_redirect_pages,
+            deref_id_map: RefCell::new(FxHashMap::default()),
             id_map: RefCell::new(IdMap::new()),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,

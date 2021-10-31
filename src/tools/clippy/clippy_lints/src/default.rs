@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::ty::{has_drop, is_copy};
 use clippy_utils::{any_parent_is_automatically_derived, contains_name, in_macro, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
@@ -139,6 +140,13 @@ impl LateLintPass<'_> for Default {
                     .fields
                     .iter()
                     .all(|field| field.vis.is_accessible_from(module_did, cx.tcx));
+                let all_fields_are_copy = variant
+                    .fields
+                    .iter()
+                    .all(|field| {
+                        is_copy(cx, cx.tcx.type_of(field.did))
+                    });
+                if !has_drop(cx, binding_type) || all_fields_are_copy;
                 then {
                     (local, variant, ident.name, binding_type, expr.span)
                 } else {

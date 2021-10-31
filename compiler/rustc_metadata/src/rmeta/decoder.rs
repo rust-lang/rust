@@ -472,9 +472,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         let len = BytePos::decode(decoder)?;
         let hi = lo + len;
 
-        let sess = if let Some(sess) = decoder.sess {
-            sess
-        } else {
+        let Some(sess) = decoder.sess else {
             bug!("Cannot decode Span without Session.")
         };
 
@@ -1200,8 +1198,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         }
 
-        if let EntryKind::Mod(data) = kind {
-            for exp in data.decode((self, sess)).reexports.decode((self, sess)) {
+        if let EntryKind::Mod(exports) = kind {
+            for exp in exports.decode((self, sess)) {
                 match exp.res {
                     Res::Def(DefKind::Macro(..), _) => {}
                     _ if macros_only => continue,
@@ -1221,10 +1219,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn module_expansion(&self, id: DefIndex, sess: &Session) -> ExpnId {
-        if let EntryKind::Mod(m) = self.kind(id) {
-            m.decode((self, sess)).expansion
-        } else {
-            panic!("Expected module, found {:?}", self.local_def_id(id))
+        match self.kind(id) {
+            EntryKind::Mod(_) | EntryKind::Enum(_) | EntryKind::Trait(_) => {
+                self.get_expn_that_defined(id, sess)
+            }
+            _ => panic!("Expected module, found {:?}", self.local_def_id(id)),
         }
     }
 

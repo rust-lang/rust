@@ -1502,6 +1502,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                 descr: "module",
                                 path,
                                 accessible: true,
+                                note: None,
                             },
                         ));
                     } else {

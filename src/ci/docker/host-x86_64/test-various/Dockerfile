@@ -39,6 +39,7 @@ ENV RUST_CONFIGURE_ARGS \
 # otherwise normally be. We already test libstd with debug assertions in lots of
 # other contexts as well
 ENV NO_DEBUG_ASSERTIONS=1
+ENV NO_OVERFLOW_CHECKS=1
 
 ENV WASM_TARGETS=wasm32-unknown-unknown
 ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_TARGETS \

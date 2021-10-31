@@ -60,59 +60,73 @@ error: `usize` is not allowed according to config
 LL | struct GenArg<const U: usize>([u8; U]);
    |                        ^^^^^
 
+error: `std::net::Ipv4Addr` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:28:10
+   |
+LL | fn ip(_: std::net::Ipv4Addr) {}
+   |          ^^^^^^^^^^^^^^^^^^
+   |
+   = note: no IPv4 allowed (from clippy.toml)
+
+error: `std::net::TcpListener` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:30:16
+   |
+LL | fn listener(_: std::net::TcpListener) {}
+   |                ^^^^^^^^^^^^^^^^^^^^^
+
 error: `std::collections::HashMap` is not allowed according to config
-  --> $DIR/conf_disallowed_type.rs:30:48
+  --> $DIR/conf_disallowed_type.rs:34:48
    |
 LL |     let _: std::collections::HashMap<(), ()> = std::collections::HashMap::new();
    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `std::collections::HashMap` is not allowed according to config
-  --> $DIR/conf_disallowed_type.rs:30:12
+  --> $DIR/conf_disallowed_type.rs:34:12
    |
 LL |     let _: std::collections::HashMap<(), ()> = std::collections::HashMap::new();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `std::time::Instant` is not allowed according to config
-  --> $DIR/conf_disallowed_type.rs:31:13
+  --> $DIR/conf_disallowed_type.rs:35:13
    |
 LL |     let _ = Sneaky::now();
    |             ^^^^^^
 
 error: `std::sync::atomic::AtomicU32` is not allowed according to config
-  --> $DIR/conf_disallowed_type.rs:32:13
+  --> $DIR/conf_disallowed_type.rs:36:13
    |
 LL |     let _ = foo::atomic::AtomicU32::new(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error: `std::sync::atomic::AtomicU32` is not allowed according to config
-  --> $DIR/conf_disallowed_type.rs:33:17
+  --> $DIR/conf_disallowed_type.rs:37:17
    |
 LL |     static FOO: std::sync::atomic::AtomicU32 = foo::atomic::AtomicU32::new(1);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `std::sync::atomic::AtomicU32` is not allowed according to config
-  --> $DIR/conf_disallowed_type.rs:33:48
+  --> $DIR/conf_disallowed_type.rs:37:48
    |
 LL |     static FOO: std::sync::atomic::AtomicU32 = foo::atomic::AtomicU32::new(1);
    |                                                ^^^^^^^^^^^^^^^^^^^^^^
 
 error: `syn::TypePath` is not allowed according to config
-  --> $DIR/conf_disallowed_type.rs:34:43
+  --> $DIR/conf_disallowed_type.rs:38:43
    |
 LL |     let _: std::collections::BTreeMap<(), syn::TypePath> = Default::default();
    |                                           ^^^^^^^^^^^^^
 
 error: `syn::Ident` is not allowed according to config
-  --> $DIR/conf_disallowed_type.rs:35:13
+  --> $DIR/conf_disallowed_type.rs:39:13
    |
 LL |     let _ = syn::Ident::new("", todo!());
    |             ^^^^^^^^^^
 
 error: `usize` is not allowed according to config
-  --> $DIR/conf_disallowed_type.rs:37:12
+  --> $DIR/conf_disallowed_type.rs:41:12
    |
 LL |     let _: usize = 64_usize;
    |            ^^^^^
 
-error: aborting due to 19 previous errors
+error: aborting due to 21 previous errors
 

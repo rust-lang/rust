@@ -174,9 +174,14 @@ impl ParseSess {
         }
     }
 
-    pub fn with_silent_emitter() -> Self {
+    pub fn with_silent_emitter(fatal_note: Option<String>) -> Self {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let handler = Handler::with_emitter(false, None, Box::new(SilentEmitter));
+        let fatal_handler = Handler::with_tty_emitter(ColorConfig::Auto, false, None, None);
+        let handler = Handler::with_emitter(
+            false,
+            None,
+            Box::new(SilentEmitter { fatal_handler, fatal_note }),
+        );
         ParseSess::with_span_handler(handler, sm)
     }
 

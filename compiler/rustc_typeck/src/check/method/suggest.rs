@@ -15,7 +15,7 @@ use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::lev_distance;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{source_map, FileName, MultiSpan, Span};
+use rustc_span::{source_map, FileName, MultiSpan, Span, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation};
 
@@ -1203,6 +1203,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort();
             candidates.dedup();
+
+            // `TryFrom` and `FromIterator` have no methods
+            let edition_fix = candidates
+                .iter()
+                .find(|did| self.tcx.is_diagnostic_item(sym::TryInto, **did))
+                .map(|&d| d);
+
             err.help("items from traits can only be used if the trait is in scope");
             let msg = format!(
                 "the following {traits_are} implemented but not in scope; \
@@ -1212,6 +1219,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
 
             self.suggest_use_candidates(err, msg, candidates);
+            if let Some(did) = edition_fix {
+                err.note(&format!(
+                    "'{}' is included in the prelude starting in Edition 2021",
+                    with_crate_prefix(|| self.tcx.def_path_str(did))
+                ));
+            }
+
             true
         } else {
             false
@@ -1237,6 +1251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.lang_items().deref_trait(),
                 self.tcx.lang_items().deref_mut_trait(),
                 self.tcx.lang_items().drop_trait(),
+                self.tcx.get_diagnostic_item(sym::AsRef),
             ];
             // Try alternative arbitrary self types that could fulfill this call.
             // FIXME: probe for all types that *could* be arbitrary self-types, not
@@ -1286,7 +1301,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // We don't want to suggest a container type when the missing
                             // method is `.clone()` or `.deref()` otherwise we'd suggest
                             // `Arc::new(foo).clone()`, which is far from what the user wants.
-                            let skip = skippable.contains(&did);
+                            // Explicitly ignore the `Pin::as_ref()` method as `Pin` does not
+                            // implement the `AsRef` trait.
+                            let skip = skippable.contains(&did)
+                                || (("Pin::new" == *pre)
+                                    && (Symbol::intern("as_ref") == item_name.name));
                             // Make sure the method is defined for the *actual* receiver: we don't
                             // want to treat `Box<Self>` as a receiver if it only works because of
                             // an autoderef to `&self`

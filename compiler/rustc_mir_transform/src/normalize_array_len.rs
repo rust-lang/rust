@@ -208,7 +208,7 @@ fn normalize_array_len_call<'tcx>(
                         operand,
                         cast_ty,
                     ) => {
-                        let local = if let Some(local) = place.as_local() { local } else { return };
+                        let Some(local) = place.as_local() else { return };
                         match operand {
                             Operand::Copy(place) | Operand::Move(place) => {
                                 let operand_local =
@@ -255,9 +255,7 @@ fn normalize_array_len_call<'tcx>(
                         }
                     }
                     Rvalue::Len(place) => {
-                        let local = if let Some(local) = place.local_or_deref_local() {
-                            local
-                        } else {
+                        let Some(local) = place.local_or_deref_local() else {
                             return;
                         };
                         if let Some(cast_statement_idx) = state.get(&local).copied() {

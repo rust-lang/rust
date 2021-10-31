@@ -85,14 +85,16 @@ where
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
 #[stable(feature = "array_from_ref", since = "1.53.0")]
-pub fn from_ref<T>(s: &T) -> &[T; 1] {
+#[rustc_const_unstable(feature = "const_array_from_ref", issue = "90206")]
+pub const fn from_ref<T>(s: &T) -> &[T; 1] {
     // SAFETY: Converting `&T` to `&[T; 1]` is sound.
     unsafe { &*(s as *const T).cast::<[T; 1]>() }
 }
 
 /// Converts a mutable reference to `T` into a mutable reference to an array of length 1 (without copying).
 #[stable(feature = "array_from_ref", since = "1.53.0")]
-pub fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
+#[rustc_const_unstable(feature = "const_array_from_ref", issue = "90206")]
+pub const fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
     // SAFETY: Converting `&mut T` to `&mut [T; 1]` is sound.
     unsafe { &mut *(s as *mut T).cast::<[T; 1]>() }
 }
@@ -125,7 +127,8 @@ impl TryFromSliceError {
 }
 
 #[stable(feature = "try_from_slice_error", since = "1.36.0")]
-impl From<Infallible> for TryFromSliceError {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl const From<Infallible> for TryFromSliceError {
     fn from(x: Infallible) -> TryFromSliceError {
         match x {}
     }
@@ -498,6 +501,84 @@ impl<T, const N: usize> [T; N] {
         // SAFETY: we know for certain that this iterator will yield exactly `N`
         // items.
         unsafe { collect_into_array_unchecked(&mut self.iter_mut()) }
+    }
+
+    /// Divides one array reference into two at an index.
+    ///
+    /// The first will contain all indices from `[0, M)` (excluding
+    /// the index `M` itself) and the second will contain all
+    /// indices from `[M, N)` (excluding the index `N` itself).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `M > N`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_array)]
+    ///
+    /// let v = [1, 2, 3, 4, 5, 6];
+    ///
+    /// {
+    ///    let (left, right) = v.split_array_ref::<0>();
+    ///    assert_eq!(left, &[]);
+    ///    assert_eq!(right, &[1, 2, 3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_array_ref::<2>();
+    ///     assert_eq!(left, &[1, 2]);
+    ///     assert_eq!(right, &[3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_array_ref::<6>();
+    ///     assert_eq!(left, &[1, 2, 3, 4, 5, 6]);
+    ///     assert_eq!(right, &[]);
+    /// }
+    /// ```
+    #[unstable(
+        feature = "split_array",
+        reason = "return type should have array as 2nd element",
+        issue = "90091"
+    )]
+    #[inline]
+    pub fn split_array_ref<const M: usize>(&self) -> (&[T; M], &[T]) {
+        (&self[..]).split_array_ref::<M>()
+    }
+
+    /// Divides one mutable array reference into two at an index.
+    ///
+    /// The first will contain all indices from `[0, M)` (excluding
+    /// the index `M` itself) and the second will contain all
+    /// indices from `[M, N)` (excluding the index `N` itself).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `M > N`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_array)]
+    ///
+    /// let mut v = [1, 0, 3, 0, 5, 6];
+    /// let (left, right) = v.split_array_mut::<2>();
+    /// assert_eq!(left, &mut [1, 0][..]);
+    /// assert_eq!(right, &mut [3, 0, 5, 6]);
+    /// left[1] = 2;
+    /// right[1] = 4;
+    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    #[unstable(
+        feature = "split_array",
+        reason = "return type should have array as 2nd element",
+        issue = "90091"
+    )]
+    #[inline]
+    pub fn split_array_mut<const M: usize>(&mut self) -> (&mut [T; M], &mut [T]) {
+        (&mut self[..]).split_array_mut::<M>()
     }
 }
 

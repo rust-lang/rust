@@ -1,0 +1,10 @@
+error[E0208]: [o]
+  --> $DIR/variance-associated-consts.rs:13:1
+   |
+LL | / struct Foo<T: Trait> {
+LL | |     field: [u8; <T as Trait>::Const]
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

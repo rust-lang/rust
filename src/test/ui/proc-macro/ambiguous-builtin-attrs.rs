@@ -35,5 +35,5 @@ fn main() {
 }
 
 use deny as allow;
-#[allow(unused)] //~ ERROR `allow` is ambiguous (built-in attribute vs any other name)
+#[allow(unused)] //~ ERROR `allow` is ambiguous
 fn builtin_renamed() {}

@@ -18,21 +18,13 @@ pub fn check(path: &Path, bad: &mut bool) {
         &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
         &mut |entry, contents| {
             let file = entry.path();
-            let filestr = file.to_string_lossy().replace("\\", "/");
             let filename = file.file_name().unwrap();
             if filename != "Cargo.toml" {
                 return;
             }
 
             // Library crates are not yet ready to migrate to 2021.
-            //
-            // The reference and rustc-dev-guide are submodules, so are left at
-            // 2018 for now. They should be removed from this exception list
-            // when bumped.
-            if path.components().any(|c| c.as_os_str() == "library")
-                || filestr.contains("src/doc/reference/style-check/Cargo.toml")
-                || filestr.contains("src/doc/rustc-dev-guide/ci/date-check/Cargo.toml")
-            {
+            if path.components().any(|c| c.as_os_str() == "library") {
                 let has = contents.lines().any(is_edition_2018);
                 if !has {
                     tidy_error!(

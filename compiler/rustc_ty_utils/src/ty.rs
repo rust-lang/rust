@@ -1,7 +1,6 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{
     self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
@@ -248,6 +247,7 @@ fn trait_of_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
 }
 
 /// See `ParamEnv` struct definition for details.
+#[instrument(level = "debug", skip(tcx))]
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // The param_env of an impl Trait type is its defining function's param_env
     if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
@@ -275,9 +275,20 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         predicates.extend(environment);
     }
 
+    // It's important that we include the default substs in unevaluated
+    // constants, since `Unevaluated` instances in predicates whose substs are None
+    // can lead to "duplicate" caller bounds candidates during trait selection,
+    // duplicate in the sense that both have their default substs, but the
+    // candidate that resulted from a superpredicate still uses `None` in its
+    // `substs_` field of `Unevaluated` to indicate that it has its default substs,
+    // whereas the other candidate has `substs_: Some(default_substs)`, see
+    // issue #89334
+    predicates = tcx.expose_default_const_substs(predicates);
+
     let unnormalized_env =
         ty::ParamEnv::new(tcx.intern_predicates(&predicates), traits::Reveal::UserFacing);
 
+    debug!("unnormalized_env caller bounds: {:?}", unnormalized_env.caller_bounds());
     let body_id = def_id
         .as_local()
         .map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
@@ -478,11 +489,11 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
 
     let node = tcx.hir().get(hir_id);
 
-    let fn_like = hir_map::blocks::FnLikeNode::from_node(node).unwrap_or_else(|| {
+    let fn_kind = node.fn_kind().unwrap_or_else(|| {
         bug!("asyncness: expected fn-like node but got `{:?}`", def_id);
     });
 
-    fn_like.asyncness()
+    fn_kind.asyncness()
 }
 
 /// Don't call this directly: use ``tcx.conservative_is_privately_uninhabited`` instead.

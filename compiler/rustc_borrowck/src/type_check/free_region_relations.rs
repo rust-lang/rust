@@ -1,20 +1,18 @@
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
-use rustc_infer::infer::free_regions::FreeRegionRelations;
 use rustc_infer::infer::outlives;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
 use type_op::TypeOpOutput;
 
 use crate::{
-    nll::ToRegionVid,
     type_check::constraint_conversion,
     type_check::{Locations, MirTypeckRegionConstraints},
     universal_regions::UniversalRegions,
@@ -381,23 +379,5 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                 }
             }
         }
-    }
-}
-
-/// This trait is used by the `impl-trait` constraint code to abstract
-/// over the `FreeRegionMap` from lexical regions and
-/// `UniversalRegions` (from NLL)`.
-impl<'tcx> FreeRegionRelations<'tcx> for UniversalRegionRelations<'tcx> {
-    fn sub_free_regions(
-        &self,
-        _tcx: TyCtxt<'tcx>,
-        shorter: ty::Region<'tcx>,
-        longer: ty::Region<'tcx>,
-    ) -> bool {
-        let shorter = shorter.to_region_vid();
-        assert!(self.universal_regions.is_universal_region(shorter));
-        let longer = longer.to_region_vid();
-        assert!(self.universal_regions.is_universal_region(longer));
-        self.outlives(longer, shorter)
     }
 }

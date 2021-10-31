@@ -182,7 +182,7 @@ impl TcpStream {
         Ok(self.clone())
     }
 
-    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+    pub fn set_linger(&self, _linger: Option<Duration>) -> io::Result<()> {
         unsupported()
     }
 

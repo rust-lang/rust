@@ -416,6 +416,7 @@ pub enum MetadataType {
     MD_nontemporal = 9,
     MD_mem_parallel_loop_access = 10,
     MD_nonnull = 11,
+    MD_type = 19,
 }
 
 /// LLVMRustAsmDialect
@@ -1002,6 +1003,8 @@ extern "C" {
     pub fn LLVMSetValueName2(Val: &Value, Name: *const c_char, NameLen: size_t);
     pub fn LLVMReplaceAllUsesWith(OldVal: &'a Value, NewVal: &'a Value);
     pub fn LLVMSetMetadata(Val: &'a Value, KindID: c_uint, Node: &'a Value);
+    pub fn LLVMGlobalSetMetadata(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
+    pub fn LLVMValueAsMetadata(Node: &'a Value) -> &Metadata;
 
     // Operations on constants of any type
     pub fn LLVMConstNull(Ty: &Type) -> &Value;
@@ -1770,7 +1773,7 @@ extern "C" {
 
     pub fn LLVMDisposeMessage(message: *mut c_char);
 
-    pub fn LLVMStartMultithreaded() -> Bool;
+    pub fn LLVMIsMultithreaded() -> Bool;
 
     /// Returns a string describing the last error caused by an LLVMRust* call.
     pub fn LLVMRustGetLastError() -> *const c_char;
@@ -2187,6 +2190,7 @@ extern "C" {
         UseSoftFP: bool,
         FunctionSections: bool,
         DataSections: bool,
+        UniqueSectionNames: bool,
         TrapUnreachable: bool,
         Singlethread: bool,
         AsmComments: bool,

@@ -257,6 +257,7 @@ pub const fn require_unstable_const_init_thread_local() {}
 /// [`unwrap`]: crate::result::Result::unwrap
 /// [naming-threads]: ./index.html#naming-threads
 /// [stack-size]: ./index.html#stack-size
+#[must_use = "must eventually spawn the thread"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Builder {
@@ -1448,6 +1449,10 @@ fn _assert_sync_and_send() {
 /// differences in (co)processor capabilities, and will not modify the program's
 /// global state in order to more accurately query the amount of available
 /// parallelism.
+///
+/// Resource limits can be changed during the runtime of a program, therefore the value is
+/// not cached and instead recomputed every time this function is called. It should not be
+/// called from hot code.
 ///
 /// The value returned by this function should be considered a simplified
 /// approximation of the actual amount of parallelism available at any given

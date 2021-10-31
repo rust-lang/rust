@@ -770,8 +770,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
             let segments: Vec<&str> = segments.iter().map(|sym| &**sym).collect();
             if let Some(ty_did) = path_to_res(cx, &segments[..]).opt_def_id();
             // Check if the matched type is a diagnostic item
-            let diag_items = cx.tcx.diagnostic_items(ty_did.krate);
-            if let Some(item_name) = diag_items.iter().find_map(|(k, v)| if *v == ty_did { Some(k) } else { None });
+            if let Some(item_name) = cx.tcx.get_diagnostic_name(ty_did);
             then {
                 // TODO: check paths constants from external crates.
                 let cx_snippet = snippet(cx, context.span, "_");

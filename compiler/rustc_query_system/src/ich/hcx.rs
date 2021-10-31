@@ -1,6 +1,7 @@
 use crate::ich;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -27,7 +28,6 @@ pub struct StableHashingContext<'a> {
     cstore: &'a dyn CrateStore,
     pub(super) body_resolver: BodyResolver<'a>,
     hash_spans: bool,
-    hash_bodies: bool,
     pub(super) node_id_hashing_mode: NodeIdHashingMode,
 
     // Very often, we are hashing something that does not need the
@@ -46,24 +46,19 @@ pub enum NodeIdHashingMode {
 /// We could also just store a plain reference to the `hir::Crate` but we want
 /// to avoid that the crate is used to get untracked access to all of the HIR.
 #[derive(Clone, Copy)]
-pub(super) struct BodyResolver<'tcx>(&'tcx hir::Crate<'tcx>);
-
-impl<'tcx> BodyResolver<'tcx> {
-    /// Returns a reference to the `hir::Body` with the given `BodyId`.
-    /// **Does not do any tracking**; use carefully.
-    pub(super) fn body(self, id: hir::BodyId) -> &'tcx hir::Body<'tcx> {
-        self.0.body(id)
-    }
+pub(super) enum BodyResolver<'tcx> {
+    Forbidden,
+    Traverse {
+        hash_bodies: bool,
+        owner: LocalDefId,
+        bodies: &'tcx SortedMap<hir::ItemLocalId, &'tcx hir::Body<'tcx>>,
+    },
 }
 
 impl<'a> StableHashingContext<'a> {
-    /// The `krate` here is only used for mapping `BodyId`s to `Body`s.
-    /// Don't use it for anything else or you'll run the risk of
-    /// leaking data out of the tracking system.
     #[inline]
     fn new_with_or_without_spans(
         sess: &'a Session,
-        krate: &'a hir::Crate<'a>,
         definitions: &'a Definitions,
         cstore: &'a dyn CrateStore,
         always_ignore_spans: bool,
@@ -72,13 +67,12 @@ impl<'a> StableHashingContext<'a> {
             !always_ignore_spans && !sess.opts.debugging_opts.incremental_ignore_spans;
 
         StableHashingContext {
-            body_resolver: BodyResolver(krate),
+            body_resolver: BodyResolver::Forbidden,
             definitions,
             cstore,
             caching_source_map: None,
             raw_source_map: sess.source_map(),
             hash_spans: hash_spans_initial,
-            hash_bodies: true,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
         }
     }
@@ -86,13 +80,11 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn new(
         sess: &'a Session,
-        krate: &'a hir::Crate<'a>,
         definitions: &'a Definitions,
         cstore: &'a dyn CrateStore,
     ) -> Self {
         Self::new_with_or_without_spans(
             sess,
-            krate,
             definitions,
             cstore,
             /*always_ignore_spans=*/ false,
@@ -102,20 +94,41 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn ignore_spans(
         sess: &'a Session,
-        krate: &'a hir::Crate<'a>,
         definitions: &'a Definitions,
         cstore: &'a dyn CrateStore,
     ) -> Self {
         let always_ignore_spans = true;
-        Self::new_with_or_without_spans(sess, krate, definitions, cstore, always_ignore_spans)
+        Self::new_with_or_without_spans(sess, definitions, cstore, always_ignore_spans)
+    }
+
+    /// Allow hashing
+    #[inline]
+    pub fn while_hashing_hir_bodies(&mut self, hb: bool, f: impl FnOnce(&mut Self)) {
+        let prev = match &mut self.body_resolver {
+            BodyResolver::Forbidden => panic!("Hashing HIR bodies is forbidden."),
+            BodyResolver::Traverse { ref mut hash_bodies, .. } => {
+                std::mem::replace(hash_bodies, hb)
+            }
+        };
+        f(self);
+        match &mut self.body_resolver {
+            BodyResolver::Forbidden => unreachable!(),
+            BodyResolver::Traverse { ref mut hash_bodies, .. } => *hash_bodies = prev,
+        }
     }
 
     #[inline]
-    pub fn while_hashing_hir_bodies<F: FnOnce(&mut Self)>(&mut self, hash_bodies: bool, f: F) {
-        let prev_hash_bodies = self.hash_bodies;
-        self.hash_bodies = hash_bodies;
+    pub fn with_hir_bodies(
+        &mut self,
+        hash_bodies: bool,
+        owner: LocalDefId,
+        bodies: &'a SortedMap<hir::ItemLocalId, &'a hir::Body<'a>>,
+        f: impl FnOnce(&mut Self),
+    ) {
+        let prev = self.body_resolver;
+        self.body_resolver = BodyResolver::Traverse { hash_bodies, owner, bodies };
         f(self);
-        self.hash_bodies = prev_hash_bodies;
+        self.body_resolver = prev;
     }
 
     #[inline]
@@ -150,11 +163,6 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
         self.definitions.def_path_hash(def_id)
-    }
-
-    #[inline]
-    pub fn hash_bodies(&self) -> bool {
-        self.hash_bodies
     }
 
     #[inline]

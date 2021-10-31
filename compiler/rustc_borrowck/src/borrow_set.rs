@@ -12,22 +12,22 @@ use rustc_mir_dataflow::move_paths::MoveData;
 use std::fmt;
 use std::ops::Index;
 
-crate struct BorrowSet<'tcx> {
+pub struct BorrowSet<'tcx> {
     /// The fundamental map relating bitvector indexes to the borrows
     /// in the MIR. Each borrow is also uniquely identified in the MIR
     /// by the `Location` of the assignment statement in which it
     /// appears on the right hand side. Thus the location is the map
     /// key, and its position in the map corresponds to `BorrowIndex`.
-    crate location_map: FxIndexMap<Location, BorrowData<'tcx>>,
+    pub location_map: FxIndexMap<Location, BorrowData<'tcx>>,
 
     /// Locations which activate borrows.
     /// NOTE: a given location may activate more than one borrow in the future
     /// when more general two-phase borrow support is introduced, but for now we
     /// only need to store one borrow index.
-    crate activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
+    pub activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
 
     /// Map from local to all the borrows on that local.
-    crate local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
+    pub local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
 
     crate locals_state_at_exit: LocalsStateAtExit,
 }
@@ -43,27 +43,27 @@ impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
 /// Location where a two-phase borrow is activated, if a borrow
 /// is in fact a two-phase borrow.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-crate enum TwoPhaseActivation {
+pub enum TwoPhaseActivation {
     NotTwoPhase,
     NotActivated,
     ActivatedAt(Location),
 }
 
 #[derive(Debug, Clone)]
-crate struct BorrowData<'tcx> {
+pub struct BorrowData<'tcx> {
     /// Location where the borrow reservation starts.
     /// In many cases, this will be equal to the activation location but not always.
-    crate reserve_location: Location,
+    pub reserve_location: Location,
     /// Location where the borrow is activated.
-    crate activation_location: TwoPhaseActivation,
+    pub activation_location: TwoPhaseActivation,
     /// What kind of borrow this is
-    crate kind: mir::BorrowKind,
+    pub kind: mir::BorrowKind,
     /// The region for which this borrow is live
-    crate region: RegionVid,
+    pub region: RegionVid,
     /// Place from which we are borrowing
-    crate borrowed_place: mir::Place<'tcx>,
+    pub borrowed_place: mir::Place<'tcx>,
     /// Place to which the borrow was stored
-    crate assigned_place: mir::Place<'tcx>,
+    pub assigned_place: mir::Place<'tcx>,
 }
 
 impl<'tcx> fmt::Display for BorrowData<'tcx> {
@@ -78,7 +78,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
     }
 }
 
-crate enum LocalsStateAtExit {
+pub enum LocalsStateAtExit {
     AllAreInvalidated,
     SomeAreInvalidated { has_storage_dead_or_moved: BitSet<Local> },
 }
@@ -315,9 +315,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         //    TEMP = &foo
         //
         // so extract `temp`.
-        let temp = if let Some(temp) = assigned_place.as_local() {
-            temp
-        } else {
+        let Some(temp) = assigned_place.as_local() else {
             span_bug!(
                 self.body.source_info(start_location).span,
                 "expected 2-phase borrow to assign to a local, not `{:?}`",

@@ -1916,9 +1916,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("qpath_to_ty: trait_def_id={:?}", trait_def_id);
 
-        let self_ty = if let Some(ty) = opt_self_ty {
-            ty
-        } else {
+        let Some(self_ty) = opt_self_ty else {
             let path_str = tcx.def_path_str(trait_def_id);
 
             let def_id = self.item_def_id();

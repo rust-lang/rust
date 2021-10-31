@@ -4,12 +4,13 @@ error: cannot find attribute `C` in this scope
 LL | #[C]
    |   ^ help: a derive helper attribute with a similar name exists: `B`
 
-error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
+error[E0659]: `B` is ambiguous
   --> $DIR/proc-macro-attributes.rs:6:3
    |
 LL | #[B]
    |   ^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a derive helper attribute
 note: `B` could refer to the derive helper attribute defined here
   --> $DIR/proc-macro-attributes.rs:19:10
    |
@@ -21,12 +22,13 @@ note: `B` could also refer to the derive macro imported here
 LL | #[macro_use]
    | ^^^^^^^^^^^^
 
-error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
+error[E0659]: `B` is ambiguous
   --> $DIR/proc-macro-attributes.rs:10:3
    |
 LL | #[B(D)]
    |   ^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a derive helper attribute
 note: `B` could refer to the derive helper attribute defined here
   --> $DIR/proc-macro-attributes.rs:19:10
    |
@@ -38,12 +40,13 @@ note: `B` could also refer to the derive macro imported here
 LL | #[macro_use]
    | ^^^^^^^^^^^^
 
-error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
+error[E0659]: `B` is ambiguous
   --> $DIR/proc-macro-attributes.rs:13:3
    |
 LL | #[B(E = "foo")]
    |   ^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a derive helper attribute
 note: `B` could refer to the derive helper attribute defined here
   --> $DIR/proc-macro-attributes.rs:19:10
    |
@@ -55,12 +58,13 @@ note: `B` could also refer to the derive macro imported here
 LL | #[macro_use]
    | ^^^^^^^^^^^^
 
-error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
+error[E0659]: `B` is ambiguous
   --> $DIR/proc-macro-attributes.rs:16:3
    |
 LL | #[B(arbitrary tokens)]
    |   ^ ambiguous name
    |
+   = note: ambiguous because of a name conflict with a derive helper attribute
 note: `B` could refer to the derive helper attribute defined here
   --> $DIR/proc-macro-attributes.rs:19:10
    |

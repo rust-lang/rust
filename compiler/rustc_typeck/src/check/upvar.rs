@@ -883,8 +883,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.get_diagnostic_item(sym::unwind_safe_trait),
             self.tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),
         ];
-        let auto_traits =
-            vec!["`Clone`", "`Sync`", "`Send`", "`Unpin`", "`UnwindSafe`", "`RefUnwindSafe`"];
+        const AUTO_TRAITS: [&str; 6] =
+            ["`Clone`", "`Sync`", "`Send`", "`Unpin`", "`UnwindSafe`", "`RefUnwindSafe`"];
 
         let root_var_min_capture_list = min_captures.and_then(|m| m.get(&var_hir_id))?;
 
@@ -957,7 +957,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // by the root variable but not by the capture
             for (idx, _) in obligations_should_hold.iter().enumerate() {
                 if !obligations_holds_for_capture[idx] && obligations_should_hold[idx] {
-                    capture_problems.insert(auto_traits[idx]);
+                    capture_problems.insert(AUTO_TRAITS[idx]);
                 }
             }
 
@@ -1000,11 +1000,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
-        let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
-            min_captures.and_then(|m| m.get(&var_hir_id))
-        {
-            root_var_min_capture_list
-        } else {
+        let Some(root_var_min_capture_list) = min_captures.and_then(|m| m.get(&var_hir_id)) else {
             // The upvar is mentioned within the closure but no path starting from it is
             // used.
 
@@ -1077,10 +1073,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_clause: hir::CaptureBy,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
     ) -> (Vec<MigrationDiagnosticInfo>, String) {
-        let upvars = if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
-            upvars
-        } else {
-            return (Vec::new(), format!(""));
+        let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) else {
+            return (Vec::new(), String::new());
         };
 
         let mut need_migrations = Vec::new();
@@ -1684,9 +1678,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         diag_expr_id: hir::HirId,
     ) {
         let tcx = self.fcx.tcx;
-        let upvar_id = if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
-            upvar_id
-        } else {
+        let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else {
             return;
         };
 

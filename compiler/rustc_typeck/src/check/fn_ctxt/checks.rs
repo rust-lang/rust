@@ -370,6 +370,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
                 let coerce_ty = expected.only_has_type(self).unwrap_or(formal_ty);
 
+                final_arg_types.push((i, checked_ty, coerce_ty));
+
                 // Cause selection errors caused by resolving a single argument to point at the
                 // argument and not the call. This is otherwise redundant with the `demand_coerce`
                 // call immediately after, but it lets us customize the span pointed to in the
@@ -377,38 +379,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let _ = self.resolve_vars_with_obligations_and_mutate_fulfillment(
                     coerce_ty,
                     |errors| {
-                        // This is not coming from a macro or a `derive`.
-                        if sp.desugaring_kind().is_none()
-                        && !arg.span.from_expansion()
-                        // Do not change the spans of `async fn`s.
-                        && !matches!(
-                            expr.kind,
-                            hir::ExprKind::Call(
-                                hir::Expr {
-                                    kind: hir::ExprKind::Path(hir::QPath::LangItem(_, _)),
-                                    ..
-                                },
-                                _
-                            )
-                        ) {
-                            for error in errors {
-                                error.obligation.cause.make_mut().span = arg.span;
-                                let code = error.obligation.cause.code.clone();
-                                error.obligation.cause.make_mut().code =
-                                    ObligationCauseCode::FunctionArgumentObligation {
-                                        arg_hir_id: arg.hir_id,
-                                        call_hir_id: expr.hir_id,
-                                        parent_code: Lrc::new(code),
-                                    };
-                            }
-                        }
+                        self.point_at_type_arg_instead_of_call_if_possible(errors, expr);
+                        self.point_at_arg_instead_of_call_if_possible(
+                            errors,
+                            &final_arg_types,
+                            expr,
+                            sp,
+                            args,
+                        );
                     },
                 );
 
                 // We're processing function arguments so we definitely want to use
                 // two-phase borrows.
                 self.demand_coerce(&arg, checked_ty, coerce_ty, None, AllowTwoPhase::Yes);
-                final_arg_types.push((i, checked_ty, coerce_ty));
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
@@ -973,45 +957,79 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 continue;
             }
 
-            if let ty::PredicateKind::Trait(predicate) =
-                error.obligation.predicate.kind().skip_binder()
-            {
-                // Collect the argument position for all arguments that could have caused this
-                // `FulfillmentError`.
-                let mut referenced_in = final_arg_types
-                    .iter()
-                    .map(|&(i, checked_ty, _)| (i, checked_ty))
-                    .chain(final_arg_types.iter().map(|&(i, _, coerced_ty)| (i, coerced_ty)))
-                    .flat_map(|(i, ty)| {
-                        let ty = self.resolve_vars_if_possible(ty);
-                        // We walk the argument type because the argument's type could have
-                        // been `Option<T>`, but the `FulfillmentError` references `T`.
-                        if ty.walk(self.tcx).any(|arg| arg == predicate.self_ty().into()) {
-                            Some(i)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<usize>>();
+            // Peel derived obligation, because it's the type that originally
+            // started this inference chain that matters, not the one we wound
+            // up with at the end.
+            fn unpeel_to_top(
+                mut code: Lrc<ObligationCauseCode<'_>>,
+            ) -> Lrc<ObligationCauseCode<'_>> {
+                let mut result_code = code.clone();
+                loop {
+                    let parent = match &*code {
+                        ObligationCauseCode::BuiltinDerivedObligation(c)
+                        | ObligationCauseCode::ImplDerivedObligation(c)
+                        | ObligationCauseCode::DerivedObligation(c) => c.parent_code.clone(),
+                        _ => break,
+                    };
+                    result_code = std::mem::replace(&mut code, parent);
+                }
+                result_code
+            }
+            let self_: ty::subst::GenericArg<'_> = match &*unpeel_to_top(Lrc::new(error.obligation.cause.code.clone())) {
+                ObligationCauseCode::BuiltinDerivedObligation(code) |
+                ObligationCauseCode::ImplDerivedObligation(code) |
+                ObligationCauseCode::DerivedObligation(code) => {
+                    code.parent_trait_ref.self_ty().skip_binder().into()
+                }
+                _ if let ty::PredicateKind::Trait(predicate) =
+                    error.obligation.predicate.kind().skip_binder() => {
+                        predicate.self_ty().into()
+                    }
+                _ =>  continue,
+            };
+            let self_ = self.resolve_vars_if_possible(self_);
 
-                // Both checked and coerced types could have matched, thus we need to remove
-                // duplicates.
+            // Collect the argument position for all arguments that could have caused this
+            // `FulfillmentError`.
+            let mut referenced_in = final_arg_types
+                .iter()
+                .map(|&(i, checked_ty, _)| (i, checked_ty))
+                .chain(final_arg_types.iter().map(|&(i, _, coerced_ty)| (i, coerced_ty)))
+                .flat_map(|(i, ty)| {
+                    let ty = self.resolve_vars_if_possible(ty);
+                    // We walk the argument type because the argument's type could have
+                    // been `Option<T>`, but the `FulfillmentError` references `T`.
+                    if ty.walk(self.tcx).any(|arg| arg == self_) { Some(i) } else { None }
+                })
+                .collect::<Vec<usize>>();
 
-                // We sort primitive type usize here and can use unstable sort
-                referenced_in.sort_unstable();
-                referenced_in.dedup();
+            // Both checked and coerced types could have matched, thus we need to remove
+            // duplicates.
 
-                if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
-                    // We make sure that only *one* argument matches the obligation failure
-                    // and we assign the obligation's span to its expression's.
-                    error.obligation.cause.make_mut().span = args[ref_in].span;
-                    let code = error.obligation.cause.code.clone();
-                    error.obligation.cause.make_mut().code =
-                        ObligationCauseCode::FunctionArgumentObligation {
-                            arg_hir_id: args[ref_in].hir_id,
-                            call_hir_id: expr.hir_id,
-                            parent_code: Lrc::new(code),
-                        };
+            // We sort primitive type usize here and can use unstable sort
+            referenced_in.sort_unstable();
+            referenced_in.dedup();
+
+            if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
+                // Do not point at the inside of a macro.
+                // That would often result in poor error messages.
+                if args[ref_in].span.from_expansion() {
+                    return;
+                }
+                // We make sure that only *one* argument matches the obligation failure
+                // and we assign the obligation's span to its expression's.
+                error.obligation.cause.make_mut().span = args[ref_in].span;
+                let code = error.obligation.cause.code.clone();
+                error.obligation.cause.make_mut().code =
+                    ObligationCauseCode::FunctionArgumentObligation {
+                        arg_hir_id: args[ref_in].hir_id,
+                        call_hir_id: expr.hir_id,
+                        parent_code: Lrc::new(code),
+                    };
+            } else if error.obligation.cause.make_mut().span == call_sp {
+                // Make function calls point at the callee, not the whole thing.
+                if let hir::ExprKind::Call(callee, _) = expr.kind {
+                    error.obligation.cause.make_mut().span = callee.span;
                 }
             }
         }

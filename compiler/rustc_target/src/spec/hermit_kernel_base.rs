@@ -1,4 +1,4 @@
-use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions, TlsModel};
+use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
@@ -8,17 +8,14 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
-        os: "hermit".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         disable_redzone: true,
         linker: Some("rust-lld".to_owned()),
         executables: true,
-        has_elf_tls: true,
         pre_link_args,
         panic_strategy: PanicStrategy::Abort,
         position_independent_executables: true,
         static_position_independent_executables: true,
-        tls_model: TlsModel::InitialExec,
         ..Default::default()
     }
 }

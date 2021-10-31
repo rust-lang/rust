@@ -134,9 +134,8 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                     Applicability::MachineApplicable,
                 );
                 if self.for_expr_span == expr.span {
-                    let expr_span = expr.span.ctxt().outer_expn_data().call_site;
                     diag.span_suggestion(
-                        receiver_arg.span.shrink_to_hi().to(expr_span.shrink_to_hi()),
+                        receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
                         "or remove `.into_iter()` to iterate by value",
                         String::new(),
                         Applicability::MaybeIncorrect,

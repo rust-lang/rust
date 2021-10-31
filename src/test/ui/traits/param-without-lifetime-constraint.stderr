@@ -2,13 +2,13 @@ error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/param-without-lifetime-constraint.rs:14:5
    |
 LL |     fn get_relation(&self) -> To;
-   |     ----------------------------- expected `fn(&Article) -> &ProofReader`
+   |     ----------------------------- expected `fn(&'1 Article) -> &'2 ProofReader`
 ...
 LL |     fn get_relation(&self) -> &ProofReader {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&Article) -> &ProofReader`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 Article) -> &'1 ProofReader`
    |
-   = note: expected `fn(&Article) -> &ProofReader`
-              found `fn(&Article) -> &ProofReader`
+   = note: expected `fn(&'1 Article) -> &'2 ProofReader`
+              found `fn(&'1 Article) -> &'1 ProofReader`
 help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
   --> $DIR/param-without-lifetime-constraint.rs:10:31
    |

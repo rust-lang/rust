@@ -66,7 +66,7 @@ assert_eq!(x, 5);
 This will write the value `5` into the `u64` variable `x`.
 You can see that the string literal we use to specify instructions is actually a template string.
 It is governed by the same rules as Rust [format strings][format-syntax].
-The arguments that are inserted into the template however look a bit different then you may
+The arguments that are inserted into the template however look a bit different than you may
 be familiar with. First we need to specify if the variable is an input or an output of the
 inline assembly. In this case it is an output. We declared this by writing `out`.
 We also need to specify in what kind of register the assembly expects the variable.
@@ -106,7 +106,7 @@ code.
 Second, we can see that inputs are declared by writing `in` instead of `out`.
 
 Third, one of our operands has a type we haven't seen yet, `const`.
-This tells the compiler to expand this argument to value directly inside the assembly template.
+This tells the compiler to expand this argument to a value directly inside the assembly template.
 This is only possible for constants and literals.
 
 Fourth, we can see that we can specify an argument number, or name as in any format string.

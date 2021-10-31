@@ -69,6 +69,8 @@ create_config! {
     format_macro_matchers: bool, false, false,
         "Format the metavariable matching patterns in macros";
     format_macro_bodies: bool, true, false, "Format the bodies of macros";
+    hex_literal_case: HexLiteralCase, HexLiteralCase::Preserve, false,
+        "Format hexadecimal integer literals";
 
     // Single line expressions and items
     empty_item_single_line: bool, true, false,
@@ -125,7 +127,7 @@ create_config! {
         "Add trailing semicolon after break, continue and return";
     trailing_comma: SeparatorTactic, SeparatorTactic::Vertical, false,
         "How to handle trailing commas for lists";
-    match_block_trailing_comma: bool, false, false,
+    match_block_trailing_comma: bool, false, true,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
     blank_lines_upper_bound: usize, 1, false,
         "Maximum number of blank lines which can be put between items";
@@ -136,6 +138,7 @@ create_config! {
     inline_attribute_width: usize, 0, false,
         "Write an item and its attribute on the same line \
         if their combined width is below a threshold";
+    format_generated_files: bool, false, false, "Format generated files";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";
@@ -152,7 +155,7 @@ create_config! {
         "Require a specific version of rustfmt";
     unstable_features: bool, false, false,
             "Enables unstable features. Only available on nightly channel";
-    disable_all_formatting: bool, false, false, "Don't reformat anything";
+    disable_all_formatting: bool, false, true, "Don't reformat anything";
     skip_children: bool, false, false, "Don't reformat out of line modules";
     hide_parse_errors: bool, false, false, "Hide errors from the parser";
     error_on_line_overflow: bool, false, false, "Error if unable to get all lines within max_width";
@@ -569,6 +572,7 @@ license_template_path = ""
 format_strings = false
 format_macro_matchers = false
 format_macro_bodies = true
+hex_literal_case = "Preserve"
 empty_item_single_line = true
 struct_lit_single_line = true
 fn_single_line = false
@@ -604,6 +608,7 @@ blank_lines_lower_bound = 0
 edition = "2015"
 version = "One"
 inline_attribute_width = 0
+format_generated_files = false
 merge_derives = true
 use_try_shorthand = false
 use_field_init_shorthand = false

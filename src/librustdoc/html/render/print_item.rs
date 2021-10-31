@@ -21,7 +21,7 @@ use super::{
     render_impl, render_stability_since_raw, write_srclink, AssocItemLink, Context,
     ImplRenderingParameters,
 };
-use crate::clean::{self, GetDefId};
+use crate::clean;
 use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
@@ -34,10 +34,10 @@ use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 
 use serde::Serialize;
 
-const ITEM_TABLE_OPEN: &'static str = "<div class=\"item-table\">";
-const ITEM_TABLE_CLOSE: &'static str = "</div>";
-const ITEM_TABLE_ROW_OPEN: &'static str = "<div class=\"item-row\">";
-const ITEM_TABLE_ROW_CLOSE: &'static str = "</div>";
+const ITEM_TABLE_OPEN: &str = "<div class=\"item-table\">";
+const ITEM_TABLE_CLOSE: &str = "</div>";
+const ITEM_TABLE_ROW_OPEN: &str = "<div class=\"item-row\">";
+const ITEM_TABLE_ROW_CLOSE: &str = "</div>";
 
 // A component in a `use` path, like `string` in std::string::ToString
 #[derive(Serialize)]
@@ -482,24 +482,26 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
         + name.as_str().len()
         + generics_len;
 
-    wrap_item(w, "fn", |w| {
-        render_attributes_in_pre(w, it, "");
-        w.reserve(header_len);
-        write!(
-            w,
-            "{vis}{constness}{asyncness}{unsafety}{abi}fn \
-             {name}{generics}{decl}{notable_traits}{where_clause}",
-            vis = vis,
-            constness = constness,
-            asyncness = asyncness,
-            unsafety = unsafety,
-            abi = abi,
-            name = name,
-            generics = f.generics.print(cx),
-            where_clause = print_where_clause(&f.generics, cx, 0, true),
-            decl = f.decl.full_print(header_len, 0, f.header.asyncness, cx),
-            notable_traits = notable_traits_decl(&f.decl, cx),
-        );
+    wrap_into_docblock(w, |w| {
+        wrap_item(w, "fn", |w| {
+            render_attributes_in_pre(w, it, "");
+            w.reserve(header_len);
+            write!(
+                w,
+                "{vis}{constness}{asyncness}{unsafety}{abi}fn \
+                 {name}{generics}{decl}{notable_traits}{where_clause}",
+                vis = vis,
+                constness = constness,
+                asyncness = asyncness,
+                unsafety = unsafety,
+                abi = abi,
+                name = name,
+                generics = f.generics.print(cx),
+                where_clause = print_where_clause(&f.generics, cx, 0, true),
+                decl = f.decl.full_print(header_len, 0, f.header.asyncness, cx),
+                notable_traits = notable_traits_decl(&f.decl, cx),
+            );
+        });
     });
     document(w, cx, it, None, HeadingOffset::H2)
 }
@@ -740,7 +742,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         }
 
         let (local, foreign) = implementors.iter().partition::<Vec<_>, _>(|i| {
-            i.inner_impl().for_.def_id_full(cache).map_or(true, |d| cache.paths.contains_key(&d))
+            i.inner_impl().for_.def_id(cache).map_or(true, |d| cache.paths.contains_key(&d))
         });
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
@@ -759,7 +761,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 render_impl(
                     w,
                     cx,
-                    &implementor,
+                    implementor,
                     it,
                     assoc_link,
                     RenderMode::Normal,
@@ -844,16 +846,18 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
 }
 
 fn item_trait_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::TraitAlias) {
-    wrap_item(w, "trait-alias", |w| {
-        render_attributes_in_pre(w, it, "");
-        write!(
-            w,
-            "trait {}{}{} = {};",
-            it.name.as_ref().unwrap(),
-            t.generics.print(cx),
-            print_where_clause(&t.generics, cx, 0, true),
-            bounds(&t.bounds, true, cx)
-        );
+    wrap_into_docblock(w, |w| {
+        wrap_item(w, "trait-alias", |w| {
+            render_attributes_in_pre(w, it, "");
+            write!(
+                w,
+                "trait {}{}{} = {};",
+                it.name.as_ref().unwrap(),
+                t.generics.print(cx),
+                print_where_clause(&t.generics, cx, 0, true),
+                bounds(&t.bounds, true, cx)
+            );
+        });
     });
 
     document(w, cx, it, None, HeadingOffset::H2);
@@ -866,16 +870,18 @@ fn item_trait_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clea
 }
 
 fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::OpaqueTy) {
-    wrap_item(w, "opaque", |w| {
-        render_attributes_in_pre(w, it, "");
-        write!(
-            w,
-            "type {}{}{where_clause} = impl {bounds};",
-            it.name.as_ref().unwrap(),
-            t.generics.print(cx),
-            where_clause = print_where_clause(&t.generics, cx, 0, true),
-            bounds = bounds(&t.bounds, false, cx),
-        );
+    wrap_into_docblock(w, |w| {
+        wrap_item(w, "opaque", |w| {
+            render_attributes_in_pre(w, it, "");
+            write!(
+                w,
+                "type {}{}{where_clause} = impl {bounds};",
+                it.name.as_ref().unwrap(),
+                t.generics.print(cx),
+                where_clause = print_where_clause(&t.generics, cx, 0, true),
+                bounds = bounds(&t.bounds, false, cx),
+            );
+        });
     });
 
     document(w, cx, it, None, HeadingOffset::H2);
@@ -894,20 +900,37 @@ fn item_typedef(
     t: &clean::Typedef,
     is_associated: bool,
 ) {
-    wrap_item(w, "typedef", |w| {
-        render_attributes_in_pre(w, it, "");
-        if !is_associated {
-            write!(w, "{}", it.visibility.print_with_space(it.def_id, cx));
-        }
-        write!(
-            w,
-            "type {}{}{where_clause} = {type_};",
-            it.name.as_ref().unwrap(),
-            t.generics.print(cx),
-            where_clause = print_where_clause(&t.generics, cx, 0, true),
-            type_ = t.type_.print(cx),
-        );
-    });
+    fn write_content(
+        w: &mut Buffer,
+        cx: &Context<'_>,
+        it: &clean::Item,
+        t: &clean::Typedef,
+        is_associated: bool,
+    ) {
+        wrap_item(w, "typedef", |w| {
+            render_attributes_in_pre(w, it, "");
+            if !is_associated {
+                write!(w, "{}", it.visibility.print_with_space(it.def_id, cx));
+            }
+            write!(
+                w,
+                "type {}{}{where_clause} = {type_};",
+                it.name.as_ref().unwrap(),
+                t.generics.print(cx),
+                where_clause = print_where_clause(&t.generics, cx, 0, true),
+                type_ = t.type_.print(cx),
+            );
+        });
+    }
+
+    // If this is an associated typedef, we don't want to wrap it into a docblock.
+    if is_associated {
+        write_content(w, cx, it, t, is_associated);
+    } else {
+        wrap_into_docblock(w, |w| {
+            write_content(w, cx, it, t, is_associated);
+        });
+    }
 
     document(w, cx, it, None, HeadingOffset::H2);
 
@@ -960,7 +983,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             if let Some(stability_class) = field.stability_class(cx.tcx()) {
                 write!(w, "<span class=\"stab {stab}\"></span>", stab = stability_class);
             }
-            document(w, cx, field, Some(it), HeadingOffset::H2);
+            document(w, cx, field, Some(it), HeadingOffset::H3);
         }
     }
     let def_id = it.def_id.expect_def_id();
@@ -1071,7 +1094,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             w.write_str("</code>");
             render_stability_since(w, variant, it, cx.tcx());
             w.write_str("</div>");
-            document(w, cx, variant, Some(it), HeadingOffset::H2);
+            document(w, cx, variant, Some(it), HeadingOffset::H3);
             document_non_exhaustive(w, variant);
 
             use crate::clean::Variant;
@@ -1111,7 +1134,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                                 f = field.name.as_ref().unwrap(),
                                 t = ty.print(cx)
                             );
-                            document(w, cx, field, Some(variant), HeadingOffset::H2);
+                            document(w, cx, field, Some(variant), HeadingOffset::H4);
                         }
                         _ => unreachable!(),
                     }
@@ -1136,38 +1159,41 @@ fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Mac
             it.span(cx.tcx()).inner().edition(),
             None,
             None,
+            None,
         );
     });
     document(w, cx, it, None, HeadingOffset::H2)
 }
 
 fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
-    let name = it.name.as_ref().expect("proc-macros always have names");
-    match m.kind {
-        MacroKind::Bang => {
-            wrap_item(w, "macro", |w| {
-                write!(w, "{}!() {{ /* proc-macro */ }}", name);
-            });
-        }
-        MacroKind::Attr => {
-            wrap_item(w, "attr", |w| {
-                write!(w, "#[{}]", name);
-            });
-        }
-        MacroKind::Derive => {
-            wrap_item(w, "derive", |w| {
-                write!(w, "#[derive({})]", name);
-                if !m.helpers.is_empty() {
-                    w.push_str("\n{\n");
-                    w.push_str("    // Attributes available to this derive:\n");
-                    for attr in &m.helpers {
-                        writeln!(w, "    #[{}]", attr);
+    wrap_into_docblock(w, |w| {
+        let name = it.name.as_ref().expect("proc-macros always have names");
+        match m.kind {
+            MacroKind::Bang => {
+                wrap_item(w, "macro", |w| {
+                    write!(w, "{}!() {{ /* proc-macro */ }}", name);
+                });
+            }
+            MacroKind::Attr => {
+                wrap_item(w, "attr", |w| {
+                    write!(w, "#[{}]", name);
+                });
+            }
+            MacroKind::Derive => {
+                wrap_item(w, "derive", |w| {
+                    write!(w, "#[derive({})]", name);
+                    if !m.helpers.is_empty() {
+                        w.push_str("\n{\n");
+                        w.push_str("    // Attributes available to this derive:\n");
+                        for attr in &m.helpers {
+                            writeln!(w, "    #[{}]", attr);
+                        }
+                        w.push_str("}\n");
                     }
-                    w.push_str("}\n");
-                }
-            });
+                });
+            }
         }
-    }
+    });
     document(w, cx, it, None, HeadingOffset::H2)
 }
 
@@ -1177,38 +1203,40 @@ fn item_primitive(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
 }
 
 fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::Constant) {
-    wrap_item(w, "const", |w| {
-        render_attributes_in_code(w, it);
+    wrap_into_docblock(w, |w| {
+        wrap_item(w, "const", |w| {
+            render_attributes_in_code(w, it);
 
-        write!(
-            w,
-            "{vis}const {name}: {typ}",
-            vis = it.visibility.print_with_space(it.def_id, cx),
-            name = it.name.as_ref().unwrap(),
-            typ = c.type_.print(cx),
-        );
+            write!(
+                w,
+                "{vis}const {name}: {typ}",
+                vis = it.visibility.print_with_space(it.def_id, cx),
+                name = it.name.as_ref().unwrap(),
+                typ = c.type_.print(cx),
+            );
 
-        let value = c.value(cx.tcx());
-        let is_literal = c.is_literal(cx.tcx());
-        let expr = c.expr(cx.tcx());
-        if value.is_some() || is_literal {
-            write!(w, " = {expr};", expr = Escape(&expr));
-        } else {
-            w.write_str(";");
-        }
+            let value = c.value(cx.tcx());
+            let is_literal = c.is_literal(cx.tcx());
+            let expr = c.expr(cx.tcx());
+            if value.is_some() || is_literal {
+                write!(w, " = {expr};", expr = Escape(&expr));
+            } else {
+                w.write_str(";");
+            }
 
-        if !is_literal {
-            if let Some(value) = &value {
-                let value_lowercase = value.to_lowercase();
-                let expr_lowercase = expr.to_lowercase();
+            if !is_literal {
+                if let Some(value) = &value {
+                    let value_lowercase = value.to_lowercase();
+                    let expr_lowercase = expr.to_lowercase();
 
-                if value_lowercase != expr_lowercase
-                    && value_lowercase.trim_end_matches("i32") != expr_lowercase
-                {
-                    write!(w, " // {value}", value = Escape(value));
+                    if value_lowercase != expr_lowercase
+                        && value_lowercase.trim_end_matches("i32") != expr_lowercase
+                    {
+                        write!(w, " // {value}", value = Escape(value));
+                    }
                 }
             }
-        }
+        });
     });
 
     document(w, cx, it, None, HeadingOffset::H2)
@@ -1258,7 +1286,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
                     name = field_name,
                     ty = ty.print(cx)
                 );
-                document(w, cx, field, Some(it), HeadingOffset::H2);
+                document(w, cx, field, Some(it), HeadingOffset::H3);
             }
         }
     }
@@ -1268,30 +1296,34 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
 }
 
 fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Static) {
-    wrap_item(w, "static", |w| {
-        render_attributes_in_code(w, it);
-        write!(
-            w,
-            "{vis}static {mutability}{name}: {typ}",
-            vis = it.visibility.print_with_space(it.def_id, cx),
-            mutability = s.mutability.print_with_space(),
-            name = it.name.as_ref().unwrap(),
-            typ = s.type_.print(cx)
-        );
+    wrap_into_docblock(w, |w| {
+        wrap_item(w, "static", |w| {
+            render_attributes_in_code(w, it);
+            write!(
+                w,
+                "{vis}static {mutability}{name}: {typ}",
+                vis = it.visibility.print_with_space(it.def_id, cx),
+                mutability = s.mutability.print_with_space(),
+                name = it.name.as_ref().unwrap(),
+                typ = s.type_.print(cx)
+            );
+        });
     });
     document(w, cx, it, None, HeadingOffset::H2)
 }
 
 fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
-    wrap_item(w, "foreigntype", |w| {
-        w.write_str("extern {\n");
-        render_attributes_in_code(w, it);
-        write!(
-            w,
-            "    {}type {};\n}}",
-            it.visibility.print_with_space(it.def_id, cx),
-            it.name.as_ref().unwrap(),
-        );
+    wrap_into_docblock(w, |w| {
+        wrap_item(w, "foreigntype", |w| {
+            w.write_str("extern {\n");
+            render_attributes_in_code(w, it);
+            write!(
+                w,
+                "    {}type {};\n}}",
+                it.visibility.print_with_space(it.def_id, cx),
+                it.name.as_ref().unwrap(),
+            );
+        });
     });
 
     document(w, cx, it, None, HeadingOffset::H2);
@@ -1374,7 +1406,7 @@ fn wrap_into_docblock<F>(w: &mut Buffer, f: F)
 where
     F: FnOnce(&mut Buffer),
 {
-    w.write_str("<div class=\"docblock type-decl\">");
+    w.write_str("<div class=\"docblock item-decl\">");
     f(w);
     w.write_str("</div>")
 }
@@ -1465,7 +1497,7 @@ fn render_union(
     );
     if let Some(g) = g {
         write!(w, "{}", g.print(cx));
-        write!(w, "{}", print_where_clause(&g, cx, 0, true));
+        write!(w, "{}", print_where_clause(g, cx, 0, true));
     }
 
     write!(w, " {{\n{}", tab);

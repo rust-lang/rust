@@ -117,6 +117,14 @@ impl<'a> FnKind<'a> {
             FnKind::Closure => None,
         }
     }
+
+    pub fn constness(self) -> Constness {
+        self.header().map_or(Constness::NotConst, |header| header.constness)
+    }
+
+    pub fn asyncness(self) -> IsAsync {
+        self.header().map_or(IsAsync::NotAsync, |header| header.asyncness)
+    }
 }
 
 /// An abstract representation of the HIR `rustc_middle::hir::map::Map`.
@@ -128,6 +136,28 @@ pub trait Map<'hir> {
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
     fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
     fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir>;
+}
+
+// Used when no map is actually available, forcing manual implementation of nested visitors.
+impl Map<'hir> for ! {
+    fn find(&self, _: HirId) -> Option<Node<'hir>> {
+        unreachable!()
+    }
+    fn body(&self, _: BodyId) -> &'hir Body<'hir> {
+        unreachable!()
+    }
+    fn item(&self, _: ItemId) -> &'hir Item<'hir> {
+        unreachable!()
+    }
+    fn trait_item(&self, _: TraitItemId) -> &'hir TraitItem<'hir> {
+        unreachable!()
+    }
+    fn impl_item(&self, _: ImplItemId) -> &'hir ImplItem<'hir> {
+        unreachable!()
+    }
+    fn foreign_item(&self, _: ForeignItemId) -> &'hir ForeignItem<'hir> {
+        unreachable!()
+    }
 }
 
 /// An erased version of `Map<'hir>`, using dynamic dispatch.

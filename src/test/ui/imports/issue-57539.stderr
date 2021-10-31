@@ -1,9 +1,10 @@
-error[E0659]: `core` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `core` is ambiguous
   --> $DIR/issue-57539.rs:4:9
    |
 LL |     use core;
    |         ^^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
    = note: `core` could refer to a built-in crate
    = help: use `::core` to refer to this crate unambiguously
 note: `core` could also refer to the module imported here

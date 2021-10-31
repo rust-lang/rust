@@ -299,10 +299,10 @@ window.initSearch = function(rawSearchIndex) {
                     var elems = Object.create(null);
                     var elength = obj[GENERICS_DATA].length;
                     for (var x = 0; x < elength; ++x) {
-                        if (!elems[obj[GENERICS_DATA][x]]) {
-                            elems[obj[GENERICS_DATA][x]] = 0;
+                        if (!elems[obj[GENERICS_DATA][x][NAME]]) {
+                            elems[obj[GENERICS_DATA][x][NAME]] = 0;
                         }
-                        elems[obj[GENERICS_DATA][x]] += 1;
+                        elems[obj[GENERICS_DATA][x][NAME]] += 1;
                     }
                     var total = 0;
                     var done = 0;
@@ -345,6 +345,7 @@ window.initSearch = function(rawSearchIndex) {
         // Check for type name and type generics (if any).
         function checkType(obj, val, literalSearch) {
             var lev_distance = MAX_LEV_DISTANCE + 1;
+            var tmp_lev = MAX_LEV_DISTANCE + 1;
             var len, x, firstGeneric;
             if (obj[NAME] === val.name) {
                 if (literalSearch) {
@@ -354,10 +355,10 @@ window.initSearch = function(rawSearchIndex) {
                             var elems = Object.create(null);
                             len = obj[GENERICS_DATA].length;
                             for (x = 0; x < len; ++x) {
-                                if (!elems[obj[GENERICS_DATA][x]]) {
-                                    elems[obj[GENERICS_DATA][x]] = 0;
+                                if (!elems[obj[GENERICS_DATA][x][NAME]]) {
+                                    elems[obj[GENERICS_DATA][x][NAME]] = 0;
                                 }
-                                elems[obj[GENERICS_DATA][x]] += 1;
+                                elems[obj[GENERICS_DATA][x][NAME]] += 1;
                             }
 
                             var allFound = true;
@@ -382,7 +383,7 @@ window.initSearch = function(rawSearchIndex) {
                     // If the type has generics but don't match, then it won't return at this point.
                     // Otherwise, `checkGenerics` will return 0 and it'll return.
                     if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length !== 0) {
-                        var tmp_lev = checkGenerics(obj, val);
+                        tmp_lev = checkGenerics(obj, val);
                         if (tmp_lev <= MAX_LEV_DISTANCE) {
                             return tmp_lev;
                         }
@@ -392,8 +393,8 @@ window.initSearch = function(rawSearchIndex) {
                 if ((!val.generics || val.generics.length === 0) &&
                       obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
                     return obj[GENERICS_DATA].some(
-                        function(name) {
-                            return name === val.name;
+                        function(gen) {
+                            return gen[NAME] === val.name;
                         });
                 }
                 return false;
@@ -404,17 +405,27 @@ window.initSearch = function(rawSearchIndex) {
                 // a levenshtein distance value that isn't *this* good so it goes
                 // into the search results but not too high.
                 lev_distance = Math.ceil((checkGenerics(obj, val) + lev_distance) / 2);
-            } else if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
+            }
+            if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
                 // We can check if the type we're looking for is inside the generics!
                 var olength = obj[GENERICS_DATA].length;
                 for (x = 0; x < olength; ++x) {
-                    lev_distance = Math.min(levenshtein(obj[GENERICS_DATA][x], val.name),
-                                            lev_distance);
+                    tmp_lev = Math.min(levenshtein(obj[GENERICS_DATA][x][NAME], val.name), tmp_lev);
+                }
+                if (tmp_lev !== 0) {
+                    // If we didn't find a good enough result, we go check inside the generics of
+                    // the generics.
+                    for (x = 0; x < olength && tmp_lev !== 0; ++x) {
+                        tmp_lev = Math.min(
+                            checkType(obj[GENERICS_DATA][x], val, literalSearch),
+                            tmp_lev
+                        );
+                    }
                 }
             }
             // Now whatever happens, the returned distance is "less good" so we should mark it
             // as such, and so we add 1 to the distance to make it "less good".
-            return lev_distance + 1;
+            return Math.min(lev_distance, tmp_lev) + 1;
         }
 
         function findArg(obj, val, literalSearch, typeFilter) {

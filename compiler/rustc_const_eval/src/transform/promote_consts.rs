@@ -26,7 +26,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use std::cell::Cell;
 use std::{cmp, iter, mem};
 
-use crate::transform::check_consts::{is_lang_special_const_fn, qualifs, ConstCx};
+use crate::transform::check_consts::{qualifs, ConstCx};
 use crate::transform::MirPass;
 
 /// A `MirPass` for promotion.
@@ -230,7 +230,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                         // We cannot promote things that need dropping, since the promoted value
                         // would not get dropped.
-                        if self.qualif_local::<qualifs::NeedsNonConstDrop>(place.local) {
+                        if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
                             return Err(Unpromotable);
                         }
 
@@ -656,9 +656,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
 
         let is_const_fn = match *fn_ty.kind() {
-            ty::FnDef(def_id, _) => {
-                self.tcx.is_const_fn_raw(def_id) || is_lang_special_const_fn(self.tcx, def_id)
-            }
+            ty::FnDef(def_id, _) => self.tcx.is_const_fn_raw(def_id),
             _ => false,
         };
         if !is_const_fn {

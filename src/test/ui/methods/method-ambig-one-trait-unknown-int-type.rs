@@ -23,7 +23,7 @@ fn m1() {
     // we couldn't infer the type of the vector just based on calling foo()...
     let mut x = Vec::new();
     //~^ ERROR type annotations needed
-    x.foo();
+    x.foo(); //~ ERROR type annotations needed
 }
 
 fn m2() {

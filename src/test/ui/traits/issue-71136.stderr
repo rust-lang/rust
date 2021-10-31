@@ -5,7 +5,7 @@ LL | #[derive(Clone)]
    |          ----- in this derive macro expansion
 LL | struct FooHolster {
 LL |     the_foos: Vec<Foo>,
-   |     ^^^^^^^^^^^^^^^^^^ expected an implementor of trait `Clone`
+   |     ^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `Foo`
    |
    = note: required because of the requirements on the impl of `Clone` for `Vec<Foo>`
 note: required by `clone`

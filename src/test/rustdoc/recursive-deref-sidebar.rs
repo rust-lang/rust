@@ -15,7 +15,7 @@ impl Deref for A {
     fn deref(&self) -> &B { todo!() }
 }
 
-// @!has recursive_deref_sidebar/struct.A.html '//div[@class="sidebar-links"]' 'foo_c'
+// @has recursive_deref_sidebar/struct.A.html '//div[@class="sidebar-links"]' 'foo_c'
 impl Deref for B {
     type Target = C;
     fn deref(&self) -> &C { todo!() }

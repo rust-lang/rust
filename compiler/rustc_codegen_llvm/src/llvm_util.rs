@@ -17,35 +17,25 @@ use std::path::Path;
 use std::ptr;
 use std::slice;
 use std::str;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
 
-static POISONED: AtomicBool = AtomicBool::new(false);
 static INIT: Once = Once::new();
 
 pub(crate) fn init(sess: &Session) {
     unsafe {
         // Before we touch LLVM, make sure that multithreading is enabled.
+        if llvm::LLVMIsMultithreaded() != 1 {
+            bug!("LLVM compiled without support for threads");
+        }
         INIT.call_once(|| {
-            if llvm::LLVMStartMultithreaded() != 1 {
-                // use an extra bool to make sure that all future usage of LLVM
-                // cannot proceed despite the Once not running more than once.
-                POISONED.store(true, Ordering::SeqCst);
-            }
-
             configure_llvm(sess);
         });
-
-        if POISONED.load(Ordering::SeqCst) {
-            bug!("couldn't enable multi-threaded LLVM");
-        }
     }
 }
 
 fn require_inited() {
-    INIT.call_once(|| bug!("llvm is not initialized"));
-    if POISONED.load(Ordering::SeqCst) {
-        bug!("couldn't enable multi-threaded LLVM");
+    if !INIT.is_completed() {
+        bug!("LLVM is not initialized");
     }
 }
 
@@ -95,8 +85,7 @@ unsafe fn configure_llvm(sess: &Session) {
         // Ref:
         // - https://github.com/rust-lang/rust/issues/85351
         // - https://reviews.llvm.org/D103167
-        let llvm_version = llvm_util::get_version();
-        if llvm_version >= (11, 0, 0) && llvm_version < (13, 0, 0) {
+        if llvm_util::get_version() < (13, 0, 0) {
             add("-enable-machine-outliner=never", false);
         }
 

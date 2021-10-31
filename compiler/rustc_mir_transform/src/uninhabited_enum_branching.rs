@@ -83,12 +83,9 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
             let bb = BasicBlock::from_usize(bb);
             trace!("processing block {:?}", bb);
 
-            let discriminant_ty =
-                if let Some(ty) = get_switched_on_type(&body.basic_blocks()[bb], tcx, body) {
-                    ty
-                } else {
-                    continue;
-                };
+            let Some(discriminant_ty) = get_switched_on_type(&body.basic_blocks()[bb], tcx, body) else {
+                continue;
+            };
 
             let layout = tcx.layout_of(tcx.param_env(body.source.def_id()).and(discriminant_ty));
 

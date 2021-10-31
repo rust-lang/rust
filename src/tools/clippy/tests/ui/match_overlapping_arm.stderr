@@ -1,63 +1,75 @@
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:13:9
    |
-LL |         0..=10 => println!("0 ... 10"),
+LL |         0..=10 => println!("0..=10"),
    |         ^^^^^^
    |
    = note: `-D clippy::match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:14:9
    |
-LL |         0..=11 => println!("0 ... 11"),
+LL |         0..=11 => println!("0..=11"),
    |         ^^^^^^
 
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:19:9
    |
-LL |         0..=5 => println!("0 ... 5"),
+LL |         0..=5 => println!("0..=5"),
    |         ^^^^^
    |
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:21:9
    |
-LL |         FOO..=11 => println!("0 ... 11"),
+LL |         FOO..=11 => println!("FOO..=11"),
    |         ^^^^^^^^
 
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:56:9
    |
-LL |         0..11 => println!("0 .. 11"),
+LL |         0..11 => println!("0..11"),
    |         ^^^^^
    |
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:57:9
    |
-LL |         0..=11 => println!("0 ... 11"),
+LL |         0..=11 => println!("0..=11"),
    |         ^^^^^^
 
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:81:9
    |
-LL |         0..=10 => println!("0 ... 10"),
+LL |         0..=10 => println!("0..=10"),
    |         ^^^^^^
    |
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:80:9
    |
-LL |         5..14 => println!("5 .. 14"),
+LL |         5..14 => println!("5..14"),
    |         ^^^^^
 
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:86:9
    |
-LL |         0..7 => println!("0 .. 7"),
+LL |         0..7 => println!("0..7"),
    |         ^^^^
    |
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:87:9
    |
-LL |         0..=10 => println!("0 ... 10"),
+LL |         0..=10 => println!("0..=10"),
    |         ^^^^^^
 
-error: aborting due to 5 previous errors
+error: some ranges overlap
+  --> $DIR/match_overlapping_arm.rs:98:9
+   |
+LL |         ..=23 => println!("..=23"),
+   |         ^^^^^
+   |
+note: overlaps with this
+  --> $DIR/match_overlapping_arm.rs:99:9
+   |
+LL |         ..26 => println!("..26"),
+   |         ^^^^
+
+error: aborting due to 6 previous errors
 

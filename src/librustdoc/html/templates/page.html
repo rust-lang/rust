@@ -109,6 +109,9 @@
          data-search-js="{{static_root_path | safe}}search{{page.resource_suffix}}.js"> {#- -#}
     </div>
     <script src="{{static_root_path | safe}}main{{page.resource_suffix}}.js"></script> {#- -#}
+    {%- if layout.scrape_examples_extension -%}
+    <script src="{{static_root_path | safe}}scrape-examples{{page.resource_suffix}}.js"></script> {#- -#}
+    {%- endif -%}
     {%- for script in page.static_extra_scripts -%}
     <script src="{{static_root_path | safe}}{{script}}.js"></script> {#- -#}
     {% endfor %}

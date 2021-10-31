@@ -196,7 +196,6 @@ struct ManifestPackage {
 
 #[derive(Debug, serde::Deserialize)]
 struct ManifestTargetPackage {
-    available: bool,
     url: Option<String>,
     hash: Option<String>,
     xz_url: Option<String>,

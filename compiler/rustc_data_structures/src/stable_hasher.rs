@@ -229,14 +229,14 @@ impl<CTX> HashStable<CTX> for ::std::num::NonZeroUsize {
 
 impl<CTX> HashStable<CTX> for f32 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        let val: u32 = self.to_bits();
+        let val: u32 = unsafe { ::std::mem::transmute(*self) };
         val.hash_stable(ctx, hasher);
     }
 }
 
 impl<CTX> HashStable<CTX> for f64 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        let val: u64 = self.to_bits();
+        let val: u64 = unsafe { ::std::mem::transmute(*self) };
         val.hash_stable(ctx, hasher);
     }
 }
@@ -298,6 +298,13 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for [T] {
         for item in self {
             item.hash_stable(ctx, hasher);
         }
+    }
+}
+
+impl<CTX> HashStable<CTX> for [u8] {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.len().hash_stable(ctx, hasher);
+        hasher.write(self);
     }
 }
 

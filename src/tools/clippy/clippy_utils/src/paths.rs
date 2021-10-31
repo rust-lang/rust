@@ -17,10 +17,15 @@ pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
 #[cfg(feature = "metadata-collector-lint")]
 pub const DIAGNOSTIC_BUILDER: [&str; 3] = ["rustc_errors", "diagnostic_builder", "DiagnosticBuilder"];
 pub const ARC_PTR_EQ: [&str; 4] = ["alloc", "sync", "Arc", "ptr_eq"];
+#[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
+pub const ASSERT_EQ_MACRO: [&str; 3] = ["core", "macros", "assert_eq"];
+#[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
+pub const ASSERT_MACRO: [&str; 4] = ["core", "macros", "builtin", "assert"];
+#[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
+pub const ASSERT_NE_MACRO: [&str; 3] = ["core", "macros", "assert_ne"];
 pub const ASMUT_TRAIT: [&str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
 pub(super) const BEGIN_PANIC: [&str; 3] = ["std", "panicking", "begin_panic"];
-pub(super) const BEGIN_PANIC_FMT: [&str; 3] = ["std", "panicking", "begin_panic_fmt"];
 /// Preferably use the diagnostic item `sym::Borrow` where possible
 pub const BORROW_TRAIT: [&str; 3] = ["core", "borrow", "Borrow"];
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
@@ -42,11 +47,17 @@ pub const DROP: [&str; 3] = ["core", "mem", "drop"];
 pub const DURATION: [&str; 3] = ["core", "time", "Duration"];
 #[cfg(feature = "internal-lints")]
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
+#[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
+pub const EPRINT_MACRO: [&str; 3] = ["std", "macros", "eprint"];
+#[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
+pub const EPRINTLN_MACRO: [&str; 3] = ["std", "macros", "eprintln"];
 pub const EXIT: [&str; 3] = ["std", "process", "exit"];
 pub const F32_EPSILON: [&str; 4] = ["core", "f32", "<impl f32>", "EPSILON"];
 pub const F64_EPSILON: [&str; 4] = ["core", "f64", "<impl f64>", "EPSILON"];
 pub const FILE: [&str; 3] = ["std", "fs", "File"];
 pub const FILE_TYPE: [&str; 3] = ["std", "fs", "FileType"];
+#[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
+pub const FORMAT_ARGS_MACRO: [&str; 4] = ["core", "macros", "builtin", "format_args"];
 pub const FROM_FROM: [&str; 4] = ["core", "convert", "From", "from"];
 pub const FROM_ITERATOR: [&str; 5] = ["core", "iter", "traits", "collect", "FromIterator"];
 pub const FROM_ITERATOR_METHOD: [&str; 6] = ["core", "iter", "traits", "collect", "FromIterator", "from_iter"];
@@ -109,6 +120,10 @@ pub const PERMISSIONS_FROM_MODE: [&str; 6] = ["std", "os", "unix", "fs", "Permis
 pub const POLL: [&str; 4] = ["core", "task", "poll", "Poll"];
 pub const POLL_PENDING: [&str; 5] = ["core", "task", "poll", "Poll", "Pending"];
 pub const POLL_READY: [&str; 5] = ["core", "task", "poll", "Poll", "Ready"];
+#[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
+pub const PRINT_MACRO: [&str; 3] = ["std", "macros", "print"];
+#[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
+pub const PRINTLN_MACRO: [&str; 3] = ["std", "macros", "println"];
 pub const PTR_COPY: [&str; 3] = ["core", "intrinsics", "copy"];
 pub const PTR_COPY_NONOVERLAPPING: [&str; 3] = ["core", "intrinsics", "copy_nonoverlapping"];
 pub const PTR_EQ: [&str; 3] = ["core", "ptr", "eq"];
@@ -185,3 +200,7 @@ pub const VEC_NEW: [&str; 4] = ["alloc", "vec", "Vec", "new"];
 pub const VEC_RESIZE: [&str; 4] = ["alloc", "vec", "Vec", "resize"];
 pub const WEAK_ARC: [&str; 3] = ["alloc", "sync", "Weak"];
 pub const WEAK_RC: [&str; 3] = ["alloc", "rc", "Weak"];
+#[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
+pub const WRITE_MACRO: [&str; 3] = ["core", "macros", "write"];
+#[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
+pub const WRITELN_MACRO: [&str; 3] = ["core", "macros", "writeln"];

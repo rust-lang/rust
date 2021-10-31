@@ -34,7 +34,7 @@ impl<T> Steal<T> {
     #[track_caller]
     pub fn borrow(&self) -> MappedReadGuard<'_, T> {
         let borrow = self.value.borrow();
-        if borrow.is_none() {
+        if let None = &*borrow {
             panic!("attempted to read from stolen value: {}", std::any::type_name::<T>());
         }
         ReadGuard::map(borrow, |opt| opt.as_ref().unwrap())

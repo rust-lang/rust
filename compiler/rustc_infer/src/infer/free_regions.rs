@@ -66,8 +66,6 @@ impl<'tcx> FreeRegionMap<'tcx> {
     /// follows. If we know that `r_b: 'static`, then this function
     /// will return true, even though we don't know anything that
     /// directly relates `r_a` and `r_b`.
-    ///
-    /// Also available through the `FreeRegionRelations` trait below.
     pub fn sub_free_regions(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -128,27 +126,6 @@ impl<'tcx> FreeRegionMap<'tcx> {
         };
         debug!("lub_free_regions(r_a={:?}, r_b={:?}) = {:?}", r_a, r_b, result);
         result
-    }
-}
-
-/// The NLL region handling code represents free region relations in a
-/// slightly different way; this trait allows functions to be abstract
-/// over which version is in use.
-pub trait FreeRegionRelations<'tcx> {
-    /// Tests whether `r_a <= r_b`. Both must be free regions or
-    /// `'static`.
-    fn sub_free_regions(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        shorter: ty::Region<'tcx>,
-        longer: ty::Region<'tcx>,
-    ) -> bool;
-}
-
-impl<'tcx> FreeRegionRelations<'tcx> for FreeRegionMap<'tcx> {
-    fn sub_free_regions(&self, tcx: TyCtxt<'tcx>, r_a: Region<'tcx>, r_b: Region<'tcx>) -> bool {
-        // invoke the "inherent method"
-        self.sub_free_regions(tcx, r_a, r_b)
     }
 }
 

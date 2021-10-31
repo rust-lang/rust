@@ -20,11 +20,11 @@ error[E0277]: the trait bound `T: Bar` is not satisfied
 LL |     T::c::<T>();
    |     ^^^^^^^^^ the trait `Bar` is not implemented for `T`
    |
-note: required by a bound in `Foo::c`
-  --> $DIR/trait-where-clause.rs:9:10
+note: required by `Foo::c`
+  --> $DIR/trait-where-clause.rs:9:5
    |
 LL |     fn c<T: ~const Bar>();
-   |          ^ required by this bound in `Foo::c`
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | const fn test1<T: ~const Foo + Bar + Bar>() {
@@ -52,11 +52,11 @@ error[E0277]: the trait bound `T: Bar` is not satisfied
 LL |     T::c::<T>();
    |     ^^^^^^^^^ the trait `Bar` is not implemented for `T`
    |
-note: required by a bound in `Foo::c`
-  --> $DIR/trait-where-clause.rs:9:10
+note: required by `Foo::c`
+  --> $DIR/trait-where-clause.rs:9:5
    |
 LL |     fn c<T: ~const Bar>();
-   |          ^ required by this bound in `Foo::c`
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn test3<T: Foo + Bar>() {

@@ -1,9 +1,10 @@
-error[E0659]: `f` is ambiguous (glob import vs glob import in the same module)
+error[E0659]: `f` is ambiguous
   --> $DIR/ambiguity-item.rs:14:13
    |
 LL |     let v = f;
    |             ^ ambiguous name
    |
+   = note: ambiguous because of multiple glob imports of a name in the same module
 note: `f` could refer to the function imported here
   --> $DIR/ambiguity-item.rs:6:5
    |
@@ -17,12 +18,13 @@ LL | use n::*; // OK, no conflict with `use m::*;`
    |     ^^^^
    = help: consider adding an explicit import of `f` to disambiguate
 
-error[E0659]: `f` is ambiguous (glob import vs glob import in the same module)
+error[E0659]: `f` is ambiguous
   --> $DIR/ambiguity-item.rs:16:9
    |
 LL |         f => {}
    |         ^ ambiguous name
    |
+   = note: ambiguous because of multiple glob imports of a name in the same module
 note: `f` could refer to the function imported here
   --> $DIR/ambiguity-item.rs:6:5
    |

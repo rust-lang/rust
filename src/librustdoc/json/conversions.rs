@@ -330,10 +330,10 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
             },
             Type { did: _, bounds, default, synthetic: _ } => GenericParamDefKind::Type {
                 bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
-                default: default.map(|x| x.into_tcx(tcx)),
+                default: default.map(|x| (*x).into_tcx(tcx)),
             },
             Const { did: _, ty, default } => {
-                GenericParamDefKind::Const { ty: ty.into_tcx(tcx), default }
+                GenericParamDefKind::Const { ty: (*ty).into_tcx(tcx), default: default.map(|x| *x) }
             }
         }
     }
@@ -412,7 +412,7 @@ impl FromWithTcx<clean::Type> for Type {
                         .map(|t| {
                             clean::GenericBound::TraitBound(t, rustc_hir::TraitBoundModifier::None)
                         })
-                        .chain(lt.into_iter().map(|lt| clean::GenericBound::Outlives(lt)))
+                        .chain(lt.map(clean::GenericBound::Outlives))
                         .map(|bound| bound.into_tcx(tcx))
                         .collect(),
                 }
@@ -697,6 +697,7 @@ impl FromWithTcx<ItemType> for ItemKind {
             TraitAlias => ItemKind::TraitAlias,
             ProcAttribute => ItemKind::ProcAttribute,
             ProcDerive => ItemKind::ProcDerive,
+            Generic => unreachable!(),
         }
     }
 }

@@ -43,7 +43,7 @@ else
     PYTHON="python2"
 fi
 
-if ! isCI || isCiBranch auto || isCiBranch beta; then
+if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
 fi
 
@@ -87,6 +87,11 @@ else
   # long for too little benefit, so we just turn them off.
   if [ "$NO_DEBUG_ASSERTIONS" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
+  fi
+
+  # Same for overflow checks
+  if [ "$NO_OVERFLOW_CHECKS" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-overflow-checks"
   fi
 
   # In general we always want to run tests with LLVM assertions enabled, but not

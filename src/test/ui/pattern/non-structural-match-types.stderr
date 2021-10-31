@@ -1,0 +1,14 @@
+error: `[closure@$DIR/non-structural-match-types.rs:9:17: 9:22]` cannot be used in patterns
+  --> $DIR/non-structural-match-types.rs:9:9
+   |
+LL |         const { || {} } => {},
+   |         ^^^^^^^^^^^^^^^
+
+error: `impl Future` cannot be used in patterns
+  --> $DIR/non-structural-match-types.rs:12:9
+   |
+LL |         const { async {} } => {},
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -672,6 +672,9 @@ impl Session {
     pub fn is_nightly_build(&self) -> bool {
         self.opts.unstable_features.is_nightly_build()
     }
+    pub fn is_sanitizer_cfi_enabled(&self) -> bool {
+        self.opts.debugging_opts.sanitizer.contains(SanitizerSet::CFI)
+    }
     pub fn overflow_checks(&self) -> bool {
         self.opts
             .cg
@@ -1397,6 +1400,16 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             "sanitizer is incompatible with statically linked libc, \
                                 disable it using `-C target-feature=-crt-static`",
         );
+    }
+
+    // LLVM CFI requires LTO.
+    if sess.is_sanitizer_cfi_enabled() {
+        if sess.opts.cg.lto == config::LtoCli::Unspecified
+            || sess.opts.cg.lto == config::LtoCli::No
+            || sess.opts.cg.lto == config::LtoCli::Thin
+        {
+            sess.err("`-Zsanitizer=cfi` requires `-Clto`");
+        }
     }
 }
 

@@ -4,6 +4,7 @@
 #![feature(format_args_capture)]
 #![feature(if_let_guard)]
 #![feature(iter_zip)]
+#![feature(let_else)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]

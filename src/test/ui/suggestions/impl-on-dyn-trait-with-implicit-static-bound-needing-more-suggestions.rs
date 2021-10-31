@@ -18,7 +18,7 @@ mod bav {
     impl Bar for i32 {}
 
     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32>>) -> impl OtherTrait<'a> {
-        val.use_self() //~ ERROR E0597
+        val.use_self() //~ ERROR cannot return reference to function parameter
     }
 }
 

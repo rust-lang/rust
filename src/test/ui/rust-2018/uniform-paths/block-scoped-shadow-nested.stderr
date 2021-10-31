@@ -1,9 +1,10 @@
-error[E0659]: `sub` is ambiguous (name vs any other name during import resolution)
+error[E0659]: `sub` is ambiguous
   --> $DIR/block-scoped-shadow-nested.rs:16:13
    |
 LL |         use sub::bar;
    |             ^^^ ambiguous name
    |
+   = note: ambiguous because of multiple potential import sources
 note: `sub` could refer to the module imported here
   --> $DIR/block-scoped-shadow-nested.rs:14:9
    |

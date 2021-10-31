@@ -1,0 +1,23 @@
+error[E0283]: type annotations needed
+  --> $DIR/coherence-overlap-trait-alias.rs:15:6
+   |
+LL | impl C for u32 {}
+   |      ^ cannot infer type for type `u32`
+   |
+note: multiple `impl`s satisfying `u32: C` found
+  --> $DIR/coherence-overlap-trait-alias.rs:13:1
+   |
+LL | impl<T: AB> C for T {}
+   | ^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_strict_coherence]
+LL | impl C for u32 {}
+   | ^^^^^^^^^^^^^^
+note: required by a bound in `C`
+  --> $DIR/coherence-overlap-trait-alias.rs:11:1
+   |
+LL | trait C {}
+   | ^^^^^^^ required by this bound in `C`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.

@@ -34,6 +34,7 @@ impl<T> ExpectedFound<T> {
 pub enum TypeError<'tcx> {
     Mismatch,
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),
+    PolarityMismatch(ExpectedFound<ty::ImplPolarity>),
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
@@ -103,6 +104,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             Mismatch => write!(f, "types differ"),
             ConstnessMismatch(values) => {
                 write!(f, "expected {} bound, found {} bound", values.expected, values.found)
+            }
+            PolarityMismatch(values) => {
+                write!(f, "expected {} polarity, found {} polarity", values.expected, values.found)
             }
             UnsafetyMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn", values.expected, values.found)
@@ -212,10 +216,9 @@ impl<'tcx> TypeError<'tcx> {
         use self::TypeError::*;
         match self {
             CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | ConstnessMismatch(_)
-            | Mismatch | AbiMismatch(_) | FixedArraySize(_) | ArgumentSorts(..) | Sorts(_)
-            | IntMismatch(_) | FloatMismatch(_) | VariadicMismatch(_) | TargetFeatureCast(_) => {
-                false
-            }
+            | PolarityMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
+            | ArgumentSorts(..) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
+            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | ArgumentMutability(_)

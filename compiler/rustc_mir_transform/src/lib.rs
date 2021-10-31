@@ -1,9 +1,9 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(bootstrap, feature(const_panic))]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
+#![feature(let_else)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(option_get_or_insert_default)]
@@ -27,7 +27,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
-use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
+use rustc_middle::mir::{dump_mir, traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
@@ -65,6 +65,7 @@ mod remove_storage_markers;
 mod remove_unneeded_drops;
 mod remove_zsts;
 mod required_consts;
+mod reveal_all;
 mod separate_const_switch;
 mod shim;
 mod simplify;
@@ -187,12 +188,14 @@ fn run_passes(
     let mut index = 0;
     let mut run_pass = |pass: &dyn MirPass<'tcx>| {
         let run_hooks = |body: &_, index, is_after| {
-            dump_mir::on_mir_pass(
+            let disambiguator = if is_after { "after" } else { "before" };
+            dump_mir(
                 tcx,
-                &format_args!("{:03}-{:03}", phase_index, index),
+                Some(&format_args!("{:03}-{:03}", phase_index, index)),
                 &pass.name(),
+                &disambiguator,
                 body,
-                is_after,
+                |_, _| Ok(()),
             );
         };
         run_hooks(body, index, false);
@@ -428,8 +431,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
     }
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-    use rustc_middle::hir::map::blocks::FnLikeNode;
-    let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
+    let is_fn_like = tcx.hir().get(hir_id).fn_kind().is_some();
     if is_fn_like {
         let did = def.did.to_def_id();
         let def = ty::WithOptConstParam::unknown(did);
@@ -488,6 +490,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // to them. We run some optimizations before that, because they may be harder to do on the state
     // machine than on MIR with async primitives.
     let optimizations_with_generators: &[&dyn MirPass<'tcx>] = &[
+        &reveal_all::RevealAll, // has to be done before inlining, since inlined code is in RevealAll mode.
         &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
         &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
         &unreachable_prop::UnreachablePropagation,

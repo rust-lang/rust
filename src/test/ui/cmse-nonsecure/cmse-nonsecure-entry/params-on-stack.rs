@@ -1,7 +1,6 @@
 // build-fail
 // compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 // needs-llvm-components: arm
-// min-llvm-version: 11.0
 #![feature(cmse_nonsecure_entry, no_core, lang_items)]
 #![no_core]
 #[lang="sized"]

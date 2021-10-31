@@ -2,6 +2,7 @@
 
 #![allow(clippy::stable_sort_primitive)]
 
+use std::cell::Ref;
 use std::cmp::Reverse;
 
 fn unnecessary_sort_by() {
@@ -33,6 +34,10 @@ fn unnecessary_sort_by() {
     // `Reverse(b)` would borrow in the following cases, don't lint
     vec.sort_by(|a, b| b.cmp(a));
     vec.sort_unstable_by(|a, b| b.cmp(a));
+
+    // No warning if element does not implement `Ord`
+    let mut vec: Vec<Ref<usize>> = Vec::new();
+    vec.sort_unstable_by(|a, b| a.cmp(b));
 }
 
 // Do not suggest returning a reference to the closure parameter of `Vec::sort_by_key`

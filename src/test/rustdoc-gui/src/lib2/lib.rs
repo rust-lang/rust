@@ -84,3 +84,20 @@ pub mod summary_table {
     /// | content | content |
     pub struct Foo;
 }
+
+pub mod too_long {
+pub type ReallyLongTypeNameLongLongLong = Option<unsafe extern "C" fn(a: *const u8, b: *const u8) -> *const u8>;
+
+pub const ReallyLongTypeNameLongLongLongConstBecauseWhyNotAConstRightGigaGigaSupraLong: u32 = 0;
+
+pub struct SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName {
+    pub a: u32,
+}
+
+impl SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName {
+    /// ```
+    /// let x = SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName { a: 0 };
+    /// ```
+        pub fn foo(&self) {}
+    }
+}

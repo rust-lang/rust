@@ -1,0 +1,30 @@
+error[E0277]: the trait bound `Uwu<10_u32, 12_u32>: Trait` is not satisfied
+  --> $DIR/rp_impl_trait_fail.rs:8:14
+   |
+LL | fn rawr() -> impl Trait {
+   |              ^^^^^^^^^^ the trait `Trait` is not implemented for `Uwu<10_u32, 12_u32>`
+   |
+   = help: the following implementations were found:
+             <Uwu<N> as Trait>
+
+error[E0277]: the trait bound `u32: Traitor<N, N>` is not satisfied
+  --> $DIR/rp_impl_trait_fail.rs:19:26
+   |
+LL | fn uwu<const N: u8>() -> impl Traitor<N> {
+   |                          ^^^^^^^^^^^^^^^ the trait `Traitor<N, N>` is not implemented for `u32`
+   |
+   = help: the following implementations were found:
+             <u32 as Traitor<N, 2_u8>>
+
+error[E0277]: the trait bound `u64: Traitor<1_u8, 1_u8>` is not satisfied
+  --> $DIR/rp_impl_trait_fail.rs:24:13
+   |
+LL | fn owo() -> impl Traitor {
+   |             ^^^^^^^^^^^^ the trait `Traitor<1_u8, 1_u8>` is not implemented for `u64`
+   |
+   = help: the following implementations were found:
+             <u64 as Traitor<1_u8, 2_u8>>
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

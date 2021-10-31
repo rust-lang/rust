@@ -58,8 +58,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ParamCandidate(param) => {
-                let obligations = self.confirm_param_candidate(obligation, param.value);
-                Ok(ImplSource::Param(obligations, param.constness))
+                let obligations = self.confirm_param_candidate(obligation, param.0.value);
+                Ok(ImplSource::Param(obligations, param.0.constness))
             }
 
             ImplCandidate(impl_def_id) => {

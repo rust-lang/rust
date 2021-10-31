@@ -4,6 +4,22 @@ error[E0284]: type annotations needed: cannot satisfy `<u8 as Element<_>>::Array
 LL |     0u16.foo(b);
    |          ^^^ cannot satisfy `<u8 as Element<_>>::Array == [u8; 3]`
 
-error: aborting due to previous error
+error[E0283]: type annotations needed
+  --> $DIR/issue-69683.rs:30:10
+   |
+LL |     0u16.foo(b);
+   |          ^^^ cannot infer type for type parameter `I` declared on the trait `Foo`
+   |
+note: multiple `impl`s satisfying `u8: Element<_>` found
+  --> $DIR/issue-69683.rs:5:1
+   |
+LL | impl<T> Element<()> for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl<T: Element<S>, S> Element<[S; 3]> for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0284`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0283, E0284.
+For more information about an error, try `rustc --explain E0283`.

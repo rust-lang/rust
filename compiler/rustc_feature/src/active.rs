@@ -684,6 +684,10 @@ declare_features! (
     /// Allows using the `non_exhaustive_omitted_patterns` lint.
     (active, non_exhaustive_omitted_patterns_lint, "1.57.0", Some(89554), None),
 
+    /// Allows creation of instances of a struct by moving fields that have
+    /// not changed from prior instances of the same struct (RFC #2528)
+    (incomplete, type_changing_struct_update, "1.58.0", Some(86555), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

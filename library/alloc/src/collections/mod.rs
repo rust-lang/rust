@@ -65,6 +65,7 @@ pub struct TryReserveError {
 impl TryReserveError {
     /// Details about the allocation that caused the error
     #[inline]
+    #[must_use]
     #[unstable(
         feature = "try_reserve_kind",
         reason = "Uncertain how much info should be exposed",

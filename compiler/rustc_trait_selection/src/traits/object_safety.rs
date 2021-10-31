@@ -647,9 +647,7 @@ fn receiver_is_dispatchable<'tcx>(
     debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
 
     let traits = (tcx.lang_items().unsize_trait(), tcx.lang_items().dispatch_from_dyn_trait());
-    let (unsize_did, dispatch_from_dyn_did) = if let (Some(u), Some(cu)) = traits {
-        (u, cu)
-    } else {
+    let (Some(unsize_did), Some(dispatch_from_dyn_did)) = traits else {
         debug!("receiver_is_dispatchable: Missing Unsize or DispatchFromDyn traits");
         return false;
     };
@@ -839,14 +837,13 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             // constants which are not considered const evaluatable.
             use rustc_middle::thir::abstract_const::Node;
             if let Ok(Some(ct)) = AbstractConst::new(self.tcx, uv.shrink()) {
-                const_evaluatable::walk_abstract_const(self.tcx, ct, |node| match node.root() {
-                    Node::Leaf(leaf) => {
-                        let leaf = leaf.subst(self.tcx, ct.substs);
-                        self.visit_const(leaf)
-                    }
-                    Node::Cast(_, _, ty) => self.visit_ty(ty),
-                    Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
-                        ControlFlow::CONTINUE
+                const_evaluatable::walk_abstract_const(self.tcx, ct, |node| {
+                    match node.root(self.tcx) {
+                        Node::Leaf(leaf) => self.visit_const(leaf),
+                        Node::Cast(_, _, ty) => self.visit_ty(ty),
+                        Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
+                            ControlFlow::CONTINUE
+                        }
                     }
                 })
             } else {

@@ -82,7 +82,8 @@ macro_rules! nonzero_integers {
             }
 
             #[stable(feature = "from_nonzero", since = "1.31.0")]
-            impl From<$Ty> for $Int {
+            #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
+            impl const From<$Ty> for $Int {
                 #[doc = concat!("Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`")]
                 #[inline]
                 fn from(nonzero: $Ty) -> Self {
@@ -91,7 +92,8 @@ macro_rules! nonzero_integers {
             }
 
             #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-            impl BitOr for $Ty {
+            #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+            impl const BitOr for $Ty {
                 type Output = Self;
                 #[inline]
                 fn bitor(self, rhs: Self) -> Self::Output {
@@ -102,7 +104,8 @@ macro_rules! nonzero_integers {
             }
 
             #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-            impl BitOr<$Int> for $Ty {
+            #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+            impl const BitOr<$Int> for $Ty {
                 type Output = Self;
                 #[inline]
                 fn bitor(self, rhs: $Int) -> Self::Output {
@@ -114,7 +117,8 @@ macro_rules! nonzero_integers {
             }
 
             #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-            impl BitOr<$Ty> for $Int {
+            #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+            impl const BitOr<$Ty> for $Int {
                 type Output = $Ty;
                 #[inline]
                 fn bitor(self, rhs: $Ty) -> Self::Output {
@@ -126,7 +130,8 @@ macro_rules! nonzero_integers {
             }
 
             #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-            impl BitOrAssign for $Ty {
+            #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+            impl const BitOrAssign for $Ty {
                 #[inline]
                 fn bitor_assign(&mut self, rhs: Self) {
                     *self = *self | rhs;
@@ -134,7 +139,8 @@ macro_rules! nonzero_integers {
             }
 
             #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-            impl BitOrAssign<$Int> for $Ty {
+            #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+            impl const BitOrAssign<$Int> for $Ty {
                 #[inline]
                 fn bitor_assign(&mut self, rhs: $Int) {
                     *self = *self | rhs;
@@ -256,7 +262,8 @@ macro_rules! nonzero_integers_div {
     ( $( $Ty: ident($Int: ty); )+ ) => {
         $(
             #[stable(feature = "nonzero_div", since = "1.51.0")]
-            impl Div<$Ty> for $Int {
+            #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+            impl const Div<$Ty> for $Int {
                 type Output = $Int;
                 /// This operation rounds towards zero,
                 /// truncating any fractional part of the exact result, and cannot panic.
@@ -269,7 +276,8 @@ macro_rules! nonzero_integers_div {
             }
 
             #[stable(feature = "nonzero_div", since = "1.51.0")]
-            impl Rem<$Ty> for $Int {
+            #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+            impl const Rem<$Ty> for $Int {
                 type Output = $Int;
                 /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
                 #[inline]

@@ -9,8 +9,8 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(const_assume)]
 #![feature(const_cell_into_inner)]
+#![feature(const_convert)]
 #![feature(const_maybe_uninit_assume_init)]
-#![cfg_attr(bootstrap, feature(const_panic))]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_ptr_offset)]
@@ -69,9 +69,12 @@
 #![feature(integer_atomics)]
 #![feature(int_roundings)]
 #![feature(slice_group_by)]
+#![feature(split_array)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]
 #![feature(unzip_option)]
+#![feature(const_array_from_ref)]
+#![feature(const_slice_from_ref)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

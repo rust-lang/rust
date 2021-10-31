@@ -288,7 +288,7 @@ fn main() {
             let path = PathBuf::from(s);
             println!("cargo:rustc-link-search=native={}", path.parent().unwrap().display());
             if target.contains("windows") {
-                println!("cargo:rustc-link-lib=static-nobundle={}", stdcppname);
+                println!("cargo:rustc-link-lib=static:-bundle={}", stdcppname);
             } else {
                 println!("cargo:rustc-link-lib=static={}", stdcppname);
             }
@@ -302,6 +302,6 @@ fn main() {
     // Libstdc++ depends on pthread which Rust doesn't link on MinGW
     // since nothing else requires it.
     if target.contains("windows-gnu") {
-        println!("cargo:rustc-link-lib=static-nobundle=pthread");
+        println!("cargo:rustc-link-lib=static:-bundle=pthread");
     }
 }

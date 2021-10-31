@@ -10,10 +10,16 @@ LL |     let v = Unit2.m(
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0271]: type mismatch resolving `for<'r> <[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:39] as FnOnce<((&'r u8,),)>>::Output == Unit3`
-  --> $DIR/issue-62203-hrtb-ice.rs:38:19
+  --> $DIR/issue-62203-hrtb-ice.rs:40:9
    |
-LL |     let v = Unit2.m(
-   |                   ^ expected struct `Unit4`, found struct `Unit3`
+LL |       let v = Unit2.m(
+   |                     - required by a bound introduced by this call
+LL |
+LL | /         L {
+LL | |
+LL | |             f : |x| { drop(x); Unit4 }
+LL | |         });
+   | |_________^ expected struct `Unit4`, found struct `Unit3`
    |
 note: required because of the requirements on the impl of `for<'r> T0<'r, (&'r u8,)>` for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:39]>`
   --> $DIR/issue-62203-hrtb-ice.rs:17:16

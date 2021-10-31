@@ -15,7 +15,7 @@ use rustc_span::{MultiSpan, SourceFile, Span};
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
 use crate::{
-    CodeSuggestion, Diagnostic, DiagnosticId, Level, SubDiagnostic, SubstitutionHighlight,
+    CodeSuggestion, Diagnostic, DiagnosticId, Handler, Level, SubDiagnostic, SubstitutionHighlight,
     SuggestionStyle,
 };
 
@@ -449,11 +449,7 @@ pub trait Emitter {
         span: &mut MultiSpan,
         children: &mut Vec<SubDiagnostic>,
     ) {
-        let source_map = if let Some(ref sm) = source_map {
-            sm
-        } else {
-            return;
-        };
+        let Some(source_map) = source_map else { return };
         debug!("fix_multispans_in_extern_macros: before: span={:?} children={:?}", span, children);
         self.fix_multispan_in_extern_macros(source_map, span);
         for child in children.iter_mut() {
@@ -527,14 +523,27 @@ impl Emitter for EmitterWriter {
     }
 }
 
-/// An emitter that does nothing when emitting a diagnostic.
-pub struct SilentEmitter;
+/// An emitter that does nothing when emitting a non-fatal diagnostic.
+/// Fatal diagnostics are forwarded to `fatal_handler` to avoid silent
+/// failures of rustc, as witnessed e.g. in issue #89358.
+pub struct SilentEmitter {
+    pub fatal_handler: Handler,
+    pub fatal_note: Option<String>,
+}
 
 impl Emitter for SilentEmitter {
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         None
     }
-    fn emit_diagnostic(&mut self, _: &Diagnostic) {}
+    fn emit_diagnostic(&mut self, d: &Diagnostic) {
+        if d.level == Level::Fatal {
+            let mut d = d.clone();
+            if let Some(ref note) = self.fatal_note {
+                d.note(note);
+            }
+            self.fatal_handler.emit_diagnostic(&d);
+        }
+    }
 }
 
 /// Maximum number of lines we will print for a multiline suggestion; arbitrary.

@@ -85,6 +85,8 @@ const INTRA_DOC_LINK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("core/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),
     ("alloc/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),
     ("std/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),
+    ("core/primitive.str.html", &["begin</code>, <code>end"]),
+    ("std/primitive.str.html", &["begin</code>, <code>end"]),
 
 ];
 

@@ -4,6 +4,7 @@ use rustc_span::{BytePos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, FindUncommented};
 use crate::config::lists::*;
+use crate::config::Version;
 use crate::expr::{can_be_overflowed_expr, rewrite_unary_prefix, wrap_struct_field};
 use crate::lists::{
     definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
@@ -226,12 +227,13 @@ impl Rewrite for Pat {
             PatKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)
             }
-            PatKind::TupleStruct(_, ref path, ref pat_vec) => {
-                let path_str = rewrite_path(context, PathContext::Expr, None, path, shape)?;
+            PatKind::TupleStruct(ref q_self, ref path, ref pat_vec) => {
+                let path_str =
+                    rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)?;
                 rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
-            PatKind::Slice(ref slice_pat) => {
+            PatKind::Slice(ref slice_pat) if context.config.version() == Version::One => {
                 let rw: Vec<String> = slice_pat
                     .iter()
                     .map(|p| {
@@ -244,8 +246,17 @@ impl Rewrite for Pat {
                     .collect();
                 Some(format!("[{}]", rw.join(", ")))
             }
-            PatKind::Struct(_, ref path, ref fields, ellipsis) => {
-                rewrite_struct_pat(path, fields, ellipsis, self.span, context, shape)
+            PatKind::Slice(ref slice_pat) => overflow::rewrite_with_square_brackets(
+                context,
+                "",
+                slice_pat.iter(),
+                shape,
+                self.span,
+                None,
+                None,
+            ),
+            PatKind::Struct(ref qself, ref path, ref fields, ellipsis) => {
+                rewrite_struct_pat(qself, path, fields, ellipsis, self.span, context, shape)
             }
             PatKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Pat)
@@ -258,6 +269,7 @@ impl Rewrite for Pat {
 }
 
 fn rewrite_struct_pat(
+    qself: &Option<ast::QSelf>,
     path: &ast::Path,
     fields: &[ast::PatField],
     ellipsis: bool,
@@ -267,7 +279,7 @@ fn rewrite_struct_pat(
 ) -> Option<String> {
     // 2 =  ` {`
     let path_shape = shape.sub_width(2)?;
-    let path_str = rewrite_path(context, PathContext::Expr, None, path, path_shape)?;
+    let path_str = rewrite_path(context, PathContext::Expr, qself.as_ref(), path, path_shape)?;
 
     if fields.is_empty() && !ellipsis {
         return Some(format!("{} {{}}", path_str));

@@ -268,6 +268,8 @@ fn test_cursor<D: Direction>(analysis: MockAnalysis<'tcx, D>) {
     let mut cursor =
         Results { entry_sets: analysis.mock_entry_sets(), analysis }.into_results_cursor(body);
 
+    cursor.allow_unreachable();
+
     let every_target = || {
         body.basic_blocks()
             .iter_enumerated()

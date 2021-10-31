@@ -1,13 +1,31 @@
 error: lifetime may not live long enough
-  --> $DIR/ret-impl-trait-one.rs:10:65
+  --> $DIR/ret-impl-trait-one.rs:10:85
+   |
+LL |   async fn async_ret_impl_trait3<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + 'b {
+   |  ________________________________--__--_______________________________________________^
+   | |                                |   |
+   | |                                |   lifetime `'b` defined here
+   | |                                lifetime `'a` defined here
+LL | |
+LL | |     (a, b)
+LL | | }
+   | |_^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/ret-impl-trait-one.rs:16:65
    |
 LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> {
-   |                                --  --                           ^^^^^^^^^^^^^^ opaque type requires that `'b` must outlive `'a`
-   |                                |   |
-   |                                |   lifetime `'b` defined here
-   |                                lifetime `'a` defined here
+   |                                    --                           ^^^^^^^^^^^^^^
+   |                                    |
+   |                                    hidden type `(&'a u8, &'b u8)` captures the lifetime `'b` as defined here
    |
-   = help: consider adding the following bound: `'b: 'a`
+help: to declare that the `impl Trait` captures 'b, you can add an explicit `'b` lifetime bound
+   |
+LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + 'b {
+   |                                                                                ++++
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0700`.

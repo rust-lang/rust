@@ -409,6 +409,7 @@ fn rewrite_match_body(
             }
             result.push_str(&nested_indent_str);
             result.push_str(&body_str);
+            result.push_str(&comma);
             return Some(result);
         }
 
