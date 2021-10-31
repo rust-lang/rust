@@ -22,6 +22,8 @@
 //! assert_eq!(s.find("you"), Some(4));
 //! // char pattern
 //! assert_eq!(s.find('n'), Some(2));
+//! // array of chars pattern
+//! assert_eq!(s.find(&['a', 'e', 'i', 'o', 'u']), Some(1));
 //! // slice of chars pattern
 //! assert_eq!(s.find(&['a', 'e', 'i', 'o', 'u'][..]), Some(1));
 //! // closure pattern
@@ -78,6 +80,11 @@ use crate::slice::memchr;
 /// assert_eq!("abaaa".find('a'), Some(0));
 /// assert_eq!("abaaa".find('b'), Some(1));
 /// assert_eq!("abaaa".find('c'), None);
+///
+/// // &[char; N]
+/// assert_eq!("ab".find(&['b', 'a']), Some(0));
+/// assert_eq!("abaaa".find(&['a', 'z']), Some(0));
+/// assert_eq!("abaaa".find(&['c', 'd']), None);
 ///
 /// // &[char]
 /// assert_eq!("ab".find(&['b', 'a'][..]), Some(0));
@@ -601,6 +608,20 @@ where
     }
 }
 
+impl<const N: usize> MultiCharEq for [char; N] {
+    #[inline]
+    fn matches(&mut self, c: char) -> bool {
+        self.iter().any(|&m| m == c)
+    }
+}
+
+impl<const N: usize> MultiCharEq for &[char; N] {
+    #[inline]
+    fn matches(&mut self, c: char) -> bool {
+        self.iter().any(|&m| m == c)
+    }
+}
+
 impl MultiCharEq for &[char] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
@@ -750,6 +771,58 @@ macro_rules! searcher_methods {
             self.0.next_reject_back()
         }
     };
+}
+
+/// Associated type for `<[char; N] as Pattern<'a>>::Searcher`.
+#[derive(Clone, Debug)]
+pub struct CharArraySearcher<'a, const N: usize>(
+    <MultiCharEqPattern<[char; N]> as Pattern<'a>>::Searcher,
+);
+
+/// Associated type for `<&[char; N] as Pattern<'a>>::Searcher`.
+#[derive(Clone, Debug)]
+pub struct CharArrayRefSearcher<'a, 'b, const N: usize>(
+    <MultiCharEqPattern<&'b [char; N]> as Pattern<'a>>::Searcher,
+);
+
+/// Searches for chars that are equal to any of the [`char`]s in the array.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find(['l', 'l']), Some(2));
+/// assert_eq!("Hello world".find(['l', 'l']), Some(2));
+/// ```
+impl<'a, const N: usize> Pattern<'a> for [char; N] {
+    pattern_methods!(CharArraySearcher<'a, N>, MultiCharEqPattern, CharArraySearcher);
+}
+
+unsafe impl<'a, const N: usize> Searcher<'a> for CharArraySearcher<'a, N> {
+    searcher_methods!(forward);
+}
+
+unsafe impl<'a, const N: usize> ReverseSearcher<'a> for CharArraySearcher<'a, N> {
+    searcher_methods!(reverse);
+}
+
+/// Searches for chars that are equal to any of the [`char`]s in the array.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find(&['l', 'l']), Some(2));
+/// assert_eq!("Hello world".find(&['l', 'l']), Some(2));
+/// ```
+impl<'a, 'b, const N: usize> Pattern<'a> for &'b [char; N] {
+    pattern_methods!(CharArrayRefSearcher<'a, 'b, N>, MultiCharEqPattern, CharArrayRefSearcher);
+}
+
+unsafe impl<'a, 'b, const N: usize> Searcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
+    searcher_methods!(forward);
+}
+
+unsafe impl<'a, 'b, const N: usize> ReverseSearcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
+    searcher_methods!(reverse);
 }
 
 /////////////////////////////////////////////////////////////////////////////
