@@ -112,7 +112,6 @@
 #![feature(maybe_uninit_slice)]
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(nonnull_slice_from_raw_parts)]
-#![feature(option_result_unwrap_unchecked)]
 #![feature(pattern)]
 #![feature(ptr_internals)]
 #![feature(receiver_trait)]

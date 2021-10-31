@@ -800,19 +800,17 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_result_unwrap_unchecked)]
     /// let x = Some("air");
     /// assert_eq!(unsafe { x.unwrap_unchecked() }, "air");
     /// ```
     ///
     /// ```no_run
-    /// #![feature(option_result_unwrap_unchecked)]
     /// let x: Option<&str> = None;
     /// assert_eq!(unsafe { x.unwrap_unchecked() }, "air"); // Undefined behavior!
     /// ```
     #[inline]
     #[track_caller]
-    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
+    #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     pub unsafe fn unwrap_unchecked(self) -> T {
         debug_assert!(self.is_some());
         match self {
