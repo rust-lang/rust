@@ -498,6 +498,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(since = "1.29.0", reason = "use `get_unchecked(begin..end)` instead")]
+    #[must_use]
     #[inline]
     pub unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked`;
@@ -570,6 +571,7 @@ impl str {
     /// assert_eq!(" Martin-Löf", last);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
     pub fn split_at(&self, mid: usize) -> (&str, &str) {
         // is_char_boundary checks that the index is in [0, .len()]
@@ -613,6 +615,7 @@ impl str {
     /// assert_eq!("PER Martin-Löf", s);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         // is_char_boundary checks that the index is in [0, .len()]

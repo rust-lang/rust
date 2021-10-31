@@ -1031,7 +1031,7 @@ fn test_split_at_mut() {
 #[should_panic]
 fn test_split_at_boundscheck() {
     let s = "ศไทย中华Việt Nam";
-    s.split_at(1);
+    let _ = s.split_at(1);
 }
 
 #[test]
