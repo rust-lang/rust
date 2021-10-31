@@ -2354,11 +2354,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     )
                 });
             }
-            ObligationCauseCode::CompareImplMethodObligation {
-                item_name,
-                trait_item_def_id,
-                ..
-            } => {
+            ObligationCauseCode::CompareImplMethodObligation { trait_item_def_id, .. } => {
+                let item_name = self.tcx.item_name(trait_item_def_id);
                 let msg = format!(
                     "the requirement `{}` appears on the impl method `{}` but not on the \
                      corresponding trait method",
@@ -2383,9 +2380,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
                 err.span_note(assoc_span, &msg);
             }
-            ObligationCauseCode::CompareImplTypeObligation {
-                item_name, trait_item_def_id, ..
-            } => {
+            ObligationCauseCode::CompareImplTypeObligation { trait_item_def_id, .. } => {
+                let item_name = self.tcx.item_name(trait_item_def_id);
                 let msg = format!(
                     "the requirement `{}` appears on the associated impl type `{}` but not on the \
                      corresponding associated trait type",

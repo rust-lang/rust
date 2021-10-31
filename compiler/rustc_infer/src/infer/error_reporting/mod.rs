@@ -2190,14 +2190,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         if let Some(SubregionOrigin::CompareImplMethodObligation {
             span,
-            item_name,
             impl_item_def_id,
             trait_item_def_id,
         }) = origin
         {
             return self.report_extra_impl_obligation(
                 span,
-                item_name,
                 impl_item_def_id,
                 trait_item_def_id,
                 &format!("`{}: {}`", bound_kind, sub),
