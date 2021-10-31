@@ -20,8 +20,6 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
         (synth.fold_crate(krate), synth.impls)
     });
 
-    let prims: FxHashSet<PrimitiveType> = krate.primitives.iter().map(|p| p.1).collect();
-
     let crate_items = {
         let mut coll = ItemCollector::new();
         krate = cx.sess().time("collect_items_for_trait_impls", || coll.fold_crate(krate));
@@ -51,7 +49,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
         }
     }
 
-    let mut cleaner = BadImplStripper { prims, items: crate_items };
+    let mut cleaner = BadImplStripper { items: crate_items };
     let mut type_did_to_deref_target: FxHashMap<DefId, &Type> = FxHashMap::default();
 
     // Follow all `Deref` targets of included items and recursively add them as valid
@@ -62,9 +60,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     ) {
         if let Some(target) = map.get(&type_did) {
             debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
-            if let Some(target_prim) = target.primitive_type() {
-                cleaner.prims.insert(target_prim);
-            } else if let Some(target_did) = target.def_id_no_primitives() {
+            if let Some(target_did) = target.def_id_no_primitives() {
                 // `impl Deref<Target = S> for S`
                 if target_did == type_did {
                     // Avoid infinite cycles
@@ -90,9 +86,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
                     })
                     .expect("Deref impl without Target type");
 
-                if let Some(prim) = target.primitive_type() {
-                    cleaner.prims.insert(prim);
-                } else if let Some(did) = target.def_id(&cx.cache) {
+                if let Some(did) = target.def_id(&cx.cache) {
                     cleaner.items.insert(did.into());
                 }
                 if let Some(for_did) = for_.def_id_no_primitives() {
@@ -208,7 +202,6 @@ impl DocFolder for ItemCollector {
 }
 
 struct BadImplStripper {
-    prims: FxHashSet<PrimitiveType>,
     items: FxHashSet<ItemId>,
 }
 
@@ -217,8 +210,6 @@ impl BadImplStripper {
         if let Generic(_) = ty {
             // keep impls made on generics
             true
-        } else if let Some(prim) = ty.primitive_type() {
-            self.prims.contains(&prim)
         } else if let Some(did) = ty.def_id_no_primitives() {
             is_deref || self.keep_impl_with_def_id(did.into())
         } else {
