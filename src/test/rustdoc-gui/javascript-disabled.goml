@@ -1,0 +1,6 @@
+// When JavaScript is disabled, we hide the search bar, because it
+// can't be used without JS.
+javascript: false
+
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+assert-css: (".sub", {"display": "none"})

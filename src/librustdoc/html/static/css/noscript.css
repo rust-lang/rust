@@ -13,3 +13,12 @@ rules.
 	/* It requires JS to work so no need to display it in this case. */
 	display: none;
 }
+
+.sub {
+	/* The search bar and related controls don't work without JS */
+	display: none;
+}
+
+#theme-picker {
+	display: none;
+}
