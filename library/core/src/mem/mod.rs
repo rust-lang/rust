@@ -296,6 +296,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 ///
 /// [alignment]: align_of
 #[inline(always)]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_size_of", since = "1.24.0")]
@@ -324,6 +325,7 @@ pub const fn size_of<T>() -> usize {
 /// assert_eq!(13, mem::size_of_val(y));
 /// ```
 #[inline]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of_val")]
@@ -373,6 +375,7 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// assert_eq!(13, unsafe { mem::size_of_val_raw(y) });
 /// ```
 #[inline]
+#[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
 #[rustc_const_unstable(feature = "const_size_of_val_raw", issue = "46571")]
 pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
@@ -397,6 +400,7 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 /// assert_eq!(4, mem::min_align_of::<i32>());
 /// ```
 #[inline]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "use `align_of` instead", since = "1.2.0")]
 pub fn min_align_of<T>() -> usize {
@@ -418,6 +422,7 @@ pub fn min_align_of<T>() -> usize {
 /// assert_eq!(4, mem::min_align_of_val(&5i32));
 /// ```
 #[inline]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "use `align_of_val` instead", since = "1.2.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
@@ -441,6 +446,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// assert_eq!(4, mem::align_of::<i32>());
 /// ```
 #[inline(always)]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_align_of", since = "1.24.0")]
@@ -462,6 +468,7 @@ pub const fn align_of<T>() -> usize {
 /// assert_eq!(4, mem::align_of_val(&5i32));
 /// ```
 #[inline]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
 #[allow(deprecated)]
@@ -507,6 +514,7 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// assert_eq!(4, unsafe { mem::align_of_val_raw(&5i32) });
 /// ```
 #[inline]
+#[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
 #[rustc_const_unstable(feature = "const_align_of_val_raw", issue = "46571")]
 pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
@@ -571,6 +579,7 @@ pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 /// }
 /// ```
 #[inline]
+#[must_use]
 #[stable(feature = "needs_drop", since = "1.21.0")]
 #[rustc_const_stable(feature = "const_needs_drop", since = "1.36.0")]
 #[rustc_diagnostic_item = "needs_drop"]
@@ -618,6 +627,7 @@ pub const fn needs_drop<T>() -> bool {
 /// let _y: fn() = unsafe { mem::zeroed() }; // And again!
 /// ```
 #[inline(always)]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
@@ -653,6 +663,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// [assume_init]: MaybeUninit::assume_init
 /// [inv]: MaybeUninit#initialization-invariant
 #[inline(always)]
+#[must_use]
 #[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
@@ -938,6 +949,7 @@ pub fn drop<T>(_x: T) {}
 /// assert_eq!(foo_array, [10]);
 /// ```
 #[inline]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
 pub const unsafe fn transmute_copy<T, U>(src: &T) -> U {
@@ -1051,6 +1063,7 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// assert_eq!(mem::variant_count::<Result<!, !>>(), 2);
 /// ```
 #[inline(always)]
+#[must_use]
 #[unstable(feature = "variant_count", issue = "73662")]
 #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
 #[rustc_diagnostic_item = "mem_variant_count"]
