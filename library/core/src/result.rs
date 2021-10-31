@@ -1096,19 +1096,17 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_result_unwrap_unchecked)]
     /// let x: Result<u32, &str> = Ok(2);
     /// assert_eq!(unsafe { x.unwrap_unchecked() }, 2);
     /// ```
     ///
     /// ```no_run
-    /// #![feature(option_result_unwrap_unchecked)]
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// unsafe { x.unwrap_unchecked(); } // Undefined behavior!
     /// ```
     #[inline]
     #[track_caller]
-    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
+    #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     pub unsafe fn unwrap_unchecked(self) -> T {
         debug_assert!(self.is_ok());
         match self {
@@ -1130,19 +1128,17 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(option_result_unwrap_unchecked)]
     /// let x: Result<u32, &str> = Ok(2);
     /// unsafe { x.unwrap_err_unchecked() }; // Undefined behavior!
     /// ```
     ///
     /// ```
-    /// #![feature(option_result_unwrap_unchecked)]
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// assert_eq!(unsafe { x.unwrap_err_unchecked() }, "emergency failure");
     /// ```
     #[inline]
     #[track_caller]
-    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
+    #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     pub unsafe fn unwrap_err_unchecked(self) -> E {
         debug_assert!(self.is_err());
         match self {

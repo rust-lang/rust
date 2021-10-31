@@ -83,6 +83,7 @@ impl<T: Sized> NonNull<T> {
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_dangling", since = "1.36.0")]
+    #[must_use]
     #[inline]
     pub const fn dangling() -> Self {
         // SAFETY: mem::align_of() returns a non-zero usize which is then casted
@@ -423,6 +424,7 @@ impl<T> NonNull<[T]> {
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
     #[unstable(feature = "nonnull_slice_from_raw_parts", issue = "71941")]
     #[rustc_const_unstable(feature = "const_nonnull_slice_from_raw_parts", issue = "71941")]
+    #[must_use]
     #[inline]
     pub const fn slice_from_raw_parts(data: NonNull<T>, len: usize) -> Self {
         // SAFETY: `data` is a `NonNull` pointer which is necessarily non-null

@@ -800,19 +800,17 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_result_unwrap_unchecked)]
     /// let x = Some("air");
     /// assert_eq!(unsafe { x.unwrap_unchecked() }, "air");
     /// ```
     ///
     /// ```no_run
-    /// #![feature(option_result_unwrap_unchecked)]
     /// let x: Option<&str> = None;
     /// assert_eq!(unsafe { x.unwrap_unchecked() }, "air"); // Undefined behavior!
     /// ```
     #[inline]
     #[track_caller]
-    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
+    #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     pub unsafe fn unwrap_unchecked(self) -> T {
         debug_assert!(self.is_some());
         match self {
@@ -1451,6 +1449,7 @@ impl<T: Copy> Option<&T> {
     /// let copied = opt_x.copied();
     /// assert_eq!(copied, Some(12));
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn copied(self) -> Option<T> {

@@ -1335,6 +1335,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// with the widespread use of `r.borrow().clone()` to clone the contents of
     /// a `RefCell`.
     #[stable(feature = "cell_extras", since = "1.15.0")]
+    #[must_use]
     #[inline]
     pub fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
         Ref { value: orig.value, borrow: orig.borrow.clone() }

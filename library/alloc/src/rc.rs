@@ -41,7 +41,7 @@
 //! use std::rc::Rc;
 //!
 //! let my_rc = Rc::new(());
-//! Rc::downgrade(&my_rc);
+//! let my_weak = Rc::downgrade(&my_rc);
 //! ```
 //!
 //! `Rc<T>`'s implementations of traits like `Clone` may also be called using
@@ -889,6 +889,8 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// let weak_five = Rc::downgrade(&five);
     /// ```
+    #[must_use = "this returns a new `Weak` pointer, \
+                  without modifying the original `Rc`"]
     #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T> {
         this.inner().inc_weak();

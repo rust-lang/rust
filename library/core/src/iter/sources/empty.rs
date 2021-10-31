@@ -25,6 +25,7 @@ pub const fn empty<T>() -> Empty<T> {
 /// An iterator that yields nothing.
 ///
 /// This `struct` is created by the [`empty()`] function. See its documentation for more.
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub struct Empty<T>(marker::PhantomData<T>);
 
