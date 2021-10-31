@@ -2255,6 +2255,7 @@ impl str {
     /// assert!(!non_ascii.is_ascii());
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[must_use]
     #[inline]
     pub fn is_ascii(&self) -> bool {
         // We can treat each byte as character here: all multibyte characters
@@ -2276,6 +2277,7 @@ impl str {
     /// assert!(!"Ferrös".eq_ignore_ascii_case("FERRÖS"));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[must_use]
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &str) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())

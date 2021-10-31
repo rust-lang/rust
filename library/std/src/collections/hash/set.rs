@@ -1320,6 +1320,8 @@ where
 ///
 /// let mut intersection = a.intersection(&b);
 /// ```
+#[must_use = "this returns the intersection as an iterator, \
+              without modifying either input set"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -1345,6 +1347,8 @@ pub struct Intersection<'a, T: 'a, S: 'a> {
 ///
 /// let mut difference = a.difference(&b);
 /// ```
+#[must_use = "this returns the difference as an iterator, \
+              without modifying either input set"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -1370,6 +1374,8 @@ pub struct Difference<'a, T: 'a, S: 'a> {
 ///
 /// let mut intersection = a.symmetric_difference(&b);
 /// ```
+#[must_use = "this returns the difference as an iterator, \
+              without modifying either input set"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
     iter: Chain<Difference<'a, T, S>, Difference<'a, T, S>>,
@@ -1392,6 +1398,8 @@ pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
 ///
 /// let mut union_iter = a.union(&b);
 /// ```
+#[must_use = "this returns the union as an iterator, \
+              without modifying either input set"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>,
