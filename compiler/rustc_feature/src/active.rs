@@ -103,7 +103,8 @@ impl Feature {
 
 // If you change this, please modify `src/doc/unstable-book` as well.
 //
-// Don't ever remove anything from this list; move them to `removed.rs`.
+// Don't ever remove anything from this list; move them to `accepted.rs` if
+// accepted or `removed.rs` if removed.
 //
 // The version numbers here correspond to the version in which the current status
 // was set. This is most important for knowing when a particular feature became
