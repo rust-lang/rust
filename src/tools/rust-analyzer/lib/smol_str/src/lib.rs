@@ -6,11 +6,13 @@ extern crate core as std;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
+use core::convert::Infallible;
 use std::{
     borrow::Borrow,
     cmp::{self, Ordering},
     fmt, hash, iter,
     ops::Deref,
+    str::FromStr,
 };
 
 #[cfg(not(feature = "std"))]
@@ -313,6 +315,15 @@ impl From<SmolStr> for String {
 impl Borrow<str> for SmolStr {
     fn borrow(&self) -> &str {
         self.as_str()
+    }
+}
+
+impl FromStr for SmolStr {
+    type Err = Infallible;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<SmolStr, Self::Err> {
+        Ok(SmolStr::from(s))
     }
 }
 
