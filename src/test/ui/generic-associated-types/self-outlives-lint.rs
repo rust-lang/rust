@@ -2,6 +2,8 @@
 
 // check-fail
 
+use std::fmt::Debug;
+
 // We have a `&'a self`, so we need a `Self: 'a`
 trait Iterable {
     type Item<'x>;
@@ -99,5 +101,71 @@ impl Des3 for () {
     }
 }
 */
+
+// Similar case to before, except with GAT.
+trait NoGat<'a> {
+    type Bar;
+    fn method(&'a self) -> Self::Bar;
+}
+
+// Lifetime is not on function; except `Self: 'a`
+trait TraitLifetime<'a> {
+    type Bar<'b>;
+    //~^ Missing required bounds
+    fn method(&'a self) -> Self::Bar<'a>;
+}
+
+// Like above, but we have a where clause that can prove what we want
+trait TraitLifetimeWhere<'a> where Self: 'a {
+    type Bar<'b>;
+    //~^ Missing required bounds
+    fn method(&'a self) -> Self::Bar<'a>;
+}
+
+// Explicit bound instead of implicit; we want to still error
+trait ExplicitBound {
+    type Bar<'b>;
+    //~^ Missing required bounds
+    fn method<'b>(&self, token: &'b ()) -> Self::Bar<'b> where Self: 'b;
+}
+
+// The use of the GAT here is not in the return, we don't want to error
+trait NotInReturn {
+    type Bar<'b>;
+    fn method<'b>(&'b self) where Self::Bar<'b>: Debug;
+}
+
+// We obviously error for `Iterator`, but we should also error for `Item`
+trait IterableTwo {
+    type Item<'a>;
+    type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
+    //~^ Missing required bounds
+    fn iter<'a>(&'a self) -> Self::Iterator<'a>;
+}
+
+// We also should report region outlives clauses
+trait RegionOutlives {
+    type Bar<'a, 'b>;
+    //~^ Missing required bounds
+    fn foo<'x, 'y>(&self, input: &'x &'y ()) -> Self::Bar<'x, 'y>;
+}
+
+/*
+impl Foo for () {
+    type Bar<'a, 'b> = &'a &'b ();
+    fn foo<'x, 'y>(&self, input: &'x &'y ()) -> Self::Bar<'x, 'y> {
+        input
+    }
+}
+*/
+
+// If there are multiple methods that return the GAT, require a set of clauses
+// that can be satisfied by *all* methods
+trait MultipleMethods {
+    type Bar<'me>;
+
+    fn gimme<'a>(&'a self) -> Self::Bar<'a>;
+    fn gimme_default(&self) -> Self::Bar<'static>;
+}
 
 fn main() {}

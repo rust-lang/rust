@@ -266,6 +266,16 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 /// Require that the user writes as where clauses on GATs the implicit
 /// outlives bounds involving trait parameters in trait functions and
 /// lifetimes passed as GAT substs. See `self-outlives-lint` test.
+///
+/// This trait will be our running example. We are currently WF checking the `Item` item...
+///
+/// ```rust
+/// trait LendingIterator {
+///   type Item<'me>; // <-- WF checking this trait item
+///
+///   fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
+/// }
+/// ```
 fn check_gat_where_clauses(
     tcx: TyCtxt<'_>,
     trait_item: &hir::TraitItem<'_>,
@@ -282,16 +292,25 @@ fn check_gat_where_clauses(
         return;
     }
     let associated_items: &ty::AssocItems<'_> = tcx.associated_items(encl_trait_def_id);
-    let mut clauses = FxHashSet::default();
+    let mut clauses: Option<FxHashSet<ty::Predicate<'_>>> = None;
     // For every function in this trait...
+    // In our example, this would be the `next` method
     for item in
         associated_items.in_definition_order().filter(|item| matches!(item.kind, ty::AssocKind::Fn))
     {
+        // The clauses we that we would require from this function
+        let mut function_clauses = FxHashSet::default();
+
         let id = hir::HirId::make_owner(item.def_id.expect_local());
         let param_env = tcx.param_env(item.def_id.expect_local());
 
         let sig = tcx.fn_sig(item.def_id);
+        // Get the signature using placeholders. In our example, this would
+        // convert the late-bound 'a into a free region.
         let sig = tcx.liberate_late_bound_regions(item.def_id, sig);
+        // Collect the arguments that are given to this GAT in the return type
+        // of  the function signature. In our example, the GAT in the return
+        // type is `<Self as LendingIterator>::Item<'a>`, so 'a and Self are arguments.
         let mut visitor = GATSubstCollector {
             tcx,
             gat: trait_item.def_id.to_def_id(),
@@ -299,11 +318,30 @@ fn check_gat_where_clauses(
             types: FxHashSet::default(),
         };
         sig.output().visit_with(&mut visitor);
+
+        // If both regions and types are empty, then this GAT isn't in the
+        // return type, and we shouldn't try to do clause analysis
+        // (particularly, doing so would end up with an empty set of clauses,
+        // since the current method would require none, and we take the
+        // intersection of requirements of all methods)
+        if visitor.types.is_empty() && visitor.regions.is_empty() {
+            continue;
+        }
+
+        // The types we can assume to be well-formed. In our example, this
+        // would be &'a mut Self, from the first argument.
         let mut wf_tys = FxHashSet::default();
         wf_tys.extend(sig.inputs());
 
+        // For each region argument (e.g., 'a in our example), check for a
+        // relationship to the type arguments (e.g., Self). If there is an
+        // outlives relationship (`Self: 'a`), then we want to ensure that is
+        // reflected in a where clause on the GAT itself.
         for (region, region_idx) in &visitor.regions {
             for (ty, ty_idx) in &visitor.types {
+                // Unfortunately, we have to use a new `InferCtxt` for each
+                // pair, because region constraints get added and solved there,
+                // and we need to test each pair individually.
                 tcx.infer_ctxt().enter(|infcx| {
                     let mut outlives_environment = OutlivesEnvironment::new(param_env);
                     outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id, DUMMY_SP);
@@ -328,6 +366,7 @@ fn check_gat_where_clauses(
                         Some(tcx.lifetimes.re_root_empty),
                         param_env,
                     );
+                    // In our example, requires that Self: 'a
                     outlives.type_must_outlive(origin, sup_type, sub_region);
 
                     let errors = infcx.resolve_regions(
@@ -338,14 +377,21 @@ fn check_gat_where_clauses(
 
                     debug!(?errors, "errors");
 
+                    // If we were able to prove that Self: 'a without an error,
+                    // it must be because of the implied or explicit bounds...
                     if errors.is_empty() {
                         debug!(?ty_idx, ?region_idx);
                         debug!("required clause: {} must outlive {}", ty, region);
+                        // Translate into the generic parameters of the GAT. In
+                        // our example, the type was Self, which will also be
+                        // Self in the GAT.
                         let ty_param = generics.param_at(*ty_idx, tcx);
                         let ty_param = tcx.mk_ty(ty::Param(ty::ParamTy {
                             index: ty_param.index,
                             name: ty_param.name,
                         }));
+                        // Same for the region. In our example, 'a corresponds
+                        // to the 'me parameter.
                         let region_param = generics.param_at(*region_idx, tcx);
                         let region_param =
                             tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
@@ -353,22 +399,35 @@ fn check_gat_where_clauses(
                                 index: region_param.index,
                                 name: region_param.name,
                             }));
+                        // The predicate we expect to see. (In our example,
+                        // `Self: 'me`.)
                         let clause = ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
                             ty_param,
                             region_param,
                         ));
                         let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
-                        clauses.insert(clause);
+                        function_clauses.insert(clause);
                     }
                 });
+            }
+        }
+
+        match clauses.as_mut() {
+            Some(clauses) => {
+                clauses.drain_filter(|p| !function_clauses.contains(p));
+            }
+            None => {
+                clauses = Some(function_clauses);
             }
         }
     }
 
     // If there are any missing clauses, emit an error
+    let mut clauses = clauses.unwrap_or_default();
     debug!(?clauses);
     if !clauses.is_empty() {
-        let written_predicates: ty::GenericPredicates<'_> = tcx.predicates_of(trait_item.def_id);
+        let written_predicates: ty::GenericPredicates<'_> =
+            tcx.explicit_predicates_of(trait_item.def_id);
         let clauses: Vec<_> = clauses
             .drain_filter(|clause| {
                 written_predicates.predicates.iter().find(|p| &p.0 == clause).is_none()
@@ -402,6 +461,10 @@ fn check_gat_where_clauses(
     }
 }
 
+/// TypeVisitor that looks for uses of GATs like
+/// `<P0 as Trait<P1..Pn>>::GAT<Pn..Pm>` and adds the arguments `P0..Pm` into
+/// the two vectors, `regions` and `types` (depending on their kind). For each
+/// parameter `Pi` also track the index `i`.
 struct GATSubstCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
     gat: DefId,

@@ -1,5 +1,5 @@
 error: Missing required bounds on Item
-  --> $DIR/self-outlives-lint.rs:7:5
+  --> $DIR/self-outlives-lint.rs:9:5
    |
 LL |     type Item<'x>;
    |     ^^^^^^^^^^^^^-
@@ -7,7 +7,7 @@ LL |     type Item<'x>;
    |                  help: add the required where clauses: `where Self: 'x`
 
 error: Missing required bounds on Out
-  --> $DIR/self-outlives-lint.rs:23:5
+  --> $DIR/self-outlives-lint.rs:25:5
    |
 LL |     type Out<'x>;
    |     ^^^^^^^^^^^^-
@@ -15,7 +15,7 @@ LL |     type Out<'x>;
    |                 help: add the required where clauses: `where T: 'x`
 
 error: Missing required bounds on Out
-  --> $DIR/self-outlives-lint.rs:37:5
+  --> $DIR/self-outlives-lint.rs:39:5
    |
 LL |     type Out<'x>;
    |     ^^^^^^^^^^^^-
@@ -23,7 +23,7 @@ LL |     type Out<'x>;
    |                 help: add the required where clauses: `where T: 'x`
 
 error: Missing required bounds on Out
-  --> $DIR/self-outlives-lint.rs:44:5
+  --> $DIR/self-outlives-lint.rs:46:5
    |
 LL |     type Out<'x, 'y>;
    |     ^^^^^^^^^^^^^^^^-
@@ -31,7 +31,7 @@ LL |     type Out<'x, 'y>;
    |                     help: add the required where clauses: `where U: 'y, T: 'x`
 
 error: Missing required bounds on Out
-  --> $DIR/self-outlives-lint.rs:59:5
+  --> $DIR/self-outlives-lint.rs:61:5
    |
 LL |     type Out<'x, D>;
    |     ^^^^^^^^^^^^^^^-
@@ -39,7 +39,7 @@ LL |     type Out<'x, D>;
    |                    help: add the required where clauses: `where D: 'x`
 
 error: Missing required bounds on Out
-  --> $DIR/self-outlives-lint.rs:75:5
+  --> $DIR/self-outlives-lint.rs:77:5
    |
 LL |     type Out<'x, D>;
    |     ^^^^^^^^^^^^^^^-
@@ -47,12 +47,44 @@ LL |     type Out<'x, D>;
    |                    help: add the required where clauses: `where D: 'x`
 
 error: Missing required bounds on Out
-  --> $DIR/self-outlives-lint.rs:90:5
+  --> $DIR/self-outlives-lint.rs:92:5
    |
 LL |     type Out<'x, D>;
    |     ^^^^^^^^^^^^^^^-
    |                    |
    |                    help: add the required where clauses: `where D: 'x`
 
-error: aborting due to 7 previous errors
+error: Missing required bounds on Bar
+  --> $DIR/self-outlives-lint.rs:113:5
+   |
+LL |     type Bar<'b>;
+   |     ^^^^^^^^^^^^-
+   |                 |
+   |                 help: add the required where clauses: `where Self: 'b, Self: 'a`
+
+error: Missing required bounds on Bar
+  --> $DIR/self-outlives-lint.rs:120:5
+   |
+LL |     type Bar<'b>;
+   |     ^^^^^^^^^^^^-
+   |                 |
+   |                 help: add the required where clauses: `where Self: 'b, Self: 'a`
+
+error: Missing required bounds on Bar
+  --> $DIR/self-outlives-lint.rs:127:5
+   |
+LL |     type Bar<'b>;
+   |     ^^^^^^^^^^^^-
+   |                 |
+   |                 help: add the required where clauses: `where Self: 'b`
+
+error: Missing required bounds on Iterator
+  --> $DIR/self-outlives-lint.rs:141:5
+   |
+LL |     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                                       |
+   |                                                       help: add the required where clauses: `where Self: 'a`
+
+error: aborting due to 11 previous errors
 
