@@ -20,7 +20,7 @@ pub enum NewlineStyle {
     Windows,
     /// Force CR (`\n).
     Unix,
-    /// `\r\n` in Windows, `\n`` on other platforms.
+    /// `\r\n` in Windows, `\n` on other platforms.
     Native,
 }
 
