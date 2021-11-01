@@ -1026,7 +1026,15 @@ class RustBuild(object):
         if self.git_version >= distutils.version.LooseVersion("2.11.0"):
             update_args.append("--progress")
         update_args.append(module)
-        run(update_args, cwd=self.rust_root, verbose=self.verbose, exception=True)
+        try:
+            run(update_args, cwd=self.rust_root, verbose=self.verbose, exception=True)
+        except RuntimeError:
+            print("Failed updating submodule. This is probably due to uncommitted local changes.")
+            print('Either stash the changes by running "git stash" within the submodule\'s')
+            print('directory, reset them by running "git reset --hard", or commit them.')
+            print("To reset all submodules' changes run", end=" ")
+            print('"git submodule foreach --recursive git reset --hard".')
+            raise SystemExit(1)
 
         run(["git", "reset", "-q", "--hard"],
             cwd=module_path, verbose=self.verbose)
