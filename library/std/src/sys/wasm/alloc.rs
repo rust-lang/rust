@@ -1,4 +1,4 @@
-//! This is an implementation of a global allocator on the wasm platform when
+//! This is an implementation of a global allocator on wasm targets when
 //! emscripten is not in use. In that situation there's no actual runtime for us
 //! to lean on for allocation, so instead we provide our own!
 //!

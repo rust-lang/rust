@@ -479,7 +479,7 @@ mod lazy {
     }
 }
 
-/// On some platforms like wasm there's no threads, so no need to generate
+/// On some targets like wasm there's no threads, so no need to generate
 /// thread locals and we can instead just use plain statics!
 #[doc(hidden)]
 #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
