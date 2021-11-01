@@ -196,6 +196,8 @@ pub static p_thread_callback: unsafe extern "system" fn(c::LPVOID, c::DWORD, c::
 unsafe extern "system" fn on_tls_callback(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID) {
     if dwReason == c::DLL_THREAD_DETACH || dwReason == c::DLL_PROCESS_DETACH {
         run_dtors();
+        #[cfg(target_thread_local)]
+        super::thread_local_dtor::run_keyless_dtors();
     }
 
     // See comments above for what this is doing. Note that we don't need this
