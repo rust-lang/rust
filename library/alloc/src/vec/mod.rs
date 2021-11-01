@@ -1272,6 +1272,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// The removed element is replaced by the last element of the vector.
     ///
     /// This does not preserve ordering, but is *O*(1).
+    /// If you need to preserve the element order, use [`remove`] instead.
+    ///
+    /// [`remove`]: Vec::remove
     ///
     /// # Panics
     ///
@@ -1368,7 +1371,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// shifting all elements after it to the left.
     ///
     /// Note: Because this shifts over the remaining elements, it has a
-    /// worst-case performance of O(n). If you don't need the order of elements
+    /// worst-case performance of *O*(*n*). If you don't need the order of elements
     /// to be preserved, use [`swap_remove`] instead.
     ///
     /// [`swap_remove`]: Vec::swap_remove
