@@ -5,7 +5,7 @@ use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError, PRe
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_session::lint::builtin::{
-    TEXT_DIRECTION_CODEPOINT_IN_COMMENT, RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
+    RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::ParseSess;
