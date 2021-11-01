@@ -60,6 +60,11 @@ impl RegionValueElements {
         PointIndex::new(start_index)
     }
 
+    /// Return the PointIndex for the block start of this index.
+    crate fn to_block_start(&self, index: PointIndex) -> PointIndex {
+        PointIndex::new(self.statements_before_block[self.basic_blocks[index]])
+    }
+
     /// Converts a `PointIndex` back to a location. O(1).
     crate fn to_location(&self, index: PointIndex) -> Location {
         assert!(index.index() < self.num_points);
@@ -75,29 +80,6 @@ impl RegionValueElements {
     /// like.
     crate fn point_in_range(&self, index: PointIndex) -> bool {
         index.index() < self.num_points
-    }
-
-    /// Pushes all predecessors of `index` onto `stack`.
-    crate fn push_predecessors(
-        &self,
-        body: &Body<'_>,
-        index: PointIndex,
-        stack: &mut Vec<PointIndex>,
-    ) {
-        let Location { block, statement_index } = self.to_location(index);
-        if statement_index == 0 {
-            // If this is a basic block head, then the predecessors are
-            // the terminators of other basic blocks
-            stack.extend(
-                body.predecessors()[block]
-                    .iter()
-                    .map(|&pred_bb| body.terminator_loc(pred_bb))
-                    .map(|pred_loc| self.point_from_location(pred_loc)),
-            );
-        } else {
-            // Otherwise, the pred is just the previous statement
-            stack.push(PointIndex::new(index.index() - 1));
-        }
     }
 }
 

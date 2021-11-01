@@ -370,6 +370,101 @@ fn sparse_matrix_operations() {
     }
 }
 
+#[test]
+fn dense_insert_range() {
+    #[track_caller]
+    fn check<R>(domain: usize, range: R)
+    where
+        R: RangeBounds<usize> + Clone + IntoIterator<Item = usize> + std::fmt::Debug,
+    {
+        let mut set = BitSet::new_empty(domain);
+        set.insert_range(range.clone());
+        for i in set.iter() {
+            assert!(range.contains(&i));
+        }
+        for i in range.clone() {
+            assert!(set.contains(i), "{} in {:?}, inserted {:?}", i, set, range);
+        }
+    }
+    check(300, 10..10);
+    check(300, WORD_BITS..WORD_BITS * 2);
+    check(300, WORD_BITS - 1..WORD_BITS * 2);
+    check(300, WORD_BITS - 1..WORD_BITS);
+    check(300, 10..100);
+    check(300, 10..30);
+    check(300, 0..5);
+    check(300, 0..250);
+    check(300, 200..250);
+
+    check(300, 10..=10);
+    check(300, WORD_BITS..=WORD_BITS * 2);
+    check(300, WORD_BITS - 1..=WORD_BITS * 2);
+    check(300, WORD_BITS - 1..=WORD_BITS);
+    check(300, 10..=100);
+    check(300, 10..=30);
+    check(300, 0..=5);
+    check(300, 0..=250);
+    check(300, 200..=250);
+
+    for i in 0..WORD_BITS * 2 {
+        for j in i..WORD_BITS * 2 {
+            check(WORD_BITS * 2, i..j);
+            check(WORD_BITS * 2, i..=j);
+            check(300, i..j);
+            check(300, i..=j);
+        }
+    }
+}
+
+#[test]
+fn dense_last_set_before() {
+    fn easy(set: &BitSet<usize>, needle: impl RangeBounds<usize>) -> Option<usize> {
+        let mut last_leq = None;
+        for e in set.iter() {
+            if needle.contains(&e) {
+                last_leq = Some(e);
+            }
+        }
+        last_leq
+    }
+
+    #[track_caller]
+    fn cmp(set: &BitSet<usize>, needle: impl RangeBounds<usize> + Clone + std::fmt::Debug) {
+        assert_eq!(
+            set.last_set_in(needle.clone()),
+            easy(set, needle.clone()),
+            "{:?} in {:?}",
+            needle,
+            set
+        );
+    }
+    let mut set = BitSet::new_empty(300);
+    cmp(&set, 50..=50);
+    set.insert(WORD_BITS);
+    cmp(&set, WORD_BITS..=WORD_BITS);
+    set.insert(WORD_BITS - 1);
+    cmp(&set, 0..=WORD_BITS - 1);
+    cmp(&set, 0..=5);
+    cmp(&set, 10..100);
+    set.insert(100);
+    cmp(&set, 100..110);
+    cmp(&set, 99..100);
+    cmp(&set, 99..=100);
+
+    for i in 0..=WORD_BITS * 2 {
+        for j in i..=WORD_BITS * 2 {
+            for k in 0..WORD_BITS * 2 {
+                let mut set = BitSet::new_empty(300);
+                cmp(&set, i..j);
+                cmp(&set, i..=j);
+                set.insert(k);
+                cmp(&set, i..j);
+                cmp(&set, i..=j);
+            }
+        }
+    }
+}
+
 /// Merge dense hybrid set into empty sparse hybrid set.
 #[bench]
 fn union_hybrid_sparse_empty_to_dense(b: &mut Bencher) {

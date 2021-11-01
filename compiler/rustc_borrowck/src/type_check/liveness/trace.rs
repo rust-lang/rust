@@ -205,12 +205,42 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
 
         self.stack.extend(self.cx.local_use_map.uses(local));
         while let Some(p) = self.stack.pop() {
-            if self.defs.contains(p) {
-                continue;
-            }
+            // We are live in this block from the closest to us of:
+            //
+            //  * Inclusively, the block start
+            //  * Exclusively, the previous definition (if it's in this block)
+            //  * Exclusively, the previous live_at setting (an optimization)
+            let block_start = self.cx.elements.to_block_start(p);
+            let previous_defs = self.defs.last_set_in(block_start..=p);
+            let previous_live_at = self.use_live_at.last_set_in(block_start..=p);
 
-            if self.use_live_at.insert(p) {
-                self.cx.elements.push_predecessors(self.cx.body, p, &mut self.stack)
+            let exclusive_start = match (previous_defs, previous_live_at) {
+                (Some(a), Some(b)) => Some(std::cmp::max(a, b)),
+                (Some(a), None) | (None, Some(a)) => Some(a),
+                (None, None) => None,
+            };
+
+            if let Some(exclusive) = exclusive_start {
+                self.use_live_at.insert_range(exclusive + 1..=p);
+
+                // If we have a bound after the start of the block, we should
+                // not add the predecessors for this block.
+                continue;
+            } else {
+                // Add all the elements of this block.
+                self.use_live_at.insert_range(block_start..=p);
+
+                // Then add the predecessors for this block, which are the
+                // terminators of predecessor basic blocks. Push those onto the
+                // stack so that the next iteration(s) will process them.
+
+                let block = self.cx.elements.to_location(block_start).block;
+                self.stack.extend(
+                    self.cx.body.predecessors()[block]
+                        .iter()
+                        .map(|&pred_bb| self.cx.body.terminator_loc(pred_bb))
+                        .map(|pred_loc| self.cx.elements.point_from_location(pred_loc)),
+                );
             }
         }
     }
