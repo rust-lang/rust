@@ -2063,8 +2063,26 @@ fn num_decimal_digits(num: usize) -> usize {
     MAX_DIGITS
 }
 
+// We replace some characters so the CLI output is always consistent and underlines aligned.
+const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
+    ('\t', "    "),   // We do our own tab replacement
+    ('\u{202A}', ""), // The following unicode text flow control characters are inconsistently
+    ('\u{202B}', ""), // supported accross CLIs and can cause confusion due to the bytes on disk
+    ('\u{202D}', ""), // not corresponding to the visible source code, so we replace them always.
+    ('\u{202E}', ""),
+    ('\u{2066}', ""),
+    ('\u{2067}', ""),
+    ('\u{2068}', ""),
+    ('\u{202C}', ""),
+    ('\u{2069}', ""),
+];
+
 fn replace_tabs(str: &str) -> String {
-    str.replace('\t', "    ")
+    let mut s = str.to_string();
+    for (c, replacement) in OUTPUT_REPLACEMENTS {
+        s = s.replace(*c, replacement);
+    }
+    s
 }
 
 fn draw_col_separator(buffer: &mut StyledBuffer, line: usize, col: usize) {

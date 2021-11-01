@@ -4259,6 +4259,7 @@ dependencies = [
  "rustc_span",
  "tracing",
  "unicode-normalization",
+ "unicode-width",
 ]
 
 [[package]]
