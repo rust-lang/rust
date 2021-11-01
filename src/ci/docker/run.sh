@@ -50,7 +50,8 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       # Look for all source files involves in the COPY command
       copied_files=/tmp/.docker-copied-files.txt
       rm -f "$copied_files"
-      for i in $(sed -n -e 's/^COPY \(.*\) .*$/\1/p' "$docker_dir/$image/Dockerfile"); do
+      for i in $(sed -n -e '/^COPY --from=/! s/^COPY \(.*\) .*$/\1/p' \
+          "$docker_dir/$image/Dockerfile"); do
         # List the file names
         find "$script_dir/$i" -type f >> $copied_files
       done
