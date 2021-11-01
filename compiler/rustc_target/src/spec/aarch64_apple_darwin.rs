@@ -2,7 +2,7 @@ use crate::spec::{FramePointer, LinkerFlavor, SanitizerSet, Target, TargetOption
 
 pub fn target() -> Target {
     let mut base = super::apple_base::opts("macos");
-    base.cpu = "apple-a12".to_string();
+    base.cpu = "apple-a14".to_string();
     base.max_atomic_width = Some(128);
 
     // FIXME: The leak sanitizer currently fails the tests, see #88132.
