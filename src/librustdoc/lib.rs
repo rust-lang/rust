@@ -121,6 +121,7 @@ mod markdown;
 mod passes;
 mod scrape_examples;
 mod theme;
+mod visit;
 mod visit_ast;
 mod visit_lib;
 

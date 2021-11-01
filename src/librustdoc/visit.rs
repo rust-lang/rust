@@ -1,0 +1,51 @@
+use crate::clean::*;
+
+crate trait DocVisitor: Sized {
+    fn visit_item(&mut self, item: &Item) {
+        self.visit_item_recur(item)
+    }
+
+    /// don't override!
+    fn visit_inner_recur(&mut self, kind: &ItemKind) {
+        match kind {
+            StrippedItem(..) => unreachable!(),
+            ModuleItem(i) => {
+                self.visit_mod(i);
+                return;
+            }
+            StructItem(i) => i.fields.iter().for_each(|x| self.visit_item(x)),
+            UnionItem(i) => i.fields.iter().for_each(|x| self.visit_item(x)),
+            EnumItem(i) => i.variants.iter().for_each(|x| self.visit_item(x)),
+            TraitItem(i) => i.items.iter().for_each(|x| self.visit_item(x)),
+            ImplItem(i) => i.items.iter().for_each(|x| self.visit_item(x)),
+            VariantItem(i) => match i {
+                Variant::Struct(j) => j.fields.iter().for_each(|x| self.visit_item(x)),
+                Variant::Tuple(fields) => fields.iter().for_each(|x| self.visit_item(x)),
+                Variant::CLike => {}
+            },
+            // FIXME: list all cases explicitly
+            _ => return,
+        }
+    }
+
+    /// don't override!
+    fn visit_item_recur(&mut self, item: &Item) {
+        match &*item.kind {
+            StrippedItem(i) => self.visit_inner_recur(i),
+            _ => self.visit_inner_recur(&item.kind),
+        }
+    }
+
+    fn visit_mod(&mut self, m: &Module) {
+        m.items.iter().for_each(|i| self.visit_item(i))
+    }
+
+    fn visit_crate(&mut self, c: &Crate) {
+        self.visit_item(&c.module);
+
+        let external_traits = c.external_traits.borrow();
+        for v in external_traits.values() {
+            v.trait_.items.iter().for_each(|i| self.visit_item(i))
+        }
+    }
+}

@@ -46,22 +46,21 @@ crate trait DocFolder: Sized {
                 i.items = i.items.into_iter().filter_map(|x| self.fold_item(x)).collect();
                 ImplItem(i)
             }
-            VariantItem(i) => {
-                match i {
-                    Variant::Struct(mut j) => {
-                        let num_fields = j.fields.len();
-                        j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                        j.fields_stripped |= num_fields != j.fields.len()
-                            || j.fields.iter().any(|f| f.is_stripped());
-                        VariantItem(Variant::Struct(j))
-                    }
-                    Variant::Tuple(fields) => {
-                        let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                        VariantItem(Variant::Tuple(fields))
-                    }
-                    Variant::CLike => VariantItem(Variant::CLike),
+            VariantItem(i) => match i {
+                Variant::Struct(mut j) => {
+                    let num_fields = j.fields.len();
+                    j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                    j.fields_stripped |=
+                        num_fields != j.fields.len() || j.fields.iter().any(|f| f.is_stripped());
+                    VariantItem(Variant::Struct(j))
                 }
-            }
+                Variant::Tuple(fields) => {
+                    let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                    VariantItem(Variant::Tuple(fields))
+                }
+                Variant::CLike => VariantItem(Variant::CLike),
+            },
+            // FIXME: list all cases explicitly
             x => x,
         }
     }
