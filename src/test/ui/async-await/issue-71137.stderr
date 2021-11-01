@@ -1,12 +1,12 @@
 error: future cannot be sent between threads safely
-  --> $DIR/issue-71137.rs:20:14
+  --> $DIR/issue-71137.rs:22:14
    |
 LL |   fake_spawn(wrong_mutex());
    |              ^^^^^^^^^^^^^ future returned by `wrong_mutex` is not `Send`
    |
    = help: within `impl Future`, the trait `Send` is not implemented for `MutexGuard<'_, i32>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-71137.rs:12:5
+  --> $DIR/issue-71137.rs:14:5
    |
 LL |     let mut guard = m.lock().unwrap();
    |         --------- has type `MutexGuard<'_, i32>` which is not `Send`
@@ -16,7 +16,7 @@ LL |     *guard += 1;
 LL |   }
    |   - `mut guard` is later dropped here
 note: required by a bound in `fake_spawn`
-  --> $DIR/issue-71137.rs:6:27
+  --> $DIR/issue-71137.rs:8:27
    |
 LL | fn fake_spawn<F: Future + Send + 'static>(f: F) { }
    |                           ^^^^ required by this bound in `fake_spawn`
