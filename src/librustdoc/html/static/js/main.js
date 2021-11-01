@@ -263,7 +263,9 @@ function hideThemeButtonState() {
                 search_input.placeholder = searchState.input.origPlaceholder;
             });
 
-            search_input.removeAttribute('disabled');
+            if (search_input.value != '') {
+                loadSearch();
+            }
 
             // `crates{version}.js` should always be loaded before this script, so we can use it
             // safely.

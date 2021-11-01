@@ -255,10 +255,6 @@ details.undocumented > summary::before {
 	box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
 }
 
-.search-input:disabled {
-	background-color: #3e3e3e;
-}
-
 .module-item .stab,
 .import-item .stab {
 	color: #000;

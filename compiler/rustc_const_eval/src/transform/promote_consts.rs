@@ -835,11 +835,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         new_temp
     }
 
-    fn promote_candidate(
-        mut self,
-        candidate: Candidate,
-        next_promoted_id: usize,
-    ) -> Option<Body<'tcx>> {
+    fn promote_candidate(mut self, candidate: Candidate, next_promoted_id: usize) -> Body<'tcx> {
         let def = self.source.source.with_opt_param();
         let mut rvalue = {
             let promoted = &mut self.promoted;
@@ -938,7 +934,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);
-        Some(self.promoted)
+        self.promoted
     }
 }
 
@@ -1011,11 +1007,9 @@ pub fn promote_candidates<'tcx>(
             keep_original: false,
         };
 
-        //FIXME(oli-obk): having a `maybe_push()` method on `IndexVec` might be nice
-        if let Some(mut promoted) = promoter.promote_candidate(candidate, promotions.len()) {
-            promoted.source.promoted = Some(promotions.next_index());
-            promotions.push(promoted);
-        }
+        let mut promoted = promoter.promote_candidate(candidate, promotions.len());
+        promoted.source.promoted = Some(promotions.next_index());
+        promotions.push(promoted);
     }
 
     // Insert each of `extra_statements` before its indicated location, which

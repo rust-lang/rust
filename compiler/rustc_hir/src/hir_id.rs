@@ -1,5 +1,4 @@
 use crate::def_id::{LocalDefId, CRATE_DEF_INDEX};
-use rustc_index::vec::IndexVec;
 use std::fmt;
 
 /// Uniquely identifies a node in the HIR of the current crate. It is
@@ -66,70 +65,3 @@ pub const CRATE_HIR_ID: HirId = HirId {
     owner: LocalDefId { local_def_index: CRATE_DEF_INDEX },
     local_id: ItemLocalId::from_u32(0),
 };
-
-/// N.B. This collection is currently unused, but will be used by #72015 and future PRs.
-#[derive(Clone, Default, Debug, Encodable, Decodable)]
-pub struct HirIdVec<T> {
-    map: IndexVec<LocalDefId, IndexVec<ItemLocalId, T>>,
-}
-
-impl<T> HirIdVec<T> {
-    pub fn push_owner(&mut self, id: LocalDefId) {
-        self.map.ensure_contains_elem(id, IndexVec::new);
-    }
-
-    pub fn push(&mut self, id: HirId, value: T) {
-        if id.local_id == ItemLocalId::from_u32(0) {
-            self.push_owner(id.owner);
-        }
-        let submap = &mut self.map[id.owner];
-        let _ret_id = submap.push(value);
-        debug_assert_eq!(_ret_id, id.local_id);
-    }
-
-    pub fn push_sparse(&mut self, id: HirId, value: T)
-    where
-        T: Default,
-    {
-        self.map.ensure_contains_elem(id.owner, IndexVec::new);
-        let submap = &mut self.map[id.owner];
-        let i = id.local_id.index();
-        let len = submap.len();
-        if i >= len {
-            submap.extend(std::iter::repeat_with(T::default).take(i - len + 1));
-        }
-        submap[id.local_id] = value;
-    }
-
-    pub fn get(&self, id: HirId) -> Option<&T> {
-        self.map.get(id.owner)?.get(id.local_id)
-    }
-
-    pub fn get_owner(&self, id: LocalDefId) -> &IndexVec<ItemLocalId, T> {
-        &self.map[id]
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        self.map.iter().flat_map(|la| la.iter())
-    }
-
-    pub fn iter_enumerated(&self) -> impl Iterator<Item = (HirId, &T)> {
-        self.map.iter_enumerated().flat_map(|(owner, la)| {
-            la.iter_enumerated().map(move |(local_id, attr)| (HirId { owner, local_id }, attr))
-        })
-    }
-}
-
-impl<T> std::ops::Index<HirId> for HirIdVec<T> {
-    type Output = T;
-
-    fn index(&self, id: HirId) -> &T {
-        &self.map[id.owner][id.local_id]
-    }
-}
-
-impl<T> std::ops::IndexMut<HirId> for HirIdVec<T> {
-    fn index_mut(&mut self, id: HirId) -> &mut T {
-        &mut self.map[id.owner][id.local_id]
-    }
-}
