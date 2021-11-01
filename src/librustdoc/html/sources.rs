@@ -85,8 +85,6 @@ impl DocVisitor for LocalSourcesCollector<'_, '_> {
     fn visit_item(&mut self, item: &clean::Item) {
         self.add_local_source(item);
 
-        // FIXME: if `include_sources` isn't set and DocFolder didn't require consuming the crate by value,
-        // we could return None here without having to walk the rest of the crate.
         self.visit_item_recur(item)
     }
 }
@@ -102,6 +100,10 @@ struct SourceCollector<'a, 'tcx> {
 
 impl DocVisitor for SourceCollector<'_, '_> {
     fn visit_item(&mut self, item: &clean::Item) {
+        if !self.cx.include_sources {
+            return;
+        }
+
         let tcx = self.cx.tcx();
         let span = item.span(tcx);
         let sess = tcx.sess;
@@ -109,7 +111,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
         // If we're not rendering sources, there's nothing to do.
         // If we're including source files, and we haven't seen this file yet,
         // then we need to render it out to the filesystem.
-        if self.cx.include_sources && is_real_and_local(span, sess) {
+        if is_real_and_local(span, sess) {
             let filename = span.filename(sess);
             let span = span.inner();
             let pos = sess.source_map().lookup_source_file(span.lo());
@@ -134,8 +136,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
                 }
             };
         }
-        // FIXME: if `include_sources` isn't set and DocFolder didn't require consuming the crate by value,
-        // we could return None here without having to walk the rest of the crate.
+
         self.visit_item_recur(item)
     }
 }
