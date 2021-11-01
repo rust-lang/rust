@@ -3,9 +3,11 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 use crate::visit::DocVisitor;
-use core::ops::Range;
+
 use pulldown_cmark::{Event, Parser, Tag};
+
 use std::iter::Peekable;
+use std::ops::Range;
 use std::str::CharIndices;
 
 crate const CHECK_INVALID_HTML_TAGS: Pass = Pass {

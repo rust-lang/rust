@@ -60,8 +60,26 @@ crate trait DocFolder: Sized {
                 }
                 Variant::CLike => VariantItem(Variant::CLike),
             },
-            // FIXME: list all cases explicitly
-            x => x,
+            ExternCrateItem { src: _ }
+            | ImportItem(_)
+            | FunctionItem(_)
+            | TypedefItem(_, _)
+            | OpaqueTyItem(_)
+            | StaticItem(_)
+            | ConstantItem(_)
+            | TraitAliasItem(_)
+            | TyMethodItem(_)
+            | MethodItem(_, _)
+            | StructFieldItem(_)
+            | ForeignFunctionItem(_)
+            | ForeignStaticItem(_)
+            | ForeignTypeItem
+            | MacroItem(_)
+            | ProcMacroItem(_)
+            | PrimitiveItem(_)
+            | AssocConstItem(_, _)
+            | AssocTypeItem(_, _)
+            | KeywordItem(_) => kind,
         }
     }
 

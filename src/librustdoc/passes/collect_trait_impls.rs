@@ -1,6 +1,7 @@
 use super::Pass;
+use crate::clean::*;
 use crate::core::DocContext;
-use crate::{clean::*, visit::DocVisitor};
+use crate::visit::DocVisitor;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
