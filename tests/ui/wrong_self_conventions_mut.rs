@@ -1,4 +1,3 @@
-// edition:2018
 #![warn(clippy::wrong_self_convention)]
 #![allow(dead_code)]
 

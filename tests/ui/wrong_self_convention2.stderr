@@ -1,5 +1,5 @@
 error: methods called `from_*` usually take no `self`
-  --> $DIR/wrong_self_convention2.rs:55:29
+  --> $DIR/wrong_self_convention2.rs:54:29
    |
 LL |         pub fn from_be_self(self) -> Self {
    |                             ^^^^
@@ -8,7 +8,7 @@ LL |         pub fn from_be_self(self) -> Self {
    = help: consider choosing a less ambiguous name
 
 error: methods called `from_*` usually take no `self`
-  --> $DIR/wrong_self_convention2.rs:64:25
+  --> $DIR/wrong_self_convention2.rs:63:25
    |
 LL |         fn from_be_self(self) -> Self;
    |                         ^^^^

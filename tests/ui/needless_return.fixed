@@ -1,5 +1,4 @@
 // run-rustfix
-// edition:2018
 
 #![feature(let_else)]
 #![allow(unused)]

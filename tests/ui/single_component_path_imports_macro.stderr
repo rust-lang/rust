@@ -1,5 +1,5 @@
 error: this import is redundant
-  --> $DIR/single_component_path_imports_macro.rs:16:1
+  --> $DIR/single_component_path_imports_macro.rs:15:1
    |
 LL | use m2; // fail
    | ^^^^^^^ help: remove it entirely

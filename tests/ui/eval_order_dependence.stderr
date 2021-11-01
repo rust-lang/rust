@@ -1,48 +1,48 @@
 error: unsequenced read of `x`
-  --> $DIR/eval_order_dependence.rs:16:9
+  --> $DIR/eval_order_dependence.rs:14:9
    |
 LL |     } + x;
    |         ^
    |
    = note: `-D clippy::eval-order-dependence` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:14:9
+  --> $DIR/eval_order_dependence.rs:12:9
    |
 LL |         x = 1;
    |         ^^^^^
 
 error: unsequenced read of `x`
-  --> $DIR/eval_order_dependence.rs:19:5
+  --> $DIR/eval_order_dependence.rs:17:5
    |
 LL |     x += {
    |     ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:20:9
+  --> $DIR/eval_order_dependence.rs:18:9
    |
 LL |         x = 20;
    |         ^^^^^^
 
 error: unsequenced read of `x`
-  --> $DIR/eval_order_dependence.rs:32:12
+  --> $DIR/eval_order_dependence.rs:30:12
    |
 LL |         a: x,
    |            ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:34:13
+  --> $DIR/eval_order_dependence.rs:32:13
    |
 LL |             x = 6;
    |             ^^^^^
 
 error: unsequenced read of `x`
-  --> $DIR/eval_order_dependence.rs:41:9
+  --> $DIR/eval_order_dependence.rs:39:9
    |
 LL |         x += {
    |         ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:42:13
+  --> $DIR/eval_order_dependence.rs:40:13
    |
 LL |             x = 20;
    |             ^^^^^^
