@@ -3,7 +3,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
-#![feature(format_args_capture)]
+#![cfg_attr(bootstrap, feature(format_args_capture))]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(let_else)]

@@ -13,7 +13,7 @@
 #![feature(drain_filter)]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
-#![feature(format_args_capture)]
+#![cfg_attr(bootstrap, feature(format_args_capture))]
 #![feature(iter_zip)]
 #![feature(let_else)]
 #![feature(never_type)]

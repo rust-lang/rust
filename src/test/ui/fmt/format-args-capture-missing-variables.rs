@@ -1,5 +1,3 @@
-#![feature(format_args_capture)]
-
 fn main() {
     format!("{} {foo} {} {bar} {}", 1, 2, 3);
     //~^ ERROR: cannot find value `foo` in this scope
