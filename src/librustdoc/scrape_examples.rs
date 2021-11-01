@@ -132,12 +132,28 @@ where
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);
 
-        // Get type of function if expression is a function call
         let tcx = self.tcx;
+
+        // If we visit an item that contains an expression outside a function body,
+        // then we need to exit before calling typeck (which will panic). See
+        // test/run-make/rustdoc-scrape-examples-invalid-expr for an example.
+        let hir = tcx.hir();
+        let owner = hir.local_def_id_to_hir_id(ex.hir_id.owner);
+        if hir.maybe_body_owned_by(owner).is_none() {
+            return;
+        }
+
+        // Get type of function if expression is a function call
         let (ty, span) = match ex.kind {
             hir::ExprKind::Call(f, _) => {
                 let types = tcx.typeck(ex.hir_id.owner);
-                (types.node_type(f.hir_id), ex.span)
+
+                match types.node_type_opt(f.hir_id) {
+                    Some(ty) => (ty, ex.span),
+                    None => {
+                        return;
+                    }
+                }
             }
             hir::ExprKind::MethodCall(_, _, _, span) => {
                 let types = tcx.typeck(ex.hir_id.owner);
