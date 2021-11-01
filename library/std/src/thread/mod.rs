@@ -1407,7 +1407,7 @@ impl<T> JoinHandle<T> {
     ///
     /// This might return `false` for a brief moment after the thread's main
     /// function has returned, but before the thread itself has stopped running.
-    #[unstable(feature = "thread_is_running", issue = "none")]
+    #[unstable(feature = "thread_is_running", issue = "90470")]
     pub fn is_running(&self) -> bool {
         Arc::strong_count(&self.0.packet.0) > 1
     }
