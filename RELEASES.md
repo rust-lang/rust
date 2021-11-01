@@ -1,3 +1,11 @@
+Version 1.56.1 (2021-11-01)
+===========================
+
+- New lints to detect the presence of bidirectional-override Unicode
+  codepoints in the compiled source code ([CVE-2021-42574])
+
+[CVE-2021-42574]: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-42574
+
 Version 1.56.0 (2021-10-21)
 ========================
 
