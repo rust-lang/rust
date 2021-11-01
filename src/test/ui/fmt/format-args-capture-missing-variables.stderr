@@ -1,5 +1,5 @@
 error: named argument never used
-  --> $DIR/format-args-capture-missing-variables.rs:10:51
+  --> $DIR/format-args-capture-missing-variables.rs:8:51
    |
 LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
    |             -------------------                   ^ named argument never used
@@ -7,37 +7,37 @@ LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
    |             formatting specifier missing
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:4:17
+  --> $DIR/format-args-capture-missing-variables.rs:2:17
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
    |                 ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `bar` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:4:26
+  --> $DIR/format-args-capture-missing-variables.rs:2:26
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
    |                          ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:8:14
+  --> $DIR/format-args-capture-missing-variables.rs:6:14
    |
 LL |     format!("{foo}");
    |              ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `valueb` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:10:23
+  --> $DIR/format-args-capture-missing-variables.rs:8:23
    |
 LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
    |                       ^^^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:16:9
+  --> $DIR/format-args-capture-missing-variables.rs:14:9
    |
 LL |         {foo}
    |         ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:21:13
+  --> $DIR/format-args-capture-missing-variables.rs:19:13
    |
 LL |     panic!("{foo} {bar}", bar=1);
    |             ^^^^^ not found in this scope
