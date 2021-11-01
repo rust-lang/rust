@@ -126,6 +126,101 @@ public:
         can_modref_map(can_modref_map) {}
 };
 
+struct ReverseCacheKey {
+  llvm::Function *todiff;
+  DIFFE_TYPE retType;
+  const std::vector<DIFFE_TYPE> constant_args;
+  std::map<llvm::Argument *, bool> uncacheable_args;
+  bool returnUsed;
+  bool shadowReturnUsed;
+  DerivativeMode mode;
+  bool freeMemory;
+  bool AtomicAdd;
+  llvm::Type *additionalType;
+  const FnTypeInfo typeInfo;
+
+  /*
+  inline bool operator==(const ReverseCacheKey& rhs) const {
+      return todiff == rhs.todiff &&
+             retType == rhs.retType &&
+             constant_args == rhs.constant_args &&
+             uncacheable_args == rhs.uncacheable_args &&
+             returnUsed == rhs.returnUsed &&
+             shadowReturnUsed == rhs.shadowReturnUsed &&
+             mode == rhs.mode &&
+             freeMemory == rhs.freeMemory &&
+             AtomicAdd == rhs.AtomicAdd &&
+             additionalType == rhs.additionalType &&
+             typeInfo == rhs.typeInfo;
+  }
+  */
+
+  inline bool operator<(const ReverseCacheKey &rhs) const {
+    if (todiff < rhs.todiff)
+      return true;
+    if (rhs.todiff < todiff)
+      return false;
+
+    if (retType < rhs.retType)
+      return true;
+    if (rhs.retType < retType)
+      return false;
+
+    if (constant_args < rhs.constant_args)
+      return true;
+    if (rhs.constant_args < constant_args)
+      return false;
+
+    for (auto &arg : todiff->args()) {
+      auto foundLHS = uncacheable_args.find(&arg);
+      assert(foundLHS != uncacheable_args.end());
+      auto foundRHS = rhs.uncacheable_args.find(&arg);
+      assert(foundRHS != rhs.uncacheable_args.end());
+      if (foundLHS->second < foundRHS->second)
+        return true;
+      if (foundRHS->second < foundLHS->second)
+        return false;
+    }
+
+    if (returnUsed < rhs.returnUsed)
+      return true;
+    if (rhs.returnUsed < returnUsed)
+      return false;
+
+    if (shadowReturnUsed < rhs.shadowReturnUsed)
+      return true;
+    if (rhs.shadowReturnUsed < shadowReturnUsed)
+      return false;
+
+    if (mode < rhs.mode)
+      return true;
+    if (rhs.mode < mode)
+      return false;
+
+    if (freeMemory < rhs.freeMemory)
+      return true;
+    if (rhs.freeMemory < freeMemory)
+      return false;
+
+    if (AtomicAdd < rhs.AtomicAdd)
+      return true;
+    if (rhs.AtomicAdd < AtomicAdd)
+      return false;
+
+    if (additionalType < rhs.additionalType)
+      return true;
+    if (rhs.additionalType < additionalType)
+      return false;
+
+    if (typeInfo < rhs.typeInfo)
+      return true;
+    if (rhs.typeInfo < typeInfo)
+      return false;
+    // equal
+    return false;
+  }
+};
+
 class EnzymeLogic {
 public:
   PreProcessCache PPC;
@@ -157,12 +252,6 @@ public:
       const std::map<llvm::Argument *, bool> _uncacheable_args,
       bool forceAnonymousTape, bool AtomicAdd, bool PostOpt, bool omp = false);
 
-  using ReverseCacheKey =
-      std::tuple<llvm::Function *, DIFFE_TYPE /*retType*/,
-                 std::vector<DIFFE_TYPE> /*constant_args*/,
-                 std::map<llvm::Argument *, bool> /*uncacheable_args*/,
-                 bool /*retval*/, bool /*dretPtr*/, DerivativeMode,
-                 llvm::Type *, const FnTypeInfo>;
   std::map<ReverseCacheKey, llvm::Function *> ReverseCachedFunctions;
 
   using ForwardCacheKey =
@@ -187,15 +276,12 @@ public:
   ///  an augmented forward pass \p AtomicAdd is whether to perform all adjoint
   ///  updates to memory in an atomic way \p PostOpt is whether to perform basic
   ///  optimization of the function after synthesis
-  llvm::Function *CreatePrimalAndGradient(
-      llvm::Function *todiff, DIFFE_TYPE retType,
-      const std::vector<DIFFE_TYPE> &constant_args,
-      llvm::TargetLibraryInfo &TLI, TypeAnalysis &TA, bool returnValue,
-      bool dretUsed, DerivativeMode mode, llvm::Type *additionalArg,
-      const FnTypeInfo &typeInfo,
-      const std::map<llvm::Argument *, bool> _uncacheable_args,
-      const AugmentedReturn *augmented, bool AtomicAdd, bool PostOpt = false,
-      bool omp = false);
+  llvm::Function *CreatePrimalAndGradient(const ReverseCacheKey &&key,
+                                          llvm::TargetLibraryInfo &TLI,
+                                          TypeAnalysis &TA,
+                                          const AugmentedReturn *augmented,
+                                          bool PostOpt = false,
+                                          bool omp = false);
 
   llvm::Function *
   CreateForwardDiff(llvm::Function *todiff, DIFFE_TYPE retType,

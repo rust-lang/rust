@@ -1479,7 +1479,9 @@ class DiffeGradientUtils : public GradientUtils {
                       constantvalues_, returnvals_, ActiveReturn, origToNew_,
                       mode, omp) {
     assert(reverseBlocks.size() == 0);
-    if (mode == DerivativeMode::ForwardMode) {
+    if (mode == DerivativeMode::ForwardMode ||
+        mode == DerivativeMode::ForwardModeSplit ||
+        mode == DerivativeMode::ForwardModeVector) {
       return;
     }
     for (BasicBlock *BB : originalBlocks) {
@@ -1494,6 +1496,8 @@ class DiffeGradientUtils : public GradientUtils {
   }
 
 public:
+  // Whether to free memory in reverse pass or split forward.
+  bool FreeMemory;
   ValueMap<const Value *, TrackingVH<AllocaInst>> differentials;
   static DiffeGradientUtils *
   CreateFromClone(EnzymeLogic &Logic, DerivativeMode mode, Function *todiff,
@@ -1782,6 +1786,8 @@ public:
                  const SubLimitType &sublimits, int i, llvm::AllocaInst *alloc,
                  llvm::ConstantInt *byteSizeOfType, llvm::Value *storeInto,
                  llvm::MDNode *InvariantMD) override {
+    if (!FreeMemory)
+      return;
     assert(reverseBlocks.find(forwardPreheader) != reverseBlocks.end());
     assert(reverseBlocks[forwardPreheader].size());
     IRBuilder<> tbuild(reverseBlocks[forwardPreheader].back());
@@ -1874,6 +1880,10 @@ public:
     Value *ptr;
 
     switch (mode) {
+    case DerivativeMode::ForwardModeVector:
+      assert(false && "Unimplemented derivative mode (ForwardModeVector)");
+      break;
+    case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode:
       ptr = invertPointerM(origptr, BuilderM);
       break;

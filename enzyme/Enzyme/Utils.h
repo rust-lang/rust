@@ -247,6 +247,10 @@ static inline std::string to_string(DerivativeMode mode) {
   switch (mode) {
   case DerivativeMode::ForwardMode:
     return "ForwardMode";
+  case DerivativeMode::ForwardModeVector:
+    return "ForwardModeVector";
+  case DerivativeMode::ForwardModeSplit:
+    return "ForwardModeSplit";
   case DerivativeMode::ReverseModePrimal:
     return "ReverseModePrimal";
   case DerivativeMode::ReverseModeGradient:
@@ -296,6 +300,7 @@ static inline std::string to_string(ReturnType t) {
   case ReturnType::Void:
     return "Void";
   }
+  llvm_unreachable("illegal ReturnType");
 }
 
 #include <set>

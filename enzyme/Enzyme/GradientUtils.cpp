@@ -2492,6 +2492,8 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
 
   switch (mode) {
   case DerivativeMode::ForwardMode:
+  case DerivativeMode::ForwardModeSplit:
+  case DerivativeMode::ForwardModeVector:
     prefix = "fwddiffe";
     break;
   case DerivativeMode::ReverseModeCombined:
@@ -2679,12 +2681,19 @@ Constant *GradientUtils::GetOrCreateShadowFunction(EnzymeLogic &Logic,
       type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd,
       PostOpt);
   Constant *newf = Logic.CreatePrimalAndGradient(
-      fn, retType, /*constant_args*/ types, TLI, TA,
-      /*returnValue*/ false, /*dretPtr*/ false,
-      DerivativeMode::ReverseModeGradient,
-      /*additionalArg*/ Type::getInt8PtrTy(fn->getContext()), type_args,
-      uncacheable_args,
-      /*map*/ &augdata, AtomicAdd);
+      (ReverseCacheKey){.todiff = fn,
+                        .retType = retType,
+                        .constant_args = types,
+                        .uncacheable_args = uncacheable_args,
+                        .returnUsed = false,
+                        .shadowReturnUsed = false,
+                        .mode = DerivativeMode::ReverseModeGradient,
+                        .freeMemory = true,
+                        .AtomicAdd = AtomicAdd,
+                        .additionalType = Type::getInt8PtrTy(fn->getContext()),
+                        .typeInfo = type_args},
+      TLI, TA,
+      /*map*/ &augdata);
   if (!newf)
     newf = UndefValue::get(fn->getType());
   auto cdata = ConstantStruct::get(

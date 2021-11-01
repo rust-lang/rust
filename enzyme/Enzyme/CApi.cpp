@@ -371,10 +371,20 @@ LLVMValueRef EnzymeCreatePrimalAndGradient(
     argnum++;
   }
   return wrap(eunwrap(Logic).CreatePrimalAndGradient(
-      cast<Function>(unwrap(todiff)), (DIFFE_TYPE)retType, nconstant_args,
-      eunwrap(TA).TLI, eunwrap(TA), returnValue, dretUsed, (DerivativeMode)mode,
-      unwrap(additionalArg), eunwrap(typeInfo, cast<Function>(unwrap(todiff))),
-      uncacheable_args, eunwrap(augmented), AtomicAdd, PostOpt));
+      (ReverseCacheKey){
+          .todiff = cast<Function>(unwrap(todiff)),
+          .retType = (DIFFE_TYPE)retType,
+          .constant_args = nconstant_args,
+          .uncacheable_args = uncacheable_args,
+          .returnUsed = returnValue,
+          .shadowReturnUsed = dretUsed,
+          .mode = (DerivativeMode)mode,
+          .freeMemory = true,
+          .AtomicAdd = AtomicAdd,
+          .additionalType = unwrap(additionalArg),
+          .typeInfo = eunwrap(typeInfo, cast<Function>(unwrap(todiff))),
+      },
+      eunwrap(TA).TLI, eunwrap(TA), eunwrap(augmented), PostOpt));
 }
 EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
     EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,
