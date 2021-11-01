@@ -47,7 +47,6 @@ crate trait DocFolder: Sized {
                 ImplItem(i)
             }
             VariantItem(i) => {
-                let i2 = i.clone(); // this clone is small
                 match i {
                     Variant::Struct(mut j) => {
                         let num_fields = j.fields.len();
@@ -60,7 +59,7 @@ crate trait DocFolder: Sized {
                         let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
                         VariantItem(Variant::Tuple(fields))
                     }
-                    _ => VariantItem(i2),
+                    i => VariantItem(i),
                 }
             }
             x => x,
