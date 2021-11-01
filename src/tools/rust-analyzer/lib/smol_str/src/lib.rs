@@ -1,28 +1,18 @@
-#![cfg_attr(not(feature = "std"), no_std)]
-
-#[cfg(not(feature = "std"))]
-extern crate core as std;
-
-#[cfg(not(feature = "std"))]
+#![no_std]
 extern crate alloc;
 
-use core::convert::Infallible;
-use std::{
-    borrow::Borrow,
-    cmp::{self, Ordering},
-    fmt, hash, iter,
-    ops::Deref,
-    str::FromStr,
-};
-
-#[cfg(not(feature = "std"))]
 use alloc::{
     string::{String, ToString},
     sync::Arc,
 };
-
-#[cfg(feature = "std")]
-use std::sync::Arc;
+use core::{
+    borrow::Borrow,
+    cmp::{self, Ordering},
+    convert::Infallible,
+    fmt, hash, iter,
+    ops::Deref,
+    str::FromStr,
+};
 
 /// A `SmolStr` is a string type that has the following properties:
 ///
@@ -131,7 +121,7 @@ impl SmolStr {
             if size + len > INLINE_CAP {
                 let (min_remaining, _) = iter.size_hint();
                 let mut heap = String::with_capacity(size + len + min_remaining);
-                heap.push_str(std::str::from_utf8(&buf[..len]).unwrap());
+                heap.push_str(core::str::from_utf8(&buf[..len]).unwrap());
                 heap.push(ch);
                 heap.extend(iter);
                 return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
@@ -265,7 +255,7 @@ where
         let size = slice.len();
         if size + len > INLINE_CAP {
             let mut heap = String::with_capacity(size + len);
-            heap.push_str(std::str::from_utf8(&buf[..len]).unwrap());
+            heap.push_str(core::str::from_utf8(&buf[..len]).unwrap());
             heap.push_str(&slice);
             heap.extend(iter);
             return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
@@ -411,7 +401,7 @@ impl Repr {
             Repr::Inline { len, buf } => {
                 let len = *len as usize;
                 let buf = &buf[..len];
-                unsafe { ::std::str::from_utf8_unchecked(buf) }
+                unsafe { ::core::str::from_utf8_unchecked(buf) }
             }
             Repr::Substring { newlines, spaces } => {
                 let newlines = *newlines;
@@ -425,9 +415,12 @@ impl Repr {
 
 #[cfg(feature = "serde")]
 mod serde {
-    use super::SmolStr;
-    use ::serde::de::{Deserializer, Error, Unexpected, Visitor};
-    use std::fmt;
+    use alloc::{string::String, vec::Vec};
+    use core::fmt;
+
+    use serde::de::{Deserializer, Error, Unexpected, Visitor};
+
+    use crate::SmolStr;
 
     // https://github.com/serde-rs/serde/blob/629802f2abfd1a54a6072992888fea7ca5bc209f/serde/src/private/de.rs#L56-L125
     fn smol_str<'de: 'a, 'a, D>(deserializer: D) -> Result<SmolStr, D::Error>
@@ -468,7 +461,7 @@ mod serde {
             where
                 E: Error,
             {
-                match std::str::from_utf8(v) {
+                match core::str::from_utf8(v) {
                     Ok(s) => Ok(SmolStr::from(s)),
                     Err(_) => Err(Error::invalid_value(Unexpected::Bytes(v), &self)),
                 }
@@ -478,7 +471,7 @@ mod serde {
             where
                 E: Error,
             {
-                match std::str::from_utf8(v) {
+                match core::str::from_utf8(v) {
                     Ok(s) => Ok(SmolStr::from(s)),
                     Err(_) => Err(Error::invalid_value(Unexpected::Bytes(v), &self)),
                 }
