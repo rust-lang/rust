@@ -281,12 +281,12 @@ language_item_table! {
     // in the sense that a crate is not required to have it defined to use it, but a final product
     // is required to define it somewhere. Additionally, there are restrictions on crates that use
     // a weak lang item, but do not have it defined.
-    Panic,                   sym::panic,               panic_fn,                   Target::Fn,             GenericRequirement::None;
+    Panic,                   sym::panic,               panic_fn,                   Target::Fn,             GenericRequirement::Exact(0);
     PanicFmt,                sym::panic_fmt,           panic_fmt,                  Target::Fn,             GenericRequirement::None;
     PanicDisplay,            sym::panic_display,       panic_display,              Target::Fn,             GenericRequirement::None;
     PanicStr,                sym::panic_str,           panic_str,                  Target::Fn,             GenericRequirement::None;
     ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            Target::Fn,             GenericRequirement::None;
-    PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn,             GenericRequirement::None;
+    PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn,             GenericRequirement::Exact(0);
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct,         GenericRequirement::None;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct,         GenericRequirement::None;
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn,             GenericRequirement::None;
