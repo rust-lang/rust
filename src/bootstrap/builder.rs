@@ -482,6 +482,7 @@ impl<'a> Builder<'a> {
                 doc::RustByExample,
                 doc::RustcBook,
                 doc::CargoBook,
+                doc::Clippy,
                 doc::EmbeddedBook,
                 doc::EditionGuide,
             ),
