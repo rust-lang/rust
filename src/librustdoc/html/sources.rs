@@ -44,7 +44,7 @@ struct LocalSourcesCollector<'a, 'tcx> {
 }
 
 fn is_real_and_local(span: clean::Span, sess: &Session) -> bool {
-    span.filename(sess).is_real() && span.cnum(sess) == LOCAL_CRATE
+    span.cnum(sess) == LOCAL_CRATE && span.filename(sess).is_real()
 }
 
 impl LocalSourcesCollector<'_, '_> {
@@ -56,12 +56,13 @@ impl LocalSourcesCollector<'_, '_> {
             return;
         }
         let filename = span.filename(sess);
-        let p = match filename {
-            FileName::Real(ref file) => match file.local_path() {
-                Some(p) => p.to_path_buf(),
-                _ => return,
-            },
-            _ => return,
+        let p = if let FileName::Real(file) = filename {
+            match file.into_local_path() {
+                Some(p) => p,
+                None => return,
+            }
+        } else {
+            return;
         };
         if self.local_sources.contains_key(&*p) {
             // We've already emitted this source
