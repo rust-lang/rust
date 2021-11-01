@@ -7,7 +7,7 @@ use clippy_utils::{get_parent_expr_for_hir, is_trait_method, strip_pat_refs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{self, ExprKind, HirId, PatKind};
+use rustc_hir::{self, ExprKind, HirId, MutTy, PatKind, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::place::ProjectionKind;
@@ -52,26 +52,12 @@ pub(super) fn check<'tcx>(
                 then {
                     if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
                         Some(search_snippet.replacen('&', "", 1))
-                    } else if let PatKind::Binding(_, binding_id, _, _) = strip_pat_refs(closure_arg.pat).kind {
-                        // this binding is composed of at least two levels of references, so we need to remove one
-                        let binding_type = cx.typeck_results().node_type(binding_id);
-                        let innermost_is_ref = if let ty::Ref(_, inner,_) = binding_type.kind() {
-                            matches!(inner.kind(), ty::Ref(_, innermost, _) if innermost.is_ref())
-                        } else {
-                            false
-                        };
-
+                    } else if let PatKind::Binding(..) = strip_pat_refs(closure_arg.pat).kind {
                         // `find()` provides a reference to the item, but `any` does not,
                         // so we should fix item usages for suggestion
-                        if let Some(closure_sugg) = get_closure_suggestion(cx, search_arg, closure_body) {
+                        if let Some(closure_sugg) = get_closure_suggestion(cx, search_arg) {
                             applicability = closure_sugg.applicability;
-                            if innermost_is_ref {
-                                Some(closure_sugg.suggestion.replacen('&', "", 1))
-                            } else {
-                                Some(closure_sugg.suggestion)
-                            }
-                        } else if innermost_is_ref {
-                            Some(search_snippet.replacen('&', "", 1))
+                            Some(closure_sugg.suggestion)
                         } else {
                             Some(search_snippet.to_string())
                         }
@@ -174,6 +160,7 @@ pub(super) fn check<'tcx>(
     }
 }
 
+#[derive(Debug)]
 struct ClosureSugg {
     applicability: Applicability,
     suggestion: String,
@@ -182,38 +169,45 @@ struct ClosureSugg {
 // Build suggestion gradually by handling closure arg specific usages,
 // such as explicit deref and borrowing cases.
 // Returns `None` if no such use cases have been triggered in closure body
-fn get_closure_suggestion<'tcx>(
-    cx: &LateContext<'_>,
-    search_arg: &'tcx hir::Expr<'_>,
-    closure_body: &hir::Body<'_>,
-) -> Option<ClosureSugg> {
-    let mut visitor = DerefDelegate {
-        cx,
-        closure_span: search_arg.span,
-        next_pos: search_arg.span.lo(),
-        suggestion_start: String::new(),
-        applicability: Applicability::MachineApplicable,
-    };
+fn get_closure_suggestion<'tcx>(cx: &LateContext<'_>, search_expr: &'tcx hir::Expr<'_>) -> Option<ClosureSugg> {
+    if let hir::ExprKind::Closure(_, fn_decl, body_id, ..) = search_expr.kind {
+        let closure_body = cx.tcx.hir().body(body_id);
+        // is closure arg a double reference (i.e.: `|x: &&i32| ...`)
+        let closure_arg_is_double_ref = if let TyKind::Rptr(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind {
+            matches!(ty.kind, TyKind::Rptr(_, MutTy { .. }))
+        } else {
+            false
+        };
 
-    let fn_def_id = cx.tcx.hir().local_def_id(search_arg.hir_id);
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        ExprUseVisitor::new(&mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results())
-            .consume_body(closure_body);
-    });
+        let mut visitor = DerefDelegate {
+            cx,
+            closure_span: search_expr.span,
+            closure_arg_is_double_ref,
+            next_pos: search_expr.span.lo(),
+            suggestion_start: String::new(),
+            applicability: Applicability::MachineApplicable,
+        };
 
-    if visitor.suggestion_start.is_empty() {
-        None
-    } else {
-        Some(ClosureSugg {
-            applicability: visitor.applicability,
-            suggestion: visitor.finish(),
-        })
+        let fn_def_id = cx.tcx.hir().local_def_id(search_expr.hir_id);
+        cx.tcx.infer_ctxt().enter(|infcx| {
+            ExprUseVisitor::new(&mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results())
+                .consume_body(closure_body);
+        });
+
+        if !visitor.suggestion_start.is_empty() {
+            return Some(ClosureSugg {
+                applicability: visitor.applicability,
+                suggestion: visitor.finish(),
+            });
+        }
     }
+    None
 }
 
 struct DerefDelegate<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     closure_span: Span,
+    closure_arg_is_double_ref: bool,
     next_pos: BytePos,
     suggestion_start: String,
     applicability: Applicability,
@@ -223,7 +217,12 @@ impl DerefDelegate<'_, 'tcx> {
     pub fn finish(&mut self) -> String {
         let end_span = Span::new(self.next_pos, self.closure_span.hi(), self.closure_span.ctxt(), None);
         let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
-        format!("{}{}", self.suggestion_start, end_snip)
+        let sugg = format!("{}{}", self.suggestion_start, end_snip);
+        if self.closure_arg_is_double_ref {
+            sugg.replacen('&', "", 1)
+        } else {
+            sugg
+        }
     }
 
     fn func_takes_arg_by_double_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
@@ -261,6 +260,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
                 // i.e.: suggest `&x` instead of `x`
+                self.closure_arg_is_double_ref = false;
                 self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
             } else {
                 // cases where a parent `Call` or `MethodCall` is using the item
@@ -272,29 +272,43 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                 // - `self` arguments in the case of `x.is_something()` are also automatically (de)referenced, and
                 //   no projection should be suggested
                 if let Some(parent_expr) = get_parent_expr_for_hir(self.cx, cmt.hir_id) {
-                    if let ExprKind::Call(_, call_args) | ExprKind::MethodCall(_, _, call_args, _) = parent_expr.kind {
-                        let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
-                        let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
-
-                        if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
-                            // suggest ampersand if call function is taking args by double reference
-                            let takes_arg_by_double_ref = self.func_takes_arg_by_double_ref(parent_expr, cmt.hir_id);
-
-                            // do not suggest ampersand if the ident is the method caller
-                            let ident_sugg = if !call_args.is_empty()
-                                && call_args[0].hir_id == cmt.hir_id
-                                && !takes_arg_by_double_ref
-                            {
-                                format!("{}{}", start_snip, ident_str)
-                            } else {
-                                format!("{}&{}", start_snip, ident_str)
-                            };
-                            self.suggestion_start.push_str(&ident_sugg);
+                    match &parent_expr.kind {
+                        // given expression is the self argument and will be handled completely by the compiler
+                        // i.e.: `|x| x.is_something()`
+                        ExprKind::MethodCall(_, _, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
+                            self.suggestion_start.push_str(&format!("{}{}", start_snip, ident_str));
                             self.next_pos = span.hi();
                             return;
-                        }
+                        },
+                        // item is used in a call
+                        // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
+                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, _, [_, call_args @ ..], _) => {
+                            let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
+                            let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 
-                        self.applicability = Applicability::Unspecified;
+                            if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
+                                // suggest ampersand if call function is taking args by double reference
+                                let takes_arg_by_double_ref =
+                                    self.func_takes_arg_by_double_ref(parent_expr, cmt.hir_id);
+
+                                // no need to bind again if the function doesn't take arg by double ref
+                                // and if the item is already a double ref
+                                let ident_sugg = if !call_args.is_empty()
+                                    && !takes_arg_by_double_ref
+                                    && self.closure_arg_is_double_ref
+                                {
+                                    format!("{}{}", start_snip, ident_str)
+                                } else {
+                                    format!("{}&{}", start_snip, ident_str)
+                                };
+                                self.suggestion_start.push_str(&ident_sugg);
+                                self.next_pos = span.hi();
+                                return;
+                            }
+
+                            self.applicability = Applicability::Unspecified;
+                        },
+                        _ => (),
                     }
                 }
 
@@ -346,7 +360,9 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
                 // handle `ProjectionKind::Deref` by removing one explicit deref
                 // if no special case was detected (i.e.: suggest `*x` instead of `**x`)
-                if !projections_handled {
+                if projections_handled {
+                    self.closure_arg_is_double_ref = false;
+                } else {
                     let last_deref = cmt
                         .place
                         .projections

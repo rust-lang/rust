@@ -188,13 +188,25 @@ LL |         let _ = v.iter().find(|x| deref_enough(**x)).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x| deref_enough(*x))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_none.rs:127:17
+  --> $DIR/search_is_some_fixable_none.rs:125:17
+   |
+LL |         let _ = v.iter().find(|x: &&u32| deref_enough(**x)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x: &u32| deref_enough(*x))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:128:17
    |
 LL |         let _ = v.iter().find(|x| arg_no_deref(x)).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x| arg_no_deref(&x))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_none.rs:147:17
+  --> $DIR/search_is_some_fixable_none.rs:130:17
+   |
+LL |         let _ = v.iter().find(|x: &&u32| arg_no_deref(x)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x: &u32| arg_no_deref(&x))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:150:17
    |
 LL |           let _ = vfoo
    |  _________________^
@@ -210,34 +222,34 @@ LL ~             .iter().any(|v| v.inner_double.bar[0][0] == 2 && v.inner.bar[0]
    |
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_none.rs:163:17
+  --> $DIR/search_is_some_fixable_none.rs:166:17
    |
 LL |         let _ = vfoo.iter().find(|v| v.inner[0].bar == 2).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|v| v.inner[0].bar == 2)`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_none.rs:168:17
+  --> $DIR/search_is_some_fixable_none.rs:171:17
    |
 LL |         let _ = vfoo.iter().find(|x| (**x)[0] == 9).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|x| (**x)[0] == 9)`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_none.rs:181:17
+  --> $DIR/search_is_some_fixable_none.rs:184:17
    |
 LL |         let _ = vfoo.iter().find(|v| v.by_ref(&v.bar)).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|v| v.by_ref(&v.bar))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_none.rs:185:17
+  --> $DIR/search_is_some_fixable_none.rs:188:17
    |
 LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|(&x, y)| x == *y).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y)`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_none.rs:186:17
+  --> $DIR/search_is_some_fixable_none.rs:189:17
    |
 LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y)`
 
-error: aborting due to 36 previous errors
+error: aborting due to 38 previous errors
 

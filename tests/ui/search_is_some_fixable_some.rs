@@ -121,9 +121,12 @@ mod issue7392 {
 
         let v = vec![3, 2, 1, 0];
         let _ = v.iter().find(|x| deref_enough(**x)).is_some();
+        let _ = v.iter().find(|x: &&u32| deref_enough(**x)).is_some();
 
         #[allow(clippy::redundant_closure)]
         let _ = v.iter().find(|x| arg_no_deref(x)).is_some();
+        #[allow(clippy::redundant_closure)]
+        let _ = v.iter().find(|x: &&u32| arg_no_deref(x)).is_some();
     }
 
     fn field_index_projection() {

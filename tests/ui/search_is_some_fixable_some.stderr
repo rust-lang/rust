@@ -179,13 +179,25 @@ LL |         let _ = v.iter().find(|x| deref_enough(**x)).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| deref_enough(*x))`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_some.rs:126:26
+  --> $DIR/search_is_some_fixable_some.rs:124:26
+   |
+LL |         let _ = v.iter().find(|x: &&u32| deref_enough(**x)).is_some();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x: &u32| deref_enough(*x))`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:127:26
    |
 LL |         let _ = v.iter().find(|x| arg_no_deref(x)).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| arg_no_deref(&x))`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_some.rs:148:14
+  --> $DIR/search_is_some_fixable_some.rs:129:26
+   |
+LL |         let _ = v.iter().find(|x: &&u32| arg_no_deref(x)).is_some();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x: &u32| arg_no_deref(&x))`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:151:14
    |
 LL |               .find(|v| v.inner_double.bar[0][0] == 2 && v.inner.bar[0] == 2)
    |  ______________^
@@ -193,34 +205,34 @@ LL | |             .is_some();
    | |______________________^ help: use `any()` instead: `any(|v| v.inner_double.bar[0][0] == 2 && v.inner.bar[0] == 2)`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_some.rs:162:29
+  --> $DIR/search_is_some_fixable_some.rs:165:29
    |
 LL |         let _ = vfoo.iter().find(|v| v.inner[0].bar == 2).is_some();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|v| v.inner[0].bar == 2)`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_some.rs:167:29
+  --> $DIR/search_is_some_fixable_some.rs:170:29
    |
 LL |         let _ = vfoo.iter().find(|x| (**x)[0] == 9).is_some();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| (**x)[0] == 9)`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_some.rs:180:29
+  --> $DIR/search_is_some_fixable_some.rs:183:29
    |
 LL |         let _ = vfoo.iter().find(|v| v.by_ref(&v.bar)).is_some();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|v| v.by_ref(&v.bar))`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_some.rs:184:55
+  --> $DIR/search_is_some_fixable_some.rs:187:55
    |
 LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|(&x, y)| x == *y).is_some();
    |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|(&x, y)| x == *y)`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_some.rs:185:55
+  --> $DIR/search_is_some_fixable_some.rs:188:55
    |
 LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_some();
    |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|(&x, y)| x == *y)`
 
-error: aborting due to 36 previous errors
+error: aborting due to 38 previous errors
 
