@@ -760,9 +760,9 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Actually builds the expression which the format_args! block will be
     /// expanded to.
     fn into_expr(self) -> P<ast::Expr> {
-        let mut locals =
-            Vec::with_capacity((0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum());
-        let mut counts = Vec::with_capacity(self.count_args.len());
+        let mut args = Vec::with_capacity(
+            self.arg_unique_types.iter().map(|v| v.len()).sum::<usize>() + self.count_args.len(),
+        );
         let mut heads = Vec::with_capacity(self.args.len());
 
         // First, build up the static array which will become our precompiled
@@ -783,7 +783,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // passed to this function.
         for (i, e) in self.args.into_iter().enumerate() {
             for arg_ty in self.arg_unique_types[i].iter() {
-                locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, i));
+                args.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, i));
             }
             heads.push(self.ecx.expr_addr_of(e.span, e));
         }
@@ -793,13 +793,10 @@ impl<'a, 'b> Context<'a, 'b> {
                 _ => panic!("should never happen"),
             };
             let span = spans_pos[index];
-            counts.push(Context::format_arg(self.ecx, self.macsp, span, &Count, index));
+            args.push(Context::format_arg(self.ecx, self.macsp, span, &Count, index));
         }
 
-        // Now create a vector containing all the arguments
-        let args = locals.into_iter().chain(counts.into_iter());
-
-        let args_array = self.ecx.expr_vec(self.macsp, args.collect());
+        let args_array = self.ecx.expr_vec(self.macsp, args);
 
         // Constructs an AST equivalent to:
         //
