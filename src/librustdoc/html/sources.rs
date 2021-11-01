@@ -16,25 +16,25 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
-crate fn render(cx: &mut Context<'_>, krate: clean::Crate) -> Result<clean::Crate, Error> {
+crate fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
     info!("emitting source files");
 
     let dst = cx.dst.join("src").join(&*krate.name(cx.tcx()).as_str());
     cx.shared.ensure_dir(&dst)?;
 
     let mut collector = SourceCollector { dst, cx, emitted_local_sources: FxHashSet::default() };
-    collector.visit_crate(&krate);
-    Ok(krate)
+    collector.visit_crate(krate);
+    Ok(())
 }
 
 crate fn collect_local_sources<'tcx>(
     tcx: TyCtxt<'tcx>,
     src_root: &Path,
-    krate: clean::Crate,
-) -> (clean::Crate, FxHashMap<PathBuf, String>) {
+    krate: &clean::Crate,
+) -> FxHashMap<PathBuf, String> {
     let mut lsc = LocalSourcesCollector { tcx, local_sources: FxHashMap::default(), src_root };
-    lsc.visit_crate(&krate);
-    (krate, lsc.local_sources)
+    lsc.visit_crate(krate);
+    lsc.local_sources
 }
 
 struct LocalSourcesCollector<'a, 'tcx> {
