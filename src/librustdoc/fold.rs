@@ -59,7 +59,7 @@ crate trait DocFolder: Sized {
                         let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
                         VariantItem(Variant::Tuple(fields))
                     }
-                    i => VariantItem(i),
+                    Variant::CLike => VariantItem(Variant::CLike),
                 }
             }
             x => x,
