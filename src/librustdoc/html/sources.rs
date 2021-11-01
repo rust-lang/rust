@@ -1,11 +1,11 @@
 use crate::clean;
 use crate::docfs::PathError;
 use crate::error::Error;
-use crate::fold::DocFolder;
 use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::layout;
 use crate::html::render::{Context, BASIC_KEYWORDS};
+use crate::visit::DocVisitor;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
@@ -18,10 +18,13 @@ use std::path::{Component, Path, PathBuf};
 
 crate fn render(cx: &mut Context<'_>, krate: clean::Crate) -> Result<clean::Crate, Error> {
     info!("emitting source files");
+
     let dst = cx.dst.join("src").join(&*krate.name(cx.tcx()).as_str());
     cx.shared.ensure_dir(&dst)?;
-    let mut folder = SourceCollector { dst, cx, emitted_local_sources: FxHashSet::default() };
-    Ok(folder.fold_crate(krate))
+
+    let mut collector = SourceCollector { dst, cx, emitted_local_sources: FxHashSet::default() };
+    collector.visit_crate(&krate);
+    Ok(krate)
 }
 
 crate fn collect_local_sources<'tcx>(
@@ -30,8 +33,7 @@ crate fn collect_local_sources<'tcx>(
     krate: clean::Crate,
 ) -> (clean::Crate, FxHashMap<PathBuf, String>) {
     let mut lsc = LocalSourcesCollector { tcx, local_sources: FxHashMap::default(), src_root };
-
-    let krate = lsc.fold_crate(krate);
+    lsc.visit_crate(&krate);
     (krate, lsc.local_sources)
 }
 
@@ -79,13 +81,13 @@ impl LocalSourcesCollector<'_, '_> {
     }
 }
 
-impl DocFolder for LocalSourcesCollector<'_, '_> {
-    fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
-        self.add_local_source(&item);
+impl DocVisitor for LocalSourcesCollector<'_, '_> {
+    fn visit_item(&mut self, item: &clean::Item) {
+        self.add_local_source(item);
 
         // FIXME: if `include_sources` isn't set and DocFolder didn't require consuming the crate by value,
         // we could return None here without having to walk the rest of the crate.
-        Some(self.fold_item_recur(item))
+        self.visit_item_recur(item)
     }
 }
 
@@ -98,8 +100,8 @@ struct SourceCollector<'a, 'tcx> {
     emitted_local_sources: FxHashSet<PathBuf>,
 }
 
-impl DocFolder for SourceCollector<'_, '_> {
-    fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
+impl DocVisitor for SourceCollector<'_, '_> {
+    fn visit_item(&mut self, item: &clean::Item) {
         let tcx = self.cx.tcx();
         let span = item.span(tcx);
         let sess = tcx.sess;
@@ -134,7 +136,7 @@ impl DocFolder for SourceCollector<'_, '_> {
         }
         // FIXME: if `include_sources` isn't set and DocFolder didn't require consuming the crate by value,
         // we could return None here without having to walk the rest of the crate.
-        Some(self.fold_item_recur(item))
+        self.visit_item_recur(item)
     }
 }
 
