@@ -86,5 +86,13 @@ LL |     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
    |                                                       |
    |                                                       help: add the required where clauses: `where Self: 'a`
 
-error: aborting due to 11 previous errors
+error: Missing required bounds on Bar
+  --> $DIR/self-outlives-lint.rs:148:5
+   |
+LL |     type Bar<'a, 'b>;
+   |     ^^^^^^^^^^^^^^^^-
+   |                     |
+   |                     help: add the required where clauses: `where 'a: 'b`
+
+error: aborting due to 12 previous errors
 

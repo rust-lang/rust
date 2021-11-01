@@ -412,6 +412,75 @@ fn check_gat_where_clauses(
             }
         }
 
+        // For each region argument (e.g., 'a in our example), also check for a
+        // relationship to the other region arguments. If there is an
+        // outlives relationship, then we want to ensure that is
+        // reflected in a where clause on the GAT itself.
+        for (region_a, region_a_idx) in &visitor.regions {
+            for (region_b, region_b_idx) in &visitor.regions {
+                if region_a == region_b {
+                    continue;
+                }
+
+                // Unfortunately, we have to use a new `InferCtxt` for each
+                // pair, because region constraints get added and solved there,
+                // and we need to test each pair individually.
+                tcx.infer_ctxt().enter(|infcx| {
+                    let mut outlives_environment = OutlivesEnvironment::new(param_env);
+                    outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id, DUMMY_SP);
+                    outlives_environment.save_implied_bounds(id);
+
+                    let cause =
+                        ObligationCause::new(DUMMY_SP, id, ObligationCauseCode::MiscObligation);
+
+                    let origin = SubregionOrigin::from_obligation_cause(&cause, || {
+                        infer::RelateRegionParamBound(cause.span)
+                    });
+
+                    use rustc_infer::infer::outlives::obligations::TypeOutlivesDelegate;
+                    (&infcx).push_sub_region_constraint(origin, region_a, region_b);
+
+                    let errors = infcx.resolve_regions(
+                        trait_item.def_id.to_def_id(),
+                        &outlives_environment,
+                        RegionckMode::default(),
+                    );
+
+                    debug!(?errors, "errors");
+
+                    // If we were able to prove that Self: 'a without an error,
+                    // it must be because of the implied or explicit bounds...
+                    if errors.is_empty() {
+                        debug!(?region_a_idx, ?region_b_idx);
+                        debug!("required clause: {} must outlive {}", region_a, region_b);
+                        // Translate into the generic parameters of the GAT.
+                        let region_a_param = generics.param_at(*region_a_idx, tcx);
+                        let region_a_param =
+                            tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                                def_id: region_a_param.def_id,
+                                index: region_a_param.index,
+                                name: region_a_param.name,
+                            }));
+                        // Same for the region.
+                        let region_b_param = generics.param_at(*region_b_idx, tcx);
+                        let region_b_param =
+                            tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                                def_id: region_b_param.def_id,
+                                index: region_b_param.index,
+                                name: region_b_param.name,
+                            }));
+                        // The predicate we expect to see.
+                        let clause = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
+                            region_a_param,
+                            region_b_param,
+                        ));
+                        let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
+                        function_clauses.insert(clause);
+                    }
+                });
+            }
+        }
+
         match clauses.as_mut() {
             Some(clauses) => {
                 clauses.drain_filter(|p| !function_clauses.contains(p));
