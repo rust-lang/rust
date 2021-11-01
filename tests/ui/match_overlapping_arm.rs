@@ -100,6 +100,15 @@ fn overlapping() {
         _ => (),
     }
 
+    // Issue #7816 - overlap after included range
+    match 42 {
+        5..=10 => (),
+        0..=20 => (),
+        21..=30 => (),
+        21..=40 => (),
+        _ => (),
+    }
+
     // Issue #7829
     match 0 {
         -1..=1 => (),

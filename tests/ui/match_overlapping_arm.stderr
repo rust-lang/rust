@@ -71,5 +71,17 @@ note: overlaps with this
 LL |         ..26 => println!("..26"),
    |         ^^^^
 
-error: aborting due to 6 previous errors
+error: some ranges overlap
+  --> $DIR/match_overlapping_arm.rs:107:9
+   |
+LL |         21..=30 => (),
+   |         ^^^^^^^
+   |
+note: overlaps with this
+  --> $DIR/match_overlapping_arm.rs:108:9
+   |
+LL |         21..=40 => (),
+   |         ^^^^^^^
+
+error: aborting due to 7 previous errors
 
