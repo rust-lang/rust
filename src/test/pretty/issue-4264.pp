@@ -45,7 +45,7 @@ pub fn bar() ({
                                                                                                                                                                      as
                                                                                                                                                                      ())
                                                                                                                                                                {
-                                                                                                                                                               ()
+                                                                                                                                                               _args
                                                                                                                                                                =>
                                                                                                                                                                ([]
                                                                                                                                                                    as

@@ -12,7 +12,7 @@ fn main() {
     {
         ::std::io::_print(::core::fmt::Arguments::new_v1(&["rust\n"],
                                                          &match () {
-                                                              () => [],
+                                                              _args => [],
                                                           }));
     };
 }

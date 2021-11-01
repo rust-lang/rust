@@ -271,6 +271,7 @@ symbols! {
         __S,
         __next,
         __try_var,
+        _args,
         _d,
         _e,
         _task_context,

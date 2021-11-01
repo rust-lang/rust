@@ -19,8 +19,8 @@ error: unexpected token: `{
     let res =
         ::alloc::fmt::format(::core::fmt::Arguments::new_v1(&[""],
                                                             &match (&"u8",) {
-                                                                 (arg0,) =>
-                                                                 [::core::fmt::ArgumentV1::new(arg0,
+                                                                 _args =>
+                                                                 [::core::fmt::ArgumentV1::new(_args.0,
                                                                                                ::core::fmt::Display::fmt)],
                                                              }));
     res
