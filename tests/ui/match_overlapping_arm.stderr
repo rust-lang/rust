@@ -83,5 +83,17 @@ note: overlaps with this
 LL |         21..=40 => (),
    |         ^^^^^^^
 
-error: aborting due to 7 previous errors
+error: some ranges overlap
+  --> $DIR/match_overlapping_arm.rs:121:9
+   |
+LL |         0..=0x0000_0000_0000_00ff => (),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: overlaps with this
+  --> $DIR/match_overlapping_arm.rs:122:9
+   |
+LL |         0..=0x0000_0000_0000_ffff => (),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 

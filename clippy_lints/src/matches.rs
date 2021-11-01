@@ -1761,10 +1761,17 @@ where
         match value {
             Kind::Start(_, r) => started.push(r),
             Kind::End(_, er) => {
-                if let Some(sr) = started.pop() {
-                    if sr != er {
-                        return Some((er, sr));
+                let mut overlap = None;
+
+                while let Some(sr) = started.pop() {
+                    if sr == er {
+                        break;
                     }
+                    overlap = Some(sr);
+                }
+
+                if let Some(sr) = overlap {
+                    return Some((er, sr));
                 }
             },
         }

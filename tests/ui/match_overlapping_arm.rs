@@ -116,6 +116,15 @@ fn overlapping() {
         _ => (),
     }
 
+    // Only warn about the first if there are multiple overlaps
+    match 42u128 {
+        0..=0x0000_0000_0000_00ff => (),
+        0..=0x0000_0000_0000_ffff => (),
+        0..=0x0000_0000_ffff_ffff => (),
+        0..=0xffff_ffff_ffff_ffff => (),
+        _ => (),
+    }
+
     if let None = Some(42) {
         // nothing
     } else if let None = Some(42) {
