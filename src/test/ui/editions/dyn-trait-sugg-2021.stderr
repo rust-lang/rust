@@ -7,7 +7,7 @@ LL |     Foo::hi(123);
 help: add `dyn` keyword before this trait
    |
 LL |     <dyn Foo>::hi(123);
-   |     ~~~~~~~~~
+   |     ++++    +
 
 error: aborting due to previous error
 

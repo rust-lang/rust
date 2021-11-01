@@ -2,11 +2,15 @@ warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-28344.rs:4:17
    |
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
-   |                 ^^^^^^ help: use `dyn`: `<dyn BitXor>`
+   |                 ^^^^^^
    |
    = note: `#[warn(bare_trait_objects)]` on by default
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     let x: u8 = <dyn BitXor>::bitor(0 as u8, 0 as u8);
+   |                 ++++       +
 
 error[E0191]: the value of the associated type `Output` (from trait `BitXor`) must be specified
   --> $DIR/issue-28344.rs:4:17
@@ -27,10 +31,14 @@ warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-28344.rs:10:13
    |
 LL |     let g = BitXor::bitor;
-   |             ^^^^^^ help: use `dyn`: `<dyn BitXor>`
+   |             ^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     let g = <dyn BitXor>::bitor;
+   |             ++++       +
 
 error[E0191]: the value of the associated type `Output` (from trait `BitXor`) must be specified
   --> $DIR/issue-28344.rs:10:13

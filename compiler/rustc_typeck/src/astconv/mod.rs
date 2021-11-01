@@ -2617,30 +2617,39 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
             self_ty.kind
         {
-            let (mut sugg, app) = match tcx.sess.source_map().span_to_snippet(self_ty.span) {
-                Ok(s) if poly_trait_ref.trait_ref.path.is_global() => {
-                    (format!("dyn ({})", s), Applicability::MachineApplicable)
-                }
-                Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
-                Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
-            };
-            if in_path {
-                let has_bracket = tcx
+            let needs_bracket = in_path
+                && !tcx
                     .sess
                     .source_map()
                     .span_to_prev_source(self_ty.span)
                     .ok()
                     .map_or(false, |s| s.trim_end().ends_with('<'));
-                if !has_bracket {
-                    sugg = format!("<{}>", sugg);
-                }
-            }
+
+            let is_global = poly_trait_ref.trait_ref.path.is_global();
+            let sugg = Vec::from_iter([
+                (
+                    self_ty.span.shrink_to_lo(),
+                    format!(
+                        "{}dyn {}",
+                        if needs_bracket { "<" } else { "" },
+                        if is_global { "(" } else { "" },
+                    ),
+                ),
+                (
+                    self_ty.span.shrink_to_hi(),
+                    format!(
+                        "{}{}",
+                        if is_global { ")" } else { "" },
+                        if needs_bracket { ">" } else { "" },
+                    ),
+                ),
+            ]);
             if self_ty.span.edition() >= Edition::Edition2021 {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";
-                let mut err =
-                    rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg);
-                err.span_suggestion_verbose(self_ty.span, label, sugg, app).emit();
+                rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg)
+                    .multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable)
+                    .emit();
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
                 tcx.struct_span_lint_hir(
@@ -2648,9 +2657,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self_ty.hir_id,
                     self_ty.span,
                     |lint| {
-                        let mut db = lint.build(msg);
-                        db.span_suggestion(self_ty.span, "use `dyn`", sugg, app);
-                        db.emit()
+                        lint.build(msg)
+                            .multipart_suggestion_verbose(
+                                "use `dyn`",
+                                sugg,
+                                Applicability::MachineApplicable,
+                            )
+                            .emit()
                     },
                 );
             }

@@ -103,11 +103,15 @@ warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/bad-assoc-ty.rs:33:10
    |
 LL | type H = Fn(u8) -> (u8)::Output;
-   |          ^^^^^^^^^^^^^^ help: use `dyn`: `<dyn Fn(u8) -> (u8)>`
+   |          ^^^^^^^^^^^^^^
    |
    = note: `#[warn(bare_trait_objects)]` on by default
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL | type H = <dyn Fn(u8) -> (u8)>::Output;
+   |          ++++               +
 
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:33:10
