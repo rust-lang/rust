@@ -187,12 +187,17 @@ pub(crate) fn emit_unescape_error(
             assert!(mode.is_bytes());
             let (c, span) = last_char();
             let mut err = handler.struct_span_err(span, "non-ASCII character in byte constant");
-            err.span_label(span, "byte constant must be ASCII");
+            let postfix = if unicode_width::UnicodeWidthChar::width(c).unwrap_or(1) == 0 {
+                format!(" but is {:?}", c)
+            } else {
+                String::new()
+            };
+            err.span_label(span, &format!("byte constant must be ASCII{}", postfix));
             if (c as u32) <= 0xFF {
                 err.span_suggestion(
                     span,
                     &format!(
-                        "if you meant to use the unicode code point for '{}', use a \\xHH escape",
+                        "if you meant to use the unicode code point for {:?}, use a \\xHH escape",
                         c
                     ),
                     format!("\\x{:X}", c as u32),
@@ -206,7 +211,7 @@ pub(crate) fn emit_unescape_error(
                 err.span_suggestion(
                     span,
                     &format!(
-                        "if you meant to use the UTF-8 encoding of '{}', use \\xHH escapes",
+                        "if you meant to use the UTF-8 encoding of {:?}, use \\xHH escapes",
                         c
                     ),
                     utf8.as_bytes()
@@ -220,10 +225,15 @@ pub(crate) fn emit_unescape_error(
         }
         EscapeError::NonAsciiCharInByteString => {
             assert!(mode.is_bytes());
-            let (_c, span) = last_char();
+            let (c, span) = last_char();
+            let postfix = if unicode_width::UnicodeWidthChar::width(c).unwrap_or(1) == 0 {
+                format!(" but is {:?}", c)
+            } else {
+                String::new()
+            };
             handler
                 .struct_span_err(span, "raw byte string must be ASCII")
-                .span_label(span, "must be ASCII")
+                .span_label(span, &format!("must be ASCII{}", postfix))
                 .emit();
         }
         EscapeError::OutOfRangeHexEscape => {
