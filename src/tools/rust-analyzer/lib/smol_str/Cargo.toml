@@ -1,6 +1,6 @@
 [package]
 name = "smol_str"
-version = "0.1.19"
+version = "0.1.20"
 description = "small-string optimized string type with O(1) clone"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/matklad/smol_str"

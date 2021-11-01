@@ -36,6 +36,7 @@ fn try_main() -> Result<()> {
     {
         let _s = Section::new("TEST");
         shell("cargo test --all-features --workspace")?;
+        shell("cargo test --no-default-features --workspace")?;
     }
 
     let current_branch = shell_output("git branch --show-current")?;
