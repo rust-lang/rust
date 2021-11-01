@@ -1049,6 +1049,54 @@ impl Debug for Foo {
     }
 
     #[test]
+    fn add_custom_impl_default_generic_record_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: default
+#[derive(Defau$0lt)]
+struct Foo<T, U> {
+    foo: T,
+    bar: U,
+}
+"#,
+            r#"
+struct Foo<T, U> {
+    foo: T,
+    bar: U,
+}
+
+impl<T, U> Default for Foo<T, U> {
+    $0fn default() -> Self {
+        Self { foo: Default::default(), bar: Default::default() }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_clone_generic_tuple_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone
+#[derive(Clo$0ne)]
+struct Foo<T>(T, usize);
+"#,
+            r#"
+struct Foo<T>(T, usize);
+
+impl<T> Clone for Foo<T> {
+    $0fn clone(&self) -> Self {
+        Self(self.0.clone(), self.1.clone())
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn test_ignore_derive_macro_without_input() {
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
