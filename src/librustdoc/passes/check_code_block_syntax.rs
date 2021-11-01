@@ -8,9 +8,9 @@ use rustc_span::{hygiene::AstPass, ExpnData, ExpnKind, FileName, InnerSpan, DUMM
 
 use crate::clean;
 use crate::core::DocContext;
-use crate::fold::DocFolder;
 use crate::html::markdown::{self, RustCodeBlock};
 use crate::passes::Pass;
+use crate::visit::DocVisitor;
 
 crate const CHECK_CODE_BLOCK_SYNTAX: Pass = Pass {
     name: "check-code-block-syntax",
@@ -19,7 +19,8 @@ crate const CHECK_CODE_BLOCK_SYNTAX: Pass = Pass {
 };
 
 crate fn check_code_block_syntax(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
-    SyntaxChecker { cx }.fold_crate(krate)
+    SyntaxChecker { cx }.visit_crate(&krate);
+    krate
 }
 
 struct SyntaxChecker<'a, 'tcx> {
@@ -141,8 +142,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
-    fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
+impl<'a, 'tcx> DocVisitor for SyntaxChecker<'a, 'tcx> {
+    fn visit_item(&mut self, item: &clean::Item) {
         if let Some(dox) = &item.attrs.collapsed_doc_value() {
             let sp = item.attr_span(self.cx.tcx);
             let extra = crate::html::markdown::ExtraInfo::new_did(
@@ -155,7 +156,7 @@ impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
             }
         }
 
-        Some(self.fold_item_recur(item))
+        self.visit_item_recur(item)
     }
 }
 
