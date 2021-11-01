@@ -43,9 +43,11 @@ crate trait DocVisitor: Sized {
     fn visit_crate(&mut self, c: &Crate) {
         self.visit_item(&c.module);
 
-        let external_traits = c.external_traits.borrow();
-        for v in external_traits.values() {
-            v.trait_.items.iter().for_each(|i| self.visit_item(i))
+        // FIXME: make this a simple by-ref for loop once external_traits is cleaned up
+        let external_traits = { std::mem::take(&mut *c.external_traits.borrow_mut()) };
+        for (k, v) in external_traits {
+            v.trait_.items.iter().for_each(|i| self.visit_item(i));
+            c.external_traits.borrow_mut().insert(k, v);
         }
     }
 }

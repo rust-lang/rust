@@ -84,14 +84,12 @@ crate trait DocFolder: Sized {
     fn fold_crate(&mut self, mut c: Crate) -> Crate {
         c.module = self.fold_item(c.module).unwrap();
 
-        {
-            let external_traits = { std::mem::take(&mut *c.external_traits.borrow_mut()) };
-            for (k, mut v) in external_traits {
-                v.trait_.items =
-                    v.trait_.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
-                c.external_traits.borrow_mut().insert(k, v);
-            }
+        let external_traits = { std::mem::take(&mut *c.external_traits.borrow_mut()) };
+        for (k, mut v) in external_traits {
+            v.trait_.items = v.trait_.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
+            c.external_traits.borrow_mut().insert(k, v);
         }
+
         c
     }
 }
