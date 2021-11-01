@@ -470,7 +470,7 @@ pub fn run_test(
 
     // Emscripten can catch panics but other wasm targets cannot
     let ignore_because_no_process_support = desc.should_panic != ShouldPanic::No
-        && cfg!(target_arch = "wasm32")
+        && cfg!(target_family = "wasm")
         && !cfg!(target_os = "emscripten");
 
     if force_ignore || desc.ignore || ignore_because_no_process_support {
@@ -519,7 +519,7 @@ pub fn run_test(
         // If the platform is single-threaded we're just going to run
         // the test synchronously, regardless of the concurrency
         // level.
-        let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_arch = "wasm32");
+        let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_family = "wasm");
         if concurrency == Concurrent::Yes && supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
             let mut runtest = Arc::new(Mutex::new(Some(runtest)));
