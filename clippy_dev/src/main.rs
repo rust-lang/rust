@@ -3,7 +3,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
-use clippy_dev::{bless, fmt, new_lint, serve, setup, update_lints};
+use clippy_dev::{bless, fmt, lint, new_lint, serve, setup, update_lints};
 fn main() {
     let matches = get_clap_config();
 
@@ -54,6 +54,10 @@ fn main() {
             let port = matches.value_of("port").unwrap().parse().unwrap();
             let lint = matches.value_of("lint");
             serve::run(port, lint);
+        },
+        ("lint", Some(matches)) => {
+            let filename = matches.value_of("filename").unwrap();
+            lint::run(filename);
         },
         _ => {},
     }
@@ -218,6 +222,15 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                         .validator_os(serve::validate_port),
                 )
                 .arg(Arg::with_name("lint").help("Which lint's page to load initially (optional)")),
+        )
+        .subcommand(
+            SubCommand::with_name("lint")
+                .about("Manually run clippy on a file")
+                .arg(
+                    Arg::with_name("filename")
+                        .required(true)
+                        .help("The path to a file to lint"),
+                ),
         )
         .get_matches()
 }
