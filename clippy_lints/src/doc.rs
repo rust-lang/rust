@@ -689,10 +689,18 @@ fn check_text(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, text: &str
     for word in text.split(|c: char| c.is_whitespace() || c == '\'') {
         // Trim punctuation as in `some comment (see foo::bar).`
         //                                                   ^^
-        // Or even as in `_foo bar_` which is emphasized.
-        let word = word.trim_matches(|c: char| !c.is_alphanumeric());
+        // Or even as in `_foo bar_` which is emphasized. Also preserve `::` as a prefix/suffix.
+        let mut word = word.trim_matches(|c: char| !c.is_alphanumeric() && c != ':');
 
-        if valid_idents.contains(word) {
+        // Remove leading or trailing single `:` which may be part of a sentence.
+        if word.starts_with(':') && !word.starts_with("::") {
+            word = word.trim_start_matches(':');
+        }
+        if word.ends_with(':') && !word.ends_with("::") {
+            word = word.trim_end_matches(':');
+        }
+
+        if valid_idents.contains(word) || word.chars().all(|c| c == ':') {
             continue;
         }
 

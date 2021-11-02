@@ -8,7 +8,9 @@
 /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
 /// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not Foo::some_fun
 /// which should be reported only once despite being __doubly bad__.
-/// Here be ::a::global:path.
+/// Here be ::a::global:path, and _::another::global::path_.  :: is not a path though.
+/// Import an item from ::awesome::global::blob:: (Intended postfix)
+/// These are the options for ::Cat: (Intended trailing single colon, shouldn't be linted)
 /// That's not code ~NotInCodeBlock~.
 /// be_sure_we_got_to_the_end_of_it
 fn foo_bar() {
