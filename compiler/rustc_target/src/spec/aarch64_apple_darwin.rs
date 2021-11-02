@@ -14,14 +14,13 @@ pub fn target() -> Target {
     // Clang automatically chooses a more specific target based on
     // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work
     // correctly, we do too.
-    let arch = "aarch64";
-    let llvm_target = super::apple_base::macos_llvm_target(&arch);
+    let llvm_target = super::apple_base::macos_llvm_target("arm64");
 
     Target {
         llvm_target,
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".to_string(),
-        arch: arch.to_string(),
+        arch: "aarch64".to_string(),
         options: TargetOptions {
             mcount: "\u{1}mcount".to_string(),
             frame_pointer: FramePointer::NonLeaf,
