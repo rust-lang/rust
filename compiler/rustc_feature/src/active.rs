@@ -101,6 +101,9 @@ impl Feature {
     }
 }
 
+// See https://rustc-dev-guide.rust-lang.org/feature-gates.html#feature-gates for more
+// documentation about handling feature gates.
+//
 // If you change this, please modify `src/doc/unstable-book` as well.
 //
 // Don't ever remove anything from this list; move them to `accepted.rs` if
