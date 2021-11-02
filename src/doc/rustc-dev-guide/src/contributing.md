@@ -172,32 +172,34 @@ differently from other crates that are directly in this repo:
 * [Clippy](https://github.com/rust-lang/rust-clippy)
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 
-They are just regular files and directories. This is in contrast to `submodule` dependencies
-(see below for those). Only tool authors will actually use any operations here.
+In contrast to `submodule` dependencies
+(see below for those), the `subtree` dependencies are just regular files and directories which can 
+be updated in tree. However, enhancements, bug fixes, etc. specific to these tools should be filed 
+against the tools directly in their respective upstream repositories.
 
 #### Synchronizing a subtree
 
-There are two synchronization directions: `subtree push` and `subtree pull`.
+Periodically the changes made to subtree based dependencies need to be synchronized between this 
+repository and the upstream tool repositories.
 
-```
-git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
-```
+Subtree synchronizations are typically handled by the respective tool maintainers. Other users 
+are welcome to submit synchronization PRs, however, in order to do so you you will need to modify 
+your local git installation and follow a very precise set of instructions. 
+These instructions are documented, along with several useful tips and tricks, in the 
+[syncing subtree changes][clippy-sync-docs] section in Clippy's Contributing guide. 
+The instructions are applicable for use with any subtree based tool, just be sure to 
+use the correct corresponding subtree directory and remote repository. 
 
-takes all the changes that
-happened to the copy in this repo and creates commits on the remote repo that match the local
-changes. Every local commit that touched the subtree causes a commit on the remote repo, but is
-modified to move the files from the specified directory to the tool repo root.
+The synchronization process goes in two directions: `subtree push` and `subtree pull`.
 
-Make sure to not pick the `master` branch on the tool repo, so you can open a normal PR to the tool
-to merge that subrepo push.
+A `subtree push` takes all the changes that happened to the copy in this repo and creates commits 
+on the remote repo that match the local changes. Every local 
+commit that touched the subtree causes a commit on the remote repo, but 
+is modified to move the files from the specified directory to the tool repo root.
 
-```
-git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy master
-```
-
-takes all changes since the last `subtree pull` from the tool repo
-and adds these commits to the rustc repo + a merge commit that moves the tool changes into
-the specified directory in the rust repository.
+A `subtree pull` takes all changes since the last `subtree pull` 
+from the tool repo and adds these commits to the rustc repo along with a merge commit that moves 
+the tool changes into the specified directory in the rust repository.
 
 It is recommended that you always do a push first and get that merged to the tool master branch.
 Then, when you do a pull, the merge works without conflicts.
@@ -211,6 +213,8 @@ you'll get very fun merges that try to push the wrong directory to the wrong rem
 Luckily you can just abort this without any consequences by throwing away either the pulled commits
 in rustc or the pushed branch on the remote and try again. It is usually fairly obvious
 that this is happening because you suddenly get thousands of commits that want to be synchronized.
+
+[clippy-sync-docs]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#syncing-changes-between-clippy-and-rust-langrust
 
 #### Creating a new subtree dependency
 
