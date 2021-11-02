@@ -13,6 +13,7 @@
 - [JSON Output](json.md)
 - [Tests](tests/index.md)
 - [Platform Support](platform-support.md)
+    - [Template for target-specific documentation](platform-support/TEMPLATE.md)
     - [aarch64-apple-ios-sim](platform-support/aarch64-apple-ios-sim.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
 - [Target Tier Policy](target-tier-policy.md)
