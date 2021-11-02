@@ -1122,11 +1122,23 @@ pub(crate) fn format_trait(
             }
         }
 
+        let block_span = mk_sp(generics.where_clause.span.hi(), item.span.hi());
+        let snippet = context.snippet(block_span);
+        let open_pos = snippet.find_uncommented("{")? + 1;
+
         match context.config.brace_style() {
             _ if last_line_contains_single_line_comment(&result)
                 || last_line_width(&result) + 2 > context.budget(offset.width()) =>
             {
                 result.push_str(&offset.to_string_with_newline(context.config));
+            }
+            _ if context.config.empty_item_single_line()
+                && trait_items.is_empty()
+                && !result.contains('\n')
+                && !contains_comment(&snippet[open_pos..]) =>
+            {
+                result.push_str(" {}");
+                return Some(result);
             }
             BraceStyle::AlwaysNextLine => {
                 result.push_str(&offset.to_string_with_newline(context.config));
@@ -1144,9 +1156,6 @@ pub(crate) fn format_trait(
         }
         result.push('{');
 
-        let block_span = mk_sp(generics.where_clause.span.hi(), item.span.hi());
-        let snippet = context.snippet(block_span);
-        let open_pos = snippet.find_uncommented("{")? + 1;
         let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
 
         if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
