@@ -141,17 +141,19 @@ approved by the appropriate team for that shared code before acceptance.
     or binary. In other words, the introduction of the target must not cause a
     user installing or running a version of Rust or the Rust tools to be
     subject to any new license requirements.
-  - If the target supports building host tools (such as `rustc` or `cargo`),
-    those host tools must not depend on proprietary (non-FOSS) libraries, other
-    than ordinary runtime libraries supplied by the platform and commonly used
-    by other binaries built for the target. For instance, `rustc` built for the
-    target may depend on a common proprietary C runtime library or console
-    output library, but must not depend on a proprietary code generation
-    library or code optimization library. Rust's license permits such
-    combinations, but the Rust project has no interest in maintaining such
-    combinations within the scope of Rust itself, even at tier 3.
-  - Targets should not require proprietary (non-FOSS) components to link a
-    functional binary or library.
+  - Compiling, linking, and emitting functional binaries, libraries, or other
+    code for the target (whether hosted on the target itself or cross-compiling
+    from another target) must not depend on proprietary (non-FOSS) libraries.
+    Host tools built for the target itself may depend on the ordinary runtime
+    libraries supplied by the platform and commonly used by other applications
+    built for the target, but those libraries must not be required for code
+    generation for the target; cross-compilation to the target must not require
+    such libraries at all. For instance, `rustc` built for the target may
+    depend on a common proprietary C runtime library or console output library,
+    but must not depend on a proprietary code generation library or code
+    optimization library. Rust's license permits such combinations, but the
+    Rust project has no interest in maintaining such combinations within the
+    scope of Rust itself, even at tier 3.
   - "onerous" here is an intentionally subjective term. At a minimum, "onerous"
     legal/licensing terms include but are *not* limited to: non-disclosure
     requirements, non-compete requirements, contributor license agreements
