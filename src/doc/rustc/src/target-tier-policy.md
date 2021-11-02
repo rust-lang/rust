@@ -62,8 +62,10 @@ not preclude an existing target's maintainers using issues (on the Rust
 repository or otherwise) to track requirements that have not yet been met, as
 appropriate; however, before officially proposing the introduction or promotion
 of a target, it should meet all of the necessary requirements. A target
-proposal is encouraged to quote the corresponding requirements verbatim as part
-of explaining how the target meets those requirements.
+proposal must quote the corresponding requirements verbatim and respond to them
+as part of explaining how the target meets those requirements. (For the
+requirements that simply state that the target or the target developers must
+not do something, it suffices to acknowledge the requirement.)
 
 For a list of all supported targets and their corresponding tiers ("tier 3",
 "tier 2", "tier 2 with host tools", "tier 1", or "tier 1 with host tools"), see
