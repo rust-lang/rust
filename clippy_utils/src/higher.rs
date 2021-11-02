@@ -718,9 +718,7 @@ impl PanicExpn<'tcx> {
     /// Parses an expanded `panic!` invocation
     pub fn parse(expr: &'tcx Expr<'tcx>) -> Option<Self> {
         if_chain! {
-            if let ExprKind::Block(block, _) = expr.kind;
-            if let Some(init) = block.expr;
-            if let ExprKind::Call(_, [format_args]) = init.kind;
+            if let ExprKind::Call(_, [format_args]) = expr.kind;
             let expn_data = expr.span.ctxt().outer_expn_data();
             if let Some(format_args) = FormatArgsExpn::parse(format_args);
             then {

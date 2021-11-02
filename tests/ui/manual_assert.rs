@@ -1,6 +1,7 @@
-// edition:2018
+// revisions: edition2018 edition2021
+// [edition2018] edition:2018
+// [edition2021] edition:2021
 // run-rustfix
-//FIXME: This does not correctly match in edition 2021, see #7843
 #![warn(clippy::manual_assert)]
 
 fn main() {

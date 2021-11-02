@@ -54,23 +54,24 @@ impl LateLintPass<'_> for ManualAssert {
             if !cx.tcx.sess.source_map().is_multiline(cond.span);
 
             then {
-                let span = if let Some(panic_expn) = PanicExpn::parse(semi) {
+                let call = if_chain! {
+                    if let ExprKind::Block(block, _) = semi.kind;
+                    if let Some(init) = block.expr;
+                    then {
+                        init
+                    } else {
+                        semi
+                    }
+                };
+                let span = if let Some(panic_expn) = PanicExpn::parse(call) {
                     match *panic_expn.format_args.value_args {
                         [] => panic_expn.format_args.format_string_span,
                         [.., last] => panic_expn.format_args.format_string_span.to(last.span),
                     }
+                } else if let ExprKind::Call(_, [format_args]) = call.kind {
+                    format_args.span
                 } else {
-                    if_chain! {
-                        if let ExprKind::Block(block, _) = semi.kind;
-                        if let Some(init) = block.expr;
-                        if let ExprKind::Call(_, [format_args]) = init.kind;
-
-                        then {
-                            format_args.span
-                        } else {
-                            return
-                        }
-                    }
+                    return
                 };
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = snippet_with_applicability(cx, span, "..", &mut applicability);
