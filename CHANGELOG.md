@@ -3123,6 +3123,7 @@ Released 2018-09-13
 [`self_named_constructors`]: https://rust-lang.github.io/rust-clippy/master/index.html#self_named_constructors
 [`self_named_module_files`]: https://rust-lang.github.io/rust-clippy/master/index.html#self_named_module_files
 [`semicolon_if_nothing_returned`]: https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_if_nothing_returned
+[`separated_literal_suffix`]: https://rust-lang.github.io/rust-clippy/master/index.html#separated_literal_suffix
 [`serde_api_misuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#serde_api_misuse
 [`shadow_reuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_reuse
 [`shadow_same`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_same
