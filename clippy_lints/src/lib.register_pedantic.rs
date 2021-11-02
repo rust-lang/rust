@@ -88,7 +88,6 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(transmute::TRANSMUTE_PTR_TO_PTR),
     LintId::of(types::LINKEDLIST),
     LintId::of(types::OPTION_OPTION),
-    LintId::of(unicode::NON_ASCII_LITERAL),
     LintId::of(unicode::UNICODE_NOT_NFC),
     LintId::of(unit_types::LET_UNIT_VALUE),
     LintId::of(unnecessary_wraps::UNNECESSARY_WRAPS),

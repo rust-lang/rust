@@ -61,6 +61,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(types::RC_BUFFER),
     LintId::of(types::RC_MUTEX),
     LintId::of(undocumented_unsafe_blocks::UNDOCUMENTED_UNSAFE_BLOCKS),
+    LintId::of(unicode::NON_ASCII_LITERAL),
     LintId::of(unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS),
     LintId::of(unwrap_in_result::UNWRAP_IN_RESULT),
     LintId::of(verbose_file_reads::VERBOSE_FILE_READS),
