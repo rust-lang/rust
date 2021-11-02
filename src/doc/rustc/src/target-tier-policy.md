@@ -188,9 +188,9 @@ approved by the appropriate team for that shared code before acceptance.
   target not implementing those portions.
 - The target must provide documentation for the Rust community explaining how
   to build for the target, using cross-compilation if possible. If the target
-  supports running tests (even if they do not pass), the documentation must
-  explain how to run tests for the target, using emulation if possible or
-  dedicated hardware if necessary.
+  supports running binaries, or running tests (even if they do not pass), the
+  documentation must explain how to run such binaries or tests for the target,
+  using emulation if possible or dedicated hardware if necessary.
 - Tier 3 targets must not impose burden on the authors of pull requests, or
   other developers in the community, to maintain the target. In particular,
   do not post comments (automated or manual) on a PR that derail or suggest a
