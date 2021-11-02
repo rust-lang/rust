@@ -22,12 +22,12 @@ path = "src/driver.rs"
 
 [dependencies]
 clippy_lints = { version = "0.1", path = "clippy_lints" }
-semver = "0.11"
+semver = "1.0"
 rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }
 tempfile = { version = "3.2", optional = true }
 
 [dev-dependencies]
-cargo_metadata = "0.12"
+cargo_metadata = "0.14"
 compiletest_rs = { version = "0.7", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
