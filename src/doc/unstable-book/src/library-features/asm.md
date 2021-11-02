@@ -257,7 +257,7 @@ unsafe {
 }
 
 println!(
-    "L1 Cache: {}",
+    "L0 Cache: {}",
     ((ebx >> 22) + 1) * (((ebx >> 12) & 0x3ff) + 1) * ((ebx & 0xfff) + 1) * (ecx + 1)
 );
 ```
