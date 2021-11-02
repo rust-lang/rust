@@ -689,6 +689,9 @@ declare_features! (
     /// not changed from prior instances of the same struct (RFC #2528)
     (incomplete, type_changing_struct_update, "1.58.0", Some(86555), None),
 
+    /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
+    (active, doc_auto_cfg, "1.58.0", Some(43781), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
