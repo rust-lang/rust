@@ -134,13 +134,6 @@ macro_rules! extract_msrv_attr {
     };
 }
 
-/// Returns `true` if the two spans come from differing expansions (i.e., one is
-/// from a macro and one isn't).
-#[must_use]
-pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
-    rhs.ctxt() != lhs.ctxt()
-}
-
 /// If the given expression is a local binding, find the initializer expression.
 /// If that initializer expression is another local binding, find its initializer again.
 /// This process repeats as long as possible (but usually no more than once). Initializer

@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::differing_macro_contexts;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -48,7 +47,7 @@ pub(super) fn check<'tcx>(
             }
         }
 
-        if differing_macro_contexts(unwrap_arg.span, map_span) {
+        if unwrap_arg.span.ctxt() != map_span.ctxt() {
             return;
         }
 

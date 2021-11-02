@@ -17,7 +17,6 @@ use rustc_typeck::hir_ty_to_ty;
 use if_chain::if_chain;
 
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
-use clippy_utils::differing_macro_contexts;
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
 
@@ -123,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                 vis.visit_ty(impl_.self_ty);
 
                 for target in &vis.found {
-                    if differing_macro_contexts(item.span, target.span()) {
+                    if item.span.ctxt() != target.span().ctxt() {
                         return;
                     }
 

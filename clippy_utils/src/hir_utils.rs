@@ -1,5 +1,4 @@
 use crate::consts::{constant_context, constant_simple};
-use crate::differing_macro_contexts;
 use crate::source::snippet_opt;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
@@ -186,7 +185,7 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     #[allow(clippy::similar_names)]
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
-        if !self.inner.allow_side_effects && differing_macro_contexts(left.span, right.span) {
+        if !self.inner.allow_side_effects && left.span.ctxt() != right.span.ctxt() {
             return false;
         }
 
