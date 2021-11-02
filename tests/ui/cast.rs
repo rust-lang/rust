@@ -100,4 +100,19 @@ fn main() {
 
     let s = x.signum();
     let _ = s as i32;
+
+    // Test for signed min
+    (-99999999999i64).min(1) as i8; // should be linted because signed
+
+    // Test for various operations that remove enough bits for the result to fit
+    (999999u64 & 1) as u8;
+    (999999u64 % 15) as u8;
+    (999999u64 / 0x1_0000_0000_0000) as u16;
+    ({ 999999u64 >> 56 }) as u8;
+    ({
+        let x = 999999u64;
+        x.min(1)
+    }) as u8;
+    999999u64.clamp(0, 255) as u8;
+    999999u64.clamp(0, 256) as u8; // should still be linted
 }
