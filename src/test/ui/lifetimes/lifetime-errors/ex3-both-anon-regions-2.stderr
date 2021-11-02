@@ -5,6 +5,12 @@ LL | fn foo(&mut (ref mut v, w): &mut (&u8, &u8), x: &u8) {
    |                                   ---           --- these two types are declared with different lifetimes...
 LL |     *v = x;
    |          ^ ...but data from `x` flows here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(&mut (ref mut v, w): &mut (&'a u8, &u8), x: &'a u8) {
+   |       ++++                             ++               ++
 
 error: aborting due to previous error
 

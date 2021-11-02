@@ -5,6 +5,12 @@ LL | fn foo(x: &mut Vec<&'_ u8>, y: &'_ u8) { x.push(y); }
    |                    ------      ------           ^ ...but data from `y` flows into `x` here
    |                                |
    |                                these two types are declared with different lifetimes...
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
+   |       ++++              ~~          ~~
 
 error: aborting due to previous error
 
