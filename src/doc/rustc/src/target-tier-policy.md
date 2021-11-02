@@ -71,6 +71,12 @@ For a list of all supported targets and their corresponding tiers ("tier 3",
 "tier 2", "tier 2 with host tools", "tier 1", or "tier 1 with host tools"), see
 [platform support](platform-support.md).
 
+Several parts of this policy require providing target-specific documentation.
+Such documentation should typically appear in a subdirectory of the
+platform-support section of this rustc manual, with a link from the target's
+entry in [platform support](platform-support.md). See other documentation in
+that directory for examples.
+
 Note that a target must have already received approval for the next lower tier,
 and spent a reasonable amount of time at that tier, before making a proposal
 for promotion to the next higher tier; this is true even if a target meets the
