@@ -36,6 +36,7 @@ pub struct Compiler {
     pub(crate) input_path: Option<PathBuf>,
     pub(crate) output_dir: Option<PathBuf>,
     pub(crate) output_file: Option<PathBuf>,
+    pub(crate) temps_dir: Option<PathBuf>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries:
         Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::ExternProviders)>,
@@ -57,6 +58,9 @@ impl Compiler {
     pub fn output_file(&self) -> &Option<PathBuf> {
         &self.output_file
     }
+    pub fn temps_dir(&self) -> &Option<PathBuf> {
+        &self.temps_dir
+    }
     pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
         &self.register_lints
     }
@@ -65,7 +69,14 @@ impl Compiler {
         sess: &Session,
         attrs: &[ast::Attribute],
     ) -> OutputFilenames {
-        util::build_output_filenames(&self.input, &self.output_dir, &self.output_file, attrs, sess)
+        util::build_output_filenames(
+            &self.input,
+            &self.output_dir,
+            &self.output_file,
+            &self.temps_dir,
+            attrs,
+            sess,
+        )
     }
 }
 
@@ -132,6 +143,7 @@ pub struct Config {
     pub input_path: Option<PathBuf>,
     pub output_dir: Option<PathBuf>,
     pub output_file: Option<PathBuf>,
+    pub temps_dir: Option<PathBuf>,
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     pub diagnostic_output: DiagnosticOutput,
 
@@ -193,6 +205,7 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
         input_path: config.input_path,
         output_dir: config.output_dir,
         output_file: config.output_file,
+        temps_dir: config.temps_dir,
         register_lints: config.register_lints,
         override_queries: config.override_queries,
     };

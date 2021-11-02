@@ -94,6 +94,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         input_path: None,
         output_file: None,
         output_dir: None,
+        temps_dir: None,
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
