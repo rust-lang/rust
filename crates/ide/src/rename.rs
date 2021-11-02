@@ -100,6 +100,7 @@ pub(crate) fn rename(
             def.rename(&sema, new_name)
         })
         .collect();
+
     ops?.into_iter()
         .reduce(|acc, elem| acc.merge(elem))
         .ok_or_else(|| format_err!("No references found at position"))
@@ -186,13 +187,14 @@ fn find_definitions(
             res
         });
 
-    let res: RenameResult<Vec<(ast::NameLike, Definition)>> = symbols.collect();
+    let res: RenameResult<Vec<_>> = symbols.collect();
     match res {
-        // remove duplicates
         Ok(v) => {
             if v.is_empty() {
+                // FIXME: some semantic duplication between "empty vec" and "Err()"
                 Err(format_err!("No references found at position"))
             } else {
+                // remove duplicates, comparing `Definition`s
                 Ok(v.into_iter().unique_by(|t| t.1))
             }
         }
@@ -567,6 +569,36 @@ fn main() {
             r#"fn main() { let _ = unresolved_ref$0; }"#,
             "error: No references found at position",
         );
+    }
+
+    #[test]
+    fn test_rename_macro_multiple_occurrences() {
+        check(
+            "Baaah",
+            r#"macro_rules! foo {
+    ($ident:ident) => {
+        const $ident: () = ();
+        struct $ident {}
+    };
+}
+
+foo!($0Foo);
+const _: () = Foo;
+const _: Foo = Foo {};
+    "#,
+            r#"
+macro_rules! foo {
+    ($ident:ident) => {
+        const $ident: () = ();
+        struct $ident {}
+    };
+}
+
+foo!(Baaah);
+const _: () = Baaah;
+const _: Baaah = Baaah {};
+    "#,
+        )
     }
 
     #[test]
