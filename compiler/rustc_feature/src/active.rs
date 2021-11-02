@@ -684,6 +684,9 @@ declare_features! (
     /// Allows using the `non_exhaustive_omitted_patterns` lint.
     (active, non_exhaustive_omitted_patterns_lint, "1.57.0", Some(89554), None),
 
+    /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
+    (active, doc_auto_cfg, "1.57.0", Some(43781), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
