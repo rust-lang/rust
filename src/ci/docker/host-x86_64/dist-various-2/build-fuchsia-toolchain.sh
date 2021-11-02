@@ -28,7 +28,7 @@ build() {
   esac
 
   hide_output make -j$(getconf _NPROCESSORS_ONLN) $tgt
-  dst=/usr/local/${arch}-fuchsia
+  dst=/usr/local/${arch}-unknown-fuchsia
   mkdir -p $dst
   cp -a build-${tgt}/sysroot/include $dst/
   cp -a build-${tgt}/sysroot/lib $dst/
@@ -44,11 +44,11 @@ rm -rf zircon
 
 for arch in x86_64 aarch64; do
   for tool in clang clang++; do
-    cat >/usr/local/bin/${arch}-fuchsia-${tool} <<EOF
+    cat >/usr/local/bin/${arch}-unknown-fuchsia-${tool} <<EOF
 #!/bin/sh
-${tool} --target=${arch}-fuchsia --sysroot=/usr/local/${arch}-fuchsia "\$@"
+${tool} --target=${arch}-unknown-fuchsia --sysroot=/usr/local/${arch}-unknown-fuchsia "\$@"
 EOF
-    chmod +x /usr/local/bin/${arch}-fuchsia-${tool}
+    chmod +x /usr/local/bin/${arch}-unknown-fuchsia-${tool}
   done
-  ln -s /usr/local/bin/llvm-ar /usr/local/bin/${arch}-fuchsia-ar
+  ln -s /usr/local/bin/llvm-ar /usr/local/bin/${arch}-unknown-fuchsia-ar
 done
