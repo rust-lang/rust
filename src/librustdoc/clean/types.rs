@@ -789,6 +789,7 @@ impl AttributesExt for [ast::Attribute] {
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
         let sess = tcx.sess;
         let doc_cfg_active = tcx.features().doc_cfg;
+        let doc_auto_cfg_active = tcx.features().doc_auto_cfg;
 
         fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
             let mut iter = it.into_iter();
@@ -799,24 +800,26 @@ impl AttributesExt for [ast::Attribute] {
             Some(item)
         }
 
-        let mut cfg = if doc_cfg_active {
+        let mut cfg = if doc_cfg_active || doc_auto_cfg_active {
             let mut doc_cfg = self
                 .iter()
                 .filter(|attr| attr.has_name(sym::doc))
                 .flat_map(|attr| attr.meta_item_list().unwrap_or_else(Vec::new))
                 .filter(|attr| attr.has_name(sym::cfg))
                 .peekable();
-            if doc_cfg.peek().is_some() {
+            if doc_cfg.peek().is_some() && doc_cfg_active {
                 doc_cfg
                     .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
-            } else {
+            } else if doc_auto_cfg_active {
                 self.iter()
                     .filter(|attr| attr.has_name(sym::cfg))
                     .filter_map(|attr| single(attr.meta_item_list()?))
                     .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
                     .filter(|cfg| !hidden_cfg.contains(cfg))
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+            } else {
+                Cfg::True
             }
         } else {
             Cfg::True
