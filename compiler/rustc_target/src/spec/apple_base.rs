@@ -13,8 +13,10 @@ pub fn opts(os: &str) -> TargetOptions {
     // warnings about the usage of ELF TLS.
     //
     // Here we detect what version is being requested, defaulting to 10.7. ELF
-    // TLS is flagged as enabled if it looks to be supported.
-    let version = macos_deployment_target();
+    // TLS is flagged as enabled if it looks to be supported. The architecture
+    // only matters for default deployment target which is 11.0 for ARM64 and
+    // 10.7 for everything else.
+    let has_elf_tls = macos_deployment_target("x86_64") >= (10, 7);
 
     TargetOptions {
         os: os.to_string(),
@@ -31,7 +33,7 @@ pub fn opts(os: &str) -> TargetOptions {
         has_rpath: true,
         dll_suffix: ".dylib".to_string(),
         archive_format: "darwin".to_string(),
-        has_elf_tls: version >= (10, 7),
+        has_elf_tls,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         eh_frame_header: false,
@@ -63,12 +65,17 @@ fn deployment_target(var_name: &str) -> Option<(u32, u32)> {
         .and_then(|(a, b)| a.parse::<u32>().and_then(|a| b.parse::<u32>().map(|b| (a, b))).ok())
 }
 
-fn macos_deployment_target() -> (u32, u32) {
-    deployment_target("MACOSX_DEPLOYMENT_TARGET").unwrap_or((10, 7))
+fn macos_default_deployment_target(arch: &str) -> (u32, u32) {
+    if arch == "arm64" { (11, 0) } else { (10, 7) }
+}
+
+fn macos_deployment_target(arch: &str) -> (u32, u32) {
+    deployment_target("MACOSX_DEPLOYMENT_TARGET")
+        .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
 
 pub fn macos_llvm_target(arch: &str) -> String {
-    let (major, minor) = macos_deployment_target();
+    let (major, minor) = macos_deployment_target(arch);
     format!("{}-apple-macosx{}.{}.0", arch, major, minor)
 }
 
