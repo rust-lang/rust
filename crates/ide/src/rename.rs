@@ -57,7 +57,6 @@ pub(crate) fn prepare_rename(
 
     match res {
         // ensure at least one definition was found
-        // TODO this duplicates work done at the end of `find_definitions`
         Some(res) => res.map(|range| RangeInfo::new(range, ())),
         None => bail!("No references found at position"),
     }
