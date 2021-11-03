@@ -1479,12 +1479,6 @@ impl TypeAliasBounds {
             err: &'a mut DiagnosticBuilder<'db>,
         }
         impl<'a, 'db, 'v> Visitor<'v> for WalkAssocTypes<'a, 'db> {
-            type Map = intravisit::ErasedMap<'v>;
-
-            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-                intravisit::NestedVisitorMap::None
-            }
-
             fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId, span: Span) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(

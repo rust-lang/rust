@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -74,12 +74,6 @@ struct ReachableContext<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));

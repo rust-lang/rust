@@ -11,13 +11,13 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE,
 };
 use rustc_hir::definitions::DefPathData;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items;
 use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::Idx;
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
@@ -1917,10 +1917,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
 // FIXME(eddyb) make metadata encoding walk over all definitions, instead of HIR.
 impl<'a, 'tcx> Visitor<'tcx> for EncodeContext<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);

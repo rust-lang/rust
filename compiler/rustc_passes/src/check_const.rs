@@ -11,8 +11,8 @@ use rustc_attr as attr;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_middle::hir::map::Map;
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -262,10 +262,10 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {

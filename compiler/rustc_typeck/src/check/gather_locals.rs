@@ -1,6 +1,6 @@
 use crate::check::{FnCtxt, LocalTy, UserType};
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::PatKind;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::Ty;
@@ -98,12 +98,6 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
         self.declare(local.into());

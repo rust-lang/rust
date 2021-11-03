@@ -12,6 +12,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{def::Res, ItemKind, Node, PathSegment};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::layout::MAX_SIMD_LANES;
 use rustc_middle::ty::subst::GenericArgKind;
@@ -512,10 +513,10 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
     }
 
     impl<'tcx> Visitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
-        type Map = rustc_middle::hir::map::Map<'tcx>;
+        type NestedFilter = nested_filter::OnlyBodies;
 
-        fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
-            hir::intravisit::NestedVisitorMap::OnlyBodies(self.tcx.hir())
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.tcx.hir()
         }
 
         fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {

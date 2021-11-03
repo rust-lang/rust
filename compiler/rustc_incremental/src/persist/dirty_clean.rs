@@ -28,7 +28,7 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node as HirNode;
 use rustc_hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};
 use rustc_middle::dep_graph::{label_strs, DepNode, DepNodeExt};
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -472,10 +472,10 @@ impl<'tcx> FindAllAttrs<'tcx> {
 }
 
 impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::All(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_attribute(&mut self, _: hir::HirId, attr: &'tcx Attribute) {

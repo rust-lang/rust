@@ -3,6 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
 pub mod map;
+pub mod nested_filter;
 pub mod place;
 
 use crate::ty::query::Providers;

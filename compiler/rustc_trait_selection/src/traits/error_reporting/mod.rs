@@ -2184,12 +2184,6 @@ struct FindTypeParam {
 }
 
 impl<'v> Visitor<'v> for FindTypeParam {
-    type Map = rustc_hir::intravisit::ErasedMap<'v>;
-
-    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
-        hir::intravisit::NestedVisitorMap::None
-    }
-
     fn visit_where_predicate(&mut self, _: &'v hir::WherePredicate<'v>) {
         // Skip where-clauses, to avoid suggesting indirection for type parameters found there.
     }

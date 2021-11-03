@@ -6,10 +6,10 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{Node, PatKind, TyKind};
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
@@ -323,12 +323,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
@@ -673,14 +667,14 @@ impl<'tcx> DeadVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::All;
 
     /// Walk nested items in place so that we don't report dead-code
     /// on inner functions when the outer function is already getting
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::All(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {

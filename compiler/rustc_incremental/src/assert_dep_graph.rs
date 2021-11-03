@@ -39,11 +39,11 @@ use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMIN
 use rustc_graphviz as dot;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::dep_graph::{
     DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter,
 };
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -173,10 +173,10 @@ impl<'tcx> IfThisChanged<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for IfThisChanged<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {

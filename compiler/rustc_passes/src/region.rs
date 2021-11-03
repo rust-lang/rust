@@ -10,7 +10,7 @@ use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Block, Expr, Local, Pat, PatKind, Stmt};
 use rustc_index::vec::Idx;
 use rustc_middle::middle::region::*;
@@ -721,12 +721,6 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_block(&mut self, b: &'tcx Block<'tcx>) {
         resolve_block(self, b);
     }

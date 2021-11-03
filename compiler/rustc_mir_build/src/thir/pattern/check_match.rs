@@ -10,7 +10,7 @@ use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Pat};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_session::lint::builtin::{
@@ -54,12 +54,6 @@ struct MatchVisitor<'a, 'p, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);
         match &ex.kind {

@@ -9,9 +9,9 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::hir_id::CRATE_HIR_ID;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{FieldDef, Generics, HirId, Item, TraitRef, Ty, TyKind, Variant};
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability::{DeprecationEntry, Index};
 use rustc_middle::ty::{self, query::Providers, TyCtxt};
@@ -378,10 +378,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::All(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
@@ -593,10 +593,10 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
@@ -738,13 +738,13 @@ struct Checker<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -860,12 +860,6 @@ struct CheckTraitImplStable<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
-    type Map = Map<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _id: hir::HirId) {
         if let Some(def_id) = path.res.opt_def_id() {
             if let Some(stab) = self.tcx.lookup_stability(def_id) {

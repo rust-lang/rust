@@ -3,7 +3,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::query::Providers;
@@ -488,12 +488,6 @@ impl<'tcx> ExprVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for ItemVisitor<'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let owner_def_id = self.tcx.hir().body_owner_def_id(body_id);
         let body = self.tcx.hir().body(body_id);
@@ -505,12 +499,6 @@ impl<'tcx> Visitor<'tcx> for ItemVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for ExprVisitor<'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             hir::ExprKind::Path(ref qpath) => {

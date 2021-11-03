@@ -18,7 +18,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_hir_pretty::{enum_def_to_string, fn_to_string, ty_to_string};
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{self, print::with_no_trimmed_paths, DefIdTree, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -859,10 +859,10 @@ impl<'l> PathCollector<'l> {
 }
 
 impl<'l> Visitor<'l> for PathCollector<'l> {
-    type Map = Map<'l>;
+    type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::All(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_pat(&mut self, p: &'l hir::Pat<'l>) {

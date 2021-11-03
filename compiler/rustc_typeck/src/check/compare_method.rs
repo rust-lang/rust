@@ -881,13 +881,6 @@ fn compare_synthetic_generics<'tcx>(
                                     }
                                 }
                             }
-                            type Map = intravisit::ErasedMap<'v>;
-                            fn nested_visit_map(
-                                &mut self,
-                            ) -> intravisit::NestedVisitorMap<Self::Map>
-                            {
-                                intravisit::NestedVisitorMap::None
-                            }
                         }
                         let mut visitor = Visitor(None, impl_def_id);
                         for ty in input_tys {

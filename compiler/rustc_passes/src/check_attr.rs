@@ -4,19 +4,18 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use rustc_middle::hir::map::Map;
-use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::TyCtxt;
-
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_hir::{MethodKind, Target};
+use rustc_middle::hir::nested_filter;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
@@ -1862,10 +1861,10 @@ impl CheckAttrVisitor<'_> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
