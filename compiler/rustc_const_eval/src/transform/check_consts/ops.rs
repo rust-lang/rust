@@ -74,65 +74,67 @@ impl NonConstOp for FnCallIndirect {
 
 /// A function call where the callee is not marked as `const`.
 #[derive(Debug)]
-pub struct FnCallNonConst<'tcx>(pub Option<(DefId, SubstsRef<'tcx>)>);
+pub struct FnCallNonConst<'tcx>(pub DefId, pub SubstsRef<'tcx>);
 impl<'a> NonConstOp for FnCallNonConst<'a> {
     fn build_error<'tcx>(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        let FnCallNonConst(def_id, substs) = *self;
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
             E0015,
+            "cannot call non-const fn `{}` in {}s",
+            ccx.tcx.def_path_str_with_substs(def_id, substs),
+            ccx.const_kind()
+        );
+        err.note(&format!(
             "calls in {}s are limited to constant functions, \
              tuple structs and tuple variants",
             ccx.const_kind(),
-        );
+        ));
 
-        if let FnCallNonConst(Some((callee, substs))) = *self {
-            if let Some(trait_def_id) = ccx.tcx.lang_items().eq_trait() {
-                if let Some(eq_item) = ccx.tcx.associated_items(trait_def_id).find_by_name_and_kind(
-                    ccx.tcx,
-                    Ident::with_dummy_span(sym::eq),
-                    AssocKind::Fn,
-                    trait_def_id,
-                ) {
-                    if callee == eq_item.def_id && substs.len() == 2 {
-                        match (substs[0].unpack(), substs[1].unpack()) {
-                            (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
-                                if self_ty == rhs_ty
-                                    && self_ty.is_ref()
-                                    && self_ty.peel_refs().is_primitive() =>
-                            {
-                                let mut num_refs = 0;
-                                let mut tmp_ty = self_ty;
-                                while let rustc_middle::ty::Ref(_, inner_ty, _) = tmp_ty.kind() {
-                                    num_refs += 1;
-                                    tmp_ty = inner_ty;
-                                }
-                                let deref = "*".repeat(num_refs);
+        if let Some(trait_def_id) = ccx.tcx.lang_items().eq_trait() {
+            if let Some(eq_item) = ccx.tcx.associated_items(trait_def_id).find_by_name_and_kind(
+                ccx.tcx,
+                Ident::with_dummy_span(sym::eq),
+                AssocKind::Fn,
+                trait_def_id,
+            ) {
+                if callee == eq_item.def_id && substs.len() == 2 {
+                    match (substs[0].unpack(), substs[1].unpack()) {
+                        (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
+                            if self_ty == rhs_ty
+                                && self_ty.is_ref()
+                                && self_ty.peel_refs().is_primitive() =>
+                        {
+                            let mut num_refs = 0;
+                            let mut tmp_ty = self_ty;
+                            while let rustc_middle::ty::Ref(_, inner_ty, _) = tmp_ty.kind() {
+                                num_refs += 1;
+                                tmp_ty = inner_ty;
+                            }
+                            let deref = "*".repeat(num_refs);
 
-                                if let Ok(call_str) =
-                                    ccx.tcx.sess.source_map().span_to_snippet(span)
-                                {
-                                    if let Some(eq_idx) = call_str.find("==") {
-                                        if let Some(rhs_idx) = call_str[(eq_idx + 2)..]
-                                            .find(|c: char| !c.is_whitespace())
-                                        {
-                                            let rhs_pos = span.lo()
-                                                + BytePos::from_usize(eq_idx + 2 + rhs_idx);
-                                            let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
-                                            err.multipart_suggestion(
-                                                "consider dereferencing here",
-                                                vec![
-                                                    (span.shrink_to_lo(), deref.clone()),
-                                                    (rhs_span, deref),
-                                                ],
-                                                Applicability::MachineApplicable,
-                                            );
-                                        }
+                            if let Ok(call_str) = ccx.tcx.sess.source_map().span_to_snippet(span) {
+                                if let Some(eq_idx) = call_str.find("==") {
+                                    if let Some(rhs_idx) =
+                                        call_str[(eq_idx + 2)..].find(|c: char| !c.is_whitespace())
+                                    {
+                                        let rhs_pos =
+                                            span.lo() + BytePos::from_usize(eq_idx + 2 + rhs_idx);
+                                        let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
+                                        err.multipart_suggestion(
+                                            "consider dereferencing here",
+                                            vec![
+                                                (span.shrink_to_lo(), deref.clone()),
+                                                (rhs_span, deref),
+                                            ],
+                                            Applicability::MachineApplicable,
+                                        );
                                     }
                                 }
                             }
-                            _ => {}
                         }
+                        _ => {}
                     }
                 }
             }
