@@ -105,7 +105,7 @@ fn generate_lint_descriptor(buf: &mut String) {
 
 fn generate_feature_descriptor(buf: &mut String, src_dir: &Path) {
     let mut features = ["language-features", "library-features"]
-        .iter()
+        .into_iter()
         .flat_map(|it| sourcegen::list_files(&src_dir.join(it)))
         .filter(|path| {
             // Get all `.md ` files

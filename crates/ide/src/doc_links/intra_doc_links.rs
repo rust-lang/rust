@@ -21,8 +21,7 @@ pub(super) fn parse_intra_doc_link(s: &str) -> (&str, Option<hir::Namespace>) {
         (hir::Namespace::Values, (VALUES.0.iter(), VALUES.1.iter())),
         (hir::Namespace::Macros, (MACROS.0.iter(), MACROS.1.iter())),
     ]
-    .iter()
-    .cloned()
+    .into_iter()
     .find_map(|(ns, (mut prefixes, mut suffixes))| {
         if let Some(prefix) = prefixes.find(|&&prefix| {
             s.starts_with(prefix)
@@ -42,8 +41,7 @@ pub(super) fn strip_prefixes_suffixes(s: &str) -> &str {
         (VALUES.0.iter(), VALUES.1.iter()),
         (MACROS.0.iter(), MACROS.1.iter()),
     ]
-    .iter()
-    .cloned()
+    .into_iter()
     .find_map(|(mut prefixes, mut suffixes)| {
         if let Some(prefix) = prefixes.find(|&&prefix| {
             s.starts_with(prefix)

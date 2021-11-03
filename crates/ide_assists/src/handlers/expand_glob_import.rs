@@ -226,7 +226,7 @@ fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Def>
 
     Some(
         [Direction::Prev, Direction::Next]
-            .iter()
+            .into_iter()
             .flat_map(|dir| {
                 parent_use_item_syntax
                     .siblings(dir.to_owned())

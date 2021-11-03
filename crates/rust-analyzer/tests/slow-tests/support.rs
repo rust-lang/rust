@@ -212,8 +212,8 @@ impl Server {
                     if req.method == "client/registerCapability" {
                         let params = req.params.to_string();
                         if ["workspace/didChangeWatchedFiles", "textDocument/didSave"]
-                            .iter()
-                            .any(|&it| params.contains(it))
+                            .into_iter()
+                            .any(|it| params.contains(it))
                         {
                             continue;
                         }
