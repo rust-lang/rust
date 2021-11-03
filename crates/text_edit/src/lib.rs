@@ -116,7 +116,6 @@ impl TextEdit {
     }
 
     pub fn union(&mut self, other: TextEdit) -> Result<(), TextEdit> {
-        dbg!(&self, &other);
         // FIXME: can be done without allocating intermediate vector
         let mut all = self.iter().chain(other.iter()).collect::<Vec<_>>();
         if !check_disjoint_or_equal(&mut all) {
