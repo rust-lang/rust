@@ -414,7 +414,7 @@ function parseOptions(args) {
         "test_folder": "",
         "test_file": "",
     };
-    var correspondances = {
+    var correspondences = {
         "--resource-suffix": "resource_suffix",
         "--doc-folder": "doc_folder",
         "--test-folder": "test_folder",
@@ -423,17 +423,13 @@ function parseOptions(args) {
     };
 
     for (var i = 0; i < args.length; ++i) {
-        if (args[i] === "--resource-suffix"
-            || args[i] === "--doc-folder"
-            || args[i] === "--test-folder"
-            || args[i] === "--test-file"
-            || args[i] === "--crate-name") {
+        if (correspondences.hasOwnProperty(args[i])) {
             i += 1;
             if (i >= args.length) {
                 console.log("Missing argument after `" + args[i - 1] + "` option.");
                 return null;
             }
-            opts[correspondances[args[i - 1]]] = args[i];
+            opts[correspondences[args[i - 1]]] = args[i];
         } else if (args[i] === "--help") {
             showHelp();
             process.exit(0);
