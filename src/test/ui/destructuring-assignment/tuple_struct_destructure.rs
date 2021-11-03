@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(destructuring_assignment)]
-
 struct TupleStruct<S, T>(S, T);
 
 impl<S, T> TupleStruct<S, T> {

@@ -1265,7 +1265,6 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Let) {
             self.parse_let_expr(attrs)
         } else if self.eat_keyword(kw::Underscore) {
-            self.sess.gated_spans.gate(sym::destructuring_assignment, self.prev_token.span);
             Ok(self.mk_expr(self.prev_token.span, ExprKind::Underscore, attrs))
         } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
             // Don't complain about bare semicolons after unclosed braces
@@ -2588,7 +2587,6 @@ impl<'a> Parser<'a> {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(&token::CloseDelim(close_delim)) {
-                    self.sess.gated_spans.gate(sym::destructuring_assignment, self.prev_token.span);
                     base = ast::StructRest::Rest(self.prev_token.span.shrink_to_hi());
                     break;
                 }

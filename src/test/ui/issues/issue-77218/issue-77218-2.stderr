@@ -1,5 +1,5 @@
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/issue-77218-2.rs:5:19
+  --> $DIR/issue-77218-2.rs:4:19
    |
 LL |     while Some(0) = value.get(0) {
    |                -  ^
