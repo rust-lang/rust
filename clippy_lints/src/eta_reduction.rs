@@ -169,13 +169,16 @@ fn check_inputs(cx: &LateContext<'_>, params: &[Param<'_>], call_args: &[Expr<'_
         }
         match *cx.typeck_results().expr_adjustments(arg) {
             [] => true,
-            [Adjustment {
-                kind: Adjust::Deref(None),
-                ..
-            }, Adjustment {
-                kind: Adjust::Borrow(AutoBorrow::Ref(_, mu2)),
-                ..
-            }] => {
+            [
+                Adjustment {
+                    kind: Adjust::Deref(None),
+                    ..
+                },
+                Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(_, mu2)),
+                    ..
+                },
+            ] => {
                 // re-borrow with the same mutability is allowed
                 let ty = cx.typeck_results().expr_ty(arg);
                 matches!(*ty.kind(), ty::Ref(.., mu1) if mu1 == mu2.into())
