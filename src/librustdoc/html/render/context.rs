@@ -461,9 +461,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             }
         }
 
-        let (mut krate, local_sources, matches) = collect_spans_and_sources(
+        let (local_sources, matches) = collect_spans_and_sources(
             tcx,
-            krate,
+            &krate,
             &src_root,
             include_sources,
             generate_link_to_definition,
@@ -522,7 +522,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
 
         if emit_crate {
-            krate = sources::render(&mut cx, krate)?;
+            sources::render(&mut cx, &krate)?;
         }
 
         // Build our search index

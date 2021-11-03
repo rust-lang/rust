@@ -32,10 +32,10 @@ use std::ops::Range;
 
 use crate::clean::{self, utils::find_nearest_parent_module, Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
-use crate::fold::DocFolder;
 use crate::html::markdown::{markdown_links, MarkdownLink};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::passes::Pass;
+use crate::visit::DocVisitor;
 
 mod early;
 crate use early::load_intra_link_crates;
@@ -47,13 +47,14 @@ crate const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
 };
 
 fn collect_intra_doc_links(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    LinkCollector {
+    let mut collector = LinkCollector {
         cx,
         mod_ids: Vec::new(),
         kind_side_channel: Cell::new(None),
         visited_links: FxHashMap::default(),
-    }
-    .fold_crate(krate)
+    };
+    collector.visit_crate(&krate);
+    krate
 }
 
 /// Top-level errors emitted by this pass.
@@ -816,8 +817,8 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Result<(Res, T), ResolutionFailure<'_
     )
 }
 
-impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
-    fn fold_item(&mut self, item: Item) -> Option<Item> {
+impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
+    fn visit_item(&mut self, item: &Item) {
         use rustc_middle::ty::DefIdTree;
 
         let parent_node =
@@ -911,17 +912,16 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             }
         }
 
-        Some(if item.is_mod() {
+        if item.is_mod() {
             if !inner_docs {
                 self.mod_ids.push(item.def_id.expect_def_id());
             }
 
-            let ret = self.fold_item_recur(item);
+            self.visit_item_recur(item);
             self.mod_ids.pop();
-            ret
         } else {
-            self.fold_item_recur(item)
-        })
+            self.visit_item_recur(item)
+        }
     }
 }
 
