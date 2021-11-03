@@ -473,12 +473,17 @@ fn get_doc_base_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
         }
         _ => {
             krate.get_html_root_url(db).or_else(|| {
+                let version = krate.version(db);
                 // Fallback to docs.rs. This uses `display_name` and can never be
                 // correct, but that's what fallbacks are about.
                 //
                 // FIXME: clicking on the link should just open the file in the editor,
                 // instead of falling back to external urls.
-                Some(format!("https://docs.rs/{krate}/*/", krate = display_name))
+                Some(format!(
+                    "https://docs.rs/{krate}/{version}/",
+                    krate = display_name,
+                    version = version.as_deref().unwrap_or("*")
+                ))
             })?
         }
     };

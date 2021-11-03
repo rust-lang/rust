@@ -192,6 +192,7 @@ pub struct ProcMacro {
 pub struct CrateData {
     pub root_file_id: FileId,
     pub edition: Edition,
+    pub version: Option<String>,
     /// A name used in the package's project declaration: for Cargo projects,
     /// its `[package].name` can be different for other project types or even
     /// absent (a dummy crate for the code snippet, for example).
@@ -250,6 +251,7 @@ impl CrateGraph {
         file_id: FileId,
         edition: Edition,
         display_name: Option<CrateDisplayName>,
+        version: Option<String>,
         cfg_options: CfgOptions,
         potential_cfg_options: CfgOptions,
         env: Env,
@@ -258,6 +260,7 @@ impl CrateGraph {
         let data = CrateData {
             root_file_id: file_id,
             edition,
+            version,
             display_name,
             cfg_options,
             potential_cfg_options,
@@ -563,6 +566,7 @@ mod tests {
             FileId(1u32),
             Edition2018,
             None,
+            None,
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
@@ -572,6 +576,7 @@ mod tests {
             FileId(2u32),
             Edition2018,
             None,
+            None,
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
@@ -580,6 +585,7 @@ mod tests {
         let crate3 = graph.add_crate_root(
             FileId(3u32),
             Edition2018,
+            None,
             None,
             CfgOptions::default(),
             CfgOptions::default(),
@@ -604,6 +610,7 @@ mod tests {
             FileId(1u32),
             Edition2018,
             None,
+            None,
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
@@ -612,6 +619,7 @@ mod tests {
         let crate2 = graph.add_crate_root(
             FileId(2u32),
             Edition2018,
+            None,
             None,
             CfgOptions::default(),
             CfgOptions::default(),
@@ -633,6 +641,7 @@ mod tests {
             FileId(1u32),
             Edition2018,
             None,
+            None,
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
@@ -642,6 +651,7 @@ mod tests {
             FileId(2u32),
             Edition2018,
             None,
+            None,
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
@@ -650,6 +660,7 @@ mod tests {
         let crate3 = graph.add_crate_root(
             FileId(3u32),
             Edition2018,
+            None,
             None,
             CfgOptions::default(),
             CfgOptions::default(),
@@ -671,6 +682,7 @@ mod tests {
             FileId(1u32),
             Edition2018,
             None,
+            None,
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
@@ -679,6 +691,7 @@ mod tests {
         let crate2 = graph.add_crate_root(
             FileId(2u32),
             Edition2018,
+            None,
             None,
             CfgOptions::default(),
             CfgOptions::default(),

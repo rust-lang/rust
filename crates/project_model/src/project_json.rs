@@ -29,6 +29,7 @@ pub struct Crate {
     pub(crate) display_name: Option<CrateDisplayName>,
     pub(crate) root_module: AbsPathBuf,
     pub(crate) edition: Edition,
+    pub(crate) version: Option<String>,
     pub(crate) deps: Vec<Dependency>,
     pub(crate) cfg: Vec<CfgFlag>,
     pub(crate) target: Option<String>,
@@ -80,6 +81,7 @@ impl ProjectJson {
                             .map(CrateDisplayName::from_canonical_name),
                         root_module,
                         edition: crate_data.edition.into(),
+                        version: crate_data.version.as_ref().map(ToString::to_string),
                         deps: crate_data
                             .deps
                             .into_iter()
@@ -127,6 +129,8 @@ struct CrateData {
     display_name: Option<String>,
     root_module: PathBuf,
     edition: EditionData,
+    #[serde(default)]
+    version: Option<semver::Version>,
     deps: Vec<DepData>,
     #[serde(default)]
     cfg: Vec<CfgFlag>,
