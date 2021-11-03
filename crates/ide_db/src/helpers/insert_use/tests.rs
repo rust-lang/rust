@@ -1,5 +1,7 @@
+use base_db::fixture::WithFixture;
 use hir::PrefixKind;
-use test_utils::{assert_eq_text, extract_range_or_offset, CURSOR_MARKER};
+use stdx::trim_indent;
+use test_utils::{assert_eq_text, CURSOR_MARKER};
 
 use super::*;
 
@@ -865,17 +867,20 @@ fn check_with_config(
     ra_fixture_after: &str,
     config: &InsertUseConfig,
 ) {
-    let (text, pos) = if ra_fixture_before.contains(CURSOR_MARKER) {
-        let (range_or_offset, text) = extract_range_or_offset(ra_fixture_before);
-        (text, Some(range_or_offset))
+    let (db, file_id, pos) = if ra_fixture_before.contains(CURSOR_MARKER) {
+        let (db, file_id, range_or_offset) = RootDatabase::with_range_or_offset(ra_fixture_before);
+        (db, file_id, Some(range_or_offset))
     } else {
-        (ra_fixture_before.to_owned(), None)
+        let (db, file_id) = RootDatabase::with_single_file(ra_fixture_before);
+        (db, file_id, None)
     };
-    let syntax = ast::SourceFile::parse(&text).tree().syntax().clone_for_update();
+    let sema = &Semantics::new(&db);
+    let source_file = sema.parse(file_id);
+    let syntax = source_file.syntax().clone_for_update();
     let file = pos
         .and_then(|pos| syntax.token_at_offset(pos.expect_offset()).next()?.parent())
-        .and_then(|it| super::ImportScope::find_insert_use_container(&it))
-        .or_else(|| super::ImportScope::from(syntax))
+        .and_then(|it| ImportScope::find_insert_use_container(&it, sema))
+        .or_else(|| ImportScope::from(syntax))
         .unwrap();
     let path = ast::SourceFile::parse(&format!("use {};", path))
         .tree()
@@ -886,7 +891,7 @@ fn check_with_config(
 
     insert_use(&file, path, config);
     let result = file.as_syntax_node().ancestors().last().unwrap().to_string();
-    assert_eq_text!(ra_fixture_after, &result);
+    assert_eq_text!(&trim_indent(ra_fixture_after), &result);
 }
 
 fn check(
@@ -942,6 +947,6 @@ fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehavior
 
 fn check_guess(ra_fixture: &str, expected: ImportGranularityGuess) {
     let syntax = ast::SourceFile::parse(ra_fixture).tree().syntax().clone();
-    let file = super::ImportScope::from(syntax).unwrap();
+    let file = ImportScope::from(syntax).unwrap();
     assert_eq!(super::guess_granularity_from_scope(&file), expected);
 }

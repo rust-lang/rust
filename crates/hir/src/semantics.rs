@@ -208,6 +208,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.original_range_opt(node)
     }
 
+    pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
+        self.imp.original_ast_node(node)
+    }
+
     pub fn diagnostics_display_range(&self, diagnostics: InFile<SyntaxNodePtr>) -> FileRange {
         self.imp.diagnostics_display_range(diagnostics)
     }
@@ -658,6 +662,11 @@ impl<'db> SemanticsImpl<'db> {
     fn original_range_opt(&self, node: &SyntaxNode) -> Option<FileRange> {
         let node = self.find_file(node.clone());
         node.as_ref().original_file_range_opt(self.db.upcast())
+    }
+
+    fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
+        let file = self.find_file(node.syntax().clone());
+        file.with_value(node).original_ast_node(self.db.upcast()).map(|it| it.value)
     }
 
     fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {

@@ -314,7 +314,7 @@ fn process_references(
                 if let Some(mut mod_path) = mod_path {
                     mod_path.pop_segment();
                     mod_path.push_segment(variant_hir_name.clone());
-                    let scope = ImportScope::find_insert_use_container(&scope_node)?;
+                    let scope = ImportScope::find_insert_use_container(&scope_node, &ctx.sema)?;
                     visited_modules.insert(module);
                     return Some((segment, scope_node, Some((scope, mod_path))));
                 }
