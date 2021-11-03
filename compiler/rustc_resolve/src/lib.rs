@@ -2527,7 +2527,7 @@ impl<'a> Resolver<'a> {
                                     Some((
                                         vec![],
                                         String::from(
-                                            "add `extern crate alloc` to use the builtin `alloc` module",
+                                            "add `extern crate alloc` to use the `alloc` crate",
                                         ),
                                         Applicability::MaybeIncorrect,
                                     ))
