@@ -101,9 +101,13 @@ impl Feature {
     }
 }
 
+// See https://rustc-dev-guide.rust-lang.org/feature-gates.html#feature-gates for more
+// documentation about handling feature gates.
+//
 // If you change this, please modify `src/doc/unstable-book` as well.
 //
-// Don't ever remove anything from this list; move them to `removed.rs`.
+// Don't ever remove anything from this list; move them to `accepted.rs` if
+// accepted or `removed.rs` if removed.
 //
 // The version numbers here correspond to the version in which the current status
 // was set. This is most important for knowing when a particular feature became
@@ -589,9 +593,6 @@ declare_features! (
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (active, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391), None),
 
-    /// Lessens the requirements for structs to implement `Unsize`.
-    (active, relaxed_struct_unsize, "1.51.0", Some(81793), None),
-
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995), None),
 
@@ -687,6 +688,9 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (incomplete, type_changing_struct_update, "1.58.0", Some(86555), None),
+
+    /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
+    (active, doc_auto_cfg, "1.58.0", Some(43781), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

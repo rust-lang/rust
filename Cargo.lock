@@ -576,7 +576,7 @@ dependencies = [
 name = "clippy"
 version = "0.1.58"
 dependencies = [
- "cargo_metadata 0.12.0",
+ "cargo_metadata 0.14.0",
  "clippy_lints",
  "clippy_utils",
  "compiletest_rs",
@@ -588,7 +588,7 @@ dependencies = [
  "regex",
  "rustc-workspace-hack",
  "rustc_tools_util 0.2.0",
- "semver 0.11.0",
+ "semver 1.0.3",
  "serde",
  "syn",
  "tempfile",
@@ -613,7 +613,7 @@ dependencies = [
 name = "clippy_lints"
 version = "0.1.58"
 dependencies = [
- "cargo_metadata 0.12.0",
+ "cargo_metadata 0.14.0",
  "clippy_utils",
  "if_chain",
  "itertools 0.10.1",
@@ -621,7 +621,7 @@ dependencies = [
  "quine-mc_cluskey",
  "regex-syntax",
  "rustc-semver",
- "semver 0.11.0",
+ "semver 1.0.3",
  "serde",
  "serde_json",
  "toml",
