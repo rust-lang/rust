@@ -691,13 +691,20 @@ impl DropRangeVisitor<'tcx> {
         self.consumed_places.get_mut(&consumer).map(|places| places.insert(target));
     }
 
+    fn drop_range(&mut self, hir_id: &HirId) -> &mut DropRange {
+        if !self.drop_ranges.contains_key(hir_id) {
+            self.drop_ranges.insert(*hir_id, DropRange::empty());
+        }
+        self.drop_ranges.get_mut(hir_id).unwrap()
+    }
+
     fn record_drop(&mut self, hir_id: HirId) {
-        let drop_ranges = &mut self.drop_ranges;
         if self.borrowed_places.contains(&hir_id) {
             debug!("not marking {:?} as dropped because it is borrowed at some point", hir_id);
         } else {
             debug!("marking {:?} as dropped at {}", hir_id, self.expr_count);
-            drop_ranges.insert(hir_id, DropRange::new(self.expr_count));
+            let count = self.expr_count;
+            self.drop_range(&hir_id).drop(count);
         }
     }
 
@@ -706,7 +713,6 @@ impl DropRangeVisitor<'tcx> {
         other
     }
 
-    #[allow(dead_code)]
     fn fork_drop_ranges(&self) -> HirIdMap<DropRange> {
         self.drop_ranges.iter().map(|(k, v)| (*k, v.fork_at(self.expr_count))).collect()
     }
@@ -720,7 +726,6 @@ impl DropRangeVisitor<'tcx> {
         })
     }
 
-    #[allow(dead_code)]
     fn merge_drop_ranges(&mut self, drops: HirIdMap<DropRange>) {
         drops.into_iter().for_each(|(k, v)| {
             if !self.drop_ranges.contains_key(&k) {
@@ -751,6 +756,20 @@ impl DropRangeVisitor<'tcx> {
                     _ => (),
                 }
             }
+        }
+    }
+
+    fn reinit_expr(&mut self, expr: &hir::Expr<'_>) {
+        if let ExprKind::Path(hir::QPath::Resolved(
+            _,
+            hir::Path { res: hir::def::Res::Local(hir_id), .. },
+        )) = expr.kind
+        {
+            let location = self.expr_count;
+            debug!("reinitializing {:?} at {}", hir_id, location);
+            self.drop_range(hir_id).reinit(location)
+        } else {
+            warn!("reinitializing {:?} is not supported", expr);
         }
     }
 }
@@ -814,6 +833,7 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        let mut reinit = None;
         match expr.kind {
             ExprKind::AssignOp(_op, lhs, rhs) => {
                 // These operations are weird because their order of evaluation depends on whether
@@ -867,11 +887,20 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                     }
                 }
             }
+            ExprKind::Assign(lhs, rhs, _) => {
+                self.visit_expr(lhs);
+                self.visit_expr(rhs);
+
+                reinit = Some(lhs);
+            }
             _ => intravisit::walk_expr(self, expr),
         }
 
         self.expr_count += 1;
         self.consume_expr(expr);
+        if let Some(expr) = reinit {
+            self.reinit_expr(expr);
+        }
     }
 
     fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
@@ -908,8 +937,8 @@ struct DropRange {
 }
 
 impl DropRange {
-    fn new(begin: usize) -> Self {
-        Self { events: vec![Event::Drop(begin)] }
+    fn empty() -> Self {
+        Self { events: vec![] }
     }
 
     fn intersect(&self, other: &Self) -> Self {
@@ -966,12 +995,10 @@ impl DropRange {
         }
     }
 
-    #[allow(dead_code)]
     fn drop(&mut self, location: usize) {
         self.events.push(Event::Drop(location))
     }
 
-    #[allow(dead_code)]
     fn reinit(&mut self, location: usize) {
         self.events.push(Event::Reinit(location));
     }
@@ -982,7 +1009,6 @@ impl DropRange {
     /// at the end of both self and other.
     ///
     /// Assumes that all locations in each range are less than joinpoint
-    #[allow(dead_code)]
     fn merge_with(&mut self, other: &DropRange, join_point: usize) {
         let mut events: Vec<_> =
             self.events.iter().merge(other.events.iter()).dedup().cloned().collect();
@@ -999,7 +1025,6 @@ impl DropRange {
     /// Creates a new DropRange from this one at the split point.
     ///
     /// Used to model branching control flow.
-    #[allow(dead_code)]
     fn fork_at(&self, split_point: usize) -> Self {
         Self {
             events: vec![if self.is_dropped_at(split_point) {
