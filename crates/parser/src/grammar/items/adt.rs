@@ -128,7 +128,7 @@ pub(crate) fn record_field_list(p: &mut Parser) {
         // test record_field_attrs
         // struct S { #[attr] f: f32 }
         attributes::outer_attrs(p);
-        opt_visibility(p);
+        opt_visibility(p, false);
         if p.at(IDENT) {
             name(p);
             p.expect(T![:]);
@@ -150,7 +150,7 @@ fn tuple_field_list(p: &mut Parser) {
         // test tuple_field_attrs
         // struct S (#[attr] f32);
         attributes::outer_attrs(p);
-        opt_visibility(p);
+        opt_visibility(p, true);
         if !p.at_ts(types::TYPE_FIRST) {
             p.error("expected a type");
             m.complete(p, ERROR);

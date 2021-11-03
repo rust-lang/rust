@@ -75,7 +75,7 @@ pub(crate) mod entry_points {
     }
 
     pub(crate) fn visibility(p: &mut Parser) {
-        let _ = opt_visibility(p);
+        let _ = opt_visibility(p, false);
     }
 
     // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
@@ -149,7 +149,7 @@ impl BlockLike {
     }
 }
 
-fn opt_visibility(p: &mut Parser) -> bool {
+fn opt_visibility(p: &mut Parser, in_tuple_field: bool) -> bool {
     match p.current() {
         T![pub] => {
             let m = p.start();
@@ -165,9 +165,17 @@ fn opt_visibility(p: &mut Parser) -> bool {
                     // struct B(pub (super::A));
                     // struct B(pub (crate::A,));
                     T![crate] | T![self] | T![super] | T![ident] if p.nth(2) != T![:] => {
-                        p.bump(T!['(']);
-                        paths::use_path(p);
-                        p.expect(T![')']);
+                        // If we are in a tuple struct, then the parens following `pub`
+                        // might be an tuple field, not part of the visibility. So in that
+                        // case we don't want to consume an identifier.
+
+                        // test pub_tuple_field
+                        // struct MyStruct(pub (u32, u32));
+                        if !(in_tuple_field && matches!(p.nth(1), T![ident])) {
+                            p.bump(T!['(']);
+                            paths::use_path(p);
+                            p.expect(T![')']);
+                        }
                     }
                     // test crate_visibility_in
                     // pub(in super::A) struct S;

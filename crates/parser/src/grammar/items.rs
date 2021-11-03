@@ -87,7 +87,7 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
 pub(super) fn opt_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     // test_err pub_expr
     // fn foo() { pub 92; }
-    let has_visibility = opt_visibility(p);
+    let has_visibility = opt_visibility(p, false);
 
     let m = match opt_item_without_modifiers(p, m) {
         Ok(()) => return Ok(()),
