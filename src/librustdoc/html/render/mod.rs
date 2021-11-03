@@ -76,7 +76,7 @@ use crate::html::format::{
 use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
-use crate::scrape_examples::CallData;
+use crate::scrape_examples::{CallData, CallLocation};
 use crate::try_none;
 
 /// A pair of name and its optional document.
@@ -2594,6 +2594,21 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
         id = id
     );
 
+    // Create a URL to a particular location in a reverse-dependency's source file
+    let link_to_loc = |call_data: &CallData, loc: &CallLocation| -> (String, String) {
+        let (line_lo, line_hi) = loc.call_expr.line_span;
+        let (anchor, title) = if line_lo == line_hi {
+            ((line_lo + 1).to_string(), format!("line {}", line_lo + 1))
+        } else {
+            (
+                format!("{}-{}", line_lo + 1, line_hi + 1),
+                format!("lines {}-{}", line_lo + 1, line_hi + 1),
+            )
+        };
+        let url = format!("{}{}#{}", cx.root_path(), call_data.url, anchor);
+        (url, title)
+    };
+
     // Generate the HTML for a single example, being the title and code block
     let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| -> bool {
         let contents = match fs::read_to_string(&path) {
@@ -2631,15 +2646,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
                 let (line_lo, line_hi) = loc.call_expr.line_span;
                 let byte_range = (byte_lo - byte_min, byte_hi - byte_min);
                 let line_range = (line_lo - line_min, line_hi - line_min);
-                let (anchor, line_title) = if line_lo == line_hi {
-                    (format!("{}", line_lo + 1), format!("line {}", line_lo + 1))
-                } else {
-                    (
-                        format!("{}-{}", line_lo + 1, line_hi + 1),
-                        format!("lines {}-{}", line_lo + 1, line_hi + 1),
-                    )
-                };
-                let line_url = format!("{}{}#{}", cx.root_path(), call_data.url, anchor);
+                let (line_url, line_title) = link_to_loc(call_data, loc);
 
                 (byte_range, (line_range, line_url, line_title))
             })
@@ -2768,11 +2775,11 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
         if it.peek().is_some() {
             write!(w, r#"<div class="example-links">Additional examples can be found in:<br><ul>"#);
             it.for_each(|(_, call_data)| {
+                let (url, _) = link_to_loc(&call_data, &call_data.locations[0]);
                 write!(
                     w,
-                    r#"<li><a href="{root}{url}">{name}</a></li>"#,
-                    root = cx.root_path(),
-                    url = call_data.url,
+                    r#"<li><a href="{url}">{name}</a></li>"#,
+                    url = url,
                     name = call_data.display_name
                 );
             });
