@@ -3,7 +3,6 @@
 //! `rust-analyzer` never mutates text itself and only sends diffs to clients,
 //! so `TextEdit` is the ultimate representation of the work done by
 //! rust-analyzer.
-use std::collections::HashSet;
 
 pub use text_size::{TextRange, TextSize};
 
@@ -118,17 +117,13 @@ impl TextEdit {
     pub fn union(&mut self, other: TextEdit) -> Result<(), TextEdit> {
         // FIXME: can be done without allocating intermediate vector
         let mut all = self.iter().chain(other.iter()).collect::<Vec<_>>();
-        if !check_disjoint_or_equal(&mut all) {
+        if !check_disjoint_and_sort(&mut all) {
             return Err(other);
         }
 
-        // remove duplicates
-        // FIXME: maybe make indels a HashSet instead to get rid of this?
-        let our_indels = self.indels.clone();
-        let our_indels = our_indels.iter().collect::<HashSet<_>>();
-        let other_indels = other.indels.into_iter().filter(|i| !our_indels.contains(i));
-
-        self.indels.extend(other_indels);
+        self.indels.extend(other.indels);
+        check_disjoint_and_sort(&mut self.indels);
+        self.indels.dedup();
         Ok(())
     }
 
@@ -195,10 +190,11 @@ impl TextEditBuilder {
     }
 }
 
-fn assert_disjoint_or_equal(indels: &mut [impl std::borrow::Borrow<Indel>]) {
-    assert!(check_disjoint_or_equal(indels));
+fn assert_disjoint_or_equal(indels: &mut [Indel]) {
+    assert!(check_disjoint_and_sort(indels));
 }
-fn check_disjoint_or_equal(indels: &mut [impl std::borrow::Borrow<Indel>]) -> bool {
+// FIXME: Remove the impl Bound here, it shouldn't be needed
+fn check_disjoint_and_sort(indels: &mut [impl std::borrow::Borrow<Indel>]) -> bool {
     indels.sort_by_key(|indel| (indel.borrow().delete.start(), indel.borrow().delete.end()));
     indels.iter().zip(indels.iter().skip(1)).all(|(l, r)| {
         let l = l.borrow();
