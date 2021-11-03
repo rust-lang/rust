@@ -129,7 +129,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
 
     let user_input_lowercased = potential_import_name.to_lowercase();
     let import_assets = import_assets(ctx, potential_import_name)?;
-    let import_scope = ImportScope::find_insert_use_container_with_macros(
+    let import_scope = ImportScope::find_insert_use_container(
         &position_for_import(ctx, Some(import_assets.import_candidate()))?,
         &ctx.sema,
     )?;

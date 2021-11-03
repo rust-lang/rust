@@ -2,7 +2,7 @@ mod sourcegen;
 mod generated;
 
 use expect_test::expect;
-use hir::Semantics;
+use hir::{db::DefDatabase, Semantics};
 use ide_db::{
     base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
     helpers::{
@@ -117,7 +117,8 @@ enum ExpectedResult<'a> {
 
 #[track_caller]
 fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label: Option<&str>) {
-    let (db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
+    let (mut db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
+    db.set_enable_proc_attr_macros(true);
     let text_without_caret = db.file_text(file_with_caret_id).to_string();
 
     let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };

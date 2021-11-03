@@ -95,7 +95,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
         NodeOrToken::Token(token) => token.text_range(),
     };
     let group_label = group_label(import_assets.import_candidate());
-    let scope = ImportScope::find_insert_use_container_with_macros(
+    let scope = ImportScope::find_insert_use_container(
         &match syntax_under_caret {
             NodeOrToken::Node(it) => it,
             NodeOrToken::Token(it) => it.parent()?,
@@ -163,6 +163,60 @@ mod tests {
     use super::*;
 
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+
+    #[test]
+    fn not_applicable_if_scope_inside_macro() {
+        check_assist_not_applicable(
+            auto_import,
+            r"
+mod bar {
+    pub struct Baz;
+}
+macro_rules! foo {
+    ($it:ident) => {
+        mod __ {
+            fn __(x: $it) {}
+        }
+    };
+}
+foo! {
+    Baz$0
+}
+",
+        );
+    }
+
+    #[test]
+    fn applicable_in_attributes() {
+        check_assist(
+            auto_import,
+            r"
+//- proc_macros: identity
+#[proc_macros::identity]
+mod foo {
+    mod bar {
+        const _: Baz$0 = ();
+    }
+}
+mod baz {
+    pub struct Baz;
+}
+",
+            r"
+#[proc_macros::identity]
+mod foo {
+    mod bar {
+        use crate::baz::Baz;
+
+        const _: Baz = ();
+    }
+}
+mod baz {
+    pub struct Baz;
+}
+",
+        );
+    }
 
     #[test]
     fn applicable_when_found_an_import_partial() {

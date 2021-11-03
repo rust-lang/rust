@@ -98,7 +98,7 @@ fn flyimport_attribute(ctx: &CompletionContext, acc: &mut Completions) -> Option
         &ctx.sema,
         parent.clone(),
     )?;
-    let import_scope = ImportScope::find_insert_use_container_with_macros(&parent, &ctx.sema)?;
+    let import_scope = ImportScope::find_insert_use_container(&parent, &ctx.sema)?;
     acc.add_all(
         import_assets
             .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)

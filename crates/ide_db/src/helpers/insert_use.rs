@@ -8,7 +8,7 @@ use hir::Semantics;
 use syntax::{
     algo,
     ast::{self, make, AstNode, HasAttrs, HasModuleItem, HasVisibility, PathSegmentKind},
-    match_ast, ted, AstToken, Direction, NodeOrToken, SyntaxNode, SyntaxToken,
+    ted, AstToken, Direction, NodeOrToken, SyntaxNode, SyntaxToken,
 };
 
 use crate::{
@@ -50,7 +50,10 @@ pub enum ImportScope {
 }
 
 impl ImportScope {
+    // FIXME: Remove this?
+    #[cfg(test)]
     fn from(syntax: SyntaxNode) -> Option<Self> {
+        use syntax::match_ast;
         fn contains_cfg_attr(attrs: &dyn HasAttrs) -> bool {
             attrs
                 .attrs()
@@ -76,16 +79,60 @@ impl ImportScope {
     }
 
     /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
-    pub fn find_insert_use_container_with_macros(
+    /// Returns the original source node inside attributes.
+    pub fn find_insert_use_container(
         position: &SyntaxNode,
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<Self> {
-        sema.ancestors_with_macros(position.clone()).find_map(Self::from)
-    }
+        fn contains_cfg_attr(attrs: &dyn HasAttrs) -> bool {
+            attrs
+                .attrs()
+                .any(|attr| attr.as_simple_call().map_or(false, |(ident, _)| ident == "cfg"))
+        }
 
-    /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
-    pub fn find_insert_use_container(position: &SyntaxNode) -> Option<Self> {
-        std::iter::successors(Some(position.clone()), SyntaxNode::parent).find_map(Self::from)
+        // Walk up the ancestor tree searching for a suitable node to do insertions on
+        // with special handling on cfg-gated items, in which case we want to insert imports locally
+        // or FIXME: annotate inserted imports with the same cfg
+        for syntax in sema.ancestors_with_macros(position.clone()) {
+            if let Some(file) = ast::SourceFile::cast(syntax.clone()) {
+                return Some(ImportScope::File(file));
+            } else if let Some(item) = ast::Item::cast(syntax) {
+                return match item {
+                    ast::Item::Const(konst) if contains_cfg_attr(&konst) => {
+                        // FIXME: Instead of bailing out with None, we should note down that
+                        // this import needs an attribute added
+                        match sema.original_ast_node(konst)?.body()? {
+                            ast::Expr::BlockExpr(block) => block,
+                            _ => return None,
+                        }
+                        .stmt_list()
+                        .map(ImportScope::Block)
+                    }
+                    ast::Item::Fn(func) if contains_cfg_attr(&func) => {
+                        // FIXME: Instead of bailing out with None, we should note down that
+                        // this import needs an attribute added
+                        sema.original_ast_node(func)?.body()?.stmt_list().map(ImportScope::Block)
+                    }
+                    ast::Item::Static(statik) if contains_cfg_attr(&statik) => {
+                        // FIXME: Instead of bailing out with None, we should note down that
+                        // this import needs an attribute added
+                        match sema.original_ast_node(statik)?.body()? {
+                            ast::Expr::BlockExpr(block) => block,
+                            _ => return None,
+                        }
+                        .stmt_list()
+                        .map(ImportScope::Block)
+                    }
+                    ast::Item::Module(module) => {
+                        // early return is important here, if we can't find the original module
+                        // in the input there is no way for us to insert an import anywhere.
+                        sema.original_ast_node(module)?.item_list().map(ImportScope::Module)
+                    }
+                    _ => continue,
+                };
+            }
+        }
+        None
     }
 
     pub fn as_syntax_node(&self) -> &SyntaxNode {

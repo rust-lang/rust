@@ -70,7 +70,7 @@ pub(crate) fn replace_qualified_name_with_use(
         })
         .flatten();
 
-    let scope = ImportScope::find_insert_use_container_with_macros(path.syntax(), &ctx.sema)?;
+    let scope = ImportScope::find_insert_use_container(path.syntax(), &ctx.sema)?;
     let target = path.syntax().text_range();
     acc.add(
         AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),

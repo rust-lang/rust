@@ -24,9 +24,9 @@ use std::{hash::Hash, iter, sync::Arc};
 
 use base_db::{impl_intern_key, salsa, CrateId, FileId, FileRange};
 use syntax::{
-    algo::skip_trivia_token,
+    algo::{self, skip_trivia_token},
     ast::{self, AstNode, HasAttrs},
-    Direction, SyntaxNode, SyntaxToken, TextRange,
+    Direction, SyntaxNode, SyntaxToken,
 };
 
 use crate::{
@@ -600,13 +600,15 @@ impl<'a> InFile<&'a SyntaxNode> {
 
     /// Attempts to map the syntax node back up its macro calls.
     pub fn original_file_range_opt(self, db: &dyn db::AstDatabase) -> Option<FileRange> {
-        match original_range_opt(db, self) {
-            Some(range) => {
-                let original_file = range.file_id.original_file(db);
-                if range.file_id != original_file.into() {
+        match ascend_node_border_tokens(db, self) {
+            Some(InFile { file_id, value: (first, last) }) => {
+                let original_file = file_id.original_file(db);
+                let range = first.text_range().cover(last.text_range());
+                if file_id != original_file.into() {
                     tracing::error!("Failed mapping up more for {:?}", range);
+                    return None;
                 }
-                Some(FileRange { file_id: original_file, range: range.value })
+                Some(FileRange { file_id: original_file, range })
             }
             _ if !self.file_id.is_macro() => Some(FileRange {
                 file_id: self.file_id.original_file(db),
@@ -617,28 +619,29 @@ impl<'a> InFile<&'a SyntaxNode> {
     }
 }
 
-fn original_range_opt(
+fn ascend_node_border_tokens(
     db: &dyn db::AstDatabase,
-    node: InFile<&SyntaxNode>,
-) -> Option<InFile<TextRange>> {
-    let expansion = node.file_id.expansion_info(db)?;
+    InFile { file_id, value: node }: InFile<&SyntaxNode>,
+) -> Option<InFile<(SyntaxToken, SyntaxToken)>> {
+    let expansion = file_id.expansion_info(db)?;
 
     // the input node has only one token ?
-    let single = skip_trivia_token(node.value.first_token()?, Direction::Next)?
-        == skip_trivia_token(node.value.last_token()?, Direction::Prev)?;
+    let first = skip_trivia_token(node.first_token()?, Direction::Next)?;
+    let last = skip_trivia_token(node.last_token()?, Direction::Prev)?;
+    let is_single_token = first == last;
 
-    node.value.descendants().find_map(|it| {
+    node.descendants().find_map(|it| {
         let first = skip_trivia_token(it.first_token()?, Direction::Next)?;
-        let first = ascend_call_token(db, &expansion, node.with_value(first))?;
+        let first = ascend_call_token(db, &expansion, InFile::new(file_id, first))?;
 
         let last = skip_trivia_token(it.last_token()?, Direction::Prev)?;
-        let last = ascend_call_token(db, &expansion, node.with_value(last))?;
+        let last = ascend_call_token(db, &expansion, InFile::new(file_id, last))?;
 
-        if (!single && first == last) || (first.file_id != last.file_id) {
+        if (!is_single_token && first == last) || (first.file_id != last.file_id) {
             return None;
         }
 
-        Some(first.with_value(first.value.text_range().cover(last.value.text_range())))
+        Some(InFile::new(first.file_id, (first.value, last.value)))
     })
 }
 
@@ -672,6 +675,23 @@ impl InFile<SyntaxToken> {
 impl<N: AstNode> InFile<N> {
     pub fn descendants<T: AstNode>(self) -> impl Iterator<Item = InFile<T>> {
         self.value.syntax().descendants().filter_map(T::cast).map(move |n| self.with_value(n))
+    }
+
+    pub fn original_ast_node(self, db: &dyn db::AstDatabase) -> Option<InFile<N>> {
+        match ascend_node_border_tokens(db, self.syntax()) {
+            Some(InFile { file_id, value: (first, last) }) => {
+                let original_file = file_id.original_file(db);
+                if file_id != original_file.into() {
+                    let range = first.text_range().cover(last.text_range());
+                    tracing::error!("Failed mapping up more for {:?}", range);
+                    return None;
+                }
+                let anc = algo::least_common_ancestor(&first.parent()?, &last.parent()?)?;
+                Some(InFile::new(file_id, anc.ancestors().find_map(N::cast)?))
+            }
+            _ if !self.file_id.is_macro() => Some(self),
+            _ => None,
+        }
     }
 
     pub fn syntax(&self) -> InFile<&SyntaxNode> {

@@ -91,7 +91,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
     let target_range = body.text_range();
 
-    let scope = ImportScope::find_insert_use_container_with_macros(&node, &ctx.sema)?;
+    let scope = ImportScope::find_insert_use_container(&node, &ctx.sema)?;
 
     acc.add(
         AssistId("extract_function", crate::AssistKind::RefactorExtract),
