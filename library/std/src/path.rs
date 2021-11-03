@@ -2841,6 +2841,11 @@ impl fmt::Debug for Path {
 /// println!("{}", path.display());
 /// ```
 ///
+/// # Windows
+///
+/// Verbatim paths may be converted to their more familiar form.
+/// For example, `\\?\C:\Program Files\Rust` may display as `C:\Program Files\Rust`.
+///
 /// [`Display`]: fmt::Display
 /// [`format!`]: crate::format
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2858,7 +2863,26 @@ impl fmt::Debug for Display<'_> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.path.inner.display(f)
+        let path = if cfg!(windows) && self.path.as_u8_slice().starts_with(br"\\?\") {
+            // Convert Windows drive verbatim and UNC verbatim paths to their
+            // user path equivalents.
+            // SAFETY: Paths are only ever split on ASCII boundaries.
+            match self.path.as_u8_slice()[4..] {
+                // \\?\C:\, \\?\D:\, etc to C:\, D:\, etc
+                ref path @ [drive @ _, b':', b'\\', ..] if drive.is_ascii_alphabetic() => unsafe {
+                    Path::from_u8_slice(path)
+                },
+                // \\?\UNC\ to \\
+                [b'U', b'N', b'C', b'\\', ref path @ ..] => {
+                    f.write_str(r"\\")?;
+                    unsafe { Path::from_u8_slice(path) }
+                }
+                _ => self.path,
+            }
+        } else {
+            self.path
+        };
+        path.inner.display(f)
     }
 }
 

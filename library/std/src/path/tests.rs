@@ -1090,6 +1090,20 @@ pub fn test_decompositions_windows() {
     file_prefix: Some(".x")
     );
 }
+#[test]
+#[cfg(windows)]
+pub fn windows_display_user_paths() {
+    fn check(path: &str, expected: &str) {
+        assert_eq!(&Path::new(path).display().to_string(), expected);
+    }
+    check(r"\\?\UNC\server\share", r"\\server\share");
+    check(r"\\?\C:\path", r"C:\path");
+    check(r"\\?\C:\", r"C:\");
+
+    // This should not change.
+    // `\\?\C:` is an absolute path while `C:` is a "drive relative" path.
+    check(r"\\?\C:", r"\\?\C:");
+}
 
 #[test]
 pub fn test_stem_ext() {
