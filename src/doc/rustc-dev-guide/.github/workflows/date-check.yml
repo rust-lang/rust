@@ -17,6 +17,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
 
+      - name: Ensure Rust is up-to-date
+        run: |
+          rustup update stable
+
       - name: Run `date-check`
         working-directory: ci/date-check
         run: |
