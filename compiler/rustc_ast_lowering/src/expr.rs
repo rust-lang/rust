@@ -9,7 +9,6 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
-use rustc_session::parse::feature_err;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -929,24 +928,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_expr(rhs),
                 self.lower_span(eq_sign_span),
             );
-        }
-        if !self.sess.features_untracked().destructuring_assignment {
-            let mut err = feature_err(
-                &self.sess.parse_sess,
-                sym::destructuring_assignment,
-                eq_sign_span,
-                "destructuring assignments are unstable",
-            );
-            err.span_label(lhs.span, "cannot assign to this expression");
-            if self.is_in_loop_condition {
-                err.span_suggestion_verbose(
-                    lhs.span.shrink_to_lo(),
-                    "you might have meant to use pattern destructuring",
-                    "let ".to_string(),
-                    rustc_errors::Applicability::MachineApplicable,
-                );
-            }
-            err.emit();
         }
 
         let mut assignments = vec![];

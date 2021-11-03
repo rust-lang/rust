@@ -1,5 +1,3 @@
-#![feature(destructuring_assignment)]
-
 const C: i32 = 1;
 
 fn main() {

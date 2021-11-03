@@ -1,11 +1,11 @@
 warning: value assigned to `a` is never read
-  --> $DIR/warn-unused-duplication.rs:11:6
+  --> $DIR/warn-unused-duplication.rs:9:6
    |
 LL |     (a, a) = (0, 1);
    |      ^
    |
 note: the lint level is defined here
-  --> $DIR/warn-unused-duplication.rs:5:9
+  --> $DIR/warn-unused-duplication.rs:3:9
    |
 LL | #![warn(unused_assignments)]
    |         ^^^^^^^^^^^^^^^^^^
