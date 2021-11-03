@@ -1,4 +1,4 @@
-//! The Rust parser and macro expander.
+//! The Rust Abstract Syntax Tree (AST).
 //!
 //! # Note
 //!
