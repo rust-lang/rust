@@ -797,7 +797,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
                     if !self.tcx.features().const_trait_impl {
-                        self.check_op(ops::FnCallNonConst(Some((callee, substs))));
+                        self.check_op(ops::FnCallNonConst(callee, substs));
                         return;
                     }
 
@@ -856,7 +856,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
 
                             if !nonconst_call_permission {
-                                self.check_op(ops::FnCallNonConst(None));
+                                self.check_op(ops::FnCallNonConst(callee, substs));
                                 return;
                             }
                         }
@@ -925,7 +925,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     if !nonconst_call_permission {
-                        self.check_op(ops::FnCallNonConst(None));
+                        self.check_op(ops::FnCallNonConst(callee, substs));
                         return;
                     }
                 }
