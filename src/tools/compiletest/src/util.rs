@@ -133,8 +133,10 @@ const BIG_ENDIAN: &[&str] = &[
 ];
 
 static ASM_SUPPORTED_ARCHS: &[&str] = &[
-    "x86", "x86_64", "arm", "aarch64", "riscv32", "riscv64", "nvptx64", "hexagon", "mips",
-    "mips64", "spirv", "wasm32",
+    "x86", "x86_64", "arm", "aarch64", "riscv32",
+    "riscv64",
+    // These targets require an additional asm_experimental_arch feature.
+    // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
 ];
 
 pub fn has_asm_support(triple: &str) -> bool {
