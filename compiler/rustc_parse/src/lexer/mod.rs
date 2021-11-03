@@ -137,12 +137,45 @@ impl<'a> StringReader<'a> {
         // Opening delimiter of the length 2 is not included into the comment text.
         let content_start = start + BytePos(2);
         let content = self.str_from(content_start);
-        let span = self.mk_sp(start, self.pos);
-        const UNICODE_TEXT_FLOW_CHARS: &[char] = &[
-            '\u{202A}', '\u{202B}', '\u{202D}', '\u{202E}', '\u{2066}', '\u{2067}', '\u{2068}',
-            '\u{202C}', '\u{2069}',
-        ];
-        if content.contains(UNICODE_TEXT_FLOW_CHARS) {
+
+        // Char   - UTF-8
+        // U+202A - E2 80 AA
+        // U+202B - E2 80 AB
+        // U+202C - E2 80 AC
+        // U+202D - E2 80 AD
+        // U+202E - E2 80 AE
+        // U+2066 - E2 81 A6
+        // U+2067 - E2 81 A7
+        // U+2068 - E2 81 A8
+        // U+2069 - E2 81 A9
+        let mut bytes = content.as_bytes();
+        let contains_flow_control_chars = loop {
+            match core::slice::memchr::memchr(0xE2, &bytes) {
+                Some(idx) => {
+                    // bytes are valid UTF-8 -> E2 must be followed by two bytes
+                    match bytes[idx + 1] {
+                        0x80 => {
+                            if (0xAA..=0xAE).contains(&bytes[idx + 2]) {
+                                break true;
+                            }
+                        }
+                        0x81 => {
+                            if (0xA6..=0xA9).contains(&bytes[idx + 2]) {
+                                break true;
+                            }
+                        }
+                        _ => {}
+                    }
+                    bytes = &bytes[idx + 3..];
+                }
+                None => {
+                    break false;
+                }
+            }
+        };
+
+        if contains_flow_control_chars {
+            let span = self.mk_sp(start, self.pos);
             self.sess.buffer_lint_with_diagnostic(
                 &TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,
