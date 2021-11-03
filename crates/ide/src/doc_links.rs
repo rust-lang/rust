@@ -32,11 +32,13 @@ use crate::{
 /// Weblink to an item's documentation.
 pub(crate) type DocumentationLink = String;
 
+const MARKDOWN_OPTIONS: Options =
+    Options::ENABLE_FOOTNOTES.union(Options::ENABLE_TABLES).union(Options::ENABLE_TASKLISTS);
+
 /// Rewrite documentation links in markdown to point to an online host (e.g. docs.rs)
 pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Definition) -> String {
     let mut cb = broken_link_clone_cb;
-    let doc =
-        Parser::new_with_broken_link_callback(markdown, Options::ENABLE_TASKLISTS, Some(&mut cb));
+    let doc = Parser::new_with_broken_link_callback(markdown, MARKDOWN_OPTIONS, Some(&mut cb));
 
     let doc = map_links(doc, |target, title| {
         // This check is imperfect, there's some overlap between valid intra-doc links
@@ -75,13 +77,11 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
 pub(crate) fn remove_links(markdown: &str) -> String {
     let mut drop_link = false;
 
-    let opts = Options::ENABLE_TASKLISTS | Options::ENABLE_FOOTNOTES;
-
     let mut cb = |_: BrokenLink| {
         let empty = InlineStr::try_from("").unwrap();
         Some((CowStr::Inlined(empty), CowStr::Inlined(empty)))
     };
-    let doc = Parser::new_with_broken_link_callback(markdown, opts, Some(&mut cb));
+    let doc = Parser::new_with_broken_link_callback(markdown, MARKDOWN_OPTIONS, Some(&mut cb));
     let doc = doc.filter_map(move |evt| match evt {
         Event::Start(Tag::Link(link_type, target, title)) => {
             if link_type == LinkType::Inline && target.contains("://") {
@@ -151,7 +151,7 @@ pub(crate) fn extract_definitions_from_docs(
 ) -> Vec<(TextRange, String, Option<hir::Namespace>)> {
     Parser::new_with_broken_link_callback(
         docs.as_str(),
-        Options::ENABLE_TASKLISTS,
+        MARKDOWN_OPTIONS,
         Some(&mut broken_link_clone_cb),
     )
     .into_offset_iter()
