@@ -740,7 +740,7 @@ impl<'tcx> OwnerInfo<'tcx> {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
 pub struct Crate<'hir> {
-    pub owners: IndexVec<LocalDefId, Option<OwnerInfo<'hir>>>,
+    pub owners: IndexVec<LocalDefId, Option<&'hir OwnerInfo<'hir>>>,
     pub hir_hash: Fingerprint,
 }
 

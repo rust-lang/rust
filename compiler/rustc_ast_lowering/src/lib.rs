@@ -102,7 +102,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     arena: &'hir Arena<'hir>,
 
     /// The items being lowered are collected here.
-    owners: IndexVec<LocalDefId, Option<hir::OwnerInfo<'hir>>>,
+    owners: IndexVec<LocalDefId, Option<&'hir hir::OwnerInfo<'hir>>>,
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
     /// Attributes inside the owner being lowered.
@@ -477,7 +477,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         def_id
     }
 
-    fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> hir::OwnerInfo<'hir> {
+    fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> &'hir hir::OwnerInfo<'hir> {
         let attrs = std::mem::take(&mut self.attrs);
         let mut bodies = std::mem::take(&mut self.bodies);
         let local_node_ids = std::mem::take(&mut self.local_node_ids);
@@ -512,7 +512,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::AttributeMap { map: attrs, hash }
         };
 
-        hir::OwnerInfo { nodes, parenting, attrs, trait_map }
+        let info = hir::OwnerInfo { nodes, parenting, attrs, trait_map };
+        self.arena.alloc(info)
     }
 
     /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate

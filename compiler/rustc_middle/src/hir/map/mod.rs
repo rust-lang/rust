@@ -612,7 +612,7 @@ impl<'hir> Map<'hir> {
         V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
     {
         let krate = self.krate();
-        par_for_each_in(&krate.owners.raw, |owner| match owner.as_ref().map(OwnerInfo::node) {
+        par_for_each_in(&krate.owners.raw, |owner| match owner.map(OwnerInfo::node) {
             Some(OwnerNode::Item(item)) => visitor.visit_item(item),
             Some(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
             Some(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
