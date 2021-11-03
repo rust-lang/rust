@@ -165,7 +165,14 @@ pub use core::ffi::c_void;
 #[unstable(feature = "c_size_t", issue = "88345")]
 pub type c_size_t = usize;
 
-/// Equivalent to C's `ssize_t` type, from `stddef.h` (or `cstddef` for C++).
+/// Equivalent to C's `ptrdiff_t` type, from `stddef.h` (or `cstddef` for C++).
+///
+/// This type is currently always [`isize`], however in the future there may be
+/// platforms where this is not the case.
+#[unstable(feature = "c_size_t", issue = "88345")]
+pub type c_ptrdiff_t = isize;
+
+/// Equivalent to C's `ssize_t` (on POSIX) or `SSIZE_T` (on Windows) type.
 ///
 /// This type is currently always [`isize`], however in the future there may be
 /// platforms where this is not the case.
