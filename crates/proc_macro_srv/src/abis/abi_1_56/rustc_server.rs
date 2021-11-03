@@ -489,8 +489,8 @@ impl server::Literal for Rustc {
         // They must still be present to be ABI-compatible and work with upstream proc_macro.
         "".to_owned()
     }
-    fn from_str(&mut self, _s: &str) -> Result<Self::Literal, ()> {
-        unimplemented!()
+    fn from_str(&mut self, s: &str) -> Result<Self::Literal, ()> {
+        Ok(Literal { text: s.into(), id: tt::TokenId::unspecified() })
     }
     fn symbol(&mut self, literal: &Self::Literal) -> String {
         literal.text.to_string()
