@@ -561,7 +561,7 @@ impl GlobalState {
                 s.shutdown_requested = true;
                 Ok(())
             })?
-            .on_sync_mut::<lsp_ext::MemoryUsage>(|s, p| handlers::handle_memory_usage(s, p))?
+            .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)?
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)?
             .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)?
             .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)?

@@ -66,6 +66,11 @@ impl GlobalState {
             message: None,
         };
 
+        if self.proc_macro_changed {
+            status.health = lsp_ext::Health::Warning;
+            status.message =
+                Some("Reload required due to source changes of a procedural macro.".into())
+        }
         if let Some(error) = self.fetch_build_data_error() {
             status.health = lsp_ext::Health::Warning;
             status.message = Some(error)
