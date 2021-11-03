@@ -748,6 +748,9 @@ fn vtable_trait_first_method_offset<'tcx>(
 ) -> usize {
     let (trait_to_be_found, trait_owning_vtable) = key;
 
+    // #90177
+    let trait_to_be_found_erased = tcx.erase_regions(trait_to_be_found);
+
     let vtable_segment_callback = {
         let mut vtable_base = 0;
 
@@ -757,7 +760,7 @@ fn vtable_trait_first_method_offset<'tcx>(
                     vtable_base += COMMON_VTABLE_ENTRIES.len();
                 }
                 VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                    if trait_ref == trait_to_be_found {
+                    if tcx.erase_regions(trait_ref) == trait_to_be_found_erased {
                         return ControlFlow::Break(vtable_base);
                     }
                     vtable_base += util::count_own_vtable_entries(tcx, trait_ref);
