@@ -1,20 +1,61 @@
-error[E0412]: cannot find type `NotDefined` in this scope
+error[E0412]: cannot find type `N` in this scope
   --> $DIR/issue-50480.rs:3:12
    |
-LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
-   |            ^^^^^^^^^^ not found in this scope
+LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |           -^ not found in this scope
+   |           |
+   |           help: you might be missing a type parameter: `<N>`
 
 error[E0412]: cannot find type `NotDefined` in this scope
+  --> $DIR/issue-50480.rs:3:15
+   |
+LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |               ^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `N` in this scope
   --> $DIR/issue-50480.rs:3:12
    |
-LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
-   |            ^^^^^^^^^^ not found in this scope
+LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |           -^ not found in this scope
+   |           |
+   |           help: you might be missing a type parameter: `<N>`
+
+error[E0412]: cannot find type `NotDefined` in this scope
+  --> $DIR/issue-50480.rs:3:15
+   |
+LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |           -   ^^^^^^^^^^ not found in this scope
+   |           |
+   |           help: you might be missing a type parameter: `<NotDefined>`
+
+error[E0412]: cannot find type `N` in this scope
+  --> $DIR/issue-50480.rs:12:18
+   |
+LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |            -     ^
+   |            |
+   |            similarly named type parameter `T` defined here
+   |
+help: a type parameter with a similar name exists
+   |
+LL | struct Bar<T>(T, T, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |                  ~
+help: you might be missing a type parameter
+   |
+LL | struct Bar<T, N>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |             +++
+
+error[E0412]: cannot find type `NotDefined` in this scope
+  --> $DIR/issue-50480.rs:12:21
+   |
+LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |                     ^^^^^^^^^^ not found in this scope
 
 error[E0277]: `i32` is not an iterator
-  --> $DIR/issue-50480.rs:3:24
+  --> $DIR/issue-50480.rs:3:27
    |
-LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^ `i32` is not an iterator
+LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^ `i32` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `i32`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
@@ -25,14 +66,36 @@ error[E0204]: the trait `Copy` may not be implemented for this type
 LL | #[derive(Clone, Copy)]
    |                 ^^^^
 LL |
-LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
-   |                                                 --------  ------ this field does not implement `Copy`
-   |                                                 |
-   |                                                 this field does not implement `Copy`
+LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |                                                    --------  ------ this field does not implement `Copy`
+   |                                                    |
+   |                                                    this field does not implement `Copy`
    |
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error[E0277]: `i32` is not an iterator
+  --> $DIR/issue-50480.rs:12:33
+   |
+LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^ `i32` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `i32`
+   = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
+
+error[E0204]: the trait `Copy` may not be implemented for this type
+  --> $DIR/issue-50480.rs:10:17
+   |
+LL | #[derive(Clone, Copy)]
+   |                 ^^^^
+LL |
+LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |                                                          --------  ------ this field does not implement `Copy`
+   |                                                          |
+   |                                                          this field does not implement `Copy`
+   |
+   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0204, E0277, E0412.
 For more information about an error, try `rustc --explain E0204`.

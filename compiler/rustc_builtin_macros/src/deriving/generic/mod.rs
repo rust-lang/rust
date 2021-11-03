@@ -567,8 +567,10 @@ impl<'a> TraitDef<'a> {
             })
         });
 
-        let Generics { mut params, mut where_clause, span } =
+        let Generics { mut params, mut where_clause, .. } =
             self.generics.to_generics(cx, self.span, type_ident, generics);
+        where_clause.span = generics.where_clause.span;
+        let span = generics.span;
 
         // Create the generic parameters
         params.extend(generics.params.iter().map(|param| match &param.kind {
@@ -589,7 +591,7 @@ impl<'a> TraitDef<'a> {
                         param.bounds.iter().cloned()
                     ).collect();
 
-                cx.typaram(self.span, param.ident, vec![], bounds, None)
+                cx.typaram(param.ident.span, param.ident, vec![], bounds, None)
             }
             GenericParamKind::Const { ty, kw_span, .. } => {
                 let const_nodefault_kind = GenericParamKind::Const {
@@ -610,7 +612,7 @@ impl<'a> TraitDef<'a> {
             match *clause {
                 ast::WherePredicate::BoundPredicate(ref wb) => {
                     ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                        span: self.span,
+                        span: wb.span,
                         bound_generic_params: wb.bound_generic_params.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
                         bounds: wb.bounds.to_vec(),
@@ -618,7 +620,7 @@ impl<'a> TraitDef<'a> {
                 }
                 ast::WherePredicate::RegionPredicate(ref rb) => {
                     ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
-                        span: self.span,
+                        span: rb.span,
                         lifetime: rb.lifetime,
                         bounds: rb.bounds.to_vec(),
                     })
@@ -626,7 +628,7 @@ impl<'a> TraitDef<'a> {
                 ast::WherePredicate::EqPredicate(ref we) => {
                     ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                         id: ast::DUMMY_NODE_ID,
-                        span: self.span,
+                        span: we.span,
                         lhs_ty: we.lhs_ty.clone(),
                         rhs_ty: we.rhs_ty.clone(),
                     })
@@ -691,13 +693,13 @@ impl<'a> TraitDef<'a> {
             .iter()
             .map(|param| match param.kind {
                 GenericParamKind::Lifetime { .. } => {
-                    GenericArg::Lifetime(cx.lifetime(self.span, param.ident))
+                    GenericArg::Lifetime(cx.lifetime(param.ident.span, param.ident))
                 }
                 GenericParamKind::Type { .. } => {
-                    GenericArg::Type(cx.ty_ident(self.span, param.ident))
+                    GenericArg::Type(cx.ty_ident(param.ident.span, param.ident))
                 }
                 GenericParamKind::Const { .. } => {
-                    GenericArg::Const(cx.const_ident(self.span, param.ident))
+                    GenericArg::Const(cx.const_ident(param.ident.span, param.ident))
                 }
             })
             .collect();
@@ -1556,11 +1558,9 @@ impl<'a> TraitDef<'a> {
 
         let is_tuple = matches!(struct_def, ast::VariantData::Tuple(..));
         match (just_spans.is_empty(), named_idents.is_empty()) {
-            (false, false) => cx.span_bug(
-                self.span,
-                "a struct with named and unnamed \
-                                          fields in generic `derive`",
-            ),
+            (false, false) => {
+                cx.span_bug(self.span, "a struct with named and unnamed fields in generic `derive`")
+            }
             // named fields
             (_, false) => Named(named_idents),
             // unnamed fields

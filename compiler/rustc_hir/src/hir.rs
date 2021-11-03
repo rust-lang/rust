@@ -17,8 +17,7 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{def_id::LocalDefId, BytePos};
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{def_id::LocalDefId, BytePos, MultiSpan, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 
@@ -529,7 +528,6 @@ impl GenericParam<'hir> {
     pub fn bounds_span(&self) -> Option<Span> {
         self.bounds.iter().fold(None, |span, bound| {
             let span = span.map(|s| s.to(bound.span())).unwrap_or_else(|| bound.span());
-
             Some(span)
         })
     }
