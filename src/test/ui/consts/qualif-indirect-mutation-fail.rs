@@ -2,6 +2,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_swap)]
+#![feature(raw_ref_op)]
 
 // Mutable borrow of a field with drop impl.
 pub const fn f() {
@@ -41,4 +42,23 @@ pub const fn g2<T>() {
     let x: Option<T> = None;
     let _ = x.is_some();
     let _y = x; //~ ERROR destructors cannot be evaluated
+}
+
+// Mutable raw reference to a Drop type.
+pub const fn address_of_mut() {
+    let mut x: Option<String> = None; //~ ERROR destructors cannot be evaluated
+    &raw mut x;
+
+    let mut y: Option<String> = None; //~ ERROR destructors cannot be evaluated
+    std::ptr::addr_of_mut!(y);
+}
+
+// Const raw reference to a Drop type. Conservatively assumed to allow mutation
+// until resolution of https://github.com/rust-lang/rust/issues/56604.
+pub const fn address_of_const() {
+    let x: Option<String> = None; //~ ERROR destructors cannot be evaluated
+    &raw const x;
+
+    let y: Option<String> = None; //~ ERROR destructors cannot be evaluated
+    std::ptr::addr_of!(y);
 }

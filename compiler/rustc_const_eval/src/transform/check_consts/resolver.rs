@@ -94,11 +94,10 @@ where
         }
     }
 
-    fn address_of_allows_mutation(&self, mt: mir::Mutability, place: mir::Place<'tcx>) -> bool {
-        match mt {
-            mir::Mutability::Mut => true,
-            mir::Mutability::Not => self.shared_borrow_allows_mutation(place),
-        }
+    fn address_of_allows_mutation(&self, _mt: mir::Mutability, _place: mir::Place<'tcx>) -> bool {
+        // Exact set of permissions granted by AddressOf is undecided. Conservatively assume that
+        // it might allow mutation until resolution of #56604.
+        true
     }
 
     fn ref_allows_mutation(&self, kind: mir::BorrowKind, place: mir::Place<'tcx>) -> bool {
@@ -110,6 +109,15 @@ where
         }
     }
 
+    /// `&` only allow mutation if the borrowed place is `!Freeze`.
+    ///
+    /// This assumes that it is UB to take the address of a struct field whose type is
+    /// `Freeze`, then use pointer arithmetic to derive a pointer to a *different* field of
+    /// that same struct whose type is `!Freeze`. If we decide that this is not UB, we will
+    /// have to check the type of the borrowed **local** instead of the borrowed **place**
+    /// below. See [rust-lang/unsafe-code-guidelines#134].
+    ///
+    /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
     fn shared_borrow_allows_mutation(&self, place: mir::Place<'tcx>) -> bool {
         !place
             .ty(self.ccx.body, self.ccx.tcx)
