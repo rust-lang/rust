@@ -123,7 +123,8 @@ impl TextEdit {
 
         self.indels.extend(other.indels);
         check_disjoint_and_sort(&mut self.indels);
-        self.indels.dedup();
+        // Only dedup deletions and replacements, keep all insertions
+        self.indels.dedup_by(|a, b| a == b && !a.delete.is_empty());
         Ok(())
     }
 
