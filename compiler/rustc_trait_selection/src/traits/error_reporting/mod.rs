@@ -1838,7 +1838,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 post.iter().map(|p| format!("- {}", p)).take(4).collect::<Vec<_>>().join("\n"),
                 post.len() - 4,
             )
-        } else if post.len() > 1 || (post.len() == 1 && post[0].contains("\n")) {
+        } else if post.len() > 1 || (post.len() == 1 && post[0].contains('\n')) {
             format!(":\n{}", post.iter().map(|p| format!("- {}", p)).collect::<Vec<_>>().join("\n"),)
         } else if post.len() == 1 {
             format!(": `{}`", post[0])

@@ -250,7 +250,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // is associated with a type identifier).
     if cx.tcx().sess.is_sanitizer_cfi_enabled() {
         let typeid = typeid_for_fnabi(cx.tcx(), fn_abi);
-        bx.type_metadata(llfn, typeid.clone());
+        bx.type_metadata(llfn, typeid);
     }
 }
 
