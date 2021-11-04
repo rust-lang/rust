@@ -1,5 +1,5 @@
 // run-pass
-// only-i686
+// only-x86
 
 trait A {
     extern "fastcall" fn test1(i: i32);
