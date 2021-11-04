@@ -1,5 +1,5 @@
-use crate::spec::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 use crate::abi::Endian;
+use crate::spec::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
 /// A base target for PlayStation Vita devices using the VITASDK toolchain.
 ///
@@ -7,12 +7,7 @@ use crate::abi::Endian;
 
 pub fn target() -> Target {
     let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(
-        LinkerFlavor::Gcc,
-        vec![
-            "-Wl,-q".to_string(),
-        ],
-    );
+    pre_link_args.insert(LinkerFlavor::Gcc, vec!["-Wl,-q".to_string()]);
 
     Target {
         llvm_target: "armv7a-vita-eabihf".to_string(),
