@@ -1,8 +1,13 @@
+// edition:2015
 // run-rustfix
 // aux-build:wildcard_imports_helper.rs
 
+// the 2015 edition here is needed because edition 2018 changed the module system
+// (see https://doc.rust-lang.org/edition-guide/rust-2018/path-changes.html) which means the lint
+// no longer detects some of the cases starting with Rust 2018.
+// FIXME: We should likely add another edition 2021 test case for this lint
+
 #![warn(clippy::wildcard_imports)]
-//#![allow(clippy::redundant_pub_crate)]
 #![allow(unused)]
 #![allow(clippy::unnecessary_wraps)]
 #![warn(unused_imports)]

@@ -101,13 +101,13 @@ LL | |     }
    | |_____^ help: replace it with: `f()?;`
 
 error: this if-let-else may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:138:13
+  --> $DIR/question_mark.rs:142:13
    |
 LL |     let _ = if let Ok(x) = x { x } else { return x };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x?`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:140:5
+  --> $DIR/question_mark.rs:144:5
    |
 LL | /     if x.is_err() {
 LL | |         return x;

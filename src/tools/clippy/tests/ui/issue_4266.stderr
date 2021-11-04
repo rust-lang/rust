@@ -1,5 +1,5 @@
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-  --> $DIR/issue_4266.rs:4:1
+  --> $DIR/issue_4266.rs:3:1
    |
 LL | async fn sink1<'a>(_: &'a str) {} // lint
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | async fn sink1<'a>(_: &'a str) {} // lint
    = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-  --> $DIR/issue_4266.rs:8:1
+  --> $DIR/issue_4266.rs:7:1
    |
 LL | async fn one_to_one<'a>(s: &'a str) -> &'a str {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

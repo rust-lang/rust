@@ -167,5 +167,17 @@ note: cloned value is neither consumed nor mutated
 LL |     let y = x.clone().join("matthias");
    |             ^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: redundant clone
+  --> $DIR/redundant_clone.rs:199:11
+   |
+LL |     foo(&x.clone(), move || {
+   |           ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/redundant_clone.rs:199:10
+   |
+LL |     foo(&x.clone(), move || {
+   |          ^
+
+error: aborting due to 15 previous errors
 

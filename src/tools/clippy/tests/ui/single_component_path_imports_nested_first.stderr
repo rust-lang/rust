@@ -1,5 +1,5 @@
 error: this import is redundant
-  --> $DIR/single_component_path_imports_nested_first.rs:14:10
+  --> $DIR/single_component_path_imports_nested_first.rs:13:10
    |
 LL |     use {regex, serde};
    |          ^^^^^
@@ -8,7 +8,7 @@ LL |     use {regex, serde};
    = help: remove this import
 
 error: this import is redundant
-  --> $DIR/single_component_path_imports_nested_first.rs:14:17
+  --> $DIR/single_component_path_imports_nested_first.rs:13:17
    |
 LL |     use {regex, serde};
    |                 ^^^^^
@@ -16,7 +16,7 @@ LL |     use {regex, serde};
    = help: remove this import
 
 error: this import is redundant
-  --> $DIR/single_component_path_imports_nested_first.rs:5:1
+  --> $DIR/single_component_path_imports_nested_first.rs:4:1
    |
 LL | use regex;
    | ^^^^^^^^^^ help: remove it entirely

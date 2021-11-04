@@ -16,6 +16,7 @@ because that's clearly a non-descriptive name.
   - [Edition 2018 tests](#edition-2018-tests)
   - [Testing manually](#testing-manually)
   - [Lint declaration](#lint-declaration)
+  - [Lint registration](#lint-registration)
   - [Lint passes](#lint-passes)
   - [Emitting a lint](#emitting-a-lint)
   - [Adding the lint logic](#adding-the-lint-logic)
@@ -43,9 +44,9 @@ take a look at our [lint naming guidelines][lint_naming]. To get started on this
 lint you can run `cargo dev new_lint --name=foo_functions --pass=early
 --category=pedantic` (category will default to nursery if not provided). This
 command will create two files: `tests/ui/foo_functions.rs` and
-`clippy_lints/src/foo_functions.rs`, as well as run `cargo dev update_lints` to
-register the new lint. For cargo lints, two project hierarchies (fail/pass) will
-be created by default under `tests/ui-cargo`.
+`clippy_lints/src/foo_functions.rs`, as well as
+[registering the lint](#lint-registration). For cargo lints, two project
+hierarchies (fail/pass) will be created by default under `tests/ui-cargo`.
 
 Next, we'll open up these files and add our lint!
 
@@ -220,32 +221,34 @@ declare_lint_pass!(FooFunctions => [FOO_FUNCTIONS]);
 impl EarlyLintPass for FooFunctions {}
 ```
 
-Normally after declaring the lint, we have to run `cargo dev update_lints`,
-which updates some files, so Clippy knows about the new lint. Since we used
-`cargo dev new_lint ...` to generate the lint declaration, this was done
-automatically. While `update_lints` automates most of the things, it doesn't
-automate everything. We will have to register our lint pass manually in the
-`register_plugins` function in `clippy_lints/src/lib.rs`:
+[declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L60
+[example_lint_page]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
+[lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
+[category_level_mapping]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L110
+
+## Lint registration
+
+When using `cargo dev new_lint`, the lint is automatically registered and
+nothing more has to be done.
+
+When declaring a new lint by hand and `cargo dev update_lints` is used, the lint
+pass may have to be registered manually in the `register_plugins` function in
+`clippy_lints/src/lib.rs`:
 
 ```rust
-store.register_early_pass(|| box foo_functions::FooFunctions);
+store.register_early_pass(|| Box::new(foo_functions::FooFunctions));
 ```
 
 As one may expect, there is a corresponding `register_late_pass` method
 available as well. Without a call to one of `register_early_pass` or
 `register_late_pass`, the lint pass in question will not be run.
 
-One reason that `cargo dev` does not automate this step is that multiple lints
-can use the same lint pass, so registering the lint pass may already be done
-when adding a new lint. Another reason that this step is not automated is that
-the order that the passes are registered determines the order the passes
-actually run, which in turn affects the order that any emitted lints are output
-in.
-
-[declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L60
-[example_lint_page]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
-[lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
-[category_level_mapping]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L110
+One reason that `cargo dev update_lints` does not automate this step is that
+multiple lints can use the same lint pass, so registering the lint pass may
+already be done when adding a new lint. Another reason that this step is not
+automated is that the order that the passes are registered determines the order
+the passes actually run, which in turn affects the order that any emitted lints
+are output in.
 
 ## Lint passes
 
@@ -564,7 +567,8 @@ in the following steps:
     /// <The configuration field doc comment>
     (configuration_ident: Type = DefaultValue),
     ```
-    The doc comment will be automatically added to the lint documentation.
+    The doc comment is automatically added to the documentation of the listed lints. The default
+    value will be formatted using the `Debug` implementation of the type.
 2. Adding the configuration value to the lint impl struct:
     1. This first requires the definition of a lint impl struct. Lint impl structs are usually
         generated with the `declare_lint_pass!` macro. This struct needs to be defined manually

@@ -28,7 +28,7 @@ tempfile = { version = "3.2", optional = true }
 
 [dev-dependencies]
 cargo_metadata = "0.14"
-compiletest_rs = { version = "0.7", features = ["tmp"] }
+compiletest_rs = { version = "0.7.1", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
 # This is used by the `collect-metadata` alias.

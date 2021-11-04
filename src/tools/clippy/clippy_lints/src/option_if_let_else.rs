@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// expression).
     ///
     /// ### Why is this bad?
-    /// Using the dedicated functions of the Option type is clearer and
+    /// Using the dedicated functions of the `Option` type is clearer and
     /// more concise than an `if let` expression.
     ///
     /// ### Known problems

@@ -1,33 +1,57 @@
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:8:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:9:9
    |
 LL |     let mut a: (u32, Option<String>) = (0, None);
    |         ^^^^^ constant functions cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:14:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:15:9
    |
 LL |     let mut x = None;
    |         ^^^^^ constants cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:30:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:31:9
    |
 LL |     let _z = x;
    |         ^^ constants cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:35:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:36:9
    |
 LL |     let x: Option<T> = None;
    |         ^ constant functions cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:43:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:44:9
    |
 LL |     let _y = x;
    |         ^^ constant functions cannot evaluate destructors
 
-error: aborting due to 5 previous errors
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:52:9
+   |
+LL |     let mut y: Option<String> = None;
+   |         ^^^^^ constant functions cannot evaluate destructors
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:49:9
+   |
+LL |     let mut x: Option<String> = None;
+   |         ^^^^^ constant functions cannot evaluate destructors
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:62:9
+   |
+LL |     let y: Option<String> = None;
+   |         ^ constant functions cannot evaluate destructors
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:59:9
+   |
+LL |     let x: Option<String> = None;
+   |         ^ constant functions cannot evaluate destructors
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0493`.

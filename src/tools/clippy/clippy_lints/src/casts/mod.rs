@@ -427,7 +427,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
-                cast_possible_truncation::check(cx, expr, cast_from, cast_to);
+                cast_possible_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
                 cast_possible_wrap::check(cx, expr, cast_from, cast_to);
                 cast_precision_loss::check(cx, expr, cast_from, cast_to);
                 cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);

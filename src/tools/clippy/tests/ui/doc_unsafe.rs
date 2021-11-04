@@ -125,3 +125,8 @@ pub mod __macro {
         pub unsafe fn f() {}
     }
 }
+
+/// # Implementation safety
+pub unsafe trait DocumentedUnsafeTraitWithImplementationHeader {
+    fn method();
+}

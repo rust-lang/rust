@@ -1,7 +1,7 @@
 use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
-use crate::fold::DocFolder;
+use crate::visit::DocVisitor;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
@@ -14,17 +14,18 @@ crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
     description: "retrieves trait impls for items in the crate",
 };
 
-crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    let (mut krate, synth_impls) = cx.sess().time("collect_synthetic_impls", || {
+crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+    let synth_impls = cx.sess().time("collect_synthetic_impls", || {
         let mut synth = SyntheticImplCollector { cx, impls: Vec::new() };
-        (synth.fold_crate(krate), synth.impls)
+        synth.visit_crate(&krate);
+        synth.impls
     });
 
     let prims: FxHashSet<PrimitiveType> = krate.primitives.iter().map(|p| p.1).collect();
 
     let crate_items = {
         let mut coll = ItemCollector::new();
-        krate = cx.sess().time("collect_items_for_trait_impls", || coll.fold_crate(krate));
+        cx.sess().time("collect_items_for_trait_impls", || coll.visit_crate(&krate));
         coll.items
     };
 
@@ -152,14 +153,13 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
         }
     }
 
-    let items = if let ModuleItem(Module { ref mut items, .. }) = *krate.module.kind {
-        items
+    if let ModuleItem(Module { items, .. }) = &mut *krate.module.kind {
+        items.extend(synth_impls);
+        items.extend(new_items);
     } else {
         panic!("collect-trait-impls can't run");
     };
 
-    items.extend(synth_impls);
-    items.extend(new_items);
     krate
 }
 
@@ -168,8 +168,8 @@ struct SyntheticImplCollector<'a, 'tcx> {
     impls: Vec<Item>,
 }
 
-impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
+impl<'a, 'tcx> DocVisitor for SyntheticImplCollector<'a, 'tcx> {
+    fn visit_item(&mut self, i: &Item) {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
             if !self
@@ -184,7 +184,7 @@ impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
             }
         }
 
-        Some(self.fold_item_recur(i))
+        self.visit_item_recur(i)
     }
 }
 
@@ -199,11 +199,11 @@ impl ItemCollector {
     }
 }
 
-impl DocFolder for ItemCollector {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
+impl DocVisitor for ItemCollector {
+    fn visit_item(&mut self, i: &Item) {
         self.items.insert(i.def_id);
 
-        Some(self.fold_item_recur(i))
+        self.visit_item_recur(i)
     }
 }
 

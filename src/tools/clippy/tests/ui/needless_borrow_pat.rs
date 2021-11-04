@@ -1,4 +1,3 @@
-// edition:2018
 // FIXME: run-rustfix waiting on multi-span suggestions
 
 #![warn(clippy::needless_borrow)]

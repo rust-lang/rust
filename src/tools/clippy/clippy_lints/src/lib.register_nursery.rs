@@ -17,7 +17,6 @@ store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
     LintId::of(missing_const_for_fn::MISSING_CONST_FOR_FN),
     LintId::of(mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
     LintId::of(mutex_atomic::MUTEX_INTEGER),
-    LintId::of(non_send_fields_in_send_ty::NON_SEND_FIELDS_IN_SEND_TY),
     LintId::of(nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES),
     LintId::of(option_if_let_else::OPTION_IF_LET_ELSE),
     LintId::of(path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE),

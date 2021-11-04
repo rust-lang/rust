@@ -1,5 +1,5 @@
 error: unnecessary boolean `not` operation
-  --> $DIR/if_not_else.rs:9:5
+  --> $DIR/if_not_else.rs:12:5
    |
 LL | /     if !bla() {
 LL | |         println!("Bugs");
@@ -12,7 +12,7 @@ LL | |     }
    = help: remove the `!` and swap the blocks of the `if`/`else`
 
 error: unnecessary `!=` operation
-  --> $DIR/if_not_else.rs:14:5
+  --> $DIR/if_not_else.rs:17:5
    |
 LL | /     if 4 != 5 {
 LL | |         println!("Bugs");

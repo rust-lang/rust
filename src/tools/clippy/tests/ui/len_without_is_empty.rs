@@ -1,5 +1,3 @@
-// edition:2018
-
 #![warn(clippy::len_without_is_empty)]
 #![allow(dead_code, unused)]
 

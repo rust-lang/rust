@@ -262,7 +262,9 @@ to be run inside the `rust` directory):
 2. Checkout the commit from the latest available nightly. You can get it using `rustup check`.
 3. Sync the changes to the rust-copy of Clippy to your Clippy fork:
     ```bash
-    # Make sure to change `your-github-name` to your github name in the following command
+    # Make sure to change `your-github-name` to your github name in the following command. Also be
+    # sure to either use a net-new branch, e.g. `sync-from-rust`, or delete the branch beforehand
+    # because changes cannot be fast forwarded
     git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
     ```
 

@@ -1,8 +1,8 @@
 use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
-use crate::fold::DocFolder;
 use crate::html::markdown::main_body_opts;
+use crate::visit::DocVisitor;
 use core::ops::Range;
 use pulldown_cmark::{Event, Parser, Tag};
 use regex::Regex;
@@ -53,16 +53,17 @@ impl<'a, 'tcx> BareUrlsLinter<'a, 'tcx> {
 }
 
 crate fn check_bare_urls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    BareUrlsLinter { cx }.fold_crate(krate)
+    BareUrlsLinter { cx }.visit_crate(&krate);
+    krate
 }
 
-impl<'a, 'tcx> DocFolder for BareUrlsLinter<'a, 'tcx> {
-    fn fold_item(&mut self, item: Item) -> Option<Item> {
+impl<'a, 'tcx> DocVisitor for BareUrlsLinter<'a, 'tcx> {
+    fn visit_item(&mut self, item: &Item) {
         let hir_id = match DocContext::as_local_hir_id(self.cx.tcx, item.def_id) {
             Some(hir_id) => hir_id,
             None => {
                 // If non-local, no need to check anything.
-                return Some(self.fold_item_recur(item));
+                return;
             }
         };
         let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
@@ -106,6 +107,6 @@ impl<'a, 'tcx> DocFolder for BareUrlsLinter<'a, 'tcx> {
             }
         }
 
-        Some(self.fold_item_recur(item))
+        self.visit_item_recur(item)
     }
 }

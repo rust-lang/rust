@@ -1,5 +1,3 @@
-// edition:2018
-
 #![warn(clippy::too_many_lines)]
 
 // This function should be considered one line.

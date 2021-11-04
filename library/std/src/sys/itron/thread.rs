@@ -347,6 +347,6 @@ unsafe fn terminate_and_delete_current_task() -> ! {
     unsafe { crate::hint::unreachable_unchecked() };
 }
 
-pub fn available_concurrency() -> io::Result<crate::num::NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<crate::num::NonZeroUsize> {
     super::unsupported()
 }

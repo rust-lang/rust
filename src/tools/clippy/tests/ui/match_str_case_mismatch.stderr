@@ -1,5 +1,5 @@
 error: this `match` arm has a differing case than its expression
-  --> $DIR/match_str_case_mismatch.rs:68:9
+  --> $DIR/match_str_case_mismatch.rs:111:9
    |
 LL |         "Bar" => {},
    |         ^^^^^
@@ -11,7 +11,51 @@ LL |         "bar" => {},
    |         ~~~~~
 
 error: this `match` arm has a differing case than its expression
-  --> $DIR/match_str_case_mismatch.rs:78:9
+  --> $DIR/match_str_case_mismatch.rs:121:9
+   |
+LL |         "~!@#$%^&*()-_=+Foo" => {},
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the case of this arm to respect `to_ascii_lowercase`
+   |
+LL |         "~!@#$%^&*()-_=+foo" => {},
+   |         ~~~~~~~~~~~~~~~~~~~~
+
+error: this `match` arm has a differing case than its expression
+  --> $DIR/match_str_case_mismatch.rs:133:9
+   |
+LL |         "Воды" => {},
+   |         ^^^^^^
+   |
+help: consider changing the case of this arm to respect `to_lowercase`
+   |
+LL |         "воды" => {},
+   |         ~~~~~~
+
+error: this `match` arm has a differing case than its expression
+  --> $DIR/match_str_case_mismatch.rs:144:9
+   |
+LL |         "barǲ" => {},
+   |         ^^^^^^
+   |
+help: consider changing the case of this arm to respect `to_lowercase`
+   |
+LL |         "barǳ" => {},
+   |         ~~~~~~
+
+error: this `match` arm has a differing case than its expression
+  --> $DIR/match_str_case_mismatch.rs:154:9
+   |
+LL |         "bARʁ" => {},
+   |         ^^^^^^
+   |
+help: consider changing the case of this arm to respect `to_uppercase`
+   |
+LL |         "BARʁ" => {},
+   |         ~~~~~~
+
+error: this `match` arm has a differing case than its expression
+  --> $DIR/match_str_case_mismatch.rs:164:9
    |
 LL |         "Bar" => {},
    |         ^^^^^
@@ -22,7 +66,7 @@ LL |         "bar" => {},
    |         ~~~~~
 
 error: this `match` arm has a differing case than its expression
-  --> $DIR/match_str_case_mismatch.rs:93:9
+  --> $DIR/match_str_case_mismatch.rs:179:9
    |
 LL |         "bAR" => {},
    |         ^^^^^
@@ -32,5 +76,5 @@ help: consider changing the case of this arm to respect `to_ascii_uppercase`
 LL |         "BAR" => {},
    |         ~~~~~
 
-error: aborting due to 3 previous errors
+error: aborting due to 7 previous errors
 

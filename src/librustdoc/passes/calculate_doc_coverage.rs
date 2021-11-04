@@ -1,9 +1,9 @@
 use crate::clean;
 use crate::core::DocContext;
-use crate::fold::{self, DocFolder};
 use crate::html::markdown::{find_testable_code, ErrorCodes};
 use crate::passes::check_doc_test_visibility::{should_have_doc_example, Tests};
 use crate::passes::Pass;
+use crate::visit::DocVisitor;
 use rustc_hir as hir;
 use rustc_lint::builtin::MISSING_DOCS;
 use rustc_middle::lint::LintLevelSource;
@@ -23,7 +23,7 @@ crate const CALCULATE_DOC_COVERAGE: Pass = Pass {
 
 fn calculate_doc_coverage(krate: clean::Crate, ctx: &mut DocContext<'_>) -> clean::Crate {
     let mut calc = CoverageCalculator { items: Default::default(), ctx };
-    let krate = calc.fold_crate(krate);
+    calc.visit_crate(&krate);
 
     calc.print_results();
 
@@ -182,17 +182,18 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
     }
 }
 
-impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
-    fn fold_item(&mut self, i: clean::Item) -> Option<clean::Item> {
+impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
+    fn visit_item(&mut self, i: &clean::Item) {
+        if !i.def_id.is_local() {
+            // non-local items are skipped because they can be out of the users control,
+            // especially in the case of trait impls, which rustdoc eagerly inlines
+            return;
+        }
+
         match *i.kind {
-            _ if !i.def_id.is_local() => {
-                // non-local items are skipped because they can be out of the users control,
-                // especially in the case of trait impls, which rustdoc eagerly inlines
-                return Some(i);
-            }
             clean::StrippedItem(..) => {
                 // don't count items in stripped modules
-                return Some(i);
+                return;
             }
             // docs on `use` and `extern crate` statements are not displayed, so they're not
             // worth counting
@@ -269,6 +270,6 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
             }
         }
 
-        Some(self.fold_item_recur(i))
+        self.visit_item_recur(i)
     }
 }

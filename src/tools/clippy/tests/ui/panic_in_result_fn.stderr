@@ -1,5 +1,5 @@
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
-  --> $DIR/panic_in_result_fn.rs:7:5
+  --> $DIR/panic_in_result_fn.rs:6:5
    |
 LL | /     fn result_with_panic() -> Result<bool, String> // should emit lint
 LL | |     {
@@ -10,14 +10,14 @@ LL | |     }
    = note: `-D clippy::panic-in-result-fn` implied by `-D warnings`
    = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
-  --> $DIR/panic_in_result_fn.rs:9:9
+  --> $DIR/panic_in_result_fn.rs:8:9
    |
 LL |         panic!("error");
    |         ^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
-  --> $DIR/panic_in_result_fn.rs:12:5
+  --> $DIR/panic_in_result_fn.rs:11:5
    |
 LL | /     fn result_with_unimplemented() -> Result<bool, String> // should emit lint
 LL | |     {
@@ -27,14 +27,14 @@ LL | |     }
    |
    = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
-  --> $DIR/panic_in_result_fn.rs:14:9
+  --> $DIR/panic_in_result_fn.rs:13:9
    |
 LL |         unimplemented!();
    |         ^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
-  --> $DIR/panic_in_result_fn.rs:17:5
+  --> $DIR/panic_in_result_fn.rs:16:5
    |
 LL | /     fn result_with_unreachable() -> Result<bool, String> // should emit lint
 LL | |     {
@@ -44,14 +44,14 @@ LL | |     }
    |
    = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
-  --> $DIR/panic_in_result_fn.rs:19:9
+  --> $DIR/panic_in_result_fn.rs:18:9
    |
 LL |         unreachable!();
    |         ^^^^^^^^^^^^^^
    = note: this error originates in the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
-  --> $DIR/panic_in_result_fn.rs:22:5
+  --> $DIR/panic_in_result_fn.rs:21:5
    |
 LL | /     fn result_with_todo() -> Result<bool, String> // should emit lint
 LL | |     {
@@ -61,14 +61,14 @@ LL | |     }
    |
    = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
-  --> $DIR/panic_in_result_fn.rs:24:9
+  --> $DIR/panic_in_result_fn.rs:23:9
    |
 LL |         todo!("Finish this");
    |         ^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
-  --> $DIR/panic_in_result_fn.rs:53:1
+  --> $DIR/panic_in_result_fn.rs:52:1
    |
 LL | / fn function_result_with_panic() -> Result<bool, String> // should emit lint
 LL | | {
@@ -78,14 +78,14 @@ LL | | }
    |
    = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
-  --> $DIR/panic_in_result_fn.rs:55:5
+  --> $DIR/panic_in_result_fn.rs:54:5
    |
 LL |     panic!("error");
    |     ^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
-  --> $DIR/panic_in_result_fn.rs:68:1
+  --> $DIR/panic_in_result_fn.rs:67:1
    |
 LL | / fn main() -> Result<(), String> {
 LL | |     todo!("finish main method");
@@ -95,7 +95,7 @@ LL | | }
    |
    = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
-  --> $DIR/panic_in_result_fn.rs:69:5
+  --> $DIR/panic_in_result_fn.rs:68:5
    |
 LL |     todo!("finish main method");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^

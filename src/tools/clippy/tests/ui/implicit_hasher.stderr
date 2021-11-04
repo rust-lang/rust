@@ -1,11 +1,11 @@
 error: impl for `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:17:35
+  --> $DIR/implicit_hasher.rs:16:35
    |
 LL | impl<K: Hash + Eq, V> Foo<i8> for HashMap<K, V> {
    |                                   ^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/implicit_hasher.rs:3:9
+  --> $DIR/implicit_hasher.rs:2:9
    |
 LL | #![deny(clippy::implicit_hasher)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default:
    |          ~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: impl for `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:26:36
+  --> $DIR/implicit_hasher.rs:25:36
    |
 LL | impl<K: Hash + Eq, V> Foo<i8> for (HashMap<K, V>,) {
    |                                    ^^^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |         ((HashMap::default(),), (HashMap::with_capacity_and_hasher(10, Defa
    |           ~~~~~~~~~~~~~~~~~~     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: impl for `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:31:19
+  --> $DIR/implicit_hasher.rs:30:19
    |
 LL | impl Foo<i16> for HashMap<String, String> {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default:
    |          ~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: impl for `HashSet` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:48:32
+  --> $DIR/implicit_hasher.rs:47:32
    |
 LL | impl<T: Hash + Eq> Foo<i8> for HashSet<T> {
    |                                ^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default:
    |          ~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: impl for `HashSet` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:53:19
+  --> $DIR/implicit_hasher.rs:52:19
    |
 LL | impl Foo<i16> for HashSet<String> {
    |                   ^^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ LL |         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default:
    |          ~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: parameter of type `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:70:23
+  --> $DIR/implicit_hasher.rs:69:23
    |
 LL | pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
    |                       ^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL | pub fn foo<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32, S>, _s
    |           +++++++++++++++++++++++++++++            ~~~~~~~~~~~~~~~~~~~~
 
 error: parameter of type `HashSet` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:70:53
+  --> $DIR/implicit_hasher.rs:69:53
    |
 LL | pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
    |                                                     ^^^^^^^^^^^^
@@ -101,7 +101,7 @@ LL | pub fn foo<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32>, _set:
    |           +++++++++++++++++++++++++++++                                          ~~~~~~~~~~~~~~~
 
 error: impl for `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:74:43
+  --> $DIR/implicit_hasher.rs:73:43
    |
 LL |         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
    |                                           ^^^^^^^^^^^^^
@@ -120,7 +120,7 @@ LL |                 (HashMap::default(), HashMap::with_capacity_and_hasher(10, 
    |                  ~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: parameter of type `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:82:33
+  --> $DIR/implicit_hasher.rs:81:33
    |
 LL |         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
    |                                 ^^^^^^^^^^^^^^^^^
@@ -135,7 +135,7 @@ LL |         pub fn $name<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i
    |                     +++++++++++++++++++++++++++++            ~~~~~~~~~~~~~~~~~~~~
 
 error: parameter of type `HashSet` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:82:63
+  --> $DIR/implicit_hasher.rs:81:63
    |
 LL |         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
    |                                                               ^^^^^^^^^^^^
@@ -150,7 +150,7 @@ LL |         pub fn $name<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i
    |                     +++++++++++++++++++++++++++++                                          ~~~~~~~~~~~~~~~
 
 error: parameter of type `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:101:35
+  --> $DIR/implicit_hasher.rs:100:35
    |
 LL | pub async fn election_vote(_data: HashMap<i32, i32>) {}
    |                                   ^^^^^^^^^^^^^^^^^

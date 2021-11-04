@@ -7,8 +7,8 @@ use super::Pass;
 use crate::clean;
 use crate::clean::*;
 use crate::core::DocContext;
-use crate::fold::DocFolder;
 use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
+use crate::visit::DocVisitor;
 use crate::visit_ast::inherits_doc_hidden;
 use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
@@ -27,17 +27,17 @@ struct DocTestVisibilityLinter<'a, 'tcx> {
 
 crate fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     let mut coll = DocTestVisibilityLinter { cx };
-
-    coll.fold_crate(krate)
+    coll.visit_crate(&krate);
+    krate
 }
 
-impl<'a, 'tcx> DocFolder for DocTestVisibilityLinter<'a, 'tcx> {
-    fn fold_item(&mut self, item: Item) -> Option<Item> {
+impl<'a, 'tcx> DocVisitor for DocTestVisibilityLinter<'a, 'tcx> {
+    fn visit_item(&mut self, item: &Item) {
         let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
 
         look_for_tests(self.cx, &dox, &item);
 
-        Some(self.fold_item_recur(item))
+        self.visit_item_recur(item)
     }
 }
 

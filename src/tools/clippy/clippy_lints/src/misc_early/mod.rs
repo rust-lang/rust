@@ -1,15 +1,15 @@
 mod builtin_type_shadow;
 mod double_neg;
+mod literal_suffix;
 mod mixed_case_hex_literals;
 mod redundant_pattern;
 mod unneeded_field_pattern;
 mod unneeded_wildcard_pattern;
-mod unseparated_literal_suffix;
 mod zero_prefixed_literal;
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::ast::{Expr, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
+use rustc_ast::ast::{Expr, ExprKind, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -115,9 +115,11 @@ declare_clippy_lint! {
     /// ### What it does
     /// Warns if literal suffixes are not separated by an
     /// underscore.
+    /// To enforce unseparated literal suffix style,
+    /// see the `separated_literal_suffix` lint.
     ///
     /// ### Why is this bad?
-    /// It is much less readable.
+    /// Suffix style should be consistent.
     ///
     /// ### Example
     /// ```rust
@@ -128,8 +130,30 @@ declare_clippy_lint! {
     /// let y = 123832_i32;
     /// ```
     pub UNSEPARATED_LITERAL_SUFFIX,
-    pedantic,
+    restriction,
     "literals whose suffix is not separated by an underscore"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns if literal suffixes are separated by an underscore.
+    /// To enforce separated literal suffix style,
+    /// see the `unseparated_literal_suffix` lint.
+    ///
+    /// ### Why is this bad?
+    /// Suffix style should be consistent.
+    ///
+    /// ### Example
+    /// ```rust
+    /// // Bad
+    /// let y = 123832_i32;
+    ///
+    /// // Good
+    /// let y = 123832i32;
+    /// ```
+    pub SEPARATED_LITERAL_SUFFIX,
+    restriction,
+    "literals whose suffix is separated by an underscore"
 }
 
 declare_clippy_lint! {
@@ -260,6 +284,7 @@ declare_lint_pass!(MiscEarlyLints => [
     DOUBLE_NEG,
     MIXED_CASE_HEX_LITERALS,
     UNSEPARATED_LITERAL_SUFFIX,
+    SEPARATED_LITERAL_SUFFIX,
     ZERO_PREFIXED_LITERAL,
     BUILTIN_TYPE_SHADOW,
     REDUNDANT_PATTERN,
@@ -310,6 +335,10 @@ impl EarlyLintPass for MiscEarlyLints {
         if in_external_macro(cx.sess, expr.span) {
             return;
         }
+
+        if let ExprKind::Lit(ref lit) = expr.kind {
+            MiscEarlyLints::check_lit(cx, lit);
+        }
         double_neg::check(cx, expr);
     }
 }
@@ -332,7 +361,7 @@ impl MiscEarlyLints {
                 LitIntType::Unsigned(ty) => ty.name_str(),
                 LitIntType::Unsuffixed => "",
             };
-            unseparated_literal_suffix::check(cx, lit, &lit_snip, suffix, "integer");
+            literal_suffix::check(cx, lit, &lit_snip, suffix, "integer");
             if lit_snip.starts_with("0x") {
                 mixed_case_hex_literals::check(cx, lit, suffix, &lit_snip);
             } else if lit_snip.starts_with("0b") || lit_snip.starts_with("0o") {
@@ -342,7 +371,7 @@ impl MiscEarlyLints {
             }
         } else if let LitKind::Float(_, LitFloatType::Suffixed(float_ty)) = lit.kind {
             let suffix = float_ty.name_str();
-            unseparated_literal_suffix::check(cx, lit, &lit_snip, suffix, "float");
+            literal_suffix::check(cx, lit, &lit_snip, suffix, "float");
         }
     }
 }

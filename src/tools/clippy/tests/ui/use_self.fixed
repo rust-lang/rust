@@ -1,5 +1,4 @@
 // run-rustfix
-// edition:2018
 // aux-build:proc_macro_derive.rs
 
 #![warn(clippy::use_self)]
