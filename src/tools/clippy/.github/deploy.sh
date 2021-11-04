@@ -13,7 +13,8 @@ cp util/gh-pages/lints.json out/master
 if [[ -n $TAG_NAME ]]; then
   echo "Save the doc for the current tag ($TAG_NAME) and point stable/ to it"
   cp -Tr out/master "out/$TAG_NAME"
-  ln -sf "$TAG_NAME" out/stable
+  rm -f out/stable
+  ln -s "$TAG_NAME" out/stable
 fi
 
 if [[ $BETA = "true" ]]; then

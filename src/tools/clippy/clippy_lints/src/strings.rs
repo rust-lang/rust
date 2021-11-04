@@ -107,51 +107,87 @@ declare_clippy_lint! {
     "calling `as_bytes` on a string literal instead of using a byte string literal"
 }
 
-declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN]);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for slice operations on strings
+    ///
+    /// ### Why is this bad?
+    /// UTF-8 characters span multiple bytes, and it is easy to inadvertently confuse character
+    /// counts and string indices. This may lead to panics, and should warrant some test cases
+    /// containing wide UTF-8 characters. This lint is most useful in code that should avoid
+    /// panics at all costs.
+    ///
+    /// ### Known problems
+    /// Probably lots of false positives. If an index comes from a known valid position (e.g.
+    /// obtained via `char_indices` over the same string), it is totally OK.
+    ///
+    /// # Example
+    /// ```rust,should_panic
+    /// &"Ölkanne"[1..];
+    /// ```
+    pub STRING_SLICE,
+    restriction,
+    "slicing a string"
+}
+
+declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN, STRING_SLICE]);
 
 impl<'tcx> LateLintPass<'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), e.span) {
             return;
         }
-
-        if let ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Add, ..
-            },
-            left,
-            _,
-        ) = e.kind
-        {
-            if is_string(cx, left) {
-                if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
-                    let parent = get_parent_expr(cx, e);
-                    if let Some(p) = parent {
-                        if let ExprKind::Assign(target, _, _) = p.kind {
-                            // avoid duplicate matches
-                            if SpanlessEq::new(cx).eq_expr(target, left) {
-                                return;
+        match e.kind {
+            ExprKind::Binary(
+                Spanned {
+                    node: BinOpKind::Add, ..
+                },
+                left,
+                _,
+            ) => {
+                if is_string(cx, left) {
+                    if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
+                        let parent = get_parent_expr(cx, e);
+                        if let Some(p) = parent {
+                            if let ExprKind::Assign(target, _, _) = p.kind {
+                                // avoid duplicate matches
+                                if SpanlessEq::new(cx).eq_expr(target, left) {
+                                    return;
+                                }
                             }
                         }
                     }
+                    span_lint(
+                        cx,
+                        STRING_ADD,
+                        e.span,
+                        "you added something to a string. Consider using `String::push_str()` instead",
+                    );
                 }
-                span_lint(
-                    cx,
-                    STRING_ADD,
-                    e.span,
-                    "you added something to a string. Consider using `String::push_str()` instead",
-                );
-            }
-        } else if let ExprKind::Assign(target, src, _) = e.kind {
-            if is_string(cx, target) && is_add(cx, src, target) {
-                span_lint(
-                    cx,
-                    STRING_ADD_ASSIGN,
-                    e.span,
-                    "you assigned the result of adding something to this string. Consider using \
-                     `String::push_str()` instead",
-                );
-            }
+            },
+            ExprKind::Assign(target, src, _) => {
+                if is_string(cx, target) && is_add(cx, src, target) {
+                    span_lint(
+                        cx,
+                        STRING_ADD_ASSIGN,
+                        e.span,
+                        "you assigned the result of adding something to this string. Consider using \
+                         `String::push_str()` instead",
+                    );
+                }
+            },
+            ExprKind::Index(target, _idx) => {
+                let e_ty = cx.typeck_results().expr_ty(target).peel_refs();
+                if matches!(e_ty.kind(), ty::Str) || is_type_diagnostic_item(cx, e_ty, sym::String) {
+                    span_lint(
+                        cx,
+                        STRING_SLICE,
+                        e.span,
+                        "indexing into a string may panic if the index is within a UTF-8 character",
+                    );
+                }
+            },
+            _ => {},
         }
     }
 }

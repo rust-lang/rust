@@ -1,4 +1,3 @@
-// edition:2018
 #![warn(clippy::await_holding_lock)]
 
 use std::sync::Mutex;

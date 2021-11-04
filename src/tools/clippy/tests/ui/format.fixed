@@ -16,6 +16,8 @@ fn main() {
     r##"foo {}
 " bar"##.to_string();
 
+    let _ = String::new();
+
     "foo".to_string();
     format!("{:?}", "foo"); // Don't warn about `Debug`.
     format!("{:8}", "foo");

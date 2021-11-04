@@ -104,7 +104,10 @@ fn extern_flags() -> String {
 }
 
 fn default_config() -> compiletest::Config {
-    let mut config = compiletest::Config::default();
+    let mut config = compiletest::Config {
+        edition: Some("2021".into()),
+        ..compiletest::Config::default()
+    };
 
     if let Ok(filters) = env::var("TESTNAME") {
         config.filters = filters.split(',').map(std::string::ToString::to_string).collect();

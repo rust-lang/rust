@@ -3,16 +3,16 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{is_type_diagnostic_item, match_type, walk_ptrs_hir_ty};
+use clippy_utils::ty::walk_ptrs_hir_ty;
 use clippy_utils::{expr_path_res, is_lint_allowed, match_any_diagnostic_items, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::def::Res;
 use rustc_hir::{
-    BinOpKind, BodyId, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, HirId, Impl, ImplItem, ImplItemKind, Item,
-    ItemKind, Lifetime, MutTy, Mutability, Node, PathSegment, QPath, TraitFn, TraitItem, TraitItemKind, Ty, TyKind,
+    BinOpKind, BodyId, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, Impl, ImplItem, ImplItemKind, Item, ItemKind,
+    Lifetime, MutTy, Mutability, Node, PathSegment, QPath, TraitFn, TraitItem, TraitItemKind, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -153,7 +153,7 @@ declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, INVALID_NULL_PTR_USA
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, _, body_id) = item.kind {
-            check_fn(cx, sig.decl, item.hir_id(), Some(body_id));
+            check_fn(cx, sig.decl, Some(body_id));
         }
     }
 
@@ -165,7 +165,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                     return; // ignore trait impls
                 }
             }
-            check_fn(cx, sig.decl, item.hir_id(), Some(body_id));
+            check_fn(cx, sig.decl, Some(body_id));
         }
     }
 
@@ -176,7 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             } else {
                 None
             };
-            check_fn(cx, sig.decl, item.hir_id(), body_id);
+            check_fn(cx, sig.decl, body_id);
         }
     }
 
@@ -244,13 +244,10 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
 }
 
 #[allow(clippy::too_many_lines)]
-fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: Option<BodyId>) {
-    let fn_def_id = cx.tcx.hir().local_def_id(fn_id);
-    let sig = cx.tcx.fn_sig(fn_def_id);
-    let fn_ty = sig.skip_binder();
+fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, opt_body_id: Option<BodyId>) {
     let body = opt_body_id.map(|id| cx.tcx.hir().body(id));
 
-    for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
+    for (idx, arg) in decl.inputs.iter().enumerate() {
         // Honor the allow attribute on parameters. See issue 5644.
         if let Some(body) = &body {
             if is_lint_allowed(cx, PTR_ARG, body.params[idx].hir_id) {
@@ -258,8 +255,20 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
             }
         }
 
-        if let ty::Ref(_, ty, Mutability::Not) = ty.kind() {
-            if is_type_diagnostic_item(cx, ty, sym::Vec) {
+        let (item_name, path) = if_chain! {
+            if let TyKind::Rptr(_, MutTy { ty, mutbl: Mutability::Not }) = arg.kind;
+            if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
+            if let Res::Def(_, did) = path.res;
+            if let Some(item_name) = cx.tcx.get_diagnostic_name(did);
+            then {
+                (item_name, path)
+            } else {
+                continue
+            }
+        };
+
+        match item_name {
+            sym::Vec => {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_owned()")]) {
                     span_lint_and_then(
                         cx,
@@ -289,7 +298,8 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if is_type_diagnostic_item(cx, ty, sym::String) {
+            },
+            sym::String => {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                     span_lint_and_then(
                         cx,
@@ -311,7 +321,8 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if is_type_diagnostic_item(cx, ty, sym::PathBuf) {
+            },
+            sym::PathBuf => {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_path_buf()"), ("as_path", "")]) {
                     span_lint_and_then(
                         cx,
@@ -338,11 +349,10 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if match_type(cx, ty, &paths::COW) {
+            },
+            sym::Cow => {
                 if_chain! {
-                    if let TyKind::Rptr(_, MutTy { ty, ..} ) = arg.kind;
-                    if let TyKind::Path(QPath::Resolved(None, pp)) = ty.kind;
-                    if let [ref bx] = *pp.segments;
+                    if let [ref bx] = *path.segments;
                     if let Some(params) = bx.args;
                     if !params.parenthesized;
                     if let Some(inner) = params.args.iter().find_map(|arg| match arg {
@@ -363,7 +373,8 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         );
                     }
                 }
-            }
+            },
+            _ => {},
         }
     }
 

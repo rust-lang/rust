@@ -1,5 +1,5 @@
 error: this function has too many lines (2/1)
-  --> $DIR/test.rs:20:1
+  --> $DIR/test.rs:18:1
    |
 LL | / fn too_many_lines() {
 LL | |     println!("This is bad.");
@@ -10,7 +10,7 @@ LL | | }
    = note: `-D clippy::too-many-lines` implied by `-D warnings`
 
 error: this function has too many lines (4/1)
-  --> $DIR/test.rs:26:1
+  --> $DIR/test.rs:24:1
    |
 LL | / async fn async_too_many_lines() {
 LL | |     println!("This is bad.");
@@ -19,7 +19,7 @@ LL | | }
    | |_^
 
 error: this function has too many lines (4/1)
-  --> $DIR/test.rs:32:1
+  --> $DIR/test.rs:30:1
    |
 LL | / fn closure_too_many_lines() {
 LL | |     let _ = {
@@ -30,7 +30,7 @@ LL | | }
    | |_^
 
 error: this function has too many lines (2/1)
-  --> $DIR/test.rs:54:1
+  --> $DIR/test.rs:52:1
    |
 LL | / fn comment_before_code() {
 LL | |     let _ = "test";

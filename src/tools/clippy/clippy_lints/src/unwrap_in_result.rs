@@ -13,7 +13,7 @@ use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for functions of type Result that contain `expect()` or `unwrap()`
+    /// Checks for functions of type `Result` that contain `expect()` or `unwrap()`
     ///
     /// ### Why is this bad?
     /// These functions promote recoverable errors to non-recoverable errors which may be undesirable in code bases which wish to avoid panics.

@@ -1,5 +1,5 @@
 #![warn(clippy::match_ref_pats)]
-#![allow(clippy::equatable_if_let)]
+#![allow(clippy::equatable_if_let, clippy::enum_variant_names)]
 
 fn ref_pats() {
     {

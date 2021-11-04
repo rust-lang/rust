@@ -3,7 +3,6 @@
 // injected intrinsics by the compiler.
 #![allow(dead_code)]
 #![feature(global_asm)]
-
 //! Some garbage docs for the crate here
 #![doc = "More garbage"]
 
@@ -90,10 +89,10 @@ mod internal_impl {
 }
 /// dox
 pub mod public_interface {
-    pub use internal_impl::documented as foo;
-    pub use internal_impl::globbed::*;
-    pub use internal_impl::undocumented1 as bar;
-    pub use internal_impl::{documented, undocumented2};
+    pub use crate::internal_impl::documented as foo;
+    pub use crate::internal_impl::globbed::*;
+    pub use crate::internal_impl::undocumented1 as bar;
+    pub use crate::internal_impl::{documented, undocumented2};
 }
 
 fn main() {}

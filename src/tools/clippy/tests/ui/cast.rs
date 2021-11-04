@@ -92,4 +92,27 @@ fn main() {
     (1i64).checked_rem_euclid(-1i64).unwrap() as u64;
     (1i64).checked_rem_euclid(-1i64).unwrap() as u128;
     (1isize).checked_rem_euclid(-1isize).unwrap() as usize;
+
+    // no lint for `cast_possible_truncation`
+    // with `signum` method call (see issue #5395)
+    let x: i64 = 5;
+    let _ = x.signum() as i32;
+
+    let s = x.signum();
+    let _ = s as i32;
+
+    // Test for signed min
+    (-99999999999i64).min(1) as i8; // should be linted because signed
+
+    // Test for various operations that remove enough bits for the result to fit
+    (999999u64 & 1) as u8;
+    (999999u64 % 15) as u8;
+    (999999u64 / 0x1_0000_0000_0000) as u16;
+    ({ 999999u64 >> 56 }) as u8;
+    ({
+        let x = 999999u64;
+        x.min(1)
+    }) as u8;
+    999999u64.clamp(0, 255) as u8;
+    999999u64.clamp(0, 256) as u8; // should still be linted
 }
