@@ -9,7 +9,7 @@ readme = "README.md"
 keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".github", "bors.toml", "/ci/*"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 # For the default hasher
