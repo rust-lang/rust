@@ -4,7 +4,8 @@ You may need following tooltips to catch up with common operations.
 
 - [Common tools for writing lints](#common-tools-for-writing-lints)
   - [Retrieving the type of an expression](#retrieving-the-type-of-an-expression)
-  - [Checking if an expression is calling a specific method](#checking-if-an-expr-is-calling-a-specific-method)
+  - [Checking if an expr is calling a specific method](#checking-if-an-expr-is-calling-a-specific-method)
+  - [Checking for a specific type](#checking-for-a-specific-type)
   - [Checking if a type implements a specific trait](#checking-if-a-type-implements-a-specific-trait)
   - [Checking if a type defines a specific method](#checking-if-a-type-defines-a-specific-method)
   - [Dealing with macros](#dealing-with-macros)
@@ -15,7 +16,7 @@ Useful Rustc dev guide links:
 - [Type checking](https://rustc-dev-guide.rust-lang.org/type-checking.html)
 - [Ty module](https://rustc-dev-guide.rust-lang.org/ty.html)
 
-# Retrieving the type of an expression
+## Retrieving the type of an expression
 
 Sometimes you may want to retrieve the type `Ty` of an expression `Expr`, for example to answer following questions:
 
@@ -54,7 +55,7 @@ Two noticeable items here:
   created by type checking step, it includes useful information such as types
   of expressions, ways to resolve methods and so on.
 
-# Checking if an expr is calling a specific method
+## Checking if an expr is calling a specific method
 
 Starting with an `expr`, you can check whether it is calling a specific method `some_method`:
 
@@ -63,9 +64,11 @@ impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             // Check our expr is calling a method
-            if let hir::ExprKind::MethodCall(path, _, _args, _) = &expr.kind;
+            if let hir::ExprKind::MethodCall(path, _, [_self_arg, ..], _) = &expr.kind;
             // Check the name of this method is `some_method`
             if path.ident.name == sym!(some_method);
+            // Optionally, check the type of the self argument.
+            // - See "Checking for a specific type"
             then {
                 // ...
             }
@@ -74,7 +77,45 @@ impl LateLintPass<'_> for MyStructLint {
 }
 ```
 
-# Checking if a type implements a specific trait
+## Checking for a specific type
+
+There are three ways to check if an expression type is a specific type we want to check for.
+All of these methods only check for the base type, generic arguments have to be checked separately.
+
+```rust
+use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
+use clippy_utils::{paths, match_def_path};
+use rustc_span::symbol::sym;
+use rustc_hir::LangItem;
+
+impl LateLintPass<'_> for MyStructLint {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        // Getting the expression type
+        let ty = cx.typeck_results().expr_ty(expr);
+
+        // 1. Using diagnostic items
+        // The last argument is the diagnostic item to check for
+        if is_type_diagnostic_item(cx, ty, sym::Option) {
+            // The type is an `Option`
+        }
+
+        // 2. Using lang items
+        if is_type_lang_item(cx, ty, LangItem::RangeFull) {
+            // The type is a full range like `.drain(..)`
+        }
+
+        // 3. Using the type path
+        // This method should be avoided if possible
+        if match_def_path(cx, def_id, &paths::RESULT) {
+            // The type is a `core::result::Result`
+        }
+    }
+}
+```
+
+Prefer using diagnostic items and lang items where possible.
+
+## Checking if a type implements a specific trait
 
 There are three ways to do this, depending on if the target trait has a diagnostic item, lang item or neither.
 
@@ -102,6 +143,7 @@ impl LateLintPass<'_> for MyStructLint {
 
         // 3. Using the type path with the expression
         // we use `match_trait_method` function from Clippy's utils
+        // (This method should be avoided if possible)
         if match_trait_method(cx, expr, &paths::INTO) {
             // `expr` implements `Into` trait
         }
@@ -114,7 +156,7 @@ impl LateLintPass<'_> for MyStructLint {
 We access lang items through the type context `tcx`. `tcx` is of type [`TyCtxt`][TyCtxt] and is defined in the `rustc_middle` crate.
 A list of defined paths for Clippy can be found in [paths.rs][paths]
 
-# Checking if a type defines a specific method
+## Checking if a type defines a specific method
 
 To check if our type defines a method called `some_method`:
 
@@ -140,7 +182,7 @@ impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
 }
 ```
 
-# Dealing with macros
+## Dealing with macros
 
 There are several helpers in [`clippy_utils`][utils] to deal with macros:
 
