@@ -593,14 +593,19 @@ impl SourceMap {
     }
 
     pub fn span_to_margin(&self, sp: Span) -> Option<usize> {
-        match self.span_to_prev_source(sp) {
-            Err(_) => None,
-            Ok(source) => {
-                let last_line = source.rsplit_once('\n').unwrap_or(("", &source)).1;
+        Some(self.indentation_before(sp)?.len())
+    }
 
-                Some(last_line.len() - last_line.trim_start().len())
-            }
-        }
+    pub fn indentation_before(&self, sp: Span) -> Option<String> {
+        self.span_to_source(sp, |src, start_index, _| {
+            let before = &src[..start_index];
+            let last_line = before.rsplit_once('\n').map_or(before, |(_, last)| last);
+            Ok(last_line
+                .split_once(|c: char| !c.is_whitespace())
+                .map_or(last_line, |(indent, _)| indent)
+                .to_string())
+        })
+        .ok()
     }
 
     /// Returns the source snippet as `String` before the given `Span`.
