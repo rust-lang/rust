@@ -153,14 +153,15 @@ impl<'a> StringReader<'a> {
             match core::slice::memchr::memchr(0xE2, &bytes) {
                 Some(idx) => {
                     // bytes are valid UTF-8 -> E2 must be followed by two bytes
-                    match bytes[idx + 1] {
+                    let ch = &bytes[idx..idx + 3];
+                    match ch[1] {
                         0x80 => {
-                            if (0xAA..=0xAE).contains(&bytes[idx + 2]) {
+                            if (0xAA..=0xAE).contains(&ch[2]) {
                                 break true;
                             }
                         }
                         0x81 => {
-                            if (0xA6..=0xA9).contains(&bytes[idx + 2]) {
+                            if (0xA6..=0xA9).contains(&ch[2]) {
                                 break true;
                             }
                         }
