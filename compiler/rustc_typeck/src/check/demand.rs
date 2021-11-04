@@ -244,7 +244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            let mut compatible_variants = expected_adt
+            let compatible_variants: Vec<String> = expected_adt
                 .variants
                 .iter()
                 .filter(|variant| variant.fields.len() == 1)
@@ -265,19 +265,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None
                     }
                 })
-                .peekable();
+                .collect();
 
-            if compatible_variants.peek().is_some() {
-                if let Ok(expr_text) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
-                    let suggestions = compatible_variants.map(|v| format!("{}({})", v, expr_text));
-                    let msg = "try using a variant of the expected enum";
-                    err.span_suggestions(
-                        expr.span,
-                        msg,
-                        suggestions,
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+            if let [variant] = &compatible_variants[..] {
+                // Just a single matching variant.
+                err.multipart_suggestion(
+                    &format!("try wrapping the expression in `{}`", variant),
+                    vec![
+                        (expr.span.shrink_to_lo(), format!("{}(", variant)),
+                        (expr.span.shrink_to_hi(), ")".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            } else if compatible_variants.len() > 1 {
+                // More than one matching variant.
+                err.multipart_suggestions(
+                    &format!(
+                        "try wrapping the expression in a variant of `{}`",
+                        self.tcx.def_path_str(expected_adt.did)
+                    ),
+                    compatible_variants.into_iter().map(|variant| {
+                        vec![
+                            (expr.span.shrink_to_lo(), format!("{}(", variant)),
+                            (expr.span.shrink_to_hi(), ")".to_string()),
+                        ]
+                    }),
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
     }
