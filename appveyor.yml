@@ -1,8 +1,0 @@
-environment:
-  global:
-    PROJECT_NAME: rustfmt
-
-build: false
-
-test_script:
-  - echo Why does no one have access to delete me?
