@@ -86,7 +86,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// Intermediate format to store the hir_id pointing to the use that resulted in the
 /// corresponding place being captured and a String which contains the captured value's
 /// name (i.e: a.b.c)
-type CapturesInfo = (Option<hir::HirId>, String);
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum CapturesInfo {
+    CapturingLess { source_expr: Option<hir::HirId>, var_name: String },
+}
 
 /// Intermediate format to store information needed to generate migration lint. The tuple
 /// contains the hir_id pointing to the use that resulted in the
@@ -963,7 +966,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if !capture_problems.is_empty() {
                 problematic_captures.insert(
-                    (capture.info.path_expr_id, capture.to_string(self.tcx)),
+                    CapturesInfo::CapturingLess {
+                        source_expr: capture.info.path_expr_id,
+                        var_name: capture.to_string(self.tcx),
+                    },
                     capture_problems,
                 );
             }
@@ -986,6 +992,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// This function only returns a HashSet of CapturesInfo for significant drops. If there
     /// are no significant drops than None is returned
+    #[instrument(level = "debug", skip(self))]
     fn compute_2229_migrations_for_drop(
         &self,
         closure_def_id: DefId,
@@ -997,6 +1004,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
+            debug!("does not have significant drop");
             return None;
         }
 
@@ -1006,7 +1014,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             root_var_min_capture_list
         } else {
             // The upvar is mentioned within the closure but no path starting from it is
-            // used.
+            // used. This occurs when you have (e.g.)
+            //
+            // ```
+            // let x = move || {
+            //     let _ = y;
+            // });
+            // ```
+            debug!("no path starting from it is used");
+
 
             match closure_clause {
                 // Only migrate if closure is a move closure
@@ -1016,6 +1032,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             return None;
         };
+        debug!(?root_var_min_capture_list);
 
         let mut projections_list = Vec::new();
         let mut diagnostics_info = FxHashSet::default();
@@ -1025,19 +1042,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Only care about captures that are moved into the closure
                 ty::UpvarCapture::ByValue(..) => {
                     projections_list.push(captured_place.place.projections.as_slice());
-                    diagnostics_info.insert((
-                        captured_place.info.path_expr_id,
-                        captured_place.to_string(self.tcx),
-                    ));
+                    diagnostics_info.insert(CapturesInfo::CapturingLess {
+                        source_expr: captured_place.info.path_expr_id,
+                        var_name: captured_place.to_string(self.tcx),
+                    });
                 }
                 ty::UpvarCapture::ByRef(..) => {}
             }
         }
 
+        debug!(?projections_list);
+        debug!(?diagnostics_info);
+
         let is_moved = !projections_list.is_empty();
+        debug!(?is_moved);
 
         let is_not_completely_captured =
             root_var_min_capture_list.iter().any(|capture| !capture.place.projections.is_empty());
+        debug!(?is_not_completely_captured);
 
         if is_moved
             && is_not_completely_captured
@@ -1070,6 +1092,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns a tuple containing a vector of MigrationDiagnosticInfo, as well as a String
     /// containing the reason why root variables whose HirId is contained in the vector should
     /// be captured
+    #[instrument(level = "debug", skip(self))]
     fn compute_2229_migrations(
         &self,
         closure_def_id: DefId,
@@ -1137,14 +1160,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // auto trait implementation issues
                 auto_trait_migration_reasons.extend(capture_trait_reasons.clone());
 
-                responsible_captured_hir_ids.push((
-                    captured_info.0,
-                    captured_info.1.clone(),
-                    self.compute_2229_migrations_reasons(
-                        capture_trait_reasons,
-                        capture_drop_reorder_reason,
-                    ),
-                ));
+                match captured_info {
+                    CapturesInfo::CapturingLess { source_expr, var_name } => {
+                        responsible_captured_hir_ids.push((
+                            *source_expr,
+                            var_name.clone(),
+                            self.compute_2229_migrations_reasons(
+                                capture_trait_reasons,
+                                capture_drop_reorder_reason,
+                            ),
+                        ));
+                    }
+                }
             }
 
             if !capture_diagnostic.is_empty() {
@@ -2095,6 +2122,7 @@ fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
 }
 
+#[instrument(level = "debug", skip(tcx))]
 fn should_do_rust_2021_incompatible_closure_captures_analysis(
     tcx: TyCtxt<'_>,
     closure_id: hir::HirId,
