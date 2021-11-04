@@ -1160,7 +1160,6 @@ where
 }
 
 // The default hasher is used to match the std implementation signature
-// see https://doc.rust-lang.org/src/std/collections/hash/set.rs.html#1010-1026
 impl<T, A, const N: usize> From<[T; N]> for HashSet<T, DefaultHashBuilder, A>
 where
     T: Eq + Hash,
