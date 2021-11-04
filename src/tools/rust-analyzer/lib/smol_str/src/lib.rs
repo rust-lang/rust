@@ -289,7 +289,7 @@ impl<'a> iter::FromIterator<&'a str> for SmolStr {
 
 impl<T> From<T> for SmolStr
 where
-    T: Into<String> + AsRef<str>,
+    T: AsRef<str>,
 {
     fn from(text: T) -> Self {
         Self::new(text)

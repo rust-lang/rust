@@ -1,9 +1,9 @@
 [package]
 name = "smol_str"
-version = "0.1.20"
+version = "0.1.21"
 description = "small-string optimized string type with O(1) clone"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/matklad/smol_str"
+repository = "https://github.com/rust-analyzer/smol_str"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 edition = "2018"
 
@@ -14,7 +14,7 @@ arbitrary = { version = "1", optional = true }
 [dev-dependencies]
 proptest = "0.10"
 serde_json = "1"
-serde =  { version = "1", features = [ "derive" ] }
+serde = { version = "1", features = [ "derive" ] }
 
 [features]
 default = ["std"]
