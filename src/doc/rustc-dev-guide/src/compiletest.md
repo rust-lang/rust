@@ -16,9 +16,9 @@ and more. If you are unfamiliar with the compiler testing framework,
 see [this chapter](./tests/intro.md) for additional background.
 
 The tests themselves are typically (but not always) organized into
-"suites" – for example, `run-fail`, a folder holding tests that should compile
-successfully, but return a failure (non-zero status) at runtime, `compile-fail`,
-a folder holding tests that should fail to compile, and many more. The various
+"suites" – for example, `incremental`, a folder holding tests that check
+incremental compilation behavior, `codegen`,
+a folder holding tests that check code generation, and many more. The various
 suites are defined in [`src/tools/compiletest/src/common.rs`] in the
 `pub enum Mode` declaration. And a good introduction to the different
 suites of compiler tests along with details about them can be found in

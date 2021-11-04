@@ -43,7 +43,6 @@ rough heuristics:
     message is not relevant to the test. These should have an
     [error number] (`E0XXX`) in the code block to make sure it's the correct error.
 - For most other things, [a `ui` (or `ui-fulldeps`) test](#ui) is to be preferred:
-  - [`ui`](#ui) tests subsume both `run-pass`, `compile-fail`, and `parse-fail` tests
   - in the case of warnings or errors, `ui` tests capture the full output,
     which makes it easier to review but also helps prevent "hidden" regressions
     in the output
