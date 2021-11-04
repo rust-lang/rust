@@ -227,14 +227,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         Ok(s) if s.ends_with('}') => "",
                                         _ => ";",
                                     };
-                                err.multipart_suggestions(
+                                err.span_suggestions(
+                                    span.shrink_to_hi(),
                                     "try adding an expression at the end of the block",
-                                    return_suggestions.into_iter().map(|r| {
-                                        vec![(
-                                            span.shrink_to_hi(),
-                                            format!("{}\n{}{}", semicolon, indent, r),
-                                        )]
-                                    }),
+                                    return_suggestions
+                                        .into_iter()
+                                        .map(|r| format!("{}\n{}{}", semicolon, indent, r)),
                                     Applicability::MaybeIncorrect,
                                 );
                             }
