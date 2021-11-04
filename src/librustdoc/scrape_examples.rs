@@ -240,6 +240,13 @@ crate fn run(
         let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates };
         tcx.hir().visit_all_item_likes(&mut finder.as_deep_visitor());
 
+        // Sort call locations within a given file in document order
+        for fn_calls in calls.values_mut() {
+            for file_calls in fn_calls.values_mut() {
+                file_calls.locations.sort_by_key(|loc| loc.call_expr.byte_span.0);
+            }
+        }
+
         // Save output to provided path
         let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;
         calls.encode(&mut encoder).map_err(|e| e.to_string())?;
