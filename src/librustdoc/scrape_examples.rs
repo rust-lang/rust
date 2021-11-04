@@ -10,7 +10,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
     self as hir,
     intravisit::{self, Visitor},
-    HirId,
 };
 use rustc_interface::interface;
 use rustc_macros::{Decodable, Encodable};
@@ -83,15 +82,10 @@ crate struct CallLocation {
 
 impl CallLocation {
     fn new(
-        tcx: TyCtxt<'_>,
         expr_span: rustc_span::Span,
-        expr_id: HirId,
+        enclosing_item_span: rustc_span::Span,
         source_file: &SourceFile,
     ) -> Self {
-        let enclosing_item_span =
-            tcx.hir().span_with_body(tcx.hir().get_parent_item(expr_id)).source_callsite();
-        assert!(enclosing_item_span.contains(expr_span));
-
         CallLocation {
             call_expr: SyntaxRange::new(expr_span, source_file),
             enclosing_item: SyntaxRange::new(enclosing_item_span, source_file),
@@ -168,13 +162,29 @@ where
         // If this span comes from a macro expansion, then the source code may not actually show
         // a use of the given item, so it would be a poor example. Hence, we skip all uses in macros.
         if span.from_expansion() {
+            trace!("Rejecting expr from macro: {:?}", span);
             return;
         }
 
+        // If the enclosing item has a span coming from a proc macro, then we also don't want to include
+        // the example.
+        let enclosing_item_span = tcx.hir().span_with_body(tcx.hir().get_parent_item(ex.hir_id));
+        if enclosing_item_span.from_expansion() {
+            trace!("Rejecting expr ({:?}) from macro item: {:?}", span, enclosing_item_span);
+            return;
+        }
+
+        assert!(
+            enclosing_item_span.contains(span),
+            "Attempted to scrape call at [{:?}] whose enclosing item [{:?}] doesn't contain the span of the call.",
+            span,
+            enclosing_item_span
+        );
+
         // Save call site if the function resolves to a concrete definition
         if let ty::FnDef(def_id, _) = ty.kind() {
-            // Ignore functions not from the crate being documented
             if self.target_crates.iter().all(|krate| *krate != def_id.krate) {
+                trace!("Rejecting expr from crate not being documented: {:?}", span);
                 return;
             }
 
@@ -198,7 +208,8 @@ where
                 let fn_key = tcx.def_path_hash(*def_id);
                 let fn_entries = self.calls.entry(fn_key).or_default();
 
-                let location = CallLocation::new(tcx, span, ex.hir_id, &file);
+                trace!("Including expr: {:?}", span);
+                let location = CallLocation::new(span, enclosing_item_span, &file);
                 fn_entries.entry(abs_path).or_insert_with(mk_call_data).locations.push(location);
             }
         }
@@ -239,6 +250,13 @@ crate fn run(
         let mut calls = FxHashMap::default();
         let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates };
         tcx.hir().visit_all_item_likes(&mut finder.as_deep_visitor());
+
+        // Sort call locations within a given file in document order
+        for fn_calls in calls.values_mut() {
+            for file_calls in fn_calls.values_mut() {
+                file_calls.locations.sort_by_key(|loc| loc.call_expr.byte_span.0);
+            }
+        }
 
         // Save output to provided path
         let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;

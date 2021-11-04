@@ -1,4 +1,8 @@
 fn main() {
-    foobar::ok();
+    foobar::ok(1);
     // small item
+}
+
+fn f() {
+    foobar::ok(2);
 }
