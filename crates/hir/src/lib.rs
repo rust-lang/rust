@@ -580,7 +580,7 @@ impl Module {
                                     });
                                 for token in tokens {
                                     if token.kind() == SyntaxKind::IDENT
-                                        && token.text() == derive_name.as_str()
+                                        && token.text() == &**derive_name
                                     {
                                         precise_location = Some(token.text_range());
                                         break 'outer;
@@ -606,7 +606,12 @@ impl Module {
                         }
                     };
                     acc.push(
-                        UnresolvedProcMacro { node, precise_location, macro_name: name }.into(),
+                        UnresolvedProcMacro {
+                            node,
+                            precise_location,
+                            macro_name: name.map(Into::into),
+                        }
+                        .into(),
                     );
                 }
 
@@ -2219,7 +2224,7 @@ impl Impl {
             .attrs()
             .filter_map(|it| {
                 let path = ModPath::from_src(db.upcast(), it.path()?, &hygenic)?;
-                if path.as_ident()?.to_string() == "derive" {
+                if path.as_ident()?.to_smol_str() == "derive" {
                     Some(it)
                 } else {
                     None

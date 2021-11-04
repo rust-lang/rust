@@ -46,7 +46,7 @@ impl Display for ImportAlias {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ImportAlias::Underscore => f.write_str("_"),
-            ImportAlias::Alias(name) => f.write_str(&name.to_string()),
+            ImportAlias::Alias(name) => f.write_str(&name.to_smol_str()),
         }
     }
 }

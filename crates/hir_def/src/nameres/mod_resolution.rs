@@ -42,7 +42,7 @@ impl ModDir {
         let path = match attr_path.map(|it| it.as_str()) {
             None => {
                 let mut path = self.dir_path.clone();
-                path.push(&name.to_string());
+                path.push(&name.to_smol_str());
                 path
             }
             Some(attr_path) => {

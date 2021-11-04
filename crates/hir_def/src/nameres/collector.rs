@@ -1759,7 +1759,7 @@ impl ModCollector<'_, '_> {
     fn is_builtin_or_registered_attr(&self, path: &ModPath) -> bool {
         if path.kind == PathKind::Plain {
             if let Some(tool_module) = path.segments().first() {
-                let tool_module = tool_module.to_string();
+                let tool_module = tool_module.to_smol_str();
                 let is_tool = builtin_attr::TOOL_MODULES
                     .iter()
                     .copied()
@@ -1771,7 +1771,7 @@ impl ModCollector<'_, '_> {
             }
 
             if let Some(name) = path.as_ident() {
-                let name = name.to_string();
+                let name = name.to_smol_str();
                 let is_inert = builtin_attr::INERT_ATTRIBUTES
                     .iter()
                     .chain(builtin_attr::EXTRA_ATTRIBUTES)

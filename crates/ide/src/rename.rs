@@ -159,7 +159,7 @@ fn find_definitions(
                             // if the name differs from the definitions name it has to be an alias
                             if def
                                 .name(sema.db)
-                                .map_or(false, |it| it.to_string() != name_ref.text())
+                                .map_or(false, |it| it.to_smol_str() != name_ref.text().as_str())
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {

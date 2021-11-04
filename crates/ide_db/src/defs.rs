@@ -404,7 +404,7 @@ impl NameRefClass {
                             hir::AssocItem::TypeAlias(it) => Some(*it),
                             _ => None,
                         })
-                        .find(|alias| alias.name(sema.db).to_string() == name_ref.text())
+                        .find(|alias| alias.name(sema.db).to_smol_str() == name_ref.text().as_str())
                     {
                         return Some(NameRefClass::Definition(Definition::ModuleDef(
                             ModuleDef::TypeAlias(ty),

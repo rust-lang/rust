@@ -122,7 +122,7 @@ pub enum MacroCallKind {
     },
     Derive {
         ast_id: AstId<ast::Item>,
-        derive_name: String,
+        derive_name: Box<str>,
         /// Syntactical index of the invoking `#[derive]` attribute.
         ///
         /// Outer attributes are counted first, then inner attributes. This does not support
@@ -131,7 +131,7 @@ pub enum MacroCallKind {
     },
     Attr {
         ast_id: AstId<ast::Item>,
-        attr_name: String,
+        attr_name: Box<str>,
         attr_args: (tt::Subtree, mbe::TokenMap),
         /// Syntactical index of the invoking `#[attribute]`.
         ///

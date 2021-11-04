@@ -84,7 +84,8 @@ impl Name {
     }
 
     /// Returns the textual representation of this name as a [`SmolStr`].
-    /// Prefer using this over [`ToString::to_string`] if possible as this conversion is cheaper.
+    /// Prefer using this over [`ToString::to_string`] if possible as this conversion is cheaper in
+    /// the general case.
     pub fn to_smol_str(&self) -> SmolStr {
         match &self.0 {
             Repr::Text(it) => it.clone(),

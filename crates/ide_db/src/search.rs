@@ -385,7 +385,7 @@ impl<'a> FindUsages<'a> {
             })
         });
         let name = match name {
-            Some(name) => name.to_string(),
+            Some(name) => name.to_smol_str(),
             None => return,
         };
         let name = name.as_str();

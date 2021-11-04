@@ -410,7 +410,7 @@ fn find_import_for_segment(
     unresolved_first_segment: &str,
 ) -> Option<ItemInNs> {
     let segment_is_name = item_name(db, original_item)
-        .map(|name| name.to_string() == unresolved_first_segment)
+        .map(|name| name.to_smol_str() == unresolved_first_segment)
         .unwrap_or(false);
 
     Some(if segment_is_name {
@@ -434,7 +434,7 @@ fn module_with_segment_name(
     };
     while let Some(module) = current_module {
         if let Some(module_name) = module.name(db) {
-            if module_name.to_string() == segment_name {
+            if module_name.to_smol_str() == segment_name {
                 return Some(module);
             }
         }
