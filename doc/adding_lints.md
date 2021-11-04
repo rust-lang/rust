@@ -634,7 +634,7 @@ in the following steps:
 Here are some pointers to things you are likely going to need for every lint:
 
 * [Clippy utils][utils] - Various helper functions. Maybe the function you need
-  is already in here (`implements_trait`, `match_def_path`, `snippet`, etc)
+  is already in here ([`is_type_diagnostic_item`], [`implements_trait`], [`snippet`], etc)
 * [Clippy diagnostics][diagnostics]
 * [The `if_chain` macro][if_chain]
 * [`from_expansion`][from_expansion] and [`in_external_macro`][in_external_macro]
@@ -660,7 +660,10 @@ documentation currently. This is unfortunate, but in most cases you can probably
 get away with copying things from existing similar lints. If you are stuck,
 don't hesitate to ask on [Zulip] or in the issue/PR.
 
-[utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/lib.rs
+[utils]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/index.html
+[`is_type_diagnostic_item`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.is_type_diagnostic_item.html
+[`implements_trait`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.implements_trait.html
+[`snippet`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/source/fn.snippet.html
 [if_chain]: https://docs.rs/if_chain/*/if_chain/
 [from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/fn.in_external_macro.html
