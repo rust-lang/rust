@@ -156,7 +156,8 @@ h1.fqn > .in-band > a:hover {
 	section hierarchies. */
 h2,
 .top-doc h3,
-.top-doc h4 {
+.top-doc h4,
+.sidebar .others h3 {
 	border-bottom: 1px solid;
 }
 h3.code-header {
