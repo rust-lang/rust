@@ -214,9 +214,57 @@ source.
 * `error-pattern` checks the diagnostics just like the `ERROR` annotation
   without specifying error line. This is useful when the error doesn't give
   any span.
+* `incremental` runs the test with the `-C incremental` flag and an empty
+  incremental directory. This should be avoided when possible; you should use
+  an *incremental mode* test instead. Incremental mode tests support running
+  the compiler multiple times and verifying that it can load the generated
+  incremental cache. This flag is for specialized circumstances, like checking
+  the interaction of codegen unit partitioning with generating an incremental
+  cache.
+* `aux-build` is used to compile additional crates to link. Just pass it the
+  name of the source file. The source file should be in a directory called
+  `auxiliary` beside the test file. The aux crate will be built as a dylib if
+  possible (unless on a platform that does not support them, or
+  `no-prefer-dynamic` is specified in the aux file). The `-L` flag is used to
+  find the extern crates.
+* `aux-crate` is very similar to `aux-build`, however it uses the `--extern`
+  flag to link to the extern crate. That allows you to specify the additional
+  syntax of the `--extern` flag, such as renaming a dependency. For example,
+  `// aux-crate:foo=bar.rs` will compile `auxiliary/bar.rs` and add make it
+  available under then name `foo` within the test. This is similar to how
+  Cargo does dependency renaming.
+* `no-prefer-dynamic` will force an auxiliary crate to be built as an rlib
+  instead of a dylib. When specified in a test, it will remove the use of `-C
+  prefer-dynamic`. This can be useful in a variety of circumstances. For
+  example, it can prevent a proc-macro from being built with the wrong crate
+  type. Or if your test is specifically targeting behavior of other crate
+  types, it can be used to prevent building with the wrong crate type.
+* `force-host` will force the test to build for the host platform instead of
+  the target. This is useful primarily for auxiliary proc-macros, which need
+  to be loaded by the host compiler.
+* `pretty-mode` for pretty-print tests specifies the mode it should run in.
+  The default is `normal` if not specified.
+* `pretty-compare-only` causes a pretty test to only compare the
+  pretty-printed output. It will not try to compile the expanded output to
+  typecheck it. This is needed for a pretty-mode that does not expand to valid
+  rust, or for other situations where the expanded output cannot be compiled.
+* `pretty-expanded` allows a pretty test to also run with
+  `-Zunpretty=expanded` as a final step, and will also try to compile the
+  resulting output (without codegen). This is needed because not all code can
+  be compiled after being expanded. Pretty tests should specify this if they
+  can. More history about this may be found in [#23616].
+* `pp-exact` is used to ensure a pretty-print test results in specific output.
+  If specified without a value, then it means the pretty-print output should
+  match the original source. If specified with a value, as in `//
+  pp-exact:foo.pp`, will ensure that that pretty-printed output matches the
+  contents of the given file. Otherwise, if `pp-exact` is not specified, then
+  the pretty-printed output will be pretty-printed one more time, and the
+  output of the two pretty-printing rounds will be compared to ensure that the
+  pretty-printed output converges to a steady state.
 
 [`header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs
 [bless]: ./running.md#editing-and-updating-the-reference-files
+[#23616]: https://github.com/rust-lang/rust/issues/23616#issuecomment-484999901
 
 <a name="error_annotations"></a>
 
