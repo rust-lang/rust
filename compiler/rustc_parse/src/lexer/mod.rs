@@ -1,6 +1,7 @@
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
+use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
@@ -137,45 +138,7 @@ impl<'a> StringReader<'a> {
         // Opening delimiter of the length 2 is not included into the comment text.
         let content_start = start + BytePos(2);
         let content = self.str_from(content_start);
-
-        // Char   - UTF-8
-        // U+202A - E2 80 AA
-        // U+202B - E2 80 AB
-        // U+202C - E2 80 AC
-        // U+202D - E2 80 AD
-        // U+202E - E2 80 AE
-        // U+2066 - E2 81 A6
-        // U+2067 - E2 81 A7
-        // U+2068 - E2 81 A8
-        // U+2069 - E2 81 A9
-        let mut bytes = content.as_bytes();
-        let contains_flow_control_chars = loop {
-            match core::slice::memchr::memchr(0xE2, &bytes) {
-                Some(idx) => {
-                    // bytes are valid UTF-8 -> E2 must be followed by two bytes
-                    let ch = &bytes[idx..idx + 3];
-                    match ch[1] {
-                        0x80 => {
-                            if (0xAA..=0xAE).contains(&ch[2]) {
-                                break true;
-                            }
-                        }
-                        0x81 => {
-                            if (0xA6..=0xA9).contains(&ch[2]) {
-                                break true;
-                            }
-                        }
-                        _ => {}
-                    }
-                    bytes = &bytes[idx + 3..];
-                }
-                None => {
-                    break false;
-                }
-            }
-        };
-
-        if contains_flow_control_chars {
+        if contains_text_flow_control_chars(content) {
             let span = self.mk_sp(start, self.pos);
             self.sess.buffer_lint_with_diagnostic(
                 &TEXT_DIRECTION_CODEPOINT_IN_COMMENT,

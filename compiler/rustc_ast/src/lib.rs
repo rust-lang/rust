@@ -16,6 +16,7 @@
 #![feature(nll)]
 #![feature(min_specialization)]
 #![recursion_limit = "256"]
+#![feature(slice_internals)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -25,6 +26,7 @@ pub mod util {
     pub mod comments;
     pub mod literal;
     pub mod parser;
+    pub mod unicode;
 }
 
 pub mod ast;

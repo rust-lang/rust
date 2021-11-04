@@ -1,4 +1,5 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
+use ast::util::unicode::{contains_text_flow_control_chars, TEXT_FLOW_CONTROL_CHARS};
 use rustc_ast as ast;
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_span::{BytePos, Span, Symbol};
@@ -37,11 +38,6 @@ declare_lint! {
 
 declare_lint_pass!(HiddenUnicodeCodepoints => [TEXT_DIRECTION_CODEPOINT_IN_LITERAL]);
 
-crate const UNICODE_TEXT_FLOW_CHARS: &[char] = &[
-    '\u{202A}', '\u{202B}', '\u{202D}', '\u{202E}', '\u{2066}', '\u{2067}', '\u{2068}', '\u{202C}',
-    '\u{2069}',
-];
-
 impl HiddenUnicodeCodepoints {
     fn lint_text_direction_codepoint(
         &self,
@@ -57,7 +53,7 @@ impl HiddenUnicodeCodepoints {
             .as_str()
             .char_indices()
             .filter_map(|(i, c)| {
-                UNICODE_TEXT_FLOW_CHARS.contains(&c).then(|| {
+                TEXT_FLOW_CONTROL_CHARS.contains(&c).then(|| {
                     let lo = span.lo() + BytePos(i as u32 + padding);
                     (c, span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
                 })
@@ -131,7 +127,7 @@ impl HiddenUnicodeCodepoints {
 impl EarlyLintPass for HiddenUnicodeCodepoints {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         if let ast::AttrKind::DocComment(_, comment) = attr.kind {
-            if comment.as_str().contains(UNICODE_TEXT_FLOW_CHARS) {
+            if contains_text_flow_control_chars(&comment.as_str()) {
                 self.lint_text_direction_codepoint(cx, comment, attr.span, 0, false, "doc comment");
             }
         }
@@ -142,7 +138,7 @@ impl EarlyLintPass for HiddenUnicodeCodepoints {
         let (text, span, padding) = match &expr.kind {
             ast::ExprKind::Lit(ast::Lit { token, kind, span }) => {
                 let text = token.symbol;
-                if !text.as_str().contains(UNICODE_TEXT_FLOW_CHARS) {
+                if !contains_text_flow_control_chars(&text.as_str()) {
                     return;
                 }
                 let padding = match kind {
