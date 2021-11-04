@@ -1159,6 +1159,27 @@ where
     }
 }
 
+// The default hasher is used to match the std implementation signature
+// see https://doc.rust-lang.org/src/std/collections/hash/set.rs.html#1010-1026
+impl<T, A, const N: usize> From<[T; N]> for HashSet<T, DefaultHashBuilder, A>
+where
+    T: Eq + Hash,
+    A: Default + Allocator + Clone,
+{
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let set1 = HashSet::from([1, 2, 3, 4]);
+    /// let set2: HashSet<_> = [1, 2, 3, 4].into();
+    /// assert_eq!(set1, set2);
+    /// ```
+    fn from(arr: [T; N]) -> Self {
+        arr.into_iter().collect()
+    }
+}
+
 impl<T, S, A> Extend<T> for HashSet<T, S, A>
 where
     T: Eq + Hash,
