@@ -43,7 +43,7 @@ All this makes keeping this guide completely up to date on everything very hard!
 The Guide itself is of course open-source as well,
 and the sources can be found at the [GitHub repository].
 If you find any mistakes in the guide, please file an issue about it.
-even better, open a PR with a correction!
+Even better, open a PR with a correction!
 
 If you do contribute to the guide,
 please see the corresponding [subsection on writing documentation in this guide].
