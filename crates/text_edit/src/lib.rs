@@ -3,12 +3,13 @@
 //! `rust-analyzer` never mutates text itself and only sends diffs to clients,
 //! so `TextEdit` is the ultimate representation of the work done by
 //! rust-analyzer.
+
 pub use text_size::{TextRange, TextSize};
 
 /// `InsertDelete` -- a single "atomic" change to text
 ///
 /// Must not overlap with other `InDel`s
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Indel {
     pub insert: String,
     /// Refers to offsets in the original text
@@ -116,11 +117,14 @@ impl TextEdit {
     pub fn union(&mut self, other: TextEdit) -> Result<(), TextEdit> {
         // FIXME: can be done without allocating intermediate vector
         let mut all = self.iter().chain(other.iter()).collect::<Vec<_>>();
-        if !check_disjoint(&mut all) {
+        if !check_disjoint_and_sort(&mut all) {
             return Err(other);
         }
+
         self.indels.extend(other.indels);
-        assert_disjoint(&mut self.indels);
+        check_disjoint_and_sort(&mut self.indels);
+        // Only dedup deletions and replacements, keep all insertions
+        self.indels.dedup_by(|a, b| a == b && !a.delete.is_empty());
         Ok(())
     }
 
@@ -173,7 +177,7 @@ impl TextEditBuilder {
     }
     pub fn finish(self) -> TextEdit {
         let mut indels = self.indels;
-        assert_disjoint(&mut indels);
+        assert_disjoint_or_equal(&mut indels);
         TextEdit { indels }
     }
     pub fn invalidates_offset(&self, offset: TextSize) -> bool {
@@ -182,18 +186,20 @@ impl TextEditBuilder {
     fn indel(&mut self, indel: Indel) {
         self.indels.push(indel);
         if self.indels.len() <= 16 {
-            assert_disjoint(&mut self.indels);
+            assert_disjoint_or_equal(&mut self.indels);
         }
     }
 }
 
-fn assert_disjoint(indels: &mut [impl std::borrow::Borrow<Indel>]) {
-    assert!(check_disjoint(indels));
+fn assert_disjoint_or_equal(indels: &mut [Indel]) {
+    assert!(check_disjoint_and_sort(indels));
 }
-fn check_disjoint(indels: &mut [impl std::borrow::Borrow<Indel>]) -> bool {
+// FIXME: Remove the impl Bound here, it shouldn't be needed
+fn check_disjoint_and_sort(indels: &mut [impl std::borrow::Borrow<Indel>]) -> bool {
     indels.sort_by_key(|indel| (indel.borrow().delete.start(), indel.borrow().delete.end()));
-    indels
-        .iter()
-        .zip(indels.iter().skip(1))
-        .all(|(l, r)| l.borrow().delete.end() <= r.borrow().delete.start())
+    indels.iter().zip(indels.iter().skip(1)).all(|(l, r)| {
+        let l = l.borrow();
+        let r = r.borrow();
+        l.delete.end() <= r.delete.start() || l == r
+    })
 }
