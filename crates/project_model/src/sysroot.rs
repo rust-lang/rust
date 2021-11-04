@@ -43,8 +43,7 @@ impl Sysroot {
         // core is added as a dependency before std in order to
         // mimic rustcs dependency order
         ["core", "alloc", "std"]
-            .iter()
-            .copied()
+            .into_iter()
             .zip(iter::repeat(true))
             .chain(iter::once(("test", false)))
             .filter_map(move |(name, prelude)| Some((name, self.by_name(name)?, prelude)))
@@ -78,7 +77,7 @@ impl Sysroot {
         for path in SYSROOT_CRATES.trim().lines() {
             let name = path.split('/').last().unwrap();
             let root = [format!("{}/src/lib.rs", path), format!("lib{}/lib.rs", path)]
-                .iter()
+                .into_iter()
                 .map(|it| sysroot.root.join(it))
                 .filter_map(|it| ManifestPath::try_from(it).ok())
                 .find(|it| fs::metadata(it).is_ok());
