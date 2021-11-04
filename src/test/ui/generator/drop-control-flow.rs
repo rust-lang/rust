@@ -5,7 +5,6 @@
 // included in the generator type.
 
 #![feature(generators, negative_impls)]
-
 #![allow(unused_assignments, dead_code)]
 
 struct Ptr;
@@ -13,7 +12,7 @@ impl<'a> Drop for Ptr {
     fn drop(&mut self) {}
 }
 
-struct NonSend {}
+struct NonSend;
 impl !Send for NonSend {}
 
 fn assert_send<T: Send>(_: T) {}
@@ -51,6 +50,29 @@ fn if_let(arg: Option<i32>) {
     };
 }
 
+fn init_in_if(arg: bool) {
+    assert_send(|| {
+        let mut x = NonSend;
+        drop(x);
+        if arg {
+            x = NonSend;
+        } else {
+            yield;
+        }
+    })
+}
+
+fn init_in_match_arm(arg: Option<i32>) {
+    assert_send(|| {
+        let mut x = NonSend;
+        drop(x);
+        match arg {
+            Some(_) => x = NonSend,
+            None => yield,
+        }
+    })
+}
+
 fn reinit() {
     let _ = || {
         let mut arr = [Ptr];
@@ -73,9 +95,27 @@ fn loop_uninit() {
     };
 }
 
+fn nested_loop() {
+    let _ = || {
+        let mut arr = [Ptr];
+        let mut count = 0;
+        drop(arr);
+        while count < 3 {
+            for _ in 0..3 {
+                yield;
+            }
+            arr = [Ptr];
+            count += 1;
+        }
+    };
+}
+
 fn main() {
     one_armed_if(true);
     if_let(Some(41));
+    init_in_if(true);
+    init_in_match_arm(Some(41));
     reinit();
     loop_uninit();
+    nested_loop();
 }

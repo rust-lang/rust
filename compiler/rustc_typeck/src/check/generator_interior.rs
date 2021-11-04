@@ -871,7 +871,8 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                         self.visit_expr(if_true);
                         true_ranges = self.swap_drop_ranges(true_ranges);
 
-                        false_ranges = self.swap_drop_ranges(false_ranges);
+                        false_ranges =
+                            self.swap_drop_ranges(trim_drop_ranges(&false_ranges, self.expr_count));
                         self.visit_expr(if_false);
                         false_ranges = self.swap_drop_ranges(false_ranges);
 
@@ -908,6 +909,31 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                 let body_drop_ranges = self.swap_drop_ranges(old_drop_ranges);
                 self.merge_drop_ranges_at(body_drop_ranges, join_point);
             }
+            ExprKind::Match(scrutinee, arms, ..) => {
+                self.visit_expr(scrutinee);
+
+                let forked_ranges = self.fork_drop_ranges();
+                let arm_drops = arms
+                    .iter()
+                    .map(|Arm { hir_id, pat, body, guard, .. }| {
+                        debug!("match arm {:?} starts at {}", hir_id, self.expr_count);
+                        let old_ranges = self
+                            .swap_drop_ranges(trim_drop_ranges(&forked_ranges, self.expr_count));
+                        self.visit_pat(pat);
+                        match guard {
+                            Some(Guard::If(expr)) => self.visit_expr(expr),
+                            Some(Guard::IfLet(pat, expr)) => {
+                                self.visit_pat(pat);
+                                self.visit_expr(expr);
+                            }
+                            None => (),
+                        }
+                        self.visit_expr(body);
+                        self.swap_drop_ranges(old_ranges)
+                    })
+                    .collect::<Vec<_>>();
+                arm_drops.into_iter().for_each(|drops| self.merge_drop_ranges(drops));
+            }
             _ => intravisit::walk_expr(self, expr),
         }
 
@@ -924,6 +950,10 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
         // Increment expr_count here to match what InteriorVisitor expects.
         self.expr_count += 1;
     }
+}
+
+fn trim_drop_ranges(drop_ranges: &HirIdMap<DropRange>, trim_from: usize) -> HirIdMap<DropRange> {
+    drop_ranges.iter().map(|(k, v)| (*k, v.trimmed(trim_from))).collect()
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1056,6 +1086,22 @@ impl DropRange {
             } else {
                 Event::Reinit(split_point)
             }],
+        }
+    }
+
+    fn trimmed(&self, trim_from: usize) -> Self {
+        let start = if self.is_dropped_at(trim_from) {
+            Event::Drop(trim_from)
+        } else {
+            Event::Reinit(trim_from)
+        };
+
+        Self {
+            events: [start]
+                .iter()
+                .chain(self.events.iter().skip_while(|event| event.location() <= trim_from))
+                .cloned()
+                .collect(),
         }
     }
 }
