@@ -1,34 +1,184 @@
-error: lint `clippy::cyclomatic_complexity` has been renamed to `clippy::cognitive_complexity`
-  --> $DIR/rename.rs:10:9
+error: lint `clippy::stutter` has been renamed to `clippy::module_name_repetitions`
+  --> $DIR/rename.rs:31:9
    |
-LL | #![warn(clippy::cyclomatic_complexity)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::cognitive_complexity`
+LL | #![warn(clippy::stutter)]
+   |         ^^^^^^^^^^^^^^^ help: use the new name: `clippy::module_name_repetitions`
    |
    = note: `-D renamed-and-removed-lints` implied by `-D warnings`
 
+error: lint `clippy::new_without_default_derive` has been renamed to `clippy::new_without_default`
+  --> $DIR/rename.rs:32:9
+   |
+LL | #![warn(clippy::new_without_default_derive)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::new_without_default`
+
+error: lint `clippy::const_static_lifetime` has been renamed to `clippy::redundant_static_lifetimes`
+  --> $DIR/rename.rs:33:9
+   |
+LL | #![warn(clippy::const_static_lifetime)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::redundant_static_lifetimes`
+
+error: lint `clippy::cyclomatic_complexity` has been renamed to `clippy::cognitive_complexity`
+  --> $DIR/rename.rs:34:9
+   |
+LL | #![warn(clippy::cyclomatic_complexity)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::cognitive_complexity`
+
+error: lint `clippy::option_and_then_some` has been renamed to `clippy::bind_instead_of_map`
+  --> $DIR/rename.rs:35:9
+   |
+LL | #![warn(clippy::option_and_then_some)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::bind_instead_of_map`
+
+error: lint `clippy::box_vec` has been renamed to `clippy::box_collection`
+  --> $DIR/rename.rs:36:9
+   |
+LL | #![warn(clippy::box_vec)]
+   |         ^^^^^^^^^^^^^^^ help: use the new name: `clippy::box_collection`
+
+error: lint `clippy::block_in_if_condition_expr` has been renamed to `clippy::blocks_in_if_conditions`
+  --> $DIR/rename.rs:37:9
+   |
+LL | #![warn(clippy::block_in_if_condition_expr)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::blocks_in_if_conditions`
+
+error: lint `clippy::block_in_if_condition_stmt` has been renamed to `clippy::blocks_in_if_conditions`
+  --> $DIR/rename.rs:38:9
+   |
+LL | #![warn(clippy::block_in_if_condition_stmt)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::blocks_in_if_conditions`
+
+error: lint `clippy::option_map_unwrap_or` has been renamed to `clippy::map_unwrap_or`
+  --> $DIR/rename.rs:39:9
+   |
+LL | #![warn(clippy::option_map_unwrap_or)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::map_unwrap_or`
+
+error: lint `clippy::option_map_unwrap_or_else` has been renamed to `clippy::map_unwrap_or`
+  --> $DIR/rename.rs:40:9
+   |
+LL | #![warn(clippy::option_map_unwrap_or_else)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::map_unwrap_or`
+
+error: lint `clippy::result_map_unwrap_or_else` has been renamed to `clippy::map_unwrap_or`
+  --> $DIR/rename.rs:41:9
+   |
+LL | #![warn(clippy::result_map_unwrap_or_else)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::map_unwrap_or`
+
+error: lint `clippy::option_unwrap_used` has been renamed to `clippy::unwrap_used`
+  --> $DIR/rename.rs:42:9
+   |
+LL | #![warn(clippy::option_unwrap_used)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::unwrap_used`
+
+error: lint `clippy::result_unwrap_used` has been renamed to `clippy::unwrap_used`
+  --> $DIR/rename.rs:43:9
+   |
+LL | #![warn(clippy::result_unwrap_used)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::unwrap_used`
+
+error: lint `clippy::option_expect_used` has been renamed to `clippy::expect_used`
+  --> $DIR/rename.rs:44:9
+   |
+LL | #![warn(clippy::option_expect_used)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::expect_used`
+
+error: lint `clippy::result_expect_used` has been renamed to `clippy::expect_used`
+  --> $DIR/rename.rs:45:9
+   |
+LL | #![warn(clippy::result_expect_used)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::expect_used`
+
+error: lint `clippy::for_loop_over_option` has been renamed to `clippy::for_loops_over_fallibles`
+  --> $DIR/rename.rs:46:9
+   |
+LL | #![warn(clippy::for_loop_over_option)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::for_loops_over_fallibles`
+
+error: lint `clippy::for_loop_over_result` has been renamed to `clippy::for_loops_over_fallibles`
+  --> $DIR/rename.rs:47:9
+   |
+LL | #![warn(clippy::for_loop_over_result)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::for_loops_over_fallibles`
+
+error: lint `clippy::identity_conversion` has been renamed to `clippy::useless_conversion`
+  --> $DIR/rename.rs:48:9
+   |
+LL | #![warn(clippy::identity_conversion)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::useless_conversion`
+
+error: lint `clippy::zero_width_space` has been renamed to `clippy::invisible_characters`
+  --> $DIR/rename.rs:49:9
+   |
+LL | #![warn(clippy::zero_width_space)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::invisible_characters`
+
+error: lint `clippy::single_char_push_str` has been renamed to `clippy::single_char_add_str`
+  --> $DIR/rename.rs:50:9
+   |
+LL | #![warn(clippy::single_char_push_str)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::single_char_add_str`
+
+error: lint `clippy::if_let_some_result` has been renamed to `clippy::match_result_ok`
+  --> $DIR/rename.rs:51:9
+   |
+LL | #![warn(clippy::if_let_some_result)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::match_result_ok`
+
+error: lint `clippy::invalid_ref` has been renamed to `invalid_value`
+  --> $DIR/rename.rs:53:9
+   |
+LL | #![warn(clippy::invalid_ref)]
+   |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_value`
+
+error: lint `clippy::into_iter_on_array` has been renamed to `array_into_iter`
+  --> $DIR/rename.rs:54:9
+   |
+LL | #![warn(clippy::into_iter_on_array)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `array_into_iter`
+
+error: lint `clippy::unused_label` has been renamed to `unused_labels`
+  --> $DIR/rename.rs:55:9
+   |
+LL | #![warn(clippy::unused_label)]
+   |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unused_labels`
+
+error: lint `clippy::drop_bounds` has been renamed to `drop_bounds`
+  --> $DIR/rename.rs:56:9
+   |
+LL | #![warn(clippy::drop_bounds)]
+   |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `drop_bounds`
+
+error: lint `clippy::temporary_cstring_as_ptr` has been renamed to `temporary_cstring_as_ptr`
+  --> $DIR/rename.rs:57:9
+   |
+LL | #![warn(clippy::temporary_cstring_as_ptr)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `temporary_cstring_as_ptr`
+
+error: lint `clippy::panic_params` has been renamed to `non_fmt_panics`
+  --> $DIR/rename.rs:58:9
+   |
+LL | #![warn(clippy::panic_params)]
+   |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `non_fmt_panics`
+
+error: lint `clippy::unknown_clippy_lints` has been renamed to `unknown_lints`
+  --> $DIR/rename.rs:59:9
+   |
+LL | #![warn(clippy::unknown_clippy_lints)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unknown_lints`
+
+error: lint `clippy::invalid_atomic_ordering` has been renamed to `invalid_atomic_ordering`
+  --> $DIR/rename.rs:60:9
+   |
+LL | #![warn(clippy::invalid_atomic_ordering)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_atomic_ordering`
+
 error: lint `clippy::mem_discriminant_non_enum` has been renamed to `enum_intrinsics_non_enums`
-  --> $DIR/rename.rs:11:9
+  --> $DIR/rename.rs:61:9
    |
 LL | #![warn(clippy::mem_discriminant_non_enum)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `enum_intrinsics_non_enums`
 
-error: lint `clippy::stutter` has been renamed to `clippy::module_name_repetitions`
-  --> $DIR/rename.rs:13:8
-   |
-LL | #[warn(clippy::stutter)]
-   |        ^^^^^^^^^^^^^^^ help: use the new name: `clippy::module_name_repetitions`
-
-error: lint `clippy::new_without_default_derive` has been renamed to `clippy::new_without_default`
-  --> $DIR/rename.rs:16:8
-   |
-LL | #[warn(clippy::new_without_default_derive)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::new_without_default`
-
-error: lint `clippy::const_static_lifetime` has been renamed to `clippy::redundant_static_lifetimes`
-  --> $DIR/rename.rs:19:8
-   |
-LL | #[warn(clippy::const_static_lifetime)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::redundant_static_lifetimes`
-
-error: aborting due to 5 previous errors
+error: aborting due to 30 previous errors
 

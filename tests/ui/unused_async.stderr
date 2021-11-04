@@ -1,5 +1,5 @@
 error: unused `async` for function with no await statements
-  --> $DIR/unused_async.rs:4:1
+  --> $DIR/unused_async.rs:3:1
    |
 LL | / async fn foo() -> i32 {
 LL | |     4

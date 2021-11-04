@@ -2,9 +2,9 @@
 //! on the condition
 
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_ast::ast::{BinOpKind, Expr, ExprKind, UnOp};
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_middle::lint::in_external_macro;
+use clippy_utils::is_else_clause;
+use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -46,14 +46,21 @@ declare_clippy_lint! {
 
 declare_lint_pass!(IfNotElse => [IF_NOT_ELSE]);
 
-impl EarlyLintPass for IfNotElse {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {
-        if in_external_macro(cx.sess, item.span) {
+impl LateLintPass<'_> for IfNotElse {
+    fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
+        // While loops will be desugared to ExprKind::If. This will cause the lint to fire.
+        // To fix this, return early if this span comes from a macro or desugaring.
+        if item.span.from_expansion() {
             return;
         }
-        if let ExprKind::If(ref cond, _, Some(ref els)) = item.kind {
+        if let ExprKind::If(cond, _, Some(els)) = item.kind {
             if let ExprKind::Block(..) = els.kind {
-                match cond.kind {
+                // Disable firing the lint in "else if" expressions.
+                if is_else_clause(cx.tcx, item) {
+                    return;
+                }
+
+                match cond.peel_drop_temps().kind {
                     ExprKind::Unary(UnOp::Not, _) => {
                         span_lint_and_help(
                             cx,

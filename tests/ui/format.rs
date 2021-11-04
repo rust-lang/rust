@@ -18,6 +18,8 @@ fn main() {
 " bar"##
     );
 
+    let _ = format!("");
+
     format!("{}", "foo");
     format!("{:?}", "foo"); // Don't warn about `Debug`.
     format!("{:8}", "foo");

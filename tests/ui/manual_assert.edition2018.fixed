@@ -1,5 +1,8 @@
+// revisions: edition2018 edition2021
+// [edition2018] edition:2018
+// [edition2021] edition:2021
 // run-rustfix
-#![warn(clippy::if_then_panic)]
+#![warn(clippy::manual_assert)]
 
 fn main() {
     let a = vec![1, 2, 3];
