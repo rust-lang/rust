@@ -1504,6 +1504,8 @@ macro_rules! uint_impl {
         /// additional bit of overflow. This allows for chaining together multiple additions
         /// to create "big integers" which represent larger values.
         ///
+        #[doc = concat!("This can be thought of as a ", stringify!($BITS), "-bit \"full adder\", in the electronics sense.")]
+        ///
         /// # Examples
         ///
         /// Basic usage
@@ -1513,7 +1515,20 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".carrying_add(2, false), (7, false));")]
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".carrying_add(2, true), (8, false));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, false), (0, true));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(0, true), (0, true));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, true), (1, true));")]
+        #[doc = concat!("assert_eq!(",
+            stringify!($SelfT), "::MAX.carrying_add(", stringify!($SelfT), "::MAX, true), ",
+            "(", stringify!($SelfT), "::MAX, true));"
+        )]
+        /// ```
+        ///
+        /// If `carry` is false, this method is equivalent to [`overflowing_add`](Self::overflowing_add):
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        #[doc = concat!("assert_eq!(5_", stringify!($SelfT), ".carrying_add(2, false), 5_", stringify!($SelfT), ".overflowing_add(2));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, false), ", stringify!($SelfT), "::MAX.overflowing_add(1));")]
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
