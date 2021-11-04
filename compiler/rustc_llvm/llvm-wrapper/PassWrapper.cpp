@@ -893,7 +893,7 @@ LLVMRustOptimizeWithNewPassManager(
           AddressSanitizerOptions opts = AddressSanitizerOptions{
             /*CompileKernel=*/false,
             SanitizerOptions->SanitizeAddressRecover,
-            /*UseAfterScope=*/false,
+            /*UseAfterScope=*/true,
             AsanDetectStackUseAfterReturnMode::Runtime,
           };
           MPM.addPass(ModuleAddressSanitizerPass(opts));
