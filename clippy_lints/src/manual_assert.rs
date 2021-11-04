@@ -26,14 +26,14 @@ declare_clippy_lint! {
     /// let sad_people: Vec<&str> = vec![];
     /// assert!(sad_people.is_empty(), "there are sad people: {:?}", sad_people);
     /// ```
-    pub IF_THEN_PANIC,
-    style,
+    pub MANUAL_ASSERT,
+    pedantic,
     "`panic!` and only a `panic!` in `if`-then statement"
 }
 
-declare_lint_pass!(IfThenPanic => [IF_THEN_PANIC]);
+declare_lint_pass!(ManualAssert => [MANUAL_ASSERT]);
 
-impl LateLintPass<'_> for IfThenPanic {
+impl LateLintPass<'_> for ManualAssert {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if let Expr {
@@ -54,23 +54,24 @@ impl LateLintPass<'_> for IfThenPanic {
             if !cx.tcx.sess.source_map().is_multiline(cond.span);
 
             then {
-                let span = if let Some(panic_expn) = PanicExpn::parse(semi) {
+                let call = if_chain! {
+                    if let ExprKind::Block(block, _) = semi.kind;
+                    if let Some(init) = block.expr;
+                    then {
+                        init
+                    } else {
+                        semi
+                    }
+                };
+                let span = if let Some(panic_expn) = PanicExpn::parse(call) {
                     match *panic_expn.format_args.value_args {
                         [] => panic_expn.format_args.format_string_span,
                         [.., last] => panic_expn.format_args.format_string_span.to(last.span),
                     }
+                } else if let ExprKind::Call(_, [format_args]) = call.kind {
+                    format_args.span
                 } else {
-                    if_chain! {
-                        if let ExprKind::Block(block, _) = semi.kind;
-                        if let Some(init) = block.expr;
-                        if let ExprKind::Call(_, [format_args]) = init.kind;
-
-                        then {
-                            format_args.span
-                        } else {
-                            return
-                        }
-                    }
+                    return
                 };
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = snippet_with_applicability(cx, span, "..", &mut applicability);
@@ -86,7 +87,7 @@ impl LateLintPass<'_> for IfThenPanic {
 
                 span_lint_and_sugg(
                     cx,
-                    IF_THEN_PANIC,
+                    MANUAL_ASSERT,
                     expr.span,
                     "only a `panic!` in `if`-then statement",
                     "try",

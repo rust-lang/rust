@@ -18,11 +18,11 @@ LL | /// This paragraph has `unbalanced_tick marks and should stop_linting.
    |
    = help: a backtick may be missing a pair
 
-error: you should put `should_be` between ticks in the documentation
+error: item in documentation is missing backticks
   --> $DIR/unbalanced_ticks.rs:15:32
    |
 LL | /// This paragraph is fine and should_be linted normally.
-   |                                ^^^^^^^^^
+   |                                ^^^^^^^^^ help: try: ``should_be``
 
 error: backticks are unbalanced
   --> $DIR/unbalanced_ticks.rs:17:1
@@ -32,11 +32,11 @@ LL | /// Double unbalanced backtick from ``here to here` should lint.
    |
    = help: a backtick may be missing a pair
 
-error: you should put `not_fine` between ticks in the documentation
+error: item in documentation is missing backticks
   --> $DIR/unbalanced_ticks.rs:30:8
    |
 LL | /// ## not_fine
-   |        ^^^^^^^^
+   |        ^^^^^^^^ help: try: ``not_fine``
 
 error: backticks are unbalanced
   --> $DIR/unbalanced_ticks.rs:32:1
@@ -54,11 +54,11 @@ LL | /// - This `item has unbalanced tick marks
    |
    = help: a backtick may be missing a pair
 
-error: you should put `backticks_here` between ticks in the documentation
+error: item in documentation is missing backticks
   --> $DIR/unbalanced_ticks.rs:35:23
    |
 LL | /// - This item needs backticks_here
-   |                       ^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^^^^^ help: try: ``backticks_here``
 
 error: aborting due to 8 previous errors
 

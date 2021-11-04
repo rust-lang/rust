@@ -1,4 +1,3 @@
-// compile-flags: --edition 2018
 // aux-build:macro_rules.rs
 // aux-build:macro_use_helper.rs
 // aux-build:proc_macro_derive.rs

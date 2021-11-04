@@ -49,15 +49,19 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
 
         let mut applicability = Applicability::MachineApplicable;
         if format_args.value_args.is_empty() {
-            if_chain! {
-                if let [e] = &*format_args.format_string_parts;
-                if let ExprKind::Lit(lit) = &e.kind;
-                if let Some(s_src) = snippet_opt(cx, lit.span);
-                then {
-                    // Simulate macro expansion, converting {{ and }} to { and }.
-                    let s_expand = s_src.replace("{{", "{").replace("}}", "}");
-                    let sugg = format!("{}.to_string()", s_expand);
-                    span_useless_format(cx, call_site, sugg, applicability);
+            if format_args.format_string_parts.is_empty() {
+                span_useless_format_empty(cx, call_site, "String::new()".to_owned(), applicability);
+            } else {
+                if_chain! {
+                    if let [e] = &*format_args.format_string_parts;
+                    if let ExprKind::Lit(lit) = &e.kind;
+                    if let Some(s_src) = snippet_opt(cx, lit.span);
+                    then {
+                        // Simulate macro expansion, converting {{ and }} to { and }.
+                        let s_expand = s_src.replace("{{", "{").replace("}}", "}");
+                        let sugg = format!("{}.to_string()", s_expand);
+                        span_useless_format(cx, call_site, sugg, applicability);
+                    }
                 }
             }
         } else if let [value] = *format_args.value_args {
@@ -87,6 +91,18 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
             }
         };
     }
+}
+
+fn span_useless_format_empty(cx: &LateContext<'_>, span: Span, sugg: String, applicability: Applicability) {
+    span_lint_and_sugg(
+        cx,
+        USELESS_FORMAT,
+        span,
+        "useless use of `format!`",
+        "consider using `String::new()`",
+        sugg,
+        applicability,
+    );
 }
 
 fn span_useless_format(cx: &LateContext<'_>, span: Span, sugg: String, applicability: Applicability) {

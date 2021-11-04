@@ -138,5 +138,17 @@ error: casting `isize` to `usize` may lose the sign of the value
 LL |     -1isize as usize;
    |     ^^^^^^^^^^^^^^^^
 
-error: aborting due to 22 previous errors
+error: casting `i64` to `i8` may truncate the value
+  --> $DIR/cast.rs:105:5
+   |
+LL |     (-99999999999i64).min(1) as i8; // should be linted because signed
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `u64` to `u8` may truncate the value
+  --> $DIR/cast.rs:117:5
+   |
+LL |     999999u64.clamp(0, 256) as u8; // should still be linted
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 24 previous errors
 

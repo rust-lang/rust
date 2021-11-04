@@ -1,6 +1,6 @@
 use clippy_utils::attrs::is_doc_hidden;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_note};
-use clippy_utils::source::first_line_of_span;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg};
+use clippy_utils::source::{first_line_of_span, snippet_with_applicability};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_entrypoint_fn, is_expn_of, match_panic_def_id, method_chain_args, return_ty};
 use if_chain::if_chain;
@@ -10,7 +10,7 @@ use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::Handler;
+use rustc_errors::{Applicability, Handler};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{AnonConst, Expr, ExprKind, QPath};
@@ -48,7 +48,7 @@ declare_clippy_lint! {
     /// content are not linted.
     ///
     /// In addition, when writing documentation comments, including `[]` brackets
-    /// inside a link text would trip the parser. Therfore, documenting link with
+    /// inside a link text would trip the parser. Therefore, documenting link with
     /// `[`SmallVec<[T; INLINE_CAPACITY]>`]` and then [`SmallVec<[T; INLINE_CAPACITY]>`]: SmallVec
     /// would fail.
     ///
@@ -578,9 +578,12 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     // text "http://example.com" by pulldown-cmark
                     continue;
                 }
-                headers.safety |= in_heading && text.trim() == "Safety";
-                headers.errors |= in_heading && text.trim() == "Errors";
-                headers.panics |= in_heading && text.trim() == "Panics";
+                let trimmed_text = text.trim();
+                headers.safety |= in_heading && trimmed_text == "Safety";
+                headers.safety |= in_heading && trimmed_text == "Implementation safety";
+                headers.safety |= in_heading && trimmed_text == "Implementation Safety";
+                headers.errors |= in_heading && trimmed_text == "Errors";
+                headers.panics |= in_heading && trimmed_text == "Panics";
                 if in_code {
                     if is_rust {
                         let edition = edition.unwrap_or_else(|| cx.tcx.sess.edition());
@@ -686,10 +689,18 @@ fn check_text(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, text: &str
     for word in text.split(|c: char| c.is_whitespace() || c == '\'') {
         // Trim punctuation as in `some comment (see foo::bar).`
         //                                                   ^^
-        // Or even as in `_foo bar_` which is emphasized.
-        let word = word.trim_matches(|c: char| !c.is_alphanumeric());
+        // Or even as in `_foo bar_` which is emphasized. Also preserve `::` as a prefix/suffix.
+        let mut word = word.trim_matches(|c: char| !c.is_alphanumeric() && c != ':');
 
-        if valid_idents.contains(word) {
+        // Remove leading or trailing single `:` which may be part of a sentence.
+        if word.starts_with(':') && !word.starts_with("::") {
+            word = word.trim_start_matches(':');
+        }
+        if word.ends_with(':') && !word.ends_with("::") {
+            word = word.trim_end_matches(':');
+        }
+
+        if valid_idents.contains(word) || word.chars().all(|c| c == ':') {
             continue;
         }
 
@@ -744,17 +755,22 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
         }
     }
 
-    // We assume that mixed-case words are not meant to be put inside bacticks. (Issue #2343)
+    // We assume that mixed-case words are not meant to be put inside backticks. (Issue #2343)
     if has_underscore(word) && has_hyphen(word) {
         return;
     }
 
     if has_underscore(word) || word.contains("::") || is_camel_case(word) {
-        span_lint(
+        let mut applicability = Applicability::MachineApplicable;
+
+        span_lint_and_sugg(
             cx,
             DOC_MARKDOWN,
             span,
-            &format!("you should put `{}` between ticks in the documentation", word),
+            "item in documentation is missing backticks",
+            "try",
+            format!("`{}`", snippet_with_applicability(cx, span, "..", &mut applicability)),
+            applicability,
         );
     }
 }
@@ -793,9 +809,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
 
         // check for `unwrap`
         if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-            let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
-            if is_type_diagnostic_item(self.cx, reciever_ty, sym::Option)
-                || is_type_diagnostic_item(self.cx, reciever_ty, sym::Result)
+            let receiver_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
+            if is_type_diagnostic_item(self.cx, receiver_ty, sym::Option)
+                || is_type_diagnostic_item(self.cx, receiver_ty, sym::Result)
             {
                 self.panic_span = Some(expr.span);
             }

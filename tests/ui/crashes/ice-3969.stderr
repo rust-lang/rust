@@ -1,30 +1,34 @@
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/ice-3969.rs:25:17
+error: trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
+  --> $DIR/ice-3969.rs:20:10
    |
-LL |     for<'a> Dst<A + 'a>: Sized,
-   |                 ^^^^^^ help: use `dyn`: `dyn A + 'a`
+LL |     str: Sized;
+   |          ^^^^^
    |
-   = note: `-D bare-trait-objects` implied by `-D warnings`
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `-D trivial-bounds` implied by `-D warnings`
 
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/ice-3969.rs:27:16
+error: trait bound for<'a> Dst<(dyn A + 'a)>: std::marker::Sized does not depend on any type or lifetime parameters
+  --> $DIR/ice-3969.rs:24:30
    |
-LL |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
-   |                ^ help: use `dyn`: `dyn A`
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+LL |     for<'a> Dst<dyn A + 'a>: Sized,
+   |                              ^^^^^
 
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/ice-3969.rs:27:57
+error: trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
+  --> $DIR/ice-3969.rs:31:10
    |
-LL |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
-   |                                                         ^ help: use `dyn`: `dyn A`
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+LL |     str: Sized,
+   |          ^^^^^
 
-error: aborting due to 3 previous errors
+error: trait bound std::string::String: std::ops::Neg does not depend on any type or lifetime parameters
+  --> $DIR/ice-3969.rs:38:13
+   |
+LL |     String: ::std::ops::Neg<Output = String>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait bound i32: std::iter::Iterator does not depend on any type or lifetime parameters
+  --> $DIR/ice-3969.rs:45:10
+   |
+LL |     i32: Iterator,
+   |          ^^^^^^^^
+
+error: aborting due to 5 previous errors
 

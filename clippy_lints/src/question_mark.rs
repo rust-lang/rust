@@ -172,23 +172,17 @@ impl QuestionMark {
         }
     }
 
-    fn expression_returns_unmodified_err(
-        cx: &LateContext<'_>,
-        expression: &Expr<'_>,
-        origin_hir_id: &Expr<'_>,
-    ) -> bool {
-        match expression.kind {
+    fn expression_returns_unmodified_err(cx: &LateContext<'_>, expr: &Expr<'_>, cond_expr: &Expr<'_>) -> bool {
+        match expr.kind {
             ExprKind::Block(block, _) => {
                 if let Some(return_expression) = Self::return_expression(block) {
-                    return Self::expression_returns_unmodified_err(cx, return_expression, origin_hir_id);
+                    return Self::expression_returns_unmodified_err(cx, return_expression, cond_expr);
                 }
 
                 false
             },
-            ExprKind::Ret(Some(expr)) | ExprKind::Call(expr, _) => {
-                Self::expression_returns_unmodified_err(cx, expr, origin_hir_id)
-            },
-            ExprKind::Path(_) => path_to_local(expression) == path_to_local(origin_hir_id),
+            ExprKind::Ret(Some(ret_expr)) => Self::expression_returns_unmodified_err(cx, ret_expr, cond_expr),
+            ExprKind::Path(_) => path_to_local(expr) == path_to_local(cond_expr),
             _ => false,
         }
     }

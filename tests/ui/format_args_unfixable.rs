@@ -51,6 +51,7 @@ fn main() {
     assert_ne!(0, 0, "error: {}", format!("something failed at {}", Location::caller()));
     panic!("error: {}", format!("something failed at {}", Location::caller()));
 
+    // negative tests
     println!("error: {}", format_args!("something failed at {}", Location::caller()));
     println!("error: {:>70}", format!("something failed at {}", Location::caller()));
     println!("error: {} {0}", format!("something failed at {}", Location::caller()));

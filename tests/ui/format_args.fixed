@@ -5,6 +5,7 @@
 #![allow(unused_variables)]
 #![allow(clippy::assertions_on_constants)]
 #![allow(clippy::eq_op)]
+#![allow(clippy::print_literal)]
 #![warn(clippy::to_string_in_format_args)]
 
 use std::io::{stdout, Write};
@@ -97,9 +98,20 @@ fn main() {
     println!("{}", Z(1));
     println!("{}", **x);
     println!("{}", ***x_ref);
+    // https://github.com/rust-lang/rust-clippy/issues/7903
+    println!("{foo}{bar}", foo = "foo", bar = "bar");
+    println!("{foo}{bar}", foo = "foo", bar = "bar");
+    println!("{foo}{bar}", bar = "bar", foo = "foo");
+    println!("{foo}{bar}", bar = "bar", foo = "foo");
 
+    // negative tests
     println!("error: something failed at {}", Somewhere.to_string());
+    // The next two tests are negative because caching the string might be faster than calling `<X as
+    // Display>::fmt` twice.
     println!("{} and again {0}", x.to_string());
+    println!("{foo}{foo}", foo = "foo".to_string());
     my_macro!();
     println!("error: something failed at {}", my_other_macro!());
+    // https://github.com/rust-lang/rust-clippy/issues/7903
+    println!("{foo}{foo:?}", foo = "foo".to_string());
 }
