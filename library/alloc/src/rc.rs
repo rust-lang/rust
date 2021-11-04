@@ -318,6 +318,8 @@ impl<T: ?Sized> !marker::Sync for Rc<T> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Rc<T> {}
+#[stable(feature = "rc_ref_unwind_safe", since = "1.58.0")]
+impl<T: RefUnwindSafe + ?Sized> RefUnwindSafe for Rc<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
