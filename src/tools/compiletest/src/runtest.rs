@@ -1607,9 +1607,6 @@ impl<'test> TestCx<'test> {
                 get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), is_dylib);
             rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
         }
-        if !self.props.aux_crates.is_empty() {
-            rustc.arg("-Zunstable-options");
-        }
 
         aux_dir
     }
