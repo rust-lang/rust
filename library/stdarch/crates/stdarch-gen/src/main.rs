@@ -464,6 +464,7 @@ enum TargetFeature {
     FCMA,
     Dotprod,
     I8MM,
+    RDM,
 }
 
 #[derive(Clone, Copy)]
@@ -1067,6 +1068,7 @@ fn gen_aarch64(
         FCMA => "neon,fcma",
         Dotprod => "neon,dotprod",
         I8MM => "neon,i8mm",
+        RDM => "rdm",
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
@@ -1775,6 +1777,7 @@ fn gen_arm(
         FCMA => "neon,fcma",
         Dotprod => "neon,dotprod",
         I8MM => "neon,i8mm",
+        RDM => "rdm",
     };
     let current_target_arm = match target {
         Default => "v7",
@@ -1785,6 +1788,7 @@ fn gen_arm(
         FCMA => "v8",    // v8.3a
         Dotprod => "v8", // v8.2a
         I8MM => "v8",    // v8.6a
+        RDM => unreachable!(),
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() || link_arm.is_some() {
@@ -3169,6 +3173,7 @@ mod test {
                     "fcma" => FCMA,
                     "dotprod" => Dotprod,
                     "i8mm" => I8MM,
+                    "rdm" => RDM,
                     _ => Default,
                 },
                 _ => Default,

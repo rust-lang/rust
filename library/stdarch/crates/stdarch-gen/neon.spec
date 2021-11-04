@@ -5539,19 +5539,23 @@ b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
 c = 2, 2, 2, 2, 2, 2, 2, 2
 validate 3, 3, 3, 3, 3, 3, 3, 3
 
-aarch64 = sqrdmulh
-arm = vqrdmulh
+aarch64 = sqrdmlah
+target = rdm
 generate int16x4_t, int16x8_t, int32x2_t, int32x4_t
 
 /// Signed saturating rounding doubling multiply accumulate returning high half
 name = vqrdmlah
-multi_fn = vqadd-self-noext, a, {vqrdmulh-self-noext, b, c}
+multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
+multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
+multi_fn = vdup_n-in_ntt-noext, c:in_ntt, c
+multi_fn = simd_extract, {vqrdmlah-in_ntt-noext, a, b, c}, 0
 a = 1
 b = 1
 c = 2
 validate 1
 
-aarch64 = sqrdmulh
+aarch64 = sqrdmlah
+target = rdm
 generate i16, i32
 
 /// Signed saturating rounding doubling multiply accumulate returning high half
@@ -5566,8 +5570,8 @@ c = 0, 2, 0, 0, 0, 0, 0, 0
 n = 1
 validate 3, 3, 3, 3, 3, 3, 3, 3
 
-aarch64 = sqrdmulh
-arm = vqrdmulh
+aarch64 = sqrdmlah
+target = rdm
 generate int16x4_t, int16x4_t:int16x4_t:int16x8_t:int16x4_t, int16x8_t:int16x8_t:int16x4_t:int16x8_t, int16x8_t
 generate int32x2_t, int32x2_t:int32x2_t:int32x4_t:int32x2_t, int32x4_t:int32x4_t:int32x2_t:int32x4_t, int32x4_t
 
@@ -5576,14 +5580,15 @@ name = vqrdmlah
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vqadd-self-noext, a, {vqrdmulh-in2lane-::<LANE>, b, c}
+multi_fn = vqrdmlah-self-noext, a, b, {simd_extract, c, LANE as u32}
 a = 1
 b = 1
 c = 0, 2, 0, 0, 0, 0, 0, 0
 n = 1
 validate 1
 
-aarch64 = sqrdmulh
+aarch64 = sqrdmlah
+target = rdm
 generate i16:i16:int16x4_t:i16, i16:i16:int16x8_t:i16, i32:i32:int32x2_t:i32, i32:i32:int32x4_t:i32
 
 /// Signed saturating rounding doubling multiply subtract returning high half
