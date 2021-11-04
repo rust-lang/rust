@@ -105,6 +105,7 @@ impl LateLintPass<'_> for MyStructLint {
         }
 
         // 3. Using the type path
+        // This method should be avoided if possible
         if match_def_path(cx, def_id, &paths::RESULT) {
             // The type is a `core::result::Result`
         }
@@ -142,6 +143,7 @@ impl LateLintPass<'_> for MyStructLint {
 
         // 3. Using the type path with the expression
         // we use `match_trait_method` function from Clippy's utils
+        // (This method should be avoided if possible)
         if match_trait_method(cx, expr, &paths::INTO) {
             // `expr` implements `Into` trait
         }
