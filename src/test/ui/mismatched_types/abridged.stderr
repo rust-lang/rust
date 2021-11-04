@@ -26,13 +26,14 @@ error[E0308]: mismatched types
 LL | fn b() -> Option<Foo> {
    |           ----------- expected `Option<Foo>` because of return type
 LL |     Foo { bar: 1 }
-   |     ^^^^^^^^^^^^^^
-   |     |
-   |     expected enum `Option`, found struct `Foo`
-   |     help: try using a variant of the expected enum: `Some(Foo { bar: 1 })`
+   |     ^^^^^^^^^^^^^^ expected enum `Option`, found struct `Foo`
    |
    = note: expected enum `Option<Foo>`
             found struct `Foo`
+help: try wrapping the expression in `Some`
+   |
+LL |     Some(Foo { bar: 1 })
+   |     +++++              +
 
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:28:5
@@ -40,13 +41,14 @@ error[E0308]: mismatched types
 LL | fn c() -> Result<Foo, Bar> {
    |           ---------------- expected `Result<Foo, Bar>` because of return type
 LL |     Foo { bar: 1 }
-   |     ^^^^^^^^^^^^^^
-   |     |
-   |     expected enum `Result`, found struct `Foo`
-   |     help: try using a variant of the expected enum: `Ok(Foo { bar: 1 })`
+   |     ^^^^^^^^^^^^^^ expected enum `Result`, found struct `Foo`
    |
    = note: expected enum `Result<Foo, Bar>`
             found struct `Foo`
+help: try wrapping the expression in `Ok`
+   |
+LL |     Ok(Foo { bar: 1 })
+   |     +++              +
 
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:39:5
