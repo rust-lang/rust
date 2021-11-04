@@ -321,7 +321,9 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             (Some(Cow::Borrowed(ast::ModKind::Loaded(items, _, _))), _) => {
                 self.visit_mod_from_ast(items)
             }
-            (Some(Cow::Owned(..)), Cow::Owned(items)) => self.visit_mod_outside_ast(items),
+            (Some(Cow::Owned(ast::ModKind::Loaded(items, _, _))), _) | (_, Cow::Owned(items)) => {
+                self.visit_mod_outside_ast(items)
+            }
             (_, _) => Ok(()),
         }
     }
