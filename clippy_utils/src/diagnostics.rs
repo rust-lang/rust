@@ -72,7 +72,7 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 /// 6  |     let other_f64_nan = 0.0f64 / 0.0;
 ///    |                         ^^^^^^^^^^^^
 ///    |
-///    = help: Consider using `f64::NAN` if you would like a constant representing NaN
+///    = help: consider using `f64::NAN` if you would like a constant representing NaN
 /// ```
 pub fn span_lint_and_help<'a, T: LintContext>(
     cx: &'a T,
