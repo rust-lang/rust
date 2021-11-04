@@ -199,6 +199,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             }
 
+            // If the expression is of type () and it's the return expression of a block,
+            // we suggest adding a separate return expression instead.
+            // (To avoid things like suggesting `Ok(while .. { .. })`.)
+            if expr_ty.is_unit() {
+                if let Some(hir::Node::Block(&hir::Block {
+                    span: block_span, expr: Some(e), ..
+                })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
+                {
+                    if e.hir_id == expr.hir_id {
+                        if let Some(span) = expr.span.find_ancestor_inside(block_span) {
+                            let return_suggestions =
+                                if self.tcx.is_diagnostic_item(sym::Result, expected_adt.did) {
+                                    vec!["Ok(())".to_string()]
+                                } else if self.tcx.is_diagnostic_item(sym::Option, expected_adt.did)
+                                {
+                                    vec!["None".to_string(), "Some(())".to_string()]
+                                } else {
+                                    return;
+                                };
+                            if let Some(indent) =
+                                self.tcx.sess.source_map().indentation_before(span.shrink_to_lo())
+                            {
+                                // Add a semicolon, except after `}`.
+                                let semicolon =
+                                    match self.tcx.sess.source_map().span_to_snippet(span) {
+                                        Ok(s) if s.ends_with('}') => "",
+                                        _ => ";",
+                                    };
+                                err.multipart_suggestions(
+                                    "try adding an expression at the end of the block",
+                                    return_suggestions.into_iter().map(|r| {
+                                        vec![(
+                                            span.shrink_to_hi(),
+                                            format!("{}\n{}{}", semicolon, indent, r),
+                                        )]
+                                    }),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+
             let mut compatible_variants = expected_adt
                 .variants
                 .iter()
