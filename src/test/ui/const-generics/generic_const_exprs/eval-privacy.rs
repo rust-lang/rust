@@ -9,12 +9,7 @@ pub trait Trait {
     fn assoc_fn() -> Self::AssocTy;
 }
 
-impl<const U: u8> Trait for Const<U>
-//~^ WARN private type
-//~| WARN this was previously
-//~| WARN private type
-//~| WARN this was previously
-
+impl<const U: u8> Trait for Const<U> // OK, trait impl predicates
 where
     Const<{ my_const_fn(U) }>: ,
 {
