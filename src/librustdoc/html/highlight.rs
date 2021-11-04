@@ -270,12 +270,18 @@ struct Decorations {
 
 impl Decorations {
     fn new(info: DecorationInfo) -> Self {
-        let (starts, ends) = info
+        // Extract tuples (start, end, kind) into separate sequences of (start, kind) and (end).
+        let (mut starts, mut ends): (Vec<_>, Vec<_>) = info
             .0
             .into_iter()
             .map(|(kind, ranges)| ranges.into_iter().map(move |(lo, hi)| ((lo, kind), hi)))
             .flatten()
             .unzip();
+
+        // Sort the sequences in document order.
+        starts.sort_by_key(|(lo, _)| *lo);
+        ends.sort();
+
         Decorations { starts, ends }
     }
 }
