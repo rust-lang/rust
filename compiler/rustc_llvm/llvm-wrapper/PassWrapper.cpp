@@ -889,15 +889,18 @@ LLVMRustOptimizeWithNewPassManager(
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
-          MPM.addPass(ModuleAddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
 #if LLVM_VERSION_GE(14, 0)
-          AddressSanitizerOptions opts(/*CompileKernel=*/false,
-                                       SanitizerOptions->SanitizeAddressRecover,
-                                       /*UseAfterScope=*/true,
-                                       AsanDetectStackUseAfterReturnMode::Runtime);
+          AddressSanitizerOptions opts = AddressSanitizerOptions{
+            /*CompileKernel=*/false,
+            SanitizerOptions->SanitizeAddressRecover,
+            /*UseAfterScope=*/false,
+            AsanDetectStackUseAfterReturnMode::Runtime,
+          };
+          MPM.addPass(ModuleAddressSanitizerPass(opts));
           MPM.addPass(createModuleToFunctionPassAdaptor(AddressSanitizerPass(opts)));
 #else
+          MPM.addPass(ModuleAddressSanitizerPass(
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
           MPM.addPass(createModuleToFunctionPassAdaptor(AddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover,
               /*UseAfterScope=*/true)));
