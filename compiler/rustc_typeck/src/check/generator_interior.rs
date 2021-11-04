@@ -726,13 +726,17 @@ impl DropRangeVisitor<'tcx> {
         })
     }
 
-    fn merge_drop_ranges(&mut self, drops: HirIdMap<DropRange>) {
+    fn merge_drop_ranges_at(&mut self, drops: HirIdMap<DropRange>, join_point: usize) {
         drops.into_iter().for_each(|(k, v)| {
             if !self.drop_ranges.contains_key(&k) {
                 self.drop_ranges.insert(k, DropRange { events: vec![] });
             }
-            self.drop_ranges.get_mut(&k).unwrap().merge_with(&v, self.expr_count);
+            self.drop_ranges.get_mut(&k).unwrap().merge_with(&v, join_point);
         });
+    }
+
+    fn merge_drop_ranges(&mut self, drops: HirIdMap<DropRange>) {
+        self.merge_drop_ranges_at(drops, self.expr_count);
     }
 
     /// ExprUseVisitor's consume callback doesn't go deep enough for our purposes in all
@@ -893,6 +897,17 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
 
                 reinit = Some(lhs);
             }
+            ExprKind::Loop(body, ..) => {
+                let body_drop_ranges = self.fork_drop_ranges();
+                let old_drop_ranges = self.swap_drop_ranges(body_drop_ranges);
+
+                let join_point = self.expr_count;
+
+                self.visit_block(body);
+
+                let body_drop_ranges = self.swap_drop_ranges(old_drop_ranges);
+                self.merge_drop_ranges_at(body_drop_ranges, join_point);
+            }
             _ => intravisit::walk_expr(self, expr),
         }
 
@@ -1007,11 +1022,20 @@ impl DropRange {
     ///
     /// After merging, the value will be dead at the end of the range only if it was dead
     /// at the end of both self and other.
-    ///
-    /// Assumes that all locations in each range are less than joinpoint
     fn merge_with(&mut self, other: &DropRange, join_point: usize) {
-        let mut events: Vec<_> =
-            self.events.iter().merge(other.events.iter()).dedup().cloned().collect();
+        let join_event = if self.is_dropped_at(join_point) && other.is_dropped_at(join_point) {
+            Event::Drop(join_point)
+        } else {
+            Event::Reinit(join_point)
+        };
+        let mut events: Vec<_> = self
+            .events
+            .iter()
+            .merge([join_event].iter())
+            .merge(other.events.iter())
+            .dedup()
+            .cloned()
+            .collect();
 
         events.push(if self.is_dropped_at(join_point) && other.is_dropped_at(join_point) {
             Event::Drop(join_point)

@@ -77,5 +77,5 @@ fn main() {
     one_armed_if(true);
     if_let(Some(41));
     reinit();
-    // loop_uninit();
+    loop_uninit();
 }
