@@ -21,17 +21,8 @@ pub fn contains_text_flow_control_chars(s: &str) -> bool {
             Some(idx) => {
                 // bytes are valid UTF-8 -> E2 must be followed by two bytes
                 let ch = &bytes[idx..idx + 3];
-                match ch[1] {
-                    0x80 => {
-                        if (0xAA..=0xAE).contains(&ch[2]) {
-                            break true;
-                        }
-                    }
-                    0x81 => {
-                        if (0xA6..=0xA9).contains(&ch[2]) {
-                            break true;
-                        }
-                    }
+                match ch {
+                    [_, 0x80, 0xAA..=0xAE] | [_, 0x81, 0xA6..=0xA9] => break true,
                     _ => {}
                 }
                 bytes = &bytes[idx + 3..];
