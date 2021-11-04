@@ -566,6 +566,7 @@ function hideThemeButtonState() {
     // delayed sidebar rendering.
     window.initSidebarItems = function(items) {
         var sidebar = document.getElementsByClassName("sidebar-elems")[0];
+        var others;
         var current = window.sidebarCurrent;
 
         function addSidebarCrates(crates) {
@@ -594,7 +595,7 @@ function hideThemeButtonState() {
                 li.appendChild(link);
                 ul.appendChild(li);
             }
-            sidebar.appendChild(div);
+            others.appendChild(div);
         }
 
         function block(shortty, longty) {
@@ -635,10 +636,14 @@ function hideThemeButtonState() {
                 ul.appendChild(li);
             }
             div.appendChild(ul);
-            sidebar.appendChild(div);
+            others.appendChild(div);
         }
 
         if (sidebar) {
+            others = document.createElement("div");
+            others.className = "others";
+            sidebar.appendChild(others);
+
             var isModule = hasClass(document.body, "mod");
             if (!isModule) {
                 block("primitive", "Primitive Types");
