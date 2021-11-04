@@ -127,10 +127,10 @@ fn get_case_method(segment_ident_str: &str) -> Option<CaseMethod> {
 
 fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(Span, SymbolStr)> {
     let case_check = match case_method {
-        CaseMethod::LowerCase => |input: &str| -> bool { input.chars().all(char::is_lowercase) },
-        CaseMethod::AsciiLowerCase => |input: &str| -> bool { input.chars().all(|c| matches!(c, 'a'..='z')) },
-        CaseMethod::UpperCase => |input: &str| -> bool { input.chars().all(char::is_uppercase) },
-        CaseMethod::AsciiUppercase => |input: &str| -> bool { input.chars().all(|c| matches!(c, 'A'..='Z')) },
+        CaseMethod::LowerCase => |input: &str| -> bool { input.chars().all(|c| c.to_lowercase().next() == Some(c)) },
+        CaseMethod::AsciiLowerCase => |input: &str| -> bool { !input.chars().any(|c| c.is_ascii_uppercase()) },
+        CaseMethod::UpperCase => |input: &str| -> bool { input.chars().all(|c| c.to_uppercase().next() == Some(c)) },
+        CaseMethod::AsciiUppercase => |input: &str| -> bool { !input.chars().any(|c| c.is_ascii_lowercase()) },
     };
 
     for arm in arms {
@@ -153,7 +153,7 @@ fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(
 
 fn lint(cx: &LateContext<'_>, case_method: &CaseMethod, bad_case_span: Span, bad_case_str: &str) {
     let (method_str, suggestion) = match case_method {
-        CaseMethod::LowerCase => ("to_lower_case", bad_case_str.to_lowercase()),
+        CaseMethod::LowerCase => ("to_lowercase", bad_case_str.to_lowercase()),
         CaseMethod::AsciiLowerCase => ("to_ascii_lowercase", bad_case_str.to_ascii_lowercase()),
         CaseMethod::UpperCase => ("to_uppercase", bad_case_str.to_uppercase()),
         CaseMethod::AsciiUppercase => ("to_ascii_uppercase", bad_case_str.to_ascii_uppercase()),

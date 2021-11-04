@@ -710,9 +710,9 @@ dependencies = [
 
 [[package]]
 name = "compiletest_rs"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64698e5e2435db061a85e6320af12c30c5fd88eb84b35d2c1e03ce4f143255ca"
+checksum = "29843cb8d351febf86557681d049d1e1652b81a086a190fa1173c07fd17fbf83"
 dependencies = [
  "diff",
  "filetime",
@@ -1900,9 +1900,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.103"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd8f7255a17a627354f321ef0055d63b898c6fb27eff628af4d1b66b7331edf6"
+checksum = "a60553f9a9e039a333b4e9b20573b9e9b9c0bb3a11e201ccc48ef4283456d673"
 dependencies = [
  "rustc-std-workspace-core",
 ]

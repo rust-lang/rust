@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, miri_to_const, Constant};
+use clippy_utils::consts::{constant, constant_full_int, miri_to_const, FullInt};
 use clippy_utils::diagnostics::{
     multispan_sugg, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
 };
@@ -930,9 +930,8 @@ fn check_match_bool(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
 fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
     if arms.len() >= 2 && cx.typeck_results().expr_ty(ex).is_integral() {
         let ranges = all_ranges(cx, arms, cx.typeck_results().expr_ty(ex));
-        let type_ranges = type_ranges(&ranges);
-        if !type_ranges.is_empty() {
-            if let Some((start, end)) = overlapping(&type_ranges) {
+        if !ranges.is_empty() {
+            if let Some((start, end)) = overlapping(&ranges) {
                 span_lint_and_note(
                     cx,
                     MATCH_OVERLAPPING_ARM,
@@ -968,8 +967,7 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
                     }
                     if_chain! {
                         if matching_wild;
-                        if let ExprKind::Block(block, _) = arm.body.kind;
-                        if is_panic_block(block);
+                        if is_panic_call(arm.body);
                         then {
                             // `Err(_)` or `Err(_e)` arm with `panic!` found
                             span_lint_and_note(cx,
@@ -1172,14 +1170,19 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
 }
 
 // If the block contains only a `panic!` macro (as expression or statement)
-fn is_panic_block(block: &Block<'_>) -> bool {
-    match (&block.expr, block.stmts.len(), block.stmts.first()) {
-        (&Some(exp), 0, _) => is_expn_of(exp.span, "panic").is_some() && is_expn_of(exp.span, "unreachable").is_none(),
-        (&None, 1, Some(stmt)) => {
-            is_expn_of(stmt.span, "panic").is_some() && is_expn_of(stmt.span, "unreachable").is_none()
-        },
-        _ => false,
-    }
+fn is_panic_call(expr: &Expr<'_>) -> bool {
+    // Unwrap any wrapping blocks
+    let span = if let ExprKind::Block(block, _) = expr.kind {
+        match (&block.expr, block.stmts.len(), block.stmts.first()) {
+            (&Some(exp), 0, _) => exp.span,
+            (&None, 1, Some(stmt)) => stmt.span,
+            _ => return false,
+        }
+    } else {
+        expr.span
+    };
+
+    is_expn_of(span, "panic").is_some() && is_expn_of(span, "unreachable").is_none()
 }
 
 fn check_match_ref_pats<'a, 'b, I>(cx: &LateContext<'_>, ex: &Expr<'_>, pats: I, expr: &Expr<'_>)
@@ -1601,7 +1604,7 @@ fn opt_parent_let<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<&'a Local<'
 }
 
 /// Gets all arms that are unbounded `PatRange`s.
-fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>) -> Vec<SpannedRange<Constant>> {
+fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>) -> Vec<SpannedRange<FullInt>> {
     arms.iter()
         .filter_map(|arm| {
             if let Arm { pat, guard: None, .. } = *arm {
@@ -1614,21 +1617,25 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                         Some(rhs) => constant(cx, cx.typeck_results(), rhs)?.0,
                         None => miri_to_const(ty.numeric_max_val(cx.tcx)?)?,
                     };
-                    let rhs = match range_end {
-                        RangeEnd::Included => Bound::Included(rhs),
-                        RangeEnd::Excluded => Bound::Excluded(rhs),
+
+                    let lhs_val = lhs.int_value(cx, ty)?;
+                    let rhs_val = rhs.int_value(cx, ty)?;
+
+                    let rhs_bound = match range_end {
+                        RangeEnd::Included => Bound::Included(rhs_val),
+                        RangeEnd::Excluded => Bound::Excluded(rhs_val),
                     };
                     return Some(SpannedRange {
                         span: pat.span,
-                        node: (lhs, rhs),
+                        node: (lhs_val, rhs_bound),
                     });
                 }
 
                 if let PatKind::Lit(value) = pat.kind {
-                    let value = constant(cx, cx.typeck_results(), value)?.0;
+                    let value = constant_full_int(cx, cx.typeck_results(), value)?;
                     return Some(SpannedRange {
                         span: pat.span,
-                        node: (value.clone(), Bound::Included(value)),
+                        node: (value, Bound::Included(value)),
                     });
                 }
             }
@@ -1641,32 +1648,6 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
 pub struct SpannedRange<T> {
     pub span: Span,
     pub node: (T, Bound<T>),
-}
-
-type TypedRanges = Vec<SpannedRange<u128>>;
-
-/// Gets all `Int` ranges or all `Uint` ranges. Mixed types are an error anyway
-/// and other types than
-/// `Uint` and `Int` probably don't make sense.
-fn type_ranges(ranges: &[SpannedRange<Constant>]) -> TypedRanges {
-    ranges
-        .iter()
-        .filter_map(|range| match range.node {
-            (Constant::Int(start), Bound::Included(Constant::Int(end))) => Some(SpannedRange {
-                span: range.span,
-                node: (start, Bound::Included(end)),
-            }),
-            (Constant::Int(start), Bound::Excluded(Constant::Int(end))) => Some(SpannedRange {
-                span: range.span,
-                node: (start, Bound::Excluded(end)),
-            }),
-            (Constant::Int(start), Bound::Unbounded) => Some(SpannedRange {
-                span: range.span,
-                node: (start, Bound::Unbounded),
-            }),
-            _ => None,
-        })
-        .collect()
 }
 
 // Checks if arm has the form `None => None`

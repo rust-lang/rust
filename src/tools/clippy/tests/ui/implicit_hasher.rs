@@ -1,4 +1,3 @@
-// edition:2018
 // aux-build:implicit_hasher_macros.rs
 #![deny(clippy::implicit_hasher)]
 #![allow(unused)]

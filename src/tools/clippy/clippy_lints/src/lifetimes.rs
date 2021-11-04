@@ -378,11 +378,15 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx Ty<'_>) {
         match ty.kind {
-            TyKind::OpaqueDef(item, _) => {
+            TyKind::OpaqueDef(item, bounds) => {
                 let map = self.cx.tcx.hir();
                 let item = map.item(item);
                 walk_item(self, item);
                 walk_ty(self, ty);
+                self.lts.extend(bounds.iter().filter_map(|bound| match bound {
+                    GenericArg::Lifetime(l) => Some(RefLt::Named(l.name.ident().name)),
+                    _ => None,
+                }));
             },
             TyKind::BareFn(&BareFnTy { decl, .. }) => {
                 let mut sub_visitor = RefVisitor::new(self.cx);

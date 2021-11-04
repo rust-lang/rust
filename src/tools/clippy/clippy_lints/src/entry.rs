@@ -245,11 +245,14 @@ fn try_parse_contains(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(Map
         ExprKind::MethodCall(
             _,
             _,
-            [map, Expr {
-                kind: ExprKind::AddrOf(_, _, key),
-                span: key_span,
-                ..
-            }],
+            [
+                map,
+                Expr {
+                    kind: ExprKind::AddrOf(_, _, key),
+                    span: key_span,
+                    ..
+                },
+            ],
             _,
         ) if key_span.ctxt() == expr.span.ctxt() => {
             let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;

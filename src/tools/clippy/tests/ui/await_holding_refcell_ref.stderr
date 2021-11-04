@@ -1,12 +1,12 @@
 error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await
-  --> $DIR/await_holding_refcell_ref.rs:7:9
+  --> $DIR/await_holding_refcell_ref.rs:6:9
    |
 LL |     let b = x.borrow();
    |         ^
    |
    = note: `-D clippy::await-holding-refcell-ref` implied by `-D warnings`
 note: these are all the await points this ref is held through
-  --> $DIR/await_holding_refcell_ref.rs:7:5
+  --> $DIR/await_holding_refcell_ref.rs:6:5
    |
 LL | /     let b = x.borrow();
 LL | |     baz().await
@@ -14,13 +14,13 @@ LL | | }
    | |_^
 
 error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await
-  --> $DIR/await_holding_refcell_ref.rs:12:9
+  --> $DIR/await_holding_refcell_ref.rs:11:9
    |
 LL |     let b = x.borrow_mut();
    |         ^
    |
 note: these are all the await points this ref is held through
-  --> $DIR/await_holding_refcell_ref.rs:12:5
+  --> $DIR/await_holding_refcell_ref.rs:11:5
    |
 LL | /     let b = x.borrow_mut();
 LL | |     baz().await
@@ -28,13 +28,13 @@ LL | | }
    | |_^
 
 error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await
-  --> $DIR/await_holding_refcell_ref.rs:33:9
+  --> $DIR/await_holding_refcell_ref.rs:32:9
    |
 LL |     let b = x.borrow_mut();
    |         ^
    |
 note: these are all the await points this ref is held through
-  --> $DIR/await_holding_refcell_ref.rs:33:5
+  --> $DIR/await_holding_refcell_ref.rs:32:5
    |
 LL | /     let b = x.borrow_mut();
 LL | |
@@ -46,13 +46,13 @@ LL | | }
    | |_^
 
 error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await
-  --> $DIR/await_holding_refcell_ref.rs:45:9
+  --> $DIR/await_holding_refcell_ref.rs:44:9
    |
 LL |     let b = x.borrow_mut();
    |         ^
    |
 note: these are all the await points this ref is held through
-  --> $DIR/await_holding_refcell_ref.rs:45:5
+  --> $DIR/await_holding_refcell_ref.rs:44:5
    |
 LL | /     let b = x.borrow_mut();
 LL | |
@@ -64,13 +64,13 @@ LL | | }
    | |_^
 
 error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await
-  --> $DIR/await_holding_refcell_ref.rs:60:13
+  --> $DIR/await_holding_refcell_ref.rs:59:13
    |
 LL |         let b = x.borrow_mut();
    |             ^
    |
 note: these are all the await points this ref is held through
-  --> $DIR/await_holding_refcell_ref.rs:60:9
+  --> $DIR/await_holding_refcell_ref.rs:59:9
    |
 LL | /         let b = x.borrow_mut();
 LL | |         baz().await
@@ -78,13 +78,13 @@ LL | |     };
    | |_____^
 
 error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await
-  --> $DIR/await_holding_refcell_ref.rs:72:13
+  --> $DIR/await_holding_refcell_ref.rs:71:13
    |
 LL |         let b = x.borrow_mut();
    |             ^
    |
 note: these are all the await points this ref is held through
-  --> $DIR/await_holding_refcell_ref.rs:72:9
+  --> $DIR/await_holding_refcell_ref.rs:71:9
    |
 LL | /         let b = x.borrow_mut();
 LL | |         baz().await

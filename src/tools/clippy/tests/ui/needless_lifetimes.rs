@@ -27,6 +27,11 @@ fn multiple_in_and_out_2<'a, 'b>(x: &'a u8, _y: &'b u8) -> &'a u8 {
     x
 }
 
+// No error; multiple input refs
+async fn func<'a>(args: &[&'a str]) -> Option<&'a str> {
+    args.get(0).cloned()
+}
+
 // No error; static involved.
 fn in_static_and_out<'a>(x: &'a u8, _y: &'static u8) -> &'a u8 {
     x

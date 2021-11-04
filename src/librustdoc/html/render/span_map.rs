@@ -37,21 +37,21 @@ crate enum LinkFromSrc {
 /// only keep the `lo` and `hi`.
 crate fn collect_spans_and_sources(
     tcx: TyCtxt<'_>,
-    krate: clean::Crate,
+    krate: &clean::Crate,
     src_root: &Path,
     include_sources: bool,
     generate_link_to_definition: bool,
-) -> (clean::Crate, FxHashMap<PathBuf, String>, FxHashMap<Span, LinkFromSrc>) {
+) -> (FxHashMap<PathBuf, String>, FxHashMap<Span, LinkFromSrc>) {
     let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
 
     if include_sources {
         if generate_link_to_definition {
             tcx.hir().walk_toplevel_module(&mut visitor);
         }
-        let (krate, sources) = sources::collect_local_sources(tcx, src_root, krate);
-        (krate, sources, visitor.matches)
+        let sources = sources::collect_local_sources(tcx, src_root, &krate);
+        (sources, visitor.matches)
     } else {
-        (krate, Default::default(), Default::default())
+        (Default::default(), Default::default())
     }
 }
 
