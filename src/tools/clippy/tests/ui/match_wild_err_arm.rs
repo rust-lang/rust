@@ -1,3 +1,6 @@
+// revisions: edition2018 edition2021
+// [edition2018] edition:2018
+// [edition2021] edition:2021
 #![feature(exclusive_range_pattern)]
 #![allow(clippy::match_same_arms)]
 #![warn(clippy::match_wild_err_arm)]

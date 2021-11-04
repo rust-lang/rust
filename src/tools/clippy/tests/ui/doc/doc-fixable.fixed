@@ -1,3 +1,4 @@
+// run-rustfix
 //! This file tests for the `DOC_MARKDOWN` lint.
 
 #![allow(dead_code, incomplete_features)]
@@ -5,12 +6,14 @@
 #![feature(custom_inner_attributes, generic_const_exprs, const_option)]
 #![rustfmt::skip]
 
-/// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
-/// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not Foo::some_fun
+/// The `foo_bar` function does _nothing_. See also `foo::bar`. (note the dot there)
+/// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not `Foo::some_fun`
 /// which should be reported only once despite being __doubly bad__.
-/// Here be ::a::global:path.
-/// That's not code ~NotInCodeBlock~.
-/// be_sure_we_got_to_the_end_of_it
+/// Here be `::a::global:path`, and _`::another::global::path`_.  :: is not a path though.
+/// Import an item from `::awesome::global::blob::` (Intended postfix)
+/// These are the options for `::Cat`: (Intended trailing single colon, shouldn't be linted)
+/// That's not code ~`NotInCodeBlock`~.
+/// `be_sure_we_got_to_the_end_of_it`
 fn foo_bar() {
 }
 
@@ -24,14 +27,14 @@ fn foo_bar() {
 /// foo_bar FOO_BAR
 /// _foo bar_
 /// ~~~
-/// be_sure_we_got_to_the_end_of_it
+/// `be_sure_we_got_to_the_end_of_it`
 fn multiline_codeblock() {
 }
 
 /// This _is a test for
 /// multiline
 /// emphasis_.
-/// be_sure_we_got_to_the_end_of_it
+/// `be_sure_we_got_to_the_end_of_it`
 fn test_emphasis() {
 }
 
@@ -45,7 +48,7 @@ fn test_emphasis() {
 /// 32kB 32MB 32GB 32TB 32PB 32EB
 /// 32kb 32Mb 32Gb 32Tb 32Pb 32Eb
 /// NaN
-/// be_sure_we_got_to_the_end_of_it
+/// `be_sure_we_got_to_the_end_of_it`
 fn test_units() {
 }
 
@@ -68,14 +71,14 @@ fn test_units() {
 /// TeX LaTeX BibTeX BibLaTeX
 /// MinGW
 /// CamelCase (see also #2395)
-/// be_sure_we_got_to_the_end_of_it
+/// `be_sure_we_got_to_the_end_of_it`
 fn test_allowed() {
 }
 
-/// This test has [a link_with_underscores][chunked-example] inside it. See #823.
+/// This test has [a `link_with_underscores`][chunked-example] inside it. See #823.
 /// See also [the issue tracker](https://github.com/rust-lang/rust-clippy/search?q=clippy::doc_markdown&type=Issues)
 /// on GitHub (which is a camel-cased word, but is OK). And here is another [inline link][inline_link].
-/// It can also be [inline_link2].
+/// It can also be [`inline_link2`].
 ///
 /// [chunked-example]: https://en.wikipedia.org/wiki/Chunked_transfer_encoding#Example
 /// [inline_link]: https://foobar
@@ -85,7 +88,7 @@ fn test_allowed() {
 ///
 /// expression of the type  `_ <bit_op> m <cmp_op> c` (where `<bit_op>`
 /// is one of {`&`, '|'} and `<cmp_op>` is one of {`!=`, `>=`, `>` ,
-/// be_sure_we_got_to_the_end_of_it
+/// `be_sure_we_got_to_the_end_of_it`
 fn main() {
     foo_bar();
     multiline_codeblock();
@@ -93,20 +96,20 @@ fn main() {
     test_units();
 }
 
-/// ## CamelCaseThing
+/// ## `CamelCaseThing`
 /// Talks about `CamelCaseThing`. Titles should be ignored; see issue #897.
 ///
-/// # CamelCaseThing
+/// # `CamelCaseThing`
 ///
-/// Not a title #897 CamelCaseThing
-/// be_sure_we_got_to_the_end_of_it
+/// Not a title #897 `CamelCaseThing`
+/// `be_sure_we_got_to_the_end_of_it`
 fn issue897() {
 }
 
 /// I am confused by brackets? (`x_y`)
 /// I am confused by brackets? (foo `x_y`)
 /// I am confused by brackets? (`x_y` foo)
-/// be_sure_we_got_to_the_end_of_it
+/// `be_sure_we_got_to_the_end_of_it`
 fn issue900() {
 }
 
@@ -119,7 +122,7 @@ fn issue900() {
 ///
 /// [iterator]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
 /// [helper_types]: ../helper_types/index.html
-/// be_sure_we_got_to_the_end_of_it
+/// `be_sure_we_got_to_the_end_of_it`
 fn issue883() {
 }
 
@@ -130,24 +133,24 @@ fn issue883() {
 fn multiline() {
 }
 
-/** E.g., serialization of an empty list: FooBar
+/** E.g., serialization of an empty list: `FooBar`
 ```
 That's in a code block: `PackedNode`
 ```
 
-And BarQuz too.
-be_sure_we_got_to_the_end_of_it
+And `BarQuz` too.
+`be_sure_we_got_to_the_end_of_it`
 */
 fn issue1073() {
 }
 
-/** E.g., serialization of an empty list: FooBar
+/** E.g., serialization of an empty list: `FooBar`
 ```
 That's in a code block: PackedNode
 ```
 
-And BarQuz too.
-be_sure_we_got_to_the_end_of_it
+And `BarQuz` too.
+`be_sure_we_got_to_the_end_of_it`
 */
 fn issue1073_alt() {
 }
@@ -158,15 +161,9 @@ fn issue1073_alt() {
 /// ```
 /// StillDont
 /// ````
-/// be_sure_we_got_to_the_end_of_it
+/// `be_sure_we_got_to_the_end_of_it`
 fn four_quotes() {
 }
-
-/// See [NIST SP 800-56A, revision 2].
-///
-/// [NIST SP 800-56A, revision 2]:
-///     https://github.com/rust-lang/rust-clippy/issues/902#issuecomment-261919419
-fn issue_902_comment() {}
 
 #[cfg_attr(feature = "a", doc = " ```")]
 #[cfg_attr(not(feature = "a"), doc = " ```ignore")]
@@ -183,15 +180,7 @@ fn issue_1469() {}
  */
 fn issue_1920() {}
 
-/// Ok: <http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels>
-///
-/// Not ok: http://www.unicode.org
-/// Not ok: https://www.unicode.org
-/// Not ok: http://www.unicode.org/
-/// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
-fn issue_1832() {}
-
-/// An iterator over mycrate::Collection's values.
+/// An iterator over `mycrate::Collection`'s values.
 /// It should not lint a `'static` lifetime in ticks.
 fn issue_2210() {}
 

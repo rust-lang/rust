@@ -1,16 +1,20 @@
 error[E0412]: cannot find type `PhantomData` in this scope
-  --> $DIR/ice-6252.rs:9:9
+  --> $DIR/ice-6252.rs:8:9
    |
 LL |     _n: PhantomData,
    |         ^^^^^^^^^^^ not found in this scope
    |
-help: consider importing this struct
+help: consider importing one of these items
+   |
+LL | use core::marker::PhantomData;
+   |
+LL | use serde::__private::PhantomData;
    |
 LL | use std::marker::PhantomData;
    |
 
 error[E0412]: cannot find type `VAL` in this scope
-  --> $DIR/ice-6252.rs:11:63
+  --> $DIR/ice-6252.rs:10:63
    |
 LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
    |          -                                                    ^^^ not found in this scope
@@ -18,7 +22,7 @@ LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
    |          help: you might be missing a type parameter: `, VAL`
 
 error[E0046]: not all trait items implemented, missing: `VAL`
-  --> $DIR/ice-6252.rs:11:1
+  --> $DIR/ice-6252.rs:10:1
    |
 LL |     const VAL: T;
    |     ------------- `VAL` from trait

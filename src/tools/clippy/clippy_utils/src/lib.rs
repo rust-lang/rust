@@ -37,7 +37,6 @@ pub mod sym_helper;
 #[allow(clippy::module_name_repetitions)]
 pub mod ast_utils;
 pub mod attrs;
-pub mod camel_case;
 pub mod comparisons;
 pub mod consts;
 pub mod diagnostics;
@@ -50,6 +49,7 @@ pub mod paths;
 pub mod ptr;
 pub mod qualify_min_const_fn;
 pub mod source;
+pub mod str_utils;
 pub mod sugg;
 pub mod ty;
 pub mod usage;
@@ -712,7 +712,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// Checks if the top level expression can be moved into a closure as is.
 /// Currently checks for:
 /// * Break/Continue outside the given loop HIR ids.
-/// * Yield/Return statments.
+/// * Yield/Return statements.
 /// * Inline assembly.
 /// * Usages of a field of a local where the type of the local can be partially moved.
 ///
@@ -844,10 +844,13 @@ pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind 
     let mut capture_expr_ty = e;
 
     for (parent_id, parent) in cx.tcx.hir().parent_iter(e.hir_id) {
-        if let [Adjustment {
-            kind: Adjust::Deref(_) | Adjust::Borrow(AutoBorrow::Ref(..)),
-            target,
-        }, ref adjust @ ..] = *cx
+        if let [
+            Adjustment {
+                kind: Adjust::Deref(_) | Adjust::Borrow(AutoBorrow::Ref(..)),
+                target,
+            },
+            ref adjust @ ..,
+        ] = *cx
             .typeck_results()
             .adjustments()
             .get(child_id)
@@ -1232,9 +1235,7 @@ pub fn get_enclosing_loop_or_closure(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Opti
     for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
         match node {
             Node::Expr(
-                e
-                @
-                Expr {
+                e @ Expr {
                     kind: ExprKind::Loop(..) | ExprKind::Closure(..),
                     ..
                 },
@@ -1692,10 +1693,12 @@ pub fn is_async_fn(kind: FnKind<'_>) -> bool {
 pub fn get_async_fn_body(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Call(
         _,
-        &[Expr {
-            kind: ExprKind::Closure(_, _, body, _, _),
-            ..
-        }],
+        &[
+            Expr {
+                kind: ExprKind::Closure(_, _, body, _, _),
+                ..
+            },
+        ],
     ) = body.value.kind
     {
         if let ExprKind::Block(
@@ -2123,7 +2126,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     vis.found
 }
 
-/// Checks whether item either has `test` attribute appelied, or
+/// Checks whether item either has `test` attribute applied, or
 /// is a module with `test` in its name.
 ///
 /// Note: If you use this function, please add a `#[test]` case in `tests/ui_test`.

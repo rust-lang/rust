@@ -60,7 +60,7 @@ LL | | }
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: all variants have the same prefix: `With`
+error: all variants have the same prefix: `WithOut`
   --> $DIR/enum_variants.rs:81:1
    |
 LL | / enum Seallll {

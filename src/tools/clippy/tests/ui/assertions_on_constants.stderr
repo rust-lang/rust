@@ -26,22 +26,13 @@ LL |     assert!(true, "true message");
    = help: remove it
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `assert!(false, "false message")` should probably be replaced
+error: `assert!(false, $crate::const_format_args!($($t)+))` should probably be replaced
   --> $DIR/assertions_on_constants.rs:14:5
    |
 LL |     assert!(false, "false message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use `panic!("false message")` or `unreachable!("false message")`
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: `assert!(false, msg.to_uppercase())` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:17:5
-   |
-LL |     assert!(false, msg.to_uppercase());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `panic!(msg.to_uppercase())` or `unreachable!(msg.to_uppercase())`
+   = help: use `panic!($crate::const_format_args!($($t)+))` or `unreachable!($crate::const_format_args!($($t)+))`
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(true)` will be optimized out by the compiler
@@ -62,13 +53,13 @@ LL |     assert!(C);
    = help: use `panic!()` or `unreachable!()`
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `assert!(false, "C message")` should probably be replaced
+error: `assert!(false, $crate::const_format_args!($($t)+))` should probably be replaced
   --> $DIR/assertions_on_constants.rs:24:5
    |
 LL |     assert!(C, "C message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use `panic!("C message")` or `unreachable!("C message")`
+   = help: use `panic!($crate::const_format_args!($($t)+))` or `unreachable!($crate::const_format_args!($($t)+))`
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `debug_assert!(true)` will be optimized out by the compiler
@@ -80,5 +71,5 @@ LL |     debug_assert!(true);
    = help: remove it
    = note: this error originates in the macro `$crate::assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 

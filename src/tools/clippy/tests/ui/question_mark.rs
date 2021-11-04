@@ -134,7 +134,11 @@ fn func() -> Option<i32> {
     Some(0)
 }
 
-fn result_func(x: Result<i32, &str>) -> Result<i32, &str> {
+fn func_returning_result() -> Result<i32, i32> {
+    Ok(1)
+}
+
+fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     let _ = if let Ok(x) = x { x } else { return x };
 
     if x.is_err() {
@@ -145,8 +149,21 @@ fn result_func(x: Result<i32, &str>) -> Result<i32, &str> {
     let y = if let Ok(x) = x {
         x
     } else {
-        return Err("some error");
+        return Err(0);
     };
+
+    // issue #7859
+    // no warning
+    let _ = if let Ok(x) = func_returning_result() {
+        x
+    } else {
+        return Err(0);
+    };
+
+    // no warning
+    if func_returning_result().is_err() {
+        return func_returning_result();
+    }
 
     Ok(y)
 }

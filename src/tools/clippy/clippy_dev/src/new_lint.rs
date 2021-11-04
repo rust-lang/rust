@@ -42,7 +42,8 @@ pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str
     };
 
     create_lint(&lint, msrv).context("Unable to create lint implementation")?;
-    create_test(&lint).context("Unable to create a test for the new lint")
+    create_test(&lint).context("Unable to create a test for the new lint")?;
+    add_lint(&lint, msrv).context("Unable to add lint to clippy_lints/src/lib.rs")
 }
 
 fn create_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
@@ -78,6 +79,33 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
         let test_contents = get_test_file_contents(lint.name, None);
         write_file(lint.project_root.join(test_path), test_contents)
     }
+}
+
+fn add_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
+    let path = "clippy_lints/src/lib.rs";
+    let mut lib_rs = fs::read_to_string(path).context("reading")?;
+
+    let comment_start = lib_rs.find("// add lints here,").expect("Couldn't find comment");
+
+    let new_lint = if enable_msrv {
+        format!(
+            "store.register_{lint_pass}_pass(move || Box::new({module_name}::{camel_name}::new(msrv)));\n    ",
+            lint_pass = lint.pass,
+            module_name = lint.name,
+            camel_name = to_camel_case(lint.name),
+        )
+    } else {
+        format!(
+            "store.register_{lint_pass}_pass(|| Box::new({module_name}::{camel_name}));\n    ",
+            lint_pass = lint.pass,
+            module_name = lint.name,
+            camel_name = to_camel_case(lint.name),
+        )
+    };
+
+    lib_rs.insert_str(comment_start, &new_lint);
+
+    fs::write(path, lib_rs).context("writing")
 }
 
 fn write_file<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
@@ -151,7 +179,6 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
     };
 
     let lint_name = lint.name;
-    let pass_name = lint.pass;
     let category = lint.category;
     let name_camel = to_camel_case(lint.name);
     let name_upper = lint_name.to_uppercase();
@@ -228,18 +255,14 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
                     extract_msrv_attr!({context_import});
                 }}
 
-                // TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
-                //       e.g. store.register_{pass_name}_pass(move || Box::new({module_name}::{name_camel}::new(msrv)));
                 // TODO: Add MSRV level to `clippy_utils/src/msrvs.rs` if needed.
                 // TODO: Add MSRV test to `tests/ui/min_rust_version_attr.rs`.
                 // TODO: Update msrv config comment in `clippy_lints/src/utils/conf.rs`
             "},
             pass_type = pass_type,
             pass_lifetimes = pass_lifetimes,
-            pass_name = pass_name,
             name_upper = name_upper,
             name_camel = name_camel,
-            module_name = lint_name,
             context_import = context_import,
         )
     } else {
@@ -248,16 +271,11 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
                 declare_lint_pass!({name_camel} => [{name_upper}]);
 
                 impl {pass_type}{pass_lifetimes} for {name_camel} {{}}
-                //
-                // TODO: Register the lint pass in `clippy_lints/src/lib.rs`,
-                //       e.g. store.register_{pass_name}_pass(|| Box::new({module_name}::{name_camel}));
             "},
             pass_type = pass_type,
             pass_lifetimes = pass_lifetimes,
-            pass_name = pass_name,
             name_upper = name_upper,
             name_camel = name_camel,
-            module_name = lint_name,
         )
     });
 

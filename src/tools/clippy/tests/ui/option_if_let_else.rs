@@ -1,4 +1,3 @@
-// edition:2018
 // run-rustfix
 #![warn(clippy::option_if_let_else)]
 #![allow(clippy::redundant_closure, clippy::ref_option_ref, clippy::equatable_if_let)]
