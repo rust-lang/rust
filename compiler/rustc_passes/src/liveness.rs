@@ -1300,25 +1300,37 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             // that we do not emit the same warning twice if the uninhabited type
             // is indeed `!`.
 
-            self.ir.tcx.struct_span_lint_hir(
-                lint::builtin::UNREACHABLE_CODE,
-                expr_id,
-                expr_span,
-                |lint| {
-                    let msg = format!("unreachable {}", descr);
-                    lint.build(&msg)
-                        .span_label(expr_span, &msg)
-                        .span_label(orig_span, "any code following this expression is unreachable")
-                        .span_note(
-                            orig_span,
-                            &format!(
-                                "this expression has type `{}`, which is uninhabited",
-                                orig_ty
-                            ),
-                        )
-                        .emit();
-                },
-            );
+            if let Some(hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Match(_, [], _), ..
+            })) = self.ir.tcx.hir().find(expr_id)
+            {
+                // The expression we are about to lint on is an empty match, which
+                // can be used as a kind of "uninhabitedness assertion" (issue
+                // #89779). We do not want to lint in this case.
+            } else {
+                self.ir.tcx.struct_span_lint_hir(
+                    lint::builtin::UNREACHABLE_CODE,
+                    expr_id,
+                    expr_span,
+                    |lint| {
+                        let msg = format!("unreachable {}", descr);
+                        lint.build(&msg)
+                            .span_label(expr_span, &msg)
+                            .span_label(
+                                orig_span,
+                                "any code following this expression is unreachable",
+                            )
+                            .span_note(
+                                orig_span,
+                                &format!(
+                                    "this expression has type `{}`, which is uninhabited",
+                                    orig_ty
+                                ),
+                            )
+                            .emit();
+                    },
+                );
+            }
         }
     }
 }
