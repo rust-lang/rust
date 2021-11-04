@@ -236,7 +236,7 @@ use std::fmt::Write as _;
 use std::io::{Read, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt, fs};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 #[derive(Clone)]
 crate struct CrateLocator<'a> {
@@ -549,7 +549,7 @@ impl<'a> CrateLocator<'a> {
                         }
                     }
                     Err(err) => {
-                        warn!("no metadata found: {}", err);
+                        info!("no metadata found: {}", err);
                         continue;
                     }
                 };
