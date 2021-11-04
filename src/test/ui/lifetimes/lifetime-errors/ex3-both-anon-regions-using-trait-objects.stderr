@@ -5,6 +5,12 @@ LL | fn foo(x:Box<dyn Fn(&u8, &u8)> , y: Vec<&u8>, z: &u8) {
    |                     ---  --- these two types are declared with different lifetimes...
 LL |   y.push(z);
    |          ^ ...but data from `z` flows into `y` here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(x:Box<dyn Fn(&'a u8, &'a u8)> , y: Vec<&u8>, z: &u8) {
+   |       ++++               ++      ++
 
 error: aborting due to previous error
 

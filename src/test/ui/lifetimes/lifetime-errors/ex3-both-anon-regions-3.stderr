@@ -5,6 +5,12 @@ LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
    |                     ---                 --- these two types are declared with different lifetimes...
 LL |     z.push((x,y));
    |             ^ ...but data flows into `z` here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(z: &mut Vec<(&'a u8,&u8)>, (x, y): (&'a u8, &u8)) {
+   |       ++++               ++                     ++
 
 error[E0623]: lifetime mismatch
   --> $DIR/ex3-both-anon-regions-3.rs:2:15
@@ -13,6 +19,12 @@ LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
    |                         ---                  --- these two types are declared with different lifetimes...
 LL |     z.push((x,y));
    |               ^ ...but data flows into `z` here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(z: &mut Vec<(&u8,&'a u8)>, (x, y): (&u8, &'a u8)) {
+   |       ++++                   ++                      ++
 
 error: aborting due to 2 previous errors
 
