@@ -796,7 +796,7 @@ impl<'a> AttrQuery<'a> {
         let key = self.key;
         self.attrs
             .iter()
-            .filter(move |attr| attr.path.as_ident().map_or(false, |s| s.to_string() == key))
+            .filter(move |attr| attr.path.as_ident().map_or(false, |s| s.to_smol_str() == key))
     }
 }
 

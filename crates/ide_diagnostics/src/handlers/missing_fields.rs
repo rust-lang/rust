@@ -76,7 +76,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             Some(make::ext::expr_todo())
         };
         let field =
-            make::record_expr_field(make::name_ref(&f.name(ctx.sema.db).to_string()), field_expr)
+            make::record_expr_field(make::name_ref(&f.name(ctx.sema.db).to_smol_str()), field_expr)
                 .clone_for_update();
         new_field_list.add_field(field);
     }

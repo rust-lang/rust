@@ -90,7 +90,7 @@ impl NavigationTarget {
     }
 
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
-        let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
+        let name = module.name(db).map(|it| it.to_smol_str()).unwrap_or_default();
         if let Some(src) = module.declaration_source(db) {
             let node = src.syntax();
             let full_range = node.original_file_range(db);
@@ -275,7 +275,7 @@ where
 impl ToNav for hir::Module {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.definition_source(db);
-        let name = self.name(db).map(|it| it.to_string().into()).unwrap_or_default();
+        let name = self.name(db).map(|it| it.to_smol_str()).unwrap_or_default();
         let (syntax, focus) = match &src.value {
             ModuleSource::SourceFile(node) => (node.syntax(), None),
             ModuleSource::Module(node) => {
@@ -399,7 +399,7 @@ impl ToNav for hir::Local {
 
         let full_range = src.with_value(&node).original_file_range(db);
         let name = match self.name(db) {
-            Some(it) => it.to_string().into(),
+            Some(it) => it.to_smol_str(),
             None => "".into(),
         };
         let kind = if self.is_self(db) {
@@ -429,7 +429,7 @@ impl ToNav for hir::Label {
         let FileRange { file_id, range } = src.with_value(node).original_file_range(db);
         let focus_range =
             src.value.lifetime().and_then(|lt| lt.lifetime_ident_token()).map(|lt| lt.text_range());
-        let name = self.name(db).to_string().into();
+        let name = self.name(db).to_smol_str();
         NavigationTarget {
             file_id,
             name,
@@ -459,7 +459,7 @@ impl TryToNav for hir::TypeParam {
         .map(|it| it.syntax().text_range());
         Some(NavigationTarget {
             file_id: src.file_id.original_file(db),
-            name: self.name(db).to_string().into(),
+            name: self.name(db).to_smol_str(),
             kind: Some(SymbolKind::TypeParam),
             full_range,
             focus_range,
@@ -476,7 +476,7 @@ impl TryToNav for hir::LifetimeParam {
         let full_range = src.value.syntax().text_range();
         Some(NavigationTarget {
             file_id: src.file_id.original_file(db),
-            name: self.name(db).to_string().into(),
+            name: self.name(db).to_smol_str(),
             kind: Some(SymbolKind::LifetimeParam),
             full_range,
             focus_range: Some(full_range),
@@ -493,7 +493,7 @@ impl TryToNav for hir::ConstParam {
         let full_range = src.value.syntax().text_range();
         Some(NavigationTarget {
             file_id: src.file_id.original_file(db),
-            name: self.name(db).to_string().into(),
+            name: self.name(db).to_smol_str(),
             kind: Some(SymbolKind::ConstParam),
             full_range,
             focus_range: src.value.name().map(|n| n.syntax().text_range()),

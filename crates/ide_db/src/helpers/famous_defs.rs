@@ -139,7 +139,7 @@ impl FamousDefs<'_, '_> {
         let krate = self.1?;
         let db = self.0.db;
         let res =
-            krate.dependencies(db).into_iter().find(|dep| dep.name.to_string() == name)?.krate;
+            krate.dependencies(db).into_iter().find(|dep| dep.name.to_smol_str() == name)?.krate;
         Some(res)
     }
 
@@ -153,7 +153,7 @@ impl FamousDefs<'_, '_> {
         for segment in path {
             module = module.children(db).find_map(|child| {
                 let name = child.name(db)?;
-                if name.to_string() == segment {
+                if name.to_smol_str() == segment {
                     Some(child)
                 } else {
                     None
@@ -161,7 +161,7 @@ impl FamousDefs<'_, '_> {
             })?;
         }
         let def =
-            module.scope(db, None).into_iter().find(|(name, _def)| name.to_string() == trait_)?.1;
+            module.scope(db, None).into_iter().find(|(name, _def)| name.to_smol_str() == trait_)?.1;
         Some(def)
     }
 }

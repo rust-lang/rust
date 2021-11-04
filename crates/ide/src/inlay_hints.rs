@@ -344,7 +344,7 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &hir
         enum_data
             .variants(db)
             .into_iter()
-            .map(|variant| variant.name(db).to_string())
+            .map(|variant| variant.name(db).to_smol_str())
             .any(|enum_name| enum_name == pat_text)
     } else {
         false
@@ -363,7 +363,7 @@ fn should_not_display_type_hint(
     }
 
     if let Some(hir::Adt::Struct(s)) = pat_ty.as_adt() {
-        if s.fields(db).is_empty() && s.name(db).to_string() == bind_pat.to_string() {
+        if s.fields(db).is_empty() && s.name(db).to_smol_str() == bind_pat.to_string() {
             return true;
         }
     }
@@ -419,7 +419,7 @@ fn should_hide_param_name_hint(
     }
 
     let fn_name = match callable.kind() {
-        hir::CallableKind::Function(it) => Some(it.name(sema.db).to_string()),
+        hir::CallableKind::Function(it) => Some(it.name(sema.db).to_smol_str()),
         _ => None,
     };
     let fn_name = fn_name.as_deref();
@@ -475,7 +475,9 @@ fn is_enum_name_similar_to_param_name(
     param_name: &str,
 ) -> bool {
     match sema.type_of_expr(argument).and_then(|t| t.original.as_adt()) {
-        Some(hir::Adt::Enum(e)) => to_lower_snake_case(&e.name(sema.db).to_string()) == param_name,
+        Some(hir::Adt::Enum(e)) => {
+            to_lower_snake_case(&e.name(sema.db).to_smol_str()) == param_name
+        }
         _ => false,
     }
 }

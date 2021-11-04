@@ -764,7 +764,7 @@ fn derive_macro_as_call_id(
         krate,
         MacroCallKind::Derive {
             ast_id: item_attr.ast_id,
-            derive_name: last_segment.to_string(),
+            derive_name: last_segment.to_string().into_boxed_str(),
             derive_attr_index: derive_attr.ast_index,
         },
     );
@@ -801,7 +801,7 @@ fn attr_macro_as_call_id(
         krate,
         MacroCallKind::Attr {
             ast_id: item_attr.ast_id,
-            attr_name: last_segment.to_string(),
+            attr_name: last_segment.to_string().into_boxed_str(),
             attr_args: arg,
             invoc_attr_index: macro_attr.id.ast_index,
         },

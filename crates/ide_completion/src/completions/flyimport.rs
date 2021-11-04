@@ -209,7 +209,7 @@ pub(crate) fn compute_fuzzy_completion_order_key(
 ) -> usize {
     cov_mark::hit!(certain_fuzzy_order_test);
     let import_name = match proposed_mod_path.segments().last() {
-        Some(name) => name.to_string().to_lowercase(),
+        Some(name) => name.to_smol_str().to_lowercase(),
         None => return usize::MAX,
     };
     match import_name.match_indices(user_input_lowercased).next() {
