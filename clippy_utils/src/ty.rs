@@ -114,7 +114,12 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
 
 /// Checks whether a type implements a trait.
 /// The function returns false in case the type contains an inference variable.
-/// See also [`get_trait_def_id`](super::get_trait_def_id).
+///
+/// See:
+/// * [`get_trait_def_id`](super::get_trait_def_id) to get a trait [`DefId`].
+/// * [Common tools for writing lints] for an example how to use this function and other options.
+///
+/// [Common tools for writing lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/common_tools_writing_lints.md#checking-if-a-type-implements-a-specific-trait
 pub fn implements_trait<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
@@ -254,9 +259,17 @@ pub fn is_type_ref_to_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_ite
     }
 }
 
-/// Checks if the type is equal to a diagnostic item
+/// Checks if the type is equal to a diagnostic item. To check if a type implements a
+/// trait marked with a diagnostic item use [`implements_trait`].
+///
+/// For a further exploitation what diagnostic items are see [diagnostic items] in
+/// rustc-dev-guide.
+///
+/// ---
 ///
 /// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
+///
+/// [Diagnostic Items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
 pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
