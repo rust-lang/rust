@@ -632,9 +632,6 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         if let ExprKind::Match(ex, arms, _) = expr.kind {
             check_match_ref_pats(cx, ex, arms.iter().map(|el| el.pat), expr);
         }
-        if let Some(higher::IfLet { let_pat, let_expr, .. }) = higher::IfLet::hir(cx, expr) {
-            check_match_ref_pats(cx, let_expr, once(let_pat), expr);
-        }
     }
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
