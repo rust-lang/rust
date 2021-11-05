@@ -2,7 +2,7 @@ error: changes to closure capture in Rust 2021 will affect drop order and which 
   --> $DIR/multi_diagnostics.rs:37:13
    |
 LL |     let c = || {
-   |             ^^ in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
+   |             ^^ in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` because `f1` is not fully captured and `f1.0` does not implement `Clone`
 ...
 LL |         let _f_1 = f1.0;
    |                    ---- in Rust 2018, this closure captures all of `f1`, but in Rust 2021, it will only capture `f1.0`
@@ -29,7 +29,7 @@ error: changes to closure capture in Rust 2021 will affect which traits the clos
   --> $DIR/multi_diagnostics.rs:56:13
    |
 LL |     let c = || {
-   |             ^^ in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
+   |             ^^ in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` because `f1` is not fully captured and `f1.0` does not implement `Clone`
 ...
 LL |         let _f_1 = f1.0;
    |                    ---- in Rust 2018, this closure captures all of `f1`, but in Rust 2021, it will only capture `f1.0`
@@ -47,8 +47,8 @@ error: changes to closure capture in Rust 2021 will affect which traits the clos
 LL |     let c = || {
    |             ^^
    |             |
-   |             in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
-   |             in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.2` does not implement `Clone`
+   |             in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` because `f1` is not fully captured and `f1.0` does not implement `Clone`
+   |             in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` because `f1` is not fully captured and `f1.2` does not implement `Clone`
 ...
 LL |         let _f_0 = f1.0;
    |                    ---- in Rust 2018, this closure captures all of `f1`, but in Rust 2021, it will only capture `f1.0`
@@ -67,7 +67,7 @@ error: changes to closure capture in Rust 2021 will affect drop order and which 
   --> $DIR/multi_diagnostics.rs:100:13
    |
 LL |     let c = || {
-   |             ^^ in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
+   |             ^^ in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` because `f1` is not fully captured and `f1.0` does not implement `Clone`
 ...
 LL |         let _f_0 = f1.0;
    |                    ---- in Rust 2018, this closure captures all of `f1`, but in Rust 2021, it will only capture `f1.0`
@@ -94,9 +94,9 @@ error: changes to closure capture in Rust 2021 will affect which traits the clos
 LL |     thread::spawn(move || unsafe {
    |                   ^^^^^^^^^^^^^^
    |                   |
-   |                   in Rust 2018, this closure implements `Sync` as `fptr1` implements `Sync`, but in Rust 2021, this closure will no longer implement `Sync` as `fptr1.0.0` does not implement `Sync`
-   |                   in Rust 2018, this closure implements `Send` as `fptr1` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` as `fptr1.0.0` does not implement `Send`
-   |                   in Rust 2018, this closure implements `Send` as `fptr2` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` as `fptr2.0` does not implement `Send`
+   |                   in Rust 2018, this closure implements `Sync` as `fptr1` implements `Sync`, but in Rust 2021, this closure will no longer implement `Sync` because `fptr1` is not fully captured and `fptr1.0.0` does not implement `Sync`
+   |                   in Rust 2018, this closure implements `Send` as `fptr1` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` because `fptr1` is not fully captured and `fptr1.0.0` does not implement `Send`
+   |                   in Rust 2018, this closure implements `Send` as `fptr2` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` because `fptr2` is not fully captured and `fptr2.0` does not implement `Send`
 ...
 LL |         *fptr1.0.0 = 20;
    |         ---------- in Rust 2018, this closure captures all of `fptr1`, but in Rust 2021, it will only capture `fptr1.0.0`

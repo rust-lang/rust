@@ -19,8 +19,8 @@ where
     let f = panic::AssertUnwindSafe(f);
     let result = panic::catch_unwind(move || {
         //~^ ERROR: changes to closure capture in Rust 2021 will affect which traits the closure implements [rust_2021_incompatible_closure_captures]
-        //~| NOTE: in Rust 2018, this closure implements `UnwindSafe` as `f` implements `UnwindSafe`, but in Rust 2021, this closure will no longer implement `UnwindSafe` as `f.0` does not implement `UnwindSafe`
-        //~| NOTE: in Rust 2018, this closure implements `RefUnwindSafe` as `f` implements `RefUnwindSafe`, but in Rust 2021, this closure will no longer implement `RefUnwindSafe` as `f.0` does not implement `RefUnwindSafe`
+        //~| NOTE: in Rust 2018, this closure implements `UnwindSafe`
+        //~| NOTE: in Rust 2018, this closure implements `RefUnwindSafe`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f` to be fully captured
         f.0()
