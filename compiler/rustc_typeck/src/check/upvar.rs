@@ -90,10 +90,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 enum CapturesInfo {
     /// We previously captured all of `x`, but now we capture some sub-path.
     CapturingLess { source_expr: Option<hir::HirId>, var_name: String },
-    //CapturingNothing {
-    //    // where the variable appears in the closure (but is not captured)
-    //    use_span: Span,
-    //},
+    CapturingNothing {
+        // where the variable appears in the closure (but is not captured)
+        use_span: Span,
+    },
 }
 
 /// Reasons that we might issue a migration warning.
@@ -758,6 +758,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         captured_name,
                                     ));
                                 }
+                                CapturesInfo::CapturingNothing { use_span } => {
+                                    diagnostics_builder.span_label(*use_span, format!("in Rust 2018, this causes the closure to capture `{}`, but in Rust 2021, it has no effect",
+                                        self.tcx.hir().name(*var_hir_id),
+                                    ));
+                                }
+
                                 _ => { }
                             }
 
@@ -771,6 +777,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
                                             self.tcx.hir().name(*var_hir_id),
                                             captured_name,
+                                        ));
+                                    }
+                                    CapturesInfo::CapturingNothing { use_span: _ } => {
+                                        diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{v}` is dropped here along with the closure, but in Rust 2021 `{v}` is not part of the closure",
+                                            v = self.tcx.hir().name(*var_hir_id),
                                         ));
                                     }
                                 }
@@ -787,6 +798,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             p = captured_name,
                                         ));
                                     }
+
+                                    // Cannot happen: if we don't capture a variable, we impl strictly more traits
+                                    CapturesInfo::CapturingNothing { use_span } => span_bug!(*use_span, "missing trait from not capturing something"),
                                 }
                             }
                         }
@@ -1055,10 +1069,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match closure_clause {
                 // Only migrate if closure is a move closure
                 hir::CaptureBy::Value => {
-                    let diagnostics_info = FxHashSet::default();
-                    //diagnostics_info.insert(CapturesInfo::CapturingNothing);
-                    //let upvars = self.tcx.upvars_mentioned(closure_def_id).expect("must be an upvar");
-                    //let _span = upvars[&var_hir_id];
+                    let mut diagnostics_info = FxHashSet::default();
+                    let upvars = self.tcx.upvars_mentioned(closure_def_id).expect("must be an upvar");
+                    let upvar = upvars[&var_hir_id];
+                    diagnostics_info.insert(CapturesInfo::CapturingNothing { use_span: upvar.span });
                     return Some(diagnostics_info);
                 }
                 hir::CaptureBy::Ref => {}
