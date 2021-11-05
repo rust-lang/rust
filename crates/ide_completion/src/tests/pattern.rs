@@ -163,6 +163,21 @@ fn foo(a$0) {
             ma makro!(…) #[macro_export] macro_rules! makro
         "##]],
     );
+    check(
+        r#"
+fn foo(a$0: Tuple) {
+}
+"#,
+        expect![[r##"
+            kw mut
+            bn Record    Record { field$1 }$0
+            st Record
+            bn Tuple     Tuple($1)$0
+            st Tuple
+            st Unit
+            ma makro!(…) #[macro_export] macro_rules! makro
+        "##]],
+    );
 }
 
 #[test]

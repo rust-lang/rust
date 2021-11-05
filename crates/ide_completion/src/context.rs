@@ -58,6 +58,7 @@ pub(crate) struct PathCompletionContext {
 pub(super) struct PatternContext {
     pub(super) refutability: PatternRefutability,
     pub(super) is_param: Option<ParamKind>,
+    pub(super) has_type_ascription: bool,
 }
 
 #[derive(Debug)]
@@ -708,15 +709,15 @@ impl<'a> CompletionContext<'a> {
             return None;
         }
         let mut is_param = None;
-        let refutability = bind_pat
+        let (refutability, has_type_ascription) = bind_pat
             .syntax()
             .ancestors()
             .skip_while(|it| ast::Pat::can_cast(it.kind()))
             .next()
-            .map_or(PatternRefutability::Irrefutable, |node| {
-                match_ast! {
+            .map_or((PatternRefutability::Irrefutable, false), |node| {
+                let refutability = match_ast! {
                     match node {
-                        ast::LetStmt(__) => PatternRefutability::Irrefutable,
+                        ast::LetStmt(let_) => return (PatternRefutability::Irrefutable, let_.ty().is_some()),
                         ast::Param(param) => {
                             let is_closure_param = param
                                 .syntax()
@@ -729,16 +730,17 @@ impl<'a> CompletionContext<'a> {
                             } else {
                                 ParamKind::Function
                             });
-                            PatternRefutability::Irrefutable
+                            return (PatternRefutability::Irrefutable, param.ty().is_some())
                         },
                         ast::MatchArm(__) => PatternRefutability::Refutable,
                         ast::Condition(__) => PatternRefutability::Refutable,
                         ast::ForExpr(__) => PatternRefutability::Irrefutable,
                         _ => PatternRefutability::Irrefutable,
                     }
-                }
+                };
+                (refutability, false)
             });
-        Some(PatternContext { refutability, is_param })
+        Some(PatternContext { refutability, is_param, has_type_ascription })
     }
 
     fn classify_name_ref(
