@@ -1737,6 +1737,8 @@ extern "C" {
 
     pub fn LLVMTimeTraceProfilerInitialize();
 
+    pub fn LLVMTimeTraceProfilerFinishThread();
+
     pub fn LLVMTimeTraceProfilerFinish(FileName: *const c_char);
 
     pub fn LLVMAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>);

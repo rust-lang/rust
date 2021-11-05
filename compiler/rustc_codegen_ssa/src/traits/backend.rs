@@ -142,4 +142,26 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
     ) -> TargetMachineFactoryFn<Self>;
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str;
     fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str>;
+
+    fn spawn_thread<F, T>(_time_trace: bool, f: F) -> std::thread::JoinHandle<T>
+    where
+        F: FnOnce() -> T,
+        F: Send + 'static,
+        T: Send + 'static,
+    {
+        std::thread::spawn(f)
+    }
+
+    fn spawn_named_thread<F, T>(
+        _time_trace: bool,
+        name: String,
+        f: F,
+    ) -> std::io::Result<std::thread::JoinHandle<T>>
+    where
+        F: FnOnce() -> T,
+        F: Send + 'static,
+        T: Send + 'static,
+    {
+        std::thread::Builder::new().name(name).spawn(f)
+    }
 }

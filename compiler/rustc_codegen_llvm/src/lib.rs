@@ -76,6 +76,27 @@ mod value;
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
 
+struct TimeTraceProfiler {
+    enabled: bool,
+}
+
+impl TimeTraceProfiler {
+    fn new(enabled: bool) -> Self {
+        if enabled {
+            unsafe { llvm::LLVMTimeTraceProfilerInitialize() }
+        }
+        TimeTraceProfiler { enabled }
+    }
+}
+
+impl Drop for TimeTraceProfiler {
+    fn drop(&mut self) {
+        if self.enabled {
+            unsafe { llvm::LLVMTimeTraceProfilerFinishThread() }
+        }
+    }
+}
+
 impl ExtraBackendMethods for LlvmCodegenBackend {
     fn new_metadata(&self, tcx: TyCtxt<'_>, mod_name: &str) -> ModuleLlvm {
         ModuleLlvm::new_metadata(tcx, mod_name)
@@ -118,6 +139,34 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     }
     fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str> {
         llvm_util::tune_cpu(sess)
+    }
+
+    fn spawn_thread<F, T>(time_trace: bool, f: F) -> std::thread::JoinHandle<T>
+    where
+        F: FnOnce() -> T,
+        F: Send + 'static,
+        T: Send + 'static,
+    {
+        std::thread::spawn(move || {
+            let _profiler = TimeTraceProfiler::new(time_trace);
+            f()
+        })
+    }
+
+    fn spawn_named_thread<F, T>(
+        time_trace: bool,
+        name: String,
+        f: F,
+    ) -> std::io::Result<std::thread::JoinHandle<T>>
+    where
+        F: FnOnce() -> T,
+        F: Send + 'static,
+        T: Send + 'static,
+    {
+        std::thread::Builder::new().name(name).spawn(move || {
+            let _profiler = TimeTraceProfiler::new(time_trace);
+            f()
+        })
     }
 }
 

@@ -113,11 +113,6 @@ unsafe fn configure_llvm(sess: &Session) {
     }
 
     if sess.opts.debugging_opts.llvm_time_trace {
-        // time-trace is not thread safe and running it in parallel will cause seg faults.
-        if !sess.opts.debugging_opts.no_parallel_llvm {
-            bug!("`-Z llvm-time-trace` requires `-Z no-parallel-llvm")
-        }
-
         llvm::LLVMTimeTraceProfilerInitialize();
     }
 
