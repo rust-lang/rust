@@ -1581,6 +1581,7 @@ where
 }
 
 // The default hasher is used to match the std implementation signature
+#[cfg(feature = "ahash")]
 impl<K, V, A, const N: usize> From<[(K, V); N]> for HashMap<K, V, DefaultHashBuilder, A>
 where
     K: Eq + Hash,
