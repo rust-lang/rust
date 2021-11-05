@@ -1,7 +1,6 @@
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, AttributePlace};
-use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -53,15 +52,10 @@ pub trait ArgAttributesExt {
 }
 
 fn should_use_mutable_noalias(cx: &CodegenCx<'_, '_>) -> bool {
-    // LLVM prior to version 12 has known miscompiles in the presence of
-    // noalias attributes (see #54878). Only enable mutable noalias by
-    // default for versions we believe to be safe.
-    cx.tcx
-        .sess
-        .opts
-        .debugging_opts
-        .mutable_noalias
-        .unwrap_or_else(|| llvm_util::get_version() >= (12, 0, 0))
+    // LLVM prior to version 12 had known miscompiles in the presence of
+    // noalias attributes (see #54878), but we don't support earlier
+    // versions at all anymore. We now enable mutable noalias by default.
+    cx.tcx.sess.opts.debugging_opts.mutable_noalias.unwrap_or(true)
 }
 
 impl ArgAttributesExt for ArgAttributes {

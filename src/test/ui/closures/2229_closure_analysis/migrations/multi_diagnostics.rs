@@ -18,7 +18,6 @@ impl Foo {
     }
 }
 
-
 struct S(Foo);
 
 #[derive(Clone)]
@@ -36,8 +35,8 @@ fn test_multi_issues() {
     let f1 = U(S(Foo::from("foo")), T(0));
     let f2 = U(S(Foo::from("bar")), T(0));
     let c = || {
-        //~^ ERROR: `Clone` trait implementation for closure and drop order
-        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
+        //~^ ERROR: changes to closure capture in Rust 2021
+        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f1`, `f2` to be fully captured
         let _f_1 = f1.0;
@@ -55,8 +54,8 @@ fn test_multi_issues() {
 fn test_capturing_all_disjoint_fields_individually() {
     let f1 = U(S(Foo::from("foo")), T(0));
     let c = || {
-        //~^ ERROR: `Clone` trait implementation for closure
-        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
+        //~^ ERROR: changes to closure capture in Rust 2021 will affect which traits the closure implements [rust_2021_incompatible_closure_captures]
+        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f1` to be fully captured
         let _f_1 = f1.0;
@@ -80,9 +79,9 @@ impl Clone for U1 {
 fn test_capturing_several_disjoint_fields_individually_1() {
     let f1 = U1(S(Foo::from("foo")), T(0), S(Foo::from("bar")));
     let c = || {
-        //~^ ERROR: `Clone` trait implementation for closure
-        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
-        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.2` does not implement `Clone`
+        //~^ ERROR: changes to closure capture in Rust 2021 will affect which traits the closure implements [rust_2021_incompatible_closure_captures]
+        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`
+        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f1` to be fully captured
         let _f_0 = f1.0;
@@ -99,8 +98,8 @@ fn test_capturing_several_disjoint_fields_individually_1() {
 fn test_capturing_several_disjoint_fields_individually_2() {
     let f1 = U1(S(Foo::from("foo")), T(0), S(Foo::from("bar")));
     let c = || {
-        //~^ ERROR: `Clone` trait implementation for closure and drop order
-        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f1.0` does not implement `Clone`
+        //~^ ERROR: changes to closure capture in Rust 2021 will affect drop order and which traits the closure implements
+        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f1` implements `Clone`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f1` to be fully captured
         let _f_0 = f1.0;
@@ -132,9 +131,10 @@ fn test_multi_traits_issues() {
     let mut f2 = 10;
     let fptr2 = SendPointer(&mut f2 as *mut i32);
     thread::spawn(move || unsafe {
-        //~^ ERROR: `Sync`, `Send` trait implementation for closure
-        //~| NOTE: in Rust 2018, this closure implements `Sync`, `Send` as `fptr1` implements `Sync`, `Send`, but in Rust 2021, this closure will no longer implement `Sync`, `Send` as `fptr1.0.0` does not implement `Sync`, `Send`
-        //~| NOTE: in Rust 2018, this closure implements `Send` as `fptr2` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` as `fptr2.0` does not implement `Send`
+        //~^ ERROR: changes to closure capture in Rust 2021
+        //~| NOTE: in Rust 2018, this closure implements `Sync` as `fptr1` implements `Sync`
+        //~| NOTE: in Rust 2018, this closure implements `Send` as `fptr1` implements `Send`
+        //~| NOTE: in Rust 2018, this closure implements `Send` as `fptr2` implements `Send`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `fptr1`, `fptr2` to be fully captured
         *fptr1.0.0 = 20;
