@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/boxed-variant-field.rs:9:31
+   |
+LL |         Ty::List(elem) => foo(elem),
+   |                               ^^^^ expected enum `Ty`, found struct `Box`
+   |
+   = note: expected enum `Ty`
+            found struct `Box<Ty>`
+help: try dereferencing the `Box`
+   |
+LL |         Ty::List(elem) => foo(*elem),
+   |                               +
+help: try using a variant of the expected enum
+   |
+LL |         Ty::List(elem) => foo(Ty::List(elem)),
+   |                               ~~~~~~~~~~~~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
