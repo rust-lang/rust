@@ -18,7 +18,7 @@ pub mod eager;
 use base_db::ProcMacroKind;
 use either::Either;
 
-pub use mbe::{ExpandError, ExpandResult};
+pub use mbe::{ExpandError, ExpandResult, Origin};
 
 use std::{hash::Hash, iter, sync::Arc};
 
@@ -380,9 +380,11 @@ pub struct ExpansionInfo {
     exp_map: Arc<mbe::TokenMap>,
 }
 
-pub use mbe::Origin;
-
 impl ExpansionInfo {
+    pub fn expanded(&self) -> InFile<SyntaxNode> {
+        self.expanded.clone()
+    }
+
     pub fn call_node(&self) -> Option<InFile<SyntaxNode>> {
         Some(self.arg.with_value(self.arg.value.parent()?))
     }

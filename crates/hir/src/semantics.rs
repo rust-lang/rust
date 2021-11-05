@@ -18,7 +18,7 @@ use smallvec::{smallvec, SmallVec};
 use syntax::{
     algo::skip_trivia_token,
     ast::{self, HasAttrs, HasGenericParams, HasLoopBody},
-    match_ast, AstNode, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
+    match_ast, AstNode, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextSize,
 };
 
 use crate::{
@@ -178,10 +178,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.speculative_expand_attr(actual_macro_call, speculative_args, token_to_map)
     }
 
+    /// Descend the token into macrocalls to its first mapped counterpart.
     pub fn descend_into_macros_single(&self, token: SyntaxToken) -> SyntaxToken {
-        self.imp.descend_into_macros(token).pop().unwrap()
+        self.imp.descend_into_macros_single(token)
     }
 
+    /// Descend the token into macrocalls to all its mapped counterparts.
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         self.imp.descend_into_macros(token)
     }
@@ -509,72 +511,102 @@ impl<'db> SemanticsImpl<'db> {
         };
 
         if first == last {
-            self.descend_into_macros_impl(first, |InFile { value, .. }| {
-                if let Some(node) = value.ancestors().find_map(N::cast) {
-                    res.push(node)
-                }
-            });
+            self.descend_into_macros_impl(
+                first,
+                |InFile { value, .. }| {
+                    if let Some(node) = value.ancestors().find_map(N::cast) {
+                        res.push(node)
+                    }
+                },
+                false,
+            );
         } else {
             // Descend first and last token, then zip them to look for the node they belong to
             let mut scratch: SmallVec<[_; 1]> = smallvec![];
-            self.descend_into_macros_impl(first, |token| {
-                scratch.push(token);
-            });
+            self.descend_into_macros_impl(
+                first,
+                |token| {
+                    scratch.push(token);
+                },
+                false,
+            );
 
             let mut scratch = scratch.into_iter();
-            self.descend_into_macros_impl(last, |InFile { value: last, file_id: last_fid }| {
-                if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
-                    if first_fid == last_fid {
-                        if let Some(p) = first.parent() {
-                            let range = first.text_range().cover(last.text_range());
-                            let node = find_root(&p)
-                                .covering_element(range)
-                                .ancestors()
-                                .take_while(|it| it.text_range() == range)
-                                .find_map(N::cast);
-                            if let Some(node) = node {
-                                res.push(node);
+            self.descend_into_macros_impl(
+                last,
+                |InFile { value: last, file_id: last_fid }| {
+                    if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
+                        if first_fid == last_fid {
+                            if let Some(p) = first.parent() {
+                                let range = first.text_range().cover(last.text_range());
+                                let node = find_root(&p)
+                                    .covering_element(range)
+                                    .ancestors()
+                                    .take_while(|it| it.text_range() == range)
+                                    .find_map(N::cast);
+                                if let Some(node) = node {
+                                    res.push(node);
+                                }
                             }
                         }
                     }
-                }
-            });
+                },
+                false,
+            );
         }
         res
     }
 
     fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         let mut res = smallvec![];
-        self.descend_into_macros_impl(token, |InFile { value, .. }| res.push(value));
+        self.descend_into_macros_impl(token, |InFile { value, .. }| res.push(value), false);
         res
     }
 
-    fn descend_into_macros_impl(&self, token: SyntaxToken, mut f: impl FnMut(InFile<SyntaxToken>)) {
+    fn descend_into_macros_single(&self, token: SyntaxToken) -> SyntaxToken {
+        let mut res = token.clone();
+        self.descend_into_macros_impl(token, |InFile { value, .. }| res = value, true);
+        res
+    }
+
+    fn descend_into_macros_impl(
+        &self,
+        token: SyntaxToken,
+        mut f: impl FnMut(InFile<SyntaxToken>),
+        single: bool,
+    ) {
         let _p = profile::span("descend_into_macros");
         let parent = match token.parent() {
             Some(it) => it,
             None => return,
         };
         let sa = self.analyze(&parent);
-        let mut stack: SmallVec<[_; 1]> = smallvec![InFile::new(sa.file_id, token)];
+        let mut stack: SmallVec<[_; 4]> = smallvec![InFile::new(sa.file_id, token)];
         let mut cache = self.expansion_info_cache.borrow_mut();
         let mut mcache = self.macro_call_cache.borrow_mut();
 
         let mut process_expansion_for_token =
-            |stack: &mut SmallVec<_>, file_id, item, token: InFile<&_>| {
-                let mapped_tokens = cache
-                    .entry(file_id)
-                    .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                    .as_ref()?
-                    .map_token_down(self.db.upcast(), item, token)?;
+            |stack: &mut SmallVec<_>, macro_file, item, token: InFile<&_>| {
+                let expansion_info = cache
+                    .entry(macro_file)
+                    .or_insert_with(|| macro_file.expansion_info(self.db.upcast()))
+                    .as_ref()?;
+
+                {
+                    let InFile { file_id, value } = expansion_info.expanded();
+                    self.cache(value, file_id);
+                }
+
+                let mut mapped_tokens =
+                    expansion_info.map_token_down(self.db.upcast(), item, token)?;
 
                 let len = stack.len();
                 // requeue the tokens we got from mapping our current token down
-                stack.extend(mapped_tokens.inspect(|token| {
-                    if let Some(parent) = token.value.parent() {
-                        self.cache(find_root(&parent), token.file_id);
-                    }
-                }));
+                if single {
+                    stack.extend(mapped_tokens.next());
+                } else {
+                    stack.extend(mapped_tokens);
+                }
                 // if the length changed we have found a mapping for the token
                 (stack.len() != len).then(|| ())
             };
@@ -606,17 +638,15 @@ impl<'db> SemanticsImpl<'db> {
                 }
 
                 // or are we inside a function-like macro call
-                if let Some(macro_call) = token.value.ancestors().find_map(ast::MacroCall::cast) {
-                    let tt = macro_call.token_tree()?;
-                    let l_delim = match tt.left_delimiter_token() {
-                        Some(it) => it.text_range().end(),
-                        None => tt.syntax().text_range().start(),
-                    };
-                    let r_delim = match tt.right_delimiter_token() {
-                        Some(it) => it.text_range().start(),
-                        None => tt.syntax().text_range().end(),
-                    };
-                    if !TextRange::new(l_delim, r_delim).contains_range(token.value.text_range()) {
+                if let Some(tt) =
+                    // FIXME replace map.while_some with take_while once stable
+                    token.value.ancestors().map(ast::TokenTree::cast).while_some().last()
+                {
+                    let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
+                    if tt.left_delimiter_token().map_or(false, |it| it == token.value) {
+                        return None;
+                    }
+                    if tt.right_delimiter_token().map_or(false, |it| it == token.value) {
                         return None;
                     }
 
