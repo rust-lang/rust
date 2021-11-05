@@ -34,7 +34,6 @@ use rustc_span::source_map::{Span, Spanned};
 use rustc_span::sym;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
-use std::iter;
 use std::ops::Bound;
 
 declare_clippy_lint! {
@@ -1707,12 +1706,6 @@ where
     }
 
     impl<'a, T: Copy> Kind<'a, T> {
-        fn range(&self) -> &'a SpannedRange<T> {
-            match *self {
-                Kind::Start(_, r) | Kind::End(_, r) => r,
-            }
-        }
-
         fn value(self) -> Bound<T> {
             match self {
                 Kind::Start(t, _) => Bound::Included(t),
@@ -1730,7 +1723,19 @@ where
     impl<'a, T: Copy + Ord> Ord for Kind<'a, T> {
         fn cmp(&self, other: &Self) -> Ordering {
             match (self.value(), other.value()) {
-                (Bound::Included(a), Bound::Included(b)) | (Bound::Excluded(a), Bound::Excluded(b)) => a.cmp(&b),
+                (Bound::Included(a), Bound::Included(b)) | (Bound::Excluded(a), Bound::Excluded(b)) => {
+                    let value_cmp = a.cmp(&b);
+                    // In the case of ties, starts come before ends
+                    if value_cmp == Ordering::Equal {
+                        match (self, other) {
+                            (Kind::Start(..), Kind::End(..)) => Ordering::Less,
+                            (Kind::End(..), Kind::Start(..)) => Ordering::Greater,
+                            _ => Ordering::Equal,
+                        }
+                    } else {
+                        value_cmp
+                    }
+                },
                 // Range patterns cannot be unbounded (yet)
                 (Bound::Unbounded, _) | (_, Bound::Unbounded) => unimplemented!(),
                 (Bound::Included(a), Bound::Excluded(b)) => match a.cmp(&b) {
@@ -1754,24 +1759,24 @@ where
 
     values.sort();
 
-    for (a, b) in iter::zip(&values, values.iter().skip(1)) {
-        match (a, b) {
-            (&Kind::Start(_, ra), &Kind::End(_, rb)) => {
-                if ra.node != rb.node {
-                    return Some((ra, rb));
-                }
-            },
-            (&Kind::End(a, _), &Kind::Start(b, _)) if a != Bound::Included(b) => (),
-            _ => {
-                // skip if the range `a` is completely included into the range `b`
-                if let Ordering::Equal | Ordering::Less = a.cmp(b) {
-                    let kind_a = Kind::End(a.range().node.1, a.range());
-                    let kind_b = Kind::End(b.range().node.1, b.range());
-                    if let Ordering::Equal | Ordering::Greater = kind_a.cmp(&kind_b) {
-                        return None;
+    let mut started = vec![];
+
+    for value in values {
+        match value {
+            Kind::Start(_, r) => started.push(r),
+            Kind::End(_, er) => {
+                let mut overlap = None;
+
+                while let Some(sr) = started.pop() {
+                    if sr == er {
+                        break;
                     }
+                    overlap = Some(sr);
                 }
-                return Some((a.range(), b.range()));
+
+                if let Some(sr) = overlap {
+                    return Some((er, sr));
+                }
             },
         }
     }
