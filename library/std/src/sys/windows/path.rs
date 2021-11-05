@@ -242,3 +242,108 @@ pub(crate) fn maybe_verbatim(path: &Path) -> io::Result<Vec<u16>> {
     )?;
     Ok(path)
 }
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub(crate) enum Root {
+    Drive,
+    Unc,
+    //Device,
+}
+impl Root {
+    pub fn is_unc(self) -> bool {
+        self == Root::Unc
+    }
+}
+
+/// If the given verbatim path can be losslessly converted to a user path,
+/// then this returns the [`Root`] type and the subpath.
+/// Otherwise it returns `None`.
+pub(crate) fn try_from_verbatim(path: &[u8]) -> Option<(Root, &[u8])> {
+    if !path.starts_with(br"\\?\") {
+        return None;
+    }
+    // Parse the root type.
+    let (root, subpath) = match path[4..] {
+        ref subpath @ [drive @ _, b':', b'\\', ..] if drive.is_ascii_alphabetic() => {
+            (Root::Drive, subpath)
+        }
+        [b'U', b'N', b'C', b'\\', ref subpath @ ..] => (Root::Unc, subpath),
+        _ => return None,
+    };
+
+    let mut components = subpath.split_inclusive(|&b| b == b'\\');
+    let mut filename = None;
+    if root == Root::Unc {
+        // Skip the first two components.
+        for component in components.by_ref().take(2) {
+            if component.contains(&b'/') {
+                return None;
+            }
+        }
+    }
+    for component in components {
+        if component.contains(&b'/') {
+            return None;
+        }
+        match component {
+            br"\" | br".\" | br"..\" => return None,
+            // Ends with one and only one dot.
+            [.., b @ _, b'.', b'\\'] if *b != b'.' => return None,
+            _ => {}
+        }
+        filename.replace(component);
+    }
+    if let Some(name) = filename {
+        if matches!(name.last(), Some(b'.') | Some(b' '))
+            || (root == Root::Drive && is_dos_device(name))
+        {
+            return None;
+        }
+    }
+    Some((root, subpath))
+}
+
+/// Returns true if the filename is the name of a DOS device.
+fn is_dos_device(filename: &[u8]) -> bool {
+    // The UTF-8 encoding of "²", "³" and "¹" is two bytes and starts with 0xc2.
+    const SUPER: u8 = 0xc2;
+    const SUPER_2: u8 = 0xb2; // ²
+    const SUPER_3: u8 = 0xb3; // ³
+    const SUPER_1: u8 = 0xb9; // ¹
+
+    let upper = {
+        let mut upper = [0u8; 7];
+        for (a, &b) in upper.iter_mut().zip(filename.iter()) {
+            *a = b.to_ascii_uppercase();
+        }
+        upper
+    };
+    let tail = match &upper[..3] {
+        b"AUX" | b"NUL" | b"PRN" => &filename[3..],
+        b"CON" => match &upper[3..] {
+            // Disambiguate `CON`, `CONIN$` and `CONOUT$`.
+            b"OUT$" => &filename[7..],
+            [b'I', b'N', b'$', _] => &filename[6..],
+            _ => &filename[3..],
+        },
+        b"COM" | b"LPT" => match upper[3] {
+            // Match digit
+            b'1'..=b'9' => &filename[4..],
+            // Test for the two byte super-script numbers.
+            SUPER if matches!(upper[4], SUPER_1 | SUPER_2 | SUPER_3) => &filename[5..],
+            _ => return false,
+        },
+        _ => return false,
+    };
+    // Trailing spaces are ignored.
+    // A `.` marks the end of the device name.
+    // Anything else means this is not a device name.
+    let mut iter = tail.iter();
+    loop {
+        match iter.next() {
+            None | Some(b'.') => break true,
+            Some(b' ') => continue,
+            _ => break false,
+        }
+    }
+}

@@ -1096,13 +1096,143 @@ pub fn windows_display_user_paths() {
     fn check(path: &str, expected: &str) {
         assert_eq!(&Path::new(path).display().to_string(), expected);
     }
-    check(r"\\?\UNC\server\share", r"\\server\share");
+    fn unchanged(path: &str) {
+        check(path, path);
+    }
+
+    // Make sure non-verbatim paths aren't changed
+    unchanged(r"path\to\file");
+    unchanged(r".\path\to\file");
+    unchanged(r"..\path\to\file");
+    unchanged(r"C:\path\to\file");
+    unchanged(r"\\server\share\path\to\file");
+    unchanged(r"\\.\server\share\path\to\file");
+    unchanged(r"//?\UNC\server\share\path\to\file");
+
+    // The simple cases.
     check(r"\\?\C:\path", r"C:\path");
     check(r"\\?\C:\", r"C:\");
+    check(r"\\?\UNC\server\share", r"\\server\share");
+    check(r"\\?\UNC\server\share\", r"\\server\share\");
+    check(r"\\?\UNC\server\share\path", r"\\server\share\path");
 
-    // This should not change.
     // `\\?\C:` is an absolute path while `C:` is a "drive relative" path.
-    check(r"\\?\C:", r"\\?\C:");
+    unchanged(r"\\?\C:");
+
+    // We only change drive and UNC paths, not device paths.
+    unchanged(r"\\?\pipe\name");
+
+    // Empty components are nonsensical but can be represented in verbatim paths
+    unchanged(r"\\?\C:\path\\to\file");
+    unchanged(r"\\?\UNC\server\share\path\\to\file");
+
+    // Verbatim `.` and `..` components have no user path equivalent.
+    unchanged(r"\\?\C:\path\..\file");
+    unchanged(r"\\?\C:\path\.\file");
+    unchanged(r"\\?\C:\path\file\.");
+    unchanged(r"\\?\C:\path\file\..");
+
+    unchanged(r"\\?\UNC\server\share\path\..\file");
+    unchanged(r"\\?\UNC\server\share\path\.\file");
+    unchanged(r"\\?\UNC\server\share\path\file\.");
+    unchanged(r"\\?\UNC\server\share\path\file\..");
+
+    // All trailing dots and spaces are stripped from user paths.
+    unchanged(r"\\?\C:\path\to\file..");
+    unchanged(r"\\?\C:\path\to\file  ");
+    unchanged(r"\\?\C:\path\to\file..  ..");
+
+    unchanged(r"\\?\UNC\server\share\path\to\file..");
+    unchanged(r"\\?\UNC\server\share\path\to\file  ");
+    unchanged(r"\\?\UNC\server\share\path\to\file..  ..");
+
+    // A single trailing dot in an interior component will be stripped by
+    // non-verbatim paths...
+    unchanged(r"\\?\C:\path\to.\file");
+    unchanged(r"\\?\UNC\server\share\path\to.\file");
+
+    // ...but two dots won't be. Don't ask.
+    check(r"\\?\C:\path\to..\file", r"C:\path\to..\file");
+    check(r"\\?\C:\path\to..\file", r"C:\path\to..\file");
+
+    check(r"\\?\UNC\server\share\path\to..\file", r"\\server\share\path\to..\file");
+    check(r"\\?\UNC\server\share\path\to..\file", r"\\server\share\path\to..\file");
+
+    // Dots elsewhere are fine.
+    check(r"\\?\C:\path\.to\file", r"C:\path\.to\file");
+    check(r"\\?\C:\path\..to\file", r"C:\path\..to\file");
+    check(r"\\?\C:\path\t.o\file", r"C:\path\t.o\file");
+    check(r"\\?\C:\path\t..o\file", r"C:\path\t..o\file");
+
+    check(r"\\?\UNC\server\share\path\.to\file", r"\\server\share\path\.to\file");
+    check(r"\\?\UNC\server\share\path\..to\file", r"\\server\share\path\..to\file");
+    check(r"\\?\UNC\server\share\path\t.o\file", r"\\server\share\path\t.o\file");
+    check(r"\\?\UNC\server\share\path\t..o\file", r"\\server\share\path\t..o\file");
+
+    // Verbatim `/` has not user path equivalent.
+    unchanged(r"\\?\C:\path/to\file");
+    unchanged(r"\\?\UNC\server\share\path/to\file");
+
+    // Legacy dos device names are converted to `\\.\` paths, but only for drive paths.
+    unchanged(r"\\?\C:\path\to\AUX");
+    unchanged(r"\\?\C:\path\to\NUL");
+    unchanged(r"\\?\C:\path\to\PRN");
+    unchanged(r"\\?\C:\path\to\CON");
+    unchanged(r"\\?\C:\path\to\CONIN$");
+    unchanged(r"\\?\C:\path\to\CONOUT$");
+
+    unchanged(r"\\?\C:\path\to\COM1");
+    unchanged(r"\\?\C:\path\to\COM2");
+    unchanged(r"\\?\C:\path\to\COM3");
+    unchanged(r"\\?\C:\path\to\COM4");
+    unchanged(r"\\?\C:\path\to\COM5");
+    unchanged(r"\\?\C:\path\to\COM6");
+    unchanged(r"\\?\C:\path\to\COM7");
+    unchanged(r"\\?\C:\path\to\COM8");
+    unchanged(r"\\?\C:\path\to\COM9");
+
+    unchanged(r"\\?\C:\path\to\LPT1");
+    unchanged(r"\\?\C:\path\to\LPT2");
+    unchanged(r"\\?\C:\path\to\LPT3");
+    unchanged(r"\\?\C:\path\to\LPT4");
+    unchanged(r"\\?\C:\path\to\LPT5");
+    unchanged(r"\\?\C:\path\to\LPT6");
+    unchanged(r"\\?\C:\path\to\LPT7");
+    unchanged(r"\\?\C:\path\to\LPT8");
+    unchanged(r"\\?\C:\path\to\LPT9");
+
+    // Yes, these are superscript digits. The legend goes that someone once used
+    // the wrong "is a digit" function and now it can't be changed due to
+    // stability guarantees.
+    unchanged(r"\\?\C:\path\to\COM²");
+    unchanged(r"\\?\C:\path\to\COM³");
+    unchanged(r"\\?\C:\path\to\COM¹");
+    unchanged(r"\\?\C:\path\to\LPT²");
+    unchanged(r"\\?\C:\path\to\LPT³");
+    unchanged(r"\\?\C:\path\to\LPT¹");
+
+    // DOS device names are case-insensitive
+    unchanged(r"\\?\C:\aux");
+    unchanged(r"\\?\C:\CoM4");
+    unchanged(r"\\?\C:\cOnOuT$");
+
+    // Everything after a dot is ignored for the sake of parsing the device name.
+    unchanged(r"\\?\C:\path\to\LPT¹.txt");
+    // Spaces are ignored too.
+    unchanged(r"\\?\C:\path\to\LPT¹    ");
+    // And these two rules can be combined.
+    unchanged(r"\\?\C:\path\to\LPT¹    .txt");
+
+    // UNC paths can have DOS devices even when not verbatim.
+    check(r"\\?\UNC\server\share\AUX", r"\\server\share\AUX");
+
+    // In UNC paths, the server name and share name are never changed, even
+    // without the verbatim prefix...
+    check(r"\\?\UNC\..\share.\", r"\\..\share.\");
+
+    // ... aside from the forward slash which is a path separator.
+    unchanged(r"\\?\UNC\ser/ver\share\");
+    unchanged(r"\\?\UNC\server\sh/are\");
 }
 
 #[test]
