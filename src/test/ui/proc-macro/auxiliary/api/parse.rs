@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 use proc_macro::Literal;
 
 pub fn test() {
@@ -12,6 +14,10 @@ fn test_display_literal() {
     assert_eq!(Literal::f32_suffixed(-10.0).to_string(), "-10f32");
     assert_eq!(Literal::f64_unsuffixed(-10.0).to_string(), "-10.0");
     assert_eq!(Literal::f64_suffixed(-10.0).to_string(), "-10f64");
+    assert_eq!(
+        Literal::f64_unsuffixed(1e100).to_string(),
+        "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0",
+    );
 }
 
 fn test_parse_literal() {
