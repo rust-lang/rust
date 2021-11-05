@@ -50,7 +50,7 @@ jobs:
           thumbv6m-none-eabi,
           x86_64-pc-windows-gnu,
         ]
-        channel: [1.49.0, nightly]
+        channel: [1.56.1, nightly]
         include:
         - os: macos-latest
           target: x86_64-apple-darwin
