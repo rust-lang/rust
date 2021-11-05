@@ -1153,9 +1153,6 @@ pub fn windows_display_user_paths() {
 
     // ...but two dots won't be. Don't ask.
     check(r"\\?\C:\path\to..\file", r"C:\path\to..\file");
-    check(r"\\?\C:\path\to..\file", r"C:\path\to..\file");
-
-    check(r"\\?\UNC\server\share\path\to..\file", r"\\server\share\path\to..\file");
     check(r"\\?\UNC\server\share\path\to..\file", r"\\server\share\path\to..\file");
 
     // Dots elsewhere are fine.
