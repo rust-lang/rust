@@ -772,7 +772,7 @@ fn infer_placeholder_type<'a>(
                 } else {
                     err.span_note(
                         tcx.hir().body(body_id).value.span,
-                        &format!("however, the inferred type `{}` cannot be named", ty.to_string()),
+                        &format!("however, the inferred type `{}` cannot be named", ty),
                     );
                 }
             }
@@ -796,7 +796,7 @@ fn infer_placeholder_type<'a>(
                 } else {
                     diag.span_note(
                         tcx.hir().body(body_id).value.span,
-                        &format!("however, the inferred type `{}` cannot be named", ty.to_string()),
+                        &format!("however, the inferred type `{}` cannot be named", ty),
                     );
                 }
             }

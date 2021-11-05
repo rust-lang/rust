@@ -632,11 +632,11 @@ fn tooltip<'tcx>(
     for statement in statements {
         let source_range = source_range_no_file(tcx, &statement.source_info.span);
         text.push(format!(
-            "\n{}{}: {}: {}",
+            "\n{}{}: {}: {:?}",
             TOOLTIP_INDENT,
             source_range,
             statement_kind_name(&statement),
-            format!("{:?}", statement)
+            statement
         ));
     }
     if let Some(term) = terminator {

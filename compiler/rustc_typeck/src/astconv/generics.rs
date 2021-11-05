@@ -344,7 +344,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                             "reorder the arguments: {}: `<{}>`",
                                             param_types_present
                                                 .into_iter()
-                                                .map(|ord| format!("{}s", ord.to_string()))
+                                                .map(|ord| format!("{}s", ord))
                                                 .collect::<Vec<String>>()
                                                 .join(", then "),
                                             ordered_params
