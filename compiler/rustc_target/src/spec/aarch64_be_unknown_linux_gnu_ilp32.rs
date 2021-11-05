@@ -12,6 +12,7 @@ pub fn target() -> Target {
         arch: "aarch64".to_string(),
         options: TargetOptions {
             abi: "ilp32".to_string(),
+            features: "+outline-atomics".to_string(),
             mcount: "\u{1}_mcount".to_string(),
             endian: Endian::Big,
             ..base
