@@ -97,6 +97,7 @@
 #![allow(explicit_outlives_requirements)]
 //
 // Library features for const fns:
+#![feature(const_align_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_alloc_layout)]
 #![feature(const_arguments_as_str)]
@@ -130,6 +131,7 @@
 #![feature(const_size_of_val)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_slice_ptr_len)]
+#![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_swap)]
 #![feature(const_trait_impl)]
 #![feature(const_type_id)]
@@ -138,6 +140,7 @@
 #![feature(duration_consts_2)]
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
+#![feature(str_internals)]
 #![feature(variant_count)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
