@@ -18,7 +18,7 @@ use smallvec::{smallvec, SmallVec};
 use syntax::{
     algo::skip_trivia_token,
     ast::{self, HasAttrs, HasGenericParams, HasLoopBody},
-    match_ast, AstNode, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
+    match_ast, AstNode, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextSize,
 };
 
 use crate::{
@@ -556,25 +556,27 @@ impl<'db> SemanticsImpl<'db> {
             None => return,
         };
         let sa = self.analyze(&parent);
-        let mut stack: SmallVec<[_; 1]> = smallvec![InFile::new(sa.file_id, token)];
+        let mut stack: SmallVec<[_; 4]> = smallvec![InFile::new(sa.file_id, token)];
         let mut cache = self.expansion_info_cache.borrow_mut();
         let mut mcache = self.macro_call_cache.borrow_mut();
 
         let mut process_expansion_for_token =
-            |stack: &mut SmallVec<_>, file_id, item, token: InFile<&_>| {
-                let mapped_tokens = cache
-                    .entry(file_id)
-                    .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                    .as_ref()?
-                    .map_token_down(self.db.upcast(), item, token)?;
+            |stack: &mut SmallVec<_>, macro_file, item, token: InFile<&_>| {
+                let expansion_info = cache
+                    .entry(macro_file)
+                    .or_insert_with(|| macro_file.expansion_info(self.db.upcast()))
+                    .as_ref()?;
+
+                {
+                    let InFile { file_id, value } = expansion_info.expanded();
+                    self.cache(value, file_id);
+                }
+
+                let mapped_tokens = expansion_info.map_token_down(self.db.upcast(), item, token)?;
 
                 let len = stack.len();
                 // requeue the tokens we got from mapping our current token down
-                stack.extend(mapped_tokens.inspect(|token| {
-                    if let Some(parent) = token.value.parent() {
-                        self.cache(find_root(&parent), token.file_id);
-                    }
-                }));
+                stack.extend(mapped_tokens);
                 // if the length changed we have found a mapping for the token
                 (stack.len() != len).then(|| ())
             };
@@ -606,17 +608,15 @@ impl<'db> SemanticsImpl<'db> {
                 }
 
                 // or are we inside a function-like macro call
-                if let Some(macro_call) = token.value.ancestors().find_map(ast::MacroCall::cast) {
-                    let tt = macro_call.token_tree()?;
-                    let l_delim = match tt.left_delimiter_token() {
-                        Some(it) => it.text_range().end(),
-                        None => tt.syntax().text_range().start(),
-                    };
-                    let r_delim = match tt.right_delimiter_token() {
-                        Some(it) => it.text_range().start(),
-                        None => tt.syntax().text_range().end(),
-                    };
-                    if !TextRange::new(l_delim, r_delim).contains_range(token.value.text_range()) {
+                if let Some(tt) =
+                    // FIXME replace map.while_some with take_while once stable
+                    token.value.ancestors().map(ast::TokenTree::cast).while_some().last()
+                {
+                    let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
+                    if tt.left_delimiter_token().map_or(false, |it| it == token.value) {
+                        return None;
+                    }
+                    if tt.right_delimiter_token().map_or(false, |it| it == token.value) {
                         return None;
                     }
 
