@@ -1,5 +1,7 @@
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
+use rustc_index::bit_set::SparseBitMatrix;
+use rustc_index::interval::IntervalSet;
+use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::{BasicBlock, Body, Location};
@@ -110,11 +112,11 @@ crate enum RegionElement {
     PlaceholderRegion(ty::PlaceholderRegion),
 }
 
-/// When we initially compute liveness, we use a bit matrix storing
-/// points for each region-vid.
+/// When we initially compute liveness, we use an interval matrix storing
+/// liveness ranges for each region-vid.
 crate struct LivenessValues<N: Idx> {
     elements: Rc<RegionValueElements>,
-    points: SparseBitMatrix<N, PointIndex>,
+    points: SparseIntervalMatrix<N, PointIndex>,
 }
 
 impl<N: Idx> LivenessValues<N> {
@@ -122,7 +124,7 @@ impl<N: Idx> LivenessValues<N> {
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
     crate fn new(elements: Rc<RegionValueElements>) -> Self {
-        Self { points: SparseBitMatrix::new(elements.num_points), elements }
+        Self { points: SparseIntervalMatrix::new(elements.num_points), elements }
     }
 
     /// Iterate through each region that has a value in this set.
@@ -140,7 +142,7 @@ impl<N: Idx> LivenessValues<N> {
 
     /// Adds all the elements in the given bit array into the given
     /// region. Returns whether any of them are newly added.
-    crate fn add_elements(&mut self, row: N, locations: &HybridBitSet<PointIndex>) -> bool {
+    crate fn add_elements(&mut self, row: N, locations: &IntervalSet<PointIndex>) -> bool {
         debug!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
         self.points.union_row(row, locations)
     }
@@ -153,7 +155,7 @@ impl<N: Idx> LivenessValues<N> {
     /// Returns `true` if the region `r` contains the given element.
     crate fn contains(&self, row: N, location: Location) -> bool {
         let index = self.elements.point_from_location(location);
-        self.points.contains(row, index)
+        self.points.row(row).map_or(false, |r| r.contains(index))
     }
 
     /// Returns an iterator of all the elements contained by the region `r`
@@ -221,7 +223,7 @@ impl PlaceholderIndices {
 crate struct RegionValues<N: Idx> {
     elements: Rc<RegionValueElements>,
     placeholder_indices: Rc<PlaceholderIndices>,
-    points: SparseBitMatrix<N, PointIndex>,
+    points: SparseIntervalMatrix<N, PointIndex>,
     free_regions: SparseBitMatrix<N, RegionVid>,
 
     /// Placeholders represent bound regions -- so something like `'a`
@@ -241,7 +243,7 @@ impl<N: Idx> RegionValues<N> {
         let num_placeholders = placeholder_indices.len();
         Self {
             elements: elements.clone(),
-            points: SparseBitMatrix::new(elements.num_points),
+            points: SparseIntervalMatrix::new(elements.num_points),
             placeholder_indices: placeholder_indices.clone(),
             free_regions: SparseBitMatrix::new(num_universal_regions),
             placeholders: SparseBitMatrix::new(num_placeholders),
