@@ -2523,19 +2523,29 @@ impl<'a> Resolver<'a> {
                         } else {
                             (
                                 format!("use of undeclared crate or module `{}`", ident),
-                                self.find_similarly_named_module_or_crate(
-                                    ident.name,
-                                    &parent_scope.module,
-                                )
-                                .map(|sugg| {
-                                    (
-                                        vec![(ident.span, sugg.to_string())],
+                                if ident.name == sym::alloc {
+                                    Some((
+                                        vec![],
                                         String::from(
-                                            "there is a crate or module with a similar name",
+                                            "add `extern crate alloc` to use the `alloc` crate",
                                         ),
                                         Applicability::MaybeIncorrect,
+                                    ))
+                                } else {
+                                    self.find_similarly_named_module_or_crate(
+                                        ident.name,
+                                        &parent_scope.module,
                                     )
-                                }),
+                                    .map(|sugg| {
+                                        (
+                                            vec![(ident.span, sugg.to_string())],
+                                            String::from(
+                                                "there is a crate or module with a similar name",
+                                            ),
+                                            Applicability::MaybeIncorrect,
+                                        )
+                                    })
+                                },
                             )
                         }
                     } else {

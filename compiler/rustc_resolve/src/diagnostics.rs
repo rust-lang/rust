@@ -420,6 +420,10 @@ impl<'a> Resolver<'a> {
                 err.span_label(span, label);
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
+                    if suggestions.is_empty() {
+                        err.help(&msg);
+                        return err;
+                    }
                     err.multipart_suggestion(&msg, suggestions, applicability);
                 }
 
