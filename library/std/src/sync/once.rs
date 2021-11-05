@@ -90,6 +90,7 @@ mod tests;
 use crate::cell::Cell;
 use crate::fmt;
 use crate::marker;
+use crate::panic::UnwindSafe;
 use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use crate::thread::{self, Thread};
 
@@ -122,6 +123,9 @@ pub struct Once {
 unsafe impl Sync for Once {}
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Send for Once {}
+
+#[stable(feature = "sync_once_ref_unwind_safe", since = "1.59.0")]
+impl UnwindSafe for Once {}
 
 /// State yielded to [`Once::call_once_force()`]’s closure parameter. The state
 /// can be used to query the poison status of the [`Once`].
