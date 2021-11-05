@@ -137,6 +137,7 @@ where
     where
         U: MaskElement,
     {
+        // Safety: bitmask layout does not depend on the element width
         unsafe { core::mem::transmute_copy(&self) }
     }
 

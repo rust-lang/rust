@@ -106,6 +106,7 @@ where
     where
         U: MaskElement,
     {
+        // Safety: masks are simply integer vectors of 0 and -1, and we can cast the element type.
         unsafe { Mask(intrinsics::simd_cast(self.0)) }
     }
 
@@ -155,12 +156,14 @@ where
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
     pub fn any(self) -> bool {
+        // Safety: use `self` as an integer vector
         unsafe { intrinsics::simd_reduce_any(self.to_int()) }
     }
 
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
     pub fn all(self) -> bool {
+        // Safety: use `self` as an integer vector
         unsafe { intrinsics::simd_reduce_all(self.to_int()) }
     }
 }
@@ -184,6 +187,7 @@ where
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitand(self, rhs: Self) -> Self {
+        // Safety: `self` is an integer vector
         unsafe { Self(intrinsics::simd_and(self.0, rhs.0)) }
     }
 }
@@ -197,6 +201,7 @@ where
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitor(self, rhs: Self) -> Self {
+        // Safety: `self` is an integer vector
         unsafe { Self(intrinsics::simd_or(self.0, rhs.0)) }
     }
 }
@@ -210,6 +215,7 @@ where
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitxor(self, rhs: Self) -> Self {
+        // Safety: `self` is an integer vector
         unsafe { Self(intrinsics::simd_xor(self.0, rhs.0)) }
     }
 }
