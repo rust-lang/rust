@@ -97,12 +97,6 @@ pub struct Candidate {
     location: Location,
 }
 
-impl Candidate {
-    fn source_info(&self, body: &Body<'_>) -> SourceInfo {
-        *body.source_info(self.location)
-    }
-}
-
 struct Collector<'a, 'tcx> {
     ccx: &'a ConstCx<'a, 'tcx>,
     temps: IndexVec<Local, TempState>,
@@ -969,7 +963,7 @@ pub fn promote_candidates<'tcx>(
         // Declare return place local so that `mir::Body::new` doesn't complain.
         let initial_locals = iter::once(LocalDecl::new(tcx.types.never, body.span)).collect();
 
-        let mut scope = body.source_scopes[candidate.source_info(body).scope].clone();
+        let mut scope = body.source_scopes[body.source_info(candidate.location).scope].clone();
         scope.parent_scope = None;
 
         let promoted = Body::new(
