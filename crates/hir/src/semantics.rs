@@ -121,7 +121,10 @@ pub struct SemanticsImpl<'db> {
     pub db: &'db dyn HirDatabase,
     s2d_cache: RefCell<SourceToDefCache>,
     expansion_info_cache: RefCell<FxHashMap<HirFileId, Option<ExpansionInfo>>>,
+    // Rootnode to HirFileId cache
     cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
+    // MacroCall to its expansion's HirFileId cache
+    macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, HirFileId>>,
 }
 
 impl<DB> fmt::Debug for Semantics<'_, DB> {
@@ -396,6 +399,7 @@ impl<'db> SemanticsImpl<'db> {
             s2d_cache: Default::default(),
             cache: Default::default(),
             expansion_info_cache: Default::default(),
+            macro_call_cache: Default::default(),
         }
     }
 
@@ -554,6 +558,7 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze(&parent);
         let mut stack: SmallVec<[_; 1]> = smallvec![InFile::new(sa.file_id, token)];
         let mut cache = self.expansion_info_cache.borrow_mut();
+        let mut mcache = self.macro_call_cache.borrow_mut();
 
         let mut process_expansion_for_token =
             |stack: &mut SmallVec<_>, file_id, item, token: InFile<&_>| {
@@ -582,14 +587,10 @@ impl<'db> SemanticsImpl<'db> {
             let was_not_remapped = (|| {
                 // are we inside an attribute macro call
                 let containing_attribute_macro_call = self.with_ctx(|ctx| {
-                    token
-                        .value
-                        .ancestors()
-                        .filter_map(ast::Item::cast)
-                        .filter_map(|item| {
-                            Some((ctx.item_to_macro_call(token.with_value(item.clone()))?, item))
-                        })
-                        .last()
+                    token.value.ancestors().filter_map(ast::Item::cast).find_map(|item| {
+                        // investigate this, seems to be VERY(250ms) expensive in rust-analyzer/src/config.rs?
+                        Some((ctx.item_to_macro_call(token.with_value(item.clone()))?, item))
+                    })
                 });
                 if let Some((call_id, item)) = containing_attribute_macro_call {
                     let file_id = call_id.as_file();
@@ -616,7 +617,15 @@ impl<'db> SemanticsImpl<'db> {
                         return None;
                     }
 
-                    let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
+                    let mcall = token.with_value(macro_call);
+                    let file_id = match mcache.get(&mcall) {
+                        Some(&it) => it,
+                        None => {
+                            let it = sa.expand(self.db, mcall.as_ref())?;
+                            mcache.insert(mcall, it);
+                            it
+                        }
+                    };
                     return process_expansion_for_token(&mut stack, file_id, None, token.as_ref());
                 }
 
