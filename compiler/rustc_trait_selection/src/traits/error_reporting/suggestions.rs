@@ -2471,13 +2471,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     obligation.param_env,
                 );
 
-                let item_def_id = self
-                    .tcx
-                    .associated_items(future_trait)
-                    .in_definition_order()
-                    .next()
-                    .unwrap()
-                    .def_id;
+                let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
                 // `<T as Future>::Output`
                 let projection_ty = ty::ProjectionTy {
                     // `T`

@@ -1704,13 +1704,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let ty::Opaque(def_id, substs) = ty.kind() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
             // Future::Output
-            let item_def_id = self
-                .tcx
-                .associated_items(future_trait)
-                .in_definition_order()
-                .next()
-                .unwrap()
-                .def_id;
+            let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
             let bounds = self.tcx.explicit_item_bounds(*def_id);
 
