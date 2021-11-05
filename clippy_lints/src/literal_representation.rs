@@ -2,11 +2,8 @@
 //! floating-point literal expressions.
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::numeric_literal::{NumericLiteral, Radix};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{
-    in_macro,
-    numeric_literal::{NumericLiteral, Radix},
-};
 use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, Lit, LitKind};
 use rustc_errors::Applicability;
@@ -283,7 +280,7 @@ impl LiteralDigitGrouping {
                         | WarningType::InconsistentDigitGrouping
                         | WarningType::UnusualByteGroupings
                         | WarningType::LargeDigitGroups => {
-                            !in_macro(lit.span)
+                            !lit.span.from_expansion()
                         }
                         WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => {
                             true

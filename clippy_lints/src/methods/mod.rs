@@ -68,7 +68,7 @@ use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_adt_constructor, contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{contains_return, get_trait_def_id, in_macro, iter_input_pats, meets_msrv, msrvs, paths, return_ty};
+use clippy_utils::{contains_return, get_trait_def_id, iter_input_pats, meets_msrv, msrvs, paths, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -1900,7 +1900,7 @@ macro_rules! method_call {
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if in_macro(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
 

@@ -179,7 +179,7 @@ impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
             // desugaring, as this will detect a break if there's a while loop
             // or a for loop inside the expression.
             _ => {
-                if utils::in_macro(ex.span) {
+                if ex.span.from_expansion() {
                     self.seen_return_break_continue = true;
                 } else {
                     rustc_hir::intravisit::walk_expr(self, ex);

@@ -3,14 +3,16 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use clippy_utils::{diagnostics::span_lint_and_help, in_macro, is_direct_expn_of, source::snippet_opt};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::Span;
+use rustc_span::hygiene::{ExpnKind, MacroKind};
+use rustc_span::{Span, Symbol};
 use serde::{de, Deserialize};
 
 declare_clippy_lint! {
@@ -37,7 +39,7 @@ declare_clippy_lint! {
 const BRACES: &[(&str, &str)] = &[("(", ")"), ("{", "}"), ("[", "]")];
 
 /// The (name, (open brace, close brace), source snippet)
-type MacroInfo<'a> = (&'a str, &'a (String, String), String);
+type MacroInfo<'a> = (Symbol, &'a (String, String), String);
 
 #[derive(Clone, Debug, Default)]
 pub struct MacroBraces {
@@ -93,17 +95,16 @@ impl EarlyLintPass for MacroBraces {
 
 fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a MacroBraces) -> Option<MacroInfo<'a>> {
     let unnested_or_local = || {
-        let nested = in_macro(span.ctxt().outer_expn_data().call_site);
-        !nested
+        !span.ctxt().outer_expn_data().call_site.from_expansion()
             || span
                 .macro_backtrace()
                 .last()
                 .map_or(false, |e| e.macro_def_id.map_or(false, DefId::is_local))
     };
     if_chain! {
-        // Make sure we are only one level deep otherwise there are to many FP's
-        if in_macro(span);
-        if let Some((name, braces)) = find_matching_macro(span, &mac_braces.macro_braces);
+        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = span.ctxt().outer_expn_data().kind;
+        let name = &*mac_name.as_str();
+        if let Some(braces) = mac_braces.macro_braces.get(name);
         if let Some(snip) = snippet_opt(cx, span.ctxt().outer_expn_data().call_site);
         // we must check only invocation sites
         // https://github.com/rust-lang/rust-clippy/issues/7422
@@ -114,14 +115,14 @@ fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a Mac
         if !c.starts_with(&format!("{}!{}", name, braces.0));
         if !mac_braces.done.contains(&span.ctxt().outer_expn_data().call_site);
         then {
-            Some((name, braces, snip))
+            Some((mac_name, braces, snip))
         } else {
             None
         }
     }
 }
 
-fn emit_help(cx: &EarlyContext<'_>, snip: String, braces: &(String, String), name: &str, span: Span) {
+fn emit_help(cx: &EarlyContext<'_>, snip: String, braces: &(String, String), name: Symbol, span: Span) {
     let with_space = &format!("! {}", braces.0);
     let without_space = &format!("!{}", braces.0);
     let mut help = snip;
@@ -142,15 +143,6 @@ fn emit_help(cx: &EarlyContext<'_>, snip: String, braces: &(String, String), nam
         Some(span),
         &format!("consider writing `{}`", help),
     );
-}
-
-fn find_matching_macro(
-    span: Span,
-    braces: &FxHashMap<String, (String, String)>,
-) -> Option<(&String, &(String, String))> {
-    braces
-        .iter()
-        .find(|(macro_name, _)| is_direct_expn_of(span, macro_name).is_some())
 }
 
 fn macro_braces(conf: FxHashSet<MacroMatcher>) -> FxHashMap<String, (String, String)> {

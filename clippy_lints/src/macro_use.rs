@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
 use if_chain::if_chain;
@@ -9,6 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::hygiene::ExpnKind;
 use rustc_span::{edition::Edition, sym, Span};
 
 declare_clippy_lint! {
@@ -212,4 +212,8 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             }
         }
     }
+}
+
+fn in_macro(span: Span) -> bool {
+    span.from_expansion() && !matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
 }

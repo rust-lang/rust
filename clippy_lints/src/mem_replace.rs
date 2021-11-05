@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_non_aggregate_primitive_type;
-use clippy_utils::{in_macro, is_default_equivalent, is_lang_ctor, match_def_path, meets_msrv, msrvs, paths};
+use clippy_utils::{is_default_equivalent, is_lang_ctor, match_def_path, meets_msrv, msrvs, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
@@ -213,7 +213,7 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
             expr_span,
             "replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`",
             |diag| {
-                if !in_macro(expr_span) {
+                if !expr_span.from_expansion() {
                     let suggestion = format!("std::mem::take({})", snippet(cx, dest.span, ""));
 
                     diag.span_suggestion(

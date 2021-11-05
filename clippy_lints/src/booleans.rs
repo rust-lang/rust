@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{eq_expr_value, get_trait_def_id, in_macro, paths};
+use clippy_utils::{eq_expr_value, get_trait_def_id, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -453,22 +453,20 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-        if in_macro(e.span) {
-            return;
-        }
-        match &e.kind {
-            ExprKind::Binary(binop, _, _) if binop.node == BinOpKind::Or || binop.node == BinOpKind::And => {
-                self.bool_expr(e);
-            },
-            ExprKind::Unary(UnOp::Not, inner) => {
-                if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
+        if !e.span.from_expansion() {
+            match &e.kind {
+                ExprKind::Binary(binop, _, _) if binop.node == BinOpKind::Or || binop.node == BinOpKind::And => {
                     self.bool_expr(e);
-                } else {
-                    walk_expr(self, e);
-                }
-            },
-            _ => walk_expr(self, e),
+                },
+                ExprKind::Unary(UnOp::Not, inner) => {
+                    if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
+                        self.bool_expr(e);
+                    }
+                },
+                _ => {},
+            }
         }
+        walk_expr(self, e);
     }
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None

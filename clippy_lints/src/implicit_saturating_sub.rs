@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher;
-use clippy_utils::{in_macro, SpanlessEq};
+use clippy_utils::SpanlessEq;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -39,7 +39,7 @@ declare_lint_pass!(ImplicitSaturatingSub => [IMPLICIT_SATURATING_SUB]);
 
 impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if in_macro(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
         if_chain! {
