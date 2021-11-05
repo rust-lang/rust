@@ -68,8 +68,10 @@ mod attr_impl {
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
             const InReg     = 1 << 5;
-            // NoAlias on &mut arguments can only be used with LLVM >= 12 due to miscompiles
-            // in earlier versions. FIXME: Remove this distinction once possible.
+            // Due to past miscompiles in LLVM, we use a separate attribute for
+            // &mut arguments, so that the codegen backend can decide whether
+            // or not to actually emit the attribute. It can also be controlled
+            // with the `-Zmutable-noalias` debugging option.
             const NoAliasMutRef = 1 << 6;
         }
     }

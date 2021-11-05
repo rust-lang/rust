@@ -3060,9 +3060,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // LLVM's definition of `noalias` is based solely on memory
                     // dependencies rather than pointer equality
                     //
-                    // Due to miscompiles in LLVM < 12, we apply a separate NoAliasMutRef attribute
-                    // for UniqueBorrowed arguments, so that the codegen backend can decide
-                    // whether or not to actually emit the attribute.
+                    // Due to past miscompiles in LLVM, we apply a separate NoAliasMutRef attribute
+                    // for UniqueBorrowed arguments, so that the codegen backend can decide whether
+                    // or not to actually emit the attribute. It can also be controlled with the
+                    // `-Zmutable-noalias` debugging option.
                     let no_alias = match kind {
                         PointerKind::Shared | PointerKind::UniqueBorrowed => false,
                         PointerKind::UniqueOwned => true,
