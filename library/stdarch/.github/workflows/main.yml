@@ -171,6 +171,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@master
+      with:
+        submodules: recursive
     - name: Install Rust (rustup)
       run: |
         rustup update nightly --no-self-update

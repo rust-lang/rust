@@ -1,3 +1,4 @@
+#![feature(slice_partition_dedup)]
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -9,9 +10,14 @@ use std::process::Command;
 
 use clap::{App, Arg};
 use intrinsic::Intrinsic;
+use itertools::Itertools;
 use rayon::prelude::*;
 use types::TypeKind;
 
+use crate::acle_csv_parser::get_acle_intrinsics;
+use crate::argument::Argument;
+
+mod acle_csv_parser;
 mod argument;
 mod intrinsic;
 mod types;
@@ -23,7 +29,43 @@ pub enum Language {
     C,
 }
 
+fn gen_code_c(intrinsic: &Intrinsic, constraints: &[&Argument], name: String) -> String {
+    if let Some((current, constraints)) = constraints.split_last() {
+        let range = current
+            .constraints
+            .iter()
+            .map(|c| c.to_range())
+            .flat_map(|r| r.into_iter());
+
+        range
+            .map(|i| {
+                format!(
+                    r#"  {{
+  {ty} {name} = {val};
+{pass}
+  }}"#,
+                    name = current.name,
+                    ty = current.ty.c_type(),
+                    val = i,
+                    pass = gen_code_c(intrinsic, constraints, format!("{}-{}", name, i))
+                )
+            })
+            .collect()
+    } else {
+        (1..20)
+            .map(|idx| intrinsic.generate_pass_c(idx, &name))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
 fn generate_c_program(header_files: &[&str], intrinsic: &Intrinsic) -> String {
+    let constraints = intrinsic
+        .arguments
+        .iter()
+        .filter(|i| i.has_constraint())
+        .collect_vec();
+
     format!(
         r#"{header_files}
 #include <iostream>
@@ -57,29 +99,60 @@ int main(int argc, char **argv) {{
             .map(|header| format!("#include <{}>", header))
             .collect::<Vec<_>>()
             .join("\n"),
-        passes = (1..20)
-            .map(|idx| intrinsic.generate_pass_c(idx))
-            .collect::<Vec<_>>()
-            .join("\n"),
+        passes = gen_code_c(intrinsic, constraints.as_slice(), Default::default()),
     )
 }
 
+fn gen_code_rust(intrinsic: &Intrinsic, constraints: &[&Argument], name: String) -> String {
+    if let Some((current, constraints)) = constraints.split_last() {
+        let range = current
+            .constraints
+            .iter()
+            .map(|c| c.to_range())
+            .flat_map(|r| r.into_iter());
+
+        range
+            .map(|i| {
+                format!(
+                    r#"  {{
+    const {name}: {ty} = {val};
+{pass}
+  }}"#,
+                    name = current.name,
+                    ty = current.ty.rust_type(),
+                    val = i,
+                    pass = gen_code_rust(intrinsic, constraints, format!("{}-{}", name, i))
+                )
+            })
+            .collect()
+    } else {
+        (1..20)
+            .map(|idx| intrinsic.generate_pass_rust(idx, &name))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
 fn generate_rust_program(intrinsic: &Intrinsic) -> String {
+    let constraints = intrinsic
+        .arguments
+        .iter()
+        .filter(|i| i.has_constraint())
+        .collect_vec();
+
     format!(
         r#"#![feature(simd_ffi)]
 #![feature(link_llvm_intrinsics)]
 #![feature(stdsimd)]
 #![allow(overflowing_literals)]
+#![allow(non_upper_case_globals)]
 use core_arch::arch::aarch64::*;
 
 fn main() {{
 {passes}
 }}
 "#,
-        passes = (1..20)
-            .map(|idx| intrinsic.generate_pass_rust(idx))
-            .collect::<Vec<_>>()
-            .join("\n"),
+        passes = gen_code_rust(intrinsic, &constraints, Default::default())
     )
 }
 
@@ -91,7 +164,7 @@ fn compile_c(c_filename: &str, intrinsic: &Intrinsic, compiler: &str) -> bool {
         .arg(format!(
             "{cpp} {cppflags} {arch_flags} -Wno-narrowing -O2 -target {target} -o c_programs/{intrinsic} {filename}",
             target = "aarch64-unknown-linux-gnu",
-            arch_flags = "-march=armv8-a+crypto+crc",
+            arch_flags = "-march=armv8.6-a+crypto+sha3+crc+dotprod",
             filename = c_filename,
             intrinsic = intrinsic.name,
             cpp = compiler,
@@ -238,6 +311,12 @@ fn main() {
                 .long("runner")
                 .help("Run the C programs under emulation with this command"),
         )
+        .arg(
+            Arg::with_name("SKIP")
+                .takes_value(true)
+                .long("skip")
+                .help("Filename for a list of intrinsics to skip (one per line)"),
+        )
         .get_matches();
 
     let filename = matches.value_of("INPUT").unwrap();
@@ -247,54 +326,32 @@ fn main() {
 
     let cpp_compiler = matches.value_of("CPPCOMPILER").unwrap();
     let c_runner = matches.value_of("RUNNER").unwrap_or("");
-    let mut csv_reader = csv::Reader::from_reader(std::fs::File::open(filename).unwrap());
+    let skip = if let Some(filename) = matches.value_of("SKIP") {
+        let data = std::fs::read_to_string(&filename).expect("Failed to open file");
+        data.lines().map(String::from).collect_vec()
+    } else {
+        Default::default()
+    };
 
-    let mut intrinsics = csv_reader
-        .deserialize()
-        .filter_map(|x| -> Option<Intrinsic> {
-            debug!("Processing {:#?}", x);
-            match x {
-                Ok(a) => Some(a),
-                e => {
-                    error!("{:#?}", e);
-                    None
-                }
-            }
-        })
-        // Only perform the test for intrinsics that are enabled...
-        .filter(|i| i.enabled)
+    let intrinsics = get_acle_intrinsics(filename);
+
+    let mut intrinsics = intrinsics
+        .into_iter()
         // Not sure how we would compare intrinsic that returns void.
         .filter(|i| i.results.kind() != TypeKind::Void)
         .filter(|i| i.results.kind() != TypeKind::BFloat)
         .filter(|i| !(i.results.kind() == TypeKind::Float && i.results.inner_size() == 16))
+        .filter(|i| !i.arguments.iter().any(|a| a.ty.kind() == TypeKind::BFloat))
         .filter(|i| {
-            i.arguments
+            !i.arguments
                 .iter()
-                .find(|a| a.ty.kind() == TypeKind::BFloat)
-                .is_none()
-        })
-        .filter(|i| {
-            i.arguments
-                .iter()
-                .find(|a| a.ty.kind() == TypeKind::Float && a.ty.inner_size() == 16)
-                .is_none()
+                .any(|a| a.ty.kind() == TypeKind::Float && a.ty.inner_size() == 16)
         })
         // Skip pointers for now, we would probably need to look at the return
         // type to work out how many elements we need to point to.
-        .filter(|i| i.arguments.iter().find(|a| a.is_ptr()).is_none())
-        // intrinsics with a lane parameter have constraints, deal with them later.
-        .filter(|i| {
-            i.arguments
-                .iter()
-                .find(|a| a.name.starts_with("lane"))
-                .is_none()
-        })
-        .filter(|i| i.arguments.iter().find(|a| a.name == "n").is_none())
-        // clang-12 fails to compile this intrinsic due to an error.
-        // fatal error: error in backend: Cannot select: 0x2b99c30: i64 = AArch64ISD::VSHL Constant:i64<1>, Constant:i32<1>
-        // 0x2b9a520: i64 = Constant<1>
-        // 0x2b9a248: i32 = Constant<1>
-        .filter(|i| !["vshld_s64", "vshld_u64"].contains(&i.name.as_str()))
+        .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))
+        .filter(|i| !i.arguments.iter().any(|a| a.ty.inner_size() == 128))
+        .filter(|i| !skip.contains(&i.name))
         .collect::<Vec<_>>();
     intrinsics.dedup();
 

@@ -1,5 +1,3 @@
-use regex::Regex;
-use serde::{Deserialize, Deserializer};
 use std::fmt;
 use std::str::FromStr;
 
@@ -131,6 +129,16 @@ impl IntrinsicType {
         }
     }
 
+    pub fn num_vectors(&self) -> u32 {
+        match *self {
+            IntrinsicType::Ptr { ref child, .. } => child.num_vectors(),
+            IntrinsicType::Type {
+                vec_len: Some(vl), ..
+            } => vl,
+            _ => 1,
+        }
+    }
+
     /// Determine if the type is a simd type, this will treat a type such as
     /// `uint64x1` as simd.
     pub fn is_simd(&self) -> bool {
@@ -149,107 +157,6 @@ impl IntrinsicType {
         match *self {
             IntrinsicType::Ptr { .. } => true,
             IntrinsicType::Type { .. } => false,
-        }
-    }
-
-    pub fn from_rust(ty: &str) -> Result<Self, String> {
-        lazy_static! {
-            static ref SIMD_TYPE: Regex = Regex::new(r#"([a-z]*)([0-9]*)x([0-9]*)_t"#).unwrap();
-            static ref MULTI_SIMD_TYPE: Regex =
-                Regex::new(r#"([a-z]*)([0-9]*)x([0-9]*)x([0-9]*)_t"#).unwrap();
-            static ref RUST_TYPE: Regex = Regex::new(r#"([iuf]|float|poly)([0-9]+)"#).unwrap();
-        }
-
-        debug!("Parsing type: {}", ty);
-
-        if let Some(ty) = ty.strip_prefix('*') {
-            let (constant, ty) = if let Some(ty) = ty.strip_prefix("const") {
-                (true, ty.trim())
-            } else if let Some(ty) = ty.strip_prefix("mut") {
-                (false, ty.trim())
-            } else {
-                (false, ty)
-            };
-            return Ok(Self::Ptr {
-                constant,
-                child: Box::new(Self::from_rust(ty)?),
-            });
-        }
-
-        let (constant, ty) = if let Some(ty) = ty.strip_prefix("const") {
-            (true, ty.trim())
-        } else {
-            (false, ty)
-        };
-
-        if let Some(captures) = MULTI_SIMD_TYPE.captures(ty) {
-            let kind = captures
-                .get(1)
-                .map(|s| s.as_str().parse::<TypeKind>().unwrap())
-                .unwrap();
-            let bit_len = captures.get(2).map(|s| s.as_str().parse::<u32>().unwrap());
-            let simd_len = captures.get(3).map(|s| s.as_str().parse::<u32>().unwrap());
-            let vec_len = captures.get(4).map(|s| s.as_str().parse::<u32>().unwrap());
-            Ok(Self::Type {
-                constant,
-                kind,
-                bit_len,
-                simd_len,
-                vec_len,
-            })
-        } else if let Some(captures) = SIMD_TYPE.captures(ty) {
-            let kind = captures
-                .get(1)
-                .map(|s| s.as_str().parse::<TypeKind>().unwrap())
-                .unwrap();
-            let bit_len = captures.get(2).map(|s| s.as_str().parse::<u32>().unwrap());
-            let simd_len = captures.get(3).map(|s| s.as_str().parse::<u32>().unwrap());
-
-            Ok(Self::Type {
-                constant,
-                kind,
-                bit_len,
-                simd_len,
-                vec_len: None,
-            })
-        } else if let Some(captures) = RUST_TYPE.captures(ty) {
-            let kind = captures
-                .get(1)
-                .map(|s| match s.as_str() {
-                    "i" => TypeKind::Int,
-                    "u" => TypeKind::UInt,
-                    "f" => TypeKind::Float,
-                    "float" => TypeKind::Float,
-                    "poly" => TypeKind::Poly,
-                    a => panic!("Unexpected type: {} found", a),
-                })
-                .unwrap();
-            let bit_len = captures.get(2).map(|s| s.as_str().parse::<u32>().unwrap());
-            Ok(Self::Type {
-                constant,
-                kind,
-                bit_len,
-                simd_len: None,
-                vec_len: None,
-            })
-        } else {
-            match ty {
-                "int" => Ok(Self::Type {
-                    constant,
-                    kind: TypeKind::Int,
-                    bit_len: Some(32),
-                    simd_len: None,
-                    vec_len: None,
-                }),
-                "void" => Ok(Self::Type {
-                    constant: false,
-                    kind: TypeKind::Void,
-                    bit_len: None,
-                    simd_len: None,
-                    vec_len: None,
-                }),
-                _ => Err(format!("Failed to parse type: {}", ty)),
-            }
         }
     }
 
@@ -287,6 +194,48 @@ impl IntrinsicType {
                 kind.c_prefix(),
                 bit_len
             ),
+            IntrinsicType::Type {
+                kind,
+                bit_len: Some(bit_len),
+                simd_len: Some(simd_len),
+                vec_len: None,
+                ..
+            } => format!("{}{}x{}_t", kind.c_prefix(), bit_len, simd_len),
+            IntrinsicType::Type {
+                kind,
+                bit_len: Some(bit_len),
+                simd_len: Some(simd_len),
+                vec_len: Some(vec_len),
+                ..
+            } => format!("{}{}x{}x{}_t", kind.c_prefix(), bit_len, simd_len, vec_len),
+            _ => todo!("{:#?}", self),
+        }
+    }
+
+    pub fn c_single_vector_type(&self) -> String {
+        match self {
+            IntrinsicType::Ptr { child, .. } => child.c_single_vector_type(),
+            IntrinsicType::Type {
+                kind,
+                bit_len: Some(bit_len),
+                simd_len: Some(simd_len),
+                vec_len: Some(_),
+                ..
+            } => format!("{}{}x{}_t", kind.c_prefix(), bit_len, simd_len),
+            _ => unreachable!("Shouldn't be called on this type"),
+        }
+    }
+
+    pub fn rust_type(&self) -> String {
+        match self {
+            IntrinsicType::Ptr { child, .. } => child.c_type(),
+            IntrinsicType::Type {
+                kind,
+                bit_len: Some(bit_len),
+                simd_len: None,
+                vec_len: None,
+                ..
+            } => format!("{}{}", kind.rust_prefix(), bit_len),
             IntrinsicType::Type {
                 kind,
                 bit_len: Some(bit_len),
@@ -468,16 +417,5 @@ impl IntrinsicType {
             }
             _ => todo!("get_lane_function IntrinsicType: {:#?}", self),
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for IntrinsicType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        use serde::de::Error;
-        let s = String::deserialize(deserializer)?;
-        Self::from_rust(&s).map_err(Error::custom)
     }
 }

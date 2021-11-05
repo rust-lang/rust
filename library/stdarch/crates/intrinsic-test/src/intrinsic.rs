@@ -1,33 +1,47 @@
 use crate::types::{IntrinsicType, TypeKind};
 
 use super::argument::ArgumentList;
-use serde::de::Unexpected;
-use serde::{de, Deserialize, Deserializer};
 
 /// An intrinsic
-#[derive(Deserialize, Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Intrinsic {
-    /// If the intrinsic should be tested.
-    #[serde(deserialize_with = "bool_from_string")]
-    pub enabled: bool,
-
     /// The function name of this intrinsic.
     pub name: String,
 
     /// Any arguments for this intrinsinc.
-    #[serde(rename = "args")]
     pub arguments: ArgumentList,
 
     /// The return type of this intrinsic.
-    #[serde(rename = "return")]
     pub results: IntrinsicType,
 }
 
 impl Intrinsic {
     /// Generates a std::cout for the intrinsics results that will match the
     /// rust debug output format for the return type.
-    pub fn print_result_c(&self, index: usize) -> String {
-        let lanes = if self.results.num_lanes() > 1 {
+    pub fn print_result_c(&self, index: usize, additional: &str) -> String {
+        let lanes = if self.results.num_vectors() > 1 {
+            (0..self.results.num_vectors())
+                .map(|vector| {
+                    format!(
+                        r#""{ty}(" << {lanes} << ")""#,
+                        ty = self.results.c_single_vector_type(),
+                        lanes = (0..self.results.num_lanes())
+                            .map(move |idx| -> std::string::String {
+                                format!(
+                                    "{cast}{lane_fn}(__return_value.val[{vector}], {lane})",
+                                    cast = self.results.c_promotion(),
+                                    lane_fn = self.results.get_lane_function(),
+                                    lane = idx,
+                                    vector = vector,
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(r#" << ", " << "#)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(r#" << ", " << "#)
+        } else if self.results.num_lanes() > 1 {
             (0..self.results.num_lanes())
                 .map(|idx| -> std::string::String {
                     format!(
@@ -55,7 +69,7 @@ impl Intrinsic {
         };
 
         format!(
-            r#"std::cout << "Result {idx}: {ty}" << std::fixed << std::setprecision(150) <<  {lanes} << "{close}" << std::endl;"#,
+            r#"std::cout << "Result {additional}-{idx}: {ty}" << std::fixed << std::setprecision(150) <<  {lanes} << "{close}" << std::endl;"#,
             ty = if self.results.is_simd() {
                 format!("{}(", self.results.c_type())
             } else {
@@ -63,26 +77,36 @@ impl Intrinsic {
             },
             close = if self.results.is_simd() { ")" } else { "" },
             lanes = lanes,
+            additional = additional,
             idx = index,
         )
     }
 
-    pub fn generate_pass_rust(&self, index: usize) -> String {
+    pub fn generate_pass_rust(&self, index: usize, additional: &str) -> String {
+        let constraints = self.arguments.as_constraint_parameters_rust();
+        let constraints = if !constraints.is_empty() {
+            format!("::<{}>", constraints)
+        } else {
+            constraints
+        };
+
         format!(
             r#"
     unsafe {{
         {initialized_args}
-        let res = {intrinsic_call}({args});
-        println!("Result {idx}: {{:.150?}}", res);
+        let res = {intrinsic_call}{const}({args});
+        println!("Result {additional}-{idx}: {{:.150?}}", res);
     }}"#,
             initialized_args = self.arguments.init_random_values_rust(index),
             intrinsic_call = self.name,
             args = self.arguments.as_call_param_rust(),
+            additional = additional,
             idx = index,
+            const = constraints,
         )
     }
 
-    pub fn generate_pass_c(&self, index: usize) -> String {
+    pub fn generate_pass_c(&self, index: usize, additional: &str) -> String {
         format!(
             r#"  {{
     {initialized_args}
@@ -92,21 +116,7 @@ impl Intrinsic {
             initialized_args = self.arguments.init_random_values_c(index),
             intrinsic_call = self.name,
             args = self.arguments.as_call_param_c(),
-            print_result = self.print_result_c(index)
+            print_result = self.print_result_c(index, additional)
         )
-    }
-}
-
-fn bool_from_string<'de, D>(deserializer: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    match String::deserialize(deserializer)?.to_uppercase().as_ref() {
-        "TRUE" => Ok(true),
-        "FALSE" => Ok(false),
-        other => Err(de::Error::invalid_value(
-            Unexpected::Str(other),
-            &"TRUE or FALSE",
-        )),
     }
 }

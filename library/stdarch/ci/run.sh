@@ -122,7 +122,7 @@ esac
 
 if [ "${TARGET}" = "aarch64-unknown-linux-gnu" ]; then
     export CPPFLAGS="-fuse-ld=lld -I/usr/aarch64-linux-gnu/include/ -I/usr/aarch64-linux-gnu/include/c++/9/aarch64-linux-gnu/"
-    cargo run ${INTRINSIC_TEST} --release --bin intrinsic-test -- crates/intrinsic-test/neon-intrinsics.csv --runner "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}" --cppcompiler "clang++-12"
+    cargo run ${INTRINSIC_TEST} --release --bin intrinsic-test -- crates/intrinsic-test/acle/tools/intrinsic_db/advsimd.csv --runner "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}" --cppcompiler "clang++-12" --skip crates/intrinsic-test/missing.txt
 fi
 
 if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ]; then
