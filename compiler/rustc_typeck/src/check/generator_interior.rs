@@ -773,7 +773,7 @@ impl DropRangeVisitor<'tcx> {
             debug!("reinitializing {:?} at {}", hir_id, location);
             self.drop_range(hir_id).reinit(location)
         } else {
-            warn!("reinitializing {:?} is not supported", expr);
+            debug!("reinitializing {:?} is not supported", expr);
         }
     }
 }
@@ -899,6 +899,7 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                 reinit = Some(lhs);
             }
             ExprKind::Loop(body, ..) => {
+                // FIXME: we probably need to iterate this to a fixpoint.
                 let body_drop_ranges = self.fork_drop_ranges();
                 let old_drop_ranges = self.swap_drop_ranges(body_drop_ranges);
 
@@ -1026,8 +1027,8 @@ impl DropRange {
     }
 
     fn is_dropped_at(&self, id: usize) -> bool {
-        match self.events.iter().try_fold(false, |is_dropped, event| {
-            if event.location() < id {
+        let dropped = match self.events.iter().try_fold(false, |is_dropped, event| {
+            if event.location() <= id {
                 Ok(match event {
                     Event::Drop(_) => true,
                     Event::Reinit(_) => false,
@@ -1037,7 +1038,9 @@ impl DropRange {
             }
         }) {
             Ok(is_dropped) | Err(is_dropped) => is_dropped,
-        }
+        };
+        trace!("is_dropped_at({}): events = {:?}, dropped = {}", id, self.events, dropped);
+        dropped
     }
 
     fn drop(&mut self, location: usize) {
@@ -1052,13 +1055,14 @@ impl DropRange {
     ///
     /// After merging, the value will be dead at the end of the range only if it was dead
     /// at the end of both self and other.
+    #[tracing::instrument]
     fn merge_with(&mut self, other: &DropRange, join_point: usize) {
         let join_event = if self.is_dropped_at(join_point) && other.is_dropped_at(join_point) {
             Event::Drop(join_point)
         } else {
             Event::Reinit(join_point)
         };
-        let mut events: Vec<_> = self
+        let events: Vec<_> = self
             .events
             .iter()
             .merge([join_event].iter())
@@ -1067,11 +1071,7 @@ impl DropRange {
             .cloned()
             .collect();
 
-        events.push(if self.is_dropped_at(join_point) && other.is_dropped_at(join_point) {
-            Event::Drop(join_point)
-        } else {
-            Event::Reinit(join_point)
-        });
+        trace!("events after merging: {:?}", events);
 
         self.events = events;
     }
@@ -1080,13 +1080,15 @@ impl DropRange {
     ///
     /// Used to model branching control flow.
     fn fork_at(&self, split_point: usize) -> Self {
-        Self {
+        let result = Self {
             events: vec![if self.is_dropped_at(split_point) {
                 Event::Drop(split_point)
             } else {
                 Event::Reinit(split_point)
             }],
-        }
+        };
+        trace!("forking at {}: {:?}; result = {:?}", split_point, self.events, result);
+        result
     }
 
     fn trimmed(&self, trim_from: usize) -> Self {
@@ -1096,12 +1098,14 @@ impl DropRange {
             Event::Reinit(trim_from)
         };
 
-        Self {
+        let result = Self {
             events: [start]
                 .iter()
                 .chain(self.events.iter().skip_while(|event| event.location() <= trim_from))
                 .cloned()
                 .collect(),
-        }
+        };
+        trace!("trimmed {:?} at {}, got {:?}", self, trim_from, result);
+        result
     }
 }
