@@ -167,9 +167,9 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "wasm64", doc))]
     #[doc(cfg(target_arch = "wasm64"))]
-    #[stable(feature = "simd_wasm32", since = "1.33.0")]
+    #[unstable(feature = "simd_wasm64", issue = "90599")]
     pub mod wasm64 {
-        #[stable(feature = "simd_wasm32", since = "1.33.0")]
+        #[unstable(feature = "simd_wasm64", issue = "90599")]
         pub use crate::core_arch::wasm32::*;
     }
 
@@ -178,9 +178,9 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_family = "wasm", doc))]
     #[doc(cfg(target_family = "wasm"))]
-    #[stable(feature = "simd_wasm32", since = "1.33.0")]
+    #[unstable(feature = "simd_wasm64", issue = "90599")]
     pub mod wasm {
-        #[stable(feature = "simd_wasm32", since = "1.33.0")]
+        #[unstable(feature = "simd_wasm64", issue = "90599")]
         pub use crate::core_arch::wasm32::*;
     }
 
