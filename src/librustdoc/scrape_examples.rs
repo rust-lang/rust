@@ -49,7 +49,7 @@ impl ScrapeExamplesOptions {
                 target_crates,
             })),
             (Some(_), false) | (None, true) => {
-                diag.err(&format!("must use --scrape-examples-output-path and --scrape-examples-target-crate together"));
+                diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate together");
                 Err(1)
             }
             (None, false) => Ok(None),

@@ -924,7 +924,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                 }
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
-                        (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
+                        (self.generics.clean(cx), (sig.decl, names).clean(cx))
                     });
                     let mut t = Function { header: sig.header, decl, generics };
                     if t.header.constness == hir::Constness::Const
@@ -2063,9 +2063,8 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
             let kind = match item.kind {
                 hir::ForeignItemKind::Fn(decl, names, ref generics) => {
                     let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
-                    let (generics, decl) = enter_impl_trait(cx, |cx| {
-                        (generics.clean(cx), (&*decl, &names[..]).clean(cx))
-                    });
+                    let (generics, decl) =
+                        enter_impl_trait(cx, |cx| (generics.clean(cx), (decl, names).clean(cx)));
                     ForeignFunctionItem(Function {
                         decl,
                         generics,
