@@ -178,10 +178,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.speculative_expand_attr(actual_macro_call, speculative_args, token_to_map)
     }
 
+    /// Descend the token into macrocalls to its first mapped counterpart.
     pub fn descend_into_macros_single(&self, token: SyntaxToken) -> SyntaxToken {
-        self.imp.descend_into_macros(token).pop().unwrap()
+        self.imp.descend_into_macros_single(token)
     }
 
+    /// Descend the token into macrocalls to all its mapped counterparts.
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         self.imp.descend_into_macros(token)
     }
@@ -509,47 +511,70 @@ impl<'db> SemanticsImpl<'db> {
         };
 
         if first == last {
-            self.descend_into_macros_impl(first, |InFile { value, .. }| {
-                if let Some(node) = value.ancestors().find_map(N::cast) {
-                    res.push(node)
-                }
-            });
+            self.descend_into_macros_impl(
+                first,
+                |InFile { value, .. }| {
+                    if let Some(node) = value.ancestors().find_map(N::cast) {
+                        res.push(node)
+                    }
+                },
+                false,
+            );
         } else {
             // Descend first and last token, then zip them to look for the node they belong to
             let mut scratch: SmallVec<[_; 1]> = smallvec![];
-            self.descend_into_macros_impl(first, |token| {
-                scratch.push(token);
-            });
+            self.descend_into_macros_impl(
+                first,
+                |token| {
+                    scratch.push(token);
+                },
+                false,
+            );
 
             let mut scratch = scratch.into_iter();
-            self.descend_into_macros_impl(last, |InFile { value: last, file_id: last_fid }| {
-                if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
-                    if first_fid == last_fid {
-                        if let Some(p) = first.parent() {
-                            let range = first.text_range().cover(last.text_range());
-                            let node = find_root(&p)
-                                .covering_element(range)
-                                .ancestors()
-                                .take_while(|it| it.text_range() == range)
-                                .find_map(N::cast);
-                            if let Some(node) = node {
-                                res.push(node);
+            self.descend_into_macros_impl(
+                last,
+                |InFile { value: last, file_id: last_fid }| {
+                    if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
+                        if first_fid == last_fid {
+                            if let Some(p) = first.parent() {
+                                let range = first.text_range().cover(last.text_range());
+                                let node = find_root(&p)
+                                    .covering_element(range)
+                                    .ancestors()
+                                    .take_while(|it| it.text_range() == range)
+                                    .find_map(N::cast);
+                                if let Some(node) = node {
+                                    res.push(node);
+                                }
                             }
                         }
                     }
-                }
-            });
+                },
+                false,
+            );
         }
         res
     }
 
     fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         let mut res = smallvec![];
-        self.descend_into_macros_impl(token, |InFile { value, .. }| res.push(value));
+        self.descend_into_macros_impl(token, |InFile { value, .. }| res.push(value), false);
         res
     }
 
-    fn descend_into_macros_impl(&self, token: SyntaxToken, mut f: impl FnMut(InFile<SyntaxToken>)) {
+    fn descend_into_macros_single(&self, token: SyntaxToken) -> SyntaxToken {
+        let mut res = token.clone();
+        self.descend_into_macros_impl(token, |InFile { value, .. }| res = value, true);
+        res
+    }
+
+    fn descend_into_macros_impl(
+        &self,
+        token: SyntaxToken,
+        mut f: impl FnMut(InFile<SyntaxToken>),
+        single: bool,
+    ) {
         let _p = profile::span("descend_into_macros");
         let parent = match token.parent() {
             Some(it) => it,
@@ -572,11 +597,16 @@ impl<'db> SemanticsImpl<'db> {
                     self.cache(value, file_id);
                 }
 
-                let mapped_tokens = expansion_info.map_token_down(self.db.upcast(), item, token)?;
+                let mut mapped_tokens =
+                    expansion_info.map_token_down(self.db.upcast(), item, token)?;
 
                 let len = stack.len();
                 // requeue the tokens we got from mapping our current token down
-                stack.extend(mapped_tokens);
+                if single {
+                    stack.extend(mapped_tokens.next());
+                } else {
+                    stack.extend(mapped_tokens);
+                }
                 // if the length changed we have found a mapping for the token
                 (stack.len() != len).then(|| ())
             };
