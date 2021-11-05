@@ -86,18 +86,55 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// Intermediate format to store the hir_id pointing to the use that resulted in the
 /// corresponding place being captured and a String which contains the captured value's
 /// name (i.e: a.b.c)
-type CapturesInfo = (Option<hir::HirId>, String);
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum UpvarMigrationInfo {
+    /// We previously captured all of `x`, but now we capture some sub-path.
+    CapturingPrecise { source_expr: Option<hir::HirId>, var_name: String },
+    CapturingNothing {
+        // where the variable appears in the closure (but is not captured)
+        use_span: Span,
+    },
+}
 
-/// Intermediate format to store information needed to generate migration lint. The tuple
-/// contains the hir_id pointing to the use that resulted in the
-/// corresponding place being captured, a String which contains the captured value's
-/// name (i.e: a.b.c) and a String which contains the reason why migration is needed for that
-/// capture
-type MigrationNeededForCapture = (Option<hir::HirId>, String, String);
+/// Reasons that we might issue a migration warning.
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct MigrationWarningReason {
+    /// When we used to capture `x` in its entirety, we implemented the auto-trait(s)
+    /// in this vec, but now we don't.
+    auto_traits: Vec<&'static str>,
+
+    /// When we used to capture `x` in its entirety, we would execute some destructors
+    /// at a different time.
+    drop_order: bool,
+}
+
+impl MigrationWarningReason {
+    fn migration_message(&self) -> String {
+        let base = "changes to closure capture in Rust 2021 will affect";
+        if !self.auto_traits.is_empty() && self.drop_order {
+            format!("{} drop order and which traits the closure implements", base)
+        } else if self.drop_order {
+            format!("{} drop order", base)
+        } else {
+            format!("{} which traits the closure implements", base)
+        }
+    }
+}
+
+/// Intermediate format to store information needed to generate a note in the migration lint.
+struct MigrationLintNote {
+    captures_info: UpvarMigrationInfo,
+
+    /// reasons why migration is needed for this capture
+    reason: MigrationWarningReason,
+}
 
 /// Intermediate format to store the hir id of the root variable and a HashSet containing
 /// information on why the root variable should be fully captured
-type MigrationDiagnosticInfo = (hir::HirId, Vec<MigrationNeededForCapture>);
+struct NeededMigration {
+    var_hir_id: hir::HirId,
+    diagnostics_info: Vec<MigrationLintNote>,
+}
 
 struct InferBorrowKindVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -707,47 +744,66 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                  closure_head_span,
                 |lint| {
                     let mut diagnostics_builder = lint.build(
-                        format!(
-                            "changes to closure capture in Rust 2021 will affect {}",
-                            reasons
-                        )
-                        .as_str(),
+                        &reasons.migration_message(),
                     );
-                    for (var_hir_id, diagnostics_info) in need_migrations.iter() {
+                    for NeededMigration { var_hir_id, diagnostics_info } in &need_migrations {
                         // Labels all the usage of the captured variable and why they are responsible
                         // for migration being needed
-                        for (captured_hir_id, captured_name, reasons) in diagnostics_info.iter() {
-                            if let Some(captured_hir_id) = captured_hir_id {
-                                let cause_span = self.tcx.hir().span(*captured_hir_id);
-                                diagnostics_builder.span_label(cause_span, format!("in Rust 2018, this closure captures all of `{}`, but in Rust 2021, it will only capture `{}`",
-                                    self.tcx.hir().name(*var_hir_id),
-                                    captured_name,
-                                ));
+                        for lint_note in diagnostics_info.iter() {
+                            match &lint_note.captures_info {
+                                UpvarMigrationInfo::CapturingPrecise { source_expr: Some(capture_expr_id), var_name: captured_name } => {
+                                    let cause_span = self.tcx.hir().span(*capture_expr_id);
+                                    diagnostics_builder.span_label(cause_span, format!("in Rust 2018, this closure captures all of `{}`, but in Rust 2021, it will only capture `{}`",
+                                        self.tcx.hir().name(*var_hir_id),
+                                        captured_name,
+                                    ));
+                                }
+                                UpvarMigrationInfo::CapturingNothing { use_span } => {
+                                    diagnostics_builder.span_label(*use_span, format!("in Rust 2018, this causes the closure to capture `{}`, but in Rust 2021, it has no effect",
+                                        self.tcx.hir().name(*var_hir_id),
+                                    ));
+                                }
+
+                                _ => { }
                             }
 
                             // Add a label pointing to where a captured variable affected by drop order
                             // is dropped
-                            if reasons.contains("drop order") {
+                            if lint_note.reason.drop_order {
                                 let drop_location_span = drop_location_span(self.tcx, &closure_hir_id);
 
-                                diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
-                                    self.tcx.hir().name(*var_hir_id),
-                                    captured_name,
-                                ));
+                                match &lint_note.captures_info {
+                                    UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
+                                        diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
+                                            self.tcx.hir().name(*var_hir_id),
+                                            captured_name,
+                                        ));
+                                    }
+                                    UpvarMigrationInfo::CapturingNothing { use_span: _ } => {
+                                        diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{v}` is dropped here along with the closure, but in Rust 2021 `{v}` is not part of the closure",
+                                            v = self.tcx.hir().name(*var_hir_id),
+                                        ));
+                                    }
+                                }
                             }
 
                             // Add a label explaining why a closure no longer implements a trait
-                            if reasons.contains("trait implementation") {
-                                let missing_trait = &reasons[..reasons.find("trait implementation").unwrap() - 1];
+                            for &missing_trait in &lint_note.reason.auto_traits {
+                                // not capturing something anymore cannot cause a trait to fail to be implemented:
+                                match &lint_note.captures_info {
+                                    UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
+                                        let var_name = self.tcx.hir().name(*var_hir_id);
+                                        diagnostics_builder.span_label(closure_head_span, format!("\
+                                        in Rust 2018, this closure implements {missing_trait} \
+                                        as `{var_name}` implements {missing_trait}, but in Rust 2021, \
+                                        this closure will no longer implement {missing_trait} \
+                                        because `{var_name}` is not fully captured \
+                                        and `{captured_name}` does not implement {missing_trait}"));
+                                    }
 
-                                diagnostics_builder.span_label(closure_head_span, format!("in Rust 2018, this closure implements {} as `{}` implements {}, but in Rust 2021, this closure will no longer implement {} as `{}` does not implement {}",
-                                    missing_trait,
-                                    self.tcx.hir().name(*var_hir_id),
-                                    missing_trait,
-                                    missing_trait,
-                                    captured_name,
-                                    missing_trait,
-                                ));
+                                    // Cannot happen: if we don't capture a variable, we impl strictly more traits
+                                    UpvarMigrationInfo::CapturingNothing { use_span } => span_bug!(*use_span, "missing trait from not capturing something"),
+                                }
                             }
                         }
                     }
@@ -840,25 +896,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Combines all the reasons for 2229 migrations
     fn compute_2229_migrations_reasons(
         &self,
-        auto_trait_reasons: FxHashSet<&str>,
-        drop_reason: bool,
-    ) -> String {
-        let mut reasons = String::new();
+        auto_trait_reasons: FxHashSet<&'static str>,
+        drop_order: bool,
+    ) -> MigrationWarningReason {
+        let mut reasons = MigrationWarningReason::default();
 
-        if !auto_trait_reasons.is_empty() {
-            reasons = format!(
-                "{} trait implementation for closure",
-                auto_trait_reasons.clone().into_iter().collect::<Vec<&str>>().join(", ")
-            );
+        for auto_trait in auto_trait_reasons {
+            reasons.auto_traits.push(auto_trait);
         }
 
-        if !auto_trait_reasons.is_empty() && drop_reason {
-            reasons = format!("{} and ", reasons);
-        }
-
-        if drop_reason {
-            reasons = format!("{}drop order", reasons);
-        }
+        reasons.drop_order = drop_order;
 
         reasons
     }
@@ -874,7 +921,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         var_hir_id: hir::HirId,
         closure_clause: hir::CaptureBy,
-    ) -> Option<FxHashMap<CapturesInfo, FxHashSet<&str>>> {
+    ) -> Option<FxHashMap<UpvarMigrationInfo, FxHashSet<&'static str>>> {
         let auto_traits_def_id = vec![
             self.tcx.lang_items().clone_trait(),
             self.tcx.lang_items().sync_trait(),
@@ -963,7 +1010,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if !capture_problems.is_empty() {
                 problematic_captures.insert(
-                    (capture.info.path_expr_id, capture.to_string(self.tcx)),
+                    UpvarMigrationInfo::CapturingPrecise {
+                        source_expr: capture.info.path_expr_id,
+                        var_name: capture.to_string(self.tcx),
+                    },
                     capture_problems,
                 );
             }
@@ -986,6 +1036,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// This function only returns a HashSet of CapturesInfo for significant drops. If there
     /// are no significant drops than None is returned
+    #[instrument(level = "debug", skip(self))]
     fn compute_2229_migrations_for_drop(
         &self,
         closure_def_id: DefId,
@@ -993,25 +1044,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         closure_clause: hir::CaptureBy,
         var_hir_id: hir::HirId,
-    ) -> Option<FxHashSet<CapturesInfo>> {
+    ) -> Option<FxHashSet<UpvarMigrationInfo>> {
         let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
+            debug!("does not have significant drop");
             return None;
         }
 
         let Some(root_var_min_capture_list) = min_captures.and_then(|m| m.get(&var_hir_id)) else {
             // The upvar is mentioned within the closure but no path starting from it is
-            // used.
+            // used. This occurs when you have (e.g.)
+            //
+            // ```
+            // let x = move || {
+            //     let _ = y;
+            // });
+            // ```
+            debug!("no path starting from it is used");
+
 
             match closure_clause {
                 // Only migrate if closure is a move closure
-                hir::CaptureBy::Value => return Some(FxHashSet::default()),
+                hir::CaptureBy::Value => {
+                    let mut diagnostics_info = FxHashSet::default();
+                    let upvars = self.tcx.upvars_mentioned(closure_def_id).expect("must be an upvar");
+                    let upvar = upvars[&var_hir_id];
+                    diagnostics_info.insert(UpvarMigrationInfo::CapturingNothing { use_span: upvar.span });
+                    return Some(diagnostics_info);
+                }
                 hir::CaptureBy::Ref => {}
             }
 
             return None;
         };
+        debug!(?root_var_min_capture_list);
 
         let mut projections_list = Vec::new();
         let mut diagnostics_info = FxHashSet::default();
@@ -1021,19 +1088,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Only care about captures that are moved into the closure
                 ty::UpvarCapture::ByValue(..) => {
                     projections_list.push(captured_place.place.projections.as_slice());
-                    diagnostics_info.insert((
-                        captured_place.info.path_expr_id,
-                        captured_place.to_string(self.tcx),
-                    ));
+                    diagnostics_info.insert(UpvarMigrationInfo::CapturingPrecise {
+                        source_expr: captured_place.info.path_expr_id,
+                        var_name: captured_place.to_string(self.tcx),
+                    });
                 }
                 ty::UpvarCapture::ByRef(..) => {}
             }
         }
 
+        debug!(?projections_list);
+        debug!(?diagnostics_info);
+
         let is_moved = !projections_list.is_empty();
+        debug!(?is_moved);
 
         let is_not_completely_captured =
             root_var_min_capture_list.iter().any(|capture| !capture.place.projections.is_empty());
+        debug!(?is_not_completely_captured);
 
         if is_moved
             && is_not_completely_captured
@@ -1066,15 +1138,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns a tuple containing a vector of MigrationDiagnosticInfo, as well as a String
     /// containing the reason why root variables whose HirId is contained in the vector should
     /// be captured
+    #[instrument(level = "debug", skip(self))]
     fn compute_2229_migrations(
         &self,
         closure_def_id: DefId,
         closure_span: Span,
         closure_clause: hir::CaptureBy,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
-    ) -> (Vec<MigrationDiagnosticInfo>, String) {
+    ) -> (Vec<NeededMigration>, MigrationWarningReason) {
         let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) else {
-            return (Vec::new(), String::new());
+            return (Vec::new(), MigrationWarningReason::default());
         };
 
         let mut need_migrations = Vec::new();
@@ -1083,7 +1156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Perform auto-trait analysis
         for (&var_hir_id, _) in upvars.iter() {
-            let mut responsible_captured_hir_ids = Vec::new();
+            let mut diagnostics_info = Vec::new();
 
             let auto_trait_diagnostic = if let Some(diagnostics_info) =
                 self.compute_2229_migrations_for_trait(min_captures, var_hir_id, closure_clause)
@@ -1115,34 +1188,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let mut capture_diagnostic = capture_diagnostic.into_iter().collect::<Vec<_>>();
             capture_diagnostic.sort();
-            for captured_info in capture_diagnostic.iter() {
+            for captures_info in capture_diagnostic {
                 // Get the auto trait reasons of why migration is needed because of that capture, if there are any
                 let capture_trait_reasons =
-                    if let Some(reasons) = auto_trait_diagnostic.get(captured_info) {
+                    if let Some(reasons) = auto_trait_diagnostic.get(&captures_info) {
                         reasons.clone()
                     } else {
                         FxHashSet::default()
                     };
 
                 // Check if migration is needed because of drop reorder as a result of that capture
-                let capture_drop_reorder_reason = drop_reorder_diagnostic.contains(captured_info);
+                let capture_drop_reorder_reason = drop_reorder_diagnostic.contains(&captures_info);
 
                 // Combine all the reasons of why the root variable should be captured as a result of
                 // auto trait implementation issues
                 auto_trait_migration_reasons.extend(capture_trait_reasons.clone());
 
-                responsible_captured_hir_ids.push((
-                    captured_info.0,
-                    captured_info.1.clone(),
-                    self.compute_2229_migrations_reasons(
+                diagnostics_info.push(MigrationLintNote {
+                    captures_info,
+                    reason: self.compute_2229_migrations_reasons(
                         capture_trait_reasons,
                         capture_drop_reorder_reason,
                     ),
-                ));
+                });
             }
 
-            if !capture_diagnostic.is_empty() {
-                need_migrations.push((var_hir_id, responsible_captured_hir_ids));
+            if !diagnostics_info.is_empty() {
+                need_migrations.push(NeededMigration { var_hir_id, diagnostics_info });
             }
         }
         (
@@ -2087,6 +2159,7 @@ fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
 }
 
+#[instrument(level = "debug", skip(tcx))]
 fn should_do_rust_2021_incompatible_closure_captures_analysis(
     tcx: TyCtxt<'_>,
     closure_id: hir::HirId,
@@ -2102,10 +2175,12 @@ fn should_do_rust_2021_incompatible_closure_captures_analysis(
 /// - s2: Comma separated names of the variables being migrated.
 fn migration_suggestion_for_2229(
     tcx: TyCtxt<'_>,
-    need_migrations: &Vec<MigrationDiagnosticInfo>,
+    need_migrations: &Vec<NeededMigration>,
 ) -> (String, String) {
-    let need_migrations_variables =
-        need_migrations.iter().map(|(v, _)| var_name(tcx, *v)).collect::<Vec<_>>();
+    let need_migrations_variables = need_migrations
+        .iter()
+        .map(|NeededMigration { var_hir_id: v, .. }| var_name(tcx, *v))
+        .collect::<Vec<_>>();
 
     let migration_ref_concat =
         need_migrations_variables.iter().map(|v| format!("&{}", v)).collect::<Vec<_>>().join(", ");
