@@ -21,7 +21,7 @@ fn test_send_trait() {
     let fptr = SendPointer(&mut f as *mut i32);
     thread::spawn(move || unsafe {
         //~^ ERROR: changes to closure capture
-        //~| NOTE: in Rust 2018, this closure implements `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` as `fptr.0` does not implement `Send`
+        //~| NOTE: in Rust 2018, this closure implements `Send`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0 = 20;
@@ -41,8 +41,8 @@ fn test_sync_trait() {
     let fptr = SyncPointer(f);
     thread::spawn(move || unsafe {
         //~^ ERROR: changes to closure capture
-        //~| NOTE: in Rust 2018, this closure implements `Sync` as `fptr` implements `Sync`, but in Rust 2021, this closure will no longer implement `Sync` as `fptr.0.0` does not implement `Sync`
-        //~| NOTE: in Rust 2018, this closure implements `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` as `fptr.0.0` does not implement `Send`
+        //~| NOTE: in Rust 2018, this closure implements `Sync`
+        //~| NOTE: in Rust 2018, this closure implements `Send`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0.0 = 20;
@@ -66,7 +66,7 @@ fn test_clone_trait() {
     let f = U(S(Foo(0)), T(0));
     let c = || {
         //~^ ERROR: changes to closure capture in Rust 2021 will affect drop order and which traits the closure implements
-        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f.1` does not implement `Clone`
+        //~| NOTE: in Rust 2018, this closure implements `Clone`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f` to be fully captured
         let f_1 = f.1;
