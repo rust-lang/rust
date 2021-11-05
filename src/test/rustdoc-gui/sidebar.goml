@@ -4,17 +4,17 @@ assert-text: (".sidebar > .location", "Crate test_docs")
 assert-count: (".sidebar .location", 1)
 assert-text: (".sidebar-elems > #all-types", "See all test_docs's items")
 // We check that we have the crates list and that the "current" on is "test_docs".
-assert-text: (".sidebar-elems > .crate > ul > li > a.current", "test_docs")
+assert-text: (".sidebar-elems .crate > ul > li > a.current", "test_docs")
 // And we're also supposed to have the list of items in the current module.
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(1)", "Modules")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(2)", "Macros")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(3)", "Structs")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(4)", "Enums")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(5)", "Traits")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(6)", "Functions")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(7)", "Type Definitions")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(8)", "Unions")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(9)", "Keywords")
+assert-text: (".sidebar-elems .items > ul > li:nth-child(1)", "Modules")
+assert-text: (".sidebar-elems .items > ul > li:nth-child(2)", "Macros")
+assert-text: (".sidebar-elems .items > ul > li:nth-child(3)", "Structs")
+assert-text: (".sidebar-elems .items > ul > li:nth-child(4)", "Enums")
+assert-text: (".sidebar-elems .items > ul > li:nth-child(5)", "Traits")
+assert-text: (".sidebar-elems .items > ul > li:nth-child(6)", "Functions")
+assert-text: (".sidebar-elems .items > ul > li:nth-child(7)", "Type Definitions")
+assert-text: (".sidebar-elems .items > ul > li:nth-child(8)", "Unions")
+assert-text: (".sidebar-elems .items > ul > li:nth-child(9)", "Keywords")
 assert-text: ("#structs + .item-table .item-left > a", "Foo")
 click: "#structs + .item-table .item-left > a"
 
@@ -24,13 +24,13 @@ assert-count: (".sidebar .location", 2)
 assert-false: ".sidebar-elems > .crate"
 // We now go back to the crate page to click on the "lib2" crate link.
 goto: file://|DOC_PATH|/test_docs/index.html
-click: ".sidebar-elems > .crate > ul > li:first-child > a"
+click: ".sidebar-elems .crate > ul > li:first-child > a"
 
 // PAGE: lib2/index.html
 goto: file://|DOC_PATH|/lib2/index.html
 assert-text: (".sidebar > .location", "Crate lib2")
 // We check that we have the crates list and that the "current" on is now "lib2".
-assert-text: (".sidebar-elems > .crate > ul > li > a.current", "lib2")
+assert-text: (".sidebar-elems .crate > ul > li > a.current", "lib2")
 // We now go to the "foobar" function page.
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(1)", "Modules")
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(2)", "Structs")
@@ -57,6 +57,6 @@ assert-false: ".sidebar-elems > .crate"
 goto: ./sub_module/sub_sub_module/index.html
 assert-text: (".sidebar > .location", "Module sub_sub_module")
 // We check that we don't have the crate list.
-assert-false: ".sidebar-elems > .crate"
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(1)", "Functions")
+assert-false: ".sidebar-elems .crate"
+assert-text: (".sidebar-elems .items > ul > li:nth-child(1)", "Functions")
 assert-text: ("#functions + .item-table .item-left > a", "foo")
