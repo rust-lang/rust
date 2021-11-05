@@ -2873,9 +2873,35 @@ impl cmp::PartialEq for Path {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for Path {
     fn hash<H: Hasher>(&self, h: &mut H) {
-        for component in self.components() {
-            component.hash(h);
+        let bytes = self.as_u8_slice();
+
+        let mut component_start = 0;
+        let mut bytes_hashed = 0;
+
+        for i in 0..bytes.len() {
+            if is_sep_byte(bytes[i]) {
+                if i > component_start {
+                    let to_hash = &bytes[component_start..i];
+                    h.write(to_hash);
+                    bytes_hashed += to_hash.len();
+                }
+
+                // skip over separator and optionally a following CurDir item
+                // since components() would normalize these away
+                component_start = i + match bytes[i..] {
+                    [_, b'.', b'/', ..] | [_, b'.'] => 2,
+                    _ => 1,
+                };
+            }
         }
+
+        if component_start < bytes.len() {
+            let to_hash = &bytes[component_start..];
+            h.write(to_hash);
+            bytes_hashed += to_hash.len();
+        }
+
+        h.write_usize(bytes_hashed);
     }
 }
 
