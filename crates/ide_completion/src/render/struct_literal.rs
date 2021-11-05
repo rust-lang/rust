@@ -3,6 +3,7 @@
 use hir::{db::HirDatabase, HasAttrs, HasVisibility, Name, StructKind};
 use ide_db::helpers::SnippetCap;
 use itertools::Itertools;
+use syntax::SmolStr;
 
 use crate::{render::RenderContext, CompletionItem, CompletionItemKind};
 
@@ -21,7 +22,7 @@ pub(crate) fn render_struct_literal(
         return None;
     }
 
-    let name = local_name.unwrap_or_else(|| strukt.name(ctx.db())).to_string();
+    let name = local_name.unwrap_or_else(|| strukt.name(ctx.db())).to_smol_str();
     let literal = render_literal(&ctx, &name, strukt.kind(ctx.db()), &visible_fields)?;
 
     Some(build_completion(ctx, name, literal, strukt))
@@ -29,12 +30,15 @@ pub(crate) fn render_struct_literal(
 
 fn build_completion(
     ctx: RenderContext<'_>,
-    name: String,
+    name: SmolStr,
     literal: String,
     def: impl HasAttrs + Copy,
 ) -> CompletionItem {
-    let mut item =
-        CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), name + " {…}");
+    let mut item = CompletionItem::new(
+        CompletionItemKind::Snippet,
+        ctx.source_range(),
+        SmolStr::from_iter([&name, " {…}"]),
+    );
     item.set_documentation(ctx.docs(def)).set_deprecated(ctx.is_deprecated(def)).detail(&literal);
     match ctx.snippet_cap() {
         Some(snippet_cap) => item.insert_snippet(snippet_cap, literal),

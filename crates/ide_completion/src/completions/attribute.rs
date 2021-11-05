@@ -104,7 +104,7 @@ fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attrib
                 let mut item = CompletionItem::new(
                     CompletionItemKind::Attribute,
                     ctx.source_range(),
-                    name.to_string(),
+                    name.to_smol_str(),
                 );
                 if let Some(docs) = mac.docs(ctx.sema.db) {
                     item.documentation(docs);
