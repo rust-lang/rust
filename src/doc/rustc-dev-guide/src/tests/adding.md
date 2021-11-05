@@ -169,6 +169,11 @@ source.
   source is compiled, and this compilation is required to succeed.
   The `.fixed` file can also be generated automatically with the
   `--bless` option, described in [this section][bless].
+* `rustfix-only-machine-applicable` is equivalent to `run-rustfix` except it
+  will only apply [`MachineApplicable`](../diagnostics.md#suggestions)
+  suggestions. `run-rustfix` will apply *all* suggestions. This should be used
+  if there is a mixture of different suggestion levels, and some of the
+  non-machine-applicable ones do not apply cleanly.
 * `min-gdb-version` specifies the minimum gdb version required for
   this test; see also `ignore-gdb-version`
 * `min-lldb-version` specifies the minimum lldb version required for
