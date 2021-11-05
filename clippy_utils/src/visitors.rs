@@ -1,10 +1,9 @@
 use crate::path_to_local_id;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, walk_expr, ErasedMap, NestedVisitorMap, Visitor};
-use rustc_hir::{def::Res, Arm, Block, Body, BodyId, Destination, Expr, ExprKind, HirId, Stmt};
+use rustc_hir::intravisit::{self, walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::{def::Res, Arm, Block, Body, BodyId, Expr, ExprKind, HirId, Stmt};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
-use std::ops::ControlFlow;
 
 /// Convenience method for creating a `Visitor` with just `visit_expr` overridden and nested
 /// bodies (i.e. closures) are visited.
@@ -53,31 +52,15 @@ pub fn expr_visitor_no_bodies<'tcx>(f: impl FnMut(&'tcx Expr<'tcx>) -> bool) -> 
 
 /// returns `true` if expr contains match expr desugared from try
 fn contains_try(expr: &hir::Expr<'_>) -> bool {
-    struct TryFinder {
-        found: bool,
-    }
-
-    impl<'hir> intravisit::Visitor<'hir> for TryFinder {
-        type Map = Map<'hir>;
-
-        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-            intravisit::NestedVisitorMap::None
+    let mut found = false;
+    expr_visitor_no_bodies(|e| {
+        if !found {
+            found = matches!(e.kind, hir::ExprKind::Match(_, _, hir::MatchSource::TryDesugar));
         }
-
-        fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
-            if self.found {
-                return;
-            }
-            match expr.kind {
-                hir::ExprKind::Match(_, _, hir::MatchSource::TryDesugar) => self.found = true,
-                _ => intravisit::walk_expr(self, expr),
-            }
-        }
-    }
-
-    let mut visitor = TryFinder { found: false };
-    visitor.visit_expr(expr);
-    visitor.found
+        !found
+    })
+    .visit_expr(expr);
+    found
 }
 
 pub fn find_all_ret_expressions<'hir, F>(_cx: &LateContext<'_>, expr: &'hir hir::Expr<'hir>, callback: F) -> bool
@@ -210,103 +193,35 @@ visitable_ref!(Stmt, visit_stmt);
 //     }
 // }
 
-/// Calls the given function for each break expression.
-pub fn visit_break_exprs<'tcx>(
-    node: impl Visitable<'tcx>,
-    f: impl FnMut(&'tcx Expr<'tcx>, Destination, Option<&'tcx Expr<'tcx>>),
-) {
-    struct V<F>(F);
-    impl<'tcx, F: FnMut(&'tcx Expr<'tcx>, Destination, Option<&'tcx Expr<'tcx>>)> Visitor<'tcx> for V<F> {
-        type Map = ErasedMap<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
-
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if let ExprKind::Break(dest, sub_expr) = e.kind {
-                self.0(e, dest, sub_expr);
-            }
-            walk_expr(self, e);
-        }
-    }
-
-    node.visit(&mut V(f));
-}
-
 /// Checks if the given resolved path is used in the given body.
 pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
-    struct V<'a, 'tcx> {
-        cx: &'a LateContext<'tcx>,
-        res: Res,
-        found: bool,
-    }
-    impl Visitor<'tcx> for V<'_, 'tcx> {
-        type Map = Map<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    let mut found = false;
+    expr_visitor(cx, |e| {
+        if found {
+            return false;
         }
 
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if self.found {
-                return;
-            }
-
-            if let ExprKind::Path(p) = &e.kind {
-                if self.cx.qpath_res(p, e.hir_id) == self.res {
-                    self.found = true;
-                }
-            } else {
-                walk_expr(self, e);
+        if let ExprKind::Path(p) = &e.kind {
+            if cx.qpath_res(p, e.hir_id) == res {
+                found = true;
             }
         }
-    }
-
-    let mut v = V { cx, res, found: false };
-    v.visit_expr(&cx.tcx.hir().body(body).value);
-    v.found
-}
-
-/// Calls the given function for each usage of the given local.
-pub fn for_each_local_usage<'tcx, B>(
-    cx: &LateContext<'tcx>,
-    visitable: impl Visitable<'tcx>,
-    id: HirId,
-    f: impl FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>,
-) -> ControlFlow<B> {
-    struct V<'tcx, B, F> {
-        map: Map<'tcx>,
-        id: HirId,
-        f: F,
-        res: ControlFlow<B>,
-    }
-    impl<'tcx, B, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>> Visitor<'tcx> for V<'tcx, B, F> {
-        type Map = Map<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::OnlyBodies(self.map)
-        }
-
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if self.res.is_continue() {
-                if path_to_local_id(e, self.id) {
-                    self.res = (self.f)(e);
-                } else {
-                    walk_expr(self, e);
-                }
-            }
-        }
-    }
-
-    let mut v = V {
-        map: cx.tcx.hir(),
-        id,
-        f,
-        res: ControlFlow::CONTINUE,
-    };
-    visitable.visit(&mut v);
-    v.res
+        !found
+    })
+    .visit_expr(&cx.tcx.hir().body(body).value);
+    found
 }
 
 /// Checks if the given local is used.
 pub fn is_local_used(cx: &LateContext<'tcx>, visitable: impl Visitable<'tcx>, id: HirId) -> bool {
-    for_each_local_usage(cx, visitable, id, |_| ControlFlow::BREAK).is_break()
+    let mut is_used = false;
+    let mut visitor = expr_visitor(cx, |expr| {
+        if !is_used {
+            is_used = path_to_local_id(expr, id);
+        }
+        !is_used
+    });
+    visitable.visit(&mut visitor);
+    drop(visitor);
+    is_used
 }

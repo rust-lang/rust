@@ -1,9 +1,9 @@
 use crate::source::snippet;
+use crate::visitors::expr_visitor_no_bodies;
 use crate::{path_to_local_id, strip_pat_refs};
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Body, BodyId, Expr, ExprKind, HirId, PatKind};
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::{Body, BodyId, ExprKind, HirId, PatKind};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
 use rustc_span::Span;
 use std::borrow::Cow;
 
@@ -30,50 +30,28 @@ fn extract_clone_suggestions<'tcx>(
     replace: &[(&'static str, &'static str)],
     body: &'tcx Body<'_>,
 ) -> Option<Vec<(Span, Cow<'static, str>)>> {
-    let mut visitor = PtrCloneVisitor {
-        cx,
-        id,
-        replace,
-        spans: vec![],
-        abort: false,
-    };
-    visitor.visit_body(body);
-    if visitor.abort { None } else { Some(visitor.spans) }
-}
-
-struct PtrCloneVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    id: HirId,
-    replace: &'a [(&'static str, &'static str)],
-    spans: Vec<(Span, Cow<'static, str>)>,
-    abort: bool,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.abort {
-            return;
+    let mut abort = false;
+    let mut spans = Vec::new();
+    expr_visitor_no_bodies(|expr| {
+        if abort {
+            return false;
         }
         if let ExprKind::MethodCall(seg, _, [recv], _) = expr.kind {
-            if path_to_local_id(recv, self.id) {
+            if path_to_local_id(recv, id) {
                 if seg.ident.name.as_str() == "capacity" {
-                    self.abort = true;
-                    return;
+                    abort = true;
+                    return false;
                 }
-                for &(fn_name, suffix) in self.replace {
+                for &(fn_name, suffix) in replace {
                     if seg.ident.name.as_str() == fn_name {
-                        self.spans.push((expr.span, snippet(self.cx, recv.span, "_") + suffix));
-                        return;
+                        spans.push((expr.span, snippet(cx, recv.span, "_") + suffix));
+                        return false;
                     }
                 }
             }
         }
-        walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
+        !abort
+    })
+    .visit_body(body);
+    if abort { None } else { Some(spans) }
 }

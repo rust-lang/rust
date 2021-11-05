@@ -1,7 +1,7 @@
 use crate as utils;
+use crate::visitors::{expr_visitor, expr_visitor_no_bodies};
 use rustc_hir as hir;
-use rustc_hir::intravisit;
-use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirIdSet;
 use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -148,96 +148,47 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
     }
 }
 
-struct ReturnBreakContinueMacroVisitor {
-    seen_return_break_continue: bool,
-}
-
-impl ReturnBreakContinueMacroVisitor {
-    fn new() -> ReturnBreakContinueMacroVisitor {
-        ReturnBreakContinueMacroVisitor {
-            seen_return_break_continue: false,
-        }
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
-    type Map = Map<'tcx>;
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        if self.seen_return_break_continue {
-            // No need to look farther if we've already seen one of them
-            return;
+pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
+    let mut seen_return_break_continue = false;
+    expr_visitor_no_bodies(|ex| {
+        if seen_return_break_continue {
+            return false;
         }
         match &ex.kind {
             ExprKind::Ret(..) | ExprKind::Break(..) | ExprKind::Continue(..) => {
-                self.seen_return_break_continue = true;
+                seen_return_break_continue = true;
             },
             // Something special could be done here to handle while or for loop
             // desugaring, as this will detect a break if there's a while loop
             // or a for loop inside the expression.
             _ => {
                 if ex.span.from_expansion() {
-                    self.seen_return_break_continue = true;
-                } else {
-                    rustc_hir::intravisit::walk_expr(self, ex);
+                    seen_return_break_continue = true;
                 }
             },
         }
-    }
+        !seen_return_break_continue
+    })
+    .visit_expr(expression);
+    seen_return_break_continue
 }
 
-pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
-    let mut recursive_visitor = ReturnBreakContinueMacroVisitor::new();
-    recursive_visitor.visit_expr(expression);
-    recursive_visitor.seen_return_break_continue
-}
-
-pub struct UsedAfterExprVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    expr: &'tcx Expr<'tcx>,
-    definition: HirId,
-    past_expr: bool,
-    used_after_expr: bool,
-}
-impl<'a, 'tcx> UsedAfterExprVisitor<'a, 'tcx> {
-    pub fn is_found(cx: &'a LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-        utils::path_to_local(expr).map_or(false, |definition| {
-            let mut visitor = UsedAfterExprVisitor {
-                cx,
-                expr,
-                definition,
-                past_expr: false,
-                used_after_expr: false,
-            };
-            utils::get_enclosing_block(cx, definition).map_or(false, |block| {
-                visitor.visit_block(block);
-                visitor.used_after_expr
-            })
-        })
-    }
-}
-
-impl<'a, 'tcx> intravisit::Visitor<'tcx> for UsedAfterExprVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
-    }
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if self.used_after_expr {
-            return;
+pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr<'_>) -> bool {
+    let Some(block) = utils::get_enclosing_block(cx, local_id) else { return false };
+    let mut used_after_expr = false;
+    let mut past_expr = false;
+    expr_visitor(cx, |expr| {
+        if used_after_expr {
+            return false;
         }
 
-        if expr.hir_id == self.expr.hir_id {
-            self.past_expr = true;
-        } else if self.past_expr && utils::path_to_local_id(expr, self.definition) {
-            self.used_after_expr = true;
-        } else {
-            intravisit::walk_expr(self, expr);
+        if expr.hir_id == after.hir_id {
+            past_expr = true;
+        } else if past_expr && utils::path_to_local_id(expr, local_id) {
+            used_after_expr = true;
         }
-    }
+        !used_after_expr
+    })
+    .visit_block(block);
+    used_after_expr
 }
