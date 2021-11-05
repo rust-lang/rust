@@ -145,6 +145,7 @@ where
                 if let Some(ty) = types.node_type_opt(f.hir_id) {
                     (ty, ex.span)
                 } else {
+                    trace!("node_type_opt({}) = None", f.hir_id);
                     return;
                 }
             }
@@ -153,6 +154,7 @@ where
                 let def_id = if let Some(def_id) = types.type_dependent_def_id(ex.hir_id) {
                     def_id
                 } else {
+                    trace!("type_dependent_def_id({}) = None", ex.hir_id);
                     return;
                 };
                 (tcx.type_of(def_id), span)
