@@ -242,14 +242,14 @@ source.
 * `force-host` will force the test to build for the host platform instead of
   the target. This is useful primarily for auxiliary proc-macros, which need
   to be loaded by the host compiler.
-* `pretty-mode` for pretty-print tests specifies the mode it should run in.
+* `pretty-mode` specifies the mode pretty-print tests should run in.
   The default is `normal` if not specified.
 * `pretty-compare-only` causes a pretty test to only compare the
   pretty-printed output. It will not try to compile the expanded output to
   typecheck it. This is needed for a pretty-mode that does not expand to valid
-  rust, or for other situations where the expanded output cannot be compiled.
+  Rust, or for other situations where the expanded output cannot be compiled.
 * `pretty-expanded` allows a pretty test to also run with
-  `-Zunpretty=expanded` as a final step, and will also try to compile the
+  `-Zunpretty=expanded` as a final step. It will also try to compile the
   resulting output (without codegen). This is needed because not all code can
   be compiled after being expanded. Pretty tests should specify this if they
   can. More history about this may be found in [#23616].
