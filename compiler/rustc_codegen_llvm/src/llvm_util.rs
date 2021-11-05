@@ -180,6 +180,7 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> Vec<&'a str> {
         ("aarch64", "dpb2") => vec!["ccdp"],
         ("aarch64", "frintts") => vec!["fptoint"],
         ("aarch64", "fcma") => vec!["complxnum"],
+        ("aarch64", "pmuv3") => vec!["perfmon"],
         (_, s) => vec![s],
     }
 }
