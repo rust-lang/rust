@@ -8,7 +8,7 @@ You may need following tooltips to catch up with common operations.
   - [Checking for a specific type](#checking-for-a-specific-type)
   - [Checking if a type implements a specific trait](#checking-if-a-type-implements-a-specific-trait)
   - [Checking if a type defines a specific method](#checking-if-a-type-defines-a-specific-method)
-  - [Dealing with macros](#dealing-with-macros)
+  - [Dealing with macros](#dealing-with-macros-and-expansions)
 
 Useful Rustc dev guide links:
 - [Stages of compilation](https://rustc-dev-guide.rust-lang.org/compiler-src.html#the-main-stages-of-compilation)
@@ -182,64 +182,78 @@ impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
 }
 ```
 
-## Dealing with macros
+## Dealing with macros and expansions
 
-There are several helpers in [`clippy_utils`][utils] to deal with macros:
+Keep in mind that macros are already expanded and desugaring is already applied
+to the code representation that you are working with in Clippy. This unfortunately causes a lot of
+false positives because macro expansions are "invisible" unless you actively check for them.
+Generally speaking, code with macro expansions should just be ignored by Clippy because that code can be
+dynamic in ways that are difficult or impossible to see.
+Use the following functions to deal with macros:
 
-- `in_macro()`: detect if the given span is expanded by a macro
+- `span.from_expansion()`: detects if a span is from macro expansion or desugaring.
+  Checking this is a common first step in a lint.
 
-You may want to use this for example to not start linting in any macro.
+   ```rust
+   if expr.span.from_expansion() {
+       // just forget it
+       return;
+   }
+   ```
 
-```rust
-macro_rules! foo {
-    ($param:expr) => {
-        match $param {
-            "bar" => println!("whatever"),
-            _ => ()
-        }
-    };
-}
+- `span.ctxt()`: the span's context represents whether it is from expansion, and if so, which macro call expanded it.
+   It is sometimes useful to check if the context of two spans are equal.
 
-foo!("bar");
+   ```rust
+   // expands to `1 + 0`, but don't lint
+   1 + mac!()
+   ```
+   ```rust
+   if left.span.ctxt() != right.span.ctxt() {
+       // the coder most likely cannot modify this expression
+       return;
+   }
+   ```
+  Note: Code that is not from expansion is in the "root" context. So any spans where `from_expansion` returns `true` can
+  be assumed to have the same context. And so just using `span.from_expansion()` is often good enough.
 
-// if we lint the `match` of `foo` call and test its span
-assert_eq!(in_macro(match_span), true);
-```
 
-- `in_external_macro()`: detect if the given span is from an external macro, defined in a foreign crate
+- `in_external_macro(span)`: detect if the given span is from a macro defined in a foreign crate.
+   If you want the lint to work with macro-generated code, this is the next line of defense to avoid macros
+   not defined in the current crate. It doesn't make sense to lint code that the coder can't change.
 
-You may want to use it for example to not start linting in macros from other crates
+   You may want to use it for example to not start linting in macros from other crates
 
-```rust
-#[macro_use]
-extern crate a_crate_with_macros;
+   ```rust
+   #[macro_use]
+   extern crate a_crate_with_macros;
 
-// `foo` is defined in `a_crate_with_macros`
-foo!("bar");
+   // `foo` is defined in `a_crate_with_macros`
+   foo!("bar");
 
-// if we lint the `match` of `foo` call and test its span
-assert_eq!(in_external_macro(cx.sess(), match_span), true);
-```
+   // if we lint the `match` of `foo` call and test its span
+   assert_eq!(in_external_macro(cx.sess(), match_span), true);
+   ```
 
 - `differing_macro_contexts()`: returns true if the two given spans are not from the same context
 
-```rust
-macro_rules! m {
-    ($a:expr, $b:expr) => {
-        if $a.is_some() {
-            $b;
-        }
-    }
-}
+   ```rust
+   macro_rules! m {
+       ($a:expr, $b:expr) => {
+           if $a.is_some() {
+               $b;
+           }
+       }
+   }
 
-let x: Option<u32> = Some(42);
-m!(x, x.unwrap());
+   let x: Option<u32> = Some(42);
+   m!(x, x.unwrap());
 
-// These spans are not from the same context
-// x.is_some() is from inside the macro
-// x.unwrap() is from outside the macro
-assert_eq!(differing_macro_contexts(x_is_some_span, x_unwrap_span), true);
-```
+   // These spans are not from the same context
+   // x.is_some() is from inside the macro
+   // x.unwrap() is from outside the macro
+   assert_eq!(differing_macro_contexts(x_is_some_span, x_unwrap_span), true);
+   ```
 
 [TyS]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html
 [TyKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html
@@ -249,4 +263,3 @@ assert_eq!(differing_macro_contexts(x_is_some_span, x_unwrap_span), true);
 [TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
 [pat_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TypeckResults.html#method.pat_ty
 [paths]: ../clippy_utils/src/paths.rs
-[utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/lib.rs
