@@ -3965,6 +3965,7 @@ dependencies = [
  "arrayvec",
  "rustc_macros",
  "rustc_serialize",
+ "smallvec",
 ]
 
 [[package]]
