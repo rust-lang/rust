@@ -2,6 +2,7 @@
 
 #![feature(box_patterns)]
 #![feature(drain_filter)]
+#![feature(format_args_capture)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(once_cell)]

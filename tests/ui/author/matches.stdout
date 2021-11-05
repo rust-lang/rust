@@ -8,12 +8,14 @@ if_chain! {
     if let PatKind::Lit(lit_expr) = arms[0].pat.kind;
     if let ExprKind::Lit(ref lit1) = lit_expr.kind;
     if let LitKind::Int(16, LitIntType::Unsuffixed) = lit1.node;
+    if arms[0].guard.is_none();
     if let ExprKind::Lit(ref lit2) = arms[0].body.kind;
     if let LitKind::Int(5, LitIntType::Unsuffixed) = lit2.node;
     if let PatKind::Lit(lit_expr1) = arms[1].pat.kind;
     if let ExprKind::Lit(ref lit3) = lit_expr1.kind;
     if let LitKind::Int(17, LitIntType::Unsuffixed) = lit3.node;
-    if let ExprKind::Block(block, label) = arms[1].body.kind;
+    if arms[1].guard.is_none();
+    if let ExprKind::Block(block, None) = arms[1].body.kind;
     if block.stmts.len() == 1;
     if let StmtKind::Local(local1) = block.stmts[0].kind;
     if let Some(init1) = local1.init;
@@ -25,6 +27,7 @@ if_chain! {
     if let ExprKind::Path(ref qpath) = trailing_expr.kind;
     if match_qpath(qpath, &["x"]);
     if let PatKind::Wild = arms[2].pat.kind;
+    if arms[2].guard.is_none();
     if let ExprKind::Lit(ref lit5) = arms[2].body.kind;
     if let LitKind::Int(1, LitIntType::Unsuffixed) = lit5.node;
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name1, None) = local.pat.kind;
