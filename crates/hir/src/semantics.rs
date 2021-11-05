@@ -17,7 +17,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasGenericParams, HasLoopBody},
+    ast::{self, HasAttrs, HasGenericParams, HasLoopBody},
     match_ast, AstNode, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
 };
 
@@ -588,7 +588,10 @@ impl<'db> SemanticsImpl<'db> {
                 // are we inside an attribute macro call
                 let containing_attribute_macro_call = self.with_ctx(|ctx| {
                     token.value.ancestors().filter_map(ast::Item::cast).find_map(|item| {
-                        // investigate this, seems to be VERY(250ms) expensive in rust-analyzer/src/config.rs?
+                        if item.attrs().next().is_none() {
+                            // Don't force populate the dyn cache for items that don't have an attribute anyways
+                            return None;
+                        }
                         Some((ctx.item_to_macro_call(token.with_value(item.clone()))?, item))
                     })
                 });
