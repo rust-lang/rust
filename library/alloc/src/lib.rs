@@ -104,6 +104,7 @@
 #![feature(extend_one)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
+#![feature(inherent_ascii_escape)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(iter_zip)]

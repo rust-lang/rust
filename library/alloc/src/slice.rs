@@ -108,6 +108,8 @@ pub use core::slice::ArrayChunks;
 pub use core::slice::ArrayChunksMut;
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use core::slice::ArrayWindows;
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+pub use core::slice::EscapeAscii;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;
 #[stable(feature = "from_ref", since = "1.28.0")]
@@ -130,6 +132,8 @@ pub use core::slice::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
 pub use core::slice::{RSplit, RSplitMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{RSplitN, RSplitNMut, SplitN, SplitNMut};
+#[stable(feature = "split_inclusive", since = "1.51.0")]
+pub use core::slice::{SplitInclusive, SplitInclusiveMut};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods
