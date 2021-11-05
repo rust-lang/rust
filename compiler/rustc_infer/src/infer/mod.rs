@@ -1585,9 +1585,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
-        let param_env = self.tcx.erase_regions(param_env);
         let mut substs = unevaluated.substs(self.tcx);
-        substs = self.tcx.erase_regions(substs);
         substs = self.resolve_vars_if_possible(substs);
 
         // Postpone the evaluation of constants whose substs depend on inference
@@ -1596,15 +1594,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return Err(ErrorHandled::TooGeneric);
         }
 
+        let param_env_erased = self.tcx.erase_regions(param_env);
+        let substs_erased = self.tcx.erase_regions(substs);
+
         let unevaluated = ty::Unevaluated {
             def: unevaluated.def,
-            substs_: Some(substs),
+            substs_: Some(substs_erased),
             promoted: unevaluated.promoted,
         };
 
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.
-        self.tcx.const_eval_resolve(param_env, unevaluated, span)
+        self.tcx.const_eval_resolve(param_env_erased, unevaluated, span)
     }
 
     /// If `typ` is a type variable of some kind, resolve it one level
