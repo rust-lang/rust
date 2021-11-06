@@ -11,7 +11,7 @@ impl<'tcx> MirPass<'tcx> for RevealAll {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // This pass must run before inlining, since we insert callee bodies in RevealAll mode.
         // Do not apply this transformation to generators.
-        if (tcx.sess.mir_opt_level() >= 3 || !super::inline::is_enabled(tcx))
+        if (tcx.sess.mir_opt_level() >= 3 || super::inline::is_enabled(tcx))
             && body.generator.is_none()
         {
             let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
