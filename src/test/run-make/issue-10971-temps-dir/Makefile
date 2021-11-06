@@ -6,5 +6,5 @@ include ../../run-make-fulldeps/tools.mk
 all:
 	touch $(TMPDIR)/lib.rs
 
-	$(RUSTC) --crate-type=lib --temps-dir=$(TMPDIR)/temp1 $(TMPDIR)/lib.rs & \
-	$(RUSTC) --crate-type=cdylib --temps-dir=$(TMPDIR)/temp2 $(TMPDIR)/lib.rs
+	$(RUSTC) --crate-type=lib -Z temps-dir=$(TMPDIR)/temp1 $(TMPDIR)/lib.rs & \
+	$(RUSTC) --crate-type=cdylib -Z temps-dir=$(TMPDIR)/temp2 $(TMPDIR)/lib.rs

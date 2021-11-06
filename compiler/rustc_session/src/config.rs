@@ -1110,7 +1110,6 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
              in <dir>",
             "DIR",
         ),
-        opt::opt_s("", "temps-dir", "Write temporary output files to <dir>", "DIR"),
         opt::opt_s(
             "",
             "explain",
