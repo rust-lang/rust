@@ -32,7 +32,7 @@ you can write: <!-- date: 2021-09 --><!-- the date comment is for the edition be
         "--json-output"
     ],
     "rust-analyzer.rustfmt.overrideCommand": [
-        "./build/TARGET_TRIPLE/stage0/bin/rustfmt",
+        "./build/$TARGET_TRIPLE/stage0/bin/rustfmt",
         "--edition=2021"
     ],
     "editor.formatOnSave": true,
@@ -44,6 +44,11 @@ you can write: <!-- date: 2021-09 --><!-- the date comment is for the edition be
 
 in your `.vscode/settings.json` file. This will ask `rust-analyzer` to use
 `x.py check` to check the sources, and the stage 0 rustfmt to format them.
+
+> NOTE: Make sure to replace `TARGET_TRIPLE` in the `rust-analyzer.rustfmt.overrideCommand`
+> setting with the appropriate target triple for your machine. An example of such
+> a triple is `x86_64-unknown-linux-gnu`. An easy way to check your target triple
+> is to run `rustc -vV` and checking the `host` value of its output.
 
 If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
 `.vim/coc-settings.json` and enter the same settings as above, but replacing
