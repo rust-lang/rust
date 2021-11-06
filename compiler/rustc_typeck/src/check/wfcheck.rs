@@ -1,3 +1,4 @@
+use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
@@ -11,16 +12,21 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::outlives::obligations::TypeOutlives;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{self, RegionckMode, SubregionOrigin};
 use rustc_middle::hir::map as hir_map;
-use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+    self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+    WithConstness,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::Span;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_span::{Span, DUMMY_SP};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, WellFormedLoc};
 
 use std::convert::TryInto;
@@ -252,6 +258,364 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 )
                 .emit();
         }
+    }
+
+    check_gat_where_clauses(tcx, trait_item, encl_trait_def_id);
+}
+
+/// Require that the user writes where clauses on GATs for the implicit
+/// outlives bounds involving trait parameters in trait functions and
+/// lifetimes passed as GAT substs. See `self-outlives-lint` test.
+///
+/// This trait will be our running example. We are currently WF checking the `Item` item...
+///
+/// ```rust
+/// trait LendingIterator {
+///   type Item<'me>; // <-- WF checking this trait item
+///
+///   fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
+/// }
+/// ```
+fn check_gat_where_clauses(
+    tcx: TyCtxt<'_>,
+    trait_item: &hir::TraitItem<'_>,
+    encl_trait_def_id: DefId,
+) {
+    let item = tcx.associated_item(trait_item.def_id);
+    // If the current trait item isn't a type, it isn't a GAT
+    if !matches!(item.kind, ty::AssocKind::Type) {
+        return;
+    }
+    let generics: &ty::Generics = tcx.generics_of(trait_item.def_id);
+    // If the current associated type doesn't have any (own) params, it's not a GAT
+    // FIXME(jackh726): we can also warn in the more general case
+    if generics.params.len() == 0 {
+        return;
+    }
+    let associated_items: &ty::AssocItems<'_> = tcx.associated_items(encl_trait_def_id);
+    let mut clauses: Option<FxHashSet<ty::Predicate<'_>>> = None;
+    // For every function in this trait...
+    // In our example, this would be the `next` method
+    for item in
+        associated_items.in_definition_order().filter(|item| matches!(item.kind, ty::AssocKind::Fn))
+    {
+        // The clauses we that we would require from this function
+        let mut function_clauses = FxHashSet::default();
+
+        let id = hir::HirId::make_owner(item.def_id.expect_local());
+        let param_env = tcx.param_env(item.def_id.expect_local());
+
+        let sig = tcx.fn_sig(item.def_id);
+        // Get the signature using placeholders. In our example, this would
+        // convert the late-bound 'a into a free region.
+        let sig = tcx.liberate_late_bound_regions(item.def_id, sig);
+        // Collect the arguments that are given to this GAT in the return type
+        // of  the function signature. In our example, the GAT in the return
+        // type is `<Self as LendingIterator>::Item<'a>`, so 'a and Self are arguments.
+        let (regions, types) =
+            GATSubstCollector::visit(tcx, trait_item.def_id.to_def_id(), sig.output());
+
+        // If both regions and types are empty, then this GAT isn't in the
+        // return type, and we shouldn't try to do clause analysis
+        // (particularly, doing so would end up with an empty set of clauses,
+        // since the current method would require none, and we take the
+        // intersection of requirements of all methods)
+        if types.is_empty() && regions.is_empty() {
+            continue;
+        }
+
+        // The types we can assume to be well-formed. In our example, this
+        // would be &'a mut Self, from the first argument.
+        let mut wf_tys = FxHashSet::default();
+        wf_tys.extend(sig.inputs());
+
+        // For each region argument (e.g., 'a in our example), check for a
+        // relationship to the type arguments (e.g., Self). If there is an
+        // outlives relationship (`Self: 'a`), then we want to ensure that is
+        // reflected in a where clause on the GAT itself.
+        for (region, region_idx) in &regions {
+            for (ty, ty_idx) in &types {
+                // In our example, requires that Self: 'a
+                if ty_known_to_outlive(tcx, id, param_env, &wf_tys, *ty, *region) {
+                    debug!(?ty_idx, ?region_idx);
+                    debug!("required clause: {} must outlive {}", ty, region);
+                    // Translate into the generic parameters of the GAT. In
+                    // our example, the type was Self, which will also be
+                    // Self in the GAT.
+                    let ty_param = generics.param_at(*ty_idx, tcx);
+                    let ty_param = tcx.mk_ty(ty::Param(ty::ParamTy {
+                        index: ty_param.index,
+                        name: ty_param.name,
+                    }));
+                    // Same for the region. In our example, 'a corresponds
+                    // to the 'me parameter.
+                    let region_param = generics.param_at(*region_idx, tcx);
+                    let region_param =
+                        tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                            def_id: region_param.def_id,
+                            index: region_param.index,
+                            name: region_param.name,
+                        }));
+                    // The predicate we expect to see. (In our example,
+                    // `Self: 'me`.)
+                    let clause = ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
+                        ty_param,
+                        region_param,
+                    ));
+                    let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
+                    function_clauses.insert(clause);
+                }
+            }
+        }
+
+        // For each region argument (e.g., 'a in our example), also check for a
+        // relationship to the other region arguments. If there is an
+        // outlives relationship, then we want to ensure that is
+        // reflected in a where clause on the GAT itself.
+        for (region_a, region_a_idx) in &regions {
+            for (region_b, region_b_idx) in &regions {
+                if region_a == region_b {
+                    continue;
+                }
+
+                if region_known_to_outlive(tcx, id, param_env, &wf_tys, *region_a, *region_b) {
+                    debug!(?region_a_idx, ?region_b_idx);
+                    debug!("required clause: {} must outlive {}", region_a, region_b);
+                    // Translate into the generic parameters of the GAT.
+                    let region_a_param = generics.param_at(*region_a_idx, tcx);
+                    let region_a_param =
+                        tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                            def_id: region_a_param.def_id,
+                            index: region_a_param.index,
+                            name: region_a_param.name,
+                        }));
+                    // Same for the region.
+                    let region_b_param = generics.param_at(*region_b_idx, tcx);
+                    let region_b_param =
+                        tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                            def_id: region_b_param.def_id,
+                            index: region_b_param.index,
+                            name: region_b_param.name,
+                        }));
+                    // The predicate we expect to see.
+                    let clause = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
+                        region_a_param,
+                        region_b_param,
+                    ));
+                    let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
+                    function_clauses.insert(clause);
+                }
+            }
+        }
+
+        // Imagine we have:
+        // ```
+        // trait Foo {
+        //   type Bar<'me>;
+        //   fn gimme(&self) -> Self::Bar<'_>;
+        //   fn gimme_default(&self) -> Self::Bar<'static>;
+        // }
+        // ```
+        // We only want to require clauses on `Bar` that we can prove from *all* functions (in this
+        // case, `'me` can be `static` from `gimme_default`)
+        match clauses.as_mut() {
+            Some(clauses) => {
+                clauses.drain_filter(|p| !function_clauses.contains(p));
+            }
+            None => {
+                clauses = Some(function_clauses);
+            }
+        }
+    }
+
+    // If there are any missing clauses, emit an error
+    let mut clauses = clauses.unwrap_or_default();
+    debug!(?clauses);
+    if !clauses.is_empty() {
+        let written_predicates: ty::GenericPredicates<'_> =
+            tcx.explicit_predicates_of(trait_item.def_id);
+        let mut clauses: Vec<_> = clauses
+            .drain_filter(|clause| {
+                written_predicates.predicates.iter().find(|p| &p.0 == clause).is_none()
+            })
+            .map(|clause| format!("{}", clause))
+            .collect();
+        // We sort so that order is predictable
+        clauses.sort();
+        if !clauses.is_empty() {
+            let mut err = tcx.sess.struct_span_err(
+                trait_item.span,
+                &format!("Missing required bounds on {}", trait_item.ident),
+            );
+
+            let suggestion = format!(
+                "{} {}",
+                if !trait_item.generics.where_clause.predicates.is_empty() {
+                    ","
+                } else {
+                    " where"
+                },
+                clauses.join(", "),
+            );
+            err.span_suggestion(
+                trait_item.generics.where_clause.tail_span_for_suggestion(),
+                "add the required where clauses",
+                suggestion,
+                Applicability::MachineApplicable,
+            );
+
+            err.emit()
+        }
+    }
+}
+
+// FIXME(jackh726): refactor some of the shared logic between the two functions below
+
+/// Given a known `param_env` and a set of well formed types, can we prove that
+/// `ty` outlives `region`.
+fn ty_known_to_outlive<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    id: hir::HirId,
+    param_env: ty::ParamEnv<'tcx>,
+    wf_tys: &FxHashSet<Ty<'tcx>>,
+    ty: Ty<'tcx>,
+    region: ty::Region<'tcx>,
+) -> bool {
+    // Unfortunately, we have to use a new `InferCtxt` each call, because
+    // region constraints get added and solved there and we need to test each
+    // call individually.
+    tcx.infer_ctxt().enter(|infcx| {
+        let mut outlives_environment = OutlivesEnvironment::new(param_env);
+        outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id, DUMMY_SP);
+        outlives_environment.save_implied_bounds(id);
+        let region_bound_pairs = outlives_environment.region_bound_pairs_map().get(&id).unwrap();
+
+        let cause = ObligationCause::new(DUMMY_SP, id, ObligationCauseCode::MiscObligation);
+
+        let sup_type = ty;
+        let sub_region = region;
+
+        let origin = SubregionOrigin::from_obligation_cause(&cause, || {
+            infer::RelateParamBound(cause.span, sup_type, None)
+        });
+
+        let outlives = &mut TypeOutlives::new(
+            &infcx,
+            tcx,
+            &region_bound_pairs,
+            Some(infcx.tcx.lifetimes.re_root_empty),
+            param_env,
+        );
+        outlives.type_must_outlive(origin, sup_type, sub_region);
+
+        let errors = infcx.resolve_regions(
+            id.expect_owner().to_def_id(),
+            &outlives_environment,
+            RegionckMode::default(),
+        );
+
+        debug!(?errors, "errors");
+
+        // If we were able to prove that the type outlives the region without
+        // an error, it must be because of the implied or explicit bounds...
+        errors.is_empty()
+    })
+}
+
+fn region_known_to_outlive<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    id: hir::HirId,
+    param_env: ty::ParamEnv<'tcx>,
+    wf_tys: &FxHashSet<Ty<'tcx>>,
+    region_a: ty::Region<'tcx>,
+    region_b: ty::Region<'tcx>,
+) -> bool {
+    // Unfortunately, we have to use a new `InferCtxt` each call, because
+    // region constraints get added and solved there and we need to test each
+    // call individually.
+    tcx.infer_ctxt().enter(|infcx| {
+        let mut outlives_environment = OutlivesEnvironment::new(param_env);
+        outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id, DUMMY_SP);
+        outlives_environment.save_implied_bounds(id);
+
+        let cause = ObligationCause::new(DUMMY_SP, id, ObligationCauseCode::MiscObligation);
+
+        let origin = SubregionOrigin::from_obligation_cause(&cause, || {
+            infer::RelateRegionParamBound(cause.span)
+        });
+
+        use rustc_infer::infer::outlives::obligations::TypeOutlivesDelegate;
+        (&infcx).push_sub_region_constraint(origin, region_a, region_b);
+
+        let errors = infcx.resolve_regions(
+            id.expect_owner().to_def_id(),
+            &outlives_environment,
+            RegionckMode::default(),
+        );
+
+        debug!(?errors, "errors");
+
+        // If we were able to prove that the type outlives the region without
+        // an error, it must be because of the implied or explicit bounds...
+        errors.is_empty()
+    })
+}
+
+/// TypeVisitor that looks for uses of GATs like
+/// `<P0 as Trait<P1..Pn>>::GAT<Pn..Pm>` and adds the arguments `P0..Pm` into
+/// the two vectors, `regions` and `types` (depending on their kind). For each
+/// parameter `Pi` also track the index `i`.
+struct GATSubstCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    gat: DefId,
+    // Which region appears and which parameter index its subsituted for
+    regions: FxHashSet<(ty::Region<'tcx>, usize)>,
+    // Which params appears and which parameter index its subsituted for
+    types: FxHashSet<(Ty<'tcx>, usize)>,
+}
+
+impl<'tcx> GATSubstCollector<'tcx> {
+    fn visit<T: TypeFoldable<'tcx>>(
+        tcx: TyCtxt<'tcx>,
+        gat: DefId,
+        t: T,
+    ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
+        let mut visitor = GATSubstCollector {
+            tcx,
+            gat,
+            regions: FxHashSet::default(),
+            types: FxHashSet::default(),
+        };
+        t.visit_with(&mut visitor);
+        (visitor.regions, visitor.types)
+    }
+}
+
+impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
+    type BreakTy = !;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match t.kind() {
+            ty::Projection(p) if p.item_def_id == self.gat => {
+                for (idx, subst) in p.substs.iter().enumerate() {
+                    match subst.unpack() {
+                        GenericArgKind::Lifetime(lt) => {
+                            self.regions.insert((lt, idx));
+                        }
+                        GenericArgKind::Type(t) => {
+                            self.types.insert((t, idx));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+        t.super_visit_with(self)
+    }
+
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.tcx)
     }
 }
 

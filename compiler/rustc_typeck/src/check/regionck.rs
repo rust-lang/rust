@@ -103,7 +103,7 @@ macro_rules! ignore_err {
     };
 }
 
-trait OutlivesEnvironmentExt<'tcx> {
+pub(crate) trait OutlivesEnvironmentExt<'tcx> {
     fn add_implied_bounds(
         &mut self,
         infcx: &InferCtxt<'a, 'tcx>,

@@ -1252,16 +1252,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.tainted_by_errors_flag.set(true)
     }
 
-    /// Process the region constraints and report any errors that
+    /// Process the region constraints and return any any errors that
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
-    pub fn resolve_regions_and_report_errors(
+    pub fn resolve_regions(
         &self,
         region_context: DefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
         mode: RegionckMode,
-    ) {
+    ) -> Vec<RegionResolutionError<'tcx>> {
         let (var_infos, data) = {
             let mut inner = self.inner.borrow_mut();
             let inner = &mut *inner;
@@ -1286,6 +1286,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
+
+        errors
+    }
+
+    /// Process the region constraints and report any errors that
+    /// result. After this, no more unification operations should be
+    /// done -- or the compiler will panic -- but it is legal to use
+    /// `resolve_vars_if_possible` as well as `fully_resolve`.
+    pub fn resolve_regions_and_report_errors(
+        &self,
+        region_context: DefId,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+        mode: RegionckMode,
+    ) {
+        let errors = self.resolve_regions(region_context, outlives_env, mode);
 
         if !self.is_tainted_by_errors() {
             // As a heuristic, just skip reporting region errors

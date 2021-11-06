@@ -13,7 +13,8 @@ trait SearchableResource<Criteria> {
 trait SearchableResourceExt<Criteria>: SearchableResource<Criteria> {
     type Future<'f, A: 'f + ?Sized, B: 'f>: Future<Output = Result<Vec<A::SearchResult>, ()>> + 'f
     where
-        A: SearchableResource<B>;
+        A: SearchableResource<B>,
+        Self: 'f;
 
     fn search<'c>(&'c self, client: &'c ()) -> Self::Future<'c, Self, Criteria>;
 }
@@ -29,6 +30,7 @@ where
     type Future<'f, A, B: 'f>
     where
         A: SearchableResource<B> + ?Sized + 'f,
+        Self: 'f,
     = SearchFutureTy<'f, A, B>;
 
     fn search<'c>(&'c self, _client: &'c ()) -> Self::Future<'c, Self, Criteria> {

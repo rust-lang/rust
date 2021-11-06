@@ -70,6 +70,7 @@ This API is completely unstable and subject to change.
 #![feature(never_type)]
 #![feature(slice_partition_dedup)]
 #![feature(control_flow_enum)]
+#![feature(hash_drain_filter)]
 #![recursion_limit = "256"]
 
 #[macro_use]
