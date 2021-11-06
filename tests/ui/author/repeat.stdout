@@ -1,0 +1,10 @@
+if_chain! {
+    if let ExprKind::Repeat(ref value, ref length) = expr.kind;
+    if let ExprKind::Lit(ref lit) = value.kind;
+    if let LitKind::Int(1, LitIntType::Unsigned(UintTy::U8)) = lit.node;
+    if let ExprKind::Lit(ref lit1) = length.value.kind;
+    if let LitKind::Int(5, LitIntType::Unsuffixed) = lit1.node;
+    then {
+        // report your lint here
+    }
+}
