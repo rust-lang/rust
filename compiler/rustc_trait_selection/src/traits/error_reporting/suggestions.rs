@@ -1474,7 +1474,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let span = self.tcx.def_span(generator_did);
 
         let in_progress_typeck_results = self.in_progress_typeck_results.map(|t| t.borrow());
-        let generator_did_root = self.tcx.closure_base_def_id(generator_did);
+        let generator_did_root = self.tcx.typeck_root_def_id(generator_did);
         debug!(
             "maybe_note_obligation_cause_for_async_await: generator_did={:?} \
              generator_did_root={:?} in_progress_typeck_results.hir_owner={:?} span={:?}",

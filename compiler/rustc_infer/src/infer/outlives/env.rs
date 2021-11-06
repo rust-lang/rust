@@ -99,7 +99,7 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
     /// function. We can then add implied bounds and the like from the
     /// closure arguments into the environment -- these should only
     /// apply in the closure body, so once we exit, we invoke
-    /// `pop_snapshot_post_closure` to remove them.
+    /// `pop_snapshot_post_typeck_child` to remove them.
     ///
     /// Example:
     ///
@@ -129,12 +129,12 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
     /// seems like it'd be readily fixed if we wanted. There are
     /// similar leaks around givens that seem equally suspicious, to
     /// be honest. --nmatsakis
-    pub fn push_snapshot_pre_closure(&self) -> usize {
+    pub fn push_snapshot_pre_typeck_child(&self) -> usize {
         self.region_bound_pairs_accum.len()
     }
 
-    /// See `push_snapshot_pre_closure`.
-    pub fn pop_snapshot_post_closure(&mut self, len: usize) {
+    /// See `push_snapshot_pre_typeck_child`.
+    pub fn pop_snapshot_post_typeck_child(&mut self, len: usize) {
         self.region_bound_pairs_accum.truncate(len);
     }
 

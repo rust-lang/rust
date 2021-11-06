@@ -1344,18 +1344,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // though.
                 let category = match place.as_local() {
                     Some(RETURN_PLACE) => {
-                        if let BorrowCheckContext {
-                            universal_regions:
-                                UniversalRegions {
-                                    defining_ty:
-                                        DefiningTy::Const(def_id, _)
-                                        | DefiningTy::InlineConst(def_id, _),
-                                    ..
-                                },
-                            ..
-                        } = self.borrowck_context
-                        {
-                            if tcx.is_static(*def_id) {
+                        let defining_ty = &self.borrowck_context.universal_regions.defining_ty;
+                        if defining_ty.is_const() {
+                            if tcx.is_static(defining_ty.def_id()) {
                                 ConstraintCategory::UseAsStatic
                             } else {
                                 ConstraintCategory::UseAsConst

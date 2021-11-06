@@ -56,7 +56,7 @@ impl<'tcx> Const<'tcx> {
 
         let ty = tcx.type_of(def.def_id_for_type_of());
 
-        match Self::try_eval_body_expr(tcx, ty, expr) {
+        match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
             None => tcx.mk_const(ty::Const {
                 val: ty::ConstKind::Unevaluated(ty::Unevaluated {
@@ -69,7 +69,7 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
-    fn try_eval_body_expr(
+    fn try_eval_lit_or_param(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
@@ -141,12 +141,12 @@ impl<'tcx> Const<'tcx> {
 
         let ty = tcx.typeck(def_id).node_type(hir_id);
 
-        let ret = match Self::try_eval_body_expr(tcx, ty, expr) {
+        let ret = match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
             None => {
-                let outer_def_id = tcx.closure_base_def_id(def_id.to_def_id());
+                let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
                 let parent_substs =
-                    tcx.erase_regions(InternalSubsts::identity_for_item(tcx, outer_def_id));
+                    tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
                 let substs =
                     InlineConstSubsts::new(tcx, InlineConstSubstsParts { parent_substs, ty })
                         .substs;

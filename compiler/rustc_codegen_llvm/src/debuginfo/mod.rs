@@ -322,7 +322,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         type_names::push_item_name(self.tcx(), def_id, false, &mut name);
 
         // Find the enclosing function, in case this is a closure.
-        let enclosing_fn_def_id = self.tcx().closure_base_def_id(def_id);
+        let enclosing_fn_def_id = self.tcx().typeck_root_def_id(def_id);
 
         // Get_template_parameters() will append a `<...>` clause to the function
         // name if necessary.

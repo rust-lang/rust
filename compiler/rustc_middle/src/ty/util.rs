@@ -423,8 +423,9 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.def_kind(def_id), DefKind::Closure | DefKind::Generator)
     }
 
-    /// Returns `true` if `def_id` refers to a closure, generator or inline const.
-    pub fn is_closure_or_inline_const(self, def_id: DefId) -> bool {
+    /// Returns `true` if `def_id` refers to a definition that does not have its own
+    /// type-checking context, i.e. closure, generator or inline const.
+    pub fn is_typeck_child(self, def_id: DefId) -> bool {
         matches!(
             self.def_kind(def_id),
             DefKind::Closure | DefKind::Generator | DefKind::InlineConst
@@ -458,9 +459,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Therefore, when we fetch the
     /// `typeck` the closure, for example, we really wind up
     /// fetching the `typeck` the enclosing fn item.
-    pub fn closure_base_def_id(self, def_id: DefId) -> DefId {
+    pub fn typeck_root_def_id(self, def_id: DefId) -> DefId {
         let mut def_id = def_id;
-        while self.is_closure_or_inline_const(def_id) {
+        while self.is_typeck_child(def_id) {
             def_id = self.parent(def_id).unwrap_or_else(|| {
                 bug!("closure {:?} has no parent", def_id);
             });

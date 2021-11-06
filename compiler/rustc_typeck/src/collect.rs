@@ -1495,14 +1495,14 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         Some(parent_def_id.to_def_id())
                     }
                     Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) => {
-                        Some(tcx.closure_base_def_id(def_id))
+                        Some(tcx.typeck_root_def_id(def_id))
                     }
                     _ => None,
                 }
             }
         }
         Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
-            Some(tcx.closure_base_def_id(def_id))
+            Some(tcx.typeck_root_def_id(def_id))
         }
         Node::Item(item) => match item.kind {
             ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => {

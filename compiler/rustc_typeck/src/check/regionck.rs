@@ -347,7 +347,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         // Save state of current function. We will restore afterwards.
         let old_body_id = self.body_id;
         let old_body_owner = self.body_owner;
-        let env_snapshot = self.outlives_environment.push_snapshot_pre_closure();
+        let env_snapshot = self.outlives_environment.push_snapshot_pre_typeck_child();
 
         let body_id = body.id();
         self.body_id = body_id.hir_id;
@@ -359,7 +359,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.visit_region_obligations(body_id.hir_id);
 
         // Restore state from previous function.
-        self.outlives_environment.pop_snapshot_post_closure(env_snapshot);
+        self.outlives_environment.pop_snapshot_post_typeck_child(env_snapshot);
         self.body_id = old_body_id;
         self.body_owner = old_body_owner;
     }
@@ -429,13 +429,13 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         // `visit_fn_body`.  We will restore afterwards.
         let old_body_id = self.body_id;
         let old_body_owner = self.body_owner;
-        let env_snapshot = self.outlives_environment.push_snapshot_pre_closure();
+        let env_snapshot = self.outlives_environment.push_snapshot_pre_typeck_child();
 
         let body = self.tcx.hir().body(body_id);
         self.visit_fn_body(hir_id, body, span);
 
         // Restore state from previous function.
-        self.outlives_environment.pop_snapshot_post_closure(env_snapshot);
+        self.outlives_environment.pop_snapshot_post_typeck_child(env_snapshot);
         self.body_id = old_body_id;
         self.body_owner = old_body_owner;
     }

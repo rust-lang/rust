@@ -196,7 +196,7 @@ fn emit_unused_generic_params_error<'tcx>(
     generics: &'tcx ty::Generics,
     unused_parameters: &FiniteBitSet<u32>,
 ) {
-    let base_def_id = tcx.closure_base_def_id(def_id);
+    let base_def_id = tcx.typeck_root_def_id(def_id);
     if !tcx.get_attrs(base_def_id).iter().any(|a| a.has_name(sym::rustc_polymorphize_error)) {
         return;
     }

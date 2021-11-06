@@ -376,7 +376,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     errors_buffer: &mut Vec<Diagnostic>,
 ) {
     let tcx = infcx.tcx;
-    let base_def_id = tcx.closure_base_def_id(body.source.def_id());
+    let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
     if !tcx.has_attr(base_def_id, sym::rustc_regions) {
         return;
     }

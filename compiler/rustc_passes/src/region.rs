@@ -818,9 +818,9 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 }
 
 fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
-    let closure_base_def_id = tcx.closure_base_def_id(def_id);
-    if closure_base_def_id != def_id {
-        return tcx.region_scope_tree(closure_base_def_id);
+    let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
+    if typeck_root_def_id != def_id {
+        return tcx.region_scope_tree(typeck_root_def_id);
     }
 
     let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());

@@ -247,7 +247,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         tcx: TyCtxt<'tcx>,
         closure_substs: SubstsRef<'tcx>,
         expected_num_vars: usize,
-        closure_base_def_id: DefId,
+        typeck_root_def_id: DefId,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
         let mut region_mapping = IndexVec::with_capacity(expected_num_vars);
         region_mapping.push(tcx.lifetimes.re_static);
@@ -255,7 +255,7 @@ impl<'tcx> UniversalRegions<'tcx> {
             region_mapping.push(fr);
         });
 
-        for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
+        for_each_late_bound_region_defined_on(tcx, typeck_root_def_id, |r| {
             region_mapping.push(r);
         });
 
@@ -349,8 +349,8 @@ impl<'tcx> UniversalRegions<'tcx> {
                 // tests, and the resulting print-outs include def-ids
                 // and other things that are not stable across tests!
                 // So we just include the region-vid. Annoying.
-                let closure_base_def_id = tcx.closure_base_def_id(def_id);
-                for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
+                let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
+                for_each_late_bound_region_defined_on(tcx, typeck_root_def_id, |r| {
                     err.note(&format!("late-bound region is {:?}", self.to_region_vid(r),));
                 });
             }
@@ -364,8 +364,8 @@ impl<'tcx> UniversalRegions<'tcx> {
                 // FIXME: As above, we'd like to print out the region
                 // `r` but doing so is not stable across architectures
                 // and so forth.
-                let closure_base_def_id = tcx.closure_base_def_id(def_id);
-                for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
+                let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
+                for_each_late_bound_region_defined_on(tcx, typeck_root_def_id, |r| {
                     err.note(&format!("late-bound region is {:?}", self.to_region_vid(r),));
                 });
             }
@@ -422,7 +422,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let mut indices = self.compute_indices(fr_static, defining_ty);
         debug!("build: indices={:?}", indices);
 
-        let closure_base_def_id = self.infcx.tcx.closure_base_def_id(self.mir_def.did.to_def_id());
+        let typeck_root_def_id = self.infcx.tcx.typeck_root_def_id(self.mir_def.did.to_def_id());
 
         // If this is a closure or generator, then the late-bound regions from the enclosing
         // function are actually external regions to us. For example, here, 'a is not local
@@ -430,7 +430,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // fn foo<'a>() {
         //     let c = || { let x: &'a u32 = ...; }
         // }
-        if self.mir_def.did.to_def_id() != closure_base_def_id {
+        if self.mir_def.did.to_def_id() != typeck_root_def_id {
             self.infcx
                 .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices)
         }
@@ -448,7 +448,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         );
         // Converse of above, if this is a function then the late-bound regions declared on its
         // signature are local to the fn.
-        if self.mir_def.did.to_def_id() == closure_base_def_id {
+        if self.mir_def.did.to_def_id() == typeck_root_def_id {
             self.infcx
                 .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices);
         }
@@ -513,12 +513,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     /// see `DefiningTy` for details.
     fn defining_ty(&self) -> DefiningTy<'tcx> {
         let tcx = self.infcx.tcx;
-        let closure_base_def_id = tcx.closure_base_def_id(self.mir_def.did.to_def_id());
+        let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.did.to_def_id());
 
         match tcx.hir().body_owner_kind(self.mir_hir_id) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = if self.mir_def.did.to_def_id() == closure_base_def_id {
-                    tcx.type_of(closure_base_def_id)
+                let defining_ty = if self.mir_def.did.to_def_id() == typeck_root_def_id {
+                    tcx.type_of(typeck_root_def_id)
                 } else {
                     let tables = tcx.typeck(self.mir_def.did);
                     tables.node_type(self.mir_hir_id)
@@ -545,8 +545,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
-                let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
-                if self.mir_def.did.to_def_id() == closure_base_def_id {
+                let identity_substs = InternalSubsts::identity_for_item(tcx, typeck_root_def_id);
+                if self.mir_def.did.to_def_id() == typeck_root_def_id {
                     let substs =
                         self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_substs);
                     DefiningTy::Const(self.mir_def.did.to_def_id(), substs)
@@ -574,19 +574,19 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         defining_ty: DefiningTy<'tcx>,
     ) -> UniversalRegionIndices<'tcx> {
         let tcx = self.infcx.tcx;
-        let closure_base_def_id = tcx.closure_base_def_id(self.mir_def.did.to_def_id());
-        let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
+        let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.did.to_def_id());
+        let identity_substs = InternalSubsts::identity_for_item(tcx, typeck_root_def_id);
         let fr_substs = match defining_ty {
             DefiningTy::Closure(_, ref substs)
             | DefiningTy::Generator(_, ref substs, _)
             | DefiningTy::InlineConst(_, ref substs) => {
                 // In the case of closures, we rely on the fact that
                 // the first N elements in the ClosureSubsts are
-                // inherited from the `closure_base_def_id`.
+                // inherited from the `typeck_root_def_id`.
                 // Therefore, when we zip together (below) with
                 // `identity_substs`, we will get only those regions
                 // that correspond to early-bound regions declared on
-                // the `closure_base_def_id`.
+                // the `typeck_root_def_id`.
                 assert!(substs.len() >= identity_substs.len());
                 assert_eq!(substs.regions().count(), identity_substs.regions().count());
                 substs
@@ -765,8 +765,8 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         indices: &mut UniversalRegionIndices<'tcx>,
     ) {
         debug!("replace_late_bound_regions_with_nll_infer_vars(mir_def_id={:?})", mir_def_id);
-        let closure_base_def_id = self.tcx.closure_base_def_id(mir_def_id.to_def_id());
-        for_each_late_bound_region_defined_on(self.tcx, closure_base_def_id, |r| {
+        let typeck_root_def_id = self.tcx.typeck_root_def_id(mir_def_id.to_def_id());
+        for_each_late_bound_region_defined_on(self.tcx, typeck_root_def_id, |r| {
             debug!("replace_late_bound_regions_with_nll_infer_vars: r={:?}", r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = self.next_nll_region_var(FR);
