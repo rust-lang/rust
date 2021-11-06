@@ -159,7 +159,7 @@ impl SocketAddr {
     #[must_use]
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn is_unnamed(&self) -> bool {
-        if let AddressKind::Unnamed = self.address() { true } else { false }
+        matches!(self.address(), AddressKind::Unnamed)
     }
 
     /// Returns the contents of this address if it is a `pathname` address.

@@ -6,6 +6,10 @@ LL |     want_foo(b);
    |
    = note: expected struct `Foo`
               found struct `Box<Foo>`
+help: try dereferencing the `Box`
+   |
+LL |     want_foo(*b);
+   |              +
 
 error: aborting due to previous error
 

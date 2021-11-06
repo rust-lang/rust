@@ -453,6 +453,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
     Ok(())
 }
 
+#[instrument(level = "debug", skip(infcx))]
 fn extract_spans_for_error_reporting<'a, 'tcx>(
     infcx: &infer::InferCtxt<'a, 'tcx>,
     terr: &TypeError<'_>,

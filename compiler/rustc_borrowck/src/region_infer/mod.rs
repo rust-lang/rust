@@ -2110,14 +2110,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     _ => constraint_sup_scc != target_scc,
                 }
             } else {
-                match categorized_path[*i].category {
+                !matches!(
+                    categorized_path[*i].category,
                     ConstraintCategory::OpaqueType
-                    | ConstraintCategory::Boring
-                    | ConstraintCategory::BoringNoLocation
-                    | ConstraintCategory::Internal
-                    | ConstraintCategory::Predicate(_) => false,
-                    _ => true,
-                }
+                        | ConstraintCategory::Boring
+                        | ConstraintCategory::BoringNoLocation
+                        | ConstraintCategory::Internal
+                        | ConstraintCategory::Predicate(_)
+                )
             }
         };
 

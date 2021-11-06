@@ -187,8 +187,12 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             })
             .enumerate()
             .map(|(i, r)| match r {
-                Err(TypeError::Sorts(exp_found)) => Err(TypeError::ArgumentSorts(exp_found, i)),
-                Err(TypeError::Mutability) => Err(TypeError::ArgumentMutability(i)),
+                Err(TypeError::Sorts(exp_found) | TypeError::ArgumentSorts(exp_found, _)) => {
+                    Err(TypeError::ArgumentSorts(exp_found, i))
+                }
+                Err(TypeError::Mutability | TypeError::ArgumentMutability(_)) => {
+                    Err(TypeError::ArgumentMutability(i))
+                }
                 r => r,
             });
         Ok(ty::FnSig {
