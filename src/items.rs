@@ -1185,18 +1185,6 @@ pub(crate) fn format_trait(
     }
 }
 
-struct OpaqueTypeBounds<'a> {
-    generic_bounds: &'a ast::GenericBounds,
-}
-
-impl<'a> Rewrite for OpaqueTypeBounds<'a> {
-    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        self.generic_bounds
-            .rewrite(context, shape)
-            .map(|s| format!("impl {}", s))
-    }
-}
-
 pub(crate) struct TraitAliasBounds<'a> {
     generic_bounds: &'a ast::GenericBounds,
     generics: &'a ast::Generics,
@@ -1518,17 +1506,79 @@ fn format_tuple_struct(
     Some(result)
 }
 
-pub(crate) fn rewrite_type<R: Rewrite>(
-    context: &RewriteContext<'_>,
+pub(crate) enum ItemVisitorKind<'a> {
+    Item(&'a ast::Item),
+    AssocTraitItem(&'a ast::AssocItem),
+    AssocImplItem(&'a ast::AssocItem),
+    ForeignItem(&'a ast::ForeignItem),
+}
+
+struct TyAliasRewriteInfo<'c, 'g>(
+    &'c RewriteContext<'c>,
+    Indent,
+    &'g ast::Generics,
+    symbol::Ident,
+    Span,
+);
+
+pub(crate) fn rewrite_type_alias<'a, 'b>(
+    ty_alias_kind: &ast::TyAliasKind,
+    context: &RewriteContext<'a>,
     indent: Indent,
-    ident: symbol::Ident,
-    vis: &ast::Visibility,
-    generics: &ast::Generics,
-    generic_bounds_opt: Option<&ast::GenericBounds>,
-    rhs: Option<&R>,
+    visitor_kind: &ItemVisitorKind<'b>,
     span: Span,
 ) -> Option<String> {
+    use ItemVisitorKind::*;
+
+    let ast::TyAliasKind(defaultness, ref generics, ref generic_bounds, ref ty) = *ty_alias_kind;
+    let ty_opt = ty.as_ref().map(|t| &**t);
+    let (ident, vis) = match visitor_kind {
+        Item(i) => (i.ident, &i.vis),
+        AssocTraitItem(i) | AssocImplItem(i) => (i.ident, &i.vis),
+        ForeignItem(i) => (i.ident, &i.vis),
+    };
+    let rw_info = &TyAliasRewriteInfo(context, indent, generics, ident, span);
+
+    // Type Aliases are formatted slightly differently depending on the context
+    // in which they appear, whether they are opaque, and whether they are associated.
+    // https://rustc-dev-guide.rust-lang.org/opaque-types-type-alias-impl-trait.html
+    // https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/items.md#type-aliases
+    match (visitor_kind, ty_opt) {
+        (Item(_), None) => {
+            let op_ty = OpaqueType { generic_bounds };
+            rewrite_ty(rw_info, Some(generic_bounds), Some(&op_ty), vis)
+        }
+        (Item(_), Some(ty)) => rewrite_ty(rw_info, Some(generic_bounds), Some(&*ty), vis),
+        (AssocImplItem(_), _) => {
+            let result = if let Some(ast::Ty {
+                kind: ast::TyKind::ImplTrait(_, ref generic_bounds),
+                ..
+            }) = ty_opt
+            {
+                let op_ty = OpaqueType { generic_bounds };
+                rewrite_ty(rw_info, None, Some(&op_ty), &DEFAULT_VISIBILITY)
+            } else {
+                rewrite_ty(rw_info, None, ty.as_ref(), vis)
+            }?;
+            match defaultness {
+                ast::Defaultness::Default(..) => Some(format!("default {}", result)),
+                _ => Some(result),
+            }
+        }
+        (AssocTraitItem(_), _) | (ForeignItem(_), _) => {
+            rewrite_ty(rw_info, Some(generic_bounds), ty.as_ref(), vis)
+        }
+    }
+}
+
+fn rewrite_ty<R: Rewrite>(
+    rw_info: &TyAliasRewriteInfo<'_, '_>,
+    generic_bounds_opt: Option<&ast::GenericBounds>,
+    rhs: Option<&R>,
+    vis: &ast::Visibility,
+) -> Option<String> {
     let mut result = String::with_capacity(128);
+    let TyAliasRewriteInfo(context, indent, generics, ident, span) = *rw_info;
     result.push_str(&format!("{}type ", format_visibility(context, vis)));
     let ident_str = rewrite_ident(context, ident);
 
@@ -1614,28 +1664,6 @@ pub(crate) fn rewrite_type<R: Rewrite>(
     } else {
         Some(format!("{};", result))
     }
-}
-
-pub(crate) fn rewrite_opaque_type(
-    context: &RewriteContext<'_>,
-    indent: Indent,
-    ident: symbol::Ident,
-    generic_bounds: &ast::GenericBounds,
-    generics: &ast::Generics,
-    vis: &ast::Visibility,
-    span: Span,
-) -> Option<String> {
-    let opaque_type_bounds = OpaqueTypeBounds { generic_bounds };
-    rewrite_type(
-        context,
-        indent,
-        ident,
-        vis,
-        generics,
-        Some(generic_bounds),
-        Some(&opaque_type_bounds),
-        span,
-    )
 }
 
 fn type_annotation_spacing(config: &Config) -> (&str, &str) {
@@ -1863,51 +1891,15 @@ fn rewrite_static(
     }
 }
 struct OpaqueType<'a> {
-    bounds: &'a ast::GenericBounds,
+    generic_bounds: &'a ast::GenericBounds,
 }
 
 impl<'a> Rewrite for OpaqueType<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         let shape = shape.offset_left(5)?; // `impl `
-        self.bounds
+        self.generic_bounds
             .rewrite(context, shape)
             .map(|s| format!("impl {}", s))
-    }
-}
-
-pub(crate) fn rewrite_impl_type(
-    ident: symbol::Ident,
-    vis: &ast::Visibility,
-    defaultness: ast::Defaultness,
-    ty_opt: Option<&ptr::P<ast::Ty>>,
-    generics: &ast::Generics,
-    context: &RewriteContext<'_>,
-    indent: Indent,
-    span: Span,
-) -> Option<String> {
-    // Opaque type
-    let result = if let Some(rustc_ast::ast::Ty {
-        kind: ast::TyKind::ImplTrait(_, ref bounds),
-        ..
-    }) = ty_opt.map(|t| &**t)
-    {
-        rewrite_type(
-            context,
-            indent,
-            ident,
-            &DEFAULT_VISIBILITY,
-            generics,
-            None,
-            Some(&OpaqueType { bounds }),
-            span,
-        )
-    } else {
-        rewrite_type(context, indent, ident, vis, generics, None, ty_opt, span)
-    }?;
-
-    match defaultness {
-        ast::Defaultness::Default(..) => Some(format!("default {}", result)),
-        _ => Some(result),
     }
 }
 
@@ -3176,19 +3168,9 @@ impl Rewrite for ast::ForeignItem {
                 // 1 = ;
                 rewrite_assign_rhs(context, prefix, &**ty, shape.sub_width(1)?).map(|s| s + ";")
             }
-            ast::ForeignItemKind::TyAlias(ref ty_alias_kind) => {
-                let ast::TyAliasKind(_, ref generics, ref generic_bounds, ref type_default) =
-                    **ty_alias_kind;
-                rewrite_type(
-                    context,
-                    shape.indent,
-                    self.ident,
-                    &self.vis,
-                    generics,
-                    Some(generic_bounds),
-                    type_default.as_ref(),
-                    self.span,
-                )
+            ast::ForeignItemKind::TyAlias(ref ty_alias) => {
+                let (kind, span) = (&ItemVisitorKind::ForeignItem(&self), self.span);
+                rewrite_type_alias(ty_alias, context, shape.indent, kind, span)
             }
             ast::ForeignItemKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Item)
