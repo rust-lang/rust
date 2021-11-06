@@ -23,9 +23,7 @@
                 },
             },
             severity: Some(
-                DiagnosticSeverity(
-                    3,
-                ),
+                Information,
             ),
             code: Some(
                 String(
@@ -69,9 +67,7 @@
             ),
             tags: Some(
                 [
-                    DiagnosticTag(
-                        1,
-                    ),
+                    Unnecessary,
                 ],
             ),
             data: None,
@@ -102,9 +98,7 @@
                 },
             },
             severity: Some(
-                DiagnosticSeverity(
-                    4,
-                ),
+                Hint,
             ),
             code: Some(
                 String(

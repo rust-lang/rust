@@ -23,9 +23,7 @@
                 },
             },
             severity: Some(
-                DiagnosticSeverity(
-                    1,
-                ),
+                Error,
             ),
             code: Some(
                 String(
