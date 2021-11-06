@@ -1,6 +1,7 @@
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
+use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
@@ -137,12 +138,8 @@ impl<'a> StringReader<'a> {
         // Opening delimiter of the length 2 is not included into the comment text.
         let content_start = start + BytePos(2);
         let content = self.str_from(content_start);
-        let span = self.mk_sp(start, self.pos);
-        const UNICODE_TEXT_FLOW_CHARS: &[char] = &[
-            '\u{202A}', '\u{202B}', '\u{202D}', '\u{202E}', '\u{2066}', '\u{2067}', '\u{2068}',
-            '\u{202C}', '\u{2069}',
-        ];
-        if content.contains(UNICODE_TEXT_FLOW_CHARS) {
+        if contains_text_flow_control_chars(content) {
+            let span = self.mk_sp(start, self.pos);
             self.sess.buffer_lint_with_diagnostic(
                 &TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,

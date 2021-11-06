@@ -16,9 +16,9 @@
 
 use self::TargetLint::*;
 
-use crate::hidden_unicode_codepoints::UNICODE_TEXT_FLOW_CHARS;
 use crate::levels::{is_known_lint_tool, LintLevelsBuilder};
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
+use ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
@@ -602,7 +602,7 @@ pub trait LintContext: Sized {
                     let spans: Vec<_> = content
                         .char_indices()
                         .filter_map(|(i, c)| {
-                            UNICODE_TEXT_FLOW_CHARS.contains(&c).then(|| {
+                            TEXT_FLOW_CONTROL_CHARS.contains(&c).then(|| {
                                 let lo = span.lo() + BytePos(2 + i as u32);
                                 (c, span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
                             })
