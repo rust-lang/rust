@@ -615,85 +615,65 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.push_rewrite(span, rewrite);
     }
 
-    pub(crate) fn visit_trait_item(&mut self, ti: &ast::AssocItem) {
-        skip_out_of_file_lines_range_visitor!(self, ti.span);
+    fn visit_assoc_item(&mut self, visitor_kind: &ItemVisitorKind<'_>) {
+        use ItemVisitorKind::*;
+        // TODO(calebcartwright): Not sure the skip spans are correct
+        let (ai, skip_span, assoc_ctxt) = match visitor_kind {
+            AssocTraitItem(ai) => (*ai, ai.span(), visit::AssocCtxt::Trait),
+            AssocImplItem(ai) => (*ai, ai.span, visit::AssocCtxt::Impl),
+            _ => unreachable!(),
+        };
+        skip_out_of_file_lines_range_visitor!(self, ai.span);
 
-        if self.visit_attrs(&ti.attrs, ast::AttrStyle::Outer) {
-            self.push_skipped_with_span(ti.attrs.as_slice(), ti.span(), ti.span());
+        if self.visit_attrs(&ai.attrs, ast::AttrStyle::Outer) {
+            self.push_skipped_with_span(&ai.attrs.as_slice(), skip_span, skip_span);
             return;
         }
 
         // TODO(calebcartwright): consider enabling box_patterns feature gate
-        match ti.kind {
-            ast::AssocItemKind::Const(..) => self.visit_static(&StaticParts::from_trait_item(ti)),
-            ast::AssocItemKind::Fn(ref fn_kind) => {
+        match (&ai.kind, visitor_kind) {
+            (ast::AssocItemKind::Const(..), AssocTraitItem(_)) => {
+                self.visit_static(&StaticParts::from_trait_item(&ai))
+            }
+            (ast::AssocItemKind::Const(..), AssocImplItem(_)) => {
+                self.visit_static(&StaticParts::from_impl_item(&ai))
+            }
+            (ast::AssocItemKind::Fn(ref fn_kind), _) => {
                 let ast::FnKind(defaultness, ref sig, ref generics, ref block) = **fn_kind;
                 if let Some(ref body) = block {
-                    let inner_attrs = inner_attributes(&ti.attrs);
-                    let fn_ctxt = visit::FnCtxt::Assoc(visit::AssocCtxt::Trait);
+                    let inner_attrs = inner_attributes(&ai.attrs);
+                    let fn_ctxt = visit::FnCtxt::Assoc(assoc_ctxt);
                     self.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, ti.ident, sig, &ti.vis, Some(body)),
+                        visit::FnKind::Fn(fn_ctxt, ai.ident, sig, &ai.vis, Some(body)),
                         generics,
                         &sig.decl,
-                        ti.span,
+                        ai.span,
                         defaultness,
                         Some(&inner_attrs),
                     );
                 } else {
                     let indent = self.block_indent;
                     let rewrite =
-                        self.rewrite_required_fn(indent, ti.ident, sig, &ti.vis, generics, ti.span);
-                    self.push_rewrite(ti.span, rewrite);
+                        self.rewrite_required_fn(indent, ai.ident, sig, &ai.vis, generics, ai.span);
+                    self.push_rewrite(ai.span, rewrite);
                 }
             }
-            ast::AssocItemKind::TyAlias(ref ty_alias_kind) => {
-                use ItemVisitorKind::AssocTraitItem;
-                self.visit_ty_alias_kind(ty_alias_kind, &AssocTraitItem(&ti), ti.span);
+            (ast::AssocItemKind::TyAlias(ref ty_alias_kind), _) => {
+                self.visit_ty_alias_kind(ty_alias_kind, visitor_kind, ai.span);
             }
-            ast::AssocItemKind::MacCall(ref mac) => {
-                self.visit_mac(mac, Some(ti.ident), MacroPosition::Item);
+            (ast::AssocItemKind::MacCall(ref mac), _) => {
+                self.visit_mac(mac, Some(ai.ident), MacroPosition::Item);
             }
+            _ => unreachable!(),
         }
     }
 
+    pub(crate) fn visit_trait_item(&mut self, ti: &ast::AssocItem) {
+        self.visit_assoc_item(&ItemVisitorKind::AssocTraitItem(ti));
+    }
+
     pub(crate) fn visit_impl_item(&mut self, ii: &ast::AssocItem) {
-        skip_out_of_file_lines_range_visitor!(self, ii.span);
-
-        if self.visit_attrs(&ii.attrs, ast::AttrStyle::Outer) {
-            self.push_skipped_with_span(ii.attrs.as_slice(), ii.span, ii.span);
-            return;
-        }
-
-        match ii.kind {
-            ast::AssocItemKind::Fn(ref fn_kind) => {
-                let ast::FnKind(defaultness, ref sig, ref generics, ref block) = **fn_kind;
-                if let Some(ref body) = block {
-                    let inner_attrs = inner_attributes(&ii.attrs);
-                    let fn_ctxt = visit::FnCtxt::Assoc(visit::AssocCtxt::Impl);
-                    self.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, ii.ident, sig, &ii.vis, Some(body)),
-                        generics,
-                        &sig.decl,
-                        ii.span,
-                        defaultness,
-                        Some(&inner_attrs),
-                    );
-                } else {
-                    let indent = self.block_indent;
-                    let rewrite =
-                        self.rewrite_required_fn(indent, ii.ident, sig, &ii.vis, generics, ii.span);
-                    self.push_rewrite(ii.span, rewrite);
-                }
-            }
-            ast::AssocItemKind::Const(..) => self.visit_static(&StaticParts::from_impl_item(ii)),
-            ast::AssocItemKind::TyAlias(ref ty_alias_kind) => {
-                use ItemVisitorKind::AssocImplItem;
-                self.visit_ty_alias_kind(ty_alias_kind, &AssocImplItem(&ii), ii.span);
-            }
-            ast::AssocItemKind::MacCall(ref mac) => {
-                self.visit_mac(mac, Some(ii.ident), MacroPosition::Item);
-            }
-        }
+        self.visit_assoc_item(&ItemVisitorKind::AssocImplItem(ii));
     }
 
     fn visit_mac(&mut self, mac: &ast::MacCall, ident: Option<symbol::Ident>, pos: MacroPosition) {
