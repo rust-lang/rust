@@ -333,7 +333,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let candidates = self
             .r
             .lookup_import_candidates(ident, ns, &self.parent_scope, is_expected)
-            .drain(..)
+            .into_iter()
             .filter(|ImportSuggestion { did, .. }| {
                 match (did, res.and_then(|res| res.opt_def_id())) {
                     (Some(suggestion_did), Some(actual_did)) => *suggestion_did != actual_did,
@@ -1554,7 +1554,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if suggest_only_tuple_variants {
             // Suggest only tuple variants regardless of whether they have fields and do not
             // suggest path with added parentheses.
-            let mut suggestable_variants = variants
+            let suggestable_variants = variants
                 .iter()
                 .filter(|(.., kind)| *kind == CtorKind::Fn)
                 .map(|(variant, ..)| path_names_to_string(variant))
@@ -1580,7 +1580,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     &msg,
-                    suggestable_variants.drain(..),
+                    suggestable_variants.into_iter(),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1638,7 +1638,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 );
             }
 
-            let mut suggestable_variants_with_placeholders = variants
+            let suggestable_variants_with_placeholders = variants
                 .iter()
                 .filter(|(_, def_id, kind)| needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
@@ -1663,7 +1663,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants_with_placeholders.drain(..),
+                    suggestable_variants_with_placeholders.into_iter(),
                     Applicability::HasPlaceholders,
                 );
             }
