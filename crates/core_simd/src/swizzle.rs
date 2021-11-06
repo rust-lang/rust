@@ -203,10 +203,10 @@ where
     }
 
     /// Rotates the vector such that the first `OFFSET` elements of the slice move to the end
-    /// while the last `LANES - OFFSET` elements move to the front. After calling `rotate_left`, the
-    /// element previously in lane `OFFSET` will become the first element in the slice.
+    /// while the last `LANES - OFFSET` elements move to the front. After calling `rotate_lanes_left`,
+    /// the element previously in lane `OFFSET` will become the first element in the slice.
     #[inline]
-    pub fn rotate_left<const OFFSET: usize>(self) -> Self {
+    pub fn rotate_lanes_left<const OFFSET: usize>(self) -> Self {
         const fn rotate_index<const OFFSET: usize, const LANES: usize>() -> [usize; LANES] {
             let offset = OFFSET % LANES;
             let mut index = [0; LANES];
@@ -228,10 +228,10 @@ where
     }
 
     /// Rotates the vector such that the first `LANES - OFFSET` elements of the vector move to
-    /// the end while the last `OFFSET` elements move to the front. After calling `rotate_right`, the
-    /// element previously at index `LANES - OFFSET` will become the first element in the slice.
+    /// the end while the last `OFFSET` elements move to the front. After calling `rotate_lanes_right`,
+    /// the element previously at index `LANES - OFFSET` will become the first element in the slice.
     #[inline]
-    pub fn rotate_right<const OFFSET: usize>(self) -> Self {
+    pub fn rotate_lanes_right<const OFFSET: usize>(self) -> Self {
         const fn rotate_index<const OFFSET: usize, const LANES: usize>() -> [usize; LANES] {
             let offset = LANES - OFFSET % LANES;
             let mut index = [0; LANES];
