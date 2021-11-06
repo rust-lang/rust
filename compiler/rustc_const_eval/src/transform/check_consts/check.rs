@@ -131,10 +131,7 @@ impl Qualifs<'mir, 'tcx> {
             .body
             .basic_blocks()
             .iter_enumerated()
-            .find(|(_, block)| match block.terminator().kind {
-                TerminatorKind::Return => true,
-                _ => false,
-            })
+            .find(|(_, block)| matches!(block.terminator().kind, TerminatorKind::Return))
             .map(|(bb, _)| bb);
 
         let return_block = match return_block {

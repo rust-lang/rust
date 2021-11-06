@@ -138,17 +138,11 @@ impl<'tcx> DefiningTy<'tcx> {
     }
 
     pub fn is_fn_def(&self) -> bool {
-        match *self {
-            DefiningTy::FnDef(..) => true,
-            _ => false,
-        }
+        matches!(*self, DefiningTy::FnDef(..))
     }
 
     pub fn is_const(&self) -> bool {
-        match *self {
-            DefiningTy::Const(..) => true,
-            _ => false,
-        }
+        matches!(*self, DefiningTy::Const(..))
     }
 
     pub fn def_id(&self) -> DefId {

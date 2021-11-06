@@ -170,11 +170,12 @@ impl Qualif for NeedsNonConstDrop {
             let mut selcx = SelectionContext::with_constness(&infcx, hir::Constness::Const);
             selcx.select(&obligation)
         });
-        match implsrc {
-            Ok(Some(ImplSource::ConstDrop(_)))
-            | Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => false,
-            _ => true,
-        }
+        !matches!(
+            implsrc,
+            Ok(Some(
+                ImplSource::ConstDrop(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
+            ))
+        )
     }
 
     fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
