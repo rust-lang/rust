@@ -263,7 +263,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     check_gat_where_clauses(tcx, trait_item, encl_trait_def_id);
 }
 
-/// Require that the user writes as where clauses on GATs the implicit
+/// Require that the user writes where clauses on GATs for the implicit
 /// outlives bounds involving trait parameters in trait functions and
 /// lifetimes passed as GAT substs. See `self-outlives-lint` test.
 ///
@@ -288,6 +288,7 @@ fn check_gat_where_clauses(
     }
     let generics: &ty::Generics = tcx.generics_of(trait_item.def_id);
     // If the current associated type doesn't have any (own) params, it's not a GAT
+    // FIXME(jackh726): we can also warn in the more general case
     if generics.params.len() == 0 {
         return;
     }
@@ -311,20 +312,15 @@ fn check_gat_where_clauses(
         // Collect the arguments that are given to this GAT in the return type
         // of  the function signature. In our example, the GAT in the return
         // type is `<Self as LendingIterator>::Item<'a>`, so 'a and Self are arguments.
-        let mut visitor = GATSubstCollector {
-            tcx,
-            gat: trait_item.def_id.to_def_id(),
-            regions: FxHashSet::default(),
-            types: FxHashSet::default(),
-        };
-        sig.output().visit_with(&mut visitor);
+        let (regions, types) =
+            GATSubstCollector::visit(tcx, trait_item.def_id.to_def_id(), sig.output());
 
         // If both regions and types are empty, then this GAT isn't in the
         // return type, and we shouldn't try to do clause analysis
         // (particularly, doing so would end up with an empty set of clauses,
         // since the current method would require none, and we take the
         // intersection of requirements of all methods)
-        if visitor.types.is_empty() && visitor.regions.is_empty() {
+        if types.is_empty() && regions.is_empty() {
             continue;
         }
 
@@ -337,8 +333,8 @@ fn check_gat_where_clauses(
         // relationship to the type arguments (e.g., Self). If there is an
         // outlives relationship (`Self: 'a`), then we want to ensure that is
         // reflected in a where clause on the GAT itself.
-        for (region, region_idx) in &visitor.regions {
-            for (ty, ty_idx) in &visitor.types {
+        for (region, region_idx) in &regions {
+            for (ty, ty_idx) in &types {
                 // In our example, requires that Self: 'a
                 if ty_known_to_outlive(tcx, id, param_env, &wf_tys, *ty, *region) {
                     debug!(?ty_idx, ?region_idx);
@@ -376,8 +372,8 @@ fn check_gat_where_clauses(
         // relationship to the other region arguments. If there is an
         // outlives relationship, then we want to ensure that is
         // reflected in a where clause on the GAT itself.
-        for (region_a, region_a_idx) in &visitor.regions {
-            for (region_b, region_b_idx) in &visitor.regions {
+        for (region_a, region_a_idx) in &regions {
+            for (region_b, region_b_idx) in &regions {
                 if region_a == region_b {
                     continue;
                 }
@@ -412,6 +408,16 @@ fn check_gat_where_clauses(
             }
         }
 
+        // Imagine we have:
+        // ```
+        // trait Foo {
+        //   type Bar<'me>;
+        //   fn gimme(&self) -> Self::Bar<'_>;
+        //   fn gimme_default(&self) -> Self::Bar<'static>;
+        // }
+        // ```
+        // We only want to require clauses on `Bar` that we can prove from *all* functions (in this
+        // case, `'me` can be `static` from `gimme_default`)
         match clauses.as_mut() {
             Some(clauses) => {
                 clauses.drain_filter(|p| !function_clauses.contains(p));
@@ -428,12 +434,14 @@ fn check_gat_where_clauses(
     if !clauses.is_empty() {
         let written_predicates: ty::GenericPredicates<'_> =
             tcx.explicit_predicates_of(trait_item.def_id);
-        let clauses: Vec<_> = clauses
+        let mut clauses: Vec<_> = clauses
             .drain_filter(|clause| {
                 written_predicates.predicates.iter().find(|p| &p.0 == clause).is_none()
             })
             .map(|clause| format!("{}", clause))
             .collect();
+        // We sort so that order is predictable
+        clauses.sort();
         if !clauses.is_empty() {
             let mut err = tcx.sess.struct_span_err(
                 trait_item.span,
@@ -460,6 +468,8 @@ fn check_gat_where_clauses(
         }
     }
 }
+
+// FIXME(jackh726): refactor some of the shared logic between the two functions below
 
 /// Given a known `param_env` and a set of well formed types, can we prove that
 /// `ty` outlives `region`.
@@ -562,6 +572,23 @@ struct GATSubstCollector<'tcx> {
     regions: FxHashSet<(ty::Region<'tcx>, usize)>,
     // Which params appears and which parameter index its subsituted for
     types: FxHashSet<(Ty<'tcx>, usize)>,
+}
+
+impl<'tcx> GATSubstCollector<'tcx> {
+    fn visit<T: TypeFoldable<'tcx>>(
+        tcx: TyCtxt<'tcx>,
+        gat: DefId,
+        t: T,
+    ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
+        let mut visitor = GATSubstCollector {
+            tcx,
+            gat,
+            regions: FxHashSet::default(),
+            types: FxHashSet::default(),
+        };
+        t.visit_with(&mut visitor);
+        (visitor.regions, visitor.types)
+    }
 }
 
 impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {

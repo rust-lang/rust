@@ -28,7 +28,7 @@ error: Missing required bounds on Out
 LL |     type Out<'x, 'y>;
    |     ^^^^^^^^^^^^^^^^-
    |                     |
-   |                     help: add the required where clauses: `where U: 'y, T: 'x`
+   |                     help: add the required where clauses: `where T: 'x, U: 'y`
 
 error: Missing required bounds on Out
   --> $DIR/self-outlives-lint.rs:61:5
@@ -55,23 +55,23 @@ LL |     type Out<'x, D>;
    |                    help: add the required where clauses: `where D: 'x`
 
 error: Missing required bounds on Bar
-  --> $DIR/self-outlives-lint.rs:113:5
+  --> $DIR/self-outlives-lint.rs:114:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
    |                 |
-   |                 help: add the required where clauses: `where Self: 'b, Self: 'a`
+   |                 help: add the required where clauses: `where Self: 'a, Self: 'b`
 
 error: Missing required bounds on Bar
-  --> $DIR/self-outlives-lint.rs:120:5
+  --> $DIR/self-outlives-lint.rs:122:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
    |                 |
-   |                 help: add the required where clauses: `where Self: 'b, Self: 'a`
+   |                 help: add the required where clauses: `where Self: 'a, Self: 'b`
 
 error: Missing required bounds on Bar
-  --> $DIR/self-outlives-lint.rs:127:5
+  --> $DIR/self-outlives-lint.rs:129:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
@@ -79,7 +79,7 @@ LL |     type Bar<'b>;
    |                 help: add the required where clauses: `where Self: 'b`
 
 error: Missing required bounds on Iterator
-  --> $DIR/self-outlives-lint.rs:141:5
+  --> $DIR/self-outlives-lint.rs:143:5
    |
 LL |     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -87,7 +87,7 @@ LL |     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
    |                                                       help: add the required where clauses: `where Self: 'a`
 
 error: Missing required bounds on Bar
-  --> $DIR/self-outlives-lint.rs:148:5
+  --> $DIR/self-outlives-lint.rs:150:5
    |
 LL |     type Bar<'a, 'b>;
    |     ^^^^^^^^^^^^^^^^-

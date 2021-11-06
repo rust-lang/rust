@@ -109,6 +109,7 @@ trait NoGat<'a> {
 }
 
 // Lifetime is not on function; except `Self: 'a`
+// FIXME: we require two bounds (`where Self: 'a, Self: 'b`) when we should only require one
 trait TraitLifetime<'a> {
     type Bar<'b>;
     //~^ Missing required bounds
@@ -116,6 +117,7 @@ trait TraitLifetime<'a> {
 }
 
 // Like above, but we have a where clause that can prove what we want
+// FIXME: we require two bounds (`where Self: 'a, Self: 'b`) when we should only require one
 trait TraitLifetimeWhere<'a> where Self: 'a {
     type Bar<'b>;
     //~^ Missing required bounds
