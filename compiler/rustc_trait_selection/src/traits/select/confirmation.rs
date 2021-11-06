@@ -620,23 +620,37 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
 
+        let obligation_predicate = obligation.predicate.to_poly_trait_ref();
+        let Normalized { value: obligation_predicate, mut obligations } =
+            ensure_sufficient_stack(|| {
+                normalize_with_depth(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    obligation_predicate,
+                )
+            });
+
         let trait_ref = self.closure_trait_ref_unnormalized(obligation, substs);
-        let Normalized { value: trait_ref, mut obligations } = ensure_sufficient_stack(|| {
-            normalize_with_depth(
-                self,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                trait_ref,
-            )
-        });
+        let Normalized { value: trait_ref, obligations: trait_ref_obligations } =
+            ensure_sufficient_stack(|| {
+                normalize_with_depth(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    trait_ref,
+                )
+            });
 
         debug!(?closure_def_id, ?trait_ref, ?obligations, "confirm closure candidate obligations");
 
+        obligations.extend(trait_ref_obligations);
         obligations.extend(self.confirm_poly_trait_refs(
             obligation.cause.clone(),
             obligation.param_env,
-            obligation.predicate.to_poly_trait_ref(),
+            obligation_predicate,
             trait_ref,
         )?);
 

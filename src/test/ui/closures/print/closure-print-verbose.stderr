@@ -7,7 +7,7 @@ LL |     let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
    |              expected due to this
    |
    = note: expected fn pointer `fn(u8) -> u8`
-                 found closure `[main::{closure#0} closure_substs=(unavailable)]`
+                 found closure `[main::{closure#0} closure_substs=(unavailable) substs=[i8, extern "rust-call" fn((u8,)) -> u8, _#6t]]`
 note: closures can only be coerced to `fn` types if they do not capture any variables
   --> $DIR/closure-print-verbose.rs:10:39
    |

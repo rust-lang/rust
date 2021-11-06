@@ -744,6 +744,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!(print_def_path(did, substs));
                     if !substs.as_closure().is_valid() {
                         p!(" closure_substs=(unavailable)");
+                        p!(write(" substs={:?}", substs));
                     } else {
                         p!(" closure_kind_ty=", print(substs.as_closure().kind_ty()));
                         p!(
