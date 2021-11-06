@@ -54,6 +54,7 @@ use std::time::Instant;
 
 pub mod args;
 pub mod pretty;
+pub mod pointcut;
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -404,6 +405,10 @@ fn run_compiler(
                 return early_exit();
             }
 
+            if process_aspects(&sess, queries, compiler.output_dir())? {
+                return early_exit();
+            }
+
             queries.ongoing_codegen()?;
 
             if sess.opts.debugging_opts.print_type_sizes {
@@ -433,6 +438,30 @@ fn run_compiler(
 
         Ok(())
     })
+}
+
+fn process_aspects<'tcx>(sess: &Session, queries: &'tcx Queries<'tcx>, out_dir: &Option<PathBuf>)
+    -> interface::Result<bool> {
+
+    if let Some(pointcut) = &sess.opts.debugging_opts.aop_inspect {
+        queries.global_ctxt()?.peek_mut().enter(|tcx|{
+            let src_map = sess.source_map();
+            let spans = pointcut::search_pointcuts(tcx, pointcut.trim_matches('"').to_string(), src_map);
+            let output = format!("{:#?}", spans);
+            let mut out_file = out_dir.clone().unwrap_or(std::env::current_dir().unwrap());
+            if let Ok(crate_name) = queries.crate_name() {
+                let mut full_name = crate_name.peek().clone();
+                full_name.push_str("RUST_ASPECT_OUTPUT.txt");
+                out_file.push(full_name);
+            }
+            let mut f = std::fs::File::create(&out_file).expect(&format!("Create output file {:?} failed", &out_file));
+            f.write_all(output.as_bytes()).unwrap();
+            f.flush().ok();
+            println!("\nRUST_ASPECT_OUTPUT: {}\n", output);
+        });
+        return Ok(true);
+    }
+    return Ok(false);
 }
 
 #[cfg(unix)]
