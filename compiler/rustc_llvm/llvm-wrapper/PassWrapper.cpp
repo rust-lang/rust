@@ -75,6 +75,10 @@ extern "C" void LLVMTimeTraceProfilerInitialize() {
       /* ProcName */ "rustc");
 }
 
+extern "C" void LLVMTimeTraceProfilerFinishThread() {
+  timeTraceProfilerFinishThread();
+}
+
 extern "C" void LLVMTimeTraceProfilerFinish(const char* FileName) {
   StringRef FN(FileName);
   std::error_code EC;
