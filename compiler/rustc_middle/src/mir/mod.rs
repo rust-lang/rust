@@ -2665,7 +2665,7 @@ impl<'tcx> UserTypeProjections {
         mut self,
         mut f: impl FnMut(UserTypeProjection) -> UserTypeProjection,
     ) -> Self {
-        self.contents = self.contents.drain(..).map(|(proj, span)| (f(proj), span)).collect();
+        self.contents = self.contents.into_iter().map(|(proj, span)| (f(proj), span)).collect();
         self
     }
 
