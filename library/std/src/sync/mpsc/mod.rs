@@ -315,6 +315,8 @@ mod cache_aligned;
 /// The receiving half of Rust's [`channel`] (or [`sync_channel`]) type.
 /// This half can only be owned by one thread.
 ///
+/// Receiver can only be sent between threads if `T` is [`Send`][`core::marker::Send`]
+///
 /// Messages sent to the channel can be retrieved using [`recv`].
 ///
 /// [`recv`]: Receiver::recv
@@ -463,6 +465,8 @@ pub struct IntoIter<T> {
 
 /// The sending-half of Rust's asynchronous [`channel`] type. This half can only be
 /// owned by one thread, but it can be cloned to send to other threads.
+///
+/// Sender can only be sent between threads if `T` is [`Send`][`core::marker::Send`]
 ///
 /// Messages can be sent through this channel with [`send`].
 ///
