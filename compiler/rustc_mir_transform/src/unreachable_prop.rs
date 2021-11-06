@@ -27,9 +27,8 @@ impl MirPass<'_> for UnreachablePropagation {
             // This is a temporary solution that handles possibly diverging asm statements.
             // Accompanying testcases: mir-opt/unreachable_asm.rs and mir-opt/unreachable_asm_2.rs
             let asm_stmt_in_block = || {
-                bb_data.statements.iter().any(|stmt: &Statement<'_>| match stmt.kind {
-                    StatementKind::LlvmInlineAsm(..) => true,
-                    _ => false,
+                bb_data.statements.iter().any(|stmt: &Statement<'_>| {
+                    matches!(stmt.kind, StatementKind::LlvmInlineAsm(..))
                 })
             };
 

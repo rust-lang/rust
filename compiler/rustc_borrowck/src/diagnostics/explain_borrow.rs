@@ -53,10 +53,7 @@ pub(crate) enum LaterUseKind {
 
 impl BorrowExplanation {
     pub(crate) fn is_explained(&self) -> bool {
-        match self {
-            BorrowExplanation::Unexplained => false,
-            _ => true,
-        }
+        !matches!(self, BorrowExplanation::Unexplained)
     }
     pub(crate) fn add_explanation_to_diagnostic<'tcx>(
         &self,

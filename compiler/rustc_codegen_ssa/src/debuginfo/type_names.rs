@@ -124,10 +124,7 @@ fn push_debuginfo_type_name<'tcx>(
             // info for MSVC debugger. However, wrapping these types' names in a synthetic type
             // causes the .natvis engine for WinDbg to fail to display their data, so we opt these
             // types out to aid debugging in MSVC.
-            let is_slice_or_str = match *inner_type.kind() {
-                ty::Slice(_) | ty::Str => true,
-                _ => false,
-            };
+            let is_slice_or_str = matches!(*inner_type.kind(), ty::Slice(_) | ty::Str);
 
             if !cpp_like_names {
                 output.push('&');
