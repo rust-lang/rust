@@ -320,10 +320,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Returns `true` if the trait predicate is considerd `const` to this selection context.
     pub fn is_trait_predicate_const(&self, pred: ty::TraitPredicate<'_>) -> bool {
-        match pred.constness {
-            ty::BoundConstness::ConstIfConst if self.is_in_const_context => true,
-            _ => false,
-        }
+        matches!(pred.constness, ty::BoundConstness::ConstIfConst) && self.is_in_const_context
     }
 
     /// Returns `true` if the predicate is considered `const` to
