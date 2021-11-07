@@ -1,6 +1,6 @@
 // only-aarch64
 
-#![feature(asm, global_asm)]
+#![feature(asm, global_asm, asm_const)]
 
 fn main() {
     let mut foo = 0;

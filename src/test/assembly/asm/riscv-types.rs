@@ -6,7 +6,7 @@
 //[riscv32] needs-llvm-components: riscv
 // compile-flags: -C target-feature=+d
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, rustc_attrs, asm_sym)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register)]

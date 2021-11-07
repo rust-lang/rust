@@ -3,7 +3,7 @@
 //[s390x] compile-flags: --target s390x-unknown-linux-gnu
 //[s390x] needs-llvm-components: systemz
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd)]
+#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_sym, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]

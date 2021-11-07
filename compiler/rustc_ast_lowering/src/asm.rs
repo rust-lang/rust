@@ -4,7 +4,8 @@ use rustc_ast::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_span::{Span, Symbol};
+use rustc_session::parse::feature_err;
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::asm;
 use std::collections::hash_map::Entry;
 use std::fmt::Write;
@@ -17,6 +18,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if asm_arch.is_none() && !self.sess.opts.actually_rustdoc {
             struct_span_err!(self.sess, sp, E0472, "inline assembly is unsupported on this target")
                 .emit();
+        }
+        if let Some(asm_arch) = asm_arch {
+            // Inline assembly is currently only stable for these architectures.
+            let is_stable = matches!(
+                asm_arch,
+                asm::InlineAsmArch::X86
+                    | asm::InlineAsmArch::X86_64
+                    | asm::InlineAsmArch::Arm
+                    | asm::InlineAsmArch::AArch64
+                    | asm::InlineAsmArch::RiscV32
+                    | asm::InlineAsmArch::RiscV64
+            );
+            if !is_stable && !self.sess.features_untracked().asm_experimental_arch {
+                feature_err(
+                    &self.sess.parse_sess,
+                    sym::asm_experimental_arch,
+                    sp,
+                    "inline assembly is not stable yet on this architecture",
+                )
+                .emit();
+            }
         }
         if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
             && !matches!(asm_arch, Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64))
@@ -121,10 +143,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
                         }
                     }
-                    InlineAsmOperand::Const { ref anon_const } => hir::InlineAsmOperand::Const {
-                        anon_const: self.lower_anon_const(anon_const),
-                    },
+                    InlineAsmOperand::Const { ref anon_const } => {
+                        if !self.sess.features_untracked().asm_const {
+                            feature_err(
+                                &self.sess.parse_sess,
+                                sym::asm_const,
+                                *op_sp,
+                                "const operands for inline assembly are unstable",
+                            )
+                            .emit();
+                        }
+                        hir::InlineAsmOperand::Const {
+                            anon_const: self.lower_anon_const(anon_const),
+                        }
+                    }
                     InlineAsmOperand::Sym { ref expr } => {
+                        if !self.sess.features_untracked().asm_sym {
+                            feature_err(
+                                &self.sess.parse_sess,
+                                sym::asm_sym,
+                                *op_sp,
+                                "sym operands for inline assembly are unstable",
+                            )
+                            .emit();
+                        }
                         hir::InlineAsmOperand::Sym { expr: self.lower_expr_mut(expr) }
                     }
                 };

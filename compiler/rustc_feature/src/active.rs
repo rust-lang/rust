@@ -692,6 +692,15 @@ declare_features! (
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (active, doc_auto_cfg, "1.58.0", Some(43781), None),
 
+    /// Allows using `const` operands in inline assembly.
+    (active, asm_const, "1.58.0", Some(72016), None),
+
+    /// Allows using `sym` operands in inline assembly.
+    (active, asm_sym, "1.58.0", Some(72016), None),
+
+    /// Enables experimental inline assembly support for additional architectures.
+    (active, asm_experimental_arch, "1.58.0", Some(72016), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

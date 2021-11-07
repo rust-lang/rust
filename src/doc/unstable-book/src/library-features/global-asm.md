@@ -75,7 +75,7 @@ are concatenated into one or assembled separately.
 constants defined in Rust to be used in assembly code:
 
 ```rust,no_run
-#![feature(global_asm)]
+#![feature(global_asm, asm_const)]
 # #[cfg(any(target_arch="x86", target_arch="x86_64"))]
 # mod x86 {
 const C: i32 = 1234;
@@ -96,7 +96,7 @@ override this by adding `options(att_syntax)` at the end of the macro
 arguments list:
 
 ```rust,no_run
-#![feature(global_asm)]
+#![feature(global_asm, asm_const)]
 # #[cfg(any(target_arch="x86", target_arch="x86_64"))]
 # mod x86 {
 global_asm!("movl ${}, %ecx", const 5, options(att_syntax));

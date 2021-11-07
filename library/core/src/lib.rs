@@ -193,6 +193,7 @@
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
+#![cfg_attr(not(bootstrap), feature(asm_const))]
 //
 // Target features:
 #![feature(aarch64_target_feature)]

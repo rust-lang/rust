@@ -3,7 +3,7 @@
 // compile-flags: --crate-type cdylib
 // needs-llvm-components: webassembly
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, rustc_attrs, asm_sym, asm_experimental_arch)]
 #![no_core]
 
 #[rustc_builtin_macro]

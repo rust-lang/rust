@@ -3,7 +3,7 @@
 // compile-flags: -C target-feature=+neon
 // needs-llvm-components: arm
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd)]
+#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_sym)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]

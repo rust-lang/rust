@@ -1,7 +1,7 @@
 // only-x86_64
 // compile-flags: -C target-feature=+avx2
 
-#![feature(asm)]
+#![feature(asm, asm_const, asm_sym)]
 
 fn main() {
     let mut foo = 0;

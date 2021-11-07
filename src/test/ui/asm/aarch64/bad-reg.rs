@@ -1,7 +1,7 @@
 // only-aarch64
 // compile-flags: -C target-feature=+fp
 
-#![feature(asm)]
+#![feature(asm, asm_const, asm_sym)]
 
 fn main() {
     let mut foo = 0;
