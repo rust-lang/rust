@@ -3,6 +3,9 @@
 # Regression test for issue #10971
 # Running two invocations in parallel would overwrite each other's temp files.
 
+## clean up unused env variables which might cause harm.
+unexport RUSTC_LINKER
+
 all:
 	touch $(TMPDIR)/lib.rs
 
