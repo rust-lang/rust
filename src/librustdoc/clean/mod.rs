@@ -33,7 +33,6 @@ use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
 use std::default::Default;
 use std::hash::Hash;
-use std::rc::Rc;
 use std::{mem, vec};
 
 use crate::core::{self, DocContext, ImplTraitParam};
@@ -56,12 +55,6 @@ crate trait Clean<T> {
 }
 
 impl<T: Clean<U>, U> Clean<U> for &T {
-    fn clean(&self, cx: &mut DocContext<'_>) -> U {
-        (**self).clean(cx)
-    }
-}
-
-impl<T: Clean<U>, U> Clean<U> for Rc<T> {
     fn clean(&self, cx: &mut DocContext<'_>) -> U {
         (**self).clean(cx)
     }
