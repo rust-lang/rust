@@ -990,8 +990,9 @@ impl clean::Impl {
             }
 
             if let Some(ref ty) = self.trait_ {
-                if self.negative_polarity {
-                    write!(f, "!")?;
+                match self.polarity {
+                    clean::ImplPolarity::Positive => {}
+                    clean::ImplPolarity::Negative => write!(f, "!")?,
                 }
                 fmt::Display::fmt(&ty.print(cx), f)?;
                 write!(f, " for ")?;

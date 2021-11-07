@@ -2177,7 +2177,7 @@ crate struct Impl {
     crate trait_: Option<Path>,
     crate for_: Type,
     crate items: Vec<Item>,
-    crate negative_polarity: bool,
+    crate polarity: ImplPolarity,
     crate kind: ImplKind,
 }
 
@@ -2225,6 +2225,13 @@ impl ImplKind {
             _ => None,
         }
     }
+}
+
+// FIXME: remove this and use ty::ImplPolarity instead
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+crate enum ImplPolarity {
+    Positive,
+    Negative,
 }
 
 #[derive(Clone, Debug)]

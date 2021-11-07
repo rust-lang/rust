@@ -2033,12 +2033,12 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                             let i_display = format!("{:#}", i.print(cx));
                             let out = Escape(&i_display);
                             let encoded = small_url_encode(format!("{:#}", i.print(cx)));
-                            let generated = format!(
-                                "<a href=\"#impl-{}\">{}{}</a>",
-                                encoded,
-                                if it.inner_impl().negative_polarity { "!" } else { "" },
-                                out
-                            );
+                            let prefix = match it.inner_impl().polarity {
+                                clean::ImplPolarity::Positive => "",
+                                clean::ImplPolarity::Negative => "!",
+                            };
+                            let generated =
+                                format!("<a href=\"#impl-{}\">{}{}</a>", encoded, prefix, out);
                             if links.insert(generated.clone()) { Some(generated) } else { None }
                         } else {
                             None
