@@ -655,7 +655,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             // If the region is live at at least one location in the promoted MIR,
             // then add a liveness constraint to the main MIR for this region
             // at the location provided as an argument to this method
-            if let Some(_) = liveness_constraints.get_elements(region).next() {
+            if liveness_constraints.get_elements(region).next().is_some() {
                 self.cx
                     .borrowck_context
                     .constraints

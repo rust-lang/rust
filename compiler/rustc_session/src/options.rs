@@ -881,7 +881,7 @@ mod parse {
         match v {
             Some(s) => {
                 if !slot.is_empty() {
-                    slot.push_str(",");
+                    slot.push(',');
                 }
                 slot.push_str(s);
                 true

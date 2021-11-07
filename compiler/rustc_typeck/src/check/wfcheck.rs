@@ -435,9 +435,7 @@ fn check_gat_where_clauses(
         let written_predicates: ty::GenericPredicates<'_> =
             tcx.explicit_predicates_of(trait_item.def_id);
         let mut clauses: Vec<_> = clauses
-            .drain_filter(|clause| {
-                written_predicates.predicates.iter().find(|p| &p.0 == clause).is_none()
-            })
+            .drain_filter(|clause| !written_predicates.predicates.iter().any(|p| &p.0 == clause))
             .map(|clause| format!("{}", clause))
             .collect();
         // We sort so that order is predictable

@@ -1931,20 +1931,18 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             break;
                         }
                     }
-                    hir::TyKind::Path(ref qpath) => {
-                        if let QPath::Resolved(_, path) = qpath {
-                            let last_segment = &path.segments[path.segments.len() - 1];
-                            let generics = last_segment.args();
-                            for arg in generics.args.iter() {
-                                if let GenericArg::Lifetime(lt) = arg {
-                                    if lt.name.ident() == name {
-                                        elide_use = Some(lt.span);
-                                        break;
-                                    }
+                    hir::TyKind::Path(QPath::Resolved(_, path)) => {
+                        let last_segment = &path.segments[path.segments.len() - 1];
+                        let generics = last_segment.args();
+                        for arg in generics.args.iter() {
+                            if let GenericArg::Lifetime(lt) = arg {
+                                if lt.name.ident() == name {
+                                    elide_use = Some(lt.span);
+                                    break;
                                 }
                             }
-                            break;
                         }
+                        break;
                     }
                     _ => {}
                 }

@@ -2071,7 +2071,7 @@ impl Target {
     /// JSON decoding.
     pub fn search(
         target_triple: &TargetTriple,
-        sysroot: &PathBuf,
+        sysroot: &Path,
     ) -> Result<(Target, TargetWarnings), String> {
         use rustc_serialize::json;
         use std::env;

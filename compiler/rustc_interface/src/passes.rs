@@ -47,7 +47,7 @@ use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::lazy::SyncLazy;
 use std::marker::PhantomPinned;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::rc::Rc;
 use std::{env, fs, iter};
@@ -536,7 +536,7 @@ where
     None
 }
 
-fn output_contains_path(output_paths: &[PathBuf], input_path: &PathBuf) -> bool {
+fn output_contains_path(output_paths: &[PathBuf], input_path: &Path) -> bool {
     let input_path = input_path.canonicalize().ok();
     if input_path.is_none() {
         return false;
@@ -552,7 +552,7 @@ fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
     check_output(output_paths, check)
 }
 
-fn escape_dep_filename(filename: &String) -> String {
+fn escape_dep_filename(filename: &str) -> String {
     // Apparently clang and gcc *only* escape spaces:
     // https://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
     filename.replace(" ", "\\ ")

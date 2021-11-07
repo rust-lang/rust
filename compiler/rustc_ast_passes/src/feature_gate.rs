@@ -539,15 +539,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
-            ast::ExprKind::Block(_, opt_label) => {
-                if let Some(label) = opt_label {
-                    gate_feature_post!(
-                        &self,
-                        label_break_value,
-                        label.ident.span,
-                        "labels on blocks are unstable"
-                    );
-                }
+            ast::ExprKind::Block(_, Some(label)) => {
+                gate_feature_post!(
+                    &self,
+                    label_break_value,
+                    label.ident.span,
+                    "labels on blocks are unstable"
+                );
             }
             _ => {}
         }

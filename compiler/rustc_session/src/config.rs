@@ -914,7 +914,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateCo
 pub(super) fn build_target_config(
     opts: &Options,
     target_override: Option<Target>,
-    sysroot: &PathBuf,
+    sysroot: &Path,
 ) -> Target {
     let target_result = target_override.map_or_else(
         || Target::search(&opts.target_triple, sysroot),

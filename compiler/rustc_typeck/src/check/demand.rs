@@ -446,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(_) = replace_prefix(&src, "b\"", "\"") {
+                            if replace_prefix(&src, "b\"", "\"").is_some() {
                                 let pos = sp.lo() + BytePos(1);
                                 return Some((
                                     sp.with_hi(pos),
@@ -462,7 +462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(_) = replace_prefix(&src, "\"", "b\"") {
+                            if replace_prefix(&src, "\"", "b\"").is_some() {
                                 return Some((
                                     sp.shrink_to_lo(),
                                     "consider adding a leading `b`",

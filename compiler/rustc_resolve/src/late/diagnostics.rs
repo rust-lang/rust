@@ -1344,12 +1344,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         } else {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
-            if let PathResult::Module(module) =
+            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(mod_path, Some(TypeNS), false, span, CrateLint::No)
             {
-                if let ModuleOrUniformRoot::Module(module) = module {
-                    self.r.add_module_candidates(module, &mut names, &filter_fn);
-                }
+                self.r.add_module_candidates(module, &mut names, &filter_fn);
             }
         }
 

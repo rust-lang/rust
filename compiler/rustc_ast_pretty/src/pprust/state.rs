@@ -1438,11 +1438,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_record_struct_body(
-        &mut self,
-        fields: &Vec<ast::FieldDef>,
-        span: rustc_span::Span,
-    ) {
+    crate fn print_record_struct_body(&mut self, fields: &[ast::FieldDef], span: rustc_span::Span) {
         self.nbsp();
         self.bopen();
         self.hardbreak_if_not_bol();
