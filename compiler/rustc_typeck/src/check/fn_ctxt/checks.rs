@@ -28,6 +28,11 @@ use crate::structured_errors::StructuredDiagnostic;
 use std::iter;
 use std::slice;
 
+enum FnArgsAsTuple<'hir> {
+    Single(&'hir hir::Expr<'hir>),
+    Multi { first: &'hir hir::Expr<'hir>, last: &'hir hir::Expr<'hir> },
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&self) {
         let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
@@ -127,8 +132,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let expected_arg_count = formal_input_tys.len();
 
-        // expected_count, arg_count, error_code, sugg_unit
-        let mut error: Option<(usize, usize, &str, bool)> = None;
+        // expected_count, arg_count, error_code, sugg_unit, sugg_tuple_wrap_args
+        let mut error: Option<(usize, usize, &str, bool, Option<FnArgsAsTuple<'_>>)> = None;
 
         // If the arguments should be wrapped in a tuple (ex: closures), unwrap them here
         let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
@@ -138,7 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Tuple(arg_types) => {
                     // Argument length differs
                     if arg_types.len() != provided_args.len() {
-                        error = Some((arg_types.len(), provided_args.len(), "E0057", false));
+                        error = Some((arg_types.len(), provided_args.len(), "E0057", false, None));
                     }
                     let expected_input_tys = match expected_input_tys.get(0) {
                         Some(&ty) => match ty.kind() {
@@ -169,7 +174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if supplied_arg_count >= expected_arg_count {
                 (formal_input_tys.to_vec(), expected_input_tys)
             } else {
-                error = Some((expected_arg_count, supplied_arg_count, "E0060", false));
+                error = Some((expected_arg_count, supplied_arg_count, "E0060", false, None));
                 (self.err_args(supplied_arg_count), vec![])
             }
         } else {
@@ -181,7 +186,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 false
             };
-            error = Some((expected_arg_count, supplied_arg_count, "E0061", sugg_unit));
+
+            // are we passing elements of a tuple without the tuple parentheses?
+            let chosen_arg_tys = if expected_input_tys.is_empty() {
+                // In most cases we can use expected_arg_tys, but some callers won't have the type
+                // information, in which case we fall back to the types from the input expressions.
+                formal_input_tys
+            } else {
+                &*expected_input_tys
+            };
+
+            let sugg_tuple_wrap_args = chosen_arg_tys
+                .get(0)
+                .cloned()
+                .map(|arg_ty| self.resolve_vars_if_possible(arg_ty))
+                .and_then(|arg_ty| match arg_ty.kind() {
+                    ty::Tuple(tup_elems) => Some(tup_elems),
+                    _ => None,
+                })
+                .and_then(|tup_elems| {
+                    if tup_elems.len() == supplied_arg_count && chosen_arg_tys.len() == 1 {
+                        match provided_args {
+                            [] => None,
+                            [single] => Some(FnArgsAsTuple::Single(single)),
+                            [first, .., last] => Some(FnArgsAsTuple::Multi { first, last }),
+                        }
+                    } else {
+                        None
+                    }
+                });
+
+            error = Some((
+                expected_arg_count,
+                supplied_arg_count,
+                "E0061",
+                sugg_unit,
+                sugg_tuple_wrap_args,
+            ));
             (self.err_args(supplied_arg_count), vec![])
         };
 
@@ -305,7 +346,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If there was an error in parameter count, emit that here
-        if let Some((expected_count, arg_count, err_code, sugg_unit)) = error {
+        if let Some((expected_count, arg_count, err_code, sugg_unit, sugg_tuple_wrap_args)) = error
+        {
             let (span, start_span, args, ctor_of) = match &call_expr.kind {
                 hir::ExprKind::Call(
                     hir::Expr {
@@ -406,6 +448,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sugg_span,
                     "expected the unit value `()`; create it with empty parentheses",
                     String::from("()"),
+                    Applicability::MachineApplicable,
+                );
+            } else if let Some(tuple_fn_arg) = sugg_tuple_wrap_args {
+                use FnArgsAsTuple::*;
+
+                let spans = match tuple_fn_arg {
+                    Multi { first, last } => vec![
+                        (first.span.shrink_to_lo(), '('.to_string()),
+                        (last.span.shrink_to_hi(), ')'.to_string()),
+                    ],
+                    Single(single) => vec![
+                        (single.span.shrink_to_lo(), '('.to_string()),
+                        (single.span.shrink_to_hi(), ",)".to_string()),
+                    ],
+                };
+
+                err.multipart_suggestion(
+                    "use parentheses to construct a tuple",
+                    spans,
                     Applicability::MachineApplicable,
                 );
             } else {
