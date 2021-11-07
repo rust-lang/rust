@@ -115,7 +115,7 @@ Let's start with defining a term that we will be using quite a bit in the rest o
 *upvar*. An **upvar** is a variable that is local to the function where the closure is defined. So,
 in the above examples, **x** will be an upvar to the closure. They are also sometimes referred to as
 the *free variables* meaning they are not bound to the context of the closure.
-[`compiler/rustc_middle/src/ty/query/mod.rs`][upvars] defines a query called *upv.rs_mentioned*
+[`compiler/rustc_middle/src/ty/query/mod.rs`][upvars] defines a query called *upvars_mentioned*
 for this purpose.
 
 [upvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_impl/queries/struct.upvars_mentioned.html
