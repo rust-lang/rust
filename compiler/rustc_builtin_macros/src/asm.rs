@@ -547,7 +547,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                 if let Some(snippet) = &template_snippet {
                     if let Some(pos) = snippet.find(needle) {
                         let end = pos
-                            + &snippet[pos..]
+                            + snippet[pos..]
                                 .find(|c| matches!(c, '\n' | ';' | '\\' | '"'))
                                 .unwrap_or(snippet[pos..].len() - 1);
                         let inner = InnerSpan::new(pos, end);

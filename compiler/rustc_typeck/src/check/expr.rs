@@ -2058,8 +2058,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<(&Vec<ty::FieldDef>, SubstsRef<'tcx>)> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_t);
 
-        let mut autoderef = self.autoderef(span, base_t);
-        while let Some((base_t, _)) = autoderef.next() {
+        for (base_t, _) in self.autoderef(span, base_t) {
             match base_t.kind() {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
                     let fields = &base_def.non_enum_variant().fields;

@@ -1045,34 +1045,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
     ) {
         if let hir::ExprKind::Call(path, _) = &call_expr.kind {
-            if let hir::ExprKind::Path(qpath) = &path.kind {
-                if let hir::QPath::Resolved(_, path) = &qpath {
-                    for error in errors {
-                        if let ty::PredicateKind::Trait(predicate) =
-                            error.obligation.predicate.kind().skip_binder()
+            if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &path.kind {
+                for error in errors {
+                    if let ty::PredicateKind::Trait(predicate) =
+                        error.obligation.predicate.kind().skip_binder()
+                    {
+                        // If any of the type arguments in this path segment caused the
+                        // `FulfillmentError`, point at its span (#61860).
+                        for arg in path
+                            .segments
+                            .iter()
+                            .filter_map(|seg| seg.args.as_ref())
+                            .flat_map(|a| a.args.iter())
                         {
-                            // If any of the type arguments in this path segment caused the
-                            // `FulfillmentError`, point at its span (#61860).
-                            for arg in path
-                                .segments
-                                .iter()
-                                .filter_map(|seg| seg.args.as_ref())
-                                .flat_map(|a| a.args.iter())
-                            {
-                                if let hir::GenericArg::Type(hir_ty) = &arg {
-                                    if let hir::TyKind::Path(hir::QPath::TypeRelative(..)) =
-                                        &hir_ty.kind
-                                    {
-                                        // Avoid ICE with associated types. As this is best
-                                        // effort only, it's ok to ignore the case. It
-                                        // would trigger in `is_send::<T::AssocType>();`
-                                        // from `typeck-default-trait-impl-assoc-type.rs`.
-                                    } else {
-                                        let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, hir_ty);
-                                        let ty = self.resolve_vars_if_possible(ty);
-                                        if ty == predicate.self_ty() {
-                                            error.obligation.cause.make_mut().span = hir_ty.span;
-                                        }
+                            if let hir::GenericArg::Type(hir_ty) = &arg {
+                                if let hir::TyKind::Path(hir::QPath::TypeRelative(..)) =
+                                    &hir_ty.kind
+                                {
+                                    // Avoid ICE with associated types. As this is best
+                                    // effort only, it's ok to ignore the case. It
+                                    // would trigger in `is_send::<T::AssocType>();`
+                                    // from `typeck-default-trait-impl-assoc-type.rs`.
+                                } else {
+                                    let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, hir_ty);
+                                    let ty = self.resolve_vars_if_possible(ty);
+                                    if ty == predicate.self_ty() {
+                                        error.obligation.cause.make_mut().span = hir_ty.span;
                                     }
                                 }
                             }

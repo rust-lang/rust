@@ -1466,7 +1466,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let mut returned_async_output_error = false;
                     for &sp in values {
                         if sp.is_desugaring(DesugaringKind::Async) && !returned_async_output_error {
-                            if &[sp] != err.span.primary_spans() {
+                            if [sp] != err.span.primary_spans() {
                                 let mut span: MultiSpan = sp.into();
                                 span.push_span_label(
                                     sp,

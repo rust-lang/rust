@@ -1208,7 +1208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let edition_fix = candidates
                 .iter()
                 .find(|did| self.tcx.is_diagnostic_item(sym::TryInto, **did))
-                .map(|&d| d);
+                .copied();
 
             err.help("items from traits can only be used if the trait is in scope");
             let msg = format!(
