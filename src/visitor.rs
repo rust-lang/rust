@@ -540,24 +540,22 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.visit_static(&StaticParts::from_item(item));
                 }
                 ast::ItemKind::Fn(ref fn_kind) => {
-                    let ast::FnKind(defaultness, ref fn_signature, ref generics, ref block) =
-                        **fn_kind;
-                    if let Some(ref body) = block {
+                    let ast::Fn {
+                        defaultness,
+                        ref sig,
+                        ref generics,
+                        ref body,
+                    } = **fn_kind;
+                    if let Some(ref body) = body {
                         let inner_attrs = inner_attributes(&item.attrs);
-                        let fn_ctxt = match fn_signature.header.ext {
+                        let fn_ctxt = match sig.header.ext {
                             ast::Extern::None => visit::FnCtxt::Free,
                             _ => visit::FnCtxt::Foreign,
                         };
                         self.visit_fn(
-                            visit::FnKind::Fn(
-                                fn_ctxt,
-                                item.ident,
-                                &fn_signature,
-                                &item.vis,
-                                Some(body),
-                            ),
+                            visit::FnKind::Fn(fn_ctxt, item.ident, &sig, &item.vis, Some(body)),
                             generics,
-                            &fn_signature.decl,
+                            &sig.decl,
                             item.span,
                             defaultness,
                             Some(&inner_attrs),
@@ -565,19 +563,18 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     } else {
                         let indent = self.block_indent;
                         let rewrite = self.rewrite_required_fn(
-                            indent,
-                            item.ident,
-                            &fn_signature,
-                            &item.vis,
-                            generics,
-                            item.span,
+                            indent, item.ident, &sig, &item.vis, generics, item.span,
                         );
                         self.push_rewrite(item.span, rewrite);
                     }
                 }
                 ast::ItemKind::TyAlias(ref alias_kind) => {
-                    let ast::TyAliasKind(_, ref generics, ref generic_bounds, ref ty) =
-                        **alias_kind;
+                    let ast::TyAlias {
+                        ref generics,
+                        ref bounds,
+                        ref ty,
+                        ..
+                    } = **alias_kind;
                     match ty {
                         Some(ty) => {
                             let rewrite = rewrite_type(
@@ -586,7 +583,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                                 item.ident,
                                 &item.vis,
                                 generics,
-                                Some(generic_bounds),
+                                Some(bounds),
                                 Some(&*ty),
                                 item.span,
                             );
@@ -597,7 +594,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                                 &self.get_context(),
                                 self.block_indent,
                                 item.ident,
-                                generic_bounds,
+                                bounds,
                                 generics,
                                 &item.vis,
                                 item.span,
@@ -639,8 +636,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         match ti.kind {
             ast::AssocItemKind::Const(..) => self.visit_static(&StaticParts::from_trait_item(ti)),
             ast::AssocItemKind::Fn(ref fn_kind) => {
-                let ast::FnKind(defaultness, ref sig, ref generics, ref block) = **fn_kind;
-                if let Some(ref body) = block {
+                let ast::Fn {
+                    defaultness,
+                    ref sig,
+                    ref generics,
+                    ref body,
+                } = **fn_kind;
+                if let Some(ref body) = body {
                     let inner_attrs = inner_attributes(&ti.attrs);
                     let fn_ctxt = visit::FnCtxt::Assoc(visit::AssocCtxt::Trait);
                     self.visit_fn(
@@ -659,16 +661,20 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 }
             }
             ast::AssocItemKind::TyAlias(ref ty_alias_kind) => {
-                let ast::TyAliasKind(_, ref generics, ref generic_bounds, ref type_default) =
-                    **ty_alias_kind;
+                let ast::TyAlias {
+                    ref generics,
+                    ref bounds,
+                    ref ty,
+                    ..
+                } = **ty_alias_kind;
                 let rewrite = rewrite_type(
                     &self.get_context(),
                     self.block_indent,
                     ti.ident,
                     &ti.vis,
                     generics,
-                    Some(generic_bounds),
-                    type_default.as_ref(),
+                    Some(bounds),
+                    ty.as_ref(),
                     ti.span,
                 );
                 self.push_rewrite(ti.span, rewrite);
@@ -689,8 +695,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         match ii.kind {
             ast::AssocItemKind::Fn(ref fn_kind) => {
-                let ast::FnKind(defaultness, ref sig, ref generics, ref block) = **fn_kind;
-                if let Some(ref body) = block {
+                let ast::Fn {
+                    defaultness,
+                    ref sig,
+                    ref generics,
+                    ref body,
+                } = **fn_kind;
+                if let Some(ref body) = body {
                     let inner_attrs = inner_attributes(&ii.attrs);
                     let fn_ctxt = visit::FnCtxt::Assoc(visit::AssocCtxt::Impl);
                     self.visit_fn(
@@ -710,7 +721,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             }
             ast::AssocItemKind::Const(..) => self.visit_static(&StaticParts::from_impl_item(ii)),
             ast::AssocItemKind::TyAlias(ref ty_alias_kind) => {
-                let ast::TyAliasKind(defaultness, ref generics, _, ref ty) = **ty_alias_kind;
+                let ast::TyAlias {
+                    defaultness,
+                    ref generics,
+                    ref ty,
+                    ..
+                } = **ty_alias_kind;
                 self.push_rewrite(
                     ii.span,
                     rewrite_impl_type(

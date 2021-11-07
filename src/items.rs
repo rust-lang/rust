@@ -622,7 +622,7 @@ impl<'a> FmtVisitor<'a> {
             fn need_empty_line(a: &ast::AssocItemKind, b: &ast::AssocItemKind) -> bool {
                 match (a, b) {
                     (TyAlias(lty), TyAlias(rty))
-                        if both_type(&lty.3, &rty.3) || both_opaque(&lty.3, &rty.3) =>
+                        if both_type(&lty.ty, &rty.ty) || both_opaque(&lty.ty, &rty.ty) =>
                     {
                         false
                     }
@@ -633,7 +633,7 @@ impl<'a> FmtVisitor<'a> {
 
             buffer.sort_by(|(_, a), (_, b)| match (&a.kind, &b.kind) {
                 (TyAlias(lty), TyAlias(rty))
-                    if both_type(&lty.3, &rty.3) || both_opaque(&lty.3, &rty.3) =>
+                    if both_type(&lty.ty, &rty.ty) || both_opaque(&lty.ty, &rty.ty) =>
                 {
                     a.ident.as_str().cmp(&b.ident.as_str())
                 }
@@ -641,8 +641,8 @@ impl<'a> FmtVisitor<'a> {
                     a.ident.as_str().cmp(&b.ident.as_str())
                 }
                 (Fn(..), Fn(..)) => a.span.lo().cmp(&b.span.lo()),
-                (TyAlias(ty), _) if is_type(&ty.3) => Ordering::Less,
-                (_, TyAlias(ty)) if is_type(&ty.3) => Ordering::Greater,
+                (TyAlias(ty), _) if is_type(&ty.ty) => Ordering::Less,
+                (_, TyAlias(ty)) if is_type(&ty.ty) => Ordering::Greater,
                 (TyAlias(..), _) => Ordering::Less,
                 (_, TyAlias(..)) => Ordering::Greater,
                 (Const(..), _) => Ordering::Less,
@@ -679,7 +679,7 @@ pub(crate) fn format_impl(
     offset: Indent,
 ) -> Option<String> {
     if let ast::ItemKind::Impl(impl_kind) = &item.kind {
-        let ast::ImplKind {
+        let ast::Impl {
             ref generics,
             ref self_ty,
             ref items,
@@ -833,7 +833,7 @@ fn format_impl_ref_and_type(
     offset: Indent,
 ) -> Option<String> {
     if let ast::ItemKind::Impl(impl_kind) = &item.kind {
-        let ast::ImplKind {
+        let ast::Impl {
             unsafety,
             polarity,
             defaultness,
@@ -1029,8 +1029,13 @@ pub(crate) fn format_trait(
     offset: Indent,
 ) -> Option<String> {
     if let ast::ItemKind::Trait(trait_kind) = &item.kind {
-        let ast::TraitKind(is_auto, unsafety, ref generics, ref generic_bounds, ref trait_items) =
-            **trait_kind;
+        let ast::Trait {
+            is_auto,
+            unsafety,
+            ref generics,
+            ref bounds,
+            ref items,
+        } = **trait_kind;
         let mut result = String::with_capacity(128);
         let header = format!(
             "{}{}{}trait ",
@@ -1048,11 +1053,11 @@ pub(crate) fn format_trait(
         result.push_str(&generics_str);
 
         // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
-        if !generic_bounds.is_empty() {
+        if !bounds.is_empty() {
             let ident_hi = context
                 .snippet_provider
                 .span_after(item.span, &item.ident.as_str());
-            let bound_hi = generic_bounds.last().unwrap().span().hi();
+            let bound_hi = bounds.last().unwrap().span().hi();
             let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
             if contains_comment(snippet) {
                 return None;
@@ -1061,7 +1066,7 @@ pub(crate) fn format_trait(
             result = rewrite_assign_rhs_with(
                 context,
                 result + ":",
-                generic_bounds,
+                bounds,
                 shape,
                 RhsTactics::ForceNextLineWithoutIndent,
             )?;
@@ -1072,10 +1077,10 @@ pub(crate) fn format_trait(
             let where_on_new_line = context.config.indent_style() != IndentStyle::Block;
 
             let where_budget = context.budget(last_line_width(&result));
-            let pos_before_where = if generic_bounds.is_empty() {
+            let pos_before_where = if bounds.is_empty() {
                 generics.where_clause.span.lo()
             } else {
-                generic_bounds[generic_bounds.len() - 1].span().hi()
+                bounds[bounds.len() - 1].span().hi()
             };
             let option = WhereClauseOption::snuggled(&generics_str);
             let where_clause_str = rewrite_where_clause(
@@ -1134,7 +1139,7 @@ pub(crate) fn format_trait(
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
                 if result.contains('\n')
-                    || (!generics.where_clause.predicates.is_empty() && !trait_items.is_empty())
+                    || (!generics.where_clause.predicates.is_empty() && !items.is_empty())
                 {
                     result.push_str(&offset.to_string_with_newline(context.config));
                 } else {
@@ -1149,12 +1154,12 @@ pub(crate) fn format_trait(
         let open_pos = snippet.find_uncommented("{")? + 1;
         let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
 
-        if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
+        if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_context(context);
             visitor.block_indent = offset.block_only().block_indent(context.config);
             visitor.last_pos = block_span.lo() + BytePos(open_pos as u32);
 
-            for item in trait_items {
+            for item in items {
                 visitor.visit_trait_item(item);
             }
 
@@ -3125,17 +3130,22 @@ impl Rewrite for ast::ForeignItem {
 
         let item_str = match self.kind {
             ast::ForeignItemKind::Fn(ref fn_kind) => {
-                let ast::FnKind(defaultness, ref fn_sig, ref generics, ref block) = **fn_kind;
-                if let Some(ref body) = block {
+                let ast::Fn {
+                    defaultness,
+                    ref sig,
+                    ref generics,
+                    ref body,
+                } = **fn_kind;
+                if let Some(ref body) = body {
                     let mut visitor = FmtVisitor::from_context(context);
                     visitor.block_indent = shape.indent;
                     visitor.last_pos = self.span.lo();
                     let inner_attrs = inner_attributes(&self.attrs);
                     let fn_ctxt = visit::FnCtxt::Foreign;
                     visitor.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, self.ident, &fn_sig, &self.vis, Some(body)),
+                        visit::FnKind::Fn(fn_ctxt, self.ident, &sig, &self.vis, Some(body)),
                         generics,
-                        &fn_sig.decl,
+                        &sig.decl,
                         self.span,
                         defaultness,
                         Some(&inner_attrs),
@@ -3146,7 +3156,7 @@ impl Rewrite for ast::ForeignItem {
                         context,
                         shape.indent,
                         self.ident,
-                        &FnSig::from_method_sig(&fn_sig, generics, &self.vis),
+                        &FnSig::from_method_sig(&sig, generics, &self.vis),
                         span,
                         FnBraceStyle::None,
                     )
@@ -3168,16 +3178,20 @@ impl Rewrite for ast::ForeignItem {
                 rewrite_assign_rhs(context, prefix, &**ty, shape.sub_width(1)?).map(|s| s + ";")
             }
             ast::ForeignItemKind::TyAlias(ref ty_alias_kind) => {
-                let ast::TyAliasKind(_, ref generics, ref generic_bounds, ref type_default) =
-                    **ty_alias_kind;
+                let ast::TyAlias {
+                    ref generics,
+                    ref bounds,
+                    ref ty,
+                    ..
+                } = **ty_alias_kind;
                 rewrite_type(
                     &context,
                     shape.indent,
                     self.ident,
                     &self.vis,
                     generics,
-                    Some(generic_bounds),
-                    type_default.as_ref(),
+                    Some(bounds),
+                    ty.as_ref(),
                     self.span,
                 )
             }
