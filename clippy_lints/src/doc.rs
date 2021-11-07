@@ -5,7 +5,7 @@ use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_entrypoint_fn, is_expn_of, match_panic_def_id, method_chain_args, return_ty};
 use if_chain::if_chain;
 use itertools::Itertools;
-use rustc_ast::ast::{Async, AttrKind, Attribute, FnKind, FnRetTy, ItemKind};
+use rustc_ast::ast::{Async, AttrKind, Attribute, Fn, FnRetTy, ItemKind};
 use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -639,7 +639,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                             | ItemKind::ExternCrate(..)
                             | ItemKind::ForeignMod(..) => return false,
                             // We found a main function ...
-                            ItemKind::Fn(box FnKind(_, sig, _, Some(block))) if item.ident.name == sym::main => {
+                            ItemKind::Fn(box Fn { sig, body: Some(block), .. }) if item.ident.name == sym::main => {
                                 let is_async = matches!(sig.header.asyncness, Async::Yes { .. });
                                 let returns_nothing = match &sig.decl.output {
                                     FnRetTy::Default(..) => true,
