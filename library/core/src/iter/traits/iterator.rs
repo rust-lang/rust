@@ -161,6 +161,33 @@ pub trait Iterator {
         (0, None)
     }
 
+    /// Returns whether the iterator has no items left.
+    /// 
+    /// The default implementation returns `true` when [`size_hint()`] returns <code>(0, [Some](0))</code>,
+    /// and `false` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    /// let mut iter = a.iter();
+    ///
+    /// assert!(!iter.is_empty());
+    /// 
+    /// for _ in iter {
+    ///     // consume the iterator, leaving no items left
+    /// }
+    /// 
+    /// assert!(iter.is_empty());
+    /// ```
+    #[inline]
+    #[unstable(feaure = "iter_is_empty", reason = "recently added", issue = "0")]
+    fn is_empty(&self) -> bool {
+        (0, Some(0)) == self.size_hint()
+    }
+
     /// Consumes the iterator, counting the number of iterations and returning it.
     ///
     /// This method will call [`next`] repeatedly until [`None`] is encountered,
