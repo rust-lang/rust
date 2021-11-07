@@ -80,12 +80,6 @@ impl<T: Clean<U>, U> Clean<U> for Rc<T> {
     }
 }
 
-impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Option<U> {
-        self.as_ref().map(|v| v.clean(cx))
-    }
-}
-
 impl Clean<Item> for doctree::Module<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let mut items: Vec<Item> = vec![];
@@ -460,7 +454,7 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
                 GenericParamDefKind::Type {
                     did: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
                     bounds: self.bounds.clean(cx),
-                    default: default.clean(cx).map(Box::new),
+                    default: default.map(|t| t.clean(cx)).map(Box::new),
                     synthetic,
                 },
             ),
@@ -935,7 +929,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     TyMethodItem(t)
                 }
                 hir::TraitItemKind::Type(bounds, ref default) => {
-                    AssocTypeItem(bounds.clean(cx), default.clean(cx))
+                    AssocTypeItem(bounds.clean(cx), default.map(|t| t.clean(cx)))
                 }
             };
             let what_rustc_thinks =
@@ -1127,7 +1121,7 @@ impl Clean<Item> for ty::AssocItem {
                         None
                     };
 
-                    AssocTypeItem(bounds, ty.clean(cx))
+                    AssocTypeItem(bounds, ty.map(|t| t.clean(cx)))
                 } else {
                     // FIXME: when could this happen? Associated items in inherent impls?
                     let type_ = tcx.type_of(self.def_id).clean(cx);
@@ -1859,7 +1853,7 @@ impl Clean<Item> for hir::Variant<'_> {
 fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>) -> Vec<Item> {
     let tcx = cx.tcx;
     let mut ret = Vec::new();
-    let trait_ = impl_.of_trait.clean(cx);
+    let trait_ = impl_.of_trait.as_ref().map(|t| t.clean(cx));
     let items =
         impl_.items.iter().map(|ii| tcx.hir().impl_item(ii.id).clean(cx)).collect::<Vec<_>>();
     let def_id = tcx.hir().local_def_id(hir_id);

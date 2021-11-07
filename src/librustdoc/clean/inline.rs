@@ -448,7 +448,7 @@ crate fn build_impl(
         ),
     };
     let polarity = tcx.impl_polarity(did);
-    let trait_ = associated_trait.clean(cx);
+    let trait_ = associated_trait.map(|t| t.clean(cx));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
