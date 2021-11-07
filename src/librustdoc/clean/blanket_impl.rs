@@ -124,8 +124,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .collect::<Vec<_>>()
                             .clean(self.cx),
                         negative_polarity: false,
-                        synthetic: false,
-                        blanket_impl: Some(box trait_ref.self_ty().clean(self.cx)),
+                        kind: ImplKind::Blanket(box trait_ref.self_ty().clean(self.cx)),
                     }),
                     cfg: None,
                 });

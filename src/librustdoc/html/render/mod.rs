@@ -1147,9 +1147,9 @@ fn render_assoc_items_inner(
         }
 
         let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) =
-            traits.iter().partition(|t| t.inner_impl().synthetic);
+            traits.iter().partition(|t| t.inner_impl().is_auto_impl());
         let (blanket_impl, concrete): (Vec<&&Impl>, _) =
-            concrete.into_iter().partition(|t| t.inner_impl().blanket_impl.is_some());
+            concrete.into_iter().partition(|t| t.inner_impl().is_blanket_impl());
 
         let mut impls = Buffer::empty_from(w);
         render_impls(cx, &mut impls, &concrete, containing_item);
@@ -2058,10 +2058,9 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             };
 
             let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
-                v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().synthetic);
-            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) = concrete
-                .into_iter()
-                .partition::<Vec<_>, _>(|i| i.inner_impl().blanket_impl.is_some());
+                v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().is_auto_impl());
+            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
+                concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().is_blanket_impl());
 
             let concrete_format = format_impls(concrete);
             let synthetic_format = format_impls(synthetic);

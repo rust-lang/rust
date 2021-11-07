@@ -393,8 +393,8 @@ impl Item {
         };
         match kind {
             ItemKind::ModuleItem(Module { span, .. }) => *span,
-            ItemKind::ImplItem(Impl { synthetic: true, .. }) => Span::dummy(),
-            ItemKind::ImplItem(Impl { blanket_impl: Some(_), .. }) => {
+            ItemKind::ImplItem(Impl { kind: ImplKind::Auto, .. }) => Span::dummy(),
+            ItemKind::ImplItem(Impl { kind: ImplKind::Blanket(_), .. }) => {
                 if let ItemId::Blanket { impl_id, .. } = self.def_id {
                     rustc_span(impl_id, tcx)
                 } else {
@@ -2178,17 +2178,52 @@ crate struct Impl {
     crate for_: Type,
     crate items: Vec<Item>,
     crate negative_polarity: bool,
-    crate synthetic: bool,
-    crate blanket_impl: Option<Box<Type>>,
+    crate kind: ImplKind,
 }
 
 impl Impl {
+    crate fn is_auto_impl(&self) -> bool {
+        self.kind.is_auto()
+    }
+
+    crate fn is_blanket_impl(&self) -> bool {
+        self.kind.is_blanket()
+    }
+
+    crate fn blanket_impl_ty(&self) -> Option<&Type> {
+        self.kind.as_blanket_ty()
+    }
+
     crate fn provided_trait_methods(&self, tcx: TyCtxt<'_>) -> FxHashSet<Symbol> {
         self.trait_
             .as_ref()
             .map(|t| t.def_id())
             .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
             .unwrap_or_default()
+    }
+}
+
+#[derive(Clone, Debug)]
+crate enum ImplKind {
+    Normal,
+    Auto,
+    Blanket(Box<Type>),
+}
+
+impl ImplKind {
+    crate fn is_auto(&self) -> bool {
+        matches!(self, ImplKind::Auto)
+    }
+
+    crate fn is_blanket(&self) -> bool {
+        matches!(self, ImplKind::Blanket(_))
+    }
+
+    crate fn as_blanket_ty(&self) -> Option<&Type> {
+        match self {
+            ImplKind::Blanket(ty) => Some(ty),
+            _ => None,
+        }
     }
 }
 

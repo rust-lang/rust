@@ -997,7 +997,7 @@ impl clean::Impl {
                 write!(f, " for ")?;
             }
 
-            if let Some(ref ty) = self.blanket_impl {
+            if let Some(ref ty) = self.blanket_impl_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
                 fmt_type(&self.for_, f, use_absolute, cx)?;

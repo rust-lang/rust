@@ -1895,8 +1895,7 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
             for_,
             items,
             negative_polarity: tcx.impl_polarity(def_id).clean(cx),
-            synthetic: false,
-            blanket_impl: None,
+            kind: ImplKind::Normal,
         });
         Item::from_hir_id_and_parts(hir_id, None, kind, cx)
     };

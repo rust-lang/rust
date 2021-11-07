@@ -500,21 +500,19 @@ impl FromWithTcx<clean::Trait> for Trait {
 impl FromWithTcx<clean::Impl> for Impl {
     fn from_tcx(impl_: clean::Impl, tcx: TyCtxt<'_>) -> Self {
         let provided_trait_methods = impl_.provided_trait_methods(tcx);
-        let clean::Impl {
-            unsafety,
-            generics,
-            trait_,
-            for_,
-            items,
-            negative_polarity,
-            synthetic,
-            blanket_impl,
-        } = impl_;
+        let clean::Impl { unsafety, generics, trait_, for_, items, negative_polarity, kind } =
+            impl_;
         // FIXME: should `trait_` be a clean::Path equivalent in JSON?
         let trait_ = trait_.map(|path| {
             let did = path.def_id();
             clean::ResolvedPath { path, did }.into_tcx(tcx)
         });
+        // FIXME: use something like ImplKind in JSON?
+        let (synthetic, blanket_impl) = match kind {
+            clean::ImplKind::Normal => (false, None),
+            clean::ImplKind::Auto => (true, None),
+            clean::ImplKind::Blanket(ty) => (false, Some(*ty)),
+        };
         Impl {
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
             generics: generics.into_tcx(tcx),
@@ -527,7 +525,7 @@ impl FromWithTcx<clean::Impl> for Impl {
             items: ids(items),
             negative: negative_polarity,
             synthetic,
-            blanket_impl: blanket_impl.map(|x| (*x).into_tcx(tcx)),
+            blanket_impl: blanket_impl.map(|x| x.into_tcx(tcx)),
         }
     }
 }

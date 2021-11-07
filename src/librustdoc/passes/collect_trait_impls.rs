@@ -111,12 +111,12 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
     }
 
     new_items.retain(|it| {
-        if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
+        if let ImplItem(Impl { ref for_, ref trait_, ref kind, .. }) = *it.kind {
             cleaner.keep_impl(
                 for_,
                 trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
             ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
-                || blanket_impl.is_some()
+                || kind.is_blanket()
         } else {
             true
         }

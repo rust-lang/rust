@@ -121,8 +121,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 for_: ty.clean(self.cx),
                 items: Vec::new(),
                 negative_polarity,
-                synthetic: true,
-                blanket_impl: None,
+                kind: ImplKind::Auto,
             }),
             cfg: None,
         })
