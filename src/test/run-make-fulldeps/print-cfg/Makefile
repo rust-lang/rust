@@ -1,3 +1,5 @@
+# needs-llvm-components: x86 arm
+
 -include ../tools.mk
 
 all: default

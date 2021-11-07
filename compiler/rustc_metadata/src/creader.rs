@@ -29,6 +29,7 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::collections::BTreeMap;
+use std::ops::Fn;
 use std::path::Path;
 use std::{cmp, env};
 use tracing::{debug, info};

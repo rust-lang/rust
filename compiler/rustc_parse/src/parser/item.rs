@@ -220,7 +220,7 @@ impl<'a> Parser<'a> {
         } else if self.check_fn_front_matter(def_final) {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, req_name, lo)?;
-            (ident, ItemKind::Fn(Box::new(FnKind(def(), sig, generics, body))))
+            (ident, ItemKind::Fn(Box::new(Fn { defaultness: def(), sig, generics, body })))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
                 // EXTERN CRATE
@@ -560,7 +560,7 @@ impl<'a> Parser<'a> {
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
 
-                ItemKind::Impl(Box::new(ImplKind {
+                ItemKind::Impl(Box::new(Impl {
                     unsafety,
                     polarity,
                     defaultness,
@@ -573,7 +573,7 @@ impl<'a> Parser<'a> {
             }
             None => {
                 // impl Type
-                ItemKind::Impl(Box::new(ImplKind {
+                ItemKind::Impl(Box::new(Impl {
                     unsafety,
                     polarity,
                     defaultness,
@@ -682,7 +682,7 @@ impl<'a> Parser<'a> {
 
         self.expect_keyword(kw::Trait)?;
         let ident = self.parse_ident()?;
-        let mut tps = self.parse_generics()?;
+        let mut generics = self.parse_generics()?;
 
         // Parse optional colon and supertrait bounds.
         let had_colon = self.eat(&token::Colon);
@@ -702,7 +702,7 @@ impl<'a> Parser<'a> {
             }
 
             let bounds = self.parse_generic_bounds(None)?;
-            tps.where_clause = self.parse_where_clause()?;
+            generics.where_clause = self.parse_where_clause()?;
             self.expect_semi()?;
 
             let whole_span = lo.to(self.prev_token.span);
@@ -717,12 +717,15 @@ impl<'a> Parser<'a> {
 
             self.sess.gated_spans.gate(sym::trait_alias, whole_span);
 
-            Ok((ident, ItemKind::TraitAlias(tps, bounds)))
+            Ok((ident, ItemKind::TraitAlias(generics, bounds)))
         } else {
             // It's a normal trait.
-            tps.where_clause = self.parse_where_clause()?;
+            generics.where_clause = self.parse_where_clause()?;
             let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
-            Ok((ident, ItemKind::Trait(Box::new(TraitKind(is_auto, unsafety, tps, bounds, items)))))
+            Ok((
+                ident,
+                ItemKind::Trait(Box::new(Trait { is_auto, unsafety, generics, bounds, items })),
+            ))
         }
     }
 
@@ -769,7 +772,7 @@ impl<'a> Parser<'a> {
     /// TypeAlias = "type" Ident Generics {":" GenericBounds}? {"=" Ty}? ";" ;
     /// ```
     /// The `"type"` has already been eaten.
-    fn parse_type_alias(&mut self, def: Defaultness) -> PResult<'a, ItemInfo> {
+    fn parse_type_alias(&mut self, defaultness: Defaultness) -> PResult<'a, ItemInfo> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
@@ -778,10 +781,10 @@ impl<'a> Parser<'a> {
             if self.eat(&token::Colon) { self.parse_generic_bounds(None)? } else { Vec::new() };
         generics.where_clause = self.parse_where_clause()?;
 
-        let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
+        let ty = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
         self.expect_semi()?;
 
-        Ok((ident, ItemKind::TyAlias(Box::new(TyAliasKind(def, generics, bounds, default)))))
+        Ok((ident, ItemKind::TyAlias(Box::new(TyAlias { defaultness, generics, bounds, ty }))))
     }
 
     /// Parses a `UseTree`.
@@ -1039,9 +1042,7 @@ impl<'a> Parser<'a> {
         };
 
         match impl_info.1 {
-            ItemKind::Impl(box ImplKind {
-                of_trait: Some(ref trai), ref mut constness, ..
-            }) => {
+            ItemKind::Impl(box Impl { of_trait: Some(ref trai), ref mut constness, .. }) => {
                 *constness = Const::Yes(const_span);
 
                 let before_trait = trai.path.span.shrink_to_lo();

@@ -15,7 +15,7 @@ use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
-use rustc_ast::{Block, FnKind, ForeignItem, ForeignItemKind, ImplKind, Item, ItemKind, NodeId};
+use rustc_ast::{Block, Fn, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
@@ -880,7 +880,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl(box ImplKind { of_trait: Some(..), .. }) => {
+            ItemKind::Impl(box Impl { of_trait: Some(..), .. }) => {
                 self.r.trait_impl_items.insert(local_def_id);
             }
             ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
@@ -1380,7 +1380,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         if ctxt == AssocCtxt::Trait {
             let (def_kind, ns) = match item.kind {
                 AssocItemKind::Const(..) => (DefKind::AssocConst, ValueNS),
-                AssocItemKind::Fn(box FnKind(_, ref sig, _, _)) => {
+                AssocItemKind::Fn(box Fn { ref sig, .. }) => {
                     if sig.decl.has_self() {
                         self.r.has_self.insert(def_id);
                     }

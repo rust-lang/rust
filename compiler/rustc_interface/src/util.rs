@@ -776,7 +776,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     fn visit_item_kind(&mut self, i: &mut ast::ItemKind) {
         let is_const = match i {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
-            ast::ItemKind::Fn(box ast::FnKind(_, ref sig, _, _)) => Self::is_sig_const(sig),
+            ast::ItemKind::Fn(box ast::Fn { ref sig, .. }) => Self::is_sig_const(sig),
             _ => false,
         };
         self.run(is_const, |s| noop_visit_item_kind(i, s))
@@ -785,7 +785,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     fn flat_map_trait_item(&mut self, i: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         let is_const = match i.kind {
             ast::AssocItemKind::Const(..) => true,
-            ast::AssocItemKind::Fn(box ast::FnKind(_, ref sig, _, _)) => Self::is_sig_const(sig),
+            ast::AssocItemKind::Fn(box ast::Fn { ref sig, .. }) => Self::is_sig_const(sig),
             _ => false,
         };
         self.run(is_const, |s| noop_flat_map_assoc_item(i, s))
