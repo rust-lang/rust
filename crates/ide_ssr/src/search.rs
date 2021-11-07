@@ -58,7 +58,7 @@ impl<'db> MatchFinder<'db> {
         if let Some(resolved_path) = pick_path_for_usages(pattern) {
             let definition: Definition = resolved_path.resolution.clone().into();
             for file_range in self.find_usages(usage_cache, definition).file_ranges() {
-                if let Some(node_to_match) = self.find_node_to_match(resolved_path, file_range) {
+                for node_to_match in self.find_nodes_to_match(resolved_path, file_range) {
                     if !is_search_permitted_ancestors(&node_to_match) {
                         cov_mark::hit!(use_declaration_with_braces);
                         continue;
@@ -69,36 +69,45 @@ impl<'db> MatchFinder<'db> {
         }
     }
 
-    fn find_node_to_match(
+    fn find_nodes_to_match(
         &self,
         resolved_path: &ResolvedPath,
         file_range: FileRange,
-    ) -> Option<SyntaxNode> {
+    ) -> Vec<SyntaxNode> {
         let file = self.sema.parse(file_range.file_id);
         let depth = resolved_path.depth as usize;
         let offset = file_range.range.start();
-        if let Some(path) =
-            self.sema.find_node_at_offset_with_descend::<ast::Path>(file.syntax(), offset)
-        {
-            self.sema.ancestors_with_macros(path.syntax().clone()).nth(depth)
-        } else if let Some(path) =
-            self.sema.find_node_at_offset_with_descend::<ast::MethodCallExpr>(file.syntax(), offset)
-        {
-            // If the pattern contained a path and we found a reference to that path that wasn't
-            // itself a path, but was a method call, then we need to adjust how far up to try
-            // matching by how deep the path was within a CallExpr. The structure would have been
-            // CallExpr, PathExpr, Path - i.e. a depth offset of 2. We don't need to check if the
-            // path was part of a CallExpr because if it wasn't then all that will happen is we'll
-            // fail to match, which is the desired behavior.
-            const PATH_DEPTH_IN_CALL_EXPR: usize = 2;
-            if depth < PATH_DEPTH_IN_CALL_EXPR {
-                return None;
-            }
-            self.sema
-                .ancestors_with_macros(path.syntax().clone())
-                .nth(depth - PATH_DEPTH_IN_CALL_EXPR)
+
+        let mut paths = self
+            .sema
+            .find_nodes_at_offset_with_descend::<ast::Path>(file.syntax(), offset)
+            .peekable();
+
+        if paths.peek().is_some() {
+            paths
+                .filter_map(|path| {
+                    self.sema.ancestors_with_macros(path.syntax().clone()).nth(depth)
+                })
+                .collect::<Vec<_>>()
         } else {
-            None
+            self.sema
+                .find_nodes_at_offset_with_descend::<ast::MethodCallExpr>(file.syntax(), offset)
+                .filter_map(|path| {
+                    // If the pattern contained a path and we found a reference to that path that wasn't
+                    // itself a path, but was a method call, then we need to adjust how far up to try
+                    // matching by how deep the path was within a CallExpr. The structure would have been
+                    // CallExpr, PathExpr, Path - i.e. a depth offset of 2. We don't need to check if the
+                    // path was part of a CallExpr because if it wasn't then all that will happen is we'll
+                    // fail to match, which is the desired behavior.
+                    const PATH_DEPTH_IN_CALL_EXPR: usize = 2;
+                    if depth < PATH_DEPTH_IN_CALL_EXPR {
+                        return None;
+                    }
+                    self.sema
+                        .ancestors_with_macros(path.syntax().clone())
+                        .nth(depth - PATH_DEPTH_IN_CALL_EXPR)
+                })
+                .collect::<Vec<_>>()
         }
     }
 
