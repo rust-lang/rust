@@ -186,7 +186,7 @@ fn return_macro_parse_failure_fallback(
         })
         .unwrap_or(false);
     if is_like_block_indent_style {
-        return trim_left_preserve_layout(context.snippet(span), indent, &context.config);
+        return trim_left_preserve_layout(context.snippet(span), indent, context.config);
     }
 
     context.skipped_range.borrow_mut().push((
@@ -437,7 +437,7 @@ fn rewrite_macro_inner(
             // the `macro_name!` and `{ /* macro_body */ }` but skip modifying
             // anything in between the braces (for now).
             let snippet = context.snippet(mac.span()).trim_start_matches(|c| c != '{');
-            match trim_left_preserve_layout(snippet, shape.indent, &context.config) {
+            match trim_left_preserve_layout(snippet, shape.indent, context.config) {
                 Some(macro_body) => Some(format!("{} {}", macro_name, macro_body)),
                 None => Some(format!("{} {}", macro_name, snippet)),
             }
@@ -901,7 +901,7 @@ impl MacroArgParser {
                     break;
                 }
                 TokenTree::Token(ref t) => {
-                    buffer.push_str(&pprust::token_to_string(&t));
+                    buffer.push_str(&pprust::token_to_string(t));
                 }
                 _ => return None,
             }
@@ -1045,7 +1045,7 @@ fn wrap_macro_args_inner(
     let mut iter = args.iter().peekable();
     let indent_str = shape.indent.to_string_with_newline(context.config);
 
-    while let Some(ref arg) = iter.next() {
+    while let Some(arg) = iter.next() {
         result.push_str(&arg.rewrite(context, shape, use_multiple_lines)?);
 
         if use_multiple_lines
@@ -1055,7 +1055,7 @@ fn wrap_macro_args_inner(
                 result.pop();
             }
             result.push_str(&indent_str);
-        } else if let Some(ref next_arg) = iter.peek() {
+        } else if let Some(next_arg) = iter.peek() {
             let space_before_dollar =
                 !arg.kind.ends_with_space() && next_arg.kind.starts_with_dollar();
             let space_before_brace = next_arg.kind.starts_with_brace();
@@ -1370,7 +1370,7 @@ impl MacroBranch {
                     {
                         s += &indent_str;
                     }
-                    (s + l + "\n", indent_next_line(kind, &l, &config))
+                    (s + l + "\n", indent_next_line(kind, l, &config))
                 },
             )
             .0;
@@ -1514,11 +1514,11 @@ fn rewrite_macro_with_items(
             MacroArg::Item(item) => item,
             _ => return None,
         };
-        visitor.visit_item(&item);
+        visitor.visit_item(item);
     }
 
     let mut result = String::with_capacity(256);
-    result.push_str(&macro_name);
+    result.push_str(macro_name);
     result.push_str(opener);
     result.push_str(&visitor.block_indent.to_string_with_newline(context.config));
     result.push_str(visitor.buffer.trim());
