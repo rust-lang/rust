@@ -58,7 +58,7 @@ impl<'a> TypeAliasRender<'a> {
         let db = self.ctx.db();
         if let Some(actm) = self.type_alias.as_assoc_item(db) {
             if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
-                item.trait_name(trt.name(db).to_string());
+                item.trait_name(trt.name(db).to_smol_str());
                 item.insert_text(name);
             }
         }

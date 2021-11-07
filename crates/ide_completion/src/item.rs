@@ -12,8 +12,8 @@ use ide_db::{
     SymbolKind,
 };
 use smallvec::SmallVec;
-use stdx::{format_to, impl_from, never};
-use syntax::{algo, TextRange};
+use stdx::{impl_from, never};
+use syntax::{algo, SmolStr, TextRange};
 use text_edit::TextEdit;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
@@ -22,7 +22,7 @@ use text_edit::TextEdit;
 #[derive(Clone)]
 pub struct CompletionItem {
     /// Label in the completion pop up which identifies completion.
-    label: String,
+    label: SmolStr,
     /// Range of identifier that is being completed.
     ///
     /// It should be used primarily for UI, but we also use this to convert
@@ -46,7 +46,7 @@ pub struct CompletionItem {
     ///
     /// That is, in `foo.bar$0` lookup of `abracadabra` will be accepted (it
     /// contains `bar` sub sequence), and `quux` will rejected.
-    lookup: Option<String>,
+    lookup: Option<SmolStr>,
 
     /// Additional info to show in the UI pop up.
     detail: Option<String>,
@@ -268,7 +268,7 @@ impl CompletionItem {
     pub(crate) fn new(
         kind: impl Into<CompletionItemKind>,
         source_range: TextRange,
-        label: impl Into<String>,
+        label: impl Into<SmolStr>,
     ) -> Builder {
         let label = label.into();
         Builder {
@@ -379,13 +379,13 @@ impl ImportEdit {
 pub(crate) struct Builder {
     source_range: TextRange,
     imports_to_add: SmallVec<[ImportEdit; 1]>,
-    trait_name: Option<String>,
-    label: String,
+    trait_name: Option<SmolStr>,
+    label: SmolStr,
     insert_text: Option<String>,
     is_snippet: bool,
     detail: Option<String>,
     documentation: Option<Documentation>,
-    lookup: Option<String>,
+    lookup: Option<SmolStr>,
     kind: CompletionItemKind,
     text_edit: Option<TextEdit>,
     deprecated: bool,
@@ -400,25 +400,21 @@ impl Builder {
 
         let mut label = self.label;
         let mut lookup = self.lookup;
-        let mut insert_text = self.insert_text;
+        let insert_text = self.insert_text.unwrap_or_else(|| label.to_string());
 
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
             if let Some(original_path) = import_edit.import.original_path.as_ref() {
                 lookup = lookup.or_else(|| Some(label.clone()));
-                insert_text = insert_text.or_else(|| Some(label.clone()));
-                format_to!(label, " (use {})", original_path)
+                label = SmolStr::from(format!("{} (use {})", label, original_path));
             }
         } else if let Some(trait_name) = self.trait_name {
-            insert_text = insert_text.or_else(|| Some(label.clone()));
-            format_to!(label, " (as {})", trait_name)
+            label = SmolStr::from(format!("{} (as {})", label, trait_name));
         }
 
         let text_edit = match self.text_edit {
             Some(it) => it,
-            None => {
-                TextEdit::replace(self.source_range, insert_text.unwrap_or_else(|| label.clone()))
-            }
+            None => TextEdit::replace(self.source_range, insert_text),
         };
 
         CompletionItem {
@@ -437,16 +433,16 @@ impl Builder {
             import_to_add: self.imports_to_add,
         }
     }
-    pub(crate) fn lookup_by(&mut self, lookup: impl Into<String>) -> &mut Builder {
+    pub(crate) fn lookup_by(&mut self, lookup: impl Into<SmolStr>) -> &mut Builder {
         self.lookup = Some(lookup.into());
         self
     }
-    pub(crate) fn label(&mut self, label: impl Into<String>) -> &mut Builder {
+    pub(crate) fn label(&mut self, label: impl Into<SmolStr>) -> &mut Builder {
         self.label = label.into();
         self
     }
-    pub(crate) fn trait_name(&mut self, trait_name: impl Into<String>) -> &mut Builder {
-        self.trait_name = Some(trait_name.into());
+    pub(crate) fn trait_name(&mut self, trait_name: SmolStr) -> &mut Builder {
+        self.trait_name = Some(trait_name);
         self
     }
     pub(crate) fn insert_text(&mut self, insert_text: impl Into<String>) -> &mut Builder {

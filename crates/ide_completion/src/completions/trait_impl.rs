@@ -133,7 +133,7 @@ fn add_function_impl(
     func: hir::Function,
     impl_def: hir::Impl,
 ) {
-    let fn_name = func.name(ctx.db).to_string();
+    let fn_name = func.name(ctx.db).to_smol_str();
 
     let label = if func.assoc_fn_params(ctx.db).is_empty() {
         format!("fn {}()", fn_name)
@@ -205,12 +205,12 @@ fn add_type_alias_impl(
     ctx: &CompletionContext,
     type_alias: hir::TypeAlias,
 ) {
-    let alias_name = type_alias.name(ctx.db).to_string();
+    let alias_name = type_alias.name(ctx.db).to_smol_str();
 
     let snippet = format!("type {} = ", alias_name);
 
     let range = replacement_range(ctx, type_def_node);
-    let mut item = CompletionItem::new(SymbolKind::TypeAlias, ctx.source_range(), snippet.clone());
+    let mut item = CompletionItem::new(SymbolKind::TypeAlias, ctx.source_range(), &snippet);
     item.text_edit(TextEdit::replace(range, snippet))
         .lookup_by(alias_name)
         .set_documentation(type_alias.docs(ctx.db));
@@ -224,7 +224,7 @@ fn add_const_impl(
     const_: hir::Const,
     impl_def: hir::Impl,
 ) {
-    let const_name = const_.name(ctx.db).map(|n| n.to_string());
+    let const_name = const_.name(ctx.db).map(|n| n.to_smol_str());
 
     if let Some(const_name) = const_name {
         if let Some(source) = const_.source(ctx.db) {
@@ -238,8 +238,7 @@ fn add_const_impl(
                 let snippet = make_const_compl_syntax(&transformed_const);
 
                 let range = replacement_range(ctx, const_def_node);
-                let mut item =
-                    CompletionItem::new(SymbolKind::Const, ctx.source_range(), snippet.clone());
+                let mut item = CompletionItem::new(SymbolKind::Const, ctx.source_range(), &snippet);
                 item.text_edit(TextEdit::replace(range, snippet))
                     .lookup_by(const_name)
                     .set_documentation(const_.docs(ctx.db));

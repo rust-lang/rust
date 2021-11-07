@@ -27,7 +27,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         return;
     }
 
-    let mut add_keyword = |kw, snippet| add_keyword(ctx, acc, kw, snippet);
+    let mut add_keyword = |kw, snippet| add_keyword(acc, ctx, kw, snippet);
 
     let expects_assoc_item = ctx.expects_assoc_item();
     let has_block_expr_parent = ctx.has_block_expr_parent();
@@ -157,7 +157,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     )
 }
 
-fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet: &str) {
+fn add_keyword(acc: &mut Completions, ctx: &CompletionContext, kw: &str, snippet: &str) {
     let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
 
     match ctx.config.snippet_cap {

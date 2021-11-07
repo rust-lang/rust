@@ -83,11 +83,11 @@ pub(crate) fn render_field(
     ty: &hir::Type,
 ) -> CompletionItem {
     let is_deprecated = ctx.is_deprecated(field);
-    let name = field.name(ctx.db()).to_string();
+    let name = field.name(ctx.db()).to_smol_str();
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        receiver.map_or_else(|| name.clone(), |receiver| format!("{}.{}", receiver, name)),
+        receiver.map_or_else(|| name.clone(), |receiver| format!("{}.{}", receiver, name).into()),
     );
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
@@ -97,7 +97,7 @@ pub(crate) fn render_field(
     item.detail(ty.display(ctx.db()).to_string())
         .set_documentation(field.docs(ctx.db()))
         .set_deprecated(is_deprecated)
-        .lookup_by(name.as_str());
+        .lookup_by(name.clone());
     let is_keyword = SyntaxKind::from_keyword(name.as_str()).is_some();
     if is_keyword && !matches!(name.as_str(), "self" | "crate" | "super" | "Self") {
         item.insert_text(format!("r#{}", name));
@@ -199,7 +199,7 @@ fn render_resolution_(
             let mut item = CompletionItem::new(
                 CompletionItemKind::UnresolvedReference,
                 ctx.source_range(),
-                local_name.to_string(),
+                local_name.to_smol_str(),
             );
             if let Some(import_to_add) = import_to_add {
                 item.add_import(import_to_add);
@@ -208,7 +208,7 @@ fn render_resolution_(
         }
     };
 
-    let local_name = local_name.to_string();
+    let local_name = local_name.to_smol_str();
     let mut item = CompletionItem::new(kind, ctx.source_range(), local_name.clone());
     if let hir::ScopeDef::Local(local) = resolution {
         let ty = local.ty(ctx.db());

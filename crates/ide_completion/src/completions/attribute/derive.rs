@@ -3,7 +3,7 @@ use hir::{HasAttrs, MacroDef, MacroKind};
 use ide_db::helpers::{import_assets::ImportAssets, insert_use::ImportScope, FamousDefs};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use syntax::{ast, SyntaxKind};
+use syntax::{ast, SmolStr, SyntaxKind};
 
 use crate::{
     completions::flyimport::compute_fuzzy_completion_order_key,
@@ -30,7 +30,6 @@ pub(super) fn complete_derive(
         }
 
         let name = name.to_smol_str();
-        let label;
         let (label, lookup) = match core.zip(mac.module(ctx.db).map(|it| it.krate())) {
             // show derive dependencies for `core`/`std` derives
             Some((core, mac_krate)) if core == mac_krate => {
@@ -48,13 +47,13 @@ pub(super) fn complete_derive(
                         },
                     ));
                     let lookup = components.join(", ");
-                    label = components.iter().rev().join(", ");
-                    (label.as_str(), Some(lookup))
+                    let label = Itertools::intersperse(components.into_iter().rev(), ", ");
+                    (SmolStr::from_iter(label), Some(lookup))
                 } else {
-                    (&*name, None)
+                    (name, None)
                 }
             }
-            _ => (&*name, None),
+            _ => (name, None),
         };
 
         let mut item =
@@ -68,7 +67,7 @@ pub(super) fn complete_derive(
         item.add_to(acc);
     }
 
-    flyimport_attribute(ctx, acc);
+    flyimport_attribute(acc, ctx);
 }
 
 fn get_derives_in_scope(ctx: &CompletionContext) -> Vec<(hir::Name, MacroDef)> {
@@ -83,7 +82,7 @@ fn get_derives_in_scope(ctx: &CompletionContext) -> Vec<(hir::Name, MacroDef)> {
     result
 }
 
-fn flyimport_attribute(ctx: &CompletionContext, acc: &mut Completions) -> Option<()> {
+fn flyimport_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     if ctx.token.kind() != SyntaxKind::IDENT {
         return None;
     };
@@ -115,7 +114,7 @@ fn flyimport_attribute(ctx: &CompletionContext, acc: &mut Completions) -> Option
                 let mut item = CompletionItem::new(
                     CompletionItemKind::Attribute,
                     ctx.source_range(),
-                    mac.name(ctx.db)?.to_string(),
+                    mac.name(ctx.db)?.to_smol_str(),
                 );
                 item.add_import(ImportEdit { import, scope: import_scope.clone() });
                 if let Some(docs) = mac.docs(ctx.db) {

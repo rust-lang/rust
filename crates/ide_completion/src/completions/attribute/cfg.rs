@@ -31,13 +31,11 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
         Some("target_endian") => ["little", "big"].into_iter().for_each(add_completion),
         Some(name) => {
             if let Some(krate) = ctx.krate {
-                krate.potential_cfg(ctx.db).get_cfg_values(&name).iter().for_each(|s| {
-                    let mut item = CompletionItem::new(
-                        CompletionItemKind::Attribute,
-                        ctx.source_range(),
-                        s.as_str(),
-                    );
-                    item.insert_text(format!(r#""{}""#, s));
+                krate.potential_cfg(ctx.db).get_cfg_values(&name).cloned().for_each(|s| {
+                    let insert_text = format!(r#""{}""#, s);
+                    let mut item =
+                        CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), s);
+                    item.insert_text(insert_text);
 
                     acc.add(item.build());
                 })
@@ -45,12 +43,9 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
         }
         None => {
             if let Some(krate) = ctx.krate {
-                krate.potential_cfg(ctx.db).get_cfg_keys().iter().for_each(|s| {
-                    let item = CompletionItem::new(
-                        CompletionItemKind::Attribute,
-                        ctx.source_range(),
-                        s.as_str(),
-                    );
+                krate.potential_cfg(ctx.db).get_cfg_keys().cloned().for_each(|s| {
+                    let item =
+                        CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), s);
                     acc.add(item.build());
                 })
             }

@@ -38,7 +38,7 @@ pub(crate) fn render_method(
 #[derive(Debug)]
 struct FunctionRender<'a> {
     ctx: RenderContext<'a>,
-    name: String,
+    name: hir::Name,
     receiver: Option<hir::Name>,
     func: hir::Function,
     /// NB: having `ast::Fn` here might or might not be a good idea. The problem
@@ -67,7 +67,7 @@ impl<'a> FunctionRender<'a> {
         fn_: hir::Function,
         is_method: bool,
     ) -> Option<FunctionRender<'a>> {
-        let name = local_name.unwrap_or_else(|| fn_.name(ctx.db())).to_string();
+        let name = local_name.unwrap_or_else(|| fn_.name(ctx.db()));
         let ast_node = fn_.source(ctx.db())?.value;
 
         Some(FunctionRender { ctx, name, receiver, func: fn_, ast_node, is_method })
@@ -77,7 +77,7 @@ impl<'a> FunctionRender<'a> {
         let params = self.params();
         let call = match &self.receiver {
             Some(receiver) => format!("{}.{}", receiver, &self.name),
-            None => self.name.clone(),
+            None => self.name.to_string(),
         };
         let mut item = CompletionItem::new(self.kind(), self.ctx.source_range(), call.clone());
         item.set_documentation(self.ctx.docs(self.func))
@@ -91,7 +91,7 @@ impl<'a> FunctionRender<'a> {
             let db = self.ctx.db();
             if let Some(actm) = self.func.as_assoc_item(db) {
                 if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
-                    item.trait_name(trt.name(db).to_string());
+                    item.trait_name(trt.name(db).to_smol_str());
                 }
             }
         }
@@ -99,7 +99,7 @@ impl<'a> FunctionRender<'a> {
         if let Some(import_to_add) = import_to_add {
             item.add_import(import_to_add);
         }
-        item.lookup_by(self.name);
+        item.lookup_by(self.name.to_smol_str());
 
         let ret_type = self.func.ret_type(self.ctx.db());
         item.set_relevance(CompletionRelevance {

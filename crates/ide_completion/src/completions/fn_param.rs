@@ -30,6 +30,7 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         }
         func.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
             if let Some(pat) = param.pat() {
+                // FIXME: We should be able to turn these into SmolStr without having to allocate a String
                 let text = param.syntax().text().to_string();
                 let lookup = pat.syntax().text().to_string();
                 params.entry(text).or_insert(lookup);
@@ -59,7 +60,7 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
     let self_completion_items = ["self", "&self", "mut self", "&mut self"];
     if ctx.impl_def.is_some() && me?.param_list()?.params().next().is_none() {
-        self_completion_items.iter().for_each(|self_item| {
+        self_completion_items.into_iter().for_each(|self_item| {
             add_new_item_to_acc(ctx, acc, self_item.to_string(), self_item.to_string())
         });
     }
