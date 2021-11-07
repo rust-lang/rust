@@ -244,7 +244,7 @@ fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {
     clean::Enum {
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
         variants_stripped: false,
-        variants: cx.tcx.adt_def(did).variants.clean(cx),
+        variants: cx.tcx.adt_def(did).variants.iter().map(|v| v.clean(cx)).collect(),
     }
 }
 
