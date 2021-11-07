@@ -12,6 +12,9 @@ LL |     *x
 error[E0621]: explicit lifetime required in the type of `s`
   --> $DIR/guarantor-issue-46974.rs:15:5
    |
+LL | fn bar(s: &Box<(i32,)>) -> &'static i32 {
+   |           ------------ the type of `s` does not have lifetime `'static'`
+LL |     // FIXME(#46983): error message should be better
 LL |     &s.0
    |     ^^^^ lifetime `'static` required
 
