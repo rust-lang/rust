@@ -238,8 +238,7 @@ declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
 
 impl EarlyLintPass for LintPassImpl {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if let ast::ItemKind::Impl(box ast::ImplKind { of_trait: Some(lint_pass), .. }) = &item.kind
-        {
+        if let ast::ItemKind::Impl(box ast::Impl { of_trait: Some(lint_pass), .. }) = &item.kind {
             if let Some(last) = lint_pass.path.segments.last() {
                 if last.ident.name == sym::LintPass {
                     let expn_data = lint_pass.path.span.ctxt().outer_expn_data();

@@ -2,7 +2,7 @@
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::{ImplKind, ItemKind, MetaItem};
+use rustc_ast::{Impl, ItemKind, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
@@ -180,7 +180,7 @@ fn inject_impl_of_structural_trait(
         span,
         Ident::empty(),
         attrs,
-        ItemKind::Impl(Box::new(ImplKind {
+        ItemKind::Impl(Box::new(Impl {
             unsafety: ast::Unsafe::No,
             polarity: ast::ImplPolarity::Positive,
             defaultness: ast::Defaultness::Final,

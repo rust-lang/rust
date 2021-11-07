@@ -313,13 +313,13 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let decl = ecx.fn_decl(vec![], ast::FnRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default(), span: sp };
-    let def = ast::Defaultness::Final;
-    let main = ast::ItemKind::Fn(Box::new(ast::FnKind(
-        def,
+    let defaultness = ast::Defaultness::Final;
+    let main = ast::ItemKind::Fn(Box::new(ast::Fn {
+        defaultness,
         sig,
-        ast::Generics::default(),
-        Some(main_body),
-    )));
+        generics: ast::Generics::default(),
+        body: Some(main_body),
+    }));
 
     // Honor the reexport_test_harness_main attribute
     let main_id = match cx.reexport_test_harness_main {
