@@ -255,7 +255,7 @@ fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
     clean::Struct {
         struct_type: variant.ctor_kind,
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
-        fields: variant.fields.clean(cx),
+        fields: variant.fields.iter().map(|x| x.clean(cx)).collect(),
         fields_stripped: false,
     }
 }
@@ -264,11 +264,9 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
-    clean::Union {
-        generics: (cx.tcx.generics_of(did), predicates).clean(cx),
-        fields: variant.fields.clean(cx),
-        fields_stripped: false,
-    }
+    let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
+    let fields = variant.fields.iter().map(|x| x.clean(cx)).collect();
+    clean::Union { generics, fields, fields_stripped: false }
 }
 
 fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::Typedef {
