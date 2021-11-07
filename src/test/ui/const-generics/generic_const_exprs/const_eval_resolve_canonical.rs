@@ -27,4 +27,5 @@ fn main() {
     //~^ ERROR type annotations needed
 
     _q = foo::<_, 2>(_q);
+    //~^ ERROR type annotations needed
 }

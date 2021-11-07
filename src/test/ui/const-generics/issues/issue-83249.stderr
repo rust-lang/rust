@@ -1,22 +1,11 @@
-error[E0283]: type annotations needed
+error[E0282]: type annotations needed
   --> $DIR/issue-83249.rs:19:13
    |
 LL |     let _ = foo([0; 1]);
    |         -   ^^^ cannot infer type for type parameter `T` declared on the function `foo`
    |         |
    |         consider giving this pattern a type
-   |
-   = note: cannot satisfy `_: Foo`
-note: required by a bound in `foo`
-  --> $DIR/issue-83249.rs:12:11
-   |
-LL | fn foo<T: Foo>(_: [u8; T::N]) -> T {
-   |           ^^^ required by this bound in `foo`
-help: consider specifying the type argument in the function call
-   |
-LL |     let _ = foo::<T>([0; 1]);
-   |                +++++
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0282`.
