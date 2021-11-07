@@ -1,13 +1,10 @@
 use crate::alloc::alloc::{handle_alloc_error, Layout};
 use crate::scopeguard::guard;
 use crate::TryReserveError;
-#[cfg(feature = "nightly")]
-use crate::UnavailableMutError;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::mem::ManuallyDrop;
-#[cfg(feature = "nightly")]
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 use core::{hint, ptr};
@@ -855,60 +852,59 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
 
     /// Attempts to get mutable references to `N` entries in the table at once.
     ///
-    /// Returns an array of length `N` with the results of each query. For soundness,
-    /// at most one mutable reference will be returned to any entry. An
-    /// `Err(UnavailableMutError::Duplicate(i))` in the returned array indicates that a suitable
-    /// entry exists, but a mutable reference to it already occurs at index `i` in the returned
-    /// array.
+    /// Returns an array of length `N` with the results of each query.
+    ///
+    /// At most one mutable reference will be returned to any entry. `None` will be returned if any
+    /// of the hashes are duplicates. `None` will be returned if the hash is not found.
     ///
     /// The `eq` argument should be a closure such that `eq(i, k)` returns true if `k` is equal to
     /// the `i`th key to be looked up.
-    ///
-    /// This method is available only if the `nightly` feature is enabled.
-    #[cfg(feature = "nightly")]
-    pub fn get_each_mut<const N: usize>(
+    pub fn get_many_mut<const N: usize>(
+        &mut self,
+        hashes: [u64; N],
+        eq: impl FnMut(usize, &T) -> bool,
+    ) -> Option<[&'_ mut T; N]> {
+        unsafe {
+            let ptrs = self.get_many_mut_pointers(hashes, eq)?;
+
+            for (i, &cur) in ptrs.iter().enumerate() {
+                if ptrs[..i].iter().any(|&prev| ptr::eq::<T>(prev, cur)) {
+                    return None;
+                }
+            }
+            // All bucket are distinct from all previous buckets so we're clear to return the result
+            // of the lookup.
+
+            // TODO use `MaybeUninit::array_assume_init` here instead once that's stable.
+            Some(mem::transmute_copy(&ptrs))
+        }
+    }
+
+    pub unsafe fn get_many_unchecked_mut<const N: usize>(
+        &mut self,
+        hashes: [u64; N],
+        eq: impl FnMut(usize, &T) -> bool,
+    ) -> Option<[&'_ mut T; N]> {
+        let ptrs = self.get_many_mut_pointers(hashes, eq)?;
+        Some(mem::transmute_copy(&ptrs))
+    }
+
+    unsafe fn get_many_mut_pointers<const N: usize>(
         &mut self,
         hashes: [u64; N],
         mut eq: impl FnMut(usize, &T) -> bool,
-    ) -> [Result<&'_ mut T, UnavailableMutError>; N] {
-        // Collect the requested buckets.
+    ) -> Option<[*mut T; N]> {
         // TODO use `MaybeUninit::uninit_array` here instead once that's stable.
-        let mut buckets: [MaybeUninit<Option<Bucket<T>>>; N] =
-            unsafe { MaybeUninit::uninit().assume_init() };
-        for i in 0..N {
-            buckets[i] = MaybeUninit::new(self.find(hashes[i], |k| eq(i, k)));
-        }
-        let buckets: [Option<Bucket<T>>; N] = unsafe { MaybeUninit::array_assume_init(buckets) };
+        let mut outs: MaybeUninit<[*mut T; N]> = MaybeUninit::uninit();
+        let outs_ptr = outs.as_mut_ptr();
 
-        // Walk through the buckets, checking for duplicates and building up the output array.
-        // TODO use `MaybeUninit::uninit_array` here instead once that's stable.
-        let mut out: [MaybeUninit<Result<&'_ mut T, UnavailableMutError>>; N] =
-            unsafe { MaybeUninit::uninit().assume_init() };
-        for i in 0..N {
-            out[i] = MaybeUninit::new(
-                #[allow(clippy::never_loop)]
-                'outer: loop {
-                    for j in 0..i {
-                        match (&buckets[j], &buckets[i]) {
-                            // These two buckets are the same, and we can't safely return a second
-                            // mutable reference to the same entry.
-                            (Some(prev), Some(cur)) if prev.as_ptr() == cur.as_ptr() => {
-                                break 'outer Err(UnavailableMutError::Duplicate(j));
-                            }
-                            _ => {}
-                        }
-                    }
-                    // This bucket is distinct from all previous buckets (or it doesn't exist), so
-                    // we're clear to return the result of the lookup.
-                    break match &buckets[i] {
-                        None => Err(UnavailableMutError::Absent),
-                        Some(bkt) => unsafe { Ok(bkt.as_mut()) },
-                    };
-                },
-            )
+        for (i, &hash) in hashes.iter().enumerate() {
+            let cur = self.find(hash, |k| eq(i, k))?;
+            *(*outs_ptr).get_unchecked_mut(i) = cur.as_mut();
         }
 
-        unsafe { MaybeUninit::array_assume_init(out) }
+        // TODO use `MaybeUninit::array_assume_init` here instead once that's stable.
+        Some(outs.assume_init())
     }
 
     /// Returns the number of elements the map can hold without reallocating.

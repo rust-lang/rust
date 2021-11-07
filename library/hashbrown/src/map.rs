@@ -1,7 +1,5 @@
 use crate::raw::{Allocator, Bucket, Global, RawDrain, RawIntoIter, RawIter, RawTable};
 use crate::TryReserveError;
-#[cfg(feature = "nightly")]
-use crate::UnavailableMutError;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
@@ -1172,18 +1170,14 @@ where
 
     /// Attempts to get mutable references to `N` values in the map at once.
     ///
-    /// Returns an array of length `N` with the results of each query. For soundness,
-    /// at most one mutable reference will be returned to any value. An
-    /// `Err(UnavailableMutError::Duplicate(i))` in the returned array indicates that a suitable
-    /// key-value pair exists, but a mutable reference to the value already occurs at index `i` in
-    /// the returned array.
-    ///
-    /// This method is available only if the `nightly` feature is enabled.
+    /// Returns an array of length `N` with the results of each query. For soundness, at most one
+    /// mutable reference will be returned to any value. `None` will be returned if any of the
+    /// keys are duplicates or missing.
     ///
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::{HashMap, UnavailableMutError};
+    /// use hashbrown::HashMap;
     ///
     /// let mut libraries = HashMap::new();
     /// libraries.insert("Bodleian Library".to_string(), 1602);
@@ -1191,49 +1185,59 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
-    /// let got = libraries.get_each_mut([
-    ///     "Athenæum",
-    ///     "New York Public Library",
+    /// let got = libraries.get_many_mut([
     ///     "Athenæum",
     ///     "Library of Congress",
     /// ]);
     /// assert_eq!(
     ///     got,
-    ///     [
-    ///         Ok(&mut 1807),
-    ///         Err(UnavailableMutError::Absent),
-    ///         Err(UnavailableMutError::Duplicate(0)),
-    ///         Ok(&mut 1800),
-    ///     ]
+    ///     Some([
+    ///         &mut 1807,
+    ///         &mut 1800,
+    ///     ]),
     /// );
+    ///
+    /// // Missing keys result in None
+    /// let got = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "New York Public Library",
+    /// ]);
+    /// assert_eq!(got, None);
+    ///
+    /// // Duplicate keys result in None
+    /// let got = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "Athenæum",
+    /// ]);
+    /// assert_eq!(got, None);
     /// ```
-    #[cfg(feature = "nightly")]
-    pub fn get_each_mut<Q: ?Sized, const N: usize>(
-        &mut self,
-        ks: [&Q; N],
-    ) -> [Result<&'_ mut V, UnavailableMutError>; N]
+    pub fn get_many_mut<Q: ?Sized, const N: usize>(&mut self, ks: [&Q; N]) -> Option<[&'_ mut V; N]>
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.get_each_inner_mut(ks).map(|res| res.map(|(_, v)| v))
+        self.get_many_mut_inner(ks).map(|res| res.map(|(_, v)| v))
     }
 
-    /// Attempts to get mutable references to `N` values in the map at once, with immutable
-    /// references to the corresponding keys.
+    /// Attempts to get mutable references to `N` values in the map at once, without validating that
+    /// the values are unique.
     ///
-    /// Returns an array of length `N` with the results of each query. For soundness,
-    /// at most one mutable reference will be returned to any value. An
-    /// `Err(UnavailableMutError::Duplicate(i))` in the returned array indicates that a suitable
-    /// key-value pair exists, but a mutable reference to the value already occurs at index `i` in
-    /// the returned array.
+    /// Returns an array of length `N` with the results of each query. `None` will be returned if
+    /// any of the keys are missing.
     ///
-    /// This method is available only if the `nightly` feature is enabled.
+    /// For a safe alternative see [`get_many_mut`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with overlapping keys is *[undefined behavior]* even if the resulting
+    /// references are not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::{HashMap, UnavailableMutError};
+    /// use hashbrown::HashMap;
     ///
     /// let mut libraries = HashMap::new();
     /// libraries.insert("Bodleian Library".to_string(), 1602);
@@ -1241,40 +1245,176 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
-    /// let got = libraries.get_each_key_value_mut([
-    ///     "Bodleian Library",
-    ///     "Herzogin-Anna-Amalia-Bibliothek",
-    ///     "Herzogin-Anna-Amalia-Bibliothek",
-    ///     "Gewandhaus",
+    /// let got = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "Library of Congress",
     /// ]);
     /// assert_eq!(
     ///     got,
-    ///     [
-    ///         Ok((&"Bodleian Library".to_string(), &mut 1602)),
-    ///         Ok((&"Herzogin-Anna-Amalia-Bibliothek".to_string(), &mut 1691)),
-    ///         Err(UnavailableMutError::Duplicate(1)),
-    ///         Err(UnavailableMutError::Absent),
-    ///     ]
+    ///     Some([
+    ///         &mut 1807,
+    ///         &mut 1800,
+    ///     ]),
     /// );
+    ///
+    /// // Missing keys result in None
+    /// let got = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "New York Public Library",
+    /// ]);
+    /// assert_eq!(got, None);
     /// ```
-    #[cfg(feature = "nightly")]
-    pub fn get_each_key_value_mut<Q: ?Sized, const N: usize>(
+    pub unsafe fn get_many_unchecked_mut<Q: ?Sized, const N: usize>(
         &mut self,
         ks: [&Q; N],
-    ) -> [Result<(&'_ K, &'_ mut V), UnavailableMutError>; N]
+    ) -> Option<[&'_ mut V; N]>
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.get_each_inner_mut(ks)
+        self.get_many_unchecked_mut_inner(ks)
+            .map(|res| res.map(|(_, v)| v))
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once, with immutable
+    /// references to the corresponding keys.
+    ///
+    /// Returns an array of length `N` with the results of each query. For soundness, at most one
+    /// mutable reference will be returned to any value. `None` will be returned if any of the keys
+    /// are duplicates or missing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut libraries = HashMap::new();
+    /// libraries.insert("Bodleian Library".to_string(), 1602);
+    /// libraries.insert("Athenæum".to_string(), 1807);
+    /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
+    /// libraries.insert("Library of Congress".to_string(), 1800);
+    ///
+    /// let got = libraries.get_many_key_value_mut([
+    ///     "Bodleian Library",
+    ///     "Herzogin-Anna-Amalia-Bibliothek",
+    /// ]);
+    /// assert_eq!(
+    ///     got,
+    ///     Some([
+    ///         (&"Bodleian Library".to_string(), &mut 1602),
+    ///         (&"Herzogin-Anna-Amalia-Bibliothek".to_string(), &mut 1691),
+    ///     ]),
+    /// );
+    /// // Missing keys result in None
+    /// let got = libraries.get_many_key_value_mut([
+    ///     "Bodleian Library",
+    ///     "Gewandhaus",
+    /// ]);
+    /// assert_eq!(got, None);
+    ///
+    /// // Duplicate keys result in None
+    /// let got = libraries.get_many_key_value_mut([
+    ///     "Bodleian Library",
+    ///     "Herzogin-Anna-Amalia-Bibliothek",
+    ///     "Herzogin-Anna-Amalia-Bibliothek",
+    /// ]);
+    /// assert_eq!(got, None);
+    /// ```
+    pub fn get_many_key_value_mut<Q: ?Sized, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> Option<[(&'_ K, &'_ mut V); N]>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.get_many_mut_inner(ks)
             .map(|res| res.map(|(k, v)| (&*k, v)))
     }
 
-    #[cfg(feature = "nightly")]
-    fn get_each_inner_mut<Q: ?Sized, const N: usize>(
+    /// Attempts to get mutable references to `N` values in the map at once, with immutable
+    /// references to the corresponding keys, without validating that the values are unique.
+    ///
+    /// Returns an array of length `N` with the results of each query. `None` will be returned if
+    /// any of the keys are missing.
+    ///
+    /// For a safe alternative see [`get_many_key_value_mut`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with overlapping keys is *[undefined behavior]* even if the resulting
+    /// references are not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut libraries = HashMap::new();
+    /// libraries.insert("Bodleian Library".to_string(), 1602);
+    /// libraries.insert("Athenæum".to_string(), 1807);
+    /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
+    /// libraries.insert("Library of Congress".to_string(), 1800);
+    ///
+    /// let got = libraries.get_many_key_value_mut([
+    ///     "Bodleian Library",
+    ///     "Herzogin-Anna-Amalia-Bibliothek",
+    /// ]);
+    /// assert_eq!(
+    ///     got,
+    ///     Some([
+    ///         (&"Bodleian Library".to_string(), &mut 1602),
+    ///         (&"Herzogin-Anna-Amalia-Bibliothek".to_string(), &mut 1691),
+    ///     ]),
+    /// );
+    /// // Missing keys result in None
+    /// let got = libraries.get_many_key_value_mut([
+    ///     "Bodleian Library",
+    ///     "Gewandhaus",
+    /// ]);
+    /// assert_eq!(got, None);
+    /// ```
+    pub unsafe fn get_many_key_value_unchecked_mut<Q: ?Sized, const N: usize>(
         &mut self,
         ks: [&Q; N],
-    ) -> [Result<&'_ mut (K, V), UnavailableMutError>; N]
+    ) -> Option<[(&'_ K, &'_ mut V); N]>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.get_many_unchecked_mut_inner(ks)
+            .map(|res| res.map(|(k, v)| (&*k, v)))
+    }
+
+    fn get_many_mut_inner<Q: ?Sized, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> Option<[&'_ mut (K, V); N]>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let hashes = self.build_hashes_inner(ks);
+        self.table
+            .get_many_mut(hashes, |i, (k, _)| ks[i].eq(k.borrow()))
+    }
+
+    unsafe fn get_many_unchecked_mut_inner<Q: ?Sized, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> Option<[&'_ mut (K, V); N]>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let hashes = self.build_hashes_inner(ks);
+        self.table
+            .get_many_unchecked_mut(hashes, |i, (k, _)| ks[i].eq(k.borrow()))
+    }
+
+    fn build_hashes_inner<Q: ?Sized, const N: usize>(&self, ks: [&Q; N]) -> [u64; N]
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
@@ -1283,8 +1423,7 @@ where
         for i in 0..N {
             hashes[i] = make_hash::<K, Q, S>(&self.hash_builder, ks[i]);
         }
-        self.table
-            .get_each_mut(hashes, |i, (k, _)| ks[i].eq(k.borrow()))
+        hashes
     }
 
     /// Inserts a key-value pair into the map.
@@ -5120,31 +5259,32 @@ mod test_map {
     }
 
     #[test]
-    #[cfg(feature = "nightly")]
     fn test_get_each_mut() {
-        use crate::UnavailableMutError::*;
-
         let mut map = HashMap::new();
         map.insert("foo".to_owned(), 0);
         map.insert("bar".to_owned(), 10);
         map.insert("baz".to_owned(), 20);
         map.insert("qux".to_owned(), 30);
 
-        let xs = map.get_each_mut(["foo", "dud", "foo", "qux"]);
-        assert_eq!(
-            xs,
-            [Ok(&mut 0), Err(Absent), Err(Duplicate(0)), Ok(&mut 30)]
-        );
+        let xs = map.get_many_mut(["foo", "qux"]);
+        assert_eq!(xs, Some([&mut 0, &mut 30]));
 
-        let ys = map.get_each_key_value_mut(["bar", "baz", "baz", "dip"]);
+        let xs = map.get_many_mut(["foo", "dud"]);
+        assert_eq!(xs, None);
+
+        let xs = map.get_many_mut(["foo", "foo"]);
+        assert_eq!(xs, None);
+
+        let ys = map.get_many_key_value_mut(["bar", "baz"]);
         assert_eq!(
             ys,
-            [
-                Ok((&"bar".to_owned(), &mut 10)),
-                Ok((&"baz".to_owned(), &mut 20)),
-                Err(Duplicate(1)),
-                Err(Absent),
-            ]
+            Some([(&"bar".to_owned(), &mut 10), (&"baz".to_owned(), &mut 20),]),
         );
+
+        let ys = map.get_many_key_value_mut(["bar", "dip"]);
+        assert_eq!(ys, None);
+
+        let ys = map.get_many_key_value_mut(["baz", "baz"]);
+        assert_eq!(ys, None);
     }
 }
