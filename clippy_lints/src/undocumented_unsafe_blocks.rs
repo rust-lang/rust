@@ -149,6 +149,8 @@ impl UndocumentedUnsafeBlocks {
         let lex_end = (between_span.hi().0 - source_file.start_pos.0) as usize;
         let src_str = source_file.src.as_ref()?[lex_start..lex_end].to_string();
 
+        let source_start_pos = source_file.start_pos.0 as usize + lex_start;
+
         let mut pos = 0;
         let mut comment = false;
 
@@ -171,7 +173,7 @@ impl UndocumentedUnsafeBlocks {
                     if comment {
                         // Get the line number of the "comment" (really wherever the trailing whitespace ended)
                         let comment_line_num = source_file
-                            .lookup_file_pos_with_col_display(BytePos((lex_start + pos).try_into().unwrap()))
+                            .lookup_file_pos(BytePos((source_start_pos + pos).try_into().unwrap()))
                             .0;
                         // Find the block/local's line number
                         let block_line_num = tcx.sess.source_map().lookup_char_pos(block_span.lo()).line;
