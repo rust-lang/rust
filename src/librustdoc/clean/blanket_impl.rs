@@ -123,7 +123,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .in_definition_order()
                             .collect::<Vec<_>>()
                             .clean(self.cx),
-                        polarity: ImplPolarity::Positive,
+                        polarity: ty::ImplPolarity::Positive,
                         kind: ImplKind::Blanket(box trait_ref.self_ty().clean(self.cx)),
                     }),
                     cfg: None,

@@ -34,8 +34,8 @@ mod span_map;
 mod templates;
 mod write_shared;
 
-crate use context::*;
-crate use span_map::{collect_spans_and_sources, LinkFromSrc};
+crate use self::context::*;
+crate use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
 use std::collections::VecDeque;
 use std::default::Default;
@@ -54,6 +54,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
+use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{
     symbol::{kw, sym, Symbol},
@@ -2034,8 +2035,8 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                             let out = Escape(&i_display);
                             let encoded = small_url_encode(format!("{:#}", i.print(cx)));
                             let prefix = match it.inner_impl().polarity {
-                                clean::ImplPolarity::Positive => "",
-                                clean::ImplPolarity::Negative => "!",
+                                ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+                                ty::ImplPolarity::Negative => "!",
                             };
                             let generated =
                                 format!("<a href=\"#impl-{}\">{}{}</a>", encoded, prefix, out);

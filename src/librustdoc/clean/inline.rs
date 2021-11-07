@@ -497,7 +497,7 @@ crate fn build_impl(
             trait_,
             for_,
             items: trait_items,
-            polarity: polarity.clean(cx),
+            polarity,
             kind: ImplKind::Normal,
         }),
         box merged_attrs,

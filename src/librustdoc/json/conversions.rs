@@ -9,7 +9,7 @@ use std::fmt;
 
 use rustc_ast::ast;
 use rustc_hir::{def::CtorKind, def_id::DefId};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_span::Pos;
 
@@ -513,8 +513,8 @@ impl FromWithTcx<clean::Impl> for Impl {
             clean::ImplKind::Blanket(ty) => (false, Some(*ty)),
         };
         let negative_polarity = match polarity {
-            clean::ImplPolarity::Positive => false,
-            clean::ImplPolarity::Negative => true,
+            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => false,
+            ty::ImplPolarity::Negative => true,
         };
         Impl {
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,

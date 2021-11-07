@@ -1856,18 +1856,6 @@ impl Clean<Item> for hir::Variant<'_> {
     }
 }
 
-impl Clean<ImplPolarity> for ty::ImplPolarity {
-    /// Returns whether the impl has negative polarity.
-    fn clean(&self, _: &mut DocContext<'_>) -> ImplPolarity {
-        match self {
-            ty::ImplPolarity::Positive |
-            // FIXME: do we want to do something else here?
-            ty::ImplPolarity::Reservation => ImplPolarity::Positive,
-            ty::ImplPolarity::Negative => ImplPolarity::Negative,
-        }
-    }
-}
-
 fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>) -> Vec<Item> {
     let tcx = cx.tcx;
     let mut ret = Vec::new();
@@ -1894,7 +1882,7 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
             trait_,
             for_,
             items,
-            polarity: tcx.impl_polarity(def_id).clean(cx),
+            polarity: tcx.impl_polarity(def_id),
             kind: ImplKind::Normal,
         });
         Item::from_hir_id_and_parts(hir_id, None, kind, cx)
