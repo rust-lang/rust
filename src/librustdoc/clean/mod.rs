@@ -54,12 +54,6 @@ crate trait Clean<T> {
     fn clean(&self, cx: &mut DocContext<'_>) -> T;
 }
 
-impl<T: Clean<U>, U> Clean<U> for &T {
-    fn clean(&self, cx: &mut DocContext<'_>) -> U {
-        (**self).clean(cx)
-    }
-}
-
 impl Clean<Item> for doctree::Module<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let mut items: Vec<Item> = vec![];
@@ -1797,7 +1791,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                     clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
                 }
                 ItemKind::Macro(ref macro_def) => MacroItem(Macro {
-                    source: display_macro_source(cx, name, macro_def, def_id, &item.vis),
+                    source: display_macro_source(cx, name, macro_def, def_id, item.vis),
                 }),
                 ItemKind::Trait(is_auto, unsafety, ref generics, bounds, item_ids) => {
                     let items = item_ids
