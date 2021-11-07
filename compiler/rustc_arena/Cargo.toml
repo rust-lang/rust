@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 rustc_data_structures = { path = "../rustc_data_structures" }
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { git = "https://github.com/the8472/rust-smallvec.git", branch = "delegate-vec-extend-from", features = ["union", "may_dangle"] }

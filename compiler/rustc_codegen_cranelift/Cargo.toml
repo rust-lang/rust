@@ -35,6 +35,9 @@ smallvec = "1.6.1"
 #[patch.crates-io]
 #gimli = { path = "../" }
 
+[patch.'crates-io']
+smallvec = { git = "https://github.com/the8472/rust-smallvec.git", branch = "delegate-vec-extend-from" }
+
 [features]
 # Enable features not ready to be enabled when compiling as part of rustc
 unstable-features = ["jit", "inline_asm"]

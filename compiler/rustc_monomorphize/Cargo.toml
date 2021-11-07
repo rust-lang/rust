@@ -7,7 +7,7 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { git = "https://github.com/the8472/rust-smallvec.git", branch = "delegate-vec-extend-from", features = ["union", "may_dangle"] }
 tracing = "0.1"
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }

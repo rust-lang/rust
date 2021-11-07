@@ -11,7 +11,7 @@ libc = "0.2"
 tracing = "0.1"
 rustc-rayon-core = "0.3.1"
 rayon = { version = "0.3.1", package = "rustc-rayon" }
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { git = "https://github.com/the8472/rust-smallvec.git", branch = "delegate-vec-extend-from", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_borrowck = { path = "../rustc_borrowck" }

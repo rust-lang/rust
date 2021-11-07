@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 indexmap = "1"
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { git = "https://github.com/the8472/rust-smallvec.git", branch = "delegate-vec-extend-from", features = ["union", "may_dangle"] }
 
 [dev-dependencies]
 rustc_macros = { path = "../rustc_macros" }

@@ -302,3 +302,8 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[patch.unused]]
+name = "smallvec"
+version = "1.7.0"
+source = "git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from#b0e617c85ccb5a410c07e00c887d0ffd327b296a"

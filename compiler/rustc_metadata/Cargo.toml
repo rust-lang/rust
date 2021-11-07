@@ -11,7 +11,7 @@ libc = "0.2"
 odht = { version = "0.3.1", features = ["nightly"] }
 snap = "1"
 tracing = "0.1"
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { git = "https://github.com/the8472/rust-smallvec.git", branch = "delegate-vec-extend-from", features = ["union", "may_dangle"] }
 rustc_middle = { path = "../rustc_middle" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
