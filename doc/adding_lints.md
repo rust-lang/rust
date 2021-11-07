@@ -157,7 +157,7 @@ Manually testing against an example file can be useful if you have added some
 your local modifications, run
 
 ```
-env __CLIPPY_INTERNAL_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs
+cargo dev lint input.rs
 ```
 
 from the working copy root. With tests in place, let's have a look at
