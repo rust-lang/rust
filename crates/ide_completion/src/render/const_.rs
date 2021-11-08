@@ -7,6 +7,7 @@ use syntax::{ast::Const, display::const_label};
 use crate::{item::CompletionItem, render::RenderContext};
 
 pub(crate) fn render_const(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> {
+    let _p = profile::span("render_const");
     ConstRender::new(ctx, const_)?.render()
 }
 

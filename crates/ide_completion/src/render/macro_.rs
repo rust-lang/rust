@@ -40,7 +40,7 @@ impl<'a> MacroRender<'a> {
         MacroRender { ctx, name, macro_, docs, bra, ket }
     }
 
-    fn render(&self, import_to_add: Option<ImportEdit>) -> Option<CompletionItem> {
+    fn render(self, import_to_add: Option<ImportEdit>) -> Option<CompletionItem> {
         let source_range = if self.ctx.completion.is_immediately_after_macro_bang() {
             cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
             self.ctx.completion.token.parent().map(|it| it.text_range())
@@ -48,9 +48,7 @@ impl<'a> MacroRender<'a> {
             Some(self.ctx.source_range())
         }?;
         let mut item = CompletionItem::new(SymbolKind::Macro, source_range, self.label());
-        item.set_documentation(self.docs.clone())
-            .set_deprecated(self.ctx.is_deprecated(self.macro_))
-            .set_detail(self.detail());
+        item.set_deprecated(self.ctx.is_deprecated(self.macro_)).set_detail(self.detail());
 
         if let Some(import_to_add) = import_to_add {
             item.add_import(import_to_add);
@@ -76,6 +74,7 @@ impl<'a> MacroRender<'a> {
             }
         };
 
+        item.set_documentation(self.docs);
         Some(item.build())
     }
 

@@ -6,6 +6,7 @@ use syntax::{ast, AstNode};
 use crate::{patterns::ImmediateLocation, CompletionContext, Completions};
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
+    let _p = profile::span("complete_unqualified_path");
     if ctx.is_path_disallowed() || !ctx.is_trivial_path() || ctx.has_impl_or_trait_prev_sibling() {
         return;
     }
