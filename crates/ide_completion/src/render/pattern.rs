@@ -86,7 +86,11 @@ fn render_pat(
 
     if matches!(
         ctx.completion.pattern_ctx,
-        Some(PatternContext { is_param: Some(ParamKind::Function), .. })
+        Some(PatternContext {
+            is_param: Some(ParamKind::Function),
+            has_type_ascription: false,
+            ..
+        })
     ) {
         pat.push(':');
         pat.push(' ');
