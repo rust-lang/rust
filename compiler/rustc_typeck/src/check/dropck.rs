@@ -113,9 +113,10 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             }
         }
 
-        if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
+        let errors = fulfillment_cx.select_all_or_error(&infcx);
+        if !errors.is_empty() {
             // this could be reached when we get lazy normalization
-            infcx.report_fulfillment_errors(errors, None, false);
+            infcx.report_fulfillment_errors(&errors, None, false);
             return Err(ErrorReported);
         }
 

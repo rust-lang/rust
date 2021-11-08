@@ -180,8 +180,8 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         // Note: we only assume something is `Copy` if we can
         // *definitively* show that it implements `Copy`. Otherwise,
         // assume it is move; linear is always ok.
-        match fulfill_cx.select_all_or_error(infcx) {
-            Ok(()) => {
+        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+            [] => {
                 debug!(
                     "type_known_to_meet_bound_modulo_regions: ty={:?} bound={} success",
                     ty,
@@ -189,12 +189,12 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
                 );
                 true
             }
-            Err(e) => {
+            errors => {
                 debug!(
-                    "type_known_to_meet_bound_modulo_regions: ty={:?} bound={} errors={:?}",
-                    ty,
-                    infcx.tcx.def_path_str(def_id),
-                    e
+                    ?ty,
+                    bound = %infcx.tcx.def_path_str(def_id),
+                    ?errors,
+                    "type_known_to_meet_bound_modulo_regions"
                 );
                 false
             }
@@ -410,7 +410,10 @@ where
     }
 
     debug!("fully_normalize: select_all_or_error start");
-    fulfill_cx.select_all_or_error(infcx)?;
+    let errors = fulfill_cx.select_all_or_error(infcx);
+    if !errors.is_empty() {
+        return Err(errors);
+    }
     debug!("fully_normalize: select_all_or_error complete");
     let resolved_value = infcx.resolve_vars_if_possible(normalized_value);
     debug!("fully_normalize: resolved_value={:?}", resolved_value);
@@ -441,7 +444,9 @@ pub fn impossible_predicates<'tcx>(
             fulfill_cx.register_predicate_obligation(&infcx, obligation);
         }
 
-        fulfill_cx.select_all_or_error(&infcx).is_err()
+        let errors = fulfill_cx.select_all_or_error(&infcx);
+
+        !errors.is_empty()
     });
     debug!("impossible_predicates = {:?}", result);
     result

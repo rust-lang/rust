@@ -950,7 +950,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             let mut fcx = traits::FulfillmentContext::new_in_snapshot();
             fcx.register_predicate_obligations(self, ok.obligations);
-            fcx.select_where_possible(&self).is_ok()
+            fcx.select_where_possible(&self).is_empty()
         })
     }
 

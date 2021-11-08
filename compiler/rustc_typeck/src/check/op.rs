@@ -826,10 +826,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.obligation_for_method(span, trait_did, lhs_ty, Some(other_tys));
                 let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);
                 fulfill.register_predicate_obligation(self, obligation);
-                Err(match fulfill.select_where_possible(&self.infcx) {
-                    Err(errors) => errors,
-                    _ => vec![],
-                })
+                Err(fulfill.select_where_possible(&self.infcx))
             }
         }
     }

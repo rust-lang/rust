@@ -157,10 +157,10 @@ fn require_same_types<'tcx>(
             }
         }
 
-        match fulfill_cx.select_all_or_error(infcx) {
-            Ok(()) => true,
-            Err(errors) => {
-                infcx.report_fulfillment_errors(&errors, None, false);
+        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+            [] => true,
+            errors => {
+                infcx.report_fulfillment_errors(errors, None, false);
                 false
             }
         }
@@ -352,8 +352,9 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
                 term_id,
                 cause,
             );
-            if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
-                infcx.report_fulfillment_errors(&err, None, false);
+            let errors = fulfillment_cx.select_all_or_error(&infcx);
+            if !errors.is_empty() {
+                infcx.report_fulfillment_errors(&errors, None, false);
                 error = true;
             }
         });

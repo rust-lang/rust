@@ -88,7 +88,8 @@ fn diagnostic_hir_wf_check<'tcx>(
                     ),
                 );
 
-                if let Err(errors) = fulfill.select_all_or_error(&infcx) {
+                let errors = fulfill.select_all_or_error(&infcx);
+                if !errors.is_empty() {
                     tracing::debug!("Wf-check got errors for {:?}: {:?}", ty, errors);
                     for error in errors {
                         if error.obligation.predicate == self.predicate {

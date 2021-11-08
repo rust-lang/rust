@@ -128,9 +128,9 @@ fn compute_implied_outlives_bounds<'tcx>(
 
     // Ensure that those obligations that we had to solve
     // get solved *here*.
-    match fulfill_cx.select_all_or_error(infcx) {
-        Ok(()) => Ok(implied_bounds),
-        Err(_) => Err(NoSolution),
+    match fulfill_cx.select_all_or_error(infcx).as_slice() {
+        [] => Ok(implied_bounds),
+        _ => Err(NoSolution),
     }
 }
 

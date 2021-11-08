@@ -108,7 +108,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         let tcx = self.tcx;
 
         // Select everything, returning errors.
-        let true_errors = fulfill_cx.select_where_possible(self).err().unwrap_or_else(Vec::new);
+        let true_errors = fulfill_cx.select_where_possible(self);
         debug!("true_errors = {:#?}", true_errors);
 
         if !true_errors.is_empty() {
@@ -118,7 +118,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         }
 
         // Anything left unselected *now* must be an ambiguity.
-        let ambig_errors = fulfill_cx.select_all_or_error(self).err().unwrap_or_else(Vec::new);
+        let ambig_errors = fulfill_cx.select_all_or_error(self);
         debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();

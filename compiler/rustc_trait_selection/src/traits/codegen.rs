@@ -120,7 +120,8 @@ where
     // In principle, we only need to do this so long as `result`
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
-    if let Err(errors) = fulfill_cx.select_all_or_error(infcx) {
+    let errors = fulfill_cx.select_all_or_error(infcx);
+    if !errors.is_empty() {
         infcx.tcx.sess.delay_span_bug(
             rustc_span::DUMMY_SP,
             &format!("Encountered errors `{:?}` resolving bounds after type-checking", errors),

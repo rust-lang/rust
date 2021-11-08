@@ -129,7 +129,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
     fn select(
         &mut self,
         selcx: &mut SelectionContext<'a, 'tcx>,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+    ) -> Vec<FulfillmentError<'tcx>> {
         let span = debug_span!("select", obligation_forest_size = ?self.predicates.len());
         let _enter = span.enter();
 
@@ -163,7 +163,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             errors.len()
         );
 
-        if errors.is_empty() { Ok(()) } else { Err(errors) }
+        errors
     }
 }
 
@@ -226,38 +226,46 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     fn select_all_or_error(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
-        self.select_where_possible(infcx)?;
+    ) -> Vec<FulfillmentError<'tcx>> {
+        {
+            let errors = self.select_where_possible(infcx);
+            if !errors.is_empty() {
+                return errors;
+            }
+        }
 
-        let errors: Vec<_> = self
+        self
             .predicates
             .to_errors(CodeAmbiguity)
             .into_iter()
             .map(to_fulfillment_error)
-            .collect();
-        if errors.is_empty() { Ok(()) } else { Err(errors) }
+            .collect()
     }
 
     fn select_all_with_constness_or_error(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
         constness: rustc_hir::Constness,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
-        self.select_with_constness_where_possible(infcx, constness)?;
+    ) -> Vec<FulfillmentError<'tcx>> {
+        {
+            let errors = self.select_with_constness_where_possible(infcx, constness);
+            if !errors.is_empty() {
+                return errors;
+            }
+        }
 
-        let errors: Vec<_> = self
+        self
             .predicates
             .to_errors(CodeAmbiguity)
             .into_iter()
             .map(to_fulfillment_error)
-            .collect();
-        if errors.is_empty() { Ok(()) } else { Err(errors) }
+            .collect()
     }
 
     fn select_where_possible(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+    ) -> Vec<FulfillmentError<'tcx>> {
         let mut selcx = SelectionContext::new(infcx);
         self.select(&mut selcx)
     }
@@ -266,7 +274,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
         constness: hir::Constness,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+    ) -> Vec<FulfillmentError<'tcx>> {
         let mut selcx = SelectionContext::with_constness(infcx, constness);
         self.select(&mut selcx)
     }

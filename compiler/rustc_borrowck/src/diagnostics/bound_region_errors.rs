@@ -339,7 +339,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     // We generally shouldn't have errors here because the query was
     // already run, but there's no point using `delay_span_bug`
     // when we're going to emit an error here anyway.
-    let _errors = fulfill_cx.select_all_or_error(infcx).err().unwrap_or_else(Vec::new);
+    let _errors = fulfill_cx.select_all_or_error(infcx);
 
     let (sub_region, cause) = infcx.with_region_constraints(|region_constraints| {
         debug!("{:#?}", region_constraints);
