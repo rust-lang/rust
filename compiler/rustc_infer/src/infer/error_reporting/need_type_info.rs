@@ -1,6 +1,5 @@
 use crate::infer::type_variable::TypeVariableOriginKind;
-use crate::infer::InferCtxt;
-use crate::rustc_middle::ty::TypeFoldable;
+use crate::infer::{InferCtxt, Symbol};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
@@ -938,8 +937,17 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
                 let substs: Vec<_> = substs
                     .iter()
                     .zip(generics.params.iter())
-                    .map(|(subst, param)| match &param.kind {
-                        ty::GenericParamDefKind::Type { has_default: true, .. } => subst,
+                    .map(|(subst, param)| match &(subst.unpack(), &param.kind) {
+                        (_, ty::GenericParamDefKind::Type { has_default: true, .. }) => subst,
+                        (crate::infer::GenericArgKind::Const(c), _) => {
+                            match c.val {
+                                ty::ConstKind::Infer(..) => {
+                                    // Replace not yet inferred const params with their def name.
+                                    self.tcx().mk_const_param(param.index, param.name, c.ty).into()
+                                }
+                                _ => subst,
+                            }
+                        }
                         _ => subst.super_fold_with(self),
                     })
                     .collect();
@@ -977,8 +985,19 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
             | ty::FnPtr(_)
             | ty::Opaque(..)
             | ty::Projection(_)
-            | ty::Never
-            | ty::Array(..) => t.super_fold_with(self),
+            | ty::Never => t.super_fold_with(self),
+            ty::Array(ty, c) => {
+                self.tcx().mk_ty(ty::Array(
+                    self.fold_ty(ty),
+                    match c.val {
+                        ty::ConstKind::Infer(..) => {
+                            // Replace not yet inferred const params with their def name.
+                            self.tcx().mk_const_param(0, Symbol::intern("N"), c.ty).into()
+                        }
+                        _ => c,
+                    },
+                ))
+            }
             // We don't want to hide type params that haven't been resolved yet.
             // This would be the type that will be written out with the type param
             // name in the output.
