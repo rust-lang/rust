@@ -36,6 +36,7 @@ use crate::panic::{Location, PanicInfo};
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
 #[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
 pub const fn panic(expr: &'static str) -> ! {
     // Use Arguments::new_v1 instead of format_args!("{}", expr) to potentially
