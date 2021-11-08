@@ -14,6 +14,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_target::spec::abi::Abi;
@@ -990,14 +991,15 @@ impl clean::Impl {
             }
 
             if let Some(ref ty) = self.trait_ {
-                if self.negative_polarity {
-                    write!(f, "!")?;
+                match self.polarity {
+                    ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => {}
+                    ty::ImplPolarity::Negative => write!(f, "!")?,
                 }
                 fmt::Display::fmt(&ty.print(cx), f)?;
                 write!(f, " for ")?;
             }
 
-            if let Some(ref ty) = self.blanket_impl {
+            if let Some(ref ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
                 fmt_type(&self.for_, f, use_absolute, cx)?;

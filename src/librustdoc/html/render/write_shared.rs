@@ -585,7 +585,7 @@ pub(super) fn write_shared(
                 } else {
                     Some(Implementor {
                         text: imp.inner_impl().print(false, cx).to_string(),
-                        synthetic: imp.inner_impl().synthetic,
+                        synthetic: imp.inner_impl().kind.is_auto(),
                         types: collect_paths_for_type(imp.inner_impl().for_.clone(), cache),
                     })
                 }

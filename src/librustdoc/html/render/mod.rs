@@ -34,8 +34,8 @@ mod span_map;
 mod templates;
 mod write_shared;
 
-crate use context::*;
-crate use span_map::{collect_spans_and_sources, LinkFromSrc};
+crate use self::context::*;
+crate use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
 use std::collections::VecDeque;
 use std::default::Default;
@@ -54,6 +54,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
+use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{
     symbol::{kw, sym, Symbol},
@@ -1147,9 +1148,9 @@ fn render_assoc_items_inner(
         }
 
         let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) =
-            traits.iter().partition(|t| t.inner_impl().synthetic);
+            traits.iter().partition(|t| t.inner_impl().kind.is_auto());
         let (blanket_impl, concrete): (Vec<&&Impl>, _) =
-            concrete.into_iter().partition(|t| t.inner_impl().blanket_impl.is_some());
+            concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
         let mut impls = Buffer::empty_from(w);
         render_impls(cx, &mut impls, &concrete, containing_item);
@@ -2033,12 +2034,12 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                             let i_display = format!("{:#}", i.print(cx));
                             let out = Escape(&i_display);
                             let encoded = small_url_encode(format!("{:#}", i.print(cx)));
-                            let generated = format!(
-                                "<a href=\"#impl-{}\">{}{}</a>",
-                                encoded,
-                                if it.inner_impl().negative_polarity { "!" } else { "" },
-                                out
-                            );
+                            let prefix = match it.inner_impl().polarity {
+                                ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+                                ty::ImplPolarity::Negative => "!",
+                            };
+                            let generated =
+                                format!("<a href=\"#impl-{}\">{}{}</a>", encoded, prefix, out);
                             if links.insert(generated.clone()) { Some(generated) } else { None }
                         } else {
                             None
@@ -2058,10 +2059,9 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             };
 
             let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
-                v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().synthetic);
-            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) = concrete
-                .into_iter()
-                .partition::<Vec<_>, _>(|i| i.inner_impl().blanket_impl.is_some());
+                v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_auto());
+            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
+                concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_blanket());
 
             let concrete_format = format_impls(concrete);
             let synthetic_format = format_impls(synthetic);

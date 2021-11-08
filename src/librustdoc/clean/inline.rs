@@ -14,7 +14,9 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
-use crate::clean::{self, utils, Attributes, AttributesExt, ItemId, NestedAttributesExt, Type};
+use crate::clean::{
+    self, utils, Attributes, AttributesExt, ImplKind, ItemId, NestedAttributesExt, Type,
+};
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
@@ -242,7 +244,7 @@ fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {
     clean::Enum {
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
         variants_stripped: false,
-        variants: cx.tcx.adt_def(did).variants.clean(cx),
+        variants: cx.tcx.adt_def(did).variants.iter().map(|v| v.clean(cx)).collect(),
     }
 }
 
@@ -253,7 +255,7 @@ fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
     clean::Struct {
         struct_type: variant.ctor_kind,
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
-        fields: variant.fields.clean(cx),
+        fields: variant.fields.iter().map(|x| x.clean(cx)).collect(),
         fields_stripped: false,
     }
 }
@@ -262,11 +264,9 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
-    clean::Union {
-        generics: (cx.tcx.generics_of(did), predicates).clean(cx),
-        fields: variant.fields.clean(cx),
-        fields_stripped: false,
-    }
+    let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
+    let fields = variant.fields.iter().map(|x| x.clean(cx)).collect();
+    clean::Union { generics, fields, fields_stripped: false }
 }
 
 fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::Typedef {
@@ -446,7 +446,7 @@ crate fn build_impl(
         ),
     };
     let polarity = tcx.impl_polarity(did);
-    let trait_ = associated_trait.clean(cx);
+    let trait_ = associated_trait.map(|t| t.clean(cx));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
@@ -490,15 +490,13 @@ crate fn build_impl(
         did,
         None,
         clean::ImplItem(clean::Impl {
-            span: clean::types::rustc_span(did, cx.tcx),
             unsafety: hir::Unsafety::Normal,
             generics,
             trait_,
             for_,
             items: trait_items,
-            negative_polarity: polarity.clean(cx),
-            synthetic: false,
-            blanket_impl: None,
+            polarity,
+            kind: ImplKind::Normal,
         }),
         box merged_attrs,
         cx,

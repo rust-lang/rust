@@ -746,7 +746,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         });
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
-            local.iter().partition(|i| i.inner_impl().synthetic);
+            local.iter().partition(|i| i.inner_impl().kind.is_auto());
 
         synthetic.sort_by(|a, b| compare_impl(a, b, cx));
         concrete.sort_by(|a, b| compare_impl(a, b, cx));

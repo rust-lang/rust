@@ -228,7 +228,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Collect all the implementors of traits.
         if let clean::ImplItem(ref i) = *item.kind {
             if let Some(trait_) = &i.trait_ {
-                if i.blanket_impl.is_none() {
+                if !i.kind.is_blanket() {
                     self.cache
                         .implementors
                         .entry(trait_.def_id())
