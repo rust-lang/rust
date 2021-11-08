@@ -887,10 +887,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let (lifetimes, binders): (FxIndexMap<hir::ParamName, Region>, Vec<_>) = c
                     .generic_params
                     .iter()
-                    .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => Some(param),
-                        _ => None,
-                    })
+                    .filter(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
                     .enumerate()
                     .map(|(late_bound_idx, param)| {
                         let pair = Region::late(late_bound_idx as u32, &self.tcx.hir(), param);
@@ -1370,9 +1367,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         let (lifetimes, binders): (FxIndexMap<hir::ParamName, Region>, Vec<_>) =
                             bound_generic_params
                                 .iter()
-                                .filter_map(|param| match param.kind {
-                                    GenericParamKind::Lifetime { .. } => Some(param),
-                                    _ => None,
+                                .filter(|param| {
+                                    matches!(param.kind, GenericParamKind::Lifetime { .. })
                                 })
                                 .enumerate()
                                 .map(|(late_bound_idx, param)| {
@@ -1469,10 +1465,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         let binders_iter = trait_ref
             .bound_generic_params
             .iter()
-            .filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => Some(param),
-                _ => None,
-            })
+            .filter(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
             .enumerate()
             .map(|(late_bound_idx, param)| {
                 let pair = Region::late(
@@ -2235,19 +2228,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let binders: Vec<_> = generics
             .params
             .iter()
-            .filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. }
-                    if self.map.late_bound.contains(&param.hir_id) =>
-                {
-                    Some(param)
-                }
-                _ => None,
+            .filter(|param| {
+                matches!(param.kind, GenericParamKind::Lifetime { .. })
+                    && self.map.late_bound.contains(&param.hir_id)
             })
             .enumerate()
             .map(|(late_bound_idx, param)| {
                 let pair = Region::late(late_bound_idx as u32, &self.tcx.hir(), param);
-                let r = late_region_as_bound_region(self.tcx, &pair.1);
-                r
+                late_region_as_bound_region(self.tcx, &pair.1)
             })
             .collect();
         self.map.late_bound_vars.insert(hir_id, binders);
