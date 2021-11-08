@@ -739,6 +739,7 @@ impl<'tcx> SaveContext<'tcx> {
                 | HirDefKind::ForeignMod
                 | HirDefKind::LifetimeParam
                 | HirDefKind::AnonConst
+                | HirDefKind::InlineConst
                 | HirDefKind::Use
                 | HirDefKind::Field
                 | HirDefKind::GlobalAsm

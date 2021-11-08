@@ -967,6 +967,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 | DefKind::Use
                 | DefKind::ForeignMod
                 | DefKind::AnonConst
+                | DefKind::InlineConst
                 | DefKind::Field
                 | DefKind::LifetimeParam
                 | DefKind::GlobalAsm
