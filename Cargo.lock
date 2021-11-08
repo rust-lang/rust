@@ -1028,9 +1028,9 @@ dependencies = [
 
 [[package]]
 name = "dlmalloc"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96d075454d918d7358fcd2290dcb4c3ae7bc735388dd1b31ccee1426c1106d8a"
+checksum = "a6fe28e0bf9357092740362502f5cc7955d8dc125ebda71dec72336c2e15c62e"
 dependencies = [
  "compiler_builtins",
  "libc",
