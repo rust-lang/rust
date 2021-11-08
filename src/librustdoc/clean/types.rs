@@ -2182,18 +2182,6 @@ crate struct Impl {
 }
 
 impl Impl {
-    crate fn is_auto_impl(&self) -> bool {
-        self.kind.is_auto()
-    }
-
-    crate fn is_blanket_impl(&self) -> bool {
-        self.kind.is_blanket()
-    }
-
-    crate fn blanket_impl_ty(&self) -> Option<&Type> {
-        self.kind.as_blanket_ty()
-    }
-
     crate fn provided_trait_methods(&self, tcx: TyCtxt<'_>) -> FxHashSet<Symbol> {
         self.trait_
             .as_ref()

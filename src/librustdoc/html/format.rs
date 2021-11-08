@@ -999,7 +999,7 @@ impl clean::Impl {
                 write!(f, " for ")?;
             }
 
-            if let Some(ref ty) = self.blanket_impl_ty() {
+            if let Some(ref ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
                 fmt_type(&self.for_, f, use_absolute, cx)?;
