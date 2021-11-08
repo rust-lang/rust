@@ -1,5 +1,5 @@
 error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/issue-37550.rs:3:9
+  --> $DIR/issue-37550-1.rs:3:9
    |
 LL |     let x = || t;
    |         ^
