@@ -539,24 +539,22 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.visit_static(&StaticParts::from_item(item));
                 }
                 ast::ItemKind::Fn(ref fn_kind) => {
-                    let ast::FnKind(defaultness, ref fn_signature, ref generics, ref block) =
-                        **fn_kind;
-                    if let Some(ref body) = block {
+                    let ast::Fn {
+                        defaultness,
+                        ref sig,
+                        ref generics,
+                        ref body,
+                    } = **fn_kind;
+                    if let Some(ref body) = body {
                         let inner_attrs = inner_attributes(&item.attrs);
-                        let fn_ctxt = match fn_signature.header.ext {
+                        let fn_ctxt = match sig.header.ext {
                             ast::Extern::None => visit::FnCtxt::Free,
                             _ => visit::FnCtxt::Foreign,
                         };
                         self.visit_fn(
-                            visit::FnKind::Fn(
-                                fn_ctxt,
-                                item.ident,
-                                fn_signature,
-                                &item.vis,
-                                Some(body),
-                            ),
+                            visit::FnKind::Fn(fn_ctxt, item.ident, &sig, &item.vis, Some(body)),
                             generics,
-                            &fn_signature.decl,
+                            &sig.decl,
                             item.span,
                             defaultness,
                             Some(&inner_attrs),
@@ -564,19 +562,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     } else {
                         let indent = self.block_indent;
                         let rewrite = self.rewrite_required_fn(
-                            indent,
-                            item.ident,
-                            fn_signature,
-                            &item.vis,
-                            generics,
-                            item.span,
+                            indent, item.ident, &sig, &item.vis, generics, item.span,
                         );
                         self.push_rewrite(item.span, rewrite);
                     }
                 }
-                ast::ItemKind::TyAlias(ref alias_kind) => {
+                ast::ItemKind::TyAlias(ref ty_alias) => {
                     use ItemVisitorKind::Item;
-                    self.visit_ty_alias_kind(alias_kind, &Item(&item), item.span);
+                    self.visit_ty_alias_kind(ty_alias, &Item(&item), item.span);
                 }
                 ast::ItemKind::GlobalAsm(..) => {
                     let snippet = Some(self.snippet(item.span).to_owned());
@@ -601,7 +594,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     fn visit_ty_alias_kind(
         &mut self,
-        ty_kind: &ast::TyAliasKind,
+        ty_kind: &ast::TyAlias,
         visitor_kind: &ItemVisitorKind<'_>,
         span: Span,
     ) {
@@ -639,8 +632,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.visit_static(&StaticParts::from_impl_item(&ai))
             }
             (ast::AssocItemKind::Fn(ref fn_kind), _) => {
-                let ast::FnKind(defaultness, ref sig, ref generics, ref block) = **fn_kind;
-                if let Some(ref body) = block {
+                let ast::Fn {
+                    defaultness,
+                    ref sig,
+                    ref generics,
+                    ref body,
+                } = **fn_kind;
+                if let Some(ref body) = body {
                     let inner_attrs = inner_attributes(&ai.attrs);
                     let fn_ctxt = visit::FnCtxt::Assoc(assoc_ctxt);
                     self.visit_fn(
@@ -658,8 +656,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.push_rewrite(ai.span, rewrite);
                 }
             }
-            (ast::AssocItemKind::TyAlias(ref ty_alias_kind), _) => {
-                self.visit_ty_alias_kind(ty_alias_kind, visitor_kind, ai.span);
+            (ast::AssocItemKind::TyAlias(ref ty_alias), _) => {
+                self.visit_ty_alias_kind(ty_alias, visitor_kind, ai.span);
             }
             (ast::AssocItemKind::MacCall(ref mac), _) => {
                 self.visit_mac(mac, Some(ai.ident), MacroPosition::Item);
