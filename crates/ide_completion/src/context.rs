@@ -353,6 +353,7 @@ impl<'a> CompletionContext<'a> {
         position: FilePosition,
         config: &'a CompletionConfig,
     ) -> Option<CompletionContext<'a>> {
+        let _p = profile::span("CompletionContext::new");
         let sema = Semantics::new(db);
 
         let original_file = sema.parse(position.file_id);

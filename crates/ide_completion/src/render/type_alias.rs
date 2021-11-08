@@ -13,6 +13,7 @@ pub(crate) fn render_type_alias(
     ctx: RenderContext<'_>,
     type_alias: hir::TypeAlias,
 ) -> Option<CompletionItem> {
+    let _p = profile::span("render_type_alias");
     TypeAliasRender::new(ctx, type_alias)?.render(false)
 }
 
@@ -20,6 +21,7 @@ pub(crate) fn render_type_alias_with_eq(
     ctx: RenderContext<'_>,
     type_alias: hir::TypeAlias,
 ) -> Option<CompletionItem> {
+    let _p = profile::span("render_type_alias_with_eq");
     TypeAliasRender::new(ctx, type_alias)?.render(true)
 }
 

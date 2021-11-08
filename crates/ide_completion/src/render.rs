@@ -16,7 +16,7 @@ use ide_db::{
     helpers::{item_name, SnippetCap},
     RootDatabase, SymbolKind,
 };
-use syntax::{SyntaxKind, TextRange};
+use syntax::{SmolStr, SyntaxKind, TextRange};
 
 use crate::{
     context::{PathCompletionContext, PathKind},
@@ -243,7 +243,7 @@ fn render_resolution_(
             if has_non_default_type_params {
                 cov_mark::hit!(inserts_angle_brackets_for_generics);
                 item.lookup_by(local_name.clone())
-                    .label(format!("{}<…>", local_name))
+                    .label(SmolStr::from_iter([&local_name, "<…>"]))
                     .insert_snippet(cap, format!("{}<$0>", local_name));
             }
         }
