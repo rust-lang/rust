@@ -2139,8 +2139,7 @@ pub unsafe fn _mm256_set_ps(
     _mm256_setr_ps(h, g, f, e, d, c, b, a)
 }
 
-/// Sets packed 8-bit integers in returned vector with the supplied values in
-/// reverse order.
+/// Sets packed 8-bit integers in returned vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set_epi8)
 #[inline]
