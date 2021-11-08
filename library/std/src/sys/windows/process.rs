@@ -170,6 +170,7 @@ pub struct Command {
 
 pub enum Stdio {
     Inherit,
+    InheritSpecific { from_stdio_id: c::DWORD },
     Null,
     MakePipe,
     Pipe(AnonPipe),
@@ -533,6 +534,7 @@ impl Stdio {
         };
         match *self {
             Stdio::Inherit => use_stdio_id(stdio_id),
+            Stdio::InheritSpecific { from_stdio_id } => use_stdio_id(from_stdio_id),
 
             Stdio::MakePipe => {
                 let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
@@ -577,6 +579,18 @@ impl From<AnonPipe> for Stdio {
 impl From<File> for Stdio {
     fn from(file: File) -> Stdio {
         Stdio::Handle(file.into_inner())
+    }
+}
+
+impl From<io::Stdout> for Stdio {
+    fn from(_: io::Stdout) -> Stdio {
+        Stdio::InheritSpecific { from_stdio_id: c::STD_OUTPUT_HANDLE }
+    }
+}
+
+impl From<io::Stderr> for Stdio {
+    fn from(_: io::Stderr) -> Stdio {
+        Stdio::InheritSpecific { from_stdio_id: c::STD_ERROR_HANDLE }
     }
 }
 
