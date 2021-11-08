@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `llvm-libunwind` now accepts `in-tree` (formerly true), `system` or `no` (formerly false) [#77703](https://github.com/rust-lang/rust/pull/77703)
 - The options `infodir`, `localstatedir`, and `gpg-password-file` are no longer allowed in config.toml. Previously, they were ignored without warning. Note that `infodir` and `localstatedir` are still accepted by `./configure`, with a warning. [#82451](https://github.com/rust-lang/rust/pull/82451)
 - Add options for enabling overflow checks, one for std (`overflow-checks-std`) and one for everything else (`overflow-checks`). Both default to false.
+- Change the names for `dist` commmands to match the component they generate. [#90684](https://github.com/rust-lang/rust/pull/90684)
 
 ### Non-breaking changes
 
