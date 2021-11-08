@@ -4,17 +4,15 @@ mod fs;
 pub mod sockets;
 pub use self::fs::*;
 
-pub const SOLID_BP_PROGRAM_EXITED: usize = 15;
-pub const SOLID_BP_CSABORT: usize = 16;
-
 #[inline(always)]
 pub fn breakpoint_program_exited(tid: usize) {
     unsafe {
         match () {
+            // SOLID_BP_PROGRAM_EXITED = 15
             #[cfg(target_arch = "arm")]
-            () => asm!("bkpt #{}", const SOLID_BP_PROGRAM_EXITED, in("r0") tid),
+            () => asm!("bkpt #15", in("r0") tid),
             #[cfg(target_arch = "aarch64")]
-            () => asm!("hlt #{}", const SOLID_BP_PROGRAM_EXITED, in("x0") tid),
+            () => asm!("hlt #15", in("x0") tid),
         }
     }
 }
@@ -23,10 +21,11 @@ pub fn breakpoint_program_exited(tid: usize) {
 pub fn breakpoint_abort() {
     unsafe {
         match () {
+            // SOLID_BP_CSABORT = 16
             #[cfg(target_arch = "arm")]
-            () => asm!("bkpt #{}", const SOLID_BP_CSABORT),
+            () => asm!("bkpt #16"),
             #[cfg(target_arch = "aarch64")]
-            () => asm!("hlt #{}", const SOLID_BP_CSABORT),
+            () => asm!("hlt #16"),
         }
     }
 }
