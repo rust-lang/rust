@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
             if let Some(span) = is_direct_expn_of(expr.span, mac) {
                 if let Some(args) = higher::extract_assert_macro_args(expr) {
                     if let [a, b, ..] = args[..] {
-                        let nb_bool_args = is_bool_lit(a) as usize + is_bool_lit(b) as usize;
+                        let nb_bool_args = usize::from(is_bool_lit(a)) + usize::from(is_bool_lit(b));
 
                         if nb_bool_args != 1 {
                             // If there are two boolean arguments, we definitely don't understand

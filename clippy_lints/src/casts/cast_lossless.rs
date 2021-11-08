@@ -72,7 +72,7 @@ fn should_lint(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to
             };
             from_nbits < to_nbits
         },
-
+        (false, true) if matches!(cast_from.kind(), ty::Bool) => true,
         (_, _) => {
             matches!(cast_from.kind(), ty::Float(FloatTy::F32)) && matches!(cast_to.kind(), ty::Float(FloatTy::F64))
         },
