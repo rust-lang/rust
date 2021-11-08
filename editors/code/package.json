@@ -32,7 +32,7 @@
         "watch": "npm run build-base -- --sourcemap --watch",
         "lint": "tsfmt --verify && eslint -c .eslintrc.js --ext ts ./src ./tests",
         "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src ./tests --fix",
-        "pretest": "tsc && npm run build",
+        "pretest": "tsc --noEmit && npm run build",
         "test": "node ./out/tests/runTests.js"
     },
     "dependencies": {

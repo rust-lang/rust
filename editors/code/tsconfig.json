@@ -9,6 +9,7 @@
         "sourceMap": true,
         "rootDir": ".",
         "strict": true,
+        "useUnknownInCatchVariables": false,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noImplicitReturns": true,
