@@ -1,4 +1,4 @@
-error[E0658]: `#[doc(keyword)]` is experimental
+error[E0658]: `#[doc(keyword)]` is meant for internal use only
   --> $DIR/feature-gate-rustdoc_internals.rs:1:1
    |
 LL | #[doc(keyword = "match")]

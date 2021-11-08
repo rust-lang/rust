@@ -328,7 +328,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 );
 
                 if nested_meta.has_name(sym::keyword) {
-                    let msg = concat!("`#[doc(keyword)]` is meant for internal use only");
+                    let msg = "`#[doc(keyword)]` is meant for internal use only";
                     gate_feature_post!(self, rustdoc_internals, attr.span, msg);
                 }
             }
