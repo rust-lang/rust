@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
-use rustc_middle::ty::{TyCtxt, Visibility};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
 use crate::clean::{AttributesExt, NestedAttributesExt};
@@ -59,7 +59,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
         for item in self.tcx.item_children(def_id).iter() {
             if let Some(def_id) = item.res.opt_def_id() {
                 if self.tcx.def_key(def_id).parent.map_or(false, |d| d == def_id.index)
-                    || item.vis == Visibility::Public
+                    || item.vis.is_public()
                 {
                     self.visit_item(item.res);
                 }
@@ -70,7 +70,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
     fn visit_item(&mut self, res: Res<!>) {
         let def_id = res.def_id();
         let vis = self.tcx.visibility(def_id);
-        let inherited_item_level = if vis == Visibility::Public { self.prev_level } else { None };
+        let inherited_item_level = if vis.is_public() { self.prev_level } else { None };
 
         let item_level = self.update(def_id, inherited_item_level);
 

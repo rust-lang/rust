@@ -164,7 +164,7 @@ fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: &NameBindi
                 import: Import { kind: ImportKind::ExternCrate { .. }, .. },
                 ..
             },
-        ) => import.vis.get() == ty::Visibility::Public,
+        ) => import.vis.get().is_public(),
         _ => false,
     }
 }
