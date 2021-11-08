@@ -598,7 +598,8 @@ impl<'a> CompletionContext<'a> {
                             .map(|c| (Some(c.return_type()), None))
                             .unwrap_or((None, None))
                     },
-                    ast::Stmt(_it) => (None, None),
+                    ast::ParamList(__) => (None, None),
+                    ast::Stmt(__) => (None, None),
                     ast::Item(__) => (None, None),
                     _ => {
                         match node.parent() {
@@ -1172,6 +1173,25 @@ fn foo() {
 }
 "#,
             expect![[r#"ty: Foo, name: ?"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_param_pat() {
+        check_expected_type_and_name(
+            r#"
+struct Foo { field: u32 }
+fn foo(a$0: Foo) {}
+"#,
+            expect![[r#"ty: Foo, name: ?"#]],
+        );
+        check_expected_type_and_name(
+            r#"
+struct Foo { field: u32 }
+fn foo($0: Foo) {}
+"#,
+            // FIXME make this work, currently fails due to pattern recovery eating the `:`
+            expect![[r#"ty: ?, name: ?"#]],
         );
     }
 }
