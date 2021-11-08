@@ -518,9 +518,22 @@ where
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         if let Some(result) = result {
+            let prev_fingerprint = tcx
+                .dep_context()
+                .dep_graph()
+                .prev_fingerprint_of(dep_node)
+                .unwrap_or(Fingerprint::ZERO);
             // If `-Zincremental-verify-ich` is specified, re-hash results from
             // the cache and make sure that they have the expected fingerprint.
-            if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
+            //
+            // If not, we still seek to verify a subset of fingerprints loaded
+            // from disk. Re-hashing results is fairly expensive, so we can't
+            // currently afford to verify every hash. This subset should still
+            // give us some coverage of potential bugs though.
+            let try_verify = prev_fingerprint.as_value().1 % 32 == 0;
+            if unlikely!(
+                try_verify || tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich
+            ) {
                 incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
             }
 
