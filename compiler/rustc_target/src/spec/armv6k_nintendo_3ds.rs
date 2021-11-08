@@ -1,4 +1,4 @@
-use crate::spec::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, RelocModel, Target, TargetOptions};
 
 /// A base target for Nintendo 3DS devices using the devkitARM toolchain.
 ///
@@ -36,7 +36,6 @@ pub fn target() -> Target {
             features: "+vfp2".to_string(),
             pre_link_args,
             exe_suffix: ".elf".to_string(),
-            panic_strategy: PanicStrategy::Abort,
             ..Default::default()
         },
     }
