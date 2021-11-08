@@ -329,6 +329,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_path(path)
     }
 
+    pub fn resolve_path_as_macro(&self, path: &ast::Path) -> Option<MacroDef> {
+        self.imp.resolve_path_as_macro(path)
+    }
+
     pub fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {
         self.imp.resolve_extern_crate(extern_crate)
     }
@@ -843,6 +847,12 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
+    }
+
+    // FIXME: This shouldn't exist, but is currently required to always resolve attribute paths in
+    // the IDE layer due to namespace collisions
+    fn resolve_path_as_macro(&self, path: &ast::Path) -> Option<MacroDef> {
+        self.analyze(path.syntax()).resolve_path_as_macro(self.db, path)
     }
 
     fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {

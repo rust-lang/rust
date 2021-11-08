@@ -433,20 +433,20 @@ impl NameRefClass {
                 .find_map(ast::Attr::cast)
                 .map(|attr| attr.path().as_ref() == Some(&top_path));
             return match is_attribute_path {
-                Some(true) => sema.resolve_path(&path).and_then(|resolved| {
-                    match resolved {
-                        // Don't wanna collide with builtin attributes here like `test` hence guard
-                        // so only resolve to modules that aren't the last segment
-                        PathResolution::Def(module @ ModuleDef::Module(_)) if path != top_path => {
-                            cov_mark::hit!(name_ref_classify_attr_path_qualifier);
-                            Some(NameRefClass::Definition(Definition::ModuleDef(module)))
-                        }
-                        PathResolution::Macro(mac) if mac.kind() == hir::MacroKind::Attr => {
-                            Some(NameRefClass::Definition(Definition::Macro(mac)))
-                        }
-                        _ => None,
+                Some(true) if path == top_path => sema
+                    .resolve_path_as_macro(&path)
+                    .filter(|mac| mac.kind() == hir::MacroKind::Attr)
+                    .map(Definition::Macro)
+                    .map(NameRefClass::Definition),
+                // in case of the path being a qualifier, don't resolve to anything but a module
+                Some(true) => match sema.resolve_path(&path)? {
+                    PathResolution::Def(module @ ModuleDef::Module(_)) => {
+                        cov_mark::hit!(name_ref_classify_attr_path_qualifier);
+                        Some(NameRefClass::Definition(Definition::ModuleDef(module)))
                     }
-                }),
+                    _ => None,
+                },
+                // inside attribute, but our path isn't part of the attribute's path(might be in its expression only)
                 Some(false) => None,
                 None => sema.resolve_path(&path).map(Into::into).map(NameRefClass::Definition),
             };
