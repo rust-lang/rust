@@ -149,8 +149,13 @@ pub fn impl_(
     ast_from_text(&format!("impl{} {}{} {{}}", params, ty, ty_params))
 }
 
-pub fn impl_trait(trait_: ast::Path, ty: ast::Path) -> ast::Impl {
-    ast_from_text(&format!("impl {} for {} {{}}", trait_, ty))
+pub fn impl_trait(
+    trait_: ast::Path,
+    ty: ast::Path,
+    ty_params: Option<ast::GenericParamList>,
+) -> ast::Impl {
+    let ty_params = ty_params.map_or_else(String::new, |params| params.to_string());
+    ast_from_text(&format!("impl{2} {} for {}{2} {{}}", trait_, ty, ty_params))
 }
 
 pub(crate) fn generic_arg_list() -> ast::GenericArgList {

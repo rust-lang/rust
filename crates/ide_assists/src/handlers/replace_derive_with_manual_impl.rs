@@ -3,7 +3,7 @@ use ide_db::helpers::{import_assets::NameToImport, mod_path_to_ast};
 use ide_db::items_locator;
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, AstNode, HasName},
+    ast::{self, make, AstNode, HasGenericParams, HasName},
     SyntaxKind::{IDENT, WHITESPACE},
 };
 
@@ -160,8 +160,11 @@ fn impl_def_from_trait(
     if trait_items.is_empty() {
         return None;
     }
-    let impl_def =
-        make::impl_trait(trait_path.clone(), make::ext::ident_path(&annotated_name.text()));
+    let impl_def = make::impl_trait(
+        trait_path.clone(),
+        make::ext::ident_path(&annotated_name.text()),
+        adt.generic_param_list(),
+    );
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
 
