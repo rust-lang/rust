@@ -1096,7 +1096,7 @@ crate fn compare_const_impl<'tcx>(
         // Check that all obligations are satisfied by the implementation's
         // version.
         let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
-        if !errors.is_empty()  {
+        if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
             return;
         }
@@ -1213,7 +1213,7 @@ fn compare_type_predicate_entailment<'tcx>(
         // Check that all obligations are satisfied by the implementation's
         // version.
         let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
-        if !errors.is_empty()  {
+        if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
             return Err(ErrorReported);
         }
@@ -1430,7 +1430,8 @@ pub fn check_type_bounds<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors = inh.fulfillment_cx.borrow_mut().select_all_with_constness_or_error(&infcx, constness);
+        let errors =
+            inh.fulfillment_cx.borrow_mut().select_all_with_constness_or_error(&infcx, constness);
         if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
             return Err(ErrorReported);

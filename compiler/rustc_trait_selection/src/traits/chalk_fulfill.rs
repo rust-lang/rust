@@ -49,10 +49,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         self.obligations.insert(obligation);
     }
 
-    fn select_all_or_error(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Vec<FulfillmentError<'tcx>> {
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'_, 'tcx>) -> Vec<FulfillmentError<'tcx>> {
         {
             let errors = self.select_where_possible(infcx);
 
@@ -62,8 +59,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         }
 
         // any remaining obligations are errors
-        self
-            .obligations
+        self.obligations
             .iter()
             .map(|obligation| FulfillmentError {
                 obligation: obligation.clone(),

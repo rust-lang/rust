@@ -126,10 +126,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
     }
 
     /// Attempts to select obligations using `selcx`.
-    fn select(
-        &mut self,
-        selcx: &mut SelectionContext<'a, 'tcx>,
-    ) -> Vec<FulfillmentError<'tcx>> {
+    fn select(&mut self, selcx: &mut SelectionContext<'a, 'tcx>) -> Vec<FulfillmentError<'tcx>> {
         let span = debug_span!("select", obligation_forest_size = ?self.predicates.len());
         let _enter = span.enter();
 
@@ -223,10 +220,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
 
-    fn select_all_or_error(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Vec<FulfillmentError<'tcx>> {
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'_, 'tcx>) -> Vec<FulfillmentError<'tcx>> {
         {
             let errors = self.select_where_possible(infcx);
             if !errors.is_empty() {
@@ -234,12 +228,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             }
         }
 
-        self
-            .predicates
-            .to_errors(CodeAmbiguity)
-            .into_iter()
-            .map(to_fulfillment_error)
-            .collect()
+        self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
     }
 
     fn select_all_with_constness_or_error(
@@ -254,12 +243,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             }
         }
 
-        self
-            .predicates
-            .to_errors(CodeAmbiguity)
-            .into_iter()
-            .map(to_fulfillment_error)
-            .collect()
+        self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
     }
 
     fn select_where_possible(

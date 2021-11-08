@@ -188,7 +188,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             let mut fulfill = FulfillmentContext::new();
             fulfill.register_bound(&infcx, full_env, ty, trait_did, ObligationCause::dummy());
             let errors = fulfill.select_all_or_error(&infcx);
-            
+
             if !errors.is_empty() {
                 panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, errors);
             }

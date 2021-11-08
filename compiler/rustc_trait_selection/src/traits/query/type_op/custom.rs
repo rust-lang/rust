@@ -78,7 +78,7 @@ fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
     fulfill_cx.register_predicate_obligations(infcx, obligations);
     let errors = fulfill_cx.select_all_or_error(infcx);
-    if !errors.is_empty()  {
+    if !errors.is_empty() {
         infcx.tcx.sess.diagnostic().delay_span_bug(
             DUMMY_SP,
             &format!("errors selecting obligation during MIR typeck: {:?}", errors),
