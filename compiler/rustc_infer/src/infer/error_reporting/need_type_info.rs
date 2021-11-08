@@ -10,7 +10,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::infer::unify_key::ConstVariableOriginKind;
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, DefIdTree, InferConst, Ty, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -589,6 +589,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 format!("the explicit type `{}`, with the type parameters specified", ty)
             }
             Some(ty) if is_named_and_not_impl_trait(ty) && ty.to_string() != arg_data.name => {
+                let ty = ResolvedTypeParamEraser::new(self.tcx).fold_ty(ty);
+                let ty = ErrTypeParamEraser(self.tcx).fold_ty(ty);
                 let ty = ty_to_string(ty);
                 format!(
                     "the explicit type `{}`, where the type parameter `{}` is specified",
@@ -866,5 +868,101 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
         err.span_label(span, data.cannot_infer_msg(None));
         err
+    }
+}
+
+/// Turn resolved type params into `[type error]` to signal we don't want to display them.
+struct ResolvedTypeParamEraser<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    level: usize,
+}
+
+impl<'tcx> ResolvedTypeParamEraser<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        ResolvedTypeParamEraser { tcx, level: 0 }
+    }
+}
+impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        self.level += 1;
+        let t = match t.kind() {
+            // We'll hide this type only if all its type params are hidden as well.
+            ty::Adt(def, substs) => {
+                let generics = self.tcx().generics_of(def.did);
+                // Account for params with default values, like `Vec`, where we
+                // want to show `Vec<T>`, not `Vec<T, _>`. If we replaced that
+                // subst, then we'd get the incorrect output, so we passthrough.
+                let substs: Vec<_> = substs
+                    .iter()
+                    .zip(generics.params.iter())
+                    .map(|(subst, param)| match &param.kind {
+                        ty::GenericParamDefKind::Type { has_default: true, .. } => subst,
+                        _ => subst.super_fold_with(self),
+                    })
+                    .collect();
+                if self.level == 1
+                    || substs.iter().any(|subst| match subst.unpack() {
+                        ty::subst::GenericArgKind::Type(t) => match t.kind() {
+                            ty::Error(_) => false,
+                            _ => true,
+                        },
+                        // Account for `const` params here, otherwise `doesnt_infer.rs`
+                        // shows `_` instead of `Foo<{ _: u32 }>`
+                        ty::subst::GenericArgKind::Const(_) => true,
+                        _ => false,
+                    })
+                {
+                    let substs = self.tcx().intern_substs(&substs[..]);
+                    self.tcx().mk_ty(ty::Adt(def, substs))
+                } else {
+                    self.tcx().ty_error()
+                }
+            }
+            ty::Ref(_, ty, _) => {
+                let ty = self.fold_ty(ty);
+                match ty.kind() {
+                    // Avoid `&_`, these can be safely presented as `_`.
+                    ty::Error(_) => self.tcx().ty_error(),
+                    _ => t.super_fold_with(self),
+                }
+            }
+            // We could account for `()` if we wanted to replace it, but it's assured to be short.
+            ty::Tuple(_)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::FnDef(..)
+            | ty::FnPtr(_)
+            | ty::Opaque(..)
+            | ty::Projection(_)
+            | ty::Never
+            | ty::Array(..) => t.super_fold_with(self),
+            // We don't want to hide type params that haven't been resolved yet.
+            // This would be the type that will be written out with the type param
+            // name in the output.
+            ty::Infer(_) => t,
+            // We don't want to hide the outermost type, only its type params.
+            _ if self.level == 1 => t.super_fold_with(self),
+            // Hide this type
+            _ => self.tcx().ty_error(),
+        };
+        self.level -= 1;
+        t
+    }
+}
+
+/// Replace `[type error]` with `ty::Infer(ty::Var)` to display `_`.
+struct ErrTypeParamEraser<'tcx>(TyCtxt<'tcx>);
+impl<'tcx> TypeFolder<'tcx> for ErrTypeParamEraser<'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+        self.0
+    }
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        match t.kind() {
+            ty::Error(_) => self.tcx().mk_ty_var(ty::TyVid::from_u32(0)),
+            _ => t.super_fold_with(self),
+        }
     }
 }

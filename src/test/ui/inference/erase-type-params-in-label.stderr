@@ -1,0 +1,22 @@
+error[E0283]: type annotations needed for `Bar<i32, &str, Z>`
+  --> $DIR/erase-type-params-in-label.rs:2:15
+   |
+LL |     let foo = new(1, "");
+   |         ---   ^^^ cannot infer type for type parameter `Z` declared on the function `new`
+   |         |
+   |         consider giving `foo` the explicit type `Bar<_, _, Z>`, where the type parameter `Z` is specified
+   |
+   = note: cannot satisfy `_: Default`
+note: required by a bound in `new`
+  --> $DIR/erase-type-params-in-label.rs:11:17
+   |
+LL | fn new<T, K, Z: Default>(t: T, k: K) -> Bar<T, K, Z> {
+   |                 ^^^^^^^ required by this bound in `new`
+help: consider specifying the type arguments in the function call
+   |
+LL |     let foo = new::<T, K, Z>(1, "");
+   |                  +++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.
