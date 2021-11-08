@@ -252,7 +252,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn print_match_expr(&mut self, expr: &Expr<'_>, arms: &[Arm<'_>], des: MatchSource, current: &str) {
-        let expr_pat = self.next("expr");
+        let expr_pat = self.next("scrutinee");
         let arms_pat = self.next("arms");
 
         println!(
@@ -266,8 +266,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         println!("    if {}.len() == {};", arms_pat, arms.len());
 
         for (i, arm) in arms.iter().enumerate() {
-            self.current = format!("{}[{}].body", arms_pat, i);
-            self.visit_expr(arm.body);
+            self.current = format!("{}[{}].pat", arms_pat, i);
+            self.visit_pat(arm.pat);
 
             if let Some(ref guard) = arm.guard {
                 let guard_pat = self.next("guard");
@@ -300,8 +300,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                     },
                 }
             }
-            self.current = format!("{}[{}].pat", arms_pat, i);
-            self.visit_pat(arm.pat);
+            self.current = format!("{}[{}].body", arms_pat, i);
+            self.visit_expr(arm.body);
         }
     }
 
