@@ -54,14 +54,10 @@ crate struct DocContext<'tcx> {
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     crate active_extern_traits: FxHashSet<DefId>,
-    // The current set of type and lifetime substitutions,
+    // The current set of parameter substitutions,
     // for expanding type aliases at the HIR level:
-    /// Table `DefId` of type parameter -> substituted type
-    crate ty_substs: FxHashMap<DefId, clean::Type>,
-    /// Table `DefId` of lifetime parameter -> substituted lifetime
-    crate lt_substs: FxHashMap<DefId, clean::Lifetime>,
-    /// Table `DefId` of const parameter -> substituted const
-    crate ct_substs: FxHashMap<DefId, clean::Constant>,
+    /// Table `DefId` of type, lifetime, or const parameter -> substituted type, lifetime, or const
+    crate substs: FxHashMap<DefId, clean::SubstParam>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     crate impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
@@ -104,25 +100,13 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Call the closure with the given parameters set as
     /// the substitutions for a type alias' RHS.
-    crate fn enter_alias<F, R>(
-        &mut self,
-        ty_substs: FxHashMap<DefId, clean::Type>,
-        lt_substs: FxHashMap<DefId, clean::Lifetime>,
-        ct_substs: FxHashMap<DefId, clean::Constant>,
-        f: F,
-    ) -> R
+    crate fn enter_alias<F, R>(&mut self, substs: FxHashMap<DefId, clean::SubstParam>, f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
-        let (old_tys, old_lts, old_cts) = (
-            mem::replace(&mut self.ty_substs, ty_substs),
-            mem::replace(&mut self.lt_substs, lt_substs),
-            mem::replace(&mut self.ct_substs, ct_substs),
-        );
+        let old_substs = mem::replace(&mut self.substs, substs);
         let r = f(self);
-        self.ty_substs = old_tys;
-        self.lt_substs = old_lts;
-        self.ct_substs = old_cts;
+        self.substs = old_substs;
         r
     }
 
@@ -350,9 +334,7 @@ crate fn run_global_ctxt(
         param_env: ParamEnv::empty(),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
-        ty_substs: Default::default(),
-        lt_substs: Default::default(),
-        ct_substs: Default::default(),
+        substs: Default::default(),
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits: tcx
