@@ -207,7 +207,7 @@ impl CommandExt for process::Command {
 /// [`ExitStatusError`](process::ExitStatusError).
 ///
 /// On Unix, `ExitStatus` **does not necessarily represent an exit status**, as
-/// passed to the `exit` system call or returned by
+/// passed to the `_exit` system call or returned by
 /// [`ExitStatus::code()`](crate::process::ExitStatus::code).  It represents **any wait status**
 /// as returned by one of the `wait` family of system
 /// calls.
