@@ -77,7 +77,7 @@ mod tests {
     ) {
         assert_eq!(
             expected_comment,
-            format!("{}", DocCommentFormatter::new(&literal, style))
+            format!("{}", DocCommentFormatter::new(literal, style))
         );
     }
 }
