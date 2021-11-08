@@ -618,6 +618,7 @@ impl EmbargoVisitor<'tcx> {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::AnonConst
+            | DefKind::InlineConst
             | DefKind::Field
             | DefKind::GlobalAsm
             | DefKind::Impl

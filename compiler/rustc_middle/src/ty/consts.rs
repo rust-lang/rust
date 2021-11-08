@@ -1,7 +1,9 @@
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::{LitToConstInput, Scalar};
-use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::{ParamEnv, ParamEnvAnd};
+use crate::ty::{
+    self, InlineConstSubsts, InlineConstSubstsParts, InternalSubsts, ParamEnv, ParamEnvAnd, Ty,
+    TyCtxt, TypeFoldable,
+};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -54,6 +56,24 @@ impl<'tcx> Const<'tcx> {
 
         let ty = tcx.type_of(def.def_id_for_type_of());
 
+        match Self::try_eval_lit_or_param(tcx, ty, expr) {
+            Some(v) => v,
+            None => tcx.mk_const(ty::Const {
+                val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                    def: def.to_global(),
+                    substs_: None,
+                    promoted: None,
+                }),
+                ty,
+            }),
+        }
+    }
+
+    fn try_eval_lit_or_param(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
+    ) -> Option<&'tcx Self> {
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
             hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
@@ -69,7 +89,7 @@ impl<'tcx> Const<'tcx> {
             // If an error occurred, ignore that it's a literal and leave reporting the error up to
             // mir.
             if let Ok(c) = tcx.at(expr.span).lit_to_const(lit_input) {
-                return c;
+                return Some(c);
             } else {
                 tcx.sess.delay_span_bug(expr.span, "Const::from_anon_const: couldn't lit_to_const");
             }
@@ -85,7 +105,7 @@ impl<'tcx> Const<'tcx> {
         };
 
         use hir::{def::DefKind::ConstParam, def::Res, ExprKind, Path, QPath};
-        let val = match expr.kind {
+        match expr.kind {
             ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
                 // Find the name and index of the const parameter by indexing the generics of
                 // the parent item and construct a `ParamConst`.
@@ -95,16 +115,53 @@ impl<'tcx> Const<'tcx> {
                 let generics = tcx.generics_of(item_def_id.to_def_id());
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.hir().name(hir_id);
-                ty::ConstKind::Param(ty::ParamConst::new(index, name))
+                Some(tcx.mk_const(ty::Const {
+                    val: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
+                    ty,
+                }))
             }
-            _ => ty::ConstKind::Unevaluated(ty::Unevaluated {
-                def: def.to_global(),
-                substs_: None,
-                promoted: None,
-            }),
+            _ => None,
+        }
+    }
+
+    pub fn from_inline_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
+        debug!("Const::from_inline_const(def_id={:?})", def_id);
+
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+
+        let body_id = match tcx.hir().get(hir_id) {
+            hir::Node::AnonConst(ac) => ac.body,
+            _ => span_bug!(
+                tcx.def_span(def_id.to_def_id()),
+                "from_inline_const can only process anonymous constants"
+            ),
         };
 
-        tcx.mk_const(ty::Const { val, ty })
+        let expr = &tcx.hir().body(body_id).value;
+
+        let ty = tcx.typeck(def_id).node_type(hir_id);
+
+        let ret = match Self::try_eval_lit_or_param(tcx, ty, expr) {
+            Some(v) => v,
+            None => {
+                let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
+                let parent_substs =
+                    tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
+                let substs =
+                    InlineConstSubsts::new(tcx, InlineConstSubstsParts { parent_substs, ty })
+                        .substs;
+                tcx.mk_const(ty::Const {
+                    val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                        def: ty::WithOptConstParam::unknown(def_id).to_global(),
+                        substs_: Some(substs),
+                        promoted: None,
+                    }),
+                    ty,
+                })
+            }
+        };
+        debug_assert!(!ret.has_free_regions(tcx));
+        ret
     }
 
     /// Interns the given value as a constant.

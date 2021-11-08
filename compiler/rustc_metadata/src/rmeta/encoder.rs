@@ -797,6 +797,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::ConstParam
         | DefKind::LifetimeParam
         | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::Generator
@@ -832,6 +833,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::Generator
@@ -856,9 +858,11 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
             (true, mir_opt_base)
         }
         // Constants
-        DefKind::AnonConst | DefKind::AssocConst | DefKind::Static | DefKind::Const => {
-            (true, false)
-        }
+        DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::AssocConst
+        | DefKind::Static
+        | DefKind::Const => (true, false),
         // Full-fledged functions
         DefKind::AssocFn | DefKind::Fn => {
             let generics = tcx.generics_of(def_id);
@@ -914,6 +918,7 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::Generator
@@ -939,6 +944,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::Impl
         | DefKind::Field

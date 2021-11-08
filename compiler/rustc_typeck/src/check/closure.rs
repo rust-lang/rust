@@ -92,7 +92,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let parent_substs = InternalSubsts::identity_for_item(
             self.tcx,
-            self.tcx.closure_base_def_id(expr_def_id.to_def_id()),
+            self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
         );
 
         let tupled_upvars_ty = self.infcx.next_ty_var(TypeVariableOrigin {
