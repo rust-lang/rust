@@ -5,6 +5,9 @@ LL |     evt.handle_event::<TestEvent, fn(TestEvent)>(|_evt| {
    |                        ^^^^^^^^^  ^^^^^^^^^^^^^ explicit generic argument not allowed
    |                        |
    |                        explicit generic argument not allowed
+   |
+   = note: see issue #83701 <https://github.com/rust-lang/rust/issues/83701> for more information
+   = help: add `#![feature(explicit_generic_args_with_impl_trait)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

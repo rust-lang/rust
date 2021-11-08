@@ -672,6 +672,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 err.span_label(span, "explicit generic argument not allowed");
             }
 
+            err.note(
+                "see issue #83701 <https://github.com/rust-lang/rust/issues/83701> \
+                 for more information",
+            );
+            if tcx.sess.is_nightly_build() {
+                err.help(
+                    "add `#![feature(explicit_generic_args_with_impl_trait)]` \
+                     to the crate attributes to enable",
+                );
+            }
+
             err.emit();
         }
 
