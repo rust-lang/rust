@@ -9,8 +9,9 @@ use std::rc::Rc;
 
 /// Maps between a `Location` and a `PointIndex` (and vice versa).
 crate struct RegionValueElements {
-    /// For each basic block, how many points are contained within?
-    statements_before_block: IndexVec<BasicBlock, usize>,
+    /// For each basic block, what is the prefix sum of preceding basic blocks
+    /// (i.e., the PointIndex of the first statement in the block).
+    first_statement: IndexVec<BasicBlock, PointIndex>,
 
     /// Map backward from each point to the basic block that it
     /// belongs to.
@@ -22,16 +23,16 @@ crate struct RegionValueElements {
 impl RegionValueElements {
     crate fn new(body: &Body<'_>) -> Self {
         let mut num_points = 0;
-        let statements_before_block: IndexVec<BasicBlock, usize> = body
+        let first_statement: IndexVec<BasicBlock, PointIndex> = body
             .basic_blocks()
             .iter()
             .map(|block_data| {
                 let v = num_points;
                 num_points += block_data.statements.len() + 1;
-                v
+                PointIndex::new(v)
             })
             .collect();
-        debug!("RegionValueElements: statements_before_block={:#?}", statements_before_block);
+        debug!("RegionValueElements: first_statement={:#?}", first_statement);
         debug!("RegionValueElements: num_points={:#?}", num_points);
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
@@ -39,7 +40,7 @@ impl RegionValueElements {
             basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
         }
 
-        Self { statements_before_block, basic_blocks, num_points }
+        Self { first_statement, basic_blocks, num_points }
     }
 
     /// Total number of point indices
@@ -50,22 +51,20 @@ impl RegionValueElements {
     /// Converts a `Location` into a `PointIndex`. O(1).
     crate fn point_from_location(&self, location: Location) -> PointIndex {
         let Location { block, statement_index } = location;
-        let start_index = self.statements_before_block[block];
-        PointIndex::new(start_index + statement_index)
+        self.first_statement[block] + statement_index
     }
 
     /// Converts a `Location` into a `PointIndex`. O(1).
     crate fn entry_point(&self, block: BasicBlock) -> PointIndex {
-        let start_index = self.statements_before_block[block];
-        PointIndex::new(start_index)
+        self.first_statement[block]
     }
 
     /// Converts a `PointIndex` back to a location. O(1).
     crate fn to_location(&self, index: PointIndex) -> Location {
         assert!(index.index() < self.num_points);
         let block = self.basic_blocks[index];
-        let start_index = self.statements_before_block[block];
-        let statement_index = index.index() - start_index;
+        let start_index = self.first_statement[block];
+        let statement_index = index.index() - start_index.index();
         Location { block, statement_index }
     }
 
