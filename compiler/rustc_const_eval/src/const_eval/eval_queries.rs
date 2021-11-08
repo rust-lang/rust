@@ -42,6 +42,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
                     | DefKind::Static
                     | DefKind::ConstParam
                     | DefKind::AnonConst
+                    | DefKind::InlineConst
                     | DefKind::AssocConst
             ),
         "Unexpected DefKind: {:?}",

@@ -148,10 +148,17 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure(cc, _, body_id, _, _) = expr.kind {
-            let body = self.fcx.tcx.hir().body(body_id);
-            self.visit_body(body);
-            self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, cc);
+        match expr.kind {
+            hir::ExprKind::Closure(cc, _, body_id, _, _) => {
+                let body = self.fcx.tcx.hir().body(body_id);
+                self.visit_body(body);
+                self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, cc);
+            }
+            hir::ExprKind::ConstBlock(anon_const) => {
+                let body = self.fcx.tcx.hir().body(anon_const.body);
+                self.visit_body(body);
+            }
+            _ => {}
         }
 
         intravisit::walk_expr(self, expr);

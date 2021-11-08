@@ -423,6 +423,15 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.def_kind(def_id), DefKind::Closure | DefKind::Generator)
     }
 
+    /// Returns `true` if `def_id` refers to a definition that does not have its own
+    /// type-checking context, i.e. closure, generator or inline const.
+    pub fn is_typeck_child(self, def_id: DefId) -> bool {
+        matches!(
+            self.def_kind(def_id),
+            DefKind::Closure | DefKind::Generator | DefKind::InlineConst
+        )
+    }
+
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
     pub fn is_trait(self, def_id: DefId) -> bool {
         self.def_kind(def_id) == DefKind::Trait
@@ -440,16 +449,19 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.def_kind(def_id), DefKind::Ctor(..))
     }
 
-    /// Given the def-ID of a fn or closure, returns the def-ID of
-    /// the innermost fn item that the closure is contained within.
-    /// This is a significant `DefId` because, when we do
-    /// type-checking, we type-check this fn item and all of its
-    /// (transitive) closures together. Therefore, when we fetch the
+    /// Given the `DefId`, returns the `DefId` of the innermost item that
+    /// has its own type-checking context or "inference enviornment".
+    ///
+    /// For example, a closure has its own `DefId`, but it is type-checked
+    /// with the containing item. Similarly, an inline const block has its
+    /// own `DefId` but it is type-checked together with the containing item.
+    ///
+    /// Therefore, when we fetch the
     /// `typeck` the closure, for example, we really wind up
     /// fetching the `typeck` the enclosing fn item.
-    pub fn closure_base_def_id(self, def_id: DefId) -> DefId {
+    pub fn typeck_root_def_id(self, def_id: DefId) -> DefId {
         let mut def_id = def_id;
-        while self.is_closure(def_id) {
+        while self.is_typeck_child(def_id) {
             def_id = self.parent(def_id).unwrap_or_else(|| {
                 bug!("closure {:?} has no parent", def_id);
             });

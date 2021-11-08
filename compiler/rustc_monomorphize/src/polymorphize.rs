@@ -167,6 +167,7 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Use
         | DefKind::ForeignMod
         | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::Field
         | DefKind::LifetimeParam
@@ -195,7 +196,7 @@ fn emit_unused_generic_params_error<'tcx>(
     generics: &'tcx ty::Generics,
     unused_parameters: &FiniteBitSet<u32>,
 ) {
-    let base_def_id = tcx.closure_base_def_id(def_id);
+    let base_def_id = tcx.typeck_root_def_id(def_id);
     if !tcx.get_attrs(base_def_id).iter().any(|a| a.has_name(sym::rustc_polymorphize_error)) {
         return;
     }
@@ -303,7 +304,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 ControlFlow::CONTINUE
             }
             ty::ConstKind::Unevaluated(uv)
-                if self.tcx.def_kind(uv.def.did) == DefKind::AnonConst =>
+                if matches!(self.tcx.def_kind(uv.def.did), DefKind::AnonConst | DefKind::InlineConst) =>
             {
                 self.visit_child_body(uv.def.did, uv.substs(self.tcx));
                 ControlFlow::CONTINUE

@@ -704,6 +704,66 @@ impl<'tcx> UpvarSubsts<'tcx> {
     }
 }
 
+/// An inline const is modeled like
+///
+///     const InlineConst<'l0...'li, T0...Tj, R>: R;
+///
+/// where:
+///
+/// - 'l0...'li and T0...Tj are the generic parameters
+///   inherited from the item that defined the inline const,
+/// - R represents the type of the constant.
+///
+/// When the inline const is instantiated, `R` is substituted as the actual inferred
+/// type of the constant. The reason that `R` is represented as an extra type parameter
+/// is the same reason that [`ClosureSubsts`] have `CS` and `U` as type parameters:
+/// inline const can reference lifetimes that are internal to the creating function.
+#[derive(Copy, Clone, Debug, TypeFoldable)]
+pub struct InlineConstSubsts<'tcx> {
+    /// Generic parameters from the enclosing item,
+    /// concatenated with the inferred type of the constant.
+    pub substs: SubstsRef<'tcx>,
+}
+
+/// Struct returned by `split()`.
+pub struct InlineConstSubstsParts<'tcx, T> {
+    pub parent_substs: &'tcx [GenericArg<'tcx>],
+    pub ty: T,
+}
+
+impl<'tcx> InlineConstSubsts<'tcx> {
+    /// Construct `InlineConstSubsts` from `InlineConstSubstsParts`.
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        parts: InlineConstSubstsParts<'tcx, Ty<'tcx>>,
+    ) -> InlineConstSubsts<'tcx> {
+        InlineConstSubsts {
+            substs: tcx.mk_substs(
+                parts.parent_substs.iter().copied().chain(std::iter::once(parts.ty.into())),
+            ),
+        }
+    }
+
+    /// Divides the inline const substs into their respective components.
+    /// The ordering assumed here must match that used by `InlineConstSubsts::new` above.
+    fn split(self) -> InlineConstSubstsParts<'tcx, GenericArg<'tcx>> {
+        match self.substs[..] {
+            [ref parent_substs @ .., ty] => InlineConstSubstsParts { parent_substs, ty },
+            _ => bug!("inline const substs missing synthetics"),
+        }
+    }
+
+    /// Returns the substitutions of the inline const's parent.
+    pub fn parent_substs(self) -> &'tcx [GenericArg<'tcx>] {
+        self.split().parent_substs
+    }
+
+    /// Returns the type of this inline const.
+    pub fn ty(self) -> Ty<'tcx> {
+        self.split().ty.expect_ty()
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub enum ExistentialPredicate<'tcx> {
