@@ -405,7 +405,7 @@ impl CodeBlockAttribute {
     /// attributes are valid rust attributes
     /// See <https://doc.rust-lang.org/rustdoc/print.html#attributes>
     fn new(attributes: &str) -> CodeBlockAttribute {
-        for attribute in attributes.split(",") {
+        for attribute in attributes.split(',') {
             match attribute.trim() {
                 "" | "rust" | "should_panic" | "no_run" | "edition2015" | "edition2018"
                 | "edition2021" => (),
@@ -563,7 +563,7 @@ impl<'a> CommentRewrite<'a> {
             result.push_str(line);
             result.push_str(match iter.peek() {
                 Some(next_line) if next_line.is_empty() => sep.trim_end(),
-                Some(..) => &sep,
+                Some(..) => sep,
                 None => "",
             });
         }
@@ -622,7 +622,7 @@ impl<'a> CommentRewrite<'a> {
         let is_last = i == count_newlines(orig);
 
         if let Some(ref mut ib) = self.item_block {
-            if ib.add_line(&line) {
+            if ib.add_line(line) {
                 return false;
             }
             self.is_prev_line_multi_line = false;
@@ -684,8 +684,8 @@ impl<'a> CommentRewrite<'a> {
         self.item_block = None;
         if let Some(stripped) = line.strip_prefix("```") {
             self.code_block_attr = Some(CodeBlockAttribute::new(stripped))
-        } else if self.fmt.config.wrap_comments() && ItemizedBlock::is_itemized_line(&line) {
-            let ib = ItemizedBlock::new(&line);
+        } else if self.fmt.config.wrap_comments() && ItemizedBlock::is_itemized_line(line) {
+            let ib = ItemizedBlock::new(line);
             self.item_block = Some(ib);
             return false;
         }
@@ -941,7 +941,7 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle<'_>) -> (&'a s
     {
         (&line[4..], true)
     } else if let CommentStyle::Custom(opener) = *style {
-        if let Some(ref stripped) = line.strip_prefix(opener) {
+        if let Some(stripped) = line.strip_prefix(opener) {
             (stripped, true)
         } else {
             (&line[opener.trim_end().len()..], false)
@@ -1384,7 +1384,7 @@ impl<'a> Iterator for LineClasses<'a> {
             None => unreachable!(),
         };
 
-        while let Some((kind, c)) = self.base.next() {
+        for (kind, c) in self.base.by_ref() {
             // needed to set the kind of the ending character on the last line
             self.kind = kind;
             if c == '\n' {
@@ -1570,7 +1570,7 @@ pub(crate) fn recover_comment_removed(
                 context.parse_sess.span_to_filename(span),
                 vec![FormattingError::from_span(
                     span,
-                    &context.parse_sess,
+                    context.parse_sess,
                     ErrorKind::LostComment,
                 )],
             );
@@ -1675,7 +1675,7 @@ impl<'a> Iterator for CommentReducer<'a> {
 fn remove_comment_header(comment: &str) -> &str {
     if comment.starts_with("///") || comment.starts_with("//!") {
         &comment[3..]
-    } else if let Some(ref stripped) = comment.strip_prefix("//") {
+    } else if let Some(stripped) = comment.strip_prefix("//") {
         stripped
     } else if (comment.starts_with("/**") && !comment.starts_with("/**/"))
         || comment.starts_with("/*!")

@@ -59,7 +59,7 @@ example, the `issue-1111.rs` test file is configured by the file
 ## Debugging
 
 Some `rewrite_*` methods use the `debug!` macro for printing useful information.
-These messages can be printed by using the environment variable `RUST_LOG=rustfmt=DEBUG`.
+These messages can be printed by using the environment variable `RUSTFMT_LOG=rustfmt=DEBUG`.
 These traces can be helpful in understanding which part of the code was used
 and get a better grasp on the execution flow.
 
