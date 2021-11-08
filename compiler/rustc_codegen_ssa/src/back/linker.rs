@@ -219,19 +219,36 @@ pub struct GccLinker<'a> {
 }
 
 impl<'a> GccLinker<'a> {
-    /// Argument that must be passed *directly* to the linker
+    /// Passes an argument directly to the linker.
     ///
-    /// These arguments need to be prepended with `-Wl`, when a GCC-style linker is used.
-    fn linker_arg<S>(&mut self, arg: S) -> &mut Self
-    where
-        S: AsRef<OsStr>,
-    {
-        if !self.is_ld {
-            let mut os = OsString::from("-Wl,");
-            os.push(arg.as_ref());
-            self.cmd.arg(os);
+    /// When the linker is not ld-like such as when using a compiler as a linker, the argument is
+    /// prepended by `-Wl,`.
+    fn linker_arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
+        self.linker_args(&[arg]);
+        self
+    }
+
+    /// Passes a series of arguments directly to the linker.
+    ///
+    /// When the linker is ld-like, the arguments are simply appended to the command. When the
+    /// linker is not ld-like such as when using a compiler as a linker, the arguments are joined by
+    /// commas to form an argument that is then prepended with `-Wl`. In this situation, only a
+    /// single argument is appended to the command to ensure that the order of the arguments is
+    /// preserved by the compiler.
+    fn linker_args(&mut self, args: &[impl AsRef<OsStr>]) -> &mut Self {
+        if self.is_ld {
+            args.into_iter().for_each(|a| {
+                self.cmd.arg(a);
+            });
         } else {
-            self.cmd.arg(arg);
+            if !args.is_empty() {
+                let mut s = OsString::from("-Wl");
+                for a in args {
+                    s.push(",");
+                    s.push(a);
+                }
+                self.cmd.arg(s);
+            }
         }
         self
     }
