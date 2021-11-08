@@ -1033,12 +1033,11 @@ fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cm
     // the middle of one
     if left.prefix.is_none() && right.prefix.is_none() && left.front == right.front {
         // possible future improvement: a [u8]::first_mismatch simd implementation
-        let first_difference =
-            match left.path.iter().zip(right.path.iter()).position(|(&a, &b)| a != b) {
-                None if left.path.len() == right.path.len() => return cmp::Ordering::Equal,
-                None => left.path.len().min(right.path.len()),
-                Some(diff) => diff,
-            };
+        let first_difference = match left.path.iter().zip(right.path).position(|(&a, &b)| a != b) {
+            None if left.path.len() == right.path.len() => return cmp::Ordering::Equal,
+            None => left.path.len().min(right.path.len()),
+            Some(diff) => diff,
+        };
 
         if let Some(previous_sep) =
             left.path[..first_difference].iter().rposition(|&b| left.is_sep_byte(b))
