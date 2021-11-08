@@ -64,7 +64,7 @@ pub struct Opts {
 }
 
 fn main() {
-    env_logger::init();
+    env_logger::Builder::from_env("RUSTFMT_LOG").init();
     let opts = Opts::from_args();
     if let Err(e) = run(opts) {
         println!("{}", e);

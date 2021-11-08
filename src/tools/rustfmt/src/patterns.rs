@@ -456,11 +456,11 @@ fn rewrite_tuple_pat(
     context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String> {
-    let mut pat_vec: Vec<_> = pats.iter().map(|x| TuplePatField::Pat(x)).collect();
-
-    if pat_vec.is_empty() {
+    if pats.is_empty() {
         return Some(format!("{}()", path_str.unwrap_or_default()));
     }
+    let mut pat_vec: Vec<_> = pats.iter().map(TuplePatField::Pat).collect();
+
     let wildcard_suffix_len = count_wildcard_suffix_len(context, &pat_vec, span, shape);
     let (pat_vec, span) = if context.config.condense_wildcard_suffixes() && wildcard_suffix_len >= 2
     {
@@ -482,7 +482,7 @@ fn rewrite_tuple_pat(
     let path_str = path_str.unwrap_or_default();
 
     overflow::rewrite_with_parens(
-        &context,
+        context,
         &path_str,
         pat_vec.iter(),
         shape,
