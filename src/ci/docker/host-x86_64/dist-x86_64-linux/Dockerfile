@@ -125,7 +125,7 @@ ENV RUST_CONFIGURE_ARGS \
 ENV SCRIPT ../src/ci/pgo.sh python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
-    src/tools/build-manifest
+    build-manifest
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This is the only builder which will create source tarballs
