@@ -15,6 +15,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
     "MIT",
+    "ISC",
     "Unlicense/MIT",
     "Unlicense OR MIT",
     "0BSD OR MIT OR Apache-2.0", // adler license
@@ -53,7 +54,6 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("cranelift-module", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-native", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-object", "Apache-2.0 WITH LLVM-exception"),
-    ("libloading", "ISC"),
     ("mach", "BSD-2-Clause"),
     ("regalloc", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
@@ -129,6 +129,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "jobserver",
     "lazy_static",
     "libc",
+    "libloading",
     "libz-sys",
     "lock_api",
     "log",
