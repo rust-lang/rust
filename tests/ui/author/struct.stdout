@@ -1,6 +1,6 @@
 if_chain! {
-    if let ExprKind::Struct(ref path, ref fields, None) = expr.kind;
-    if match_qpath(path, &["Test"]);
+    if let ExprKind::Struct(ref qpath, ref fields, None) = expr.kind;
+    if match_qpath(qpath, &["Test"]);
     if fields.len() == 1;
     if fields[0].ident.name.as_str() == "field"
     if let Some(higher::If { cond: cond, then: then, r#else: else_expr}) = higher::If::hir(fields[0])
@@ -21,8 +21,8 @@ if_chain! {
     }
 }
 if_chain! {
-    if let PatKind::Struct(ref path, ref fields, false) = arm.kind;
-    if match_qpath(path, &["Test"]);
+    if let PatKind::Struct(ref qpath, ref fields, false) = arm.kind;
+    if match_qpath(qpath, &["Test"]);
     if fields.len() == 1;
     if fields[0].ident.name.as_str() == "field"
     if let PatKind::Lit(ref lit_expr) = fields[0].kind
@@ -36,8 +36,8 @@ if_chain! {
     }
 }
 if_chain! {
-    if let PatKind::TupleStruct(ref path, ref fields, None) = arm.kind;
-    if match_qpath(path, &["TestTuple"]);
+    if let PatKind::TupleStruct(ref qpath, ref fields, None) = arm.kind;
+    if match_qpath(qpath, &["TestTuple"]);
     if fields.len() == 1;
     if let PatKind::Lit(ref lit_expr) = fields[0].kind
     if let ExprKind::Lit(ref lit) = lit_expr.kind;
@@ -53,8 +53,8 @@ if_chain! {
     if let ExprKind::MethodCall(ref method_name, ref args, _) = expr.kind;
     if method_name.ident.name.as_str() == test;
     if args.len() == 1;
-    if let ExprKind::Path(ref path) = args[0].kind;
-    if match_qpath(path, &["test_method_call"]);
+    if let ExprKind::Path(ref qpath) = args[0].kind;
+    if match_qpath(qpath, &["test_method_call"]);
     then {
         // report your lint here
     }

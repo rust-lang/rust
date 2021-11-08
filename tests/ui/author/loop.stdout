@@ -3,8 +3,8 @@ if_chain! {
     if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, ..}) = higher::ForLoop::hir(expr)
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = pat.kind;
     if name.as_str() == "y";
-    if let ExprKind::Struct(ref path, ref fields, None) = arg.kind;
-    if matches!(path, QPath::LangItem(LangItem::Range, _));
+    if let ExprKind::Struct(ref qpath, ref fields, None) = arg.kind;
+    if matches!(qpath, QPath::LangItem(LangItem::Range, _));
     if fields.len() == 2;
     if fields[0].ident.name.as_str() == "start"
     if let ExprKind::Lit(ref lit) = fields[0].kind;
@@ -16,8 +16,8 @@ if_chain! {
     if block.stmts.len() == 1;
     if let StmtKind::Local(ref local) = block.stmts[0].kind;
     if let Some(ref init) = local.init;
-    if let ExprKind::Path(ref path1) = init.kind;
-    if match_qpath(path1, &["y"]);
+    if let ExprKind::Path(ref qpath1) = init.kind;
+    if match_qpath(qpath1, &["y"]);
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name1, None) = local.pat.kind;
     if name1.as_str() == "z";
     if block.expr.is_none();
@@ -29,8 +29,8 @@ if_chain! {
     if let ExprKind::DropTemps(ref expr) = expr.kind;
     if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, ..}) = higher::ForLoop::hir(expr)
     if let PatKind::Wild = pat.kind;
-    if let ExprKind::Struct(ref path, ref fields, None) = arg.kind;
-    if matches!(path, QPath::LangItem(LangItem::Range, _));
+    if let ExprKind::Struct(ref qpath, ref fields, None) = arg.kind;
+    if matches!(qpath, QPath::LangItem(LangItem::Range, _));
     if fields.len() == 2;
     if fields[0].ident.name.as_str() == "start"
     if let ExprKind::Lit(ref lit) = fields[0].kind;
@@ -51,8 +51,8 @@ if_chain! {
     if let ExprKind::DropTemps(ref expr) = expr.kind;
     if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, ..}) = higher::ForLoop::hir(expr)
     if let PatKind::Wild = pat.kind;
-    if let ExprKind::Struct(ref path, ref fields, None) = arg.kind;
-    if matches!(path, QPath::LangItem(LangItem::Range, _));
+    if let ExprKind::Struct(ref qpath, ref fields, None) = arg.kind;
+    if matches!(qpath, QPath::LangItem(LangItem::Range, _));
     if fields.len() == 2;
     if fields[0].ident.name.as_str() == "start"
     if let ExprKind::Lit(ref lit) = fields[0].kind;
@@ -73,8 +73,8 @@ if_chain! {
 }
 if_chain! {
     if let Some(higher::While { condition: condition, body: body }) = higher::While::hir(expr)
-    if let ExprKind::Path(ref path) = condition.kind;
-    if match_qpath(path, &["a"]);
+    if let ExprKind::Path(ref qpath) = condition.kind;
+    if match_qpath(qpath, &["a"]);
     if let ExprKind::Block(ref block, ref label) = body.kind;
     if block.stmts.len() == 1;
     if let StmtKind::Semi(ref e, _) = block.stmts[0].kind
@@ -89,8 +89,8 @@ if_chain! {
     if let PatKind::Lit(ref lit_expr) = let_pat.kind
     if let ExprKind::Lit(ref lit) = lit_expr.kind;
     if let LitKind::Bool(true) = lit.node;
-    if let ExprKind::Path(ref path) = let_expr.kind;
-    if match_qpath(path, &["a"]);
+    if let ExprKind::Path(ref qpath) = let_expr.kind;
+    if match_qpath(qpath, &["a"]);
     if let ExprKind::Block(ref block, ref label) = if_then.kind;
     if block.stmts.len() == 1;
     if let StmtKind::Semi(ref e, _) = block.stmts[0].kind

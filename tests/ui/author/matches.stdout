@@ -19,8 +19,8 @@ if_chain! {
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = local1.pat.kind;
     if name.as_str() == "x";
     if let Some(trailing_expr) = &block.expr;
-    if let ExprKind::Path(ref path) = trailing_expr.kind;
-    if match_qpath(path, &["x"]);
+    if let ExprKind::Path(ref qpath) = trailing_expr.kind;
+    if match_qpath(qpath, &["x"]);
     if let PatKind::Lit(ref lit_expr1) = arms[1].pat.kind
     if let ExprKind::Lit(ref lit4) = lit_expr1.kind;
     if let LitKind::Int(17, LitIntType::Unsuffixed) = lit4.node;

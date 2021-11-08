@@ -569,7 +569,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
             ExprKind::Cast(expr, ty) => {
                 let cast_pat = self.next("expr");
                 let cast_ty = self.next("cast_ty");
-                let qp_label = self.next("qp");
+                let qp_label = self.next("qpath");
 
                 println!("Cast(ref {}, ref {}) = {};", cast_pat, cast_ty, current);
 
@@ -717,7 +717,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
                 self.visit_expr(index);
             },
             ExprKind::Path(ref path) => {
-                let path_pat = self.next("path");
+                let path_pat = self.next("qpath");
 
                 println!("Path(ref {}) = {};", path_pat, current);
 
@@ -780,7 +780,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
                 println!("    // unimplemented: `ExprKind::LlvmInlineAsm` is not further destructured at the moment");
             },
             ExprKind::Struct(path, fields, ref opt_base) => {
-                let path_pat = self.next("path");
+                let path_pat = self.next("qpath");
                 let fields_pat = self.next("fields");
 
                 if let Some(base) = *opt_base {
@@ -895,7 +895,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
                 println!("    if {}.as_str() == \"{}\";", name_pat, ident.as_str());
             },
             PatKind::Struct(ref path, fields, ignore) => {
-                let path_pat = self.next("path");
+                let path_pat = self.next("qpath");
                 let fields_pat = self.next("fields");
                 println!(
                     "Struct(ref {}, ref {}, {}) = {};",
@@ -930,7 +930,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
                 }
             },
             PatKind::TupleStruct(ref path, fields, skip_pos) => {
-                let path_pat = self.next("path");
+                let path_pat = self.next("qpath");
                 let fields_pat = self.next("fields");
 
                 println!(
@@ -949,7 +949,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
                 }
             },
             PatKind::Path(ref path) => {
-                let path_pat = self.next("path");
+                let path_pat = self.next("qpath");
                 println!("Path(ref {}) = {};", path_pat, current);
 
                 self.current = path_pat;

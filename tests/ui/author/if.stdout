@@ -34,8 +34,8 @@ if_chain! {
     if let PatKind::Lit(ref lit_expr) = let_pat.kind
     if let ExprKind::Lit(ref lit) = lit_expr.kind;
     if let LitKind::Bool(true) = lit.node;
-    if let ExprKind::Path(ref path) = let_expr.kind;
-    if match_qpath(path, &["a"]);
+    if let ExprKind::Path(ref qpath) = let_expr.kind;
+    if match_qpath(qpath, &["a"]);
     if let ExprKind::Block(ref block, ref label) = if_then.kind;
     if block.stmts.len() == 0;
     if block.expr.is_none();
