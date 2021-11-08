@@ -306,8 +306,10 @@ impl<'a> GccLinker<'a> {
         if let Some(path) = &self.sess.opts.debugging_opts.profile_sample_use {
             self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
         };
-        self.linker_arg(&format!("-plugin-opt={}", opt_level));
-        self.linker_arg(&format!("-plugin-opt=mcpu={}", self.target_cpu));
+        self.linker_args(&[
+            &format!("-plugin-opt={}", opt_level),
+            &format!("-plugin-opt=mcpu={}", self.target_cpu),
+        ]);
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
@@ -321,10 +323,9 @@ impl<'a> GccLinker<'a> {
             // principled solution at some point to force the compiler to pass
             // the right `-Wl,-install_name` with an `@rpath` in it.
             if self.sess.opts.cg.rpath || self.sess.opts.debugging_opts.osx_rpath_install_name {
-                self.linker_arg("-install_name");
-                let mut v = OsString::from("@rpath/");
-                v.push(out_filename.file_name().unwrap());
-                self.linker_arg(&v);
+                let mut rpath = OsString::from("@rpath/");
+                rpath.push(out_filename.file_name().unwrap());
+                self.linker_args(&[OsString::from("-install_name"), rpath]);
             }
         } else {
             self.cmd.arg("-shared");
@@ -398,8 +399,7 @@ impl<'a> Linker for GccLinker<'a> {
                 self.build_dylib(out_filename);
             }
             LinkOutputKind::WasiReactorExe => {
-                self.linker_arg("--entry");
-                self.linker_arg("_initialize");
+                self.linker_args(&["--entry", "_initialize"]);
             }
         }
         // VxWorks compiler driver introduced `--static-crt` flag specifically for rustc,
@@ -471,8 +471,7 @@ impl<'a> Linker for GccLinker<'a> {
         self.cmd.arg(path);
     }
     fn full_relro(&mut self) {
-        self.linker_arg("-zrelro");
-        self.linker_arg("-znow");
+        self.linker_args(&["-zrelro", "-znow"]);
     }
     fn partial_relro(&mut self) {
         self.linker_arg("-zrelro");
@@ -656,7 +655,6 @@ impl<'a> Linker for GccLinker<'a> {
         }
 
         let is_windows = self.sess.target.is_like_windows;
-        let mut arg = OsString::new();
         let path = tmpdir.join(if is_windows { "list.def" } else { "list" });
 
         debug!("EXPORTED SYMBOLS:");
@@ -708,27 +706,18 @@ impl<'a> Linker for GccLinker<'a> {
         }
 
         if self.sess.target.is_like_osx {
-            if !self.is_ld {
-                arg.push("-Wl,")
-            }
-            arg.push("-exported_symbols_list,");
+            self.linker_args(&[OsString::from("-exported_symbols_list"), path.into()]);
         } else if self.sess.target.is_like_solaris {
-            if !self.is_ld {
-                arg.push("-Wl,")
-            }
-            arg.push("-M,");
+            self.linker_args(&[OsString::from("-M"), path.into()]);
         } else {
-            if !self.is_ld {
-                arg.push("-Wl,")
-            }
-            // Both LD and LLD accept export list in *.def file form, there are no flags required
-            if !is_windows {
-                arg.push("--version-script=")
+            if is_windows {
+                self.linker_arg(path);
+            } else {
+                let mut arg = OsString::from("--version-script=");
+                arg.push(path);
+                self.linker_arg(arg);
             }
         }
-
-        arg.push(&path);
-        self.cmd.arg(arg);
     }
 
     fn subsystem(&mut self, subsystem: &str) {
@@ -786,8 +775,7 @@ impl<'a> Linker for GccLinker<'a> {
             self.linker_arg("--as-needed");
         } else if self.sess.target.is_like_solaris {
             // -z ignore is the Solaris equivalent to the GNU ld --as-needed option
-            self.linker_arg("-z");
-            self.linker_arg("ignore");
+            self.linker_args(&["-z", "ignore"]);
         }
     }
 }
