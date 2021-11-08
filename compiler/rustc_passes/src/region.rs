@@ -334,9 +334,10 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     // properly, we can't miss any types.
 
     match expr.kind {
-        // Manually recurse over closures, because they are the only
+        // Manually recurse over closures and inline consts, because they are the only
         // case of nested bodies that share the parent environment.
-        hir::ExprKind::Closure(.., body, _, _) => {
+        hir::ExprKind::Closure(.., body, _, _)
+        | hir::ExprKind::ConstBlock(hir::AnonConst { body, .. }) => {
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
         }
@@ -817,9 +818,9 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 }
 
 fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
-    let closure_base_def_id = tcx.closure_base_def_id(def_id);
-    if closure_base_def_id != def_id {
-        return tcx.region_scope_tree(closure_base_def_id);
+    let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
+    if typeck_root_def_id != def_id {
+        return tcx.region_scope_tree(typeck_root_def_id);
     }
 
     let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
