@@ -763,7 +763,7 @@ impl Step for RustdocJSStd {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/test/rustdoc-js-std")
+        run.suite_path("src/test/rustdoc-js-std")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -783,6 +783,17 @@ impl Step for RustdocJSStd {
                 .arg(builder.doc_out(self.target))
                 .arg("--test-folder")
                 .arg(builder.src.join("src/test/rustdoc-js-std"));
+            for path in &builder.paths {
+                if let Some(p) =
+                    util::is_valid_test_suite_arg(path, "src/test/rustdoc-js-std", builder)
+                {
+                    if !p.ends_with(".js") {
+                        eprintln!("A non-js file was given: `{}`", path.display());
+                        panic!("Cannot run rustdoc-js-std tests");
+                    }
+                    command.arg("--test-file").arg(path);
+                }
+            }
             builder.ensure(crate::doc::Std { target: self.target, stage: builder.top_stage });
             builder.run(&mut command);
         } else {
@@ -803,7 +814,7 @@ impl Step for RustdocJSNotStd {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/test/rustdoc-js")
+        run.suite_path("src/test/rustdoc-js")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -938,8 +949,12 @@ impl Step for RustdocGUI {
             .arg("--tests-folder")
             .arg(builder.build.src.join("src/test/rustdoc-gui"));
         for path in &builder.paths {
-            if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
-                if name.ends_with(".goml") {
+            if let Some(p) = util::is_valid_test_suite_arg(path, "src/test/rustdoc-gui", builder) {
+                if !p.ends_with(".goml") {
+                    eprintln!("A non-goml file was given: `{}`", path.display());
+                    panic!("Cannot run rustdoc-gui tests");
+                }
+                if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
                     command.arg("--file").arg(name);
                 }
             }
@@ -1416,35 +1431,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         // Get test-args by striping suite path
         let mut test_args: Vec<&str> = paths
             .iter()
-            .map(|p| match p.strip_prefix(".") {
-                Ok(path) => path,
-                Err(_) => p,
-            })
-            .filter(|p| p.starts_with(suite_path))
-            .filter(|p| {
-                let exists = p.is_dir() || p.is_file();
-                if !exists {
-                    if let Some(p) = p.to_str() {
-                        builder.info(&format!(
-                            "Warning: Skipping \"{}\": not a regular file or directory",
-                            p
-                        ));
-                    }
-                }
-                exists
-            })
-            .filter_map(|p| {
-                // Since test suite paths are themselves directories, if we don't
-                // specify a directory or file, we'll get an empty string here
-                // (the result of the test suite directory without its suite prefix).
-                // Therefore, we need to filter these out, as only the first --test-args
-                // flag is respected, so providing an empty --test-args conflicts with
-                // any following it.
-                match p.strip_prefix(suite_path).ok().and_then(|p| p.to_str()) {
-                    Some(s) if !s.is_empty() => Some(s),
-                    _ => None,
-                }
-            })
+            .filter_map(|p| util::is_valid_test_suite_arg(p, suite_path, builder))
             .collect();
 
         test_args.append(&mut builder.config.cmd.test_args());

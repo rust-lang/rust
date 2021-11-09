@@ -310,3 +310,35 @@ pub fn use_host_linker(target: TargetSelection) -> bool {
         || target.contains("fuchsia")
         || target.contains("bpf"))
 }
+
+pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
+    path: &'a Path,
+    suite_path: P,
+    builder: &Builder<'_>,
+) -> Option<&'a str> {
+    let suite_path = suite_path.as_ref();
+    let path = match path.strip_prefix(".") {
+        Ok(p) => p,
+        Err(_) => path,
+    };
+    if !path.starts_with(suite_path) {
+        return None;
+    }
+    let exists = path.is_dir() || path.is_file();
+    if !exists {
+        if let Some(p) = path.to_str() {
+            builder.info(&format!("Warning: Skipping \"{}\": not a regular file or directory", p));
+        }
+        return None;
+    }
+    // Since test suite paths are themselves directories, if we don't
+    // specify a directory or file, we'll get an empty string here
+    // (the result of the test suite directory without its suite prefix).
+    // Therefore, we need to filter these out, as only the first --test-args
+    // flag is respected, so providing an empty --test-args conflicts with
+    // any following it.
+    match path.strip_prefix(suite_path).ok().and_then(|p| p.to_str()) {
+        Some(s) if !s.is_empty() => Some(s),
+        _ => None,
+    }
+}
