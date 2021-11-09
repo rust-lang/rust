@@ -1,5 +1,5 @@
 #![warn(clippy::redundant_else)]
-#![allow(clippy::needless_return)]
+#![allow(clippy::needless_return, clippy::if_same_then_else)]
 
 fn main() {
     loop {
@@ -105,7 +105,7 @@ fn main() {
         1
     };
     // assign
-    let a;
+    let mut a;
     a = if foo() {
         return;
     } else {
