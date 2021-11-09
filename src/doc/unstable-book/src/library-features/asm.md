@@ -564,7 +564,7 @@ Here is the list of currently supported register classes:
 | AArch64 | `preg` | `p[0-15]`, `ffr` | Only clobbers |
 | ARM (ARM) | `reg` | `r[0-12]`, `r14` | `r` |
 | ARM (Thumb2) | `reg` | `r[0-12]`, `r14` | `r` |
-| ARM (Thumb1) | `reg` | `r[0-r7]` | `r` |
+| ARM (Thumb1) | `reg` | `r[0-7]` | `r` |
 | ARM (ARM) | `reg_thumb` | `r[0-r12]`, `r14` | `l` |
 | ARM (Thumb2) | `reg_thumb` | `r[0-r7]` | `l` |
 | ARM (Thumb1) | `reg_thumb` | `r[0-r7]` | `l` |
