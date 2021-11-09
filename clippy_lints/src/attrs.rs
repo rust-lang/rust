@@ -1,8 +1,9 @@
 //! checks for attributes
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::match_panic_def_id;
+use clippy_utils::msrvs;
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
+use clippy_utils::{extract_msrv_attr, match_panic_def_id, meets_msrv};
 use if_chain::if_chain;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
@@ -12,7 +13,8 @@ use rustc_hir::{
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, SymbolStr};
@@ -497,7 +499,11 @@ fn is_word(nmi: &NestedMetaItem, expected: Symbol) -> bool {
     }
 }
 
-declare_lint_pass!(EarlyAttributes => [
+pub struct EarlyAttributes {
+    pub msrv: Option<RustcVersion>,
+}
+
+impl_lint_pass!(EarlyAttributes => [
     DEPRECATED_CFG_ATTR,
     MISMATCHED_TARGET_OS,
     EMPTY_LINE_AFTER_OUTER_ATTR,
@@ -509,9 +515,11 @@ impl EarlyLintPass for EarlyAttributes {
     }
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
-        check_deprecated_cfg_attr(cx, attr);
+        check_deprecated_cfg_attr(cx, attr, self.msrv);
         check_mismatched_target_os(cx, attr);
     }
+
+    extract_msrv_attr!(EarlyContext);
 }
 
 fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
@@ -548,8 +556,9 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
     }
 }
 
-fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute) {
+fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: Option<RustcVersion>) {
     if_chain! {
+        if meets_msrv(msrv.as_ref(), &msrvs::TOOL_ATTRIBUTES);
         // check cfg_attr
         if attr.has_name(sym::cfg_attr);
         if let Some(items) = attr.meta_item_list();

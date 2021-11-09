@@ -404,10 +404,21 @@ use crate::utils::conf::TryConf;
 /// level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
 ///
 /// Used in `./src/driver.rs`.
-pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore) {
+pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, sess: &Session, conf: &Conf) {
     // NOTE: Do not add any more pre-expansion passes. These should be removed eventually.
+
+    let msrv = conf.msrv.as_ref().and_then(|s| {
+        parse_msrv(s, None, None).or_else(|| {
+            sess.err(&format!(
+                "error reading Clippy's configuration file. `{}` is not a valid Rust version",
+                s
+            ));
+            None
+        })
+    });
+
     store.register_pre_expansion_pass(|| Box::new(write::Write::default()));
-    store.register_pre_expansion_pass(|| Box::new(attrs::EarlyAttributes));
+    store.register_pre_expansion_pass(move || Box::new(attrs::EarlyAttributes { msrv }));
     store.register_pre_expansion_pass(|| Box::new(dbg_macro::DbgMacro));
 }
 
