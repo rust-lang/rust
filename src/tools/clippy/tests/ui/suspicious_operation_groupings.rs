@@ -1,4 +1,5 @@
 #![warn(clippy::suspicious_operation_groupings)]
+#![allow(clippy::eq_op)]
 
 struct Vec3 {
     x: f64,
@@ -187,7 +188,7 @@ fn inside_fn_with_similar_expression(s1: &S, s2: &S, strict: bool) -> bool {
     }
 }
 
-fn inside_an_if_statement(s1: &S, s2: &S) {
+fn inside_an_if_statement(s1: &mut S, s2: &S) {
     // There's no `s1.b`
     if s1.a < s2.a && s1.a < s2.b {
         s1.c = s2.c;

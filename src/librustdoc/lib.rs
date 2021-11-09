@@ -776,7 +776,7 @@ fn main_options(options: config::Options) -> MainResult {
             // current architecture.
             let resolver = core::create_resolver(queries, sess);
 
-            if sess.has_errors() {
+            if sess.diagnostic().has_errors_or_lint_errors() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 

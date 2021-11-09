@@ -411,6 +411,8 @@ pub struct Handler {
 /// as well as inconsistent state observation.
 struct HandlerInner {
     flags: HandlerFlags,
+    /// The number of lint errors that have been emitted.
+    lint_err_count: usize,
     /// The number of errors that have been emitted, including duplicates.
     ///
     /// This is not necessarily the count that's reported to the user once
@@ -550,6 +552,7 @@ impl Handler {
             flags,
             inner: Lock::new(HandlerInner {
                 flags,
+                lint_err_count: 0,
                 err_count: 0,
                 warn_count: 0,
                 deduplicated_err_count: 0,
@@ -726,7 +729,13 @@ impl Handler {
     /// Construct a builder at the `Error` level with the `msg`.
     // FIXME: This method should be removed (every error should have an associated error code).
     pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_> {
-        DiagnosticBuilder::new(self, Level::Error, msg)
+        DiagnosticBuilder::new(self, Level::Error { lint: false }, msg)
+    }
+
+    /// This should only be used by `rustc_middle::lint::struct_lint_level`. Do not use it for hard errors.
+    #[doc(hidden)]
+    pub fn struct_err_lint(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        DiagnosticBuilder::new(self, Level::Error { lint: true }, msg)
     }
 
     /// Construct a builder at the `Error` level with the `msg` and the `code`.
@@ -790,11 +799,14 @@ impl Handler {
     }
 
     pub fn span_err(&self, span: impl Into<MultiSpan>, msg: &str) {
-        self.emit_diag_at_span(Diagnostic::new(Error, msg), span);
+        self.emit_diag_at_span(Diagnostic::new(Error { lint: false }, msg), span);
     }
 
     pub fn span_err_with_code(&self, span: impl Into<MultiSpan>, msg: &str, code: DiagnosticId) {
-        self.emit_diag_at_span(Diagnostic::new_with_code(Error, Some(code), msg), span);
+        self.emit_diag_at_span(
+            Diagnostic::new_with_code(Error { lint: false }, Some(code), msg),
+            span,
+        );
     }
 
     pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: &str) {
@@ -861,6 +873,9 @@ impl Handler {
 
     pub fn has_errors(&self) -> bool {
         self.inner.borrow().has_errors()
+    }
+    pub fn has_errors_or_lint_errors(&self) -> bool {
+        self.inner.borrow().has_errors_or_lint_errors()
     }
     pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
         self.inner.borrow().has_errors_or_delayed_span_bugs()
@@ -979,7 +994,11 @@ impl HandlerInner {
             }
         }
         if diagnostic.is_error() {
-            self.bump_err_count();
+            if matches!(diagnostic.level, Level::Error { lint: true }) {
+                self.bump_lint_err_count();
+            } else {
+                self.bump_err_count();
+            }
         } else {
             self.bump_warn_count();
         }
@@ -1073,11 +1092,14 @@ impl HandlerInner {
     fn has_errors(&self) -> bool {
         self.err_count() > 0
     }
+    fn has_errors_or_lint_errors(&self) -> bool {
+        self.has_errors() || self.lint_err_count > 0
+    }
     fn has_errors_or_delayed_span_bugs(&self) -> bool {
         self.has_errors() || !self.delayed_span_bugs.is_empty()
     }
     fn has_any_message(&self) -> bool {
-        self.err_count() > 0 || self.warn_count > 0
+        self.err_count() > 0 || self.lint_err_count > 0 || self.warn_count > 0
     }
 
     fn abort_if_errors(&mut self) {
@@ -1131,7 +1153,7 @@ impl HandlerInner {
     }
 
     fn err(&mut self, msg: &str) {
-        self.emit_error(Error, msg);
+        self.emit_error(Error { lint: false }, msg);
     }
 
     /// Emit an error; level should be `Error` or `Fatal`.
@@ -1165,6 +1187,11 @@ impl HandlerInner {
         if has_bugs {
             panic!("{}", explanation);
         }
+    }
+
+    fn bump_lint_err_count(&mut self) {
+        self.lint_err_count += 1;
+        self.panic_if_treat_err_as_bug();
     }
 
     fn bump_err_count(&mut self) {
@@ -1210,7 +1237,10 @@ impl DelayedDiagnostic {
 pub enum Level {
     Bug,
     Fatal,
-    Error,
+    Error {
+        /// If this error comes from a lint, don't abort compilation even when abort_if_errors() is called.
+        lint: bool,
+    },
     Warning,
     Note,
     Help,
@@ -1229,7 +1259,7 @@ impl Level {
     fn color(self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         match self {
-            Bug | Fatal | Error => {
+            Bug | Fatal | Error { .. } => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
             Warning => {
@@ -1250,7 +1280,7 @@ impl Level {
     pub fn to_str(self) -> &'static str {
         match self {
             Bug => "error: internal compiler error",
-            Fatal | Error => "error",
+            Fatal | Error { .. } => "error",
             Warning => "warning",
             Note => "note",
             Help => "help",

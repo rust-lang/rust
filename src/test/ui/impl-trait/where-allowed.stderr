@@ -272,19 +272,19 @@ LL | impl <T = impl Debug> T {}
    |           ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and method return types
-  --> $DIR/where-allowed.rs:240:40
+  --> $DIR/where-allowed.rs:241:40
    |
 LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    |                                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and method return types
-  --> $DIR/where-allowed.rs:246:29
+  --> $DIR/where-allowed.rs:247:29
    |
 LL |     let _in_local_variable: impl Fn() = || {};
    |                             ^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and method return types
-  --> $DIR/where-allowed.rs:248:46
+  --> $DIR/where-allowed.rs:249:46
    |
 LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    |                                              ^^^^^^^^^
@@ -300,7 +300,7 @@ LL | impl <T = impl Debug> T {}
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:240:36
+  --> $DIR/where-allowed.rs:241:36
    |
 LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    |                                    ^
@@ -308,7 +308,15 @@ LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 
-error: aborting due to 48 previous errors
+error[E0118]: no nominal type found for inherent implementation
+  --> $DIR/where-allowed.rs:234:23
+   |
+LL | impl <T = impl Debug> T {}
+   |                       ^ impl requires a nominal type
+   |
+   = note: either implement a trait on it or create a newtype to wrap it instead
 
-Some errors have detailed explanations: E0562, E0658, E0666.
-For more information about an error, try `rustc --explain E0562`.
+error: aborting due to 49 previous errors
+
+Some errors have detailed explanations: E0118, E0562, E0658, E0666.
+For more information about an error, try `rustc --explain E0118`.

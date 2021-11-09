@@ -1,27 +1,28 @@
 #![feature(staged_api)]
+//~^ ERROR module has missing stability attribute
 
-#[stable(feature = "x", since = "1")]
+#[stable(feature = "a", since = "1")]
 struct StableType;
 
-#[unstable(feature = "x", issue = "none")]
+#[unstable(feature = "b", issue = "none")]
 struct UnstableType;
 
-#[stable(feature = "x", since = "1")]
+#[stable(feature = "c", since = "1")]
 trait StableTrait {}
 
-#[unstable(feature = "x", issue = "none")]
+#[unstable(feature = "d", issue = "none")]
 trait UnstableTrait {}
 
-#[unstable(feature = "x", issue = "none")]
+#[unstable(feature = "e", issue = "none")]
 impl UnstableTrait for UnstableType {}
 
-#[unstable(feature = "x", issue = "none")]
+#[unstable(feature = "f", issue = "none")]
 impl StableTrait for UnstableType {}
 
-#[unstable(feature = "x", issue = "none")]
+#[unstable(feature = "g", issue = "none")]
 impl UnstableTrait for StableType {}
 
-#[unstable(feature = "x", issue = "none")]
+#[unstable(feature = "h", issue = "none")]
 //~^ ERROR an `#[unstable]` annotation here has no effect [ineffective_unstable_trait_impl]
 impl StableTrait for StableType {}
 

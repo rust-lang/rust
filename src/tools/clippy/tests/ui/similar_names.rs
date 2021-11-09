@@ -1,5 +1,10 @@
 #![warn(clippy::similar_names)]
-#![allow(unused, clippy::println_empty_string)]
+#![allow(
+    unused,
+    clippy::println_empty_string,
+    clippy::empty_loop,
+    clippy::diverging_sub_expression
+)]
 
 struct Foo {
     apple: i32,

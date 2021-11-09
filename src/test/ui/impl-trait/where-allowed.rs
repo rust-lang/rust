@@ -235,6 +235,7 @@ impl <T = impl Debug> T {}
 //~^ ERROR defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
 //~| WARNING this was previously accepted by the compiler but is being phased out
 //~| ERROR `impl Trait` not allowed outside of function and method return types
+//~| ERROR no nominal type found
 
 // Disallowed
 fn in_method_generic_param_default<T = impl Debug>(_: T) {}

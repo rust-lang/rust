@@ -468,11 +468,13 @@ crate fn run_global_ctxt(
         };
         if run {
             debug!("running pass {}", p.pass.name);
-            krate = ctxt.tcx.sess.time(p.pass.name, || (p.pass.run)(krate, &mut ctxt));
+            krate = tcx.sess.time(p.pass.name, || (p.pass.run)(krate, &mut ctxt));
         }
     }
 
-    ctxt.sess().abort_if_errors();
+    if tcx.sess.diagnostic().has_errors_or_lint_errors() {
+        rustc_errors::FatalError.raise();
+    }
 
     let render_options = ctxt.render_options;
     let mut cache = ctxt.cache;
