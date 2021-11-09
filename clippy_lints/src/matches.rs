@@ -1782,7 +1782,8 @@ mod redundant_pattern_match {
     use super::REDUNDANT_PATTERN_MATCHING;
     use clippy_utils::diagnostics::span_lint_and_then;
     use clippy_utils::higher;
-    use clippy_utils::source::{snippet, snippet_with_applicability};
+    use clippy_utils::source::snippet;
+    use clippy_utils::sugg::Sugg;
     use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, is_type_lang_item, match_type};
     use clippy_utils::{is_lang_ctor, is_qpath_def_path, is_trait_method, paths};
     use if_chain::if_chain;
@@ -1792,7 +1793,7 @@ mod redundant_pattern_match {
     use rustc_hir::LangItem::{OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
     use rustc_hir::{
         intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor},
-        Arm, Block, Expr, ExprKind, LangItem, MatchSource, Node, Pat, PatKind, QPath,
+        Arm, Block, Expr, ExprKind, LangItem, MatchSource, Node, Pat, PatKind, QPath, UnOp,
     };
     use rustc_lint::LateContext;
     use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
@@ -2046,8 +2047,10 @@ mod redundant_pattern_match {
 
         let result_expr = match &let_expr.kind {
             ExprKind::AddrOf(_, _, borrowed) => borrowed,
+            ExprKind::Unary(UnOp::Deref, deref) => deref,
             _ => let_expr,
         };
+
         span_lint_and_then(
             cx,
             REDUNDANT_PATTERN_MATCHING,
@@ -2066,12 +2069,15 @@ mod redundant_pattern_match {
                 // ^^^^^^^^^^^^^^^^^^^
                 let span = expr_span.until(op_span.shrink_to_hi());
 
-                let mut app = if needs_drop {
+                let app = if needs_drop {
                     Applicability::MaybeIncorrect
                 } else {
                     Applicability::MachineApplicable
                 };
-                let sugg = snippet_with_applicability(cx, op_span, "_", &mut app);
+
+                let sugg = Sugg::hir_with_macro_callsite(cx, result_expr, "_")
+                    .maybe_par()
+                    .to_string();
 
                 diag.span_suggestion(span, "try this", format!("{} {}.{}", keyword, sugg, good_method), app);
 
