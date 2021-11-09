@@ -1735,21 +1735,21 @@ where
 
     let mut started = vec![];
 
-    for RangeBound(_, kind, r) in values {
+    for RangeBound(_, kind, range) in values {
         match kind {
-            BoundKind::Start => started.push(r),
+            BoundKind::Start => started.push(range),
             BoundKind::EndExcluded | BoundKind::EndIncluded => {
                 let mut overlap = None;
 
-                while let Some(sr) = started.pop() {
-                    if sr == r {
+                while let Some(last_started) = started.pop() {
+                    if last_started == range {
                         break;
                     }
-                    overlap = Some(sr);
+                    overlap = Some(last_started);
                 }
 
-                if let Some(sr) = overlap {
-                    return Some((r, sr));
+                if let Some(first_overlapping) = overlap {
+                    return Some((range, first_overlapping));
                 }
             },
         }
