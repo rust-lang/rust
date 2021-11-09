@@ -1614,8 +1614,8 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                     let rhs_val = rhs.int_value(cx, ty)?;
 
                     let rhs_bound = match range_end {
-                        RangeEnd::Included => Bound::Included(rhs_val),
-                        RangeEnd::Excluded => Bound::Excluded(rhs_val),
+                        RangeEnd::Included => EndBound::Included(rhs_val),
+                        RangeEnd::Excluded => EndBound::Excluded(rhs_val),
                     };
                     return Some(SpannedRange {
                         span: pat.span,
@@ -1627,7 +1627,7 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                     let value = constant_full_int(cx, cx.typeck_results(), value)?;
                     return Some(SpannedRange {
                         span: pat.span,
-                        node: (value, Bound::Included(value)),
+                        node: (value, EndBound::Included(value)),
                     });
                 }
             }
@@ -1636,8 +1636,8 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
         .collect()
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Bound<T> {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EndBound<T> {
     Included(T),
     Excluded(T),
 }
@@ -1645,7 +1645,7 @@ pub enum Bound<T> {
 #[derive(Debug, Eq, PartialEq)]
 pub struct SpannedRange<T> {
     pub span: Span,
-    pub node: (T, Bound<T>),
+    pub node: (T, EndBound<T>),
 }
 
 // Checks if arm has the form `None => None`
@@ -1701,14 +1701,13 @@ where
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     enum Kind<'a, T> {
         Start(T, &'a SpannedRange<T>),
-        End(Bound<T>, &'a SpannedRange<T>),
+        End(EndBound<T>, &'a SpannedRange<T>),
     }
 
     impl<'a, T: Copy> Kind<'a, T> {
-        fn value(self) -> Bound<T> {
+        fn value(self) -> T {
             match self {
-                Kind::Start(t, _) => Bound::Included(t),
-                Kind::End(t, _) => t,
+                Kind::Start(t, _) | Kind::End(EndBound::Included(t) | EndBound::Excluded(t), _) => t,
             }
         }
     }
@@ -1721,28 +1720,23 @@ where
 
     impl<'a, T: Copy + Ord> Ord for Kind<'a, T> {
         fn cmp(&self, other: &Self) -> Ordering {
-            match (self.value(), other.value()) {
-                (Bound::Included(a), Bound::Included(b)) | (Bound::Excluded(a), Bound::Excluded(b)) => {
-                    let value_cmp = a.cmp(&b);
-                    // In the case of ties, starts come before ends
-                    if value_cmp == Ordering::Equal {
-                        match (self, other) {
-                            (Kind::Start(..), Kind::End(..)) => Ordering::Less,
-                            (Kind::End(..), Kind::Start(..)) => Ordering::Greater,
-                            _ => Ordering::Equal,
-                        }
-                    } else {
-                        value_cmp
-                    }
+            match self.value().cmp(&other.value()) {
+                Ordering::Equal => match (self, other) {
+                    // End excluded before start and end included
+                    (Kind::End(EndBound::Excluded(_), _), Kind::Start(..) | Kind::End(EndBound::Included(_), _)) => {
+                        Ordering::Less
+                    },
+                    (Kind::Start(..) | Kind::End(EndBound::Included(_), _), Kind::End(EndBound::Excluded(_), _)) => {
+                        Ordering::Greater
+                    },
+
+                    // Start before end included
+                    (Kind::Start(..), Kind::End(EndBound::Included(_), _)) => Ordering::Less,
+                    (Kind::End(EndBound::Included(_), _), Kind::Start(..)) => Ordering::Greater,
+
+                    _ => Ordering::Equal,
                 },
-                (Bound::Included(a), Bound::Excluded(b)) => match a.cmp(&b) {
-                    Ordering::Equal => Ordering::Greater,
-                    other => other,
-                },
-                (Bound::Excluded(a), Bound::Included(b)) => match a.cmp(&b) {
-                    Ordering::Equal => Ordering::Less,
-                    other => other,
-                },
+                other => other,
             }
         }
     }
@@ -2224,29 +2218,29 @@ fn test_overlapping() {
     };
 
     assert_eq!(None, overlapping::<u8>(&[]));
-    assert_eq!(None, overlapping(&[sp(1, Bound::Included(4))]));
+    assert_eq!(None, overlapping(&[sp(1, EndBound::Included(4))]));
     assert_eq!(
         None,
-        overlapping(&[sp(1, Bound::Included(4)), sp(5, Bound::Included(6))])
+        overlapping(&[sp(1, EndBound::Included(4)), sp(5, EndBound::Included(6))])
     );
     assert_eq!(
         None,
         overlapping(&[
-            sp(1, Bound::Included(4)),
-            sp(5, Bound::Included(6)),
-            sp(10, Bound::Included(11))
+            sp(1, EndBound::Included(4)),
+            sp(5, EndBound::Included(6)),
+            sp(10, EndBound::Included(11))
         ],)
     );
     assert_eq!(
-        Some((&sp(1, Bound::Included(4)), &sp(3, Bound::Included(6)))),
-        overlapping(&[sp(1, Bound::Included(4)), sp(3, Bound::Included(6))])
+        Some((&sp(1, EndBound::Included(4)), &sp(3, EndBound::Included(6)))),
+        overlapping(&[sp(1, EndBound::Included(4)), sp(3, EndBound::Included(6))])
     );
     assert_eq!(
-        Some((&sp(5, Bound::Included(6)), &sp(6, Bound::Included(11)))),
+        Some((&sp(5, EndBound::Included(6)), &sp(6, EndBound::Included(11)))),
         overlapping(&[
-            sp(1, Bound::Included(4)),
-            sp(5, Bound::Included(6)),
-            sp(6, Bound::Included(11))
+            sp(1, EndBound::Included(4)),
+            sp(5, EndBound::Included(6)),
+            sp(6, EndBound::Included(11))
         ],)
     );
 }
