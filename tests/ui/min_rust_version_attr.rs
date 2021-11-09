@@ -140,6 +140,11 @@ fn unnest_or_patterns() {
 #[cfg_attr(rustfmt, rustfmt_skip)]
 fn deprecated_cfg_attr() {}
 
+#[warn(clippy::cast_lossless)]
+fn int_from_bool() -> u8 {
+    true as u8
+}
+
 fn main() {
     filter_map_next();
     checked_conversion();
@@ -156,6 +161,7 @@ fn main() {
     map_unwrap_or();
     missing_const_for_fn();
     unnest_or_patterns();
+    int_from_bool();
 }
 
 mod just_under_msrv {

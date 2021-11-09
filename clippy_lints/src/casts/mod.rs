@@ -435,7 +435,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
                 }
 
-                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);
+                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
             }
         }
 
