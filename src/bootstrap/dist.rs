@@ -96,7 +96,8 @@ impl Step for RustcDocs {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/librustc")
+        let builder = run.builder;
+        run.path("rustc-docs").default_condition(builder.config.compiler_docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -106,9 +107,6 @@ impl Step for RustcDocs {
     /// Builds the `rustc-docs` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        if !builder.config.compiler_docs {
-            return None;
-        }
         builder.default_doc(&[]);
 
         let mut tarball = Tarball::new(builder, "rustc-docs", &host.triple);
