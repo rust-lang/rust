@@ -79,11 +79,34 @@ fn find_all_html_files(dir: &Path) -> (usize, usize) {
     (files_read, errors)
 }
 
+/// Default `tidy` command for macOS is too old that it does not have `mute-id` and `mute` options.
+/// `tidy` on macOS Monterey was released on 31 October 2006, and the same date can be seen seven
+/// years ago at <https://stackoverflow.com/questions/22283382/overwrite-osx-tidy>. Accordingly,
+/// the macOS environment using pre-installed `tidy` should immediately suspend HTML checker process
+/// and show a hint to install a newer one.
+#[cfg(target_os = "macos")]
+fn check_tidy_version() -> Result<(), String> {
+    let output = Command::new("tidy").arg("-v").output().expect("failed to run tidy command");
+    let version = String::from_utf8(output.stdout).expect("failed to read version of tidy command");
+    if version.contains("HTML Tidy for Mac OS X released on 31 October 2006") {
+        eprintln!("The pre-installed HTML Tidy for macOS is not supported.");
+        eprintln!("Consider installing a newer one and re-running.");
+        eprintln!("If you're using Homebrew, you can install it by the following command:");
+        eprintln!("    brew install tidy-html5");
+        eprintln!();
+        Err("HTML check failed: 1 error".to_string())
+    } else {
+        Ok(())
+    }
+}
+
 fn main() -> Result<(), String> {
     let args = env::args().collect::<Vec<_>>();
     if args.len() != 2 {
         return Err(format!("Usage: {} <doc folder>", args[0]));
     }
+    #[cfg(target_os = "macos")]
+    check_tidy_version()?;
 
     println!("Running HTML checker...");
 
