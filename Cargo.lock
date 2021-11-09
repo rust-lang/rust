@@ -2160,7 +2160,7 @@ dependencies = [
  "parking_lot",
  "perf-event-open-sys",
  "rustc-hash",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
 ]
 
 [[package]]
@@ -2174,7 +2174,7 @@ dependencies = [
  "parking_lot",
  "perf-event-open-sys",
  "rustc-hash",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
 ]
 
 [[package]]
@@ -2286,7 +2286,7 @@ dependencies = [
  "rustc-workspace-hack",
  "rustc_version 0.4.0",
  "shell-escape",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
 ]
 
 [[package]]
@@ -2530,7 +2530,7 @@ dependencies = [
  "instant",
  "libc",
  "redox_syscall",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
  "winapi",
 ]
 
@@ -3224,7 +3224,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "550ca1a0925d31a0af089b18c89f5adf3b286e319e3e1f1a5204c21bd2f17371"
 dependencies = [
  "rustc-ap-rustc_data_structures",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
 ]
 
 [[package]]
@@ -3240,7 +3240,7 @@ dependencies = [
  "rustc-ap-rustc_macros",
  "rustc-ap-rustc_serialize",
  "rustc-ap-rustc_span",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
  "tracing",
 ]
 
@@ -3279,7 +3279,7 @@ dependencies = [
  "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
  "stable_deref_trait",
  "stacker",
  "tempfile",
@@ -3391,7 +3391,7 @@ dependencies = [
  "rustc-ap-rustc_lexer",
  "rustc-ap-rustc_session",
  "rustc-ap-rustc_span",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
  "tracing",
  "unicode-normalization",
 ]
@@ -3403,7 +3403,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f741f8e9aee6323fbe127329490608a5a250cc0072ac91e684ef62518cdb1ff"
 dependencies = [
  "indexmap",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
 ]
 
 [[package]]
@@ -3554,7 +3554,7 @@ dependencies = [
  "rand_core 0.5.1",
  "serde",
  "serde_json",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
  "syn",
  "url 2.2.2",
  "winapi",
@@ -3565,7 +3565,7 @@ name = "rustc_apfloat"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
 ]
 
 [[package]]
@@ -3573,7 +3573,7 @@ name = "rustc_arena"
 version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
 ]
 
 [[package]]
@@ -3587,7 +3587,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -3606,7 +3606,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -3676,7 +3676,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "rustc_traits",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -3697,7 +3697,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -3727,7 +3727,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "snap",
  "tracing",
 ]
@@ -3762,7 +3762,7 @@ dependencies = [
  "rustc_span",
  "rustc_symbol_mangling",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tempfile",
  "tracing",
 ]
@@ -3811,7 +3811,7 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "stable_deref_trait",
  "stacker",
  "tempfile",
@@ -3893,7 +3893,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -3926,7 +3926,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -3983,7 +3983,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4029,7 +4029,7 @@ dependencies = [
  "rustc_traits",
  "rustc_ty_utils",
  "rustc_typeck",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tempfile",
  "tracing",
  "winapi",
@@ -4120,7 +4120,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "snap",
  "tracing",
  "winapi",
@@ -4156,7 +4156,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_type_ir",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4179,7 +4179,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4199,7 +4199,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4224,7 +4224,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4240,7 +4240,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4360,7 +4360,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4385,7 +4385,7 @@ dependencies = [
  "rustc_query_system",
  "rustc_session",
  "rustc_span",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4414,7 +4414,7 @@ version = "0.0.0"
 dependencies = [
  "indexmap",
  "rustc_macros",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
 ]
 
 [[package]]
@@ -4513,7 +4513,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4533,7 +4533,7 @@ dependencies = [
  "rustc_middle",
  "rustc_span",
  "rustc_trait_selection",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4585,7 +4585,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "rustc_ty_utils",
- "smallvec 1.7.0 (git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from)",
+ "smallvec",
  "tracing",
 ]
 
@@ -4621,7 +4621,7 @@ dependencies = [
  "rustdoc-json-types",
  "serde",
  "serde_json",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
  "tempfile",
  "tera",
  "tracing",
@@ -4948,12 +4948,6 @@ name = "slab"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
-
-[[package]]
-name = "smallvec"
-version = "1.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
 
 [[package]]
 name = "smallvec"
@@ -5471,7 +5465,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sharded-slab",
- "smallvec 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",
