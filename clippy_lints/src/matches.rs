@@ -1698,75 +1698,58 @@ pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &
 where
     T: Copy + Ord,
 {
+    #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+    enum BoundKind {
+        EndExcluded,
+        Start,
+        EndIncluded,
+    }
+
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-    enum Kind<'a, T> {
-        Start(T, &'a SpannedRange<T>),
-        End(EndBound<T>, &'a SpannedRange<T>),
-    }
+    struct RangeBound<'a, T>(T, BoundKind, &'a SpannedRange<T>);
 
-    impl<'a, T: Copy> Kind<'a, T> {
-        fn value(self) -> T {
-            match self {
-                Kind::Start(t, _) | Kind::End(EndBound::Included(t) | EndBound::Excluded(t), _) => t,
-            }
-        }
-    }
-
-    impl<'a, T: Copy + Ord> PartialOrd for Kind<'a, T> {
+    impl<'a, T: Copy + Ord> PartialOrd for RangeBound<'a, T> {
         fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
             Some(self.cmp(other))
         }
     }
 
-    impl<'a, T: Copy + Ord> Ord for Kind<'a, T> {
-        fn cmp(&self, other: &Self) -> Ordering {
-            match self.value().cmp(&other.value()) {
-                Ordering::Equal => match (self, other) {
-                    // End excluded before start and end included
-                    (Kind::End(EndBound::Excluded(_), _), Kind::Start(..) | Kind::End(EndBound::Included(_), _)) => {
-                        Ordering::Less
-                    },
-                    (Kind::Start(..) | Kind::End(EndBound::Included(_), _), Kind::End(EndBound::Excluded(_), _)) => {
-                        Ordering::Greater
-                    },
-
-                    // Start before end included
-                    (Kind::Start(..), Kind::End(EndBound::Included(_), _)) => Ordering::Less,
-                    (Kind::End(EndBound::Included(_), _), Kind::Start(..)) => Ordering::Greater,
-
-                    _ => Ordering::Equal,
-                },
-                other => other,
-            }
+    impl<'a, T: Copy + Ord> Ord for RangeBound<'a, T> {
+        fn cmp(&self, RangeBound(other_value, other_kind, _): &Self) -> Ordering {
+            let RangeBound(self_value, self_kind, _) = *self;
+            (self_value, self_kind).cmp(&(*other_value, *other_kind))
         }
     }
 
     let mut values = Vec::with_capacity(2 * ranges.len());
 
-    for r in ranges {
-        values.push(Kind::Start(r.node.0, r));
-        values.push(Kind::End(r.node.1, r));
+    for r @ SpannedRange { node: (start, end), .. } in ranges {
+        values.push(RangeBound(*start, BoundKind::Start, r));
+        values.push(match end {
+            EndBound::Excluded(val) => RangeBound(*val, BoundKind::EndExcluded, r),
+            EndBound::Included(val) => RangeBound(*val, BoundKind::EndIncluded, r),
+        });
     }
 
     values.sort();
 
     let mut started = vec![];
 
-    for value in values {
-        match value {
-            Kind::Start(_, r) => started.push(r),
-            Kind::End(_, er) => {
+    for RangeBound(_, kind, r) in values {
+        match kind {
+            BoundKind::Start => started.push(r),
+            BoundKind::EndExcluded | BoundKind::EndIncluded => {
                 let mut overlap = None;
 
                 while let Some(sr) = started.pop() {
-                    if sr == er {
+                    if sr == r {
                         break;
                     }
                     overlap = Some(sr);
                 }
 
                 if let Some(sr) = overlap {
-                    return Some((er, sr));
+                    return Some((r, sr));
                 }
             },
         }
