@@ -406,7 +406,19 @@ impl GlobalState {
                             // When we're running multiple flychecks, we have to include a disambiguator in
                             // the title, or the editor complains. Note that this is a user-facing string.
                             let title = if self.flycheck.len() == 1 {
-                                "cargo check".to_string()
+                                match self.config.flycheck() {
+                                    Some(flycheck::FlycheckConfig::CargoCommand {
+                                        command,
+                                        ..
+                                    }) => {
+                                        format!("cargo {}", command)
+                                    }
+                                    Some(flycheck::FlycheckConfig::CustomCommand {
+                                        command,
+                                        ..
+                                    }) => command,
+                                    None => "cargo check".to_string(),
+                                }
                             } else {
                                 format!("cargo check (#{})", id + 1)
                             };
