@@ -760,15 +760,10 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Actually builds the expression which the format_args! block will be
     /// expanded to.
     fn into_expr(self) -> P<ast::Expr> {
-        let mut locals =
-            Vec::with_capacity((0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum());
-        let mut counts = Vec::with_capacity(self.count_args.len());
-        let mut pats = Vec::with_capacity(self.args.len());
+        let mut args = Vec::with_capacity(
+            self.arg_unique_types.iter().map(|v| v.len()).sum::<usize>() + self.count_args.len(),
+        );
         let mut heads = Vec::with_capacity(self.args.len());
-
-        let names_pos: Vec<_> = (0..self.args.len())
-            .map(|i| Ident::from_str_and_span(&format!("arg{}", i), self.macsp))
-            .collect();
 
         // First, build up the static array which will become our precompiled
         // format "string"
@@ -787,11 +782,8 @@ impl<'a, 'b> Context<'a, 'b> {
         // of each variable because we don't want to move out of the arguments
         // passed to this function.
         for (i, e) in self.args.into_iter().enumerate() {
-            let name = names_pos[i];
-            let span = self.ecx.with_def_site_ctxt(e.span);
-            pats.push(self.ecx.pat_ident(span, name));
             for arg_ty in self.arg_unique_types[i].iter() {
-                locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));
+                args.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, i));
             }
             heads.push(self.ecx.expr_addr_of(e.span, e));
         }
@@ -800,15 +792,11 @@ impl<'a, 'b> Context<'a, 'b> {
                 Exact(i) => i,
                 _ => panic!("should never happen"),
             };
-            let name = names_pos[index];
             let span = spans_pos[index];
-            counts.push(Context::format_arg(self.ecx, self.macsp, span, &Count, name));
+            args.push(Context::format_arg(self.ecx, self.macsp, span, &Count, index));
         }
 
-        // Now create a vector containing all the arguments
-        let args = locals.into_iter().chain(counts.into_iter());
-
-        let args_array = self.ecx.expr_vec(self.macsp, args.collect());
+        let args_array = self.ecx.expr_vec(self.macsp, args);
 
         // Constructs an AST equivalent to:
         //
@@ -838,7 +826,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // But the nested match expression is proved to perform not as well
         // as series of let's; the first approach does.
         let args_match = {
-            let pat = self.ecx.pat_tuple(self.macsp, pats);
+            let pat = self.ecx.pat_ident(self.macsp, Ident::new(sym::_args, self.macsp));
             let arm = self.ecx.arm(self.macsp, pat, args_array);
             let head = self.ecx.expr(self.macsp, ast::ExprKind::Tup(heads));
             self.ecx.expr_match(self.macsp, head, vec![arm])
@@ -877,10 +865,11 @@ impl<'a, 'b> Context<'a, 'b> {
         macsp: Span,
         mut sp: Span,
         ty: &ArgumentType,
-        arg: Ident,
+        arg_index: usize,
     ) -> P<ast::Expr> {
         sp = ecx.with_def_site_ctxt(sp);
-        let arg = ecx.expr_ident(sp, arg);
+        let arg = ecx.expr_ident(sp, Ident::new(sym::_args, sp));
+        let arg = ecx.expr(sp, ast::ExprKind::Field(arg, Ident::new(sym::integer(arg_index), sp)));
         let trait_ = match *ty {
             Placeholder(trait_) if trait_ == "<invalid>" => return DummyResult::raw_expr(sp, true),
             Placeholder(trait_) => trait_,
