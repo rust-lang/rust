@@ -42,6 +42,7 @@ pub enum TypeError<'tcx> {
     TupleSize(ExpectedFound<usize>),
     FixedArraySize(ExpectedFound<u64>),
     ArgCount,
+    FieldMisMatch(Symbol, Symbol),
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
     RegionsInsufficientlyPolymorphic(BoundRegionKind, Region<'tcx>),
@@ -134,6 +135,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 pluralize!(values.found)
             ),
             ArgCount => write!(f, "incorrect number of function parameters"),
+            FieldMisMatch(adt, field) => write!(f, "field type mismatch: {}.{}", adt, field),
             RegionsDoesNotOutlive(..) => write!(f, "lifetime mismatch"),
             RegionsInsufficientlyPolymorphic(br, _) => write!(
                 f,
@@ -224,6 +226,7 @@ impl<'tcx> TypeError<'tcx> {
             | ArgumentMutability(_)
             | TupleSize(_)
             | ArgCount
+            | FieldMisMatch(..)
             | RegionsDoesNotOutlive(..)
             | RegionsInsufficientlyPolymorphic(..)
             | RegionsOverlyPolymorphic(..)

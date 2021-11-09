@@ -602,6 +602,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             TupleSize(x) => TupleSize(x),
             FixedArraySize(x) => FixedArraySize(x),
             ArgCount => ArgCount,
+            FieldMisMatch(x, y) => FieldMisMatch(x, y),
             RegionsDoesNotOutlive(a, b) => {
                 return tcx.lift((a, b)).map(|(a, b)| RegionsDoesNotOutlive(a, b));
             }
