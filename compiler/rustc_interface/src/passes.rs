@@ -692,6 +692,7 @@ pub fn prepare_outputs(
         &compiler.input,
         &compiler.output_dir,
         &compiler.output_file,
+        &compiler.temps_dir,
         &krate.attrs,
         sess,
     );
@@ -719,6 +720,13 @@ pub fn prepare_outputs(
                 ));
                 return Err(ErrorReported);
             }
+        }
+    }
+
+    if let Some(ref dir) = compiler.temps_dir {
+        if fs::create_dir_all(dir).is_err() {
+            sess.err("failed to find or create the directory specified by `--temps-dir`");
+            return Err(ErrorReported);
         }
     }
 
