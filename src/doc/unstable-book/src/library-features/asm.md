@@ -566,8 +566,8 @@ Here is the list of currently supported register classes:
 | ARM (Thumb2) | `reg` | `r[0-12]`, `r14` | `r` |
 | ARM (Thumb1) | `reg` | `r[0-7]` | `r` |
 | ARM (ARM) | `reg_thumb` | `r[0-r12]`, `r14` | `l` |
-| ARM (Thumb2) | `reg_thumb` | `r[0-r7]` | `l` |
-| ARM (Thumb1) | `reg_thumb` | `r[0-r7]` | `l` |
+| ARM (Thumb2) | `reg_thumb` | `r[0-7]` | `l` |
+| ARM (Thumb1) | `reg_thumb` | `r[0-7]` | `l` |
 | ARM | `sreg` | `s[0-31]` | `t` |
 | ARM | `sreg_low16` | `s[0-15]` | `x` |
 | ARM | `dreg` | `d[0-31]` | `w` |
