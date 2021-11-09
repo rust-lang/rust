@@ -1,0 +1,129 @@
+error: proc macro panicked
+  --> $DIR/expand-expr.rs:25:1
+   |
+LL | expand_expr_is!("", file!());
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: assert failed
+           expected: `"\"\""`
+           expanded: `"\"$DIR/expand-expr.rs\""`
+
+error: expected one of `.`, `?`, or an operator, found `;`
+  --> $DIR/expand-expr.rs:99:35
+   |
+LL | expand_expr_is!("string", "string"; hello);
+   |                                   ^ expected one of `.`, `?`, or an operator
+
+error: proc macro panicked
+  --> $DIR/expand-expr.rs:99:1
+   |
+LL | expand_expr_is!("string", "string"; hello);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_expr failed: ExpandError
+
+error: expected expression, found `$`
+  --> $DIR/expand-expr.rs:103:25
+   |
+LL | expand_expr_is!("fail", $);
+   |                         ^ expected expression
+
+error: proc macro panicked
+  --> $DIR/expand-expr.rs:103:1
+   |
+LL | expand_expr_is!("fail", $);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_expr failed: ExpandError
+
+error: expected expression, found `$`
+  --> $DIR/expand-expr.rs:31:23
+   |
+LL |     ($($t:tt)*) => { $($t)* };
+   |                       ^^^^ expected expression
+
+error: proc macro panicked
+  --> $DIR/expand-expr.rs:105:1
+   |
+LL | expand_expr_is!("fail", echo_tts!($));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_expr failed: ExpandError
+
+error: expected expression, found `$`
+  --> $DIR/expand-expr.rs:106:34
+   |
+LL | expand_expr_is!("fail", echo_pm!($));
+   |                                  ^ expected expression
+
+error: proc macro panicked
+  --> $DIR/expand-expr.rs:106:1
+   |
+LL | expand_expr_is!("fail", echo_pm!($));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_expr failed: ExpandError
+
+error: macro expansion ignores token `hello` and any following
+  --> $DIR/expand-expr.rs:111:47
+   |
+LL | expand_expr_is!("string", echo_tts!("string"; hello));
+   |                           --------------------^^^^^-- help: you might be missing a semicolon here: `;`
+   |                           |
+   |                           caused by the macro expansion here
+   |
+   = note: the usage of `echo_tts!` is likely invalid in expression context
+
+error: macro expansion ignores token `;` and any following
+  --> $DIR/expand-expr.rs:112:44
+   |
+LL | expand_expr_is!("string", echo_pm!("string"; hello));
+   |                           -----------------^-------- help: you might be missing a semicolon here: `;`
+   |                           |
+   |                           caused by the macro expansion here
+   |
+   = note: the usage of `echo_pm!` is likely invalid in expression context
+
+error: proc macro panicked
+  --> $DIR/expand-expr.rs:115:1
+   |
+LL | expand_expr_is!("fail", arbitrary_expression() + "etc");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_expr failed: ExpandError
+
+error: proc macro panicked
+  --> $DIR/expand-expr.rs:116:1
+   |
+LL | expand_expr_is!("fail", echo_tts!(arbitrary_expression() + "etc"));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_expr failed: ExpandError
+
+error: proc macro panicked
+  --> $DIR/expand-expr.rs:117:1
+   |
+LL | expand_expr_is!("fail", echo_expr!(arbitrary_expression() + "etc"));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_expr failed: ExpandError
+
+error: proc macro panicked
+  --> $DIR/expand-expr.rs:118:1
+   |
+LL | expand_expr_is!("fail", echo_pm!(arbitrary_expression() + "etc"));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_expr failed: ExpandError
+
+error: recursion limit reached while expanding `recursive_expand!`
+  --> $DIR/expand-expr.rs:120:16
+   |
+LL | const _: u32 = recursive_expand!();
+   |                ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate (`expand_expr`)
+   = note: this error originates in the macro `recursive_expand` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 16 previous errors
+

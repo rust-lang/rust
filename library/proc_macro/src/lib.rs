@@ -109,6 +109,34 @@ impl !Send for LexError {}
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Sync for LexError {}
 
+/// Error returned from `TokenStream::expand_expr`.
+#[unstable(feature = "proc_macro_expand", issue = "none")]
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct ExpandError;
+
+impl ExpandError {
+    fn new() -> Self {
+        ExpandError
+    }
+}
+
+#[unstable(feature = "proc_macro_expand", issue = "none")]
+impl fmt::Display for ExpandError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("macro expansion failed")
+    }
+}
+
+#[unstable(feature = "proc_macro_expand", issue = "none")]
+impl error::Error for ExpandError {}
+
+#[unstable(feature = "proc_macro_expand", issue = "none")]
+impl !Send for ExpandError {}
+
+#[unstable(feature = "proc_macro_expand", issue = "none")]
+impl !Sync for ExpandError {}
+
 impl TokenStream {
     /// Returns an empty `TokenStream` containing no token trees.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -120,6 +148,24 @@ impl TokenStream {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// Parses this `TokenStream` as an expression and attempts to expand any
+    /// macros within it. Returns the expanded `TokenStream`.
+    ///
+    /// Currently only expressions expanding to literals will succeed, although
+    /// this may be relaxed in the future.
+    ///
+    /// NOTE: In error conditions, `expand_expr` may leave macros unexpanded,
+    /// report an error, failing compilation, and/or return an `Err(..)`. The
+    /// specific behavior for any error condition, and what conditions are
+    /// considered errors, is unspecified and may change in the future.
+    #[unstable(feature = "proc_macro_expand", issue = "none")]
+    pub fn expand_expr(&self) -> Result<TokenStream, ExpandError> {
+        match bridge::client::TokenStream::expand_expr(&self.0) {
+            Ok(stream) => Ok(TokenStream(stream)),
+            Err(_) => Err(ExpandError::new()),
+        }
     }
 }
 
