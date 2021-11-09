@@ -1538,7 +1538,6 @@ impl Type {
             ResolvedPath { did, .. } => return Some(did),
             DynTrait(ref bounds, _) => return Some(bounds[0].trait_.def_id()),
             Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
-            BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
             BorrowedRef { ref type_, .. } => return type_.inner_def_id(cache),
             Tuple(ref tys) => {
                 if tys.is_empty() {
