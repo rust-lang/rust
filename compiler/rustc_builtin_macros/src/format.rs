@@ -903,7 +903,7 @@ impl<'a, 'b> Context<'a, 'b> {
         };
 
         let path = ecx.std_path(&[sym::fmt, sym::ArgumentV1, Symbol::intern(new_fn_name)]);
-        ecx.expr_call_global(macsp, path, vec![arg])
+        ecx.expr_call_global(sp, path, vec![arg])
     }
 }
 
