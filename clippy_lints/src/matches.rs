@@ -33,7 +33,6 @@ use rustc_span::source_map::{Span, Spanned};
 use rustc_span::sym;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
-use std::ops::Bound;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -1596,7 +1595,7 @@ fn opt_parent_let<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<&'a Local<'
     None
 }
 
-/// Gets all arms that are unbounded `PatRange`s.
+/// Gets the ranges for each range pattern arm. Applies `ty` bounds for open ranges.
 fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>) -> Vec<SpannedRange<FullInt>> {
     arms.iter()
         .filter_map(|arm| {
@@ -1635,6 +1634,12 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
             None
         })
         .collect()
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Bound<T> {
+    Included(T),
+    Excluded(T),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -1730,8 +1735,6 @@ where
                         value_cmp
                     }
                 },
-                // Range patterns cannot be unbounded (yet)
-                (Bound::Unbounded, _) | (_, Bound::Unbounded) => unimplemented!(),
                 (Bound::Included(a), Bound::Excluded(b)) => match a.cmp(&b) {
                     Ordering::Equal => Ordering::Greater,
                     other => other,
