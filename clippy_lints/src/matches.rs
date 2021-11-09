@@ -33,7 +33,6 @@ use rustc_span::source_map::{Span, Spanned};
 use rustc_span::sym;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
-use std::ops::Bound;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -1596,27 +1595,27 @@ fn opt_parent_let<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<&'a Local<'
     None
 }
 
-/// Gets all arms that are unbounded `PatRange`s.
+/// Gets the ranges for each range pattern arm. Applies `ty` bounds for open ranges.
 fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>) -> Vec<SpannedRange<FullInt>> {
     arms.iter()
         .filter_map(|arm| {
             if let Arm { pat, guard: None, .. } = *arm {
                 if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
-                    let lhs = match lhs {
+                    let lhs_const = match lhs {
                         Some(lhs) => constant(cx, cx.typeck_results(), lhs)?.0,
                         None => miri_to_const(ty.numeric_min_val(cx.tcx)?)?,
                     };
-                    let rhs = match rhs {
+                    let rhs_const = match rhs {
                         Some(rhs) => constant(cx, cx.typeck_results(), rhs)?.0,
                         None => miri_to_const(ty.numeric_max_val(cx.tcx)?)?,
                     };
 
-                    let lhs_val = lhs.int_value(cx, ty)?;
-                    let rhs_val = rhs.int_value(cx, ty)?;
+                    let lhs_val = lhs_const.int_value(cx, ty)?;
+                    let rhs_val = rhs_const.int_value(cx, ty)?;
 
                     let rhs_bound = match range_end {
-                        RangeEnd::Included => Bound::Included(rhs_val),
-                        RangeEnd::Excluded => Bound::Excluded(rhs_val),
+                        RangeEnd::Included => EndBound::Included(rhs_val),
+                        RangeEnd::Excluded => EndBound::Excluded(rhs_val),
                     };
                     return Some(SpannedRange {
                         span: pat.span,
@@ -1628,7 +1627,7 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                     let value = constant_full_int(cx, cx.typeck_results(), value)?;
                     return Some(SpannedRange {
                         span: pat.span,
-                        node: (value, Bound::Included(value)),
+                        node: (value, EndBound::Included(value)),
                     });
                 }
             }
@@ -1637,10 +1636,16 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
         .collect()
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EndBound<T> {
+    Included(T),
+    Excluded(T),
+}
+
 #[derive(Debug, Eq, PartialEq)]
-pub struct SpannedRange<T> {
+struct SpannedRange<T> {
     pub span: Span,
-    pub node: (T, Bound<T>),
+    pub node: (T, EndBound<T>),
 }
 
 // Checks if arm has the form `None => None`
@@ -1689,87 +1694,62 @@ where
     ref_count > 1
 }
 
-pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>
+fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>
 where
     T: Copy + Ord,
 {
+    #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+    enum BoundKind {
+        EndExcluded,
+        Start,
+        EndIncluded,
+    }
+
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-    enum Kind<'a, T> {
-        Start(T, &'a SpannedRange<T>),
-        End(Bound<T>, &'a SpannedRange<T>),
-    }
+    struct RangeBound<'a, T>(T, BoundKind, &'a SpannedRange<T>);
 
-    impl<'a, T: Copy> Kind<'a, T> {
-        fn value(self) -> Bound<T> {
-            match self {
-                Kind::Start(t, _) => Bound::Included(t),
-                Kind::End(t, _) => t,
-            }
-        }
-    }
-
-    impl<'a, T: Copy + Ord> PartialOrd for Kind<'a, T> {
+    impl<'a, T: Copy + Ord> PartialOrd for RangeBound<'a, T> {
         fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
             Some(self.cmp(other))
         }
     }
 
-    impl<'a, T: Copy + Ord> Ord for Kind<'a, T> {
-        fn cmp(&self, other: &Self) -> Ordering {
-            match (self.value(), other.value()) {
-                (Bound::Included(a), Bound::Included(b)) | (Bound::Excluded(a), Bound::Excluded(b)) => {
-                    let value_cmp = a.cmp(&b);
-                    // In the case of ties, starts come before ends
-                    if value_cmp == Ordering::Equal {
-                        match (self, other) {
-                            (Kind::Start(..), Kind::End(..)) => Ordering::Less,
-                            (Kind::End(..), Kind::Start(..)) => Ordering::Greater,
-                            _ => Ordering::Equal,
-                        }
-                    } else {
-                        value_cmp
-                    }
-                },
-                // Range patterns cannot be unbounded (yet)
-                (Bound::Unbounded, _) | (_, Bound::Unbounded) => unimplemented!(),
-                (Bound::Included(a), Bound::Excluded(b)) => match a.cmp(&b) {
-                    Ordering::Equal => Ordering::Greater,
-                    other => other,
-                },
-                (Bound::Excluded(a), Bound::Included(b)) => match a.cmp(&b) {
-                    Ordering::Equal => Ordering::Less,
-                    other => other,
-                },
-            }
+    impl<'a, T: Copy + Ord> Ord for RangeBound<'a, T> {
+        fn cmp(&self, RangeBound(other_value, other_kind, _): &Self) -> Ordering {
+            let RangeBound(self_value, self_kind, _) = *self;
+            (self_value, self_kind).cmp(&(*other_value, *other_kind))
         }
     }
 
     let mut values = Vec::with_capacity(2 * ranges.len());
 
-    for r in ranges {
-        values.push(Kind::Start(r.node.0, r));
-        values.push(Kind::End(r.node.1, r));
+    for r @ SpannedRange { node: (start, end), .. } in ranges {
+        values.push(RangeBound(*start, BoundKind::Start, r));
+        values.push(match end {
+            EndBound::Excluded(val) => RangeBound(*val, BoundKind::EndExcluded, r),
+            EndBound::Included(val) => RangeBound(*val, BoundKind::EndIncluded, r),
+        });
     }
 
     values.sort();
 
     let mut started = vec![];
 
-    for value in values {
-        match value {
-            Kind::Start(_, r) => started.push(r),
-            Kind::End(_, er) => {
+    for RangeBound(_, kind, range) in values {
+        match kind {
+            BoundKind::Start => started.push(range),
+            BoundKind::EndExcluded | BoundKind::EndIncluded => {
                 let mut overlap = None;
 
-                while let Some(sr) = started.pop() {
-                    if sr == er {
+                while let Some(last_started) = started.pop() {
+                    if last_started == range {
                         break;
                     }
-                    overlap = Some(sr);
+                    overlap = Some(last_started);
                 }
 
-                if let Some(sr) = overlap {
-                    return Some((er, sr));
+                if let Some(first_overlapping) = overlap {
+                    return Some((range, first_overlapping));
                 }
             },
         }
@@ -2227,29 +2207,29 @@ fn test_overlapping() {
     };
 
     assert_eq!(None, overlapping::<u8>(&[]));
-    assert_eq!(None, overlapping(&[sp(1, Bound::Included(4))]));
+    assert_eq!(None, overlapping(&[sp(1, EndBound::Included(4))]));
     assert_eq!(
         None,
-        overlapping(&[sp(1, Bound::Included(4)), sp(5, Bound::Included(6))])
+        overlapping(&[sp(1, EndBound::Included(4)), sp(5, EndBound::Included(6))])
     );
     assert_eq!(
         None,
         overlapping(&[
-            sp(1, Bound::Included(4)),
-            sp(5, Bound::Included(6)),
-            sp(10, Bound::Included(11))
+            sp(1, EndBound::Included(4)),
+            sp(5, EndBound::Included(6)),
+            sp(10, EndBound::Included(11))
         ],)
     );
     assert_eq!(
-        Some((&sp(1, Bound::Included(4)), &sp(3, Bound::Included(6)))),
-        overlapping(&[sp(1, Bound::Included(4)), sp(3, Bound::Included(6))])
+        Some((&sp(1, EndBound::Included(4)), &sp(3, EndBound::Included(6)))),
+        overlapping(&[sp(1, EndBound::Included(4)), sp(3, EndBound::Included(6))])
     );
     assert_eq!(
-        Some((&sp(5, Bound::Included(6)), &sp(6, Bound::Included(11)))),
+        Some((&sp(5, EndBound::Included(6)), &sp(6, EndBound::Included(11)))),
         overlapping(&[
-            sp(1, Bound::Included(4)),
-            sp(5, Bound::Included(6)),
-            sp(6, Bound::Included(11))
+            sp(1, EndBound::Included(4)),
+            sp(5, EndBound::Included(6)),
+            sp(6, EndBound::Included(11))
         ],)
     );
 }
