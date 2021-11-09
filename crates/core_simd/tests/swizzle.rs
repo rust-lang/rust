@@ -34,18 +34,18 @@ fn reverse() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn rotate() {
     let a = Simd::from_array([1, 2, 3, 4]);
-    assert_eq!(a.rotate_left::<0>().to_array(), [1, 2, 3, 4]);
-    assert_eq!(a.rotate_left::<1>().to_array(), [2, 3, 4, 1]);
-    assert_eq!(a.rotate_left::<2>().to_array(), [3, 4, 1, 2]);
-    assert_eq!(a.rotate_left::<3>().to_array(), [4, 1, 2, 3]);
-    assert_eq!(a.rotate_left::<4>().to_array(), [1, 2, 3, 4]);
-    assert_eq!(a.rotate_left::<5>().to_array(), [2, 3, 4, 1]);
-    assert_eq!(a.rotate_right::<0>().to_array(), [1, 2, 3, 4]);
-    assert_eq!(a.rotate_right::<1>().to_array(), [4, 1, 2, 3]);
-    assert_eq!(a.rotate_right::<2>().to_array(), [3, 4, 1, 2]);
-    assert_eq!(a.rotate_right::<3>().to_array(), [2, 3, 4, 1]);
-    assert_eq!(a.rotate_right::<4>().to_array(), [1, 2, 3, 4]);
-    assert_eq!(a.rotate_right::<5>().to_array(), [4, 1, 2, 3]);
+    assert_eq!(a.rotate_lanes_left::<0>().to_array(), [1, 2, 3, 4]);
+    assert_eq!(a.rotate_lanes_left::<1>().to_array(), [2, 3, 4, 1]);
+    assert_eq!(a.rotate_lanes_left::<2>().to_array(), [3, 4, 1, 2]);
+    assert_eq!(a.rotate_lanes_left::<3>().to_array(), [4, 1, 2, 3]);
+    assert_eq!(a.rotate_lanes_left::<4>().to_array(), [1, 2, 3, 4]);
+    assert_eq!(a.rotate_lanes_left::<5>().to_array(), [2, 3, 4, 1]);
+    assert_eq!(a.rotate_lanes_right::<0>().to_array(), [1, 2, 3, 4]);
+    assert_eq!(a.rotate_lanes_right::<1>().to_array(), [4, 1, 2, 3]);
+    assert_eq!(a.rotate_lanes_right::<2>().to_array(), [3, 4, 1, 2]);
+    assert_eq!(a.rotate_lanes_right::<3>().to_array(), [2, 3, 4, 1]);
+    assert_eq!(a.rotate_lanes_right::<4>().to_array(), [1, 2, 3, 4]);
+    assert_eq!(a.rotate_lanes_right::<5>().to_array(), [4, 1, 2, 3]);
 }
 
 #[test]
