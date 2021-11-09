@@ -1643,7 +1643,7 @@ pub enum EndBound<T> {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct SpannedRange<T> {
+struct SpannedRange<T> {
     pub span: Span,
     pub node: (T, EndBound<T>),
 }
@@ -1694,7 +1694,7 @@ where
     ref_count > 1
 }
 
-pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>
+fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>
 where
     T: Copy + Ord,
 {
