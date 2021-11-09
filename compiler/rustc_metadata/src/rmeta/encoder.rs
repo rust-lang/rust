@@ -2193,5 +2193,8 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     result[header + 2] = (pos >> 8) as u8;
     result[header + 3] = (pos >> 0) as u8;
 
+    // Record metadata size for self-profiling
+    tcx.prof.artifact_size("crate_metadata", "crate_metadata", result.len() as u64);
+
     EncodedMetadata { raw_data: result }
 }
