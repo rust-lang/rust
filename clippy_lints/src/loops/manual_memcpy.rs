@@ -442,7 +442,7 @@ fn get_loop_counters<'a, 'tcx>(
                 let mut initialize_visitor = InitializeVisitor::new(cx, expr, var_id);
                 walk_block(&mut initialize_visitor, block);
 
-                initialize_visitor.get_result().map(|(_, initializer)| Start {
+                initialize_visitor.get_result().map(|(_, _, initializer)| Start {
                     id: var_id,
                     kind: StartKind::Counter { initializer },
                 })
