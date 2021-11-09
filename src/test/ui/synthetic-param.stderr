@@ -3,18 +3,27 @@ error[E0632]: cannot provide explicit generic arguments when `impl Trait` is use
    |
 LL |     func::<u8>(42);
    |            ^^ explicit generic argument not allowed
+   |
+   = note: see issue #83701 <https://github.com/rust-lang/rust/issues/83701> for more information
+   = help: add `#![feature(explicit_generic_args_with_impl_trait)]` to the crate attributes to enable
 
 error[E0632]: cannot provide explicit generic arguments when `impl Trait` is used in argument position
   --> $DIR/synthetic-param.rs:23:17
    |
 LL |     Foo::func::<u8>(42);
    |                 ^^ explicit generic argument not allowed
+   |
+   = note: see issue #83701 <https://github.com/rust-lang/rust/issues/83701> for more information
+   = help: add `#![feature(explicit_generic_args_with_impl_trait)]` to the crate attributes to enable
 
 error[E0632]: cannot provide explicit generic arguments when `impl Trait` is used in argument position
   --> $DIR/synthetic-param.rs:26:23
    |
 LL |     Bar::<i8>::func::<u8>(42);
    |                       ^^ explicit generic argument not allowed
+   |
+   = note: see issue #83701 <https://github.com/rust-lang/rust/issues/83701> for more information
+   = help: add `#![feature(explicit_generic_args_with_impl_trait)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

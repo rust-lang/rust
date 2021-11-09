@@ -240,6 +240,11 @@ pub struct Cell<T: ?Sized> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized> Send for Cell<T> where T: Send {}
 
+// Note that this negative impl isn't strictly necessary for correctness,
+// as `Cell` wraps `UnsafeCell`, which is itself `!Sync`.
+// However, given how important `Cell`'s `!Sync`-ness is,
+// having an explicit negative impl is nice for documentation purposes
+// and results in nicer error messages.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Sync for Cell<T> {}
 
