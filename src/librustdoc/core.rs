@@ -265,9 +265,9 @@ crate fn create_config(
                 // Closures' tables come from their outermost function,
                 // as they are part of the same "inference environment".
                 // This avoids emitting errors for the parent twice (see similar code in `typeck_with_fallback`)
-                let outer_def_id = tcx.closure_base_def_id(def_id.to_def_id()).expect_local();
-                if outer_def_id != def_id {
-                    return tcx.typeck(outer_def_id);
+                let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
+                if typeck_root_def_id != def_id {
+                    return tcx.typeck(typeck_root_def_id);
                 }
 
                 let hir = tcx.hir();
