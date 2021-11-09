@@ -362,7 +362,7 @@ fn resolve_associated_item<'tcx>(
                     let is_copy = self_ty.is_copy_modulo_regions(tcx.at(DUMMY_SP), param_env);
                     match self_ty.kind() {
                         _ if is_copy => (),
-                        ty::Array(..) | ty::Closure(..) | ty::Tuple(..) => {}
+                        ty::Closure(..) | ty::Tuple(..) => {}
                         _ => return Ok(None),
                     };
 
