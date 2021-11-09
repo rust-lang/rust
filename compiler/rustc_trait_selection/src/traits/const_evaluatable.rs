@@ -151,7 +151,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
     if concrete.is_ok() && uv.substs(infcx.tcx).definitely_has_param_types_or_consts(infcx.tcx) {
         match infcx.tcx.def_kind(uv.def.did) {
-            DefKind::AnonConst => {
+            DefKind::AnonConst | DefKind::InlineConst => {
                 let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(uv.def);
 
                 if mir_body.is_polymorphic {
@@ -495,7 +495,7 @@ pub(super) fn thir_abstract_const<'tcx>(
             // we want to look into them or treat them as opaque projections.
             //
             // Right now we do neither of that and simply always fail to unify them.
-            DefKind::AnonConst => (),
+            DefKind::AnonConst | DefKind::InlineConst => (),
             _ => return Ok(None),
         }
 

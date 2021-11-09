@@ -361,6 +361,17 @@ fn collect_and_partition_mono_items<'tcx>(
         )
     });
 
+    if tcx.prof.enabled() {
+        // Record CGU size estimates for self-profiling.
+        for cgu in codegen_units {
+            tcx.prof.artifact_size(
+                "codegen_unit_size_estimate",
+                &cgu.name().as_str()[..],
+                cgu.size_estimate() as u64,
+            );
+        }
+    }
+
     let mono_items: DefIdSet = items
         .iter()
         .filter_map(|mono_item| match *mono_item {

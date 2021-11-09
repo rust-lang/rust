@@ -1,3 +1,5 @@
+// gate-test-type_changing_struct_update
+
 #[derive(Debug)]
 struct Machine<S> {
     state: S,
@@ -17,9 +19,10 @@ fn update_to_state2() {
     };
     let m2: Machine<State2> = Machine {
         state: State2,
-        ..m1 //~ ERROR mismatched types
+        ..m1
+        //~^ ERROR type changing struct updating is experimental [E0658]
+        //~| ERROR mismatched types [E0308]
     };
-    // FIXME: this should trigger feature gate
     assert_eq!(State2, m2.state);
 }
 

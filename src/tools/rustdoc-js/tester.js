@@ -401,7 +401,8 @@ function showHelp() {
     console.log("  --doc-folder [PATH]        : location of the generated doc folder");
     console.log("  --help                     : show this message then quit");
     console.log("  --crate-name [STRING]      : crate name to be used");
-    console.log("  --test-file [PATH]         : location of the JS test file");
+    console.log("  --test-file [PATHs]        : location of the JS test files (can be called " +
+                "multiple times)");
     console.log("  --test-folder [PATH]       : location of the JS tests folder");
     console.log("  --resource-suffix [STRING] : suffix to refer to the correct files");
 }
@@ -412,7 +413,7 @@ function parseOptions(args) {
         "resource_suffix": "",
         "doc_folder": "",
         "test_folder": "",
-        "test_file": "",
+        "test_file": [],
     };
     var correspondences = {
         "--resource-suffix": "resource_suffix",
@@ -429,7 +430,11 @@ function parseOptions(args) {
                 console.log("Missing argument after `" + args[i - 1] + "` option.");
                 return null;
             }
-            opts[correspondences[args[i - 1]]] = args[i];
+            if (args[i - 1] !== "--test-file") {
+                opts[correspondences[args[i - 1]]] = args[i];
+            } else {
+                opts[correspondences[args[i - 1]]].push(args[i]);
+            }
         } else if (args[i] === "--help") {
             showHelp();
             process.exit(0);
@@ -471,9 +476,10 @@ function main(argv) {
     var errors = 0;
 
     if (opts["test_file"].length !== 0) {
-        errors += checkFile(opts["test_file"], opts, loaded, index);
-    }
-    if (opts["test_folder"].length !== 0) {
+        opts["test_file"].forEach(function(file) {
+            errors += checkFile(file, opts, loaded, index);
+        });
+    } else if (opts["test_folder"].length !== 0) {
         fs.readdirSync(opts["test_folder"]).forEach(function(file) {
             if (!file.endsWith(".js")) {
                 return;

@@ -266,7 +266,15 @@ impl<'hir> Map<'hir> {
                 };
                 DefKind::Ctor(ctor_of, def::CtorKind::from_hir(variant_data))
             }
-            Node::AnonConst(_) => DefKind::AnonConst,
+            Node::AnonConst(_) => {
+                let inline = match self.find(self.get_parent_node(hir_id)) {
+                    Some(Node::Expr(&Expr {
+                        kind: ExprKind::ConstBlock(ref anon_const), ..
+                    })) if anon_const.hir_id == hir_id => true,
+                    _ => false,
+                };
+                if inline { DefKind::InlineConst } else { DefKind::AnonConst }
+            }
             Node::Field(_) => DefKind::Field,
             Node::Expr(expr) => match expr.kind {
                 ExprKind::Closure(.., None) => DefKind::Closure,
