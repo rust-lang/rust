@@ -34,7 +34,7 @@ where
     let rv = f();
     let duration = start.elapsed();
     let mut accu = accu.lock();
-    *accu = *accu + duration;
+    *accu += duration;
     rv
 }
 
