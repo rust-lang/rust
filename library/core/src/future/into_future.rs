@@ -13,6 +13,7 @@ pub trait IntoFuture {
 
     /// Creates a future from a value.
     #[unstable(feature = "into_future", issue = "67644")]
+    #[cfg_attr(not(bootstrap), lang = "into_future")]
     fn into_future(self) -> Self::Future;
 }
 
