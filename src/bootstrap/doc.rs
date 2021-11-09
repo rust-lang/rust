@@ -529,7 +529,7 @@ impl Step for Rustc {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.krate("rustc-main").path("compiler").default_condition(builder.config.docs)
+        run.krate("rustc-main").path("compiler").default_condition(builder.config.compiler_docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -559,11 +559,6 @@ impl Step for Rustc {
                 }
             })
             .collect::<Vec<_>>();
-
-        if !builder.config.compiler_docs && !builder.was_invoked_explicitly::<Self>() {
-            builder.info("\tskipping - compiler/librustdoc docs disabled");
-            return;
-        }
 
         // This is the intended out directory for compiler documentation.
         let out = builder.compiler_doc_out(target);
@@ -674,7 +669,8 @@ macro_rules! tool_doc {
             const ONLY_HOSTS: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.krate($should_run)
+                let builder = run.builder;
+                run.krate($should_run).default_condition(builder.config.compiler_docs)
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -704,11 +700,6 @@ macro_rules! tool_doc {
                 t!(fs::create_dir_all(&out));
 
                 let compiler = builder.compiler(stage, builder.config.build);
-
-                if !builder.config.compiler_docs && !builder.was_invoked_explicitly::<Self>() {
-                    builder.info("\tskipping - compiler/tool docs disabled");
-                    return;
-                }
 
                 // Build rustc docs so that we generate relative links.
                 builder.ensure(Rustc { stage, target });
