@@ -263,7 +263,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     }
 
                     // Check that all transitive obligations are satisfied.
-                    if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
+                    let errors = fulfill_cx.select_all_or_error(&infcx);
+                    if !errors.is_empty() {
                         infcx.report_fulfillment_errors(&errors, None, false);
                     }
 
@@ -522,7 +523,8 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
         // Check that all transitive obligations are satisfied.
-        if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
+        let errors = fulfill_cx.select_all_or_error(&infcx);
+        if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
         }
 

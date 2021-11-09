@@ -642,11 +642,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(in super::super) fn select_all_obligations_or_error(&self) {
-        if let Err(errors) = self
+        let errors = self
             .fulfillment_cx
             .borrow_mut()
-            .select_all_with_constness_or_error(&self, self.inh.constness)
-        {
+            .select_all_with_constness_or_error(&self, self.inh.constness);
+
+        if !errors.is_empty() {
             self.report_fulfillment_errors(&errors, self.inh.body_id, false);
         }
     }
@@ -657,13 +658,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fallback_has_occurred: bool,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
-        let result = self
+        let mut result = self
             .fulfillment_cx
             .borrow_mut()
             .select_with_constness_where_possible(self, self.inh.constness);
-        if let Err(mut errors) = result {
-            mutate_fulfillment_errors(&mut errors);
-            self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
+        if !result.is_empty() {
+            mutate_fulfillment_errors(&mut result);
+            self.report_fulfillment_errors(&result, self.inh.body_id, fallback_has_occurred);
         }
     }
 
@@ -793,14 +794,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // we can.  We don't care if some things turn
                         // out unconstrained or ambiguous, as we're
                         // just trying to get hints here.
-                        self.save_and_restore_in_snapshot_flag(|_| {
+                        let errors = self.save_and_restore_in_snapshot_flag(|_| {
                             let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);
                             for obligation in ok.obligations {
                                 fulfill.register_predicate_obligation(self, obligation);
                             }
                             fulfill.select_where_possible(self)
-                        })
-                        .map_err(|_| ())?;
+                        });
+
+                        if !errors.is_empty() {
+                            return Err(());
+                        }
                     }
                     Err(_) => return Err(()),
                 }

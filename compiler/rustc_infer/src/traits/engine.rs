@@ -46,30 +46,25 @@ pub trait TraitEngine<'tcx>: 'tcx {
         obligation: PredicateObligation<'tcx>,
     );
 
-    fn select_all_or_error(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>>;
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'_, 'tcx>) -> Vec<FulfillmentError<'tcx>>;
 
     fn select_all_with_constness_or_error(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
         _constness: hir::Constness,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+    ) -> Vec<FulfillmentError<'tcx>> {
         self.select_all_or_error(infcx)
     }
 
-    fn select_where_possible(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>>;
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'_, 'tcx>)
+    -> Vec<FulfillmentError<'tcx>>;
 
     // FIXME(fee1-dead) this should not provide a default body for chalk as chalk should be updated
     fn select_with_constness_where_possible(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
         _constness: hir::Constness,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+    ) -> Vec<FulfillmentError<'tcx>> {
         self.select_where_possible(infcx)
     }
 

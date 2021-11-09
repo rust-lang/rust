@@ -103,7 +103,7 @@ fn type_marked_structural(
     //
     // 2. We are sometimes doing future-incompatibility lints for
     //    now, so we do not want unconditional errors here.
-    fulfillment_cx.select_all_or_error(infcx).is_ok()
+    fulfillment_cx.select_all_or_error(infcx).is_empty()
 }
 
 /// This implements the traversal over the structure of a given type to try to

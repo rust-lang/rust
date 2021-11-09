@@ -152,11 +152,12 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             },
             cause,
         );
-        if let Err(e) = fulfillcx.select_where_possible(&self.infcx) {
+        let errors = fulfillcx.select_where_possible(&self.infcx);
+        if !errors.is_empty() {
             // This shouldn't happen, except for evaluate/fulfill mismatches,
             // but that's not a reason for an ICE (`predicate_may_hold` is conservative
             // by design).
-            debug!("overloaded_deref_ty: encountered errors {:?} while fulfilling", e);
+            debug!("overloaded_deref_ty: encountered errors {:?} while fulfilling", errors);
             return None;
         }
         let obligations = fulfillcx.pending_obligations();

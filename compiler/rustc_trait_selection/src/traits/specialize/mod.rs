@@ -225,8 +225,18 @@ fn fulfill_implication<'a, 'tcx>(
         for oblig in obligations.chain(more_obligations) {
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
         }
-        match fulfill_cx.select_all_or_error(infcx) {
-            Err(errors) => {
+        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+            [] => {
+                debug!(
+                    "fulfill_implication: an impl for {:?} specializes {:?}",
+                    source_trait_ref, target_trait_ref
+                );
+
+                // Now resolve the *substitution* we built for the target earlier, replacing
+                // the inference variables inside with whatever we got from fulfillment.
+                Ok(infcx.resolve_vars_if_possible(target_substs))
+            }
+            errors => {
                 // no dice!
                 debug!(
                     "fulfill_implication: for impls on {:?} and {:?}, \
@@ -237,17 +247,6 @@ fn fulfill_implication<'a, 'tcx>(
                     param_env.caller_bounds()
                 );
                 Err(())
-            }
-
-            Ok(()) => {
-                debug!(
-                    "fulfill_implication: an impl for {:?} specializes {:?}",
-                    source_trait_ref, target_trait_ref
-                );
-
-                // Now resolve the *substitution* we built for the target earlier, replacing
-                // the inference variables inside with whatever we got from fulfillment.
-                Ok(infcx.resolve_vars_if_possible(target_substs))
             }
         }
     })
