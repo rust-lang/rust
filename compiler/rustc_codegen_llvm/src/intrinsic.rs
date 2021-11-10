@@ -1072,6 +1072,9 @@ fn generic_simd_intrinsic(
         // * an unsigned integer
         // * an array of `u8`
         // If the vector has less than 8 lanes, a u8 is returned with zeroed trailing bits.
+        //
+        // The bit order of the result depends on the byte endianness, LSB-first for little
+        // endian and MSB-first for big endian.
         let expected_int_bits = in_len.max(8);
         let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
 
