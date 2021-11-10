@@ -3208,6 +3208,97 @@ pub unsafe fn vsriq_n_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x
     transmute(vsriq_n_s64_(transmute(a), transmute(b), N))
 }
 
+/// SM3TT1A
+#[inline]
+#[target_feature(enable = "neon,sm4")]
+#[cfg_attr(test, assert_instr(sm3tt1a, IMM2 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vsm3tt1aq_u32<const IMM2: i32>(
+    a: uint32x4_t,
+    b: uint32x4_t,
+    c: uint32x4_t,
+) -> uint32x4_t {
+    static_assert_imm2!(IMM2);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sm3tt1a")]
+        fn vsm3tt1aq_u32_(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, imm2: i64) -> uint32x4_t;
+    }
+    vsm3tt1aq_u32_(a, b, c, IMM2 as i64)
+}
+
+/// SM3TT1B
+#[inline]
+#[target_feature(enable = "neon,sm4")]
+#[cfg_attr(test, assert_instr(sm3tt1b, IMM2 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vsm3tt1bq_u32<const IMM2: i32>(
+    a: uint32x4_t,
+    b: uint32x4_t,
+    c: uint32x4_t,
+) -> uint32x4_t {
+    static_assert_imm2!(IMM2);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sm3tt1b")]
+        fn vsm3tt1bq_u32_(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, imm2: i64) -> uint32x4_t;
+    }
+    vsm3tt1bq_u32_(a, b, c, IMM2 as i64)
+}
+
+/// SM3TT2A
+#[inline]
+#[target_feature(enable = "neon,sm4")]
+#[cfg_attr(test, assert_instr(sm3tt2a, IMM2 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vsm3tt2aq_u32<const IMM2: i32>(
+    a: uint32x4_t,
+    b: uint32x4_t,
+    c: uint32x4_t,
+) -> uint32x4_t {
+    static_assert_imm2!(IMM2);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sm3tt2a")]
+        fn vsm3tt2aq_u32_(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, imm2: i64) -> uint32x4_t;
+    }
+    vsm3tt2aq_u32_(a, b, c, IMM2 as i64)
+}
+
+/// SM3TT2B
+#[inline]
+#[target_feature(enable = "neon,sm4")]
+#[cfg_attr(test, assert_instr(sm3tt2b, IMM2 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vsm3tt2bq_u32<const IMM2: i32>(
+    a: uint32x4_t,
+    b: uint32x4_t,
+    c: uint32x4_t,
+) -> uint32x4_t {
+    static_assert_imm2!(IMM2);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sm3tt2b")]
+        fn vsm3tt2bq_u32_(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, imm2: i64) -> uint32x4_t;
+    }
+    vsm3tt2bq_u32_(a, b, c, IMM2 as i64)
+}
+
+/// Exclusive OR and rotate
+#[inline]
+#[target_feature(enable = "neon,sha3")]
+#[cfg_attr(test, assert_instr(xar, IMM6 = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vxarq_u64<const IMM6: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    static_assert_imm6!(IMM6);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.xar")]
+        fn vxarq_u64_(a: uint64x2_t, b: uint64x2_t, n: i64) -> uint64x2_t;
+    }
+    vxarq_u64_(a, b, IMM6 as i64)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::core_arch::aarch64::test_support::*;
@@ -4865,6 +4956,55 @@ mod tests {
         assert_eq!(vals[0], 0.);
         assert_eq!(vals[1], 1.);
         assert_eq!(vals[2], 2.);
+    }
+
+    #[simd_test(enable = "neon,sm4")]
+    unsafe fn test_vsm3tt1aq_u32() {
+        let a: u32x4 = u32x4::new(1, 2, 3, 4);
+        let b: u32x4 = u32x4::new(1, 2, 3, 4);
+        let c: u32x4 = u32x4::new(1, 2, 3, 4);
+        let e: u32x4 = u32x4::new(2, 1536, 4, 16395);
+        let r: u32x4 = transmute(vsm3tt1aq_u32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,sm4")]
+    unsafe fn test_vsm3tt1bq_u32() {
+        let a: u32x4 = u32x4::new(1, 2, 3, 4);
+        let b: u32x4 = u32x4::new(1, 2, 3, 4);
+        let c: u32x4 = u32x4::new(1, 2, 3, 4);
+        let e: u32x4 = u32x4::new(2, 1536, 4, 16392);
+        let r: u32x4 = transmute(vsm3tt1bq_u32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,sm4")]
+    unsafe fn test_vsm3tt2aq_u32() {
+        let a: u32x4 = u32x4::new(1, 2, 3, 4);
+        let b: u32x4 = u32x4::new(1, 2, 3, 4);
+        let c: u32x4 = u32x4::new(1, 2, 3, 4);
+        let e: u32x4 = u32x4::new(2, 1572864, 4, 1447435);
+        let r: u32x4 = transmute(vsm3tt2aq_u32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,sm4")]
+    unsafe fn test_vsm3tt2bq_u32() {
+        let a: u32x4 = u32x4::new(1, 2, 3, 4);
+        let b: u32x4 = u32x4::new(1, 2, 3, 4);
+        let c: u32x4 = u32x4::new(1, 2, 3, 4);
+        let e: u32x4 = u32x4::new(2, 1572864, 4, 1052680);
+        let r: u32x4 = transmute(vsm3tt2bq_u32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,sha3")]
+    unsafe fn test_vxarq_u64() {
+        let a: u64x2 = u64x2::new(1, 2);
+        let b: u64x2 = u64x2::new(3, 4);
+        let e: u64x2 = u64x2::new(2, 6);
+        let r: u64x2 = transmute(vxarq_u64::<0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
     }
 }
 

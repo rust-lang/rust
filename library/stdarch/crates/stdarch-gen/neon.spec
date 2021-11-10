@@ -104,15 +104,16 @@ generate int*_t, uint*_t, int64x*_t, uint64x*_t
 
 /// Three-way exclusive OR
 name = veor3
-multi_fn = simd_xor, {simd_xor, a, b}, c
 a = 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
 b = 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 c = 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 validate 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
+target = sha3
 
-// llvm does not currently support `eor3` instructions
-aarch64 = nop
+aarch64 = eor3
+link-aarch64 = llvm.aarch64.crypto.eor3s._EXT_
 generate int8x16_t, int16x8_t, int32x4_t, int64x2_t
+link-aarch64 = llvm.aarch64.crypto.eor3u._EXT_
 generate uint8x16_t, uint16x8_t, uint32x4_t, uint64x2_t
 
 ////////////////////
@@ -4438,15 +4439,16 @@ generate uint32x4_t:uint32x4_t:uint64x2_t
 
 /// Bit clear and exclusive OR
 name = vbcax
-multi_fn = simd_xor, a, {vbic-self-noext, b, c}
 a = 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0
 b = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 c = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 validate 1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14
+target = sha3
 
-// llvm does not currently support the `bcax` instruction
-aarch64 = nop
+aarch64 = bcax
+link-aarch64 = llvm.aarch64.crypto.bcaxs._EXT_
 generate int8x16_t, int16x8_t, int32x4_t, int64x2_t
+link-aarch64 = llvm.aarch64.crypto.bcaxu._EXT_
 generate uint8x16_t, uint16x8_t, uint32x4_t, uint64x2_t
 
 /// Floating-point complex add
@@ -4804,24 +4806,6 @@ link-aarch64 = fminnmv._EXT2_._EXT_
 generate float32x2_t:f32, float64x2_t:f64
 aarch64 = fminnmv
 generate float32x4_t:f32
-
-/// 8-bit integer matrix multiply-accumulate
-name = vmmlaq
-a = 1, 2, 3, 4
-b = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-c = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-validate 1, 2, 3, 4
-target = i8mm
-
-aarch64 = smmla
-link-aarch64 = smmla._EXT_._EXT3_
-// the feature `i8mm` is not valid for some target
-//generate int32x4_t:int8x16_t:int8x16_t:int32x4_t
-
-aarch64 = ummla
-link-aarch64 = ummla._EXT_._EXT3_
-// the feature `i8mm` is not valid for some target
-//generate uint32x4_t:uint8x16_t:uint8x16_t:uint32x4_t
 
 /// Vector move
 name = vmovl_high
@@ -6861,6 +6845,162 @@ validate 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
 aarch64 = usra
 arm = vsra
 generate uint*_t, uint64x*_t
+
+/// SM3PARTW1
+name = vsm3partw1
+a = 1, 2, 3, 4
+b = 1, 2, 3, 4
+c = 1, 2, 3, 4
+validate 2147549312, 3221323968, 131329, 2684362752
+target = sm4
+
+aarch64 = sm3partw1
+link-aarch64 = llvm.aarch64.crypto.sm3partw1
+generate uint32x4_t
+
+/// SM3PARTW2
+name = vsm3partw2
+a = 1, 2, 3, 4
+b = 1, 2, 3, 4
+c = 1, 2, 3, 4
+validate 128, 256, 384, 1077977696
+target = sm4
+
+aarch64 = sm3partw2
+link-aarch64 = llvm.aarch64.crypto.sm3partw2
+generate uint32x4_t
+
+/// SM3SS1
+name = vsm3ss1
+a = 1, 2, 3, 4
+b = 1, 2, 3, 4
+c = 1, 2, 3, 4
+validate 0, 0, 0, 2098176
+target = sm4
+
+aarch64 = sm3ss1
+link-aarch64 = llvm.aarch64.crypto.sm3ss1
+generate uint32x4_t
+
+/// SM4 key
+name = vsm4ekey
+a = 1, 2, 3, 4
+b = 1, 2, 3, 4
+validate 1784948604, 136020997, 2940231695, 3789947679
+target = sm4
+
+aarch64 = sm4ekey
+link-aarch64 = llvm.aarch64.crypto.sm4ekey
+generate uint32x4_t
+
+/// SM4 encode
+name = vsm4e
+a = 1, 2, 3, 4
+b = 1, 2, 3, 4
+validate 1093874472, 3616769504, 3878330411, 2765298765
+target = sm4
+
+aarch64 = sm4e
+link-aarch64 = llvm.aarch64.crypto.sm4e
+generate uint32x4_t
+
+/// Rotate and exclusive OR
+name = vrax1
+a = 1, 2
+b = 3, 4
+validate 7, 10
+target = sha3
+
+aarch64 = rax1
+link-aarch64 = llvm.aarch64.crypto.rax1
+generate uint64x2_t
+
+/// SHA512 hash update part 1
+name = vsha512h
+a = 1, 2
+b = 3, 4
+c = 5, 6
+validate 11189044327219203, 7177611956453380
+target = sha3
+
+aarch64 = sha512h
+link-aarch64 = llvm.aarch64.crypto.sha512h
+generate uint64x2_t
+
+/// SHA512 hash update part 2
+name = vsha512h2
+a = 1, 2
+b = 3, 4
+c = 5, 6
+validate 5770237651009406214, 349133864969
+target = sha3
+
+aarch64 = sha512h2
+link-aarch64 = llvm.aarch64.crypto.sha512h2
+generate uint64x2_t
+
+/// SHA512 schedule update 0
+name = vsha512su0
+a = 1, 2
+b = 3, 4
+validate 144115188075855874, 9439544818968559619
+target = sha3
+
+aarch64 = sha512su0
+link-aarch64 = llvm.aarch64.crypto.sha512su0
+generate uint64x2_t
+
+/// SHA512 schedule update 1
+name = vsha512su1
+a = 1, 2
+b = 3, 4
+c = 5, 6
+validate 105553116266526, 140737488355368
+target = sha3
+
+aarch64 = sha512su1
+link-aarch64 = llvm.aarch64.crypto.sha512su1
+generate uint64x2_t
+
+/// Floating-point round to 32-bit integer, using current rounding mode
+name = vrnd32x
+a = 1.1, 1.9, -1.7, -2.3
+validate 1.0, 2.0, -2.0, -2.0
+target = frintts
+
+aarch64 = frint32x
+link-aarch64 = frint32x._EXT_
+generate float32x2_t, float32x4_t
+
+/// Floating-point round to 32-bit integer toward zero
+name = vrnd32z
+a = 1.1, 1.9, -1.7, -2.3
+validate 1.0, 1.0, -1.0, -2.0
+target = frintts
+
+aarch64 = frint32z
+link-aarch64 = frint32z._EXT_
+generate float32x2_t, float32x4_t
+
+/// Floating-point round to 64-bit integer, using current rounding mode
+name = vrnd64x
+a = 1.1, 1.9, -1.7, -2.3
+validate 1.0, 2.0, -2.0, -2.0
+target = frintts
+
+aarch64 = frint64x
+link-aarch64 = frint64x._EXT_
+generate float32x2_t, float32x4_t
+
+/// Floating-point round to 64-bit integer toward zero
+name = vrnd64z
+a = 1.1, 1.9, -1.7, -2.3
+validate 1.0, 1.0, -1.0, -2.0
+target = frintts
+
+aarch64 = frint64z
+link-aarch64 = frint64z._EXT_
+generate float32x2_t, float32x4_t
 
 /// Transpose elements
 name = vtrn

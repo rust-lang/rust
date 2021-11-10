@@ -464,7 +464,10 @@ enum TargetFeature {
     FCMA,
     Dotprod,
     I8MM,
+    SHA3,
     RDM,
+    SM4,
+    FTTS,
 }
 
 #[derive(Clone, Copy)]
@@ -1068,7 +1071,10 @@ fn gen_aarch64(
         FCMA => "neon,fcma",
         Dotprod => "neon,dotprod",
         I8MM => "neon,i8mm",
+        SHA3 => "neon,sha3",
         RDM => "rdm",
+        SM4 => "neon,sm4",
+        FTTS => "neon,frintts",
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
@@ -1379,6 +1385,13 @@ fn gen_aarch64(
         fn_decl,
         call_params
     );
+    let test_target = match target {
+        I8MM => "neon,i8mm",
+        SM4 => "neon,sm4",
+        SHA3 => "neon,sha3",
+        FTTS => "neon,frintts",
+        _ => "neon",
+    };
     let test = match fn_type {
         Fntype::Normal => gen_test(
             &name,
@@ -1388,6 +1401,7 @@ fn gen_aarch64(
             [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
             type_len(out_t),
             para_num,
+            test_target,
         ),
         Fntype::Load => gen_load_test(&name, in_t, &out_t, current_tests, type_len(out_t)),
         Fntype::Store => gen_store_test(&name, in_t, &out_t, current_tests, type_len(in_t[1])),
@@ -1575,12 +1589,13 @@ fn gen_test(
     len_in: [usize; 3],
     len_out: usize,
     para_num: i32,
+    target: &str,
 ) -> String {
     let mut test = format!(
         r#"
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "{}")]
     unsafe fn test_{}() {{"#,
-        name,
+        target, name,
     );
     for (a, b, c, n, e) in current_tests {
         let a: Vec<String> = a.iter().take(len_in[0]).cloned().collect();
@@ -1777,7 +1792,10 @@ fn gen_arm(
         FCMA => "neon,fcma",
         Dotprod => "neon,dotprod",
         I8MM => "neon,i8mm",
+        SHA3 => "neon,sha3",
         RDM => "rdm",
+        SM4 => "neon,sm4",
+        FTTS => "neon,frintts",
     };
     let current_target_arm = match target {
         Default => "v7",
@@ -1787,8 +1805,11 @@ fn gen_arm(
         AES => "aes,v8",
         FCMA => "v8",    // v8.3a
         Dotprod => "v8", // v8.2a
-        I8MM => "v8",    // v8.6a
+        I8MM => "v8,i8mm",
         RDM => unreachable!(),
+        SM4 => unreachable!(),
+        SHA3 => unreachable!(),
+        FTTS => unreachable!(),
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() || link_arm.is_some() {
@@ -2364,6 +2385,13 @@ fn gen_arm(
             call,
         )
     };
+    let test_target = match target {
+        I8MM => "neon,i8mm",
+        SM4 => "neon,sm4",
+        SHA3 => "neon,sha3",
+        FTTS => "neon,frintts",
+        _ => "neon",
+    };
     let test = match fn_type {
         Fntype::Normal => gen_test(
             &name,
@@ -2373,6 +2401,7 @@ fn gen_arm(
             [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
             type_len(out_t),
             para_num,
+            test_target,
         ),
         Fntype::Load => gen_load_test(&name, in_t, &out_t, current_tests, type_len(out_t)),
         Fntype::Store => gen_store_test(&name, in_t, &out_t, current_tests, type_len(in_t[1])),
@@ -3173,7 +3202,10 @@ mod test {
                     "fcma" => FCMA,
                     "dotprod" => Dotprod,
                     "i8mm" => I8MM,
+                    "sha3" => SHA3,
                     "rdm" => RDM,
+                    "sm4" => SM4,
+                    "frintts" => FTTS,
                     _ => Default,
                 },
                 _ => Default,
@@ -3278,20 +3310,22 @@ mod test {
     tests_aarch64.push('}');
     tests_aarch64.push('\n');
 
-    let arm_out_path: PathBuf = PathBuf::from(env::var("OUT_DIR").unwrap())
-        .join("src")
-        .join("arm_shared")
-        .join("neon");
+    let arm_out_path: PathBuf =
+        PathBuf::from(env::var("OUT_DIR").unwrap_or("crates/core_arch".to_string()))
+            .join("src")
+            .join("arm_shared")
+            .join("neon");
     std::fs::create_dir_all(&arm_out_path)?;
 
     let mut file_arm = File::create(arm_out_path.join(ARM_OUT))?;
     file_arm.write_all(out_arm.as_bytes())?;
     file_arm.write_all(tests_arm.as_bytes())?;
 
-    let aarch64_out_path: PathBuf = PathBuf::from(env::var("OUT_DIR").unwrap())
-        .join("src")
-        .join("aarch64")
-        .join("neon");
+    let aarch64_out_path: PathBuf =
+        PathBuf::from(env::var("OUT_DIR").unwrap_or("crates/core_arch".to_string()))
+            .join("src")
+            .join("aarch64")
+            .join("neon");
     std::fs::create_dir_all(&aarch64_out_path)?;
 
     let mut file_aarch = File::create(aarch64_out_path.join(AARCH64_OUT))?;

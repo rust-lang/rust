@@ -22,4 +22,6 @@ features! {
     /// FEAT_AES (AES instructions)
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] sha2: "sha2";
     /// FEAT_SHA1 & FEAT_SHA256 (SHA1 & SHA2-256 instructions)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] i8mm: "i8mm";
+    /// FEAT_I8MM
 }
