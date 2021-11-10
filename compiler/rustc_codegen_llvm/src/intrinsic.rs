@@ -19,7 +19,7 @@ use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, symbol::kw, Span, Symbol};
-use rustc_target::abi::{self, HasDataLayout, Primitive};
+use rustc_target::abi::{self, Align, HasDataLayout, Primitive};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 
 use std::cmp::Ordering;
@@ -857,28 +857,39 @@ fn generic_simd_intrinsic(
     let arg_tys = sig.inputs();
 
     if name == sym::simd_select_bitmask {
-        let in_ty = arg_tys[0];
-        let m_len = match in_ty.kind() {
-            // Note that this `.unwrap()` crashes for isize/usize, that's sort
-            // of intentional as there's not currently a use case for that.
-            ty::Int(i) => i.bit_width().unwrap(),
-            ty::Uint(i) => i.bit_width().unwrap(),
-            _ => return_error!("`{}` is not an integral type", in_ty),
-        };
         require_simd!(arg_tys[1], "argument");
-        let (v_len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
-        require!(
-            // Allow masks for vectors with fewer than 8 elements to be
-            // represented with a u8 or i8.
-            m_len == v_len || (m_len == 8 && v_len < 8),
-            "mismatched lengths: mask length `{}` != other vector length `{}`",
-            m_len,
-            v_len
-        );
+        let (len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
+
+        let expected_int_bits = (len.max(8) - 1).next_power_of_two();
+        let expected_bytes = len / 8 + ((len % 8 > 0) as u64);
+
+        let mask_ty = arg_tys[0];
+        let mask = match mask_ty.kind() {
+            ty::Int(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
+            ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
+            ty::Array(elem, len)
+                if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
+                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
+                        == Some(expected_bytes) =>
+            {
+                let place = PlaceRef::alloca(bx, args[0].layout);
+                args[0].val.store(bx, place);
+                let int_ty = bx.type_ix(expected_bytes * 8);
+                let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
+                bx.load(int_ty, ptr, Align::ONE)
+            }
+            _ => return_error!(
+                "invalid bitmask `{}`, expected `u{}` or `[u8; {}]`",
+                mask_ty,
+                expected_int_bits,
+                expected_bytes
+            ),
+        };
+
         let i1 = bx.type_i1();
-        let im = bx.type_ix(v_len);
-        let i1xn = bx.type_vector(i1, v_len);
-        let m_im = bx.trunc(args[0].immediate(), im);
+        let im = bx.type_ix(len);
+        let i1xn = bx.type_vector(i1, len);
+        let m_im = bx.trunc(mask, im);
         let m_i1s = bx.bitcast(m_im, i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
@@ -1056,16 +1067,16 @@ fn generic_simd_intrinsic(
 
     if name == sym::simd_bitmask {
         // The `fn simd_bitmask(vector) -> unsigned integer` intrinsic takes a
-        // vector mask and returns an unsigned integer containing the most
-        // significant bit (MSB) of each lane.
-
-        // If the vector has less than 8 lanes, a u8 is returned with zeroed
-        // trailing bits.
+        // vector mask and returns the most significant bit (MSB) of each lane in the form
+        // of either:
+        // * an unsigned integer
+        // * an array of `u8`
+        // If the vector has less than 8 lanes, a u8 is returned with zeroed trailing bits.
+        //
+        // The bit order of the result depends on the byte endianness, LSB-first for little
+        // endian and MSB-first for big endian.
         let expected_int_bits = in_len.max(8);
-        match ret_ty.kind() {
-            ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => (),
-            _ => return_error!("bitmask `{}`, expected `u{}`", ret_ty, expected_int_bits),
-        }
+        let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
 
         // Integer vector <i{in_bitwidth} x in_len>:
         let (i_xn, in_elem_bitwidth) = match in_elem.kind() {
@@ -1095,8 +1106,34 @@ fn generic_simd_intrinsic(
         let i1xn = bx.trunc(i_xn_msb, bx.type_vector(bx.type_i1(), in_len));
         // Bitcast <i1 x N> to iN:
         let i_ = bx.bitcast(i1xn, bx.type_ix(in_len));
-        // Zero-extend iN to the bitmask type:
-        return Ok(bx.zext(i_, bx.type_ix(expected_int_bits)));
+
+        match ret_ty.kind() {
+            ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => {
+                // Zero-extend iN to the bitmask type:
+                return Ok(bx.zext(i_, bx.type_ix(expected_int_bits)));
+            }
+            ty::Array(elem, len)
+                if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
+                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
+                        == Some(expected_bytes) =>
+            {
+                // Zero-extend iN to the array lengh:
+                let ze = bx.zext(i_, bx.type_ix(expected_bytes * 8));
+
+                // Convert the integer to a byte array
+                let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
+                bx.store(ze, ptr, Align::ONE);
+                let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
+                let ptr = bx.pointercast(ptr, bx.cx.type_ptr_to(array_ty));
+                return Ok(bx.load(array_ty, ptr, Align::ONE));
+            }
+            _ => return_error!(
+                "cannot return `{}`, expected `u{}` or `[u8; {}]`",
+                ret_ty,
+                expected_int_bits,
+                expected_bytes
+            ),
+        }
     }
 
     fn simd_simple_float_intrinsic(
