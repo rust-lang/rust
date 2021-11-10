@@ -39,7 +39,7 @@ pub trait CommandExt: Sealed {
 
     /// Sets the supplementary group IDs for the calling process. Translates to
     /// a `setgroups` call in the child process.
-    #[unstable(feature = "setgroups", issue = "38527", reason = "")]
+    #[unstable(feature = "setgroups", issue = "90747")]
     fn groups(
         &mut self,
         #[cfg(not(target_os = "vxworks"))] groups: &[u32],
