@@ -235,7 +235,7 @@ jobs:
       matrix:
         rustflags:
           - ""
-          - "-Ctarget-feature=+avx512" # AVX-512 uses packed bit masks, so enable it to test more code paths
+          - "-Ctarget-feature=+avx512f" # AVX-512 uses packed bit masks, so enable it to test more code paths
         features:
           - ""
           - "--features std"
