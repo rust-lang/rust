@@ -196,7 +196,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         if let Some(label) = label {
             let label_bind = self.next("label");
 
-            println!("    if let Some(ref {}) = {}", label_bind, self.current);
+            println!("    if let Some(ref {}) = {};", label_bind, self.current);
 
             let label_name_bind = self.next("label_name");
             let label_name = label.ident.name;
@@ -246,7 +246,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 let str_pat = self.next("s");
 
                 println!("    if let LitKind::Str(ref {}, _) = {}.node;", str_pat, lit_pat);
-                println!("    if {}.as_str() == {:?}", str_pat, &*text.as_str());
+                println!("    if {}.as_str() == {:?};", str_pat, &*text.as_str());
             },
         }
     }
@@ -311,7 +311,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             let body_pat = self.next("body");
 
             println!(
-                "    if let Some(higher::While {{ condition: {}, body: {} }}) = higher::While::hir({})",
+                "    if let Some(higher::While {{ condition: {}, body: {} }}) = higher::While::hir({});",
                 condition_pat, body_pat, self.current
             );
 
@@ -335,7 +335,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             let if_then_pat = self.next("if_then");
 
             println!(
-                "    if let Some(higher::WhileLet {{ let_pat: {}, let_expr: {}, if_then: {} }}) = higher::WhileLet::hir({})",
+                "    if let Some(higher::WhileLet {{ let_pat: {}, let_expr: {}, if_then: {} }}) = higher::WhileLet::hir({});",
                 let_pat_, let_expr_pat, if_then_pat, self.current
             );
 
@@ -364,7 +364,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             let else_pat = self.next("else_expr");
 
             println!(
-                "    if let Some(higher::IfLet {{ let_pat: {}, let_expr: {}, if_then: {}, if_else: {}}}) = higher::IfLet::hir({})",
+                "    if let Some(higher::IfLet {{ let_pat: {}, let_expr: {}, if_then: {}, if_else: {}}}) = higher::IfLet::hir({});",
                 let_pat_, let_expr_pat, if_then_pat, else_pat, self.current
             );
 
@@ -391,7 +391,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             let else_pat = self.next("else_expr");
 
             println!(
-                "    if let Some(higher::If {{ cond: {}, then: {}, r#else: {}}}) = higher::If::hir({})",
+                "    if let Some(higher::If {{ cond: {}, then: {}, r#else: {}}}) = higher::If::hir({});",
                 cond_pat, then_pat, else_pat, self.current
             );
 
@@ -415,7 +415,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             let body_pat = self.next("body");
 
             println!(
-                "    if let Some(higher::ForLoop {{ pat: {}, arg: {}, body: {}, ..}}) = higher::ForLoop::hir({})",
+                "    if let Some(higher::ForLoop {{ pat: {}, arg: {}, body: {}, ..}}) = higher::ForLoop::hir({});",
                 pat_, arg_pat, body_pat, self.current
             );
 
@@ -596,7 +596,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
                 let label_pat = self.next("label");
 
                 println!(
-                    "Loop(ref {}, ref {}, LoopSource::{:?}) = {};",
+                    "Loop(ref {}, ref {}, LoopSource::{:?}, _) = {};",
                     body_pat, label_pat, des, current
                 );
 
@@ -626,10 +626,10 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
                 let body_id_pat = self.next("body_id");
 
                 println!(
-                    "Closure({}, ref {}, ref {}, _, {}) = {}",
+                    "Closure({}, ref {}, ref {}, _, {}) = {};",
                     capture_by, fn_decl_pat, body_id_pat, movability, current
                 );
-                println!("    if let {} = {}.output", ret_ty, fn_decl_pat);
+                println!("    if let {} = {}.output;", ret_ty, fn_decl_pat);
 
                 let hir = self.cx.tcx.hir();
                 let body = hir.body(body_id);
@@ -699,7 +699,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
                 let field_name_pat = self.next("field_name");
 
                 println!("Field(ref {}, ref {}) = {};", obj_pat, field_name_pat, current);
-                println!("    if {}.as_str() == {:?}", field_name_pat, field_ident.as_str());
+                println!("    if {}.as_str() == {:?};", field_name_pat, field_ident.as_str());
 
                 self.current = obj_pat;
                 self.visit_expr(object);
@@ -804,13 +804,13 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
 
                 for (i, field) in fields.iter().enumerate() {
                     println!(
-                        "    if {}[{}].ident.name.as_str() == {:?}",
+                        "    if {}[{}].ident.name.as_str() == {:?};",
                         fields_pat,
                         i,
                         &*field.ident.name.as_str()
                     );
 
-                    self.current = format!("{}[{}]", fields_pat, i);
+                    self.current = format!("{}[{}].expr", fields_pat, i);
                     self.visit_expr(field.expr);
                 }
             },
@@ -909,7 +909,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
 
                 for (i, field) in fields.iter().enumerate() {
                     println!(
-                        "    if {}[{}].ident.name.as_str() == {:?}",
+                        "    if {}[{}].ident.name.as_str() == {:?};",
                         fields_pat,
                         i,
                         &*field.ident.name.as_str()
@@ -981,7 +981,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
             },
             PatKind::Lit(lit_expr) => {
                 let lit_expr_pat = self.next("lit_expr");
-                println!("Lit(ref {}) = {}", lit_expr_pat, current);
+                println!("Lit(ref {}) = {};", lit_expr_pat, current);
 
                 self.current = lit_expr_pat;
                 self.visit_expr(lit_expr);
@@ -1063,7 +1063,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
             // Expr without trailing semi-colon (must have unit type):
             StmtKind::Expr(e) => {
                 let e_pat = self.next("e");
-                println!("Expr(ref {}, _) = {}", e_pat, current);
+                println!("Expr(ref {}, _) = {};", e_pat, current);
 
                 self.current = e_pat;
                 self.visit_expr(e);
@@ -1072,7 +1072,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
             // Expr with trailing semi-colon (may have any type):
             StmtKind::Semi(e) => {
                 let e_pat = self.next("e");
-                println!("Semi(ref {}, _) = {}", e_pat, current);
+                println!("Semi(ref {}) = {};", e_pat, current);
 
                 self.current = e_pat;
                 self.visit_expr(e);

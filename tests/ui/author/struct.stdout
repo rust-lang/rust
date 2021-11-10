@@ -2,8 +2,8 @@ if_chain! {
     if let ExprKind::Struct(ref qpath, ref fields, None) = expr.kind;
     if match_qpath(qpath, &["Test"]);
     if fields.len() == 1;
-    if fields[0].ident.name.as_str() == "field"
-    if let Some(higher::If { cond: cond, then: then, r#else: else_expr}) = higher::If::hir(fields[0])
+    if fields[0].ident.name.as_str() == "field";
+    if let Some(higher::If { cond: cond, then: then, r#else: else_expr}) = higher::If::hir(fields[0].expr);
     if let ExprKind::Lit(ref lit) = cond.kind;
     if let LitKind::Bool(true) = lit.node;
     if let ExprKind::Block(ref block, ref label) = then.kind;
@@ -24,8 +24,8 @@ if_chain! {
     if let PatKind::Struct(ref qpath, ref fields, false) = arm.kind;
     if match_qpath(qpath, &["Test"]);
     if fields.len() == 1;
-    if fields[0].ident.name.as_str() == "field"
-    if let PatKind::Lit(ref lit_expr) = fields[0].kind
+    if fields[0].ident.name.as_str() == "field";
+    if let PatKind::Lit(ref lit_expr) = fields[0].kind;
     if let ExprKind::Lit(ref lit) = lit_expr.kind;
     if let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node;
     if let ExprKind::Block(ref block, ref label) = lit_expr.kind;
@@ -39,7 +39,7 @@ if_chain! {
     if let PatKind::TupleStruct(ref qpath, ref fields, None) = arm.kind;
     if match_qpath(qpath, &["TestTuple"]);
     if fields.len() == 1;
-    if let PatKind::Lit(ref lit_expr) = fields[0].kind
+    if let PatKind::Lit(ref lit_expr) = fields[0].kind;
     if let ExprKind::Lit(ref lit) = lit_expr.kind;
     if let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node;
     if let ExprKind::Block(ref block, ref label) = lit_expr.kind;

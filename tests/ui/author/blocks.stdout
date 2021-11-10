@@ -13,7 +13,7 @@ if_chain! {
     if let LitKind::Float(_, LitFloatType::Suffixed(FloatTy::F32)) = lit1.node;
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name1, None) = local1.pat.kind;
     if name1.as_str() == "_t";
-    if let StmtKind::Semi(ref e, _) = block.stmts[2].kind
+    if let StmtKind::Semi(ref e) = block.stmts[2].kind;
     if let ExprKind::Unary(UnOp::Neg, ref inner) = e.kind;
     if let ExprKind::Path(ref qpath) = inner.kind;
     if match_qpath(qpath, &["x"]);
@@ -45,15 +45,15 @@ if_chain! {
     }
 }
 if_chain! {
-    if let ExprKind::Closure(CaptureBy::Value, ref fn_decl, ref body_id, _, None) = expr.kind
-    if let FnRetTy::DefaultReturn(_) = fn_decl.output
+    if let ExprKind::Closure(CaptureBy::Value, ref fn_decl, ref body_id, _, None) = expr.kind;
+    if let FnRetTy::DefaultReturn(_) = fn_decl.output;
     let body = cx.tcx.hir().body(body_id);
     if let ExprKind::Call(ref func, ref args) = body.value.kind;
     if let ExprKind::Path(ref qpath) = func.kind;
     if matches!(qpath, QPath::LangItem(LangItem::FromGenerator, _));
     if args.len() == 1;
-    if let ExprKind::Closure(CaptureBy::Value, ref fn_decl1, ref body_id1, _, Some(Movability::Static)) = args[0].kind
-    if let FnRetTy::DefaultReturn(_) = fn_decl1.output
+    if let ExprKind::Closure(CaptureBy::Value, ref fn_decl1, ref body_id1, _, Some(Movability::Static)) = args[0].kind;
+    if let FnRetTy::DefaultReturn(_) = fn_decl1.output;
     let body1 = cx.tcx.hir().body(body_id1);
     if let ExprKind::Block(ref block, ref label) = body1.value.kind;
     if block.stmts.len() == 0;
