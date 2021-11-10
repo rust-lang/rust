@@ -228,14 +228,14 @@ jobs:
         run: cross test --verbose --target=${{ matrix.target }} --release
 
   features:
-    name: "Check cargo features (${{ matrix.features }} ${{ matrix.rustflags }})"
+    name: "Check cargo features (${{ matrix.simd }} × ${{ matrix.features }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        rustflags:
+        simd:
           - ""
-          - "-Ctarget-feature=+avx512f" # AVX-512 uses packed bit masks, so enable it to test more code paths
+          - "avx512"
         features:
           - ""
           - "--features std"
@@ -248,7 +248,13 @@ jobs:
         run: |
           rustup update nightly --no-self-update
           rustup default nightly
+      - name: Detect AVX512
+        run: echo "CPU_FEATURE=$(lscpu | grep -o avx512[a-z]* | sed s/avx/+avx/ | tr '\n' ',' )" >> $GITHUB_ENV
       - name: Check build
-        run: cargo check --all-targets --no-default-features ${{ matrix.features }}
-        env:
-            RUSTFLAGS: -Dwarnings ${{ matrix.rustflags }}
+        if: ${{ matrix.simd == '' }}
+        run: RUSTFLAGS="-Dwarnings" cargo check --all-targets --no-default-features ${{ matrix.features }}
+      - name: Check AVX
+        if: ${{ matrix.simd == 'avx512' && contains(env.CPU_FEATURE, 'avx512') }}
+        run: |
+          echo "Found AVX features: $CPU_FEATURE"
+          RUSTFLAGS="-Dwarnings -Ctarget-feature=$CPU_FEATURE" cargo check --all-targets --no-default-features ${{ matrix.features }}
