@@ -35,14 +35,11 @@ use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
-use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::TypeError::{FieldMisMatch, Sorts};
 use rustc_middle::ty::relate::expected_found_bool;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::Ty;
-use rustc_middle::ty::TypeFoldable;
-use rustc_middle::ty::{AdtKind, Visibility};
+use rustc_middle::ty::{self, AdtKind, Ty, TypeFoldable};
 use rustc_session::parse::feature_err;
 use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::hygiene::DesugaringKind;
@@ -1732,7 +1729,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter_map(|field| {
                 // ignore already set fields and private fields from non-local crates
                 if skip.iter().any(|&x| x == field.ident.name)
-                    || (!variant.def_id.is_local() && field.vis != Visibility::Public)
+                    || (!variant.def_id.is_local() && !field.vis.is_public())
                 {
                     None
                 } else {

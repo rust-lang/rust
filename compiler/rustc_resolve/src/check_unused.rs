@@ -32,7 +32,6 @@ use rustc_ast::visit::{self, Visitor};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
-use rustc_middle::ty;
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
@@ -228,7 +227,7 @@ impl Resolver<'_> {
         for import in self.potentially_unused_imports.iter() {
             match import.kind {
                 _ if import.used.get()
-                    || import.vis.get() == ty::Visibility::Public
+                    || import.vis.get().is_public()
                     || import.span.is_dummy() =>
                 {
                     if let ImportKind::MacroUse = import.kind {

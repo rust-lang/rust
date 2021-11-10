@@ -11,7 +11,7 @@ use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, DefIdTree};
+use rustc_middle::ty::DefIdTree;
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -1308,7 +1308,7 @@ impl<'a> Resolver<'a> {
             );
             let def_span = self.session.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
-            if !first && binding.vis == ty::Visibility::Public {
+            if !first && binding.vis.is_public() {
                 note_span.push_span_label(def_span, "consider importing it directly".into());
             }
             err.span_note(note_span, &msg);
