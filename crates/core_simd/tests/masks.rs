@@ -86,6 +86,10 @@ macro_rules! test_mask_api {
 
 mod mask_api {
     test_mask_api! { i8 }
+    test_mask_api! { i16 }
+    test_mask_api! { i32 }
+    test_mask_api! { i64 }
+    test_mask_api! { isize }
 }
 
 #[test]

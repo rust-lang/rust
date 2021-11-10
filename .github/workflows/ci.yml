@@ -94,8 +94,7 @@ jobs:
           - { target: i586-pc-windows-msvc, target_feature: +sse2, os: windows-latest }
 
           # Annoyingly, the x86_64-unknown-linux-gnu runner *almost* always has
-          # avx512vl, but occasionally doesn't. As a result, we still run that
-          # one under travis.
+          # avx512vl, but occasionally doesn't.  Maybe one day we can enable it.
 
     steps:
       - uses: actions/checkout@v2
@@ -141,6 +140,31 @@ jobs:
       - name: Test (release)
         run: cargo test --verbose --target=${{ matrix.target }} --release
 
+  wasm-tests:
+    name: "wasm (firefox, ${{ matrix.name }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { name: default, RUSTFLAGS: "" }
+          - { name: simd128, RUSTFLAGS: "-C target-feature=+simd128" }
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Test (debug)
+        run: wasm-pack test --firefox --headless crates/core_simd
+        env:
+            RUSTFLAGS: ${{ matrix.rustflags }}
+      - name: Test (release)
+        run: wasm-pack test --firefox --headless crates/core_simd --release
+        env:
+            RUSTFLAGS: ${{ matrix.rustflags }}
+
   cross-tests:
     name: "${{ matrix.target }} (via cross)"
     runs-on: ubuntu-latest
@@ -163,12 +187,19 @@ jobs:
           # 32-bit arm has a few idiosyncracies like having subnormal flushing
           # to zero on by default. Ideally we'd set
           - armv7-unknown-linux-gnueabihf
+          - aarch64-unknown-linux-gnu
           # Note: The issue above means neither of these mips targets will use
           # MSA (mips simd) but MIPS uses a nonstandard binary representation
           # for NaNs which makes it worth testing on despite that.
           - mips-unknown-linux-gnu
           - mips64-unknown-linux-gnuabi64
           - riscv64gc-unknown-linux-gnu
+          # TODO this test works, but it appears to time out
+          # - powerpc-unknown-linux-gnu
+          # TODO this test is broken, but it appears to be a problem with QEMU, not us.
+          # - powerpc64le-unknown-linux-gnu
+          # TODO enable this once a new version of cross is released
+          # - powerpc64-unknown-linux-gnu
 
     steps:
       - uses: actions/checkout@v2
