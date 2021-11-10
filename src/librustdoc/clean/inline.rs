@@ -229,6 +229,7 @@ fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Functi
     let asyncness = cx.tcx.asyncness(did);
     let predicates = cx.tcx.predicates_of(did);
     let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
+        // NOTE: generics need to be cleaned before the decl!
         ((cx.tcx.generics_of(did), predicates).clean(cx), (did, sig).clean(cx))
     });
     clean::Function {

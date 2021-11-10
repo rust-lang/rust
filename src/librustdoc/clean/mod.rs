@@ -765,6 +765,7 @@ fn clean_fn_or_proc_macro(
 impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::BodyId) {
     fn clean(&self, cx: &mut DocContext<'_>) -> Function {
         let (generics, decl) = enter_impl_trait(cx, |cx| {
+            // NOTE: generics must be cleaned before args
             let generics = self.1.clean(cx);
             let args = (self.0.decl.inputs, self.2).clean(cx);
             let decl = clean_fn_decl_with_args(cx, self.0.decl, args);
@@ -896,6 +897,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                 }
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
+                        // NOTE: generics must be cleaned before args
                         let generics = self.generics.clean(cx);
                         let args = (sig.decl.inputs, names).clean(cx);
                         let decl = clean_fn_decl_with_args(cx, sig.decl, args);
@@ -1732,6 +1734,7 @@ impl Clean<PathSegment> for hir::PathSegment<'_> {
 impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> BareFunctionDecl {
         let (generic_params, decl) = enter_impl_trait(cx, |cx| {
+            // NOTE: generics must be cleaned before args
             let generic_params = self.generic_params.iter().map(|x| x.clean(cx)).collect();
             let args = (self.decl.inputs, self.param_names).clean(cx);
             let decl = clean_fn_decl_with_args(cx, self.decl, args);
@@ -2032,6 +2035,7 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                 hir::ForeignItemKind::Fn(decl, names, ref generics) => {
                     let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
+                        // NOTE: generics must be cleaned before args
                         let generics = generics.clean(cx);
                         let args = (decl.inputs, names).clean(cx);
                         let decl = clean_fn_decl_with_args(cx, decl, args);
