@@ -44,7 +44,7 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
             let t_expr = cx.typeck_results().expr_ty(expr);
             if t_expr.is_unit();
             if let snippet = snippet_with_macro_callsite(cx, expr.span, "}");
-            if !snippet.ends_with('}');
+            if !snippet.ends_with('}') && !snippet.ends_with(';');
             if cx.sess().source_map().is_multiline(block.span);
             then {
                 // filter out the desugared `for` loop
