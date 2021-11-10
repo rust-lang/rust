@@ -421,10 +421,7 @@ impl HirDisplay for Static {
         if data.mutable {
             write!(f, "mut ")?;
         }
-        match &data.name {
-            Some(name) => write!(f, "{}: ", name)?,
-            None => write!(f, "_: ")?,
-        }
+        write!(f, "{}: ", &data.name)?;
         data.type_ref.hir_fmt(f)?;
         Ok(())
     }

@@ -67,10 +67,8 @@ pub use _bail as bail;
 impl Definition {
     pub fn rename(&self, sema: &Semantics<RootDatabase>, new_name: &str) -> Result<SourceChange> {
         match *self {
-            Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
-                rename_mod(sema, module, new_name)
-            }
-            Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
+            Definition::Module(module) => rename_mod(sema, module, new_name),
+            Definition::BuiltinType(_) => {
                 bail!("Cannot rename builtin type")
             }
             Definition::SelfType(_) => bail!("Cannot rename `Self`"),
@@ -101,25 +99,23 @@ impl Definition {
                     FieldSource::Pos(_) => None,
                 }
             }
-            Definition::ModuleDef(module_def) => match module_def {
-                hir::ModuleDef::Module(module) => {
-                    let src = module.declaration_source(sema.db)?;
-                    let name = src.value.name()?;
-                    src.with_value(name.syntax()).original_file_range_opt(sema.db)
-                }
-                hir::ModuleDef::Function(it) => name_range(it, sema),
-                hir::ModuleDef::Adt(adt) => match adt {
-                    hir::Adt::Struct(it) => name_range(it, sema),
-                    hir::Adt::Union(it) => name_range(it, sema),
-                    hir::Adt::Enum(it) => name_range(it, sema),
-                },
-                hir::ModuleDef::Variant(it) => name_range(it, sema),
-                hir::ModuleDef::Const(it) => name_range(it, sema),
-                hir::ModuleDef::Static(it) => name_range(it, sema),
-                hir::ModuleDef::Trait(it) => name_range(it, sema),
-                hir::ModuleDef::TypeAlias(it) => name_range(it, sema),
-                hir::ModuleDef::BuiltinType(_) => return None,
+            Definition::Module(module) => {
+                let src = module.declaration_source(sema.db)?;
+                let name = src.value.name()?;
+                src.with_value(name.syntax()).original_file_range_opt(sema.db)
+            }
+            Definition::Function(it) => name_range(it, sema),
+            Definition::Adt(adt) => match adt {
+                hir::Adt::Struct(it) => name_range(it, sema),
+                hir::Adt::Union(it) => name_range(it, sema),
+                hir::Adt::Enum(it) => name_range(it, sema),
             },
+            Definition::Variant(it) => name_range(it, sema),
+            Definition::Const(it) => name_range(it, sema),
+            Definition::Static(it) => name_range(it, sema),
+            Definition::Trait(it) => name_range(it, sema),
+            Definition::TypeAlias(it) => name_range(it, sema),
+            Definition::BuiltinType(_) => return None,
             Definition::SelfType(_) => return None,
             Definition::Local(local) => {
                 let src = local.source(sema.db);
@@ -200,7 +196,7 @@ fn rename_mod(
             _ => never!("Module source node is missing a name"),
         }
     }
-    let def = Definition::ModuleDef(hir::ModuleDef::Module(module));
+    let def = Definition::Module(module);
     let usages = def.usages(sema).all();
     let ref_edits = usages.iter().map(|(&file_id, references)| {
         (file_id, source_edit_from_references(references, def, new_name))
@@ -239,35 +235,40 @@ fn rename_reference(
         }
     }
 
-    def = match def {
+    let assoc_item = match def {
         // HACK: resolve trait impl items to the item def of the trait definition
         // so that we properly resolve all trait item references
-        Definition::ModuleDef(mod_def) => mod_def
-            .as_assoc_item(sema.db)
-            .and_then(|it| it.containing_trait_impl(sema.db))
-            .and_then(|it| {
-                it.items(sema.db).into_iter().find_map(|it| match (it, mod_def) {
-                    (hir::AssocItem::Function(trait_func), hir::ModuleDef::Function(func))
+        Definition::Function(it) => it.as_assoc_item(sema.db),
+        Definition::TypeAlias(it) => it.as_assoc_item(sema.db),
+        Definition::Const(it) => it.as_assoc_item(sema.db),
+        _ => None,
+    };
+    def = match assoc_item {
+        Some(assoc) => assoc
+            .containing_trait_impl(sema.db)
+            .and_then(|trait_| {
+                trait_.items(sema.db).into_iter().find_map(|it| match (it, assoc) {
+                    (hir::AssocItem::Function(trait_func), hir::AssocItem::Function(func))
                         if trait_func.name(sema.db) == func.name(sema.db) =>
                     {
-                        Some(Definition::ModuleDef(hir::ModuleDef::Function(trait_func)))
+                        Some(Definition::Function(trait_func))
                     }
-                    (hir::AssocItem::Const(trait_konst), hir::ModuleDef::Const(konst))
+                    (hir::AssocItem::Const(trait_konst), hir::AssocItem::Const(konst))
                         if trait_konst.name(sema.db) == konst.name(sema.db) =>
                     {
-                        Some(Definition::ModuleDef(hir::ModuleDef::Const(trait_konst)))
+                        Some(Definition::Const(trait_konst))
                     }
                     (
                         hir::AssocItem::TypeAlias(trait_type_alias),
-                        hir::ModuleDef::TypeAlias(type_alias),
+                        hir::AssocItem::TypeAlias(type_alias),
                     ) if trait_type_alias.name(sema.db) == type_alias.name(sema.db) => {
-                        Some(Definition::ModuleDef(hir::ModuleDef::TypeAlias(trait_type_alias)))
+                        Some(Definition::TypeAlias(trait_type_alias))
                     }
                     _ => None,
                 })
             })
             .unwrap_or(def),
-        _ => def,
+        None => def,
     };
     let usages = def.usages(sema).all();
 

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use hir::{HasSource, ModuleDef, ModuleSource};
+use hir::{HasSource, ModuleSource};
 use ide_db::{
     assists::{AssistId, AssistKind},
     base_db::FileId,
@@ -184,7 +184,7 @@ impl Module {
                 match (item.syntax()) {
                     ast::Adt(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
-                            let node_def = Definition::ModuleDef(nod.into());
+                            let node_def = Definition::Adt(nod.into());
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
 
                             //Enum Fields are not allowed to explicitly specify pub, it is implied
@@ -218,25 +218,25 @@ impl Module {
                     },
                     ast::TypeAlias(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
-                            let node_def = Definition::ModuleDef(nod.into());
+                            let node_def = Definition::TypeAlias(nod.into());
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
                         }
                     },
                     ast::Const(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
-                            let node_def = Definition::ModuleDef(nod.into());
+                            let node_def = Definition::Const(nod.into());
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
                         }
                     },
                     ast::Static(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
-                            let node_def = Definition::ModuleDef(nod.into());
+                            let node_def = Definition::Static(nod.into());
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
                         }
                     },
                     ast::Fn(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
-                            let node_def = Definition::ModuleDef(nod.into());
+                            let node_def = Definition::Function(nod.into());
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
                         }
                     },
@@ -603,161 +603,151 @@ fn does_source_exists_outside_sel_in_same_mod(
 ) -> bool {
     let mut source_exists_outside_sel_in_same_mod = false;
     match def {
-        Definition::ModuleDef(it) => match it {
-            ModuleDef::Module(x) => {
-                let source = x.definition_source(ctx.db());
+        Definition::Module(x) => {
+            let source = x.definition_source(ctx.db());
+            let have_same_parent;
+            if let Some(ast_module) = &curr_parent_module {
+                if let Some(hir_module) = x.parent(ctx.db()) {
+                    have_same_parent =
+                        compare_hir_and_ast_module(&ast_module, hir_module, ctx).is_some();
+                } else {
+                    let source_file_id = source.file_id.original_file(ctx.db());
+                    have_same_parent = source_file_id == curr_file_id;
+                }
+            } else {
+                let source_file_id = source.file_id.original_file(ctx.db());
+                have_same_parent = source_file_id == curr_file_id;
+            }
+
+            if have_same_parent {
+                match source.value {
+                    ModuleSource::Module(module_) => {
+                        source_exists_outside_sel_in_same_mod =
+                            !selection_range.contains_range(module_.syntax().text_range());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Definition::Function(x) => {
+            if let Some(source) = x.source(ctx.db()) {
                 let have_same_parent;
                 if let Some(ast_module) = &curr_parent_module {
-                    if let Some(hir_module) = x.parent(ctx.db()) {
-                        have_same_parent =
-                            compare_hir_and_ast_module(&ast_module, hir_module, ctx).is_some();
-                    } else {
-                        let source_file_id = source.file_id.original_file(ctx.db());
-                        have_same_parent = source_file_id == curr_file_id;
-                    }
+                    have_same_parent =
+                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
                     have_same_parent = source_file_id == curr_file_id;
                 }
 
                 if have_same_parent {
-                    match source.value {
-                        ModuleSource::Module(module_) => {
-                            source_exists_outside_sel_in_same_mod =
-                                !selection_range.contains_range(module_.syntax().text_range());
-                        }
-                        _ => {}
-                    }
+                    source_exists_outside_sel_in_same_mod =
+                        !selection_range.contains_range(source.value.syntax().text_range());
                 }
             }
-            ModuleDef::Function(x) => {
-                if let Some(source) = x.source(ctx.db()) {
-                    let have_same_parent;
-                    if let Some(ast_module) = &curr_parent_module {
-                        have_same_parent =
-                            compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx)
-                                .is_some();
-                    } else {
-                        let source_file_id = source.file_id.original_file(ctx.db());
-                        have_same_parent = source_file_id == curr_file_id;
-                    }
+        }
+        Definition::Adt(x) => {
+            if let Some(source) = x.source(ctx.db()) {
+                let have_same_parent;
+                if let Some(ast_module) = &curr_parent_module {
+                    have_same_parent =
+                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                } else {
+                    let source_file_id = source.file_id.original_file(ctx.db());
+                    have_same_parent = source_file_id == curr_file_id;
+                }
 
-                    if have_same_parent {
-                        source_exists_outside_sel_in_same_mod =
-                            !selection_range.contains_range(source.value.syntax().text_range());
-                    }
+                if have_same_parent {
+                    source_exists_outside_sel_in_same_mod =
+                        !selection_range.contains_range(source.value.syntax().text_range());
                 }
             }
-            ModuleDef::Adt(x) => {
-                if let Some(source) = x.source(ctx.db()) {
-                    let have_same_parent;
-                    if let Some(ast_module) = &curr_parent_module {
-                        have_same_parent =
-                            compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx)
-                                .is_some();
-                    } else {
-                        let source_file_id = source.file_id.original_file(ctx.db());
-                        have_same_parent = source_file_id == curr_file_id;
-                    }
+        }
+        Definition::Variant(x) => {
+            if let Some(source) = x.source(ctx.db()) {
+                let have_same_parent;
+                if let Some(ast_module) = &curr_parent_module {
+                    have_same_parent =
+                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                } else {
+                    let source_file_id = source.file_id.original_file(ctx.db());
+                    have_same_parent = source_file_id == curr_file_id;
+                }
 
-                    if have_same_parent {
-                        source_exists_outside_sel_in_same_mod =
-                            !selection_range.contains_range(source.value.syntax().text_range());
-                    }
+                if have_same_parent {
+                    source_exists_outside_sel_in_same_mod =
+                        !selection_range.contains_range(source.value.syntax().text_range());
                 }
             }
-            ModuleDef::Variant(x) => {
-                if let Some(source) = x.source(ctx.db()) {
-                    let have_same_parent;
-                    if let Some(ast_module) = &curr_parent_module {
-                        have_same_parent =
-                            compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx)
-                                .is_some();
-                    } else {
-                        let source_file_id = source.file_id.original_file(ctx.db());
-                        have_same_parent = source_file_id == curr_file_id;
-                    }
+        }
+        Definition::Const(x) => {
+            if let Some(source) = x.source(ctx.db()) {
+                let have_same_parent;
+                if let Some(ast_module) = &curr_parent_module {
+                    have_same_parent =
+                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                } else {
+                    let source_file_id = source.file_id.original_file(ctx.db());
+                    have_same_parent = source_file_id == curr_file_id;
+                }
 
-                    if have_same_parent {
-                        source_exists_outside_sel_in_same_mod =
-                            !selection_range.contains_range(source.value.syntax().text_range());
-                    }
+                if have_same_parent {
+                    source_exists_outside_sel_in_same_mod =
+                        !selection_range.contains_range(source.value.syntax().text_range());
                 }
             }
-            ModuleDef::Const(x) => {
-                if let Some(source) = x.source(ctx.db()) {
-                    let have_same_parent;
-                    if let Some(ast_module) = &curr_parent_module {
-                        have_same_parent =
-                            compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx)
-                                .is_some();
-                    } else {
-                        let source_file_id = source.file_id.original_file(ctx.db());
-                        have_same_parent = source_file_id == curr_file_id;
-                    }
+        }
+        Definition::Static(x) => {
+            if let Some(source) = x.source(ctx.db()) {
+                let have_same_parent;
+                if let Some(ast_module) = &curr_parent_module {
+                    have_same_parent =
+                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                } else {
+                    let source_file_id = source.file_id.original_file(ctx.db());
+                    have_same_parent = source_file_id == curr_file_id;
+                }
 
-                    if have_same_parent {
-                        source_exists_outside_sel_in_same_mod =
-                            !selection_range.contains_range(source.value.syntax().text_range());
-                    }
+                if have_same_parent {
+                    source_exists_outside_sel_in_same_mod =
+                        !selection_range.contains_range(source.value.syntax().text_range());
                 }
             }
-            ModuleDef::Static(x) => {
-                if let Some(source) = x.source(ctx.db()) {
-                    let have_same_parent;
-                    if let Some(ast_module) = &curr_parent_module {
-                        have_same_parent =
-                            compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx)
-                                .is_some();
-                    } else {
-                        let source_file_id = source.file_id.original_file(ctx.db());
-                        have_same_parent = source_file_id == curr_file_id;
-                    }
+        }
+        Definition::Trait(x) => {
+            if let Some(source) = x.source(ctx.db()) {
+                let have_same_parent;
+                if let Some(ast_module) = &curr_parent_module {
+                    have_same_parent =
+                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                } else {
+                    let source_file_id = source.file_id.original_file(ctx.db());
+                    have_same_parent = source_file_id == curr_file_id;
+                }
 
-                    if have_same_parent {
-                        source_exists_outside_sel_in_same_mod =
-                            !selection_range.contains_range(source.value.syntax().text_range());
-                    }
+                if have_same_parent {
+                    source_exists_outside_sel_in_same_mod =
+                        !selection_range.contains_range(source.value.syntax().text_range());
                 }
             }
-            ModuleDef::Trait(x) => {
-                if let Some(source) = x.source(ctx.db()) {
-                    let have_same_parent;
-                    if let Some(ast_module) = &curr_parent_module {
-                        have_same_parent =
-                            compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx)
-                                .is_some();
-                    } else {
-                        let source_file_id = source.file_id.original_file(ctx.db());
-                        have_same_parent = source_file_id == curr_file_id;
-                    }
+        }
+        Definition::TypeAlias(x) => {
+            if let Some(source) = x.source(ctx.db()) {
+                let have_same_parent;
+                if let Some(ast_module) = &curr_parent_module {
+                    have_same_parent =
+                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                } else {
+                    let source_file_id = source.file_id.original_file(ctx.db());
+                    have_same_parent = source_file_id == curr_file_id;
+                }
 
-                    if have_same_parent {
-                        source_exists_outside_sel_in_same_mod =
-                            !selection_range.contains_range(source.value.syntax().text_range());
-                    }
+                if have_same_parent {
+                    source_exists_outside_sel_in_same_mod =
+                        !selection_range.contains_range(source.value.syntax().text_range());
                 }
             }
-            ModuleDef::TypeAlias(x) => {
-                if let Some(source) = x.source(ctx.db()) {
-                    let have_same_parent;
-                    if let Some(ast_module) = &curr_parent_module {
-                        have_same_parent =
-                            compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx)
-                                .is_some();
-                    } else {
-                        let source_file_id = source.file_id.original_file(ctx.db());
-                        have_same_parent = source_file_id == curr_file_id;
-                    }
-
-                    if have_same_parent {
-                        source_exists_outside_sel_in_same_mod =
-                            !selection_range.contains_range(source.value.syntax().text_range());
-                    }
-                }
-            }
-            _ => {}
-        },
+        }
         _ => {}
     }
 

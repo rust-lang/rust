@@ -127,8 +127,8 @@ fn edit_struct_references(
     names: &[ast::Name],
 ) {
     let strukt_def = match strukt {
-        Either::Left(s) => Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(s))),
-        Either::Right(v) => Definition::ModuleDef(hir::ModuleDef::Variant(v)),
+        Either::Left(s) => Definition::Adt(hir::Adt::Struct(s)),
+        Either::Right(v) => Definition::Variant(v),
     };
     let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 

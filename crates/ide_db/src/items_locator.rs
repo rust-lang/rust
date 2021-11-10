@@ -117,9 +117,8 @@ fn find_items<'a>(
         .into_iter()
         .filter_map(move |local_candidate| get_name_definition(sema, &local_candidate))
         .filter_map(|name_definition_to_import| match name_definition_to_import {
-            Definition::ModuleDef(module_def) => Some(ItemInNs::from(module_def)),
             Definition::Macro(macro_def) => Some(ItemInNs::from(macro_def)),
-            _ => None,
+            def => <Option<_>>::from(def),
         });
 
     external_importables.chain(local_results).filter(move |&item| match assoc_item_search {

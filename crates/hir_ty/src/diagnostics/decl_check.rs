@@ -581,10 +581,7 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let name = match &data.name {
-            Some(name) => name,
-            None => return,
-        };
+        let name = &data.name;
 
         let static_name = name.to_string();
         let replacement = if let Some(new_name) = to_upper_snake_case(&static_name) {

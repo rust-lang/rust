@@ -69,7 +69,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext) -> Opt
 
     let params = get_fn_params(ctx.sema.db, function, &param_list)?;
 
-    let usages = Definition::ModuleDef(hir::ModuleDef::Function(function)).usages(&ctx.sema);
+    let usages = Definition::Function(function).usages(&ctx.sema);
     if !usages.at_least_one() {
         return None;
     }

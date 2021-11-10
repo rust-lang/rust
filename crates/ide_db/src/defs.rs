@@ -7,9 +7,11 @@
 
 use arrayvec::ArrayVec;
 use hir::{
-    Field, GenericParam, HasVisibility, Impl, Label, Local, MacroDef, Module, ModuleDef, Name,
-    PathResolution, Semantics, Visibility,
+    Adt, AsAssocItem, AssocItem, BuiltinType, Const, Field, Function, GenericParam, HasVisibility,
+    Impl, ItemInNs, Label, Local, MacroDef, Module, ModuleDef, Name, PathResolution, Semantics,
+    Static, Trait, TypeAlias, Variant, Visibility,
 };
+use stdx::impl_from;
 use syntax::{
     ast::{self, AstNode},
     match_ast, AstToken, SyntaxKind, SyntaxNode, SyntaxToken,
@@ -22,7 +24,15 @@ use crate::{helpers::try_resolve_derive_input, RootDatabase};
 pub enum Definition {
     Macro(MacroDef),
     Field(Field),
-    ModuleDef(ModuleDef),
+    Module(Module),
+    Function(Function),
+    Adt(Adt),
+    Variant(Variant),
+    Const(Const),
+    Static(Static),
+    Trait(Trait),
+    TypeAlias(TypeAlias),
+    BuiltinType(BuiltinType),
     SelfType(Impl),
     Local(Local),
     GenericParam(GenericParam),
@@ -98,49 +108,65 @@ impl Definition {
         res
     }
 
+    pub fn canonical_module_path(&self, db: &RootDatabase) -> Option<impl Iterator<Item = Module>> {
+        self.module(db).map(|it| it.path_to_root(db).into_iter().rev())
+    }
+
     pub fn module(&self, db: &RootDatabase) -> Option<Module> {
-        match self {
-            Definition::Macro(it) => it.module(db),
-            Definition::Field(it) => Some(it.parent_def(db).module(db)),
-            Definition::ModuleDef(it) => it.module(db),
-            Definition::SelfType(it) => Some(it.module(db)),
-            Definition::Local(it) => Some(it.module(db)),
-            Definition::GenericParam(it) => Some(it.module(db)),
-            Definition::Label(it) => Some(it.module(db)),
-        }
+        let module = match self {
+            Definition::Macro(it) => it.module(db)?,
+            Definition::Module(it) => it.parent(db)?,
+            Definition::Field(it) => it.parent_def(db).module(db),
+            Definition::Function(it) => it.module(db),
+            Definition::Adt(it) => it.module(db),
+            Definition::Const(it) => it.module(db),
+            Definition::Static(it) => it.module(db),
+            Definition::Trait(it) => it.module(db),
+            Definition::TypeAlias(it) => it.module(db),
+            Definition::Variant(it) => it.module(db),
+            Definition::SelfType(it) => it.module(db),
+            Definition::Local(it) => it.module(db),
+            Definition::GenericParam(it) => it.module(db),
+            Definition::Label(it) => it.module(db),
+            Definition::BuiltinType(_) => return None,
+        };
+        Some(module)
     }
 
     pub fn visibility(&self, db: &RootDatabase) -> Option<Visibility> {
-        match self {
-            Definition::Field(sf) => Some(sf.visibility(db)),
-            Definition::ModuleDef(def) => Some(def.visibility(db)),
-            Definition::Macro(_)
-            | Definition::SelfType(_)
+        let vis = match self {
+            Definition::Field(sf) => sf.visibility(db),
+            Definition::Module(it) => it.visibility(db),
+            Definition::Function(it) => it.visibility(db),
+            Definition::Adt(it) => it.visibility(db),
+            Definition::Const(it) => it.visibility(db),
+            Definition::Static(it) => it.visibility(db),
+            Definition::Trait(it) => it.visibility(db),
+            Definition::TypeAlias(it) => it.visibility(db),
+            Definition::Variant(it) => it.visibility(db),
+            Definition::BuiltinType(_) => Visibility::Public,
+            Definition::Macro(_) => return None,
+            Definition::SelfType(_)
             | Definition::Local(_)
             | Definition::GenericParam(_)
-            | Definition::Label(_) => None,
-        }
+            | Definition::Label(_) => return None,
+        };
+        Some(vis)
     }
 
     pub fn name(&self, db: &RootDatabase) -> Option<Name> {
         let name = match self {
             Definition::Macro(it) => it.name(db)?,
             Definition::Field(it) => it.name(db),
-            Definition::ModuleDef(def) => match def {
-                hir::ModuleDef::Module(it) => it.name(db)?,
-                hir::ModuleDef::Function(it) => it.name(db),
-                hir::ModuleDef::Adt(def) => match def {
-                    hir::Adt::Struct(it) => it.name(db),
-                    hir::Adt::Union(it) => it.name(db),
-                    hir::Adt::Enum(it) => it.name(db),
-                },
-                hir::ModuleDef::Variant(it) => it.name(db),
-                hir::ModuleDef::Const(it) => it.name(db)?,
-                hir::ModuleDef::Static(it) => it.name(db)?,
-                hir::ModuleDef::Trait(it) => it.name(db),
-                hir::ModuleDef::TypeAlias(it) => it.name(db),
-                hir::ModuleDef::BuiltinType(it) => it.name(),
-            },
+            Definition::Module(it) => it.name(db)?,
+            Definition::Function(it) => it.name(db),
+            Definition::Adt(it) => it.name(db),
+            Definition::Variant(it) => it.name(db),
+            Definition::Const(it) => it.name(db)?,
+            Definition::Static(it) => it.name(db),
+            Definition::Trait(it) => it.name(db),
+            Definition::TypeAlias(it) => it.name(db),
+            Definition::BuiltinType(it) => it.name(),
             Definition::SelfType(_) => return None,
             Definition::Local(it) => it.name(db)?,
             Definition::GenericParam(it) => it.name(db),
@@ -193,7 +219,7 @@ impl NameClass {
 
         if let Some(bind_pat) = ast::IdentPat::cast(parent.clone()) {
             if let Some(def) = sema.resolve_bind_pat_to_const(&bind_pat) {
-                return Some(NameClass::ConstReference(Definition::ModuleDef(def)));
+                return Some(NameClass::ConstReference(Definition::from(def)));
             }
         }
 
@@ -231,7 +257,7 @@ impl NameClass {
                         let extern_crate = it.syntax().parent().and_then(ast::ExternCrate::cast)?;
                         let krate = sema.resolve_extern_crate(&extern_crate)?;
                         let root_module = krate.root_module(sema.db);
-                        Some(NameClass::Definition(Definition::ModuleDef(root_module.into())))
+                        Some(NameClass::Definition(Definition::Module(root_module)))
                     }
                 },
                 ast::IdentPat(it) => {
@@ -257,43 +283,43 @@ impl NameClass {
                 },
                 ast::Module(it) => {
                     let def = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ModuleDef(def.into())))
+                    Some(NameClass::Definition(Definition::Module(def)))
                 },
                 ast::Struct(it) => {
                     let def: hir::Struct = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ModuleDef(def.into())))
+                    Some(NameClass::Definition(Definition::Adt(def.into())))
                 },
                 ast::Union(it) => {
                     let def: hir::Union = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ModuleDef(def.into())))
+                    Some(NameClass::Definition(Definition::Adt(def.into())))
                 },
                 ast::Enum(it) => {
                     let def: hir::Enum = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ModuleDef(def.into())))
+                    Some(NameClass::Definition(Definition::Adt(def.into())))
                 },
                 ast::Trait(it) => {
                     let def: hir::Trait = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ModuleDef(def.into())))
+                    Some(NameClass::Definition(Definition::Trait(def)))
                 },
                 ast::Static(it) => {
                     let def: hir::Static = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ModuleDef(def.into())))
+                    Some(NameClass::Definition(Definition::Static(def)))
                 },
                 ast::Variant(it) => {
                     let def: hir::Variant = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ModuleDef(def.into())))
+                    Some(NameClass::Definition(Definition::Variant(def)))
                 },
                 ast::Fn(it) => {
                     let def: hir::Function = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ModuleDef(def.into())))
+                    Some(NameClass::Definition(Definition::Function(def)))
                 },
                 ast::Const(it) => {
                     let def: hir::Const = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ModuleDef(def.into())))
+                    Some(NameClass::Definition(Definition::Const(def)))
                 },
                 ast::TypeAlias(it) => {
                     let def: hir::TypeAlias = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ModuleDef(def.into())))
+                    Some(NameClass::Definition(Definition::TypeAlias(def)))
                 },
                 ast::Macro(it) => {
                     let def = sema.to_def(&it)?;
@@ -360,7 +386,7 @@ impl NameRefClass {
 
         if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
             if let Some(func) = sema.resolve_method_call(&method_call) {
-                return Some(NameRefClass::Definition(Definition::ModuleDef(func.into())));
+                return Some(NameRefClass::Definition(Definition::Function(func)));
             }
         }
 
@@ -406,9 +432,7 @@ impl NameRefClass {
                         })
                         .find(|alias| alias.name(sema.db).to_smol_str() == name_ref.text().as_str())
                     {
-                        return Some(NameRefClass::Definition(Definition::ModuleDef(
-                            ModuleDef::TypeAlias(ty),
-                        )));
+                        return Some(NameRefClass::Definition(Definition::TypeAlias(ty)));
                     }
                 }
 
@@ -440,9 +464,9 @@ impl NameRefClass {
                     .map(NameRefClass::Definition),
                 // in case of the path being a qualifier, don't resolve to anything but a module
                 Some(true) => match sema.resolve_path(&path)? {
-                    PathResolution::Def(module @ ModuleDef::Module(_)) => {
+                    PathResolution::Def(ModuleDef::Module(module)) => {
                         cov_mark::hit!(name_ref_classify_attr_path_qualifier);
-                        Some(NameRefClass::Definition(Definition::ModuleDef(module)))
+                        Some(NameRefClass::Definition(Definition::Module(module)))
                     }
                     _ => None,
                 },
@@ -455,7 +479,7 @@ impl NameRefClass {
         let extern_crate = ast::ExternCrate::cast(parent)?;
         let krate = sema.resolve_extern_crate(&extern_crate)?;
         let root_module = krate.root_module(sema.db);
-        Some(NameRefClass::Definition(Definition::ModuleDef(root_module.into())))
+        Some(NameRefClass::Definition(Definition::Module(root_module)))
     }
 
     pub fn classify_lifetime(
@@ -492,17 +516,34 @@ impl NameRefClass {
     }
 }
 
+impl AsAssocItem for Definition {
+    fn as_assoc_item(self, db: &dyn hir::db::HirDatabase) -> Option<AssocItem> {
+        match self {
+            Definition::Function(it) => it.as_assoc_item(db),
+            Definition::Const(it) => it.as_assoc_item(db),
+            Definition::TypeAlias(it) => it.as_assoc_item(db),
+            _ => None,
+        }
+    }
+}
+
+impl_from!(
+    Field, Module, Function, Adt, Variant, Const, Static, Trait, TypeAlias, BuiltinType, Local,
+    GenericParam, Label
+    for Definition
+);
+
 impl From<PathResolution> for Definition {
     fn from(path_resolution: PathResolution) -> Self {
         match path_resolution {
-            PathResolution::Def(def) => Definition::ModuleDef(def),
+            PathResolution::Def(def) => def.into(),
             PathResolution::AssocItem(item) => {
-                let def = match item {
+                let def: ModuleDef = match item {
                     hir::AssocItem::Function(it) => it.into(),
                     hir::AssocItem::Const(it) => it.into(),
                     hir::AssocItem::TypeAlias(it) => it.into(),
                 };
-                Definition::ModuleDef(def)
+                def.into()
             }
             PathResolution::Local(local) => Definition::Local(local),
             PathResolution::TypeParam(par) => Definition::GenericParam(par.into()),
@@ -510,5 +551,39 @@ impl From<PathResolution> for Definition {
             PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
             PathResolution::ConstParam(par) => Definition::GenericParam(par.into()),
         }
+    }
+}
+
+impl From<ModuleDef> for Definition {
+    fn from(def: ModuleDef) -> Self {
+        match def {
+            ModuleDef::Module(it) => Definition::Module(it),
+            ModuleDef::Function(it) => Definition::Function(it),
+            ModuleDef::Adt(it) => Definition::Adt(it),
+            ModuleDef::Variant(it) => Definition::Variant(it),
+            ModuleDef::Const(it) => Definition::Const(it),
+            ModuleDef::Static(it) => Definition::Static(it),
+            ModuleDef::Trait(it) => Definition::Trait(it),
+            ModuleDef::TypeAlias(it) => Definition::TypeAlias(it),
+            ModuleDef::BuiltinType(it) => Definition::BuiltinType(it),
+        }
+    }
+}
+
+impl From<Definition> for Option<ItemInNs> {
+    fn from(def: Definition) -> Self {
+        let item = match def {
+            Definition::Module(it) => ModuleDef::Module(it),
+            Definition::Function(it) => ModuleDef::Function(it),
+            Definition::Adt(it) => ModuleDef::Adt(it),
+            Definition::Variant(it) => ModuleDef::Variant(it),
+            Definition::Const(it) => ModuleDef::Const(it),
+            Definition::Static(it) => ModuleDef::Static(it),
+            Definition::Trait(it) => ModuleDef::Trait(it),
+            Definition::TypeAlias(it) => ModuleDef::TypeAlias(it),
+            Definition::BuiltinType(it) => ModuleDef::BuiltinType(it),
+            _ => return None,
+        };
+        Some(ItemInNs::from(item))
     }
 }

@@ -196,13 +196,21 @@ impl ToNav for FileSymbol {
 impl TryToNav for Definition {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         match self {
+            Definition::Local(it) => Some(it.to_nav(db)),
+            Definition::Label(it) => Some(it.to_nav(db)),
+            Definition::Module(it) => Some(it.to_nav(db)),
             Definition::Macro(it) => it.try_to_nav(db),
             Definition::Field(it) => it.try_to_nav(db),
-            Definition::ModuleDef(it) => it.try_to_nav(db),
             Definition::SelfType(it) => it.try_to_nav(db),
-            Definition::Local(it) => Some(it.to_nav(db)),
             Definition::GenericParam(it) => it.try_to_nav(db),
-            Definition::Label(it) => Some(it.to_nav(db)),
+            Definition::Function(it) => it.try_to_nav(db),
+            Definition::Adt(it) => it.try_to_nav(db),
+            Definition::Variant(it) => it.try_to_nav(db),
+            Definition::Const(it) => it.try_to_nav(db),
+            Definition::Static(it) => it.try_to_nav(db),
+            Definition::Trait(it) => it.try_to_nav(db),
+            Definition::TypeAlias(it) => it.try_to_nav(db),
+            Definition::BuiltinType(_) => None,
         }
     }
 }

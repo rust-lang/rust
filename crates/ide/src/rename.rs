@@ -113,7 +113,7 @@ pub(crate) fn will_rename_file(
 ) -> Option<SourceChange> {
     let sema = Semantics::new(db);
     let module = sema.to_module_def(file_id)?;
-    let def = Definition::ModuleDef(module.into());
+    let def = Definition::Module(module);
     let mut change = def.rename(&sema, new_name_stem).ok()?;
     change.file_system_edits.clear();
     Some(change)

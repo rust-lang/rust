@@ -8,8 +8,7 @@ use std::{convert::TryInto, mem};
 
 use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{
-    AsAssocItem, DefWithBody, HasAttrs, HasSource, InFile, ModuleDef, ModuleSource, Semantics,
-    Visibility,
+    AsAssocItem, DefWithBody, HasAttrs, HasSource, InFile, ModuleSource, Semantics, Visibility,
 };
 use once_cell::unsync::Lazy;
 use rustc_hash::FxHashMap;
@@ -217,13 +216,13 @@ impl Definition {
     fn search_scope(&self, db: &RootDatabase) -> SearchScope {
         let _p = profile::span("search_scope");
 
-        if let Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) = self {
+        if let Definition::BuiltinType(_) = self {
             return SearchScope::crate_graph(db);
         }
 
         // def is crate root
         // FIXME: We don't do searches for crates currently, as a crate does not actually have a single name
-        if let &Definition::ModuleDef(hir::ModuleDef::Module(module)) = self {
+        if let &Definition::Module(module) = self {
             if module.crate_root(db) == module {
                 return SearchScope::reverse_dependencies(db, module.krate());
             }
@@ -431,7 +430,7 @@ impl<'a> FindUsages<'a> {
 
         // search for module `self` references in our module's definition source
         match self.def {
-            Definition::ModuleDef(hir::ModuleDef::Module(module)) if self.search_self_mod => {
+            Definition::Module(module) if self.search_self_mod => {
                 let src = module.definition_source(sema.db);
                 let file_id = src.file_id.original_file(sema.db);
                 let (file_id, search_range) = match src.value {
@@ -491,7 +490,7 @@ impl<'a> FindUsages<'a> {
         sink: &mut dyn FnMut(FileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, name_ref) {
-            Some(NameRefClass::Definition(def @ Definition::ModuleDef(_))) if def == self.def => {
+            Some(NameRefClass::Definition(def @ Definition::Module(_))) if def == self.def => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = FileReference {
                     range,
@@ -604,30 +603,27 @@ impl<'a> FindUsages<'a> {
                 sink(file_id, reference)
             }
             // Resolve trait impl function definitions to the trait definition's version if self.def is the trait definition's
-            Some(NameClass::Definition(Definition::ModuleDef(mod_def))) => {
+            Some(NameClass::Definition(def)) if def != self.def => {
                 /* poor man's try block */
                 (|| {
-                    let this = match self.def {
-                        Definition::ModuleDef(this) if this != mod_def => this,
-                        _ => return None,
-                    };
-                    let this_trait = this
+                    let this_trait = self
+                        .def
                         .as_assoc_item(self.sema.db)?
                         .containing_trait_or_trait_impl(self.sema.db)?;
-                    let trait_ = mod_def
+                    let trait_ = def
                         .as_assoc_item(self.sema.db)?
                         .containing_trait_or_trait_impl(self.sema.db)?;
-                    (trait_ == this_trait
-                        && self.def.name(self.sema.db) == mod_def.name(self.sema.db))
-                    .then(|| {
-                        let FileRange { file_id, range } = self.sema.original_range(name.syntax());
-                        let reference = FileReference {
-                            range,
-                            name: ast::NameLike::Name(name.clone()),
-                            category: None,
-                        };
-                        sink(file_id, reference)
-                    })
+                    (trait_ == this_trait && self.def.name(self.sema.db) == def.name(self.sema.db))
+                        .then(|| {
+                            let FileRange { file_id, range } =
+                                self.sema.original_range(name.syntax());
+                            let reference = FileReference {
+                                range,
+                                name: ast::NameLike::Name(name.clone()),
+                                category: None,
+                            };
+                            sink(file_id, reference)
+                        })
                 })()
                 .unwrap_or(false)
             }
@@ -638,18 +634,15 @@ impl<'a> FindUsages<'a> {
 
 fn def_to_ty(sema: &Semantics<RootDatabase>, def: &Definition) -> Option<hir::Type> {
     match def {
-        Definition::ModuleDef(def) => match def {
-            ModuleDef::Adt(adt) => Some(adt.ty(sema.db)),
-            ModuleDef::TypeAlias(it) => Some(it.ty(sema.db)),
-            ModuleDef::BuiltinType(it) => {
-                let graph = sema.db.crate_graph();
-                let krate = graph.iter().next()?;
-                let root_file = graph[krate].root_file_id;
-                let module = sema.to_module_def(root_file)?;
-                Some(it.ty(sema.db, module))
-            }
-            _ => None,
-        },
+        Definition::Adt(adt) => Some(adt.ty(sema.db)),
+        Definition::TypeAlias(it) => Some(it.ty(sema.db)),
+        Definition::BuiltinType(it) => {
+            let graph = sema.db.crate_graph();
+            let krate = graph.iter().next()?;
+            let root_file = graph[krate].root_file_id;
+            let module = sema.to_module_def(root_file)?;
+            Some(it.ty(sema.db, module))
+        }
         Definition::SelfType(it) => Some(it.self_ty(sema.db)),
         _ => None,
     }

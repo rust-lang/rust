@@ -63,8 +63,7 @@ pub(crate) fn extract_struct_from_enum_variant(
         |builder| {
             let variant_hir_name = variant_hir.name(ctx.db());
             let enum_module_def = ModuleDef::from(enum_hir);
-            let usages =
-                Definition::ModuleDef(ModuleDef::Variant(variant_hir)).usages(&ctx.sema).all();
+            let usages = Definition::Variant(variant_hir).usages(&ctx.sema).all();
 
             let mut visited_modules_set = FxHashSet::default();
             let current_module = enum_hir.module(ctx.db());

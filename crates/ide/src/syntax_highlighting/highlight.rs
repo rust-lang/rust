@@ -246,7 +246,7 @@ fn node(
 fn highlight_name_ref_in_attr(sema: &Semantics<RootDatabase>, name_ref: ast::NameRef) -> Highlight {
     match NameRefClass::classify(sema, &name_ref) {
         Some(name_class) => match name_class {
-            NameRefClass::Definition(Definition::ModuleDef(hir::ModuleDef::Module(_)))
+            NameRefClass::Definition(Definition::Module(_))
                 if name_ref
                     .syntax()
                     .ancestors()
@@ -302,9 +302,7 @@ fn highlight_name_ref(
                     {
                         h |= HlMod::Consuming;
                     }
-                    Definition::ModuleDef(hir::ModuleDef::Trait(trait_))
-                        if trait_.is_unsafe(db) =>
-                    {
+                    Definition::Trait(trait_) if trait_.is_unsafe(db) => {
                         if ast::Impl::for_trait_name_ref(&name_ref)
                             .map_or(false, |impl_| impl_.unsafe_token().is_some())
                         {
@@ -358,7 +356,7 @@ fn highlight_name(
     match name_kind {
         Some(NameClass::Definition(def)) => {
             let mut h = highlight_def(sema, krate, def) | HlMod::Definition;
-            if let Definition::ModuleDef(hir::ModuleDef::Trait(trait_)) = &def {
+            if let Definition::Trait(trait_) = &def {
                 if trait_.is_unsafe(db) {
                     h |= HlMod::Unsafe;
                 }
@@ -398,112 +396,110 @@ fn highlight_def(
     let mut h = match def {
         Definition::Macro(_) => Highlight::new(HlTag::Symbol(SymbolKind::Macro)),
         Definition::Field(_) => Highlight::new(HlTag::Symbol(SymbolKind::Field)),
-        Definition::ModuleDef(def) => match def {
-            hir::ModuleDef::Module(module) => {
-                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
-                if module.parent(db).is_none() {
-                    h |= HlMod::CrateRoot
-                }
-                h
+        Definition::Module(module) => {
+            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
+            if module.parent(db).is_none() {
+                h |= HlMod::CrateRoot
             }
-            hir::ModuleDef::Function(func) => {
-                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
-                if let Some(item) = func.as_assoc_item(db) {
-                    h |= HlMod::Associated;
-                    match func.self_param(db) {
-                        Some(sp) => match sp.access(db) {
-                            hir::Access::Exclusive => {
-                                h |= HlMod::Mutable;
-                                h |= HlMod::Reference;
-                            }
-                            hir::Access::Shared => h |= HlMod::Reference,
-                            hir::Access::Owned => h |= HlMod::Consuming,
-                        },
-                        None => h |= HlMod::Static,
-                    }
-
-                    match item.container(db) {
-                        hir::AssocItemContainer::Impl(i) => {
-                            if i.trait_(db).is_some() {
-                                h |= HlMod::Trait;
-                            }
+            h
+        }
+        Definition::Function(func) => {
+            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
+            if let Some(item) = func.as_assoc_item(db) {
+                h |= HlMod::Associated;
+                match func.self_param(db) {
+                    Some(sp) => match sp.access(db) {
+                        hir::Access::Exclusive => {
+                            h |= HlMod::Mutable;
+                            h |= HlMod::Reference;
                         }
-                        hir::AssocItemContainer::Trait(_t) => {
+                        hir::Access::Shared => h |= HlMod::Reference,
+                        hir::Access::Owned => h |= HlMod::Consuming,
+                    },
+                    None => h |= HlMod::Static,
+                }
+
+                match item.container(db) {
+                    hir::AssocItemContainer::Impl(i) => {
+                        if i.trait_(db).is_some() {
                             h |= HlMod::Trait;
                         }
                     }
+                    hir::AssocItemContainer::Trait(_t) => {
+                        h |= HlMod::Trait;
+                    }
                 }
-
-                if func.is_unsafe(db) {
-                    h |= HlMod::Unsafe;
-                }
-                if func.is_async(db) {
-                    h |= HlMod::Async;
-                }
-
-                h
             }
-            hir::ModuleDef::Adt(adt) => {
-                let h = match adt {
-                    hir::Adt::Struct(_) => HlTag::Symbol(SymbolKind::Struct),
-                    hir::Adt::Enum(_) => HlTag::Symbol(SymbolKind::Enum),
-                    hir::Adt::Union(_) => HlTag::Symbol(SymbolKind::Union),
-                };
 
-                Highlight::new(h)
+            if func.is_unsafe(db) {
+                h |= HlMod::Unsafe;
             }
-            hir::ModuleDef::Variant(_) => Highlight::new(HlTag::Symbol(SymbolKind::Variant)),
-            hir::ModuleDef::Const(konst) => {
-                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const));
+            if func.is_async(db) {
+                h |= HlMod::Async;
+            }
 
-                if let Some(item) = konst.as_assoc_item(db) {
-                    h |= HlMod::Associated;
-                    match item.container(db) {
-                        hir::AssocItemContainer::Impl(i) => {
-                            if i.trait_(db).is_some() {
-                                h |= HlMod::Trait;
-                            }
-                        }
-                        hir::AssocItemContainer::Trait(_t) => {
+            h
+        }
+        Definition::Adt(adt) => {
+            let h = match adt {
+                hir::Adt::Struct(_) => HlTag::Symbol(SymbolKind::Struct),
+                hir::Adt::Enum(_) => HlTag::Symbol(SymbolKind::Enum),
+                hir::Adt::Union(_) => HlTag::Symbol(SymbolKind::Union),
+            };
+
+            Highlight::new(h)
+        }
+        Definition::Variant(_) => Highlight::new(HlTag::Symbol(SymbolKind::Variant)),
+        Definition::Const(konst) => {
+            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const));
+
+            if let Some(item) = konst.as_assoc_item(db) {
+                h |= HlMod::Associated;
+                match item.container(db) {
+                    hir::AssocItemContainer::Impl(i) => {
+                        if i.trait_(db).is_some() {
                             h |= HlMod::Trait;
                         }
                     }
+                    hir::AssocItemContainer::Trait(_t) => {
+                        h |= HlMod::Trait;
+                    }
                 }
-
-                h
             }
-            hir::ModuleDef::Trait(_) => Highlight::new(HlTag::Symbol(SymbolKind::Trait)),
-            hir::ModuleDef::TypeAlias(type_) => {
-                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::TypeAlias));
 
-                if let Some(item) = type_.as_assoc_item(db) {
-                    h |= HlMod::Associated;
-                    match item.container(db) {
-                        hir::AssocItemContainer::Impl(i) => {
-                            if i.trait_(db).is_some() {
-                                h |= HlMod::Trait;
-                            }
-                        }
-                        hir::AssocItemContainer::Trait(_t) => {
+            h
+        }
+        Definition::Trait(_) => Highlight::new(HlTag::Symbol(SymbolKind::Trait)),
+        Definition::TypeAlias(type_) => {
+            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::TypeAlias));
+
+            if let Some(item) = type_.as_assoc_item(db) {
+                h |= HlMod::Associated;
+                match item.container(db) {
+                    hir::AssocItemContainer::Impl(i) => {
+                        if i.trait_(db).is_some() {
                             h |= HlMod::Trait;
                         }
                     }
+                    hir::AssocItemContainer::Trait(_t) => {
+                        h |= HlMod::Trait;
+                    }
                 }
-
-                h
             }
-            hir::ModuleDef::BuiltinType(_) => Highlight::new(HlTag::BuiltinType),
-            hir::ModuleDef::Static(s) => {
-                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Static));
 
-                if s.is_mut(db) {
-                    h |= HlMod::Mutable;
-                    h |= HlMod::Unsafe;
-                }
+            h
+        }
+        Definition::BuiltinType(_) => Highlight::new(HlTag::BuiltinType),
+        Definition::Static(s) => {
+            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Static));
 
-                h
+            if s.is_mut(db) {
+                h |= HlMod::Mutable;
+                h |= HlMod::Unsafe;
             }
-        },
+
+            h
+        }
         Definition::SelfType(_) => Highlight::new(HlTag::Symbol(SymbolKind::Impl)),
         Definition::GenericParam(it) => match it {
             hir::GenericParam::TypeParam(_) => Highlight::new(HlTag::Symbol(SymbolKind::TypeParam)),
@@ -540,13 +536,13 @@ fn highlight_def(
 
     let famous_defs = FamousDefs(sema, krate);
     let def_crate = def.module(db).map(hir::Module::krate).or_else(|| match def {
-        Definition::ModuleDef(hir::ModuleDef::Module(module)) => Some(module.krate()),
+        Definition::Module(module) => Some(module.krate()),
         _ => None,
     });
     let is_from_other_crate = def_crate != krate;
     let is_from_builtin_crate =
         def_crate.map_or(false, |def_crate| famous_defs.builtin_crates().any(|it| def_crate == it));
-    let is_builtin_type = matches!(def, Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)));
+    let is_builtin_type = matches!(def, Definition::BuiltinType(_));
     let is_public = def.visibility(db) == Some(hir::Visibility::Public);
 
     match (is_from_other_crate, is_builtin_type, is_public) {
