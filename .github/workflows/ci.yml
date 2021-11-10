@@ -109,12 +109,12 @@ jobs:
         run: |
           case "${{ matrix.target_feature }}" in
             default)
-              ;;
+              echo "RUSTFLAGS=-Dwarnings" >> $GITHUB_ENV;;
             native)
-              echo "RUSTFLAGS=-Ctarget-cpu=native" >> $GITHUB_ENV
+              echo "RUSTFLAGS=-Dwarnings -Ctarget-cpu=native" >> $GITHUB_ENV
               ;;
             *)
-              echo "RUSTFLAGS=-Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
+              echo "RUSTFLAGS=-Dwarnings -Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
               ;;
           esac
 
@@ -251,4 +251,4 @@ jobs:
       - name: Check build
         run: cargo check --all-targets --no-default-features ${{ matrix.features }}
         env:
-            RUSTFLAGS: ${{ matrix.rustflags }}
+            RUSTFLAGS: -Dwarnings ${{ matrix.rustflags }}

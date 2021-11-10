@@ -68,7 +68,9 @@ extern "platform-intrinsic" {
     // reductions
     pub(crate) fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
     pub(crate) fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
+    #[allow(unused)]
     pub(crate) fn simd_reduce_all<T>(x: T) -> bool;
+    #[allow(unused)]
     pub(crate) fn simd_reduce_any<T>(x: T) -> bool;
     pub(crate) fn simd_reduce_max<T, U>(x: T) -> U;
     pub(crate) fn simd_reduce_min<T, U>(x: T) -> U;
@@ -77,6 +79,7 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_reduce_xor<T, U>(x: T) -> U;
 
     // truncate integer vector to bitmask
+    #[allow(unused)]
     pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
 
     // select
