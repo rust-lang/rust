@@ -3,7 +3,7 @@
 <!-- toc -->
 
 
-[*Bootstrapping*] is the process of using a compiler to compile itself.
+[*Bootstrapping*][boot] is the process of using a compiler to compile itself.
 More accurately, it means using an older compiler to compile a newer version
 of the same compiler.
 
@@ -101,7 +101,7 @@ _break the stability guarantees_ of rust: Allow using `#![feature(...)]` with
 a compiler that's not nightly. This should never be used except when
 bootstrapping the compiler.
 
-[Bootstrapping]: https://en.wikipedia.org/wiki/Bootstrapping_(compilers)
+[boot]: https://en.wikipedia.org/wiki/Bootstrapping_(compilers)
 [intrinsics]: ../appendix/glossary.md#intrinsic
 [ocaml-compiler]: https://github.com/rust-lang/rust/tree/ef75860a0a72f79f97216f8aaa5b388d98da6480/src/boot
 
