@@ -141,7 +141,7 @@ fn get_stabilisation_version() -> String {
         }
     }
 
-    String::from("<TODO set version(see doc/adding_lints.md)")
+    String::from("<TODO set version(see doc/adding_lints.md)>")
 }
 
 fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {

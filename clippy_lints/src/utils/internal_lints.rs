@@ -318,19 +318,11 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for invalid `clippy::version` attributes
+    /// Checks for invalid `clippy::version` attributes.
     ///
-    /// ```txt
-    /// +-------------------------------+
-    /// | Valid values are:             |
-    /// |  * "pre 1.29.0"               |
-    /// |  * any valid semantic version |
-    /// +-------------------------------+
-    ///                  \
-    ///                   \  (^v^)
-    ///                     <(   )>
-    ///                       w w
-    /// ```
+    /// Valid values are:
+    /// * "pre 1.29.0"
+    /// * any valid semantic version
     pub INVALID_CLIPPY_VERSION_ATTRIBUTE,
     internal,
     "found an invalid `clippy::version` attribute"
@@ -484,8 +476,8 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'tcx>, ty: &Ty<'_>) -> bool {
 
 fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'_>) {
     if let Some(value) = extract_clippy_version_value(cx, item) {
-        // The `sym!` macro doesn't work as it only expects a single token. I think
-        // It's better to keep it this way and have a direct `Symbol::intern` call here :)
+        // The `sym!` macro doesn't work as it only expects a single token.
+        // It's better to keep it this way and have a direct `Symbol::intern` call here.
         if value == Symbol::intern("pre 1.29.0") {
             return;
         }
