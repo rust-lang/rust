@@ -1,7 +1,7 @@
 if_chain! {
-    if let StmtKind::Local(ref local) = stmt.kind;
-    if let Some(ref init) = local.init;
-    if let ExprKind::Cast(ref expr, ref cast_ty) = init.kind;
+    if let StmtKind::Local(local) = stmt.kind;
+    if let Some(init) = local.init;
+    if let ExprKind::Cast(expr, cast_ty) = init.kind;
     if let TyKind::Path(ref qpath) = cast_ty.kind;
     if match_qpath(qpath, &["char"]);
     if let ExprKind::Lit(ref lit) = expr.kind;
