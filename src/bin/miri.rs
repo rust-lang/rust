@@ -313,6 +313,9 @@ fn main() {
                 "-Zmiri-symbolic-alignment-check" => {
                     miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
                 }
+                "-Zmiri-check-number-validity" => {
+                    miri_config.check_number_validity = true;
+                }
                 "-Zmiri-disable-abi-check" => {
                     miri_config.check_abi = false;
                 }

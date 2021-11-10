@@ -304,6 +304,9 @@ pub struct Evaluator<'mir, 'tcx> {
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
 
+    /// Whether to enforce validity (e.g., initialization) of integers and floats.
+    pub(crate) enforce_number_validity: bool,
+
     /// Whether to enforce [ABI](Abi) of function calls.
     pub(crate) enforce_abi: bool,
 
@@ -356,6 +359,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validate: config.validate,
+            enforce_number_validity: config.check_number_validity,
             enforce_abi: config.check_abi,
             file_handler: Default::default(),
             dir_handler: Default::default(),
@@ -424,6 +428,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         ecx.machine.validate
+    }
+
+    #[inline(always)]
+    fn enforce_number_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        ecx.machine.enforce_number_validity
     }
 
     #[inline(always)]
