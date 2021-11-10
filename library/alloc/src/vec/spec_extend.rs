@@ -1,4 +1,5 @@
 use crate::alloc::Allocator;
+use crate::vec::Drain;
 use core::iter::TrustedLen;
 use core::ptr::{self};
 use core::slice::{self};
@@ -63,6 +64,16 @@ impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
             self.append_elements(iterator.as_slice() as _);
         }
         iterator.ptr = iterator.end;
+    }
+}
+
+impl<T, A: Allocator> SpecExtend<T, Drain<'_, T>> for Vec<T, A> {
+    fn spec_extend(&mut self, mut iter: Drain<'_, T>) {
+        unsafe {
+            self.append_elements(iter.as_slice() as _);
+        }
+        // update Drain so that the elements won't get double-dropped
+        iter.iter = (&[]).into_iter();
     }
 }
 
