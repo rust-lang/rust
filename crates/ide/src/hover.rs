@@ -163,9 +163,7 @@ pub(crate) fn hover_for_definition(
     config: &HoverConfig,
 ) -> Option<HoverResult> {
     let famous_defs = match &definition {
-        Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
-            Some(FamousDefs(sema, sema.scope(node).krate()))
-        }
+        Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(node).krate())),
         _ => None,
     };
     if let Some(markup) = render::definition(sema.db, definition, famous_defs.as_ref(), config) {
@@ -260,10 +258,8 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
     }
 
     let adt = match def {
-        Definition::ModuleDef(hir::ModuleDef::Trait(it)) => {
-            return it.try_to_nav(db).map(to_action)
-        }
-        Definition::ModuleDef(hir::ModuleDef::Adt(it)) => Some(it),
+        Definition::Trait(it) => return it.try_to_nav(db).map(to_action),
+        Definition::Adt(it) => Some(it),
         Definition::SelfType(it) => it.self_ty(db).as_adt(),
         _ => None,
     }?;
@@ -272,14 +268,12 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
 
 fn show_fn_references_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     match def {
-        Definition::ModuleDef(hir::ModuleDef::Function(it)) => {
-            it.try_to_nav(db).map(|nav_target| {
-                HoverAction::Reference(FilePosition {
-                    file_id: nav_target.file_id,
-                    offset: nav_target.focus_or_full_range().start(),
-                })
+        Definition::Function(it) => it.try_to_nav(db).map(|nav_target| {
+            HoverAction::Reference(FilePosition {
+                file_id: nav_target.file_id,
+                offset: nav_target.focus_or_full_range().start(),
             })
-        }
+        }),
         _ => None,
     }
 }
@@ -290,20 +284,17 @@ fn runnable_action(
     file_id: FileId,
 ) -> Option<HoverAction> {
     match def {
-        Definition::ModuleDef(it) => match it {
-            hir::ModuleDef::Module(it) => runnable_mod(sema, it).map(HoverAction::Runnable),
-            hir::ModuleDef::Function(func) => {
-                let src = func.source(sema.db)?;
-                if src.file_id != file_id.into() {
-                    cov_mark::hit!(hover_macro_generated_struct_fn_doc_comment);
-                    cov_mark::hit!(hover_macro_generated_struct_fn_doc_attr);
-                    return None;
-                }
-
-                runnable_fn(sema, func).map(HoverAction::Runnable)
+        Definition::Module(it) => runnable_mod(sema, it).map(HoverAction::Runnable),
+        Definition::Function(func) => {
+            let src = func.source(sema.db)?;
+            if src.file_id != file_id.into() {
+                cov_mark::hit!(hover_macro_generated_struct_fn_doc_comment);
+                cov_mark::hit!(hover_macro_generated_struct_fn_doc_attr);
+                return None;
             }
-            _ => None,
-        },
+
+            runnable_fn(sema, func).map(HoverAction::Runnable)
+        }
         _ => None,
     }
 }

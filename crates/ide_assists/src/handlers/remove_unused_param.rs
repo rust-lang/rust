@@ -62,7 +62,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
     }
     let fn_def = {
         let func = ctx.sema.to_def(&func)?;
-        Definition::ModuleDef(func.into())
+        Definition::Function(func)
     };
 
     let param_def = {

@@ -3,7 +3,7 @@ use std::convert::TryInto;
 use crate::{
     display::TryToNav, doc_links::token_as_doc_comment, FilePosition, NavigationTarget, RangeInfo,
 };
-use hir::{AsAssocItem, ModuleDef, Semantics};
+use hir::{AsAssocItem, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::Definition,
@@ -110,12 +110,7 @@ fn try_find_trait_item_definition(
     def: &Definition,
 ) -> Option<Vec<NavigationTarget>> {
     let name = def.name(db)?;
-    let assoc = match def {
-        Definition::ModuleDef(ModuleDef::Function(f)) => f.as_assoc_item(db),
-        Definition::ModuleDef(ModuleDef::Const(c)) => c.as_assoc_item(db),
-        Definition::ModuleDef(ModuleDef::TypeAlias(ty)) => ty.as_assoc_item(db),
-        _ => None,
-    }?;
+    let assoc = def.as_assoc_item(db)?;
 
     let imp = match assoc.container(db) {
         hir::AssocItemContainer::Impl(imp) => imp,

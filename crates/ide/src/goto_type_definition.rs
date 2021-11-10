@@ -1,4 +1,4 @@
-use ide_db::{base_db::Upcast, helpers::pick_best_token, RootDatabase};
+use ide_db::{base_db::Upcast, defs::Definition, helpers::pick_best_token, RootDatabase};
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, T};
 
 use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
@@ -29,7 +29,7 @@ pub(crate) fn goto_type_definition(
         })?;
 
     let mut res = Vec::new();
-    let mut push = |def: hir::ModuleDef| {
+    let mut push = |def: Definition| {
         if let Some(nav) = def.try_to_nav(db) {
             if !res.contains(&nav) {
                 res.push(nav);

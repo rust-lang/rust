@@ -316,17 +316,18 @@ impl ModuleDef {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
-        match self {
-            ModuleDef::Adt(it) => Some(it.name(db)),
-            ModuleDef::Trait(it) => Some(it.name(db)),
-            ModuleDef::Function(it) => Some(it.name(db)),
-            ModuleDef::Variant(it) => Some(it.name(db)),
-            ModuleDef::TypeAlias(it) => Some(it.name(db)),
-            ModuleDef::Module(it) => it.name(db),
-            ModuleDef::Const(it) => it.name(db),
+        let name = match self {
+            ModuleDef::Module(it) => it.name(db)?,
+            ModuleDef::Const(it) => it.name(db)?,
+            ModuleDef::Adt(it) => it.name(db),
+            ModuleDef::Trait(it) => it.name(db),
+            ModuleDef::Function(it) => it.name(db),
+            ModuleDef::Variant(it) => it.name(db),
+            ModuleDef::TypeAlias(it) => it.name(db),
             ModuleDef::Static(it) => it.name(db),
-            ModuleDef::BuiltinType(it) => Some(it.name()),
-        }
+            ModuleDef::BuiltinType(it) => it.name(),
+        };
+        Some(name)
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase) -> Vec<AnyDiagnostic> {
@@ -1036,7 +1037,7 @@ impl DefWithBody {
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         match self {
             DefWithBody::Function(f) => Some(f.name(db)),
-            DefWithBody::Static(s) => s.name(db),
+            DefWithBody::Static(s) => Some(s.name(db)),
             DefWithBody::Const(c) => c.name(db),
         }
     }
@@ -1484,7 +1485,7 @@ impl Static {
         Module { id: self.id.lookup(db.upcast()).module(db.upcast()) }
     }
 
-    pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
         db.static_data(self.id).name.clone()
     }
 

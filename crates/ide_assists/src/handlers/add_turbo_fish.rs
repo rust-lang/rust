@@ -44,7 +44,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         NameRefClass::FieldShorthand { .. } => return None,
     };
     let fun = match def {
-        Definition::ModuleDef(hir::ModuleDef::Function(it)) => it,
+        Definition::Function(it) => it,
         _ => return None,
     };
     let generics = hir::GenericDef::Function(fun).params(ctx.sema.db);

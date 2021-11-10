@@ -4,7 +4,9 @@ use std::mem;
 
 use either::Either;
 use hir::{InFile, Semantics};
-use ide_db::{call_info::ActiveParameter, helpers::rust_doc::is_rust_fence, SymbolKind};
+use ide_db::{
+    call_info::ActiveParameter, defs::Definition, helpers::rust_doc::is_rust_fence, SymbolKind,
+};
 use syntax::{
     ast::{self, AstNode, IsString},
     AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -237,22 +239,29 @@ fn find_doc_string_in_attr(attr: &hir::Attr, it: &ast::Attr) -> Option<ast::Stri
     }
 }
 
-fn module_def_to_hl_tag(def: Either<hir::ModuleDef, hir::MacroDef>) -> HlTag {
+fn module_def_to_hl_tag(def: Definition) -> HlTag {
     let symbol = match def {
-        Either::Left(def) => match def {
-            hir::ModuleDef::Module(_) => SymbolKind::Module,
-            hir::ModuleDef::Function(_) => SymbolKind::Function,
-            hir::ModuleDef::Adt(hir::Adt::Struct(_)) => SymbolKind::Struct,
-            hir::ModuleDef::Adt(hir::Adt::Enum(_)) => SymbolKind::Enum,
-            hir::ModuleDef::Adt(hir::Adt::Union(_)) => SymbolKind::Union,
-            hir::ModuleDef::Variant(_) => SymbolKind::Variant,
-            hir::ModuleDef::Const(_) => SymbolKind::Const,
-            hir::ModuleDef::Static(_) => SymbolKind::Static,
-            hir::ModuleDef::Trait(_) => SymbolKind::Trait,
-            hir::ModuleDef::TypeAlias(_) => SymbolKind::TypeAlias,
-            hir::ModuleDef::BuiltinType(_) => return HlTag::BuiltinType,
+        Definition::Module(_) => SymbolKind::Module,
+        Definition::Function(_) => SymbolKind::Function,
+        Definition::Adt(hir::Adt::Struct(_)) => SymbolKind::Struct,
+        Definition::Adt(hir::Adt::Enum(_)) => SymbolKind::Enum,
+        Definition::Adt(hir::Adt::Union(_)) => SymbolKind::Union,
+        Definition::Variant(_) => SymbolKind::Variant,
+        Definition::Const(_) => SymbolKind::Const,
+        Definition::Static(_) => SymbolKind::Static,
+        Definition::Trait(_) => SymbolKind::Trait,
+        Definition::TypeAlias(_) => SymbolKind::TypeAlias,
+        Definition::BuiltinType(_) => return HlTag::BuiltinType,
+        Definition::Macro(_) => SymbolKind::Macro,
+        Definition::Field(_) => SymbolKind::Field,
+        Definition::SelfType(_) => SymbolKind::Impl,
+        Definition::Local(_) => SymbolKind::Local,
+        Definition::GenericParam(gp) => match gp {
+            hir::GenericParam::TypeParam(_) => SymbolKind::TypeParam,
+            hir::GenericParam::LifetimeParam(_) => SymbolKind::LifetimeParam,
+            hir::GenericParam::ConstParam(_) => SymbolKind::ConstParam,
         },
-        Either::Right(_) => SymbolKind::Macro,
+        Definition::Label(_) => SymbolKind::Label,
     };
     HlTag::Symbol(symbol)
 }

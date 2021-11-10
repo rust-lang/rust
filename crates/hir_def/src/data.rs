@@ -273,7 +273,7 @@ impl ConstData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StaticData {
-    pub name: Option<Name>,
+    pub name: Name,
     pub type_ref: Interned<TypeRef>,
     pub visibility: RawVisibility,
     pub mutable: bool,
@@ -287,7 +287,7 @@ impl StaticData {
         let statik = &item_tree[node.id.value];
 
         Arc::new(StaticData {
-            name: Some(statik.name.clone()),
+            name: statik.name.clone(),
             type_ref: statik.type_ref.clone(),
             visibility: item_tree[statik.visibility].clone(),
             mutable: statik.mutable,

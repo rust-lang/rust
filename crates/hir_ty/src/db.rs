@@ -159,9 +159,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
     let _p = profile::span("infer:wait").detail(|| match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).name.to_string(),
-        DefWithBodyId::StaticId(it) => {
-            db.static_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
-        }
+        DefWithBodyId::StaticId(it) => db.static_data(it).name.clone().to_string(),
         DefWithBodyId::ConstId(it) => {
             db.const_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
         }

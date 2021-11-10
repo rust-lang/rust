@@ -97,7 +97,7 @@ fn highlight_references(
 
     let declarations = defs.iter().flat_map(|def| {
         match def {
-            &Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
+            &Definition::Module(module) => {
                 Some(NavigationTarget::from_module_to_decl(sema.db, module))
             }
             def => def.try_to_nav(sema.db),

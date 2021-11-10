@@ -181,7 +181,7 @@ fn target_data_for_def(
             offset_target_and_file_id(db, c)?
         }
         hir::ModuleDef::Static(s) => {
-            target_name = s.name(db);
+            target_name = Some(s.name(db));
             offset_target_and_file_id(db, s)?
         }
         hir::ModuleDef::Trait(t) => {

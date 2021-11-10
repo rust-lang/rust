@@ -1,6 +1,6 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use hir::{HasSource, HirDisplay, Module, ModuleDef, Semantics, TypeInfo};
+use hir::{HasSource, HirDisplay, Module, Semantics, TypeInfo};
 use ide_db::helpers::FamousDefs;
 use ide_db::{
     base_db::FileId,
@@ -482,9 +482,8 @@ fn fn_arg_name(sema: &Semantics<RootDatabase>, arg_expr: &ast::Expr) -> String {
         ast::Expr::CastExpr(cast_expr) => Some(fn_arg_name(sema, &cast_expr.expr()?)),
         expr => {
             let name_ref = expr.syntax().descendants().filter_map(ast::NameRef::cast).last()?;
-            if let Some(NameRefClass::Definition(Definition::ModuleDef(
-                ModuleDef::Const(_) | ModuleDef::Static(_),
-            ))) = NameRefClass::classify(sema, &name_ref)
+            if let Some(NameRefClass::Definition(Definition::Const(_) | Definition::Static(_))) =
+                NameRefClass::classify(sema, &name_ref)
             {
                 return Some(name_ref.to_string().to_lowercase());
             };

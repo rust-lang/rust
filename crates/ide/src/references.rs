@@ -80,7 +80,7 @@ pub(crate) fn find_all_refs(
                 let mut usages =
                     def.usages(sema).set_scope(search_scope.clone()).include_self_refs().all();
                 let declaration = match def {
-                    Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
+                    Definition::Module(module) => {
                         Some(NavigationTarget::from_module_to_decl(sema.db, module))
                     }
                     def => def.try_to_nav(sema.db),
@@ -168,7 +168,7 @@ fn retain_adt_literal_usages(
 ) {
     let refs = usages.references.values_mut();
     match def {
-        Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(enum_))) => {
+        Definition::Adt(hir::Adt::Enum(enum_)) => {
             refs.for_each(|it| {
                 it.retain(|reference| {
                     reference
@@ -179,7 +179,7 @@ fn retain_adt_literal_usages(
             });
             usages.references.retain(|_, it| !it.is_empty());
         }
-        Definition::ModuleDef(hir::ModuleDef::Adt(_) | hir::ModuleDef::Variant(_)) => {
+        Definition::Adt(_) | Definition::Variant(_) => {
             refs.for_each(|it| {
                 it.retain(|reference| reference.name.as_name_ref().map_or(false, is_lit_name_ref))
             });

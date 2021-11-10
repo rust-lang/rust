@@ -39,7 +39,7 @@ pub(crate) fn goto_declaration(
                 }
             };
             match def? {
-                Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
+                Definition::Module(module) => {
                     Some(NavigationTarget::from_module_to_decl(db, module))
                 }
                 _ => None,

@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{AssocItem, HasVisibility, MacroDef, Module, ModuleDef, Name, PathResolution, ScopeDef};
+use hir::{AssocItem, HasVisibility, Module, ModuleDef, Name, PathResolution, ScopeDef};
 use ide_db::{
     defs::{Definition, NameRefClass},
     search::SearchScope,
@@ -112,36 +112,27 @@ fn find_parent_and_path(
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-enum Def {
-    ModuleDef(ModuleDef),
-    MacroDef(MacroDef),
-}
-
-impl Def {
-    fn is_referenced_in(&self, ctx: &AssistContext) -> bool {
-        let def = match self {
-            Def::ModuleDef(def) => Definition::ModuleDef(*def),
-            Def::MacroDef(def) => Definition::Macro(*def),
-        };
-
-        let search_scope = SearchScope::single_file(ctx.file_id());
-        def.usages(&ctx.sema).in_scope(search_scope).at_least_one()
-    }
+fn def_is_referenced_in(def: Definition, ctx: &AssistContext) -> bool {
+    let search_scope = SearchScope::single_file(ctx.file_id());
+    def.usages(&ctx.sema).in_scope(search_scope).at_least_one()
 }
 
 #[derive(Debug, Clone)]
 struct Ref {
     // could be alias
     visible_name: Name,
-    def: Def,
+    def: Definition,
 }
 
 impl Ref {
     fn from_scope_def(name: Name, scope_def: ScopeDef) -> Option<Self> {
         match scope_def {
-            ScopeDef::ModuleDef(def) => Some(Ref { visible_name: name, def: Def::ModuleDef(def) }),
-            ScopeDef::MacroDef(def) => Some(Ref { visible_name: name, def: Def::MacroDef(def) }),
+            ScopeDef::ModuleDef(def) => {
+                Some(Ref { visible_name: name, def: Definition::from(def) })
+            }
+            ScopeDef::MacroDef(def) => {
+                Some(Ref { visible_name: name, def: Definition::Macro(def) })
+            }
             _ => None,
         }
     }
@@ -157,10 +148,10 @@ impl Refs {
                 .clone()
                 .into_iter()
                 .filter(|r| {
-                    if let Def::ModuleDef(ModuleDef::Trait(tr)) = r.def {
+                    if let Definition::Trait(tr) = r.def {
                         if tr.items(ctx.db()).into_iter().any(|ai| {
                             if let AssocItem::Function(f) = ai {
-                                Def::ModuleDef(ModuleDef::Function(f)).is_referenced_in(ctx)
+                                def_is_referenced_in(Definition::Function(f), ctx)
                             } else {
                                 false
                             }
@@ -169,13 +160,13 @@ impl Refs {
                         }
                     }
 
-                    r.def.is_referenced_in(ctx)
+                    def_is_referenced_in(r.def, ctx)
                 })
                 .collect(),
         )
     }
 
-    fn filter_out_by_defs(&self, defs: Vec<Def>) -> Refs {
+    fn filter_out_by_defs(&self, defs: Vec<Definition>) -> Refs {
         Refs(self.0.clone().into_iter().filter(|r| !defs.contains(&r.def)).collect())
     }
 }
@@ -220,7 +211,7 @@ fn is_mod_visible_from(ctx: &AssistContext, module: Module, from: Module) -> boo
 // use foo::*$0;
 // use baz::Baz;
 // ↑ ---------------
-fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Def>> {
+fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Definition>> {
     let parent_use_item_syntax =
         star.ancestors().find_map(|n| if ast::Use::can_cast(n.kind()) { Some(n) } else { None })?;
 
@@ -234,8 +225,19 @@ fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Def>
             })
             .flat_map(|n| n.descendants().filter_map(ast::NameRef::cast))
             .filter_map(|r| match NameRefClass::classify(&ctx.sema, &r)? {
-                NameRefClass::Definition(Definition::ModuleDef(def)) => Some(Def::ModuleDef(def)),
-                NameRefClass::Definition(Definition::Macro(def)) => Some(Def::MacroDef(def)),
+                NameRefClass::Definition(
+                    def
+                    @
+                    (Definition::Macro(_)
+                    | Definition::Module(_)
+                    | Definition::Function(_)
+                    | Definition::Adt(_)
+                    | Definition::Variant(_)
+                    | Definition::Const(_)
+                    | Definition::Static(_)
+                    | Definition::Trait(_)
+                    | Definition::TypeAlias(_)),
+                ) => Some(def),
                 _ => None,
             })
             .collect(),
@@ -245,7 +247,7 @@ fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Def>
 fn find_names_to_import(
     ctx: &AssistContext,
     refs_in_target: Refs,
-    imported_defs: Vec<Def>,
+    imported_defs: Vec<Definition>,
 ) -> Vec<Name> {
     let used_refs = refs_in_target.used_refs(ctx).filter_out_by_defs(imported_defs);
     used_refs.0.iter().map(|r| r.visible_name.clone()).collect()
