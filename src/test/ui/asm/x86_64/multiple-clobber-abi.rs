@@ -4,7 +4,7 @@
 
 // Checks that multiple clobber_abi options can be used
 
-#![feature(asm)]
+#![feature(asm, asm_sym)]
 
 extern "sysv64" fn foo(x: i32) -> i32 {
     x + 16
