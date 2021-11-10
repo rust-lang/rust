@@ -1,4 +1,4 @@
-error[E0783]: trait objects without an explicit `dyn` are deprecated
+error[E0782]: trait objects without an explicit `dyn` are deprecated
   --> $DIR/dyn-trait-sugg-2021.rs:10:5
    |
 LL |     Foo::hi(123);
@@ -6,4 +6,4 @@ LL |     Foo::hi(123);
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0783`.
+For more information about this error, try `rustc --explain E0782`.
