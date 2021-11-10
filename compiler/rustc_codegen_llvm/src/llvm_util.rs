@@ -75,14 +75,8 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.print_llvm_passes() {
             add("-debug-pass=Structure", false);
         }
-        if !sess.opts.debugging_opts.no_generate_arange_section
-            // FIXME: An LLVM bug [1] means that if this option is enabled for
-            // wasm64 then LLVM will crash when generating debuginfo. Assuming
-            // that this gets fixed in LLVM 14 this condition here is a
-            // workaround to work with versions of LLVM 13 and prior.
-            //
-            // [1]: https://bugs.llvm.org/show_bug.cgi?id=52376
-            && (sess.target.arch != "wasm64" || llvm_util::get_version() >= (14, 0, 0))
+        if sess.target.generate_arange_section
+            && !sess.opts.debugging_opts.no_generate_arange_section
         {
             add("-generate-arange-section", false);
         }

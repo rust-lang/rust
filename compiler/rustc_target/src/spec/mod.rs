@@ -1357,6 +1357,9 @@ pub struct TargetOptions {
 
     /// Minimum number of bits in #[repr(C)] enum. Defaults to 32.
     pub c_enum_min_bits: u64,
+
+    /// Whether or not the DWARF `.debug_aranges` section should be generated.
+    pub generate_arange_section: bool,
 }
 
 impl Default for TargetOptions {
@@ -1462,6 +1465,7 @@ impl Default for TargetOptions {
             supported_sanitizers: SanitizerSet::empty(),
             default_adjusted_cabi: None,
             c_enum_min_bits: 32,
+            generate_arange_section: true,
         }
     }
 }
@@ -2047,6 +2051,7 @@ impl Target {
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
         key!(c_enum_min_bits, u64);
+        key!(generate_arange_section, bool);
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
@@ -2286,6 +2291,7 @@ impl ToJson for Target {
         target_option_val!(split_debuginfo);
         target_option_val!(supported_sanitizers);
         target_option_val!(c_enum_min_bits);
+        target_option_val!(generate_arange_section);
 
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".to_string(), Abi::name(abi).to_json());
