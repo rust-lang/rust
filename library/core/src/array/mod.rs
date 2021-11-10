@@ -355,6 +355,7 @@ trait SpecArrayClone: Clone {
 
 #[cfg(not(bootstrap))]
 impl<T: Clone> SpecArrayClone for T {
+    #[inline]
     default fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
         // SAFETY: we know for certain that this iterator will yield exactly `N`
         // items.
@@ -364,6 +365,7 @@ impl<T: Clone> SpecArrayClone for T {
 
 #[cfg(not(bootstrap))]
 impl<T: Copy> SpecArrayClone for T {
+    #[inline]
     fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
         *array
     }
