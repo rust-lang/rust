@@ -350,29 +350,28 @@ impl<'a> CompletionContext<'a> {
 impl<'a> CompletionContext<'a> {
     pub(super) fn new(
         db: &'a RootDatabase,
-        position: FilePosition,
+        position @ FilePosition { file_id, offset }: FilePosition,
         config: &'a CompletionConfig,
     ) -> Option<CompletionContext<'a>> {
         let _p = profile::span("CompletionContext::new");
         let sema = Semantics::new(db);
 
-        let original_file = sema.parse(position.file_id);
+        let original_file = sema.parse(file_id);
 
         // Insert a fake ident to get a valid parse tree. We will use this file
         // to determine context, though the original_file will be used for
         // actual completion.
         let file_with_fake_ident = {
-            let parse = db.parse(position.file_id);
-            let edit = Indel::insert(position.offset, "intellijRulezz".to_string());
+            let parse = db.parse(file_id);
+            let edit = Indel::insert(offset, "intellijRulezz".to_string());
             parse.reparse(&edit).tree()
         };
         let fake_ident_token =
-            file_with_fake_ident.syntax().token_at_offset(position.offset).right_biased().unwrap();
+            file_with_fake_ident.syntax().token_at_offset(offset).right_biased().unwrap();
 
-        let original_token =
-            original_file.syntax().token_at_offset(position.offset).left_biased()?;
+        let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
         let token = sema.descend_into_macros_single(original_token.clone());
-        let scope = sema.scope_at_offset(&token, position.offset);
+        let scope = sema.scope_at_offset(&token, offset);
         let krate = scope.krate();
         let mut locals = vec![];
         scope.process_all_names(&mut |name, scope| {
@@ -408,7 +407,7 @@ impl<'a> CompletionContext<'a> {
         ctx.expand_and_fill(
             original_file.syntax().clone(),
             file_with_fake_ident.syntax().clone(),
-            position.offset,
+            offset,
             fake_ident_token,
         );
         Some(ctx)

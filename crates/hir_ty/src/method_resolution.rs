@@ -13,6 +13,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::never;
 
 use crate::{
     autoderef,
@@ -334,7 +335,7 @@ pub fn def_crates(
             }};
         }
 
-    let mod_to_crate_ids = |module: ModuleId| Some(std::iter::once(module.krate()).collect());
+    let mod_to_crate_ids = |module: ModuleId| Some(iter::once(module.krate()).collect());
 
     let lang_item_targets = match ty.kind(&Interner) {
         TyKind::Adt(AdtId(def_id), _) => {
@@ -533,9 +534,16 @@ fn iterate_method_candidates_with_autoref(
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
+    let (receiver_ty, rest) = match deref_chain.split_first() {
+        Some((rec, rest)) => (rec.clone(), rest),
+        None => {
+            never!("received empty deref-chain");
+            return ControlFlow::Break(());
+        }
+    };
     iterate_method_candidates_by_receiver(
-        &deref_chain[0],
-        &deref_chain[1..],
+        &receiver_ty,
+        &rest,
         db,
         env.clone(),
         krate,
@@ -546,8 +554,8 @@ fn iterate_method_candidates_with_autoref(
     )?;
 
     let refed = Canonical {
-        binders: deref_chain[0].binders.clone(),
-        value: TyKind::Ref(Mutability::Not, static_lifetime(), deref_chain[0].value.clone())
+        binders: receiver_ty.binders.clone(),
+        value: TyKind::Ref(Mutability::Not, static_lifetime(), receiver_ty.value.clone())
             .intern(&Interner),
     };
 
@@ -564,9 +572,8 @@ fn iterate_method_candidates_with_autoref(
     )?;
 
     let ref_muted = Canonical {
-        binders: deref_chain[0].binders.clone(),
-        value: TyKind::Ref(Mutability::Mut, static_lifetime(), deref_chain[0].value.clone())
-            .intern(&Interner),
+        binders: receiver_ty.binders,
+        value: TyKind::Ref(Mutability::Mut, static_lifetime(), receiver_ty.value).intern(&Interner),
     };
 
     iterate_method_candidates_by_receiver(
@@ -596,7 +603,7 @@ fn iterate_method_candidates_by_receiver(
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that.
-    for self_ty in std::iter::once(receiver_ty).chain(rest_of_deref_chain) {
+    for self_ty in iter::once(receiver_ty).chain(rest_of_deref_chain) {
         iterate_inherent_methods(
             self_ty,
             db,
@@ -609,7 +616,7 @@ fn iterate_method_candidates_by_receiver(
         )?
     }
 
-    for self_ty in std::iter::once(receiver_ty).chain(rest_of_deref_chain) {
+    for self_ty in iter::once(receiver_ty).chain(rest_of_deref_chain) {
         iterate_trait_method_candidates(
             self_ty,
             db,
@@ -671,8 +678,7 @@ fn iterate_trait_method_candidates(
         }
         _ => Vec::new(),
     };
-    let traits =
-        inherent_trait.chain(env_traits.into_iter()).chain(traits_in_scope.iter().copied());
+    let traits = inherent_trait.chain(env_traits).chain(traits_in_scope.iter().copied());
 
     'traits: for t in traits {
         let data = db.trait_data(t);
@@ -800,7 +806,7 @@ fn iterate_inherent_methods(
     ) -> ControlFlow<()> {
         let impls_for_self_ty = filter_inherent_impls_for_self_ty(impls, &self_ty.value);
         for &impl_def in impls_for_self_ty {
-            for &item in db.impl_data(impl_def).items.iter() {
+            for &item in &db.impl_data(impl_def).items {
                 if !is_valid_candidate(
                     db,
                     env.clone(),
