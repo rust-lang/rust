@@ -897,13 +897,13 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db> {
-        let sa = self.analyze(node);
-        SemanticsScope { db: self.db, file_id: sa.file_id, resolver: sa.resolver }
+        let SourceAnalyzer { file_id, resolver, .. } = self.analyze(node);
+        SemanticsScope { db: self.db, file_id, resolver }
     }
 
     fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
-        let sa = self.analyze_with_offset(node, offset);
-        SemanticsScope { db: self.db, file_id: sa.file_id, resolver: sa.resolver }
+        let SourceAnalyzer { file_id, resolver, .. } = self.analyze_with_offset(node, offset);
+        SemanticsScope { db: self.db, file_id, resolver }
     }
 
     fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
@@ -924,9 +924,11 @@ impl<'db> SemanticsImpl<'db> {
     fn analyze(&self, node: &SyntaxNode) -> SourceAnalyzer {
         self.analyze_impl(node, None)
     }
+
     fn analyze_with_offset(&self, node: &SyntaxNode, offset: TextSize) -> SourceAnalyzer {
         self.analyze_impl(node, Some(offset))
     }
+
     fn analyze_impl(&self, node: &SyntaxNode, offset: Option<TextSize>) -> SourceAnalyzer {
         let _p = profile::span("Semantics::analyze_impl");
         let node = self.find_file(node.clone());
