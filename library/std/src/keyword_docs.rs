@@ -182,7 +182,7 @@ mod break_keyword {}
 /// T` and `*mut T`. More about `const` as used in raw pointers can be read at the Rust docs for the [pointer primitive].
 ///
 /// [pointer primitive]: pointer
-/// [Rust Book]: ../book/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
+/// [Rust Book]: ../book/ch03-01-variables-and-mutability.html#constants
 /// [Reference]: ../reference/items/constant-items.html
 /// [const-eval]: ../reference/const_eval.html
 mod const_keyword {}
