@@ -109,7 +109,10 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
                 };
 
                 GenericBound::TraitBound(
-                    PolyTrait { trait_: (trait_ref, &*bindings).clean(cx), generic_params: vec![] },
+                    PolyTrait {
+                        trait_: (trait_ref, &bindings[..]).clean(cx),
+                        generic_params: vec![],
+                    },
                     hir::TraitBoundModifier::None,
                 )
             }
@@ -764,7 +767,7 @@ impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::Bo
         let (generics, decl) = enter_impl_trait(cx, |cx| {
             let generics = self.1.clean(cx);
             let args = (self.0.decl.inputs, self.2).clean(cx);
-            let decl = clean_fn_decl_with_args(cx, &*self.0.decl, args);
+            let decl = clean_fn_decl_with_args(cx, self.0.decl, args);
             (generics, decl)
         });
         Function { decl, generics, header: self.0.header }
