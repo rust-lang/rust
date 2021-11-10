@@ -2404,7 +2404,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
     // Iterate external crate defs but be mindful about visibility
     while let Some(def) = queue.pop() {
         for child in tcx.item_children(def).iter() {
-            if child.vis != ty::Visibility::Public {
+            if !child.vis.is_public() {
                 continue;
             }
 

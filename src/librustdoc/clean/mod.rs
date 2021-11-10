@@ -1881,7 +1881,7 @@ fn clean_extern_crate(
     // this is the ID of the crate itself
     let crate_def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
     let attrs = cx.tcx.hir().attrs(krate.hir_id());
-    let please_inline = krate.vis.node.is_pub()
+    let please_inline = cx.tcx.visibility(krate.def_id).is_public()
         && attrs.iter().any(|a| {
             a.has_name(sym::doc)
                 && match a.meta_item_list() {
@@ -1933,9 +1933,12 @@ fn clean_use_statement(
         return Vec::new();
     }
 
+    let visibility = cx.tcx.visibility(import.def_id);
     let attrs = cx.tcx.hir().attrs(import.hir_id());
     let inline_attr = attrs.lists(sym::doc).get_word_attr(sym::inline);
-    let pub_underscore = import.vis.node.is_pub() && name == kw::Underscore;
+    let pub_underscore = visibility.is_public() && name == kw::Underscore;
+    let current_mod = cx.tcx.parent_module_from_def_id(import.def_id);
+    let parent_mod = cx.tcx.parent_module_from_def_id(current_mod);
 
     if pub_underscore {
         if let Some(ref inline) = inline_attr {
@@ -1954,8 +1957,9 @@ fn clean_use_statement(
     // forcefully don't inline if this is not public or if the
     // #[doc(no_inline)] attribute is present.
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-    let mut denied = !(import.vis.node.is_pub()
-        || (cx.render_options.document_private && import.vis.node.is_pub_restricted()))
+    let mut denied = !(visibility.is_public()
+        || (cx.render_options.document_private
+            && visibility.is_accessible_from(parent_mod.to_def_id(), cx.tcx)))
         || pub_underscore
         || attrs.iter().any(|a| {
             a.has_name(sym::doc)

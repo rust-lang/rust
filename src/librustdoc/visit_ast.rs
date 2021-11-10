@@ -10,7 +10,6 @@ use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use std::mem;
@@ -72,9 +71,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     crate fn visit(mut self) -> Module<'tcx> {
-        let span = self.cx.tcx.def_span(CRATE_DEF_ID);
         let mut top_level_module = self.visit_mod_contents(
-            &Spanned { span, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             self.cx.tcx.hir().root_module(),
             self.cx.tcx.crate_name(LOCAL_CRATE),
@@ -134,15 +131,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     fn visit_mod_contents(
         &mut self,
-        vis: &hir::Visibility<'_>,
         id: hir::HirId,
         m: &'tcx hir::Mod<'tcx>,
         name: Symbol,
     ) -> Module<'tcx> {
         let mut om = Module::new(name, id, m.inner);
+        let def_id = self.cx.tcx.hir().local_def_id(id).to_def_id();
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
-        self.inside_public_path &= vis.node.is_pub();
+        self.inside_public_path &= self.cx.tcx.visibility(def_id).is_public();
         for &i in m.item_ids {
             let item = self.cx.tcx.hir().item(i);
             self.visit_item(item, None, &mut om);
@@ -259,7 +256,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let name = renamed.unwrap_or(item.ident.name);
 
         let def_id = item.def_id.to_def_id();
-        let is_pub = item.vis.node.is_pub() || self.cx.tcx.has_attr(def_id, sym::macro_export);
+        let is_pub = self.cx.tcx.visibility(def_id).is_public();
 
         if is_pub {
             self.store_path(item.def_id.to_def_id());
@@ -332,7 +329,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 }
             }
             hir::ItemKind::Mod(ref m) => {
-                om.mods.push(self.visit_mod_contents(&item.vis, item.hir_id(), m, name));
+                om.mods.push(self.visit_mod_contents(item.hir_id(), m, name));
             }
             hir::ItemKind::Fn(..)
             | hir::ItemKind::ExternCrate(..)
@@ -368,7 +365,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om: &mut Module<'tcx>,
     ) {
         // If inlining we only want to include public functions.
-        if !self.inlining || item.vis.node.is_pub() {
+        if !self.inlining || self.cx.tcx.visibility(item.def_id).is_public() {
             om.foreigns.push((item, renamed));
         }
     }

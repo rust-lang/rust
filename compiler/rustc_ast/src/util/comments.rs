@@ -169,7 +169,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                 if let Some(mut idx) = token_text.find('\n') {
                     code_to_the_left = false;
                     while let Some(next_newline) = &token_text[idx + 1..].find('\n') {
-                        idx = idx + 1 + next_newline;
+                        idx += 1 + next_newline;
                         comments.push(Comment {
                             style: CommentStyle::BlankLine,
                             lines: vec![],

@@ -51,19 +51,19 @@ fn main() {
         let _: u64 = simd_bitmask(m64);
 
         let _: u16 = simd_bitmask(m2);
-        //~^ ERROR bitmask `u16`, expected `u8`
+        //~^ ERROR invalid monomorphization of `simd_bitmask` intrinsic
 
         let _: u16 = simd_bitmask(m8);
-        //~^ ERROR bitmask `u16`, expected `u8`
+        //~^ ERROR invalid monomorphization of `simd_bitmask` intrinsic
 
         let _: u32 = simd_bitmask(m16);
-        //~^ ERROR bitmask `u32`, expected `u16`
+        //~^ ERROR invalid monomorphization of `simd_bitmask` intrinsic
 
         let _: u64 = simd_bitmask(m32);
-        //~^ ERROR bitmask `u64`, expected `u32`
+        //~^ ERROR invalid monomorphization of `simd_bitmask` intrinsic
 
         let _: u128 = simd_bitmask(m64);
-        //~^ ERROR bitmask `u128`, expected `u64`
+        //~^ ERROR invalid monomorphization of `simd_bitmask` intrinsic
 
    }
 }

@@ -435,7 +435,7 @@ crate fn build_impl(
             tcx.associated_items(did)
                 .in_definition_order()
                 .filter_map(|item| {
-                    if associated_trait.is_some() || item.vis == ty::Visibility::Public {
+                    if associated_trait.is_some() || item.vis.is_public() {
                         Some(item.clean(cx))
                     } else {
                         None
@@ -515,7 +515,7 @@ fn build_module(
     // two namespaces, so the target may be listed twice. Make sure we only
     // visit each node at most once.
     for &item in cx.tcx.item_children(did).iter() {
-        if item.vis == ty::Visibility::Public {
+        if item.vis.is_public() {
             let res = item.res.expect_non_local();
             if let Some(def_id) = res.mod_def_id() {
                 if did == def_id || !visited.insert(def_id) {

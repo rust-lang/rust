@@ -1,28 +1,28 @@
-error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: bitmask `u16`, expected `u8`
+error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: cannot return `u16`, expected `u8` or `[u8; 1]`
   --> $DIR/generic-bitmask.rs:53:22
    |
 LL |         let _: u16 = simd_bitmask(m2);
    |                      ^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: bitmask `u16`, expected `u8`
+error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: cannot return `u16`, expected `u8` or `[u8; 1]`
   --> $DIR/generic-bitmask.rs:56:22
    |
 LL |         let _: u16 = simd_bitmask(m8);
    |                      ^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: bitmask `u32`, expected `u16`
+error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: cannot return `u32`, expected `u16` or `[u8; 2]`
   --> $DIR/generic-bitmask.rs:59:22
    |
 LL |         let _: u32 = simd_bitmask(m16);
    |                      ^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: bitmask `u64`, expected `u32`
+error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: cannot return `u64`, expected `u32` or `[u8; 4]`
   --> $DIR/generic-bitmask.rs:62:22
    |
 LL |         let _: u64 = simd_bitmask(m32);
    |                      ^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: bitmask `u128`, expected `u64`
+error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: cannot return `u128`, expected `u64` or `[u8; 8]`
   --> $DIR/generic-bitmask.rs:65:23
    |
 LL |         let _: u128 = simd_bitmask(m64);

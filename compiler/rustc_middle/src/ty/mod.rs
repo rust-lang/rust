@@ -333,6 +333,10 @@ impl Visibility {
             Visibility::Invisible => false,
         }
     }
+
+    pub fn is_public(self) -> bool {
+        matches!(self, Visibility::Public)
+    }
 }
 
 /// The crate variances map is computed during typeck and contains the

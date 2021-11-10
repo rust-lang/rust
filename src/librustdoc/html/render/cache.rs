@@ -258,45 +258,52 @@ crate fn get_real_types<'tcx>(
     ) {
         let is_full_generic = ty.is_full_generic();
 
-        if is_full_generic && generics.len() == 1 {
-            // In this case, no need to go through an intermediate state if the generics
-            // contains only one element.
-            //
-            // For example:
-            //
-            // fn foo<T: Display>(r: Option<T>) {}
-            //
-            // In this case, it would contain:
-            //
-            // ```
-            // [{
-            //     name: "option",
-            //     generics: [{
-            //         name: "",
-            //         generics: [
-            //             name: "Display",
-            //             generics: []
-            //         }]
-            //     }]
-            // }]
-            // ```
-            //
-            // After removing the intermediate (unnecessary) full generic, it'll become:
-            //
-            // ```
-            // [{
-            //     name: "option",
-            //     generics: [{
-            //         name: "Display",
-            //         generics: []
-            //     }]
-            // }]
-            // ```
-            //
-            // To be noted that it can work if there is ONLY ONE generic, otherwise we still
-            // need to keep it as is!
-            res.push(generics.pop().unwrap());
-            return;
+        if is_full_generic {
+            if generics.is_empty() {
+                // This is a type parameter with no trait bounds (for example: `T` in
+                // `fn f<T>(p: T)`, so not useful for the rustdoc search because we would end up
+                // with an empty type with an empty name. Let's just discard it.
+                return;
+            } else if generics.len() == 1 {
+                // In this case, no need to go through an intermediate state if the type parameter
+                // contains only one trait bound.
+                //
+                // For example:
+                //
+                // `fn foo<T: Display>(r: Option<T>) {}`
+                //
+                // In this case, it would contain:
+                //
+                // ```
+                // [{
+                //     name: "option",
+                //     generics: [{
+                //         name: "",
+                //         generics: [
+                //             name: "Display",
+                //             generics: []
+                //         }]
+                //     }]
+                // }]
+                // ```
+                //
+                // After removing the intermediate (unnecessary) type parameter, it'll become:
+                //
+                // ```
+                // [{
+                //     name: "option",
+                //     generics: [{
+                //         name: "Display",
+                //         generics: []
+                //     }]
+                // }]
+                // ```
+                //
+                // To be noted that it can work if there is ONLY ONE trait bound, otherwise we still
+                // need to keep it as is!
+                res.push(generics.pop().unwrap());
+                return;
+            }
         }
         let mut index_ty = get_index_type(&ty, generics);
         if index_ty.name.as_ref().map(|s| s.is_empty()).unwrap_or(true) {

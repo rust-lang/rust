@@ -318,7 +318,7 @@ pub fn provide(providers: &mut Providers) {
             }
 
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &Export, parent: DefId| {
-                if child.vis != ty::Visibility::Public {
+                if !child.vis.is_public() {
                     return;
                 }
 
