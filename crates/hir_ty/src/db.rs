@@ -77,6 +77,9 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(InherentImpls::inherent_impls_in_crate_query)]
     fn inherent_impls_in_crate(&self, krate: CrateId) -> Arc<InherentImpls>;
 
+    #[salsa::invoke(InherentImpls::inherent_impls_in_block_query)]
+    fn inherent_impls_in_block(&self, block: BlockId) -> Option<Arc<InherentImpls>>;
+
     #[salsa::invoke(TraitImpls::trait_impls_in_crate_query)]
     fn trait_impls_in_crate(&self, krate: CrateId) -> Arc<TraitImpls>;
 

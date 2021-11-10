@@ -1386,3 +1386,24 @@ fn f<S: Sized, T, U: ?Sized>() {
         "#]],
     );
 }
+
+#[test]
+fn local_impl() {
+    check_types(
+        r#"
+fn main() {
+    struct SomeStruct(i32);
+
+    impl SomeStruct {
+        fn is_even(&self) -> bool {
+            self.0 % 2 == 0
+        }
+    }
+
+    let o = SomeStruct(3);
+    let is_even = o.is_even();
+     // ^^^^^^^ bool
+}
+    "#,
+    );
+}

@@ -261,33 +261,45 @@ impl InherentImpls {
         let mut impls = Self { map: FxHashMap::default() };
 
         let crate_def_map = db.crate_def_map(krate);
-        collect_def_map(db, &crate_def_map, &mut impls);
+        impls.collect_def_map(db, &crate_def_map);
 
         return Arc::new(impls);
+    }
 
-        fn collect_def_map(db: &dyn HirDatabase, def_map: &DefMap, impls: &mut InherentImpls) {
-            for (_module_id, module_data) in def_map.modules() {
-                for impl_id in module_data.scope.impls() {
-                    let data = db.impl_data(impl_id);
-                    if data.target_trait.is_some() {
-                        continue;
-                    }
+    pub(crate) fn inherent_impls_in_block_query(
+        db: &dyn HirDatabase,
+        block: BlockId,
+    ) -> Option<Arc<Self>> {
+        let mut impls = Self { map: FxHashMap::default() };
+        if let Some(block_def_map) = db.block_def_map(block) {
+            impls.collect_def_map(db, &block_def_map);
+            return Some(Arc::new(impls));
+        }
+        return None;
+    }
 
-                    let self_ty = db.impl_self_ty(impl_id);
-                    let fp = TyFingerprint::for_inherent_impl(self_ty.skip_binders());
-                    if let Some(fp) = fp {
-                        impls.map.entry(fp).or_default().push(impl_id);
-                    }
-                    // `fp` should only be `None` in error cases (either erroneous code or incomplete name resolution)
+    fn collect_def_map(&mut self, db: &dyn HirDatabase, def_map: &DefMap) {
+        for (_module_id, module_data) in def_map.modules() {
+            for impl_id in module_data.scope.impls() {
+                let data = db.impl_data(impl_id);
+                if data.target_trait.is_some() {
+                    continue;
                 }
 
-                // To better support custom derives, collect impls in all unnamed const items.
-                // const _: () = { ... };
-                for konst in module_data.scope.unnamed_consts() {
-                    let body = db.body(konst.into());
-                    for (_, block_def_map) in body.blocks(db.upcast()) {
-                        collect_def_map(db, &block_def_map, impls);
-                    }
+                let self_ty = db.impl_self_ty(impl_id);
+                let fp = TyFingerprint::for_inherent_impl(self_ty.skip_binders());
+                if let Some(fp) = fp {
+                    self.map.entry(fp).or_default().push(impl_id);
+                }
+                // `fp` should only be `None` in error cases (either erroneous code or incomplete name resolution)
+            }
+
+            // To better support custom derives, collect impls in all unnamed const items.
+            // const _: () = { ... };
+            for konst in module_data.scope.unnamed_consts() {
+                let body = db.body(konst.into());
+                for (_, block_def_map) in body.blocks(db.upcast()) {
+                    self.collect_def_map(db, &block_def_map);
                 }
             }
         }
@@ -744,11 +756,49 @@ fn iterate_inherent_methods(
         None => return ControlFlow::Continue(()),
     };
 
+    if let Some(module_id) = visible_from_module {
+        if let Some(block_id) = module_id.containing_block() {
+            if let Some(impls) = db.inherent_impls_in_block(block_id) {
+                impls_for_self_ty(
+                    &impls,
+                    self_ty,
+                    db,
+                    env.clone(),
+                    name,
+                    receiver_ty,
+                    visible_from_module,
+                    callback,
+                )?;
+            }
+        }
+    }
+
     for krate in def_crates {
         let impls = db.inherent_impls_in_crate(krate);
+        impls_for_self_ty(
+            &impls,
+            self_ty,
+            db,
+            env.clone(),
+            name,
+            receiver_ty,
+            visible_from_module,
+            callback,
+        )?;
+    }
+    return ControlFlow::Continue(());
 
-        let impls_for_self_ty = filter_inherent_impls_for_self_ty(&impls, &self_ty.value);
-
+    fn impls_for_self_ty(
+        impls: &InherentImpls,
+        self_ty: &Canonical<Ty>,
+        db: &dyn HirDatabase,
+        env: Arc<TraitEnvironment>,
+        name: Option<&Name>,
+        receiver_ty: Option<&Canonical<Ty>>,
+        visible_from_module: Option<ModuleId>,
+        callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
+    ) -> ControlFlow<()> {
+        let impls_for_self_ty = filter_inherent_impls_for_self_ty(impls, &self_ty.value);
         for &impl_def in impls_for_self_ty {
             for &item in db.impl_data(impl_def).items.iter() {
                 if !is_valid_candidate(
@@ -776,8 +826,8 @@ fn iterate_inherent_methods(
                 callback(receiver_ty, item)?;
             }
         }
+        ControlFlow::Continue(())
     }
-    ControlFlow::Continue(())
 }
 
 /// Returns the self type for the index trait call.
