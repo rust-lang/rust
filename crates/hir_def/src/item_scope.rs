@@ -136,12 +136,17 @@ impl ItemScope {
 
     /// XXX: this is O(N) rather than O(1), try to not introduce new usages.
     pub(crate) fn name_of(&self, item: ItemInNs) -> Option<(&Name, Visibility)> {
-        for (name, per_ns) in self.entries() {
-            if let Some(vis) = item.match_with(per_ns) {
-                return Some((name, vis));
+        let (def, mut iter) = match item {
+            ItemInNs::Macros(def) => {
+                return self
+                    .macros
+                    .iter()
+                    .find_map(|(name, &(other_def, vis))| (other_def == def).then(|| (name, vis)));
             }
-        }
-        None
+            ItemInNs::Types(def) => (def, self.types.iter()),
+            ItemInNs::Values(def) => (def, self.values.iter()),
+        };
+        iter.find_map(|(name, &(other_def, vis))| (other_def == def).then(|| (name, vis)))
     }
 
     pub(crate) fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {
@@ -386,20 +391,6 @@ pub enum ItemInNs {
 }
 
 impl ItemInNs {
-    fn match_with(self, per_ns: PerNs) -> Option<Visibility> {
-        match self {
-            ItemInNs::Types(def) => {
-                per_ns.types.filter(|(other_def, _)| *other_def == def).map(|(_, vis)| vis)
-            }
-            ItemInNs::Values(def) => {
-                per_ns.values.filter(|(other_def, _)| *other_def == def).map(|(_, vis)| vis)
-            }
-            ItemInNs::Macros(def) => {
-                per_ns.macros.filter(|(other_def, _)| *other_def == def).map(|(_, vis)| vis)
-            }
-        }
-    }
-
     pub fn as_module_def_id(self) -> Option<ModuleDefId> {
         match self {
             ItemInNs::Types(id) | ItemInNs::Values(id) => Some(id),
