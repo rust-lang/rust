@@ -329,7 +329,10 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     let b_ptr = self.bitcast(b, i8p_ty);
                     let n = self.const_usize(layout.size().bytes());
                     let cmp = self.call_intrinsic("memcmp", &[a_ptr, b_ptr, n]);
-                    self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0))
+                    match self.cx.sess().target.arch.as_str() {
+                        "avr" | "msp430" => self.icmp(IntPredicate::IntEQ, cmp, self.const_i16(0)),
+                        _ => self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0)),
+                    }
                 }
             }
 

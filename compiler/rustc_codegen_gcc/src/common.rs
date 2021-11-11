@@ -91,6 +91,10 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_uint(self.type_i1(), val as u64)
     }
 
+    fn const_i16(&self, i: i16) -> RValue<'gcc> {
+        self.const_int(self.type_i16(), i as i64)
+    }
+
     fn const_i32(&self, i: i32) -> RValue<'gcc> {
         self.const_int(self.type_i32(), i as i64)
     }
