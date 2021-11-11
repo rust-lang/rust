@@ -1119,17 +1119,22 @@ class RustBuild(object):
                     raise Exception("{} not found".format(vendor_dir))
 
         if self.use_vendored_sources:
+            config = ("[source.crates-io]\n"
+                      "replace-with = 'vendored-sources'\n"
+                      "registry = 'https://example.com'\n"
+                      "\n"
+                      "[source.vendored-sources]\n"
+                      "directory = '{}/vendor'\n"
+                      .format(self.rust_root))
             if not os.path.exists('.cargo'):
                 os.makedirs('.cargo')
-            with output('.cargo/config') as cargo_config:
-                cargo_config.write(
-                    "[source.crates-io]\n"
-                    "replace-with = 'vendored-sources'\n"
-                    "registry = 'https://example.com'\n"
-                    "\n"
-                    "[source.vendored-sources]\n"
-                    "directory = '{}/vendor'\n"
-                    .format(self.rust_root))
+                with output('.cargo/config') as cargo_config:
+                    cargo_config.write(config)
+            else:
+                print('info: using vendored source, but .cargo/config is already present.')
+                print('      Reusing the current configuration file. But you may want to '
+                      'configure vendoring like this:')
+                print(config)
         else:
             if os.path.exists('.cargo'):
                 shutil.rmtree('.cargo')
