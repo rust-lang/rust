@@ -4232,6 +4232,7 @@ dependencies = [
 name = "rustc_monomorphize"
 version = "0.0.0"
 dependencies = [
+ "itertools 0.10.1",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",

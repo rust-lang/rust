@@ -1,5 +1,3 @@
-use std::cmp;
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder};
@@ -7,6 +5,9 @@ use rustc_span::symbol::{Symbol, SymbolStr};
 
 use super::PartitioningCx;
 use crate::partitioning::PreInliningPartitioning;
+
+use itertools::Itertools;
+use itertools::MinMaxResult;
 
 pub fn merge_codegen_units<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
@@ -30,30 +31,74 @@ pub fn merge_codegen_units<'tcx>(
     let mut cgu_contents: FxHashMap<Symbol, Vec<SymbolStr>> =
         codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name().as_str()])).collect();
 
-    // Merge the two smallest codegen units until the target size is reached.
-    while codegen_units.len() > cx.target_cgu_count {
-        // Sort small cgus to the back
-        codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
-        let mut smallest = codegen_units.pop().unwrap();
-        let second_smallest = codegen_units.last_mut().unwrap();
-
-        // Move the mono-items from `smallest` to `second_smallest`
-        second_smallest.modify_size_estimate(smallest.size_estimate());
-        for (k, v) in smallest.items_mut().drain() {
-            second_smallest.items_mut().insert(k, v);
+    let mut set_of_subsets: Vec<Vec<Option<CodegenUnit<'_>>>> =
+        Vec::with_capacity(initial_partitioning.codegen_units.len());
+    for cgu in std::mem::take(&mut initial_partitioning.codegen_units) {
+        let mut subsets = Vec::with_capacity(cx.target_cgu_count);
+        subsets.push(Some(cgu));
+        for _ in 1..cx.target_cgu_count {
+            subsets.push(None);
         }
-
-        // Record that `second_smallest` now contains all the stuff that was in
-        // `smallest` before.
-        let mut consumed_cgu_names = cgu_contents.remove(&smallest.name()).unwrap();
-        cgu_contents.get_mut(&second_smallest.name()).unwrap().append(&mut consumed_cgu_names);
-
-        debug!(
-            "CodegenUnit {} merged into CodegenUnit {}",
-            smallest.name(),
-            second_smallest.name()
-        );
+        set_of_subsets.push(subsets);
     }
+
+    // From Wikipedia:
+    // In each iteration, select two k-tuples A and B in which the difference
+    // between the maximum and minimum sum is largest, and combine them in
+    // reverse order of sizes, i.e.: smallest subset in A with largest subset in
+    // B, second-smallest in A with second-largest in B, etc.
+    while set_of_subsets.len() != 1 {
+        set_of_subsets.sort_by_key(|subsets| {
+            let mm =
+                subsets.iter().minmax_by_key(|cgu| cgu.as_ref().map_or(0, |c| c.size_estimate()));
+            match mm {
+                MinMaxResult::NoElements => {
+                    unreachable!(
+                        "we always have at least one set with values in each set of subsets"
+                    )
+                }
+                MinMaxResult::OneElement(a) => a.as_ref().map_or(0, |c| c.size_estimate()),
+                MinMaxResult::MinMax(a, b) => {
+                    b.as_ref().map_or(0, |c| c.size_estimate())
+                        - a.as_ref().map_or(0, |c| c.size_estimate())
+                }
+            }
+        });
+        let mut a = set_of_subsets.pop().unwrap();
+        let b = set_of_subsets.last_mut().unwrap();
+        a.sort_by_key(|cgu| cgu.as_ref().map_or(0, |c| c.size_estimate()));
+        b.sort_by_key(|cgu| cgu.as_ref().map_or(0, |c| c.size_estimate()));
+        assert_eq!(a.len(), b.len(), "k-tuples");
+        for (a, b) in a.into_iter().zip(b.iter_mut().rev()) {
+            match (a, b) {
+                (Some(mut a), Some(b)) => {
+                    // Move the mono-items from `a` to `b`
+                    b.modify_size_estimate(a.size_estimate());
+                    for (k, v) in a.items_mut().drain() {
+                        b.items_mut().insert(k, v);
+                    }
+
+                    // Record that `second_smallest` now contains all the stuff that was in
+                    // `smallest` before.
+                    let mut consumed_cgu_names = cgu_contents.remove(&a.name()).unwrap();
+                    cgu_contents.get_mut(&b.name()).unwrap().append(&mut consumed_cgu_names);
+
+                    debug!("CodegenUnit {} merged into CodegenUnit {}", a.name(), b.name());
+                }
+                (Some(a), b @ None) => {
+                    *b = Some(a);
+                }
+                (None, Some(_)) => {
+                    // no action needed to merge empty set into b.
+                }
+                (None, None) => {}
+            }
+        }
+    }
+    initial_partitioning.codegen_units =
+        set_of_subsets.pop().unwrap().into_iter().filter_map(|v| v).collect::<Vec<_>>();
+    let codegen_units = &mut initial_partitioning.codegen_units;
+    assert!(codegen_units.len() <= cx.target_cgu_count);
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
 
