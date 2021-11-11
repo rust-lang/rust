@@ -889,10 +889,9 @@ fn insert_end<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    debug_assert!(v.len() >= 2);
-    let end = v.len() - 1;
-    unsafe {
-        if is_less(v.get_unchecked(end), v.get_unchecked(end - 1)) {
+    let end = v.len().saturating_sub(1);
+    if end > 0 && is_less(&v[end], &v[end - 1]) {
+        unsafe {
             // There are three ways to implement insertion here:
             //
             // 1. Swap adjacent elements until the last one gets to its final destination.
@@ -957,8 +956,9 @@ where
 ///
 /// The two slices must be non-empty and `mid` must be in bounds. Buffer `buf` must be long enough
 /// to hold a copy of the shorter slice. Also, `T` must not be a zero-sized type.
+#[allow(unused_unsafe)]
 #[cfg(not(no_global_oom_handling))]
-fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
+unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -1038,14 +1038,14 @@ where
     // it will now be copied into the hole in `v`.
 
     #[inline(always)]
-    fn get_and_increment<T>(ptr: &mut *mut T) -> *mut T {
+    unsafe fn get_and_increment<T>(ptr: &mut *mut T) -> *mut T {
         let old = *ptr;
         *ptr = unsafe { ptr.offset(1) };
         old
     }
 
     #[inline(always)]
-    fn decrement_and_get<T>(ptr: &mut *mut T) -> *mut T {
+    unsafe fn decrement_and_get<T>(ptr: &mut *mut T) -> *mut T {
         *ptr = unsafe { ptr.offset(-1) };
         *ptr
     }
@@ -1186,7 +1186,9 @@ where
                     }
                     mid = SMALL_SLICE_LEN;
                 }
-                merge(v, mid, buf_ptr, is_less);
+                unsafe {
+                    merge(v, mid, buf_ptr, is_less);
+                }
             }
         }
     }
@@ -1196,9 +1198,11 @@ where
     /// # Safety
     ///
     /// `buf_ptr` must point to a slice of `buf` which is long enough to hold `v[mid..]`
-    /// v.len() >= mid because `swap_slices` is only called when: sorted < len && mid == sorted.max(len / 2)
+    ///   `v[mid..].len() <= buf.len()` because buf is sized as `(v.len() + 1) / 2' and `mid == sorted.max(v.len() / 2)`
+    ///
+    /// `mid` must be <= `v.len()`
+    ///   `mid <= v.len()` because `swap_slices` is only called when: `sorted < len && mid == sorted.max(len / 2)`
     fn swap_slices<T>(v: &mut [T], mid: usize, buf_ptr: *mut T) {
-        debug_assert!(v.len() >= mid);
         let rlen = v.len() - mid;
         let v_ptr = v.as_mut_ptr();
         unsafe {
