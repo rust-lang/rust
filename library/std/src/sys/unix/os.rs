@@ -543,7 +543,21 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     }
 }
 
+fn process_is_threaded() -> bool {
+    if cfg!(any(target_os = "linux", target_os = "android")) {
+        if let Ok(r) = crate::fs::read_dir("/proc/self/task") {
+            return r.count() > 1;
+        }
+    }
+    // Generic fall through
+    false
+}
+
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+    if process_is_threaded() {
+        panic!("Tried to setenv '{:?}' while process has multiple threads", k);
+    }
+
     let k = CString::new(k.as_bytes())?;
     let v = CString::new(v.as_bytes())?;
 
@@ -554,6 +568,9 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
 }
 
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
+    if process_is_threaded() {
+        panic!("Tried to unsetenv '{:?}' while process has multiple threads", n);
+    }
     let nbuf = CString::new(n.as_bytes())?;
 
     unsafe {
