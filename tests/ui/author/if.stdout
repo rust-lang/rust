@@ -1,23 +1,24 @@
 if_chain! {
-    if let StmtKind::Local(ref local) = stmt.kind;
-    if let Some(ref init) = local.init;
-    if let Some(higher::If { cond: cond, then: then, r#else: else_expr}) = higher::If::hir(init)
-    if let ExprKind::Lit(ref lit) = cond.kind;
+    if let StmtKind::Local(local) = stmt.kind;
+    if let Some(init) = local.init;
+    if let ExprKind::If(cond, then, Some(else_expr)) = init.kind;
+    if let ExprKind::DropTemps(expr) = cond.kind;
+    if let ExprKind::Lit(ref lit) = expr.kind;
     if let LitKind::Bool(true) = lit.node;
-    if let ExprKind::Block(ref block, ref label) = then.kind;
+    if let ExprKind::Block(block, None) = then.kind;
     if block.stmts.len() == 1;
-    if let StmtKind::Semi(ref e, _) = block.stmts[0].kind
-    if let ExprKind::Binary(ref op, ref left, ref right) = e.kind;
+    if let StmtKind::Semi(e) = block.stmts[0].kind;
+    if let ExprKind::Binary(op, left, right) = e.kind;
     if BinOpKind::Eq == op.node;
     if let ExprKind::Lit(ref lit1) = left.kind;
     if let LitKind::Int(1, LitIntType::Unsuffixed) = lit1.node;
     if let ExprKind::Lit(ref lit2) = right.kind;
     if let LitKind::Int(1, LitIntType::Unsuffixed) = lit2.node;
     if block.expr.is_none();
-    if let ExprKind::Block(ref block1, ref label1) = else_expr.kind;
+    if let ExprKind::Block(block1, None) = else_expr.kind;
     if block1.stmts.len() == 1;
-    if let StmtKind::Semi(ref e1, _) = block1.stmts[0].kind
-    if let ExprKind::Binary(ref op1, ref left1, ref right1) = e1.kind;
+    if let StmtKind::Semi(e1) = block1.stmts[0].kind;
+    if let ExprKind::Binary(op1, left1, right1) = e1.kind;
     if BinOpKind::Eq == op1.node;
     if let ExprKind::Lit(ref lit3) = left1.kind;
     if let LitKind::Int(2, LitIntType::Unsuffixed) = lit3.node;
@@ -30,17 +31,18 @@ if_chain! {
     }
 }
 if_chain! {
-    if let Some(higher::IfLet { let_pat: let_pat, let_expr: let_expr, if_then: if_then, if_else: else_expr}) = higher::IfLet::hir(expr)
-    if let PatKind::Lit(ref lit_expr) = let_pat.kind
+    if let ExprKind::If(cond, then, Some(else_expr)) = expr.kind;
+    if let ExprKind::Let(pat, expr1, _) = cond.kind;
+    if let PatKind::Lit(lit_expr) = pat.kind;
     if let ExprKind::Lit(ref lit) = lit_expr.kind;
     if let LitKind::Bool(true) = lit.node;
-    if let ExprKind::Path(ref path) = let_expr.kind;
-    if match_qpath(path, &["a"]);
-    if let ExprKind::Block(ref block, ref label) = if_then.kind;
-    if block.stmts.len() == 0;
+    if let ExprKind::Path(ref qpath) = expr1.kind;
+    if match_qpath(qpath, &["a"]);
+    if let ExprKind::Block(block, None) = then.kind;
+    if block.stmts.is_empty();
     if block.expr.is_none();
-    if let ExprKind::Block(ref block1, ref label1) = else_expr.kind;
-    if block1.stmts.len() == 0;
+    if let ExprKind::Block(block1, None) = else_expr.kind;
+    if block1.stmts.is_empty();
     if block1.expr.is_none();
     then {
         // report your lint here

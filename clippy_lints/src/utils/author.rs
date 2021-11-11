@@ -3,14 +3,14 @@
 
 use clippy_utils::{get_attr, higher};
 use rustc_ast::ast::{LitFloatType, LitKind};
-use rustc_ast::{walk_list, Label, LitIntType};
+use rustc_ast::LitIntType;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, Block, Expr, ExprKind, FnRetTy, Lit, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
+use rustc_hir::{ExprKind, FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::{Ident, Symbol};
+use std::fmt::{Display, Formatter, Write as _};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -53,6 +53,42 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Author => [LINT_AUTHOR]);
 
+/// Writes a line of output with indentation added
+macro_rules! out {
+    ($($t:tt)*) => {
+        println!("    {}", format_args!($($t)*))
+    };
+}
+
+/// The variables passed in are replaced with `&Binding`s where the `value` field is set
+/// to the original value of the variable. The `name` field is set to the name of the variable
+/// (using `stringify!`) and is adjusted to avoid duplicate names.
+/// Note that the `Binding` may be printed directly to output the `name`.
+macro_rules! bind {
+    ($self:ident $(, $name:ident)+) => {
+        $(let $name = & $self.bind(stringify!($name), $name);)+
+    };
+}
+
+/// Transforms the given `Option<T>` varibles into `OptionPat<Binding<T>>`.
+/// This displays as `Some($name)` or `None` when printed. The name of the inner binding
+/// is set to the name of the variable passed to the macro.
+macro_rules! opt_bind {
+    ($self:ident $(, $name:ident)+) => {
+        $(let $name = OptionPat::new($name.map(|o| $self.bind(stringify!($name), o)));)+
+    };
+}
+
+/// Creates a `Binding` that accesses the field of an existing `Binding`
+macro_rules! field {
+    ($binding:ident.$field:ident) => {
+        &Binding {
+            name: $binding.name.to_string() + stringify!(.$field),
+            value: $binding.value.$field,
+        }
+    };
+}
+
 fn prelude() {
     println!("if_chain! {{");
 }
@@ -66,1022 +102,593 @@ fn done() {
 
 impl<'tcx> LateLintPass<'tcx> for Author {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !has_attr(cx, item.hir_id()) {
-            return;
-        }
-        prelude();
-        PrintVisitor::new("item", cx).visit_item(item);
-        done();
+        check_item(cx, item.hir_id());
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
-        if !has_attr(cx, item.hir_id()) {
-            return;
-        }
-        prelude();
-        PrintVisitor::new("item", cx).visit_impl_item(item);
-        done();
+        check_item(cx, item.hir_id());
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
-        if !has_attr(cx, item.hir_id()) {
-            return;
-        }
-        prelude();
-        PrintVisitor::new("item", cx).visit_trait_item(item);
-        done();
-    }
-
-    fn check_variant(&mut self, cx: &LateContext<'tcx>, var: &'tcx hir::Variant<'_>) {
-        if !has_attr(cx, var.id) {
-            return;
-        }
-        prelude();
-        let parent_hir_id = cx.tcx.hir().get_parent_node(var.id);
-        PrintVisitor::new("var", cx).visit_variant(var, &hir::Generics::empty(), parent_hir_id);
-        done();
-    }
-
-    fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::FieldDef<'_>) {
-        if !has_attr(cx, field.hir_id) {
-            return;
-        }
-        prelude();
-        PrintVisitor::new("field", cx).visit_field_def(field);
-        done();
-    }
-
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if !has_attr(cx, expr.hir_id) {
-            return;
-        }
-        prelude();
-        PrintVisitor::new("expr", cx).visit_expr(expr);
-        done();
+        check_item(cx, item.hir_id());
     }
 
     fn check_arm(&mut self, cx: &LateContext<'tcx>, arm: &'tcx hir::Arm<'_>) {
-        if !has_attr(cx, arm.hir_id) {
-            return;
-        }
-        prelude();
-        PrintVisitor::new("arm", cx).visit_arm(arm);
-        done();
+        check_node(cx, arm.hir_id, |v| {
+            v.arm(&v.bind("arm", arm));
+        });
+    }
+
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
+        check_node(cx, expr.hir_id, |v| {
+            v.expr(&v.bind("expr", expr));
+        });
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'_>) {
-        if !has_attr(cx, stmt.hir_id) {
-            return;
-        }
         match stmt.kind {
             StmtKind::Expr(e) | StmtKind::Semi(e) if has_attr(cx, e.hir_id) => return,
             _ => {},
         }
-        prelude();
-        PrintVisitor::new("stmt", cx).visit_stmt(stmt);
-        done();
+        check_node(cx, stmt.hir_id, |v| {
+            v.stmt(&v.bind("stmt", stmt));
+        });
     }
+}
 
-    fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ForeignItem<'_>) {
-        if !has_attr(cx, item.hir_id()) {
-            return;
-        }
+fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
+    let hir = cx.tcx.hir();
+    if let Some(body_id) = hir.maybe_body_owned_by(hir_id) {
+        check_node(cx, hir_id, |v| {
+            v.expr(&v.bind("expr", &hir.body(body_id).value));
+        });
+    }
+}
+
+fn check_node(cx: &LateContext<'_>, hir_id: HirId, f: impl Fn(&PrintVisitor<'_, '_>)) {
+    if has_attr(cx, hir_id) {
         prelude();
-        PrintVisitor::new("item", cx).visit_foreign_item(item);
+        f(&PrintVisitor::new(cx));
         done();
     }
 }
 
+struct Binding<T> {
+    name: String,
+    value: T,
+}
+
+impl<T> Display for Binding<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.name)
+    }
+}
+
+struct OptionPat<T> {
+    pub opt: Option<T>,
+}
+
+impl<T> OptionPat<T> {
+    fn new(opt: Option<T>) -> Self {
+        Self { opt }
+    }
+
+    fn if_some(&self, f: impl Fn(&T)) {
+        if let Some(t) = &self.opt {
+            f(t);
+        }
+    }
+}
+
+impl<T: Display> Display for OptionPat<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.opt {
+            None => f.write_str("None"),
+            Some(node) => write!(f, "Some({node})"),
+        }
+    }
+}
+
+struct PrintVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    /// Fields are the current index that needs to be appended to pattern
+    /// binding names
+    ids: std::cell::Cell<FxHashMap<&'static str, u32>>,
+}
+
+#[allow(clippy::unused_self)]
 impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
-    #[must_use]
-    fn new(s: &'static str, cx: &'a LateContext<'tcx>) -> Self {
+    fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
-            ids: FxHashMap::default(),
-            current: s.to_owned(),
             cx,
+            ids: std::cell::Cell::default(),
         }
     }
 
-    fn next(&mut self, s: &'static str) -> String {
-        use std::collections::hash_map::Entry::{Occupied, Vacant};
-        match self.ids.entry(s) {
-            // already there: start numbering from `1`
-            Occupied(mut occ) => {
-                let val = occ.get_mut();
-                *val += 1;
-                format!("{}{}", s, *val)
-            },
-            // not there: insert and return name as given
-            Vacant(vac) => {
-                vac.insert(0);
-                s.to_owned()
+    fn next(&self, s: &'static str) -> String {
+        let mut ids = self.ids.take();
+        let out = match *ids.entry(s).and_modify(|n| *n += 1).or_default() {
+            // first usage of the name, use it as is
+            0 => s.to_string(),
+            // append a number starting with 1
+            n => format!("{s}{n}"),
+        };
+        self.ids.set(ids);
+        out
+    }
+
+    fn bind<T>(&self, name: &'static str, value: T) -> Binding<T> {
+        let name = self.next(name);
+        Binding { name, value }
+    }
+
+    fn option<T: Copy>(&self, option: &Binding<Option<T>>, name: &'static str, f: impl Fn(&Binding<T>)) {
+        match option.value {
+            None => out!("if {option}.is_none();"),
+            Some(value) => {
+                let value = &self.bind(name, value);
+                out!("if let Some({value}) = {option};");
+                f(value);
             },
         }
     }
 
-    fn print_qpath(&mut self, path: &QPath<'_>) {
-        if let QPath::LangItem(lang_item, _) = *path {
-            println!(
-                "    if matches!({}, QPath::LangItem(LangItem::{:?}, _));",
-                self.current, lang_item,
-            );
+    fn slice<T>(&self, slice: &Binding<&[T]>, f: impl Fn(&Binding<&T>)) {
+        if slice.value.is_empty() {
+            out!("if {slice}.is_empty();");
         } else {
-            print!("    if match_qpath({}, &[", self.current);
-            print_path(path, &mut true);
-            println!("]);");
+            out!("if {slice}.len() == {};", slice.value.len());
+            for (i, value) in slice.value.iter().enumerate() {
+                let name = format!("{slice}[{i}]");
+                f(&Binding { name, value });
+            }
         }
     }
 
-    fn print_label(&mut self, label: Option<Label>) {
-        if let Some(label) = label {
-            let label_bind = self.next("label");
+    fn destination(&self, destination: &Binding<hir::Destination>) {
+        self.option(field!(destination.label), "label", |label| {
+            self.ident(field!(label.ident));
+        });
+    }
 
-            println!("    if let Some(ref {}) = {}", label_bind, self.current);
+    fn ident(&self, ident: &Binding<Ident>) {
+        out!("if {ident}.as_str() == {:?};", ident.value.as_str());
+    }
 
-            let label_name_bind = self.next("label_name");
-            let label_name = label.ident.name;
+    fn symbol(&self, symbol: &Binding<Symbol>) {
+        out!("if {symbol}.as_str() == {:?};", symbol.value.as_str());
+    }
 
-            println!(
-                "    if {}.ident.name.as_str() == {:?};",
-                label_name_bind,
-                label_name.as_str()
-            );
+    fn qpath(&self, qpath: &Binding<&QPath<'_>>) {
+        if let QPath::LangItem(lang_item, _) = *qpath.value {
+            out!("if matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _));");
+        } else {
+            out!("if match_qpath({qpath}, &[{}]);", path_to_string(qpath.value));
         }
     }
 
-    fn print_lit_expr(&mut self, lit: &Lit, current: &str) {
-        let lit_pat = self.next("lit");
+    fn lit(&self, lit: &Binding<&Lit>) {
+        let kind = |kind| out!("if let LitKind::{kind} = {lit}.node;");
+        macro_rules! kind {
+            ($($t:tt)*) => (kind(format_args!($($t)*)));
+        }
 
-        println!("Lit(ref {}) = {};", lit_pat, current);
-
-        match lit.node {
-            LitKind::Bool(val) => println!("    if let LitKind::Bool({:?}) = {}.node;", val, lit_pat),
-            LitKind::Char(c) => println!("    if let LitKind::Char({:?}) = {}.node;", c, lit_pat),
-            LitKind::Err(val) => println!("    if let LitKind::Err({}) = {}.node;", val, lit_pat),
-            LitKind::Byte(b) => println!("    if let LitKind::Byte({}) = {}.node;", b, lit_pat),
+        match lit.value.node {
+            LitKind::Bool(val) => kind!("Bool({val:?})"),
+            LitKind::Char(c) => kind!("Char({c:?})"),
+            LitKind::Err(val) => kind!("Err({val})"),
+            LitKind::Byte(b) => kind!("Byte({b})"),
             LitKind::Int(i, suffix) => {
                 let int_ty = match suffix {
-                    LitIntType::Signed(int_ty) => format!("LitIntType::Signed(IntTy::{:?})", int_ty),
-                    LitIntType::Unsigned(uint_ty) => format!("LitIntType::Unsigned(UintTy::{:?})", uint_ty),
+                    LitIntType::Signed(int_ty) => format!("LitIntType::Signed(IntTy::{int_ty:?})"),
+                    LitIntType::Unsigned(uint_ty) => format!("LitIntType::Unsigned(UintTy::{uint_ty:?})"),
                     LitIntType::Unsuffixed => String::from("LitIntType::Unsuffixed"),
                 };
-
-                println!("    if let LitKind::Int({}, {}) = {}.node;", i, int_ty, lit_pat);
+                kind!("Int({i}, {int_ty})");
             },
             LitKind::Float(_, suffix) => {
                 let float_ty = match suffix {
-                    LitFloatType::Suffixed(suffix_ty) => format!("LitFloatType::Suffixed(FloatTy::{:?})", suffix_ty),
+                    LitFloatType::Suffixed(suffix_ty) => format!("LitFloatType::Suffixed(FloatTy::{suffix_ty:?})"),
                     LitFloatType::Unsuffixed => String::from("LitFloatType::Unsuffixed"),
                 };
-
-                println!("    if let LitKind::Float(_, {}) = {}.node;", float_ty, lit_pat);
+                kind!("Float(_, {float_ty})");
             },
             LitKind::ByteStr(ref vec) => {
-                let vec_pat = self.next("vec");
-
-                println!("    if let LitKind::ByteStr(ref {}) = {}.node;", vec_pat, lit_pat);
-                println!("    if let [{:?}] = **{};", vec, vec_pat);
+                bind!(self, vec);
+                kind!("ByteStr(ref {vec})");
+                out!("if let [{:?}] = **{vec};", vec.value);
             },
-            LitKind::Str(ref text, _) => {
-                let str_pat = self.next("s");
-
-                println!("    if let LitKind::Str(ref {}, _) = {}.node;", str_pat, lit_pat);
-                println!("    if {}.as_str() == {:?}", str_pat, &*text.as_str());
+            LitKind::Str(s, _) => {
+                bind!(self, s);
+                kind!("Str({s}, _)");
+                self.symbol(s);
             },
         }
     }
 
-    fn print_match_expr(&mut self, expr: &Expr<'_>, arms: &[Arm<'_>], des: MatchSource, current: &str) {
-        let expr_pat = self.next("expr");
-        let arms_pat = self.next("arms");
-
-        println!(
-            "Match(ref {}, ref {}, MatchSource::{:?}) = {};",
-            expr_pat, arms_pat, des, current
-        );
-
-        self.current = expr_pat;
-        self.visit_expr(expr);
-
-        println!("    if {}.len() == {};", arms_pat, arms.len());
-
-        for (i, arm) in arms.iter().enumerate() {
-            self.current = format!("{}[{}].body", arms_pat, i);
-            self.visit_expr(arm.body);
-
-            if let Some(ref guard) = arm.guard {
-                let guard_pat = self.next("guard");
-
-                println!("    if let Some(ref {}) = {}[{}].guard;", guard_pat, arms_pat, i);
-
-                match guard {
-                    hir::Guard::If(if_expr) => {
-                        let if_expr_pat = self.next("expr");
-
-                        println!("    if let Guard::If(ref {}) = {};", if_expr_pat, guard_pat);
-
-                        self.current = if_expr_pat;
-                        self.visit_expr(if_expr);
-                    },
-                    hir::Guard::IfLet(if_let_pat, if_let_expr) => {
-                        let if_let_pat_pat = self.next("pat");
-                        let if_let_expr_pat = self.next("expr");
-
-                        println!(
-                            "    if let Guard::IfLet(ref {}, ref {}) = {};",
-                            if_let_pat_pat, if_let_expr_pat, guard_pat
-                        );
-
-                        self.current = if_let_expr_pat;
-                        self.visit_expr(if_let_expr);
-
-                        self.current = if_let_pat_pat;
-                        self.visit_pat(if_let_pat);
-                    },
-                }
-            }
-            self.current = format!("{}[{}].pat", arms_pat, i);
-            self.visit_pat(arm.pat);
+    fn arm(&self, arm: &Binding<&hir::Arm<'_>>) {
+        self.pat(field!(arm.pat));
+        match arm.value.guard {
+            None => out!("if {arm}.guard.is_none();"),
+            Some(hir::Guard::If(expr)) => {
+                bind!(self, expr);
+                out!("if let Some(Guard::If({expr})) = {arm}.guard;");
+                self.expr(expr);
+            },
+            Some(hir::Guard::IfLet(pat, expr)) => {
+                bind!(self, pat, expr);
+                out!("if let Some(Guard::IfLet({pat}, {expr}) = {arm}.guard;");
+                self.pat(pat);
+                self.expr(expr);
+            },
         }
+        self.expr(field!(arm.body));
     }
 
-    fn check_higher(&mut self, expr: &Expr<'_>) -> bool {
-        if let Some(higher::While { condition, body }) = higher::While::hir(expr) {
-            let condition_pat = self.next("condition");
-            let body_pat = self.next("body");
-
-            println!(
-                "    if let Some(higher::While {{ condition: {}, body: {} }}) = higher::While::hir({})",
-                condition_pat, body_pat, self.current
+    #[allow(clippy::too_many_lines)]
+    fn expr(&self, expr: &Binding<&hir::Expr<'_>>) {
+        if let Some(higher::While { condition, body }) = higher::While::hir(expr.value) {
+            bind!(self, condition, body);
+            out!(
+                "if let Some(higher::While {{ condition: {condition}, body: {body} }}) \
+                = higher::While::hir({expr});"
             );
-
-            self.current = condition_pat;
-            self.visit_expr(condition);
-
-            self.current = body_pat;
-            self.visit_expr(body);
-
-            return true;
+            self.expr(condition);
+            self.expr(body);
+            return;
         }
 
         if let Some(higher::WhileLet {
             let_pat,
             let_expr,
             if_then,
-        }) = higher::WhileLet::hir(expr)
+        }) = higher::WhileLet::hir(expr.value)
         {
-            let let_pat_ = self.next("let_pat");
-            let let_expr_pat = self.next("let_expr");
-            let if_then_pat = self.next("if_then");
-
-            println!(
-                "    if let Some(higher::WhileLet {{ let_pat: {}, let_expr: {}, if_then: {} }}) = higher::WhileLet::hir({})",
-                let_pat_, let_expr_pat, if_then_pat, self.current
+            bind!(self, let_pat, let_expr, if_then);
+            out!(
+                "if let Some(higher::WhileLet {{ let_pat: {let_pat}, let_expr: {let_expr}, if_then: {if_then} }}) \
+                = higher::WhileLet::hir({expr});"
             );
-
-            self.current = let_pat_;
-            self.visit_pat(let_pat);
-
-            self.current = let_expr_pat;
-            self.visit_expr(let_expr);
-
-            self.current = if_then_pat;
-            self.visit_expr(if_then);
-
-            return true;
-        }
-
-        if let Some(higher::IfLet {
-            let_pat,
-            let_expr,
-            if_then,
-            if_else,
-        }) = higher::IfLet::hir(self.cx, expr)
-        {
-            let let_pat_ = self.next("let_pat");
-            let let_expr_pat = self.next("let_expr");
-            let if_then_pat = self.next("if_then");
-            let else_pat = self.next("else_expr");
-
-            println!(
-                "    if let Some(higher::IfLet {{ let_pat: {}, let_expr: {}, if_then: {}, if_else: {}}}) = higher::IfLet::hir({})",
-                let_pat_, let_expr_pat, if_then_pat, else_pat, self.current
-            );
-
-            self.current = let_pat_;
-            self.visit_pat(let_pat);
-
-            self.current = let_expr_pat;
-            self.visit_expr(let_expr);
-
-            self.current = if_then_pat;
-            self.visit_expr(if_then);
-
-            if let Some(else_expr) = if_else {
-                self.current = else_pat;
-                self.visit_expr(else_expr);
-            }
-
-            return true;
-        }
-
-        if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr) {
-            let cond_pat = self.next("cond");
-            let then_pat = self.next("then");
-            let else_pat = self.next("else_expr");
-
-            println!(
-                "    if let Some(higher::If {{ cond: {}, then: {}, r#else: {}}}) = higher::If::hir({})",
-                cond_pat, then_pat, else_pat, self.current
-            );
-
-            self.current = cond_pat;
-            self.visit_expr(cond);
-
-            self.current = then_pat;
-            self.visit_expr(then);
-
-            if let Some(else_expr) = r#else {
-                self.current = else_pat;
-                self.visit_expr(else_expr);
-            }
-
-            return true;
-        }
-
-        if let Some(higher::ForLoop { pat, arg, body, .. }) = higher::ForLoop::hir(expr) {
-            let pat_ = self.next("pat");
-            let arg_pat = self.next("arg");
-            let body_pat = self.next("body");
-
-            println!(
-                "    if let Some(higher::ForLoop {{ pat: {}, arg: {}, body: {}, ..}}) = higher::ForLoop::hir({})",
-                pat_, arg_pat, body_pat, self.current
-            );
-
-            self.current = pat_;
-            self.visit_pat(pat);
-
-            self.current = arg_pat;
-            self.visit_expr(arg);
-
-            self.current = body_pat;
-            self.visit_expr(body);
-
-            return true;
-        }
-
-        false
-    }
-}
-
-struct PrintVisitor<'a, 'tcx> {
-    /// Fields are the current index that needs to be appended to pattern
-    /// binding names
-    ids: FxHashMap<&'static str, usize>,
-    /// the name that needs to be destructured
-    current: String,
-    cx: &'a LateContext<'tcx>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for PrintVisitor<'a, '_> {
-    type Map = Map<'tcx>;
-
-    #[allow(clippy::too_many_lines)]
-    fn visit_expr(&mut self, expr: &Expr<'_>) {
-        if self.check_higher(expr) {
+            self.pat(let_pat);
+            self.expr(let_expr);
+            self.expr(if_then);
             return;
         }
 
-        print!("    if let ExprKind::");
-        let current = format!("{}.kind", self.current);
+        if let Some(higher::ForLoop { pat, arg, body, .. }) = higher::ForLoop::hir(expr.value) {
+            bind!(self, pat, arg, body);
+            out!(
+                "if let Some(higher::ForLoop {{ pat: {pat}, arg: {arg}, body: {body}, .. }}) \
+                = higher::ForLoop::hir({expr});"
+            );
+            self.pat(pat);
+            self.expr(arg);
+            self.expr(body);
+            return;
+        }
 
-        match expr.kind {
+        let kind = |kind| out!("if let ExprKind::{kind} = {expr}.kind;");
+        macro_rules! kind {
+            ($($t:tt)*) => (kind(format_args!($($t)*)));
+        }
+
+        match expr.value.kind {
             ExprKind::Let(pat, expr, _) => {
-                let let_pat = self.next("pat");
-                let let_expr = self.next("expr");
-
-                println!("Let(ref {}, ref {}, _) = {};", let_pat, let_expr, current);
-
-                self.current = let_expr;
-                self.visit_expr(expr);
-
-                self.current = let_pat;
-                self.visit_pat(pat);
+                bind!(self, pat, expr);
+                kind!("Let({pat}, {expr}, _)");
+                self.pat(pat);
+                self.expr(expr);
             },
             ExprKind::Box(inner) => {
-                let inner_pat = self.next("inner");
-
-                println!("Box(ref {}) = {};", inner_pat, current);
-
-                self.current = inner_pat;
-                self.visit_expr(inner);
+                bind!(self, inner);
+                kind!("Box({inner})");
+                self.expr(inner);
             },
             ExprKind::Array(elements) => {
-                let elements_pat = self.next("elements");
-
-                println!("Array(ref {}) = {};", elements_pat, current);
-
-                println!("    if {}.len() == {};", elements_pat, elements.len());
-
-                for (i, element) in elements.iter().enumerate() {
-                    self.current = format!("{}[{}]", elements_pat, i);
-                    self.visit_expr(element);
-                }
+                bind!(self, elements);
+                kind!("Array({elements})");
+                self.slice(elements, |e| self.expr(e));
             },
             ExprKind::Call(func, args) => {
-                let func_pat = self.next("func");
-                let args_pat = self.next("args");
-
-                println!("Call(ref {}, ref {}) = {};", func_pat, args_pat, current);
-
-                self.current = func_pat;
-                self.visit_expr(func);
-
-                println!("    if {}.len() == {};", args_pat, args.len());
-
-                for (i, arg) in args.iter().enumerate() {
-                    self.current = format!("{}[{}]", args_pat, i);
-                    self.visit_expr(arg);
-                }
+                bind!(self, func, args);
+                kind!("Call({func}, {args})");
+                self.expr(func);
+                self.slice(args, |e| self.expr(e));
             },
             ExprKind::MethodCall(method_name, _, args, _) => {
-                let method_name_pat = self.next("method_name");
-                let args_pat = self.next("args");
-
-                println!(
-                    "MethodCall(ref {}, ref {}, _) = {};",
-                    method_name_pat, args_pat, current
-                );
-
-                println!(
-                    "    if {}.ident.name.as_str() == {};",
-                    method_name_pat,
-                    method_name.ident.name.as_str()
-                );
-
-                println!("    if {}.len() == {};", args_pat, args.len());
-
-                for (i, arg) in args.iter().enumerate() {
-                    self.current = format!("{}[{}]", args_pat, i);
-                    self.visit_expr(arg);
-                }
+                bind!(self, method_name, args);
+                kind!("MethodCall({method_name}, _, {args}, _)");
+                self.ident(field!(method_name.ident));
+                self.slice(args, |e| self.expr(e));
             },
             ExprKind::Tup(elements) => {
-                let elements_pat = self.next("elements");
-
-                println!("Tup(ref {}) = {};", elements_pat, current);
-
-                println!("    if {}.len() == {};", elements_pat, elements.len());
-
-                for (i, element) in elements.iter().enumerate() {
-                    self.current = format!("{}[{}]", elements_pat, i);
-                    self.visit_expr(element);
+                bind!(self, elements);
+                kind!("Tup({elements})");
+                self.slice(elements, |e| self.expr(e));
+            },
+            ExprKind::Binary(op, left, right) => {
+                bind!(self, op, left, right);
+                kind!("Binary({op}, {left}, {right})");
+                out!("if BinOpKind::{:?} == {op}.node;", op.value.node);
+                self.expr(left);
+                self.expr(right);
+            },
+            ExprKind::Unary(op, inner) => {
+                bind!(self, inner);
+                kind!("Unary(UnOp::{op:?}, {inner})");
+                self.expr(inner);
+            },
+            ExprKind::Lit(ref lit) => {
+                bind!(self, lit);
+                kind!("Lit(ref {lit})");
+                self.lit(lit);
+            },
+            ExprKind::Cast(expr, cast_ty) => {
+                bind!(self, expr, cast_ty);
+                kind!("Cast({expr}, {cast_ty})");
+                if let TyKind::Path(ref qpath) = cast_ty.value.kind {
+                    bind!(self, qpath);
+                    out!("if let TyKind::Path(ref {qpath}) = {cast_ty}.kind;");
+                    self.qpath(qpath);
                 }
-            },
-            ExprKind::Binary(ref op, left, right) => {
-                let op_pat = self.next("op");
-                let left_pat = self.next("left");
-                let right_pat = self.next("right");
-
-                println!(
-                    "Binary(ref {}, ref {}, ref {}) = {};",
-                    op_pat, left_pat, right_pat, current
-                );
-
-                println!("    if BinOpKind::{:?} == {}.node;", op.node, op_pat);
-
-                self.current = left_pat;
-                self.visit_expr(left);
-
-                self.current = right_pat;
-                self.visit_expr(right);
-            },
-            ExprKind::Unary(ref op, inner) => {
-                let inner_pat = self.next("inner");
-
-                println!("Unary(UnOp::{:?}, ref {}) = {};", op, inner_pat, current);
-
-                self.current = inner_pat;
-                self.visit_expr(inner);
-            },
-            ExprKind::Lit(ref lit) => self.print_lit_expr(lit, &current),
-            ExprKind::Cast(expr, ty) => {
-                let cast_pat = self.next("expr");
-                let cast_ty = self.next("cast_ty");
-                let qp_label = self.next("qp");
-
-                println!("Cast(ref {}, ref {}) = {};", cast_pat, cast_ty, current);
-
-                if let TyKind::Path(ref qp) = ty.kind {
-                    println!("    if let TyKind::Path(ref {}) = {}.kind;", qp_label, cast_ty);
-
-                    self.current = qp_label;
-                    self.print_qpath(qp);
-                }
-
-                self.current = cast_pat;
-                self.visit_expr(expr);
+                self.expr(expr);
             },
             ExprKind::Type(expr, _ty) => {
-                let cast_pat = self.next("expr");
-
-                println!("Type(ref {}, _) = {};", cast_pat, current);
-
-                self.current = cast_pat;
-                self.visit_expr(expr);
+                bind!(self, expr);
+                kind!("Type({expr}, _)");
+                self.expr(expr);
             },
             ExprKind::Loop(body, label, des, _) => {
-                let body_pat = self.next("body");
-                let label_pat = self.next("label");
-
-                println!(
-                    "Loop(ref {}, ref {}, LoopSource::{:?}) = {};",
-                    body_pat, label_pat, des, current
-                );
-
-                self.current = body_pat;
-                self.visit_block(body);
-
-                self.current = label_pat;
-                self.print_label(label);
+                bind!(self, body);
+                opt_bind!(self, label);
+                kind!("Loop({body}, {label}, LoopSource::{des:?}, _)");
+                self.block(body);
+                label.if_some(|l| self.ident(field!(l.ident)));
             },
-            ExprKind::If(_, _, _) => {}, // Covered by check_higher
-            ExprKind::Match(match_expr, arms, des) => self.print_match_expr(match_expr, arms, des, &current),
-            ExprKind::Closure(capture_clause, fn_decl, body_id, _, movability) => {
-                let capture_by = format!("CaptureBy::{:?}", capture_clause);
-
-                let movability = if let Some(movability) = movability {
-                    format!("Some(Movability::{:?})", movability)
-                } else {
-                    String::from("None")
-                };
+            ExprKind::If(cond, then, else_expr) => {
+                bind!(self, cond, then);
+                opt_bind!(self, else_expr);
+                kind!("If({cond}, {then}, {else_expr})");
+                self.expr(cond);
+                self.expr(then);
+                else_expr.if_some(|e| self.expr(e));
+            },
+            ExprKind::Match(scrutinee, arms, des) => {
+                bind!(self, scrutinee, arms);
+                kind!("Match({scrutinee}, {arms}, MatchSource::{des:?})");
+                self.expr(scrutinee);
+                self.slice(arms, |arm| self.arm(arm));
+            },
+            ExprKind::Closure(capture_by, fn_decl, body_id, _, movability) => {
+                let movability = OptionPat::new(movability.map(|m| format!("Movability::{m:?}")));
 
                 let ret_ty = match fn_decl.output {
                     FnRetTy::DefaultReturn(_) => "FnRetTy::DefaultReturn(_)",
                     FnRetTy::Return(_) => "FnRetTy::Return(_ty)",
                 };
 
-                let fn_decl_pat = self.next("fn_decl");
-                let body_id_pat = self.next("body_id");
-
-                println!(
-                    "Closure({}, ref {}, ref {}, _, {}) = {}",
-                    capture_by, fn_decl_pat, body_id_pat, movability, current
-                );
-                println!("    if let {} = {}.output", ret_ty, fn_decl_pat);
-
-                let hir = self.cx.tcx.hir();
-                let body = hir.body(body_id);
-
-                let body_pat = self.next("body");
-
-                println!("    let {} = cx.tcx.hir().body({});", body_pat, body_id_pat);
-
-                self.current = format!("{}.value", body_pat);
-                self.visit_expr(&body.value);
+                bind!(self, fn_decl, body_id);
+                kind!("Closure(CaptureBy::{capture_by:?}, {fn_decl}, {body_id}, _, {movability})");
+                out!("if let {ret_ty} = {fn_decl}.output;");
+                self.body(body_id);
             },
             ExprKind::Yield(sub, source) => {
-                let sub_pat = self.next("sub");
-
-                println!("Yield(ref sub, YieldSource::{:?}) = {};", source, current);
-
-                self.current = sub_pat;
-                self.visit_expr(sub);
+                bind!(self, sub);
+                kind!("Yield(sub, YieldSource::{source:?})");
+                self.expr(sub);
             },
             ExprKind::Block(block, label) => {
-                let block_pat = self.next("block");
-                let label_pat = self.next("label");
-
-                println!("Block(ref {}, ref {}) = {};", block_pat, label_pat, current);
-
-                self.current = block_pat;
-                self.visit_block(block);
-
-                self.current = label_pat;
-                self.print_label(label);
+                bind!(self, block);
+                opt_bind!(self, label);
+                kind!("Block({block}, {label})");
+                self.block(block);
+                label.if_some(|l| self.ident(field!(l.ident)));
             },
             ExprKind::Assign(target, value, _) => {
-                let target_pat = self.next("target");
-                let value_pat = self.next("value");
-
-                println!(
-                    "Assign(ref {}, ref {}, ref _span) = {};",
-                    target_pat, value_pat, current
-                );
-
-                self.current = target_pat;
-                self.visit_expr(target);
-
-                self.current = value_pat;
-                self.visit_expr(value);
+                bind!(self, target, value);
+                kind!("Assign({target}, {value}, _span)");
+                self.expr(target);
+                self.expr(value);
             },
-            ExprKind::AssignOp(ref op, target, value) => {
-                let op_pat = self.next("op");
-                let target_pat = self.next("target");
-                let value_pat = self.next("value");
-
-                println!(
-                    "AssignOp(ref {}, ref {}, ref {}) = {};",
-                    op_pat, target_pat, value_pat, current
-                );
-
-                println!("    if BinOpKind::{:?} == {}.node;", op.node, op_pat);
-
-                self.current = target_pat;
-                self.visit_expr(target);
-
-                self.current = value_pat;
-                self.visit_expr(value);
+            ExprKind::AssignOp(op, target, value) => {
+                bind!(self, op, target, value);
+                kind!("AssignOp({op}, {target}, {value})");
+                out!("if BinOpKind::{:?} == {op}.node;", op.value.node);
+                self.expr(target);
+                self.expr(value);
             },
-            ExprKind::Field(object, ref field_ident) => {
-                let obj_pat = self.next("object");
-                let field_name_pat = self.next("field_name");
-
-                println!("Field(ref {}, ref {}) = {};", obj_pat, field_name_pat, current);
-                println!("    if {}.as_str() == {:?}", field_name_pat, field_ident.as_str());
-
-                self.current = obj_pat;
-                self.visit_expr(object);
+            ExprKind::Field(object, field_name) => {
+                bind!(self, object, field_name);
+                kind!("Field({object}, {field_name})");
+                self.ident(field_name);
+                self.expr(object);
             },
             ExprKind::Index(object, index) => {
-                let object_pat = self.next("object");
-                let index_pat = self.next("index");
-
-                println!("Index(ref {}, ref {}) = {};", object_pat, index_pat, current);
-
-                self.current = object_pat;
-                self.visit_expr(object);
-
-                self.current = index_pat;
-                self.visit_expr(index);
+                bind!(self, object, index);
+                kind!("Index({object}, {index})");
+                self.expr(object);
+                self.expr(index);
             },
-            ExprKind::Path(ref path) => {
-                let path_pat = self.next("path");
-
-                println!("Path(ref {}) = {};", path_pat, current);
-
-                self.current = path_pat;
-                self.print_qpath(path);
+            ExprKind::Path(ref qpath) => {
+                bind!(self, qpath);
+                kind!("Path(ref {qpath})");
+                self.qpath(qpath);
             },
             ExprKind::AddrOf(kind, mutability, inner) => {
-                let inner_pat = self.next("inner");
-
-                println!(
-                    "AddrOf(BorrowKind::{:?}, Mutability::{:?}, ref {}) = {};",
-                    kind, mutability, inner_pat, current
-                );
-
-                self.current = inner_pat;
-                self.visit_expr(inner);
+                bind!(self, inner);
+                kind!("AddrOf(BorrowKind::{kind:?}, Mutability::{mutability:?}, {inner})");
+                self.expr(inner);
             },
-            ExprKind::Break(ref destination, ref opt_value) => {
-                let destination_pat = self.next("destination");
-
-                if let Some(value) = *opt_value {
-                    let value_pat = self.next("value");
-
-                    println!("Break(ref {}, Some(ref {})) = {};", destination_pat, value_pat, current);
-
-                    self.current = value_pat;
-                    self.visit_expr(value);
-                } else {
-                    println!("Break(ref {}, None) = {};", destination_pat, current);
-                }
-
-                self.current = format!("{}.label", destination_pat);
-                self.print_label(destination.label);
+            ExprKind::Break(destination, value) => {
+                bind!(self, destination);
+                opt_bind!(self, value);
+                kind!("Break({destination}, {value})");
+                self.destination(destination);
+                value.if_some(|e| self.expr(e));
             },
-            ExprKind::Continue(ref destination) => {
-                let destination_pat = self.next("destination");
-                println!("Continue(ref {}) = {};", destination_pat, current);
-
-                self.current = format!("{}.label", destination_pat);
-                self.print_label(destination.label);
+            ExprKind::Continue(destination) => {
+                bind!(self, destination);
+                kind!("Continue({destination})");
+                self.destination(destination);
             },
-            ExprKind::Ret(ref opt_value) => {
-                if let Some(value) = *opt_value {
-                    let value_pat = self.next("value");
-
-                    println!("Ret(Some(ref {})) = {};", value_pat, current);
-
-                    self.current = value_pat;
-                    self.visit_expr(value);
-                } else {
-                    println!("Ret(None) = {};", current);
-                }
+            ExprKind::Ret(value) => {
+                opt_bind!(self, value);
+                kind!("Ret({value})");
+                value.if_some(|e| self.expr(e));
             },
             ExprKind::InlineAsm(_) => {
-                println!("InlineAsm(_) = {};", current);
-                println!("    // unimplemented: `ExprKind::InlineAsm` is not further destructured at the moment");
+                kind!("InlineAsm(_)");
+                out!("// unimplemented: `ExprKind::InlineAsm` is not further destructured at the moment");
             },
             ExprKind::LlvmInlineAsm(_) => {
-                println!("LlvmInlineAsm(_) = {};", current);
-                println!("    // unimplemented: `ExprKind::LlvmInlineAsm` is not further destructured at the moment");
+                kind!("LlvmInlineAsm(_)");
+                out!("// unimplemented: `ExprKind::LlvmInlineAsm` is not further destructured at the moment");
             },
-            ExprKind::Struct(path, fields, ref opt_base) => {
-                let path_pat = self.next("path");
-                let fields_pat = self.next("fields");
-
-                if let Some(base) = *opt_base {
-                    let base_pat = self.next("base");
-
-                    println!(
-                        "Struct(ref {}, ref {}, Some(ref {})) = {};",
-                        path_pat, fields_pat, base_pat, current
-                    );
-
-                    self.current = base_pat;
-                    self.visit_expr(base);
-                } else {
-                    println!("Struct(ref {}, ref {}, None) = {};", path_pat, fields_pat, current);
-                }
-
-                self.current = path_pat;
-                self.print_qpath(path);
-
-                println!("    if {}.len() == {};", fields_pat, fields.len());
-
-                for (i, field) in fields.iter().enumerate() {
-                    println!(
-                        "    if {}[{}].ident.name.as_str() == {:?}",
-                        fields_pat,
-                        i,
-                        &*field.ident.name.as_str()
-                    );
-
-                    self.current = format!("{}[{}]", fields_pat, i);
-                    self.visit_expr(field.expr);
-                }
+            ExprKind::Struct(qpath, fields, base) => {
+                bind!(self, qpath, fields);
+                opt_bind!(self, base);
+                kind!("Struct({qpath}, {fields}, {base})");
+                self.qpath(qpath);
+                self.slice(fields, |field| {
+                    self.ident(field!(field.ident));
+                    self.expr(field!(field.expr));
+                });
+                base.if_some(|e| self.expr(e));
             },
-            ExprKind::ConstBlock(_) => {
-                let value_pat = self.next("value");
-                println!("Const({}) = {}", value_pat, current);
-                self.current = value_pat;
-            },
+            ExprKind::ConstBlock(_) => kind!("ConstBlock(_)"),
             ExprKind::Repeat(value, length) => {
-                let value_pat = self.next("value");
-                let length_pat = self.next("length");
-
-                println!("Repeat(ref {}, ref {}) = {};", value_pat, length_pat, current);
-
-                self.current = value_pat;
-                self.visit_expr(value);
-
-                let hir = self.cx.tcx.hir();
-                let body = hir.body(length.body);
-
-                self.current = format!("{}.value", length_pat);
-                self.visit_expr(&body.value);
+                bind!(self, value, length);
+                kind!("Repeat({value}, {length})");
+                self.expr(value);
+                self.body(field!(length.body));
             },
-            ExprKind::Err => {
-                println!("Err = {}", current);
-            },
+            ExprKind::Err => kind!("Err"),
             ExprKind::DropTemps(expr) => {
-                let expr_pat = self.next("expr");
-
-                println!("DropTemps(ref {}) = {};", expr_pat, current);
-
-                self.current = expr_pat;
-                self.visit_expr(expr);
+                bind!(self, expr);
+                kind!("DropTemps({expr})");
+                self.expr(expr);
             },
         }
     }
 
-    fn visit_block(&mut self, block: &Block<'_>) {
-        println!("    if {}.stmts.len() == {};", self.current, block.stmts.len());
-
-        let block_name = self.current.clone();
-
-        for (i, stmt) in block.stmts.iter().enumerate() {
-            self.current = format!("{}.stmts[{}]", block_name, i);
-            self.visit_stmt(stmt);
-        }
-
-        if let Some(expr) = block.expr {
-            self.current = self.next("trailing_expr");
-            println!("    if let Some({}) = &{}.expr;", self.current, block_name);
-            self.visit_expr(expr);
-        } else {
-            println!("    if {}.expr.is_none();", block_name);
-        }
+    fn block(&self, block: &Binding<&hir::Block<'_>>) {
+        self.slice(field!(block.stmts), |stmt| self.stmt(stmt));
+        self.option(field!(block.expr), "trailing_expr", |expr| {
+            self.expr(expr);
+        });
     }
 
-    #[allow(clippy::too_many_lines)]
-    fn visit_pat(&mut self, pat: &Pat<'_>) {
-        print!("    if let PatKind::");
-        let current = format!("{}.kind", self.current);
+    fn body(&self, body_id: &Binding<hir::BodyId>) {
+        let expr = &self.cx.tcx.hir().body(body_id.value).value;
+        bind!(self, expr);
+        out!("let {expr} = &cx.tcx.hir().body({body_id}).value;");
+        self.expr(expr);
+    }
 
-        match pat.kind {
-            PatKind::Wild => println!("Wild = {};", current),
-            PatKind::Binding(anno, .., ident, ref sub) => {
-                let anno_pat = &format!("BindingAnnotation::{:?}", anno);
-                let name_pat = self.next("name");
+    fn pat(&self, pat: &Binding<&hir::Pat<'_>>) {
+        let kind = |kind| out!("if let PatKind::{kind} = {pat}.kind;");
+        macro_rules! kind {
+            ($($t:tt)*) => (kind(format_args!($($t)*)));
+        }
 
-                if let Some(sub) = *sub {
-                    let sub_pat = self.next("sub");
-
-                    println!(
-                        "Binding({}, _, {}, Some(ref {})) = {};",
-                        anno_pat, name_pat, sub_pat, current
-                    );
-
-                    self.current = sub_pat;
-                    self.visit_pat(sub);
-                } else {
-                    println!("Binding({}, _, {}, None) = {};", anno_pat, name_pat, current);
-                }
-
-                println!("    if {}.as_str() == \"{}\";", name_pat, ident.as_str());
+        match pat.value.kind {
+            PatKind::Wild => kind!("Wild"),
+            PatKind::Binding(anno, .., name, sub) => {
+                bind!(self, name);
+                opt_bind!(self, sub);
+                kind!("Binding(BindingAnnotation::{anno:?}, _, {name}, {sub})");
+                self.ident(name);
+                sub.if_some(|p| self.pat(p));
             },
-            PatKind::Struct(ref path, fields, ignore) => {
-                let path_pat = self.next("path");
-                let fields_pat = self.next("fields");
-                println!(
-                    "Struct(ref {}, ref {}, {}) = {};",
-                    path_pat, fields_pat, ignore, current
-                );
-
-                self.current = path_pat;
-                self.print_qpath(path);
-
-                println!("    if {}.len() == {};", fields_pat, fields.len());
-
-                for (i, field) in fields.iter().enumerate() {
-                    println!(
-                        "    if {}[{}].ident.name.as_str() == {:?}",
-                        fields_pat,
-                        i,
-                        &*field.ident.name.as_str()
-                    );
-
-                    self.current = format!("{}[{}]", fields_pat, i);
-                    self.visit_pat(field.pat);
-                }
+            PatKind::Struct(ref qpath, fields, ignore) => {
+                bind!(self, qpath, fields);
+                kind!("Struct(ref {qpath}, {fields}, {ignore})");
+                self.qpath(qpath);
+                self.slice(fields, |field| {
+                    self.ident(field!(field.ident));
+                    self.pat(field!(field.pat));
+                });
             },
             PatKind::Or(fields) => {
-                let fields_pat = self.next("fields");
-                println!("Or(ref {}) = {};", fields_pat, current);
-                println!("    if {}.len() == {};", fields_pat, fields.len());
-
-                for (i, field) in fields.iter().enumerate() {
-                    self.current = format!("{}[{}]", fields_pat, i);
-                    self.visit_pat(field);
-                }
+                bind!(self, fields);
+                kind!("Or({fields})");
+                self.slice(fields, |pat| self.pat(pat));
             },
-            PatKind::TupleStruct(ref path, fields, skip_pos) => {
-                let path_pat = self.next("path");
-                let fields_pat = self.next("fields");
-
-                println!(
-                    "TupleStruct(ref {}, ref {}, {:?}) = {};",
-                    path_pat, fields_pat, skip_pos, current
-                );
-
-                self.current = path_pat;
-                self.print_qpath(path);
-
-                println!("    if {}.len() == {};", fields_pat, fields.len());
-
-                for (i, field) in fields.iter().enumerate() {
-                    self.current = format!("{}[{}]", fields_pat, i);
-                    self.visit_pat(field);
-                }
+            PatKind::TupleStruct(ref qpath, fields, skip_pos) => {
+                bind!(self, qpath, fields);
+                kind!("TupleStruct(ref {qpath}, {fields}, {skip_pos:?})");
+                self.qpath(qpath);
+                self.slice(fields, |pat| self.pat(pat));
             },
-            PatKind::Path(ref path) => {
-                let path_pat = self.next("path");
-                println!("Path(ref {}) = {};", path_pat, current);
-
-                self.current = path_pat;
-                self.print_qpath(path);
+            PatKind::Path(ref qpath) => {
+                bind!(self, qpath);
+                kind!("Path(ref {qpath})");
+                self.qpath(qpath);
             },
             PatKind::Tuple(fields, skip_pos) => {
-                let fields_pat = self.next("fields");
-                println!("Tuple(ref {}, {:?}) = {};", fields_pat, skip_pos, current);
-                println!("    if {}.len() == {};", fields_pat, fields.len());
-
-                for (i, field) in fields.iter().enumerate() {
-                    self.current = format!("{}[{}]", fields_pat, i);
-                    self.visit_pat(field);
-                }
+                bind!(self, fields);
+                kind!("Tuple({fields}, {skip_pos:?})");
+                self.slice(fields, |field| self.pat(field));
             },
             PatKind::Box(pat) => {
-                let pat_pat = self.next("pat");
-                println!("Box(ref {}) = {};", pat_pat, current);
-
-                self.current = pat_pat;
-                self.visit_pat(pat);
+                bind!(self, pat);
+                kind!("Box({pat})");
+                self.pat(pat);
             },
             PatKind::Ref(pat, muta) => {
-                let pat_pat = self.next("pat");
-                println!("Ref(ref {}, Mutability::{:?}) = {};", pat_pat, muta, current);
-
-                self.current = pat_pat;
-                self.visit_pat(pat);
+                bind!(self, pat);
+                kind!("Ref({pat}, Mutability::{muta:?})");
+                self.pat(pat);
             },
             PatKind::Lit(lit_expr) => {
-                let lit_expr_pat = self.next("lit_expr");
-                println!("Lit(ref {}) = {}", lit_expr_pat, current);
-
-                self.current = lit_expr_pat;
-                self.visit_expr(lit_expr);
+                bind!(self, lit_expr);
+                kind!("Lit({lit_expr})");
+                self.expr(lit_expr);
             },
-            PatKind::Range(ref start, ref end, end_kind) => {
-                let start_pat = self.next("start");
-                let end_pat = self.next("end");
-
-                println!(
-                    "Range(ref {}, ref {}, RangeEnd::{:?}) = {};",
-                    start_pat, end_pat, end_kind, current
-                );
-
-                self.current = start_pat;
-                walk_list!(self, visit_expr, start);
-
-                self.current = end_pat;
-                walk_list!(self, visit_expr, end);
+            PatKind::Range(start, end, end_kind) => {
+                opt_bind!(self, start, end);
+                kind!("Range({start}, {end}, RangeEnd::{end_kind:?})");
+                start.if_some(|e| self.expr(e));
+                end.if_some(|e| self.expr(e));
             },
-            PatKind::Slice(start, ref middle, end) => {
-                let start_pat = self.next("start");
-                let end_pat = self.next("end");
-
-                if let Some(middle) = middle {
-                    let middle_pat = self.next("middle");
-                    println!(
-                        "Slice(ref {}, Some(ref {}), ref {}) = {};",
-                        start_pat, middle_pat, end_pat, current
-                    );
-                    self.current = middle_pat;
-                    self.visit_pat(middle);
-                } else {
-                    println!("Slice(ref {}, None, ref {}) = {};", start_pat, end_pat, current);
-                }
-
-                println!("    if {}.len() == {};", start_pat, start.len());
-
-                for (i, pat) in start.iter().enumerate() {
-                    self.current = format!("{}[{}]", start_pat, i);
-                    self.visit_pat(pat);
-                }
-
-                println!("    if {}.len() == {};", end_pat, end.len());
-
-                for (i, pat) in end.iter().enumerate() {
-                    self.current = format!("{}[{}]", end_pat, i);
-                    self.visit_pat(pat);
-                }
+            PatKind::Slice(start, middle, end) => {
+                bind!(self, start, end);
+                opt_bind!(self, middle);
+                kind!("Slice({start}, {middle}, {end})");
+                middle.if_some(|p| self.pat(p));
+                self.slice(start, |pat| self.pat(pat));
+                self.slice(end, |pat| self.pat(pat));
             },
         }
     }
 
-    fn visit_stmt(&mut self, s: &Stmt<'_>) {
-        print!("    if let StmtKind::");
-        let current = format!("{}.kind", self.current);
+    fn stmt(&self, stmt: &Binding<&hir::Stmt<'_>>) {
+        let kind = |kind| out!("if let StmtKind::{kind} = {stmt}.kind;");
+        macro_rules! kind {
+            ($($t:tt)*) => (kind(format_args!($($t)*)));
+        }
 
-        match s.kind {
-            // A local (let) binding:
+        match stmt.value.kind {
             StmtKind::Local(local) => {
-                let local_pat = self.next("local");
-                println!("Local(ref {}) = {};", local_pat, current);
-
-                if let Some(init) = local.init {
-                    let init_pat = self.next("init");
-                    println!("    if let Some(ref {}) = {}.init;", init_pat, local_pat);
-
-                    self.current = init_pat;
-                    self.visit_expr(init);
-                }
-
-                self.current = format!("{}.pat", local_pat);
-                self.visit_pat(local.pat);
+                bind!(self, local);
+                kind!("Local({local})");
+                self.option(field!(local.init), "init", |init| {
+                    self.expr(init);
+                });
+                self.pat(field!(local.pat));
             },
-            // An item binding:
-            StmtKind::Item(_) => {
-                println!("Item(item_id) = {};", current);
-            },
-
-            // Expr without trailing semi-colon (must have unit type):
+            StmtKind::Item(_) => kind!("Item(item_id)"),
             StmtKind::Expr(e) => {
-                let e_pat = self.next("e");
-                println!("Expr(ref {}, _) = {}", e_pat, current);
-
-                self.current = e_pat;
-                self.visit_expr(e);
+                bind!(self, e);
+                kind!("Expr({e})");
+                self.expr(e);
             },
-
-            // Expr with trailing semi-colon (may have any type):
             StmtKind::Semi(e) => {
-                let e_pat = self.next("e");
-                println!("Semi(ref {}, _) = {}", e_pat, current);
-
-                self.current = e_pat;
-                self.visit_expr(e);
+                bind!(self, e);
+                kind!("Semi({e})");
+                self.expr(e);
             },
         }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }
 
@@ -1090,30 +697,29 @@ fn has_attr(cx: &LateContext<'_>, hir_id: hir::HirId) -> bool {
     get_attr(cx.sess(), attrs, "author").count() > 0
 }
 
-fn print_path(path: &QPath<'_>, first: &mut bool) {
-    match *path {
-        QPath::Resolved(_, path) => {
-            for segment in path.segments {
-                if *first {
-                    *first = false;
-                } else {
-                    print!(", ");
+fn path_to_string(path: &QPath<'_>) -> String {
+    fn inner(s: &mut String, path: &QPath<'_>) {
+        match *path {
+            QPath::Resolved(_, path) => {
+                for (i, segment) in path.segments.iter().enumerate() {
+                    if i > 0 {
+                        *s += ", ";
+                    }
+                    write!(s, "{:?}", segment.ident.as_str()).unwrap();
                 }
-                print!("{:?}", segment.ident.as_str());
-            }
-        },
-        QPath::TypeRelative(ty, segment) => match ty.kind {
-            hir::TyKind::Path(ref inner_path) => {
-                print_path(inner_path, first);
-                if *first {
-                    *first = false;
-                } else {
-                    print!(", ");
-                }
-                print!("{:?}", segment.ident.as_str());
             },
-            ref other => print!("/* unimplemented: {:?}*/", other),
-        },
-        QPath::LangItem(..) => panic!("print_path: called for lang item qpath"),
+            QPath::TypeRelative(ty, segment) => match &ty.kind {
+                hir::TyKind::Path(inner_path) => {
+                    inner(s, inner_path);
+                    *s += ", ";
+                    write!(s, "{:?}", segment.ident.as_str()).unwrap();
+                },
+                other => write!(s, "/* unimplemented: {:?}*/", other).unwrap(),
+            },
+            QPath::LangItem(..) => panic!("path_to_string: called for lang item qpath"),
+        }
     }
+    let mut s = String::new();
+    inner(&mut s, path);
+    s
 }
