@@ -28,6 +28,7 @@ static TEST_DEPENDENCIES: &[&str] = &[
     "serde",
     "serde_derive",
     "syn",
+    "parking_lot",
 ];
 
 // Test dependencies may need an `extern crate` here to ensure that they show up
@@ -40,6 +41,8 @@ extern crate derive_new;
 extern crate if_chain;
 #[allow(unused_extern_crates)]
 extern crate itertools;
+#[allow(unused_extern_crates)]
+extern crate parking_lot;
 #[allow(unused_extern_crates)]
 extern crate quote;
 #[allow(unused_extern_crates)]

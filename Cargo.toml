@@ -47,6 +47,7 @@ itertools = "0.10"
 quote = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 syn = { version = "1.0", features = ["full"] }
+parking_lot = "0.11.2"
 
 [build-dependencies]
 rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }
