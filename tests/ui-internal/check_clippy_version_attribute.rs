@@ -54,16 +54,34 @@ declare_tool_lint! {
 }
 
 ///////////////////////
-// Ignored attributes
+// Missing attribute test
 ///////////////////////
 declare_tool_lint! {
     #[clippy::version]
-    pub clippy::IGNORED_ONE,
+    pub clippy::MISSING_ATTRIBUTE_ONE,
     Warn,
-    "ONE",
+    "Two",
     report_in_external_macro: true
 }
 
-declare_lint_pass!(Pass2 => [VALID_ONE, VALID_TWO, VALID_THREE, INVALID_ONE, INVALID_TWO, IGNORED_ONE]);
+declare_tool_lint! {
+    pub clippy::MISSING_ATTRIBUTE_TWO,
+    Warn,
+    "Two",
+    report_in_external_macro: true
+}
+
+#[allow(clippy::missing_clippy_version_attribute)]
+mod internal_clippy_lints {
+    declare_tool_lint! {
+        pub clippy::ALLOW_MISSING_ATTRIBUTE_ONE,
+        Warn,
+        "Two",
+        report_in_external_macro: true
+    }
+}
+
+use crate::internal_clippy_lints::ALLOW_MISSING_ATTRIBUTE_ONE;
+declare_lint_pass!(Pass2 => [VALID_ONE, VALID_TWO, VALID_THREE, INVALID_ONE, INVALID_TWO, MISSING_ATTRIBUTE_ONE, MISSING_ATTRIBUTE_TWO, ALLOW_MISSING_ATTRIBUTE_ONE]);
 
 fn main() {}

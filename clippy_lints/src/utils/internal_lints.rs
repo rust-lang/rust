@@ -328,6 +328,15 @@ declare_clippy_lint! {
     "found an invalid `clippy::version` attribute"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for declared clippy lints without the `clippy::version` attribute.
+    ///
+    pub MISSING_CLIPPY_VERSION_ATTRIBUTE,
+    internal,
+    "found clippy lint without `clippy::version` attribute"
+}
+
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
 
 impl EarlyLintPass for ClippyLintsInternal {
@@ -365,7 +374,7 @@ pub struct LintWithoutLintPass {
     registered_lints: FxHashSet<Symbol>,
 }
 
-impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS, INVALID_CLIPPY_VERSION_ATTRIBUTE]);
+impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS, INVALID_CLIPPY_VERSION_ATTRIBUTE, MISSING_CLIPPY_VERSION_ATTRIBUTE]);
 
 impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -492,6 +501,15 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
                 "please use a valid sematic version, see `doc/adding_lints.md`",
             );
         }
+    } else {
+        span_lint_and_help(
+            cx,
+            MISSING_CLIPPY_VERSION_ATTRIBUTE,
+            item.span,
+            "this lint is missing the `clippy::version` attribute or version value",
+            None,
+            "please use a `clippy::version` attribute, see `doc/adding_lints.md`",
+        );
     }
 }
 

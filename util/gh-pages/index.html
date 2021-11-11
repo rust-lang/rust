@@ -347,7 +347,8 @@ Otherwise, have a great day =^.^=
                         </div>
                         <!-- Clippy version -->
                         <div class="lint-additional-info-item">
-                            Added in: <span class="label label-default label-version">{{lint.version}}</span>
+                            <span>{{lint.group == "deprecated" ? "Deprecated" : "Added"}} in: </span>
+                            <span class="label label-default label-version">{{lint.version}}</span>
                         </div>
                         <!-- Open related issues -->
                         <div class="lint-additional-info-item">

@@ -153,6 +153,10 @@ macro_rules! declare_clippy_lint {
 
 #[cfg(feature = "metadata-collector-lint")]
 mod deprecated_lints;
+#[cfg_attr(
+    any(feature = "internal-lints", feature = "metadata-collector-lint"),
+    allow(clippy::missing_clippy_version_attribute)
+)]
 mod utils;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`

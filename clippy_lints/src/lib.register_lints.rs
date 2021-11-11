@@ -24,6 +24,8 @@ store.register_lints(&[
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
     #[cfg(feature = "internal-lints")]
+    utils::internal_lints::MISSING_CLIPPY_VERSION_ATTRIBUTE,
+    #[cfg(feature = "internal-lints")]
     utils::internal_lints::OUTER_EXPN_EXPN_DATA,
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::PRODUCE_ICE,
