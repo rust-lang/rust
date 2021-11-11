@@ -7,13 +7,14 @@ use crate::collections::BTreeMap;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
+use crate::mem::ManuallyDrop;
 use crate::path::Path;
 use crate::ptr;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
-use crate::sys_common::IntoInner;
+use crate::sys_common::{FromInner, IntoInner};
 
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
@@ -150,6 +151,7 @@ pub enum Stdio {
     Null,
     MakePipe,
     Fd(FileDesc),
+    StaticFd(BorrowedFd<'static>),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -463,6 +465,17 @@ impl Stdio {
                 }
             }
 
+            Stdio::StaticFd(fd) => {
+                let fd = unsafe {
+                    // Unfortunately there is no public method to dup BorrwedFd into an OwnedFd !
+                    // https://github.com/rust-lang/rust/issues/88564#issuecomment-916460459
+                    let fd = fd.as_raw_fd();
+                    let fd = ManuallyDrop::new(FileDesc::from_inner(OwnedFd::from_raw_fd(fd)));
+                    fd.duplicate()?
+                };
+                Ok((ChildStdio::Owned(fd), None))
+            }
+
             Stdio::MakePipe => {
                 let (reader, writer) = pipe::anon_pipe()?;
                 let (ours, theirs) = if readable { (writer, reader) } else { (reader, writer) };
@@ -494,6 +507,27 @@ impl From<AnonPipe> for Stdio {
 impl From<File> for Stdio {
     fn from(file: File) -> Stdio {
         Stdio::Fd(file.into_inner())
+    }
+}
+
+impl From<io::Stdin> for Stdio {
+    fn from(_: io::Stdin) -> Stdio {
+        // What this ought to be is Stdio::StaticFd(input_argument.as_fd()).
+        // But there is no AsStaticFd trait or anything.
+        // https://github.com/rust-lang/rust/issues/90809
+        Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw_fd(libc::STDIN_FILENO) })
+    }
+}
+
+impl From<io::Stdout> for Stdio {
+    fn from(_: io::Stdout) -> Stdio {
+        Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw_fd(libc::STDOUT_FILENO) })
+    }
+}
+
+impl From<io::Stderr> for Stdio {
+    fn from(_: io::Stderr) -> Stdio {
+        Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw_fd(libc::STDERR_FILENO) })
     }
 }
 
