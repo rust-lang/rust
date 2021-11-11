@@ -16,13 +16,15 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
+use rustc_resolve::Namespace::TypeNS;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::lint;
 use rustc_session::DiagnosticOutput;
 use rustc_session::Session;
+use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use std::cell::RefCell;
 use std::lazy::SyncLazy;
@@ -283,13 +285,43 @@ crate fn create_config(
 }
 
 crate fn create_resolver<'a>(
+    externs: config::Externs,
     queries: &Queries<'a>,
     sess: &Session,
 ) -> Rc<RefCell<interface::BoxedResolver>> {
     let (krate, resolver, _) = &*abort_on_err(queries.expansion(), sess).peek();
     let resolver = resolver.clone();
 
-    crate::passes::collect_intra_doc_links::load_intra_link_crates(resolver, krate)
+    let resolver = crate::passes::collect_intra_doc_links::load_intra_link_crates(resolver, krate);
+
+    // FIXME: somehow rustdoc is still missing crates even though we loaded all
+    // the known necessary crates. Load them all unconditionally until we find a way to fix this.
+    // DO NOT REMOVE THIS without first testing on the reproducer in
+    // https://github.com/jyn514/objr/commit/edcee7b8124abf0e4c63873e8422ff81beb11ebb
+    let extern_names: Vec<String> = externs
+        .iter()
+        .filter(|(_, entry)| entry.add_prelude)
+        .map(|(name, _)| name)
+        .cloned()
+        .collect();
+    resolver.borrow_mut().access(|resolver| {
+        sess.time("load_extern_crates", || {
+            for extern_name in &extern_names {
+                debug!("loading extern crate {}", extern_name);
+                if let Err(()) = resolver
+                    .resolve_str_path_error(
+                        DUMMY_SP,
+                        extern_name,
+                        TypeNS,
+                        LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
+                  ) {
+                    warn!("unable to resolve external crate {} (do you have an unused `--extern` crate?)", extern_name)
+                  }
+            }
+        });
+    });
+
+    resolver
 }
 
 crate fn run_global_ctxt(
