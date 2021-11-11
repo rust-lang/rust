@@ -897,7 +897,6 @@ LLVMRustOptimizeWithNewPassManager(
             AsanDetectStackUseAfterReturnMode::Runtime,
           };
           MPM.addPass(ModuleAddressSanitizerPass(opts));
-          MPM.addPass(createModuleToFunctionPassAdaptor(AddressSanitizerPass(opts)));
 #else
           MPM.addPass(ModuleAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
