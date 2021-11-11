@@ -1331,6 +1331,8 @@ options! {
         "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),
+    temps_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "the directory the intermediate files are written to"),
     terminal_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "set the current terminal width"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
