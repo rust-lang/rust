@@ -4952,7 +4952,7 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 [[package]]
 name = "smallvec"
 version = "1.7.0"
-source = "git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from#b0e617c85ccb5a410c07e00c887d0ffd327b296a"
+source = "git+https://github.com/the8472/rust-smallvec.git?branch=delegate-vec-extend-from#5b6f5d9f3444988173e86b6a6edfc77bc414be8e"
 
 [[package]]
 name = "snap"
