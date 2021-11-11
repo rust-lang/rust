@@ -267,14 +267,12 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplMethodObligation {
-        item_name: Symbol,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
     },
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplTypeObligation {
-        item_name: Symbol,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
     },

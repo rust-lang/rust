@@ -92,7 +92,6 @@ fn compare_predicate_entailment<'tcx>(
         impl_m_span,
         impl_m_hir_id,
         ObligationCauseCode::CompareImplMethodObligation {
-            item_name: impl_m.ident.name,
             impl_item_def_id: impl_m.def_id,
             trait_item_def_id: trait_m.def_id,
         },
@@ -1167,7 +1166,6 @@ fn compare_type_predicate_entailment<'tcx>(
         impl_ty_span,
         impl_ty_hir_id,
         ObligationCauseCode::CompareImplTypeObligation {
-            item_name: impl_ty.ident.name,
             impl_item_def_id: impl_ty.def_id,
             trait_item_def_id: trait_ty.def_id,
         },

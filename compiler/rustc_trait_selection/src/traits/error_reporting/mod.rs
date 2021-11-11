@@ -266,19 +266,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
                 if let ObligationCauseCode::CompareImplMethodObligation {
-                    item_name,
                     impl_item_def_id,
                     trait_item_def_id,
                 }
                 | ObligationCauseCode::CompareImplTypeObligation {
-                    item_name,
                     impl_item_def_id,
                     trait_item_def_id,
                 } = obligation.cause.code
                 {
                     self.report_extra_impl_obligation(
                         span,
-                        item_name,
                         impl_item_def_id,
                         trait_item_def_id,
                         &format!("`{}`", obligation.predicate),

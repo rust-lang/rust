@@ -54,12 +54,16 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         {
             if let SubregionOrigin::CompareImplTypeObligation {
                 span,
-                item_name,
                 impl_item_def_id,
                 trait_item_def_id,
             } = origin
             {
-                self.emit_associated_type_err(span, item_name, impl_item_def_id, trait_item_def_id);
+                self.emit_associated_type_err(
+                    span,
+                    self.infcx.tcx.item_name(impl_item_def_id),
+                    impl_item_def_id,
+                    trait_item_def_id,
+                );
                 return Some(ErrorReported);
             }
         }
