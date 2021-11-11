@@ -797,7 +797,7 @@ fn is_useful<'p, 'tcx>(
         return ret;
     }
 
-    assert!(rows.iter().all(|r| r.len() == v.len()));
+    debug_assert!(rows.iter().all(|r| r.len() == v.len()));
 
     let ty = v.head().ty();
     let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
