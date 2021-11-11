@@ -516,6 +516,18 @@ impl NameRefClass {
     }
 }
 
+impl_from!(
+    Field, Module, Function, Adt, Variant, Const, Static, Trait, TypeAlias, BuiltinType, Local,
+    GenericParam, Label
+    for Definition
+);
+
+impl From<Impl> for Definition {
+    fn from(impl_: Impl) -> Self {
+        Definition::SelfType(impl_)
+    }
+}
+
 impl AsAssocItem for Definition {
     fn as_assoc_item(self, db: &dyn hir::db::HirDatabase) -> Option<AssocItem> {
         match self {
@@ -527,11 +539,15 @@ impl AsAssocItem for Definition {
     }
 }
 
-impl_from!(
-    Field, Module, Function, Adt, Variant, Const, Static, Trait, TypeAlias, BuiltinType, Local,
-    GenericParam, Label
-    for Definition
-);
+impl From<AssocItem> for Definition {
+    fn from(assoc_item: AssocItem) -> Self {
+        match assoc_item {
+            AssocItem::Function(it) => Definition::Function(it),
+            AssocItem::Const(it) => Definition::Const(it),
+            AssocItem::TypeAlias(it) => Definition::TypeAlias(it),
+        }
+    }
+}
 
 impl From<PathResolution> for Definition {
     fn from(path_resolution: PathResolution) -> Self {

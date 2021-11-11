@@ -10,7 +10,6 @@ pub mod rust_doc;
 use std::{collections::VecDeque, iter};
 
 use base_db::FileId;
-use either::Either;
 use hir::{ItemInNs, MacroDef, ModuleDef, Name, PathResolution, Semantics};
 use itertools::Itertools;
 use syntax::{
@@ -19,7 +18,7 @@ use syntax::{
     T,
 };
 
-use crate::RootDatabase;
+use crate::{defs::Definition, RootDatabase};
 
 pub use self::famous_defs::FamousDefs;
 
@@ -122,7 +121,7 @@ pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
 pub fn visit_file_defs(
     sema: &Semantics<RootDatabase>,
     file_id: FileId,
-    cb: &mut dyn FnMut(Either<hir::ModuleDef, hir::Impl>),
+    cb: &mut dyn FnMut(Definition),
 ) {
     let db = sema.db;
     let module = match sema.to_module_def(file_id) {
@@ -134,12 +133,12 @@ pub fn visit_file_defs(
         if let ModuleDef::Module(submodule) = def {
             if let hir::ModuleSource::Module(_) = submodule.definition_source(db).value {
                 defs.extend(submodule.declarations(db));
-                submodule.impl_defs(db).into_iter().for_each(|impl_| cb(Either::Right(impl_)));
+                submodule.impl_defs(db).into_iter().for_each(|impl_| cb(impl_.into()));
             }
         }
-        cb(Either::Left(def));
+        cb(def.into());
     }
-    module.impl_defs(db).into_iter().for_each(|impl_| cb(Either::Right(impl_)));
+    module.impl_defs(db).into_iter().for_each(|impl_| cb(impl_.into()));
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

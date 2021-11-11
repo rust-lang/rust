@@ -1,7 +1,7 @@
-use either::Either;
 use hir::{HasSource, InFile, Semantics};
 use ide_db::{
     base_db::{FileId, FilePosition, FileRange},
+    defs::Definition,
     helpers::visit_file_defs,
     RootDatabase,
 };
@@ -62,91 +62,83 @@ pub(crate) fn annotations(
         }
     }
 
-    visit_file_defs(&Semantics::new(db), file_id, &mut |def| match def {
-        Either::Left(def) => {
-            let range = match def {
-                hir::ModuleDef::Const(konst) if config.annotate_references => {
-                    konst.source(db).and_then(|node| name_range(&node, file_id))
-                }
-                hir::ModuleDef::Trait(trait_)
-                    if config.annotate_references || config.annotate_impls =>
-                {
-                    trait_.source(db).and_then(|node| name_range(&node, file_id))
-                }
-                hir::ModuleDef::Adt(adt) => match adt {
-                    hir::Adt::Enum(enum_) => {
-                        if config.annotate_enum_variant_references {
-                            enum_
-                                .variants(db)
-                                .into_iter()
-                                .map(|variant| {
-                                    variant.source(db).and_then(|node| name_range(&node, file_id))
+    visit_file_defs(&Semantics::new(db), file_id, &mut |def| {
+        let range = match def {
+            Definition::Const(konst) if config.annotate_references => {
+                konst.source(db).and_then(|node| name_range(&node, file_id))
+            }
+            Definition::Trait(trait_) if config.annotate_references || config.annotate_impls => {
+                trait_.source(db).and_then(|node| name_range(&node, file_id))
+            }
+            Definition::Adt(adt) => match adt {
+                hir::Adt::Enum(enum_) => {
+                    if config.annotate_enum_variant_references {
+                        enum_
+                            .variants(db)
+                            .into_iter()
+                            .map(|variant| {
+                                variant.source(db).and_then(|node| name_range(&node, file_id))
+                            })
+                            .filter_map(std::convert::identity)
+                            .for_each(|range| {
+                                annotations.push(Annotation {
+                                    range,
+                                    kind: AnnotationKind::HasReferences {
+                                        position: FilePosition { file_id, offset: range.start() },
+                                        data: None,
+                                    },
                                 })
-                                .filter_map(std::convert::identity)
-                                .for_each(|range| {
-                                    annotations.push(Annotation {
-                                        range,
-                                        kind: AnnotationKind::HasReferences {
-                                            position: FilePosition {
-                                                file_id,
-                                                offset: range.start(),
-                                            },
-                                            data: None,
-                                        },
-                                    })
-                                })
-                        }
-                        if config.annotate_references || config.annotate_impls {
-                            enum_.source(db).and_then(|node| name_range(&node, file_id))
-                        } else {
-                            None
-                        }
+                            })
                     }
-                    _ => {
-                        if config.annotate_references || config.annotate_impls {
-                            adt.source(db).and_then(|node| name_range(&node, file_id))
-                        } else {
-                            None
-                        }
+                    if config.annotate_references || config.annotate_impls {
+                        enum_.source(db).and_then(|node| name_range(&node, file_id))
+                    } else {
+                        None
                     }
+                }
+                _ => {
+                    if config.annotate_references || config.annotate_impls {
+                        adt.source(db).and_then(|node| name_range(&node, file_id))
+                    } else {
+                        None
+                    }
+                }
+            },
+            _ => None,
+        };
+
+        let (range, offset) = match range {
+            Some(range) => (range, range.start()),
+            None => return,
+        };
+
+        if config.annotate_impls && !matches!(def, Definition::Const(_)) {
+            annotations.push(Annotation {
+                range,
+                kind: AnnotationKind::HasImpls {
+                    position: FilePosition { file_id, offset },
+                    data: None,
                 },
-                _ => None,
-            };
+            });
+        }
+        if config.annotate_references {
+            annotations.push(Annotation {
+                range,
+                kind: AnnotationKind::HasReferences {
+                    position: FilePosition { file_id, offset },
+                    data: None,
+                },
+            });
+        }
 
-            let (range, offset) = match range {
-                Some(range) => (range, range.start()),
-                None => return,
-            };
-
-            if config.annotate_impls && !matches!(def, hir::ModuleDef::Const(_)) {
-                annotations.push(Annotation {
-                    range,
-                    kind: AnnotationKind::HasImpls {
-                        position: FilePosition { file_id, offset },
-                        data: None,
-                    },
-                });
-            }
-            if config.annotate_references {
-                annotations.push(Annotation {
-                    range,
-                    kind: AnnotationKind::HasReferences {
-                        position: FilePosition { file_id, offset },
-                        data: None,
-                    },
-                });
-            }
-
-            fn name_range<T: HasName>(node: &InFile<T>, file_id: FileId) -> Option<TextRange> {
-                if node.file_id == file_id.into() {
-                    node.value.name().map(|it| it.syntax().text_range())
-                } else {
-                    // Node is outside the file we are adding annotations to (e.g. macros).
-                    None
-                }
+        fn name_range<T: HasName>(node: &InFile<T>, file_id: FileId) -> Option<TextRange> {
+            if node.file_id == file_id.into() {
+                node.value.name().map(|it| it.syntax().text_range())
+            } else {
+                // Node is outside the file we are adding annotations to (e.g. macros).
+                None
             }
         }
-        Either::Right(_) => (),
     });
 
     if config.annotate_method_references {

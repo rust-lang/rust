@@ -2,11 +2,11 @@ use std::fmt;
 
 use ast::HasName;
 use cfg::CfgExpr;
-use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, InFile, Semantics};
 use ide_assists::utils::test_related_attribute;
 use ide_db::{
     base_db::{FilePosition, FileRange},
+    defs::Definition,
     helpers::visit_file_defs,
     search::SearchScope,
     RootDatabase, SymbolKind,
@@ -138,8 +138,8 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
         }) {
             if let Some(def) = def {
                 let file_id = match def {
-                    hir::ModuleDef::Module(it) => it.declaration_source(db).map(|src| src.file_id),
-                    hir::ModuleDef::Function(it) => it.source(db).map(|src| src.file_id),
+                    Definition::Module(it) => it.declaration_source(db).map(|src| src.file_id),
+                    Definition::Function(it) => it.source(db).map(|src| src.file_id),
                     _ => None,
                 };
                 if let Some(file_id) = file_id.filter(|file| file.call_node(db).is_some()) {
@@ -150,32 +150,25 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             res.push(runnable);
         }
     };
-    visit_file_defs(&sema, file_id, &mut |def| match def {
-        Either::Left(def) => {
-            let runnable = match def {
-                hir::ModuleDef::Module(it) => runnable_mod(&sema, it),
-                hir::ModuleDef::Function(it) => runnable_fn(&sema, it),
-                _ => None,
-            };
-            add_opt(runnable.or_else(|| module_def_doctest(sema.db, def)), Some(def));
-        }
-        Either::Right(impl_) => {
-            add_opt(runnable_impl(&sema, &impl_), None);
-            impl_
-                .items(db)
-                .into_iter()
-                .map(|assoc| {
-                    (
-                        match assoc {
-                            hir::AssocItem::Function(it) => runnable_fn(&sema, it)
-                                .or_else(|| module_def_doctest(sema.db, it.into())),
-                            hir::AssocItem::Const(it) => module_def_doctest(sema.db, it.into()),
-                            hir::AssocItem::TypeAlias(it) => module_def_doctest(sema.db, it.into()),
-                        },
-                        assoc,
-                    )
-                })
-                .for_each(|(r, assoc)| add_opt(r, Some(assoc.into())));
+    visit_file_defs(&sema, file_id, &mut |def| {
+        let runnable = match def {
+            Definition::Module(it) => runnable_mod(&sema, it),
+            Definition::Function(it) => runnable_fn(&sema, it),
+            Definition::SelfType(impl_) => runnable_impl(&sema, &impl_),
+            _ => None,
+        };
+        add_opt(runnable.or_else(|| module_def_doctest(sema.db, def)), Some(def));
+        if let Definition::SelfType(impl_) = def {
+            impl_.items(db).into_iter().for_each(|assoc| {
+                let runnable = match assoc {
+                    hir::AssocItem::Function(it) => {
+                        runnable_fn(&sema, it).or_else(|| module_def_doctest(sema.db, it.into()))
+                    }
+                    hir::AssocItem::Const(it) => module_def_doctest(sema.db, it.into()),
+                    hir::AssocItem::TypeAlias(it) => module_def_doctest(sema.db, it.into()),
+                };
+                add_opt(runnable, Some(assoc.into()))
+            });
         }
     });
 
@@ -392,17 +385,19 @@ fn runnable_mod_outline_definition(
     }
 }
 
-fn module_def_doctest(db: &RootDatabase, def: hir::ModuleDef) -> Option<Runnable> {
+fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
     let attrs = match def {
-        hir::ModuleDef::Module(it) => it.attrs(db),
-        hir::ModuleDef::Function(it) => it.attrs(db),
-        hir::ModuleDef::Adt(it) => it.attrs(db),
-        hir::ModuleDef::Variant(it) => it.attrs(db),
-        hir::ModuleDef::Const(it) => it.attrs(db),
-        hir::ModuleDef::Static(it) => it.attrs(db),
-        hir::ModuleDef::Trait(it) => it.attrs(db),
-        hir::ModuleDef::TypeAlias(it) => it.attrs(db),
-        hir::ModuleDef::BuiltinType(_) => return None,
+        Definition::Module(it) => it.attrs(db),
+        Definition::Function(it) => it.attrs(db),
+        Definition::Adt(it) => it.attrs(db),
+        Definition::Variant(it) => it.attrs(db),
+        Definition::Const(it) => it.attrs(db),
+        Definition::Static(it) => it.attrs(db),
+        Definition::Trait(it) => it.attrs(db),
+        Definition::TypeAlias(it) => it.attrs(db),
+        Definition::Macro(it) => it.attrs(db),
+        Definition::SelfType(it) => it.attrs(db),
+        _ => return None,
     };
     if !has_runnable_doc_test(&attrs) {
         return None;
@@ -440,7 +435,7 @@ fn module_def_doctest(db: &RootDatabase, def: hir::ModuleDef) -> Option<Runnable
     let test_id = path.map_or_else(|| TestId::Name(def_name.to_string()), TestId::Path);
 
     let mut nav = match def {
-        hir::ModuleDef::Module(def) => NavigationTarget::from_module_to_decl(db, def),
+        Definition::Module(def) => NavigationTarget::from_module_to_decl(db, def),
         def => def.try_to_nav(db)?,
     };
     nav.focus_range = None;
