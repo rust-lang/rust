@@ -762,8 +762,9 @@ fn fmt_type<'cx>(
 
     match *t {
         clean::Generic(name) => write!(f, "{}", name),
-        clean::ResolvedPath { did, ref path } => {
+        clean::ResolvedPath { ref path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
+            let did = path.def_id();
             resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx)
         }
         clean::DynTrait(ref bounds, ref lt) => {

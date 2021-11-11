@@ -371,7 +371,7 @@ crate fn get_real_types<'tcx>(
             let mut ty_generics = Vec::new();
             for bound in bound.get_bounds().unwrap_or(&[]) {
                 if let Some(path) = bound.get_trait_path() {
-                    let ty = Type::ResolvedPath { did: path.def_id(), path };
+                    let ty = Type::ResolvedPath { path };
                     get_real_types(generics, &ty, tcx, recurse + 1, &mut ty_generics, cache);
                 }
             }

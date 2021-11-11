@@ -727,10 +727,11 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
         for implementor in implementors {
             match implementor.inner_impl().for_ {
-                clean::ResolvedPath { ref path, did, .. }
-                | clean::BorrowedRef {
-                    type_: box clean::ResolvedPath { ref path, did, .. }, ..
-                } if !path.is_assoc_ty() => {
+                clean::ResolvedPath { ref path }
+                | clean::BorrowedRef { type_: box clean::ResolvedPath { ref path }, .. }
+                    if !path.is_assoc_ty() =>
+                {
+                    let did = path.def_id();
                     let &mut (prev_did, ref mut has_duplicates) =
                         implementor_dups.entry(path.last()).or_insert((did, false));
                     if prev_did != did {

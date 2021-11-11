@@ -1411,12 +1411,12 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 };
                 inline::record_extern_fqn(cx, did, kind);
                 let path = external_path(cx, did, false, vec![], substs);
-                ResolvedPath { path, did }
+                ResolvedPath { path }
             }
             ty::Foreign(did) => {
                 inline::record_extern_fqn(cx, did, ItemType::ForeignType);
                 let path = external_path(cx, did, false, vec![], InternalSubsts::empty());
-                ResolvedPath { path, did }
+                ResolvedPath { path }
             }
             ty::Dynamic(obj, ref reg) => {
                 // HACK: pick the first `did` as the `did` of the trait object. Someone

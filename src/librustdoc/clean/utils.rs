@@ -187,7 +187,8 @@ crate fn build_deref_target_impls(cx: &mut DocContext<'_>, items: &[Item], ret: 
             for &did in prim.impls(tcx).iter().filter(|did| !did.is_local()) {
                 inline::build_impl(cx, None, did, None, ret);
             }
-        } else if let ResolvedPath { did, .. } = *target {
+        } else if let ResolvedPath { path } = target {
+            let did = path.def_id();
             if !did.is_local() {
                 inline::build_impls(cx, None, did, None, ret);
             }
@@ -360,8 +361,8 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
         Res::SelfTy(..) if path.segments.len() == 1 => Generic(kw::SelfUpper),
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => Generic(path.segments[0].name),
         _ => {
-            let did = register_res(cx, path.res);
-            ResolvedPath { path, did }
+            let _ = register_res(cx, path.res);
+            ResolvedPath { path }
         }
     }
 }
