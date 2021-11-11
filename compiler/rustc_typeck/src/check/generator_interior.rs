@@ -3,13 +3,12 @@
 //! is calculated in `rustc_const_eval::transform::generator` and may be a subset of the
 //! types computed here.
 
-use std::mem;
-
 use crate::expr_use_visitor::{self, ExprUseVisitor};
+
+use self::drop_ranges::DropRanges;
 
 use super::FnCtxt;
 use hir::{HirIdMap, Node};
-use itertools::Itertools;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -30,6 +29,8 @@ use tracing::debug;
 #[cfg(test)]
 mod tests;
 
+mod drop_ranges;
+
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     types: FxIndexSet<ty::GeneratorInteriorTypeCause<'tcx>>,
@@ -45,7 +46,7 @@ struct InteriorVisitor<'a, 'tcx> {
     guard_bindings: SmallVec<[SmallVec<[HirId; 4]>; 1]>,
     guard_bindings_set: HirIdSet,
     linted_values: HirIdSet,
-    drop_ranges: HirIdMap<DropRange>,
+    drop_ranges: DropRanges,
 }
 
 impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
@@ -85,14 +86,10 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                                 yield_data.expr_and_pat_count, self.expr_count, source_span
                             );
 
-                            match self.drop_ranges.get(&hir_id) {
-                                Some(range)
-                                    if range.is_dropped_at(yield_data.expr_and_pat_count) =>
-                                {
-                                    debug!("value is dropped at yield point; not recording");
-                                    return false;
-                                }
-                                _ => (),
+                            if self.drop_ranges.is_dropped_at(hir_id, yield_data.expr_and_pat_count)
+                            {
+                                debug!("value is dropped at yield point; not recording");
+                                return false;
                             }
 
                             // If it is a borrowing happening in the guard,
@@ -233,24 +230,26 @@ pub fn resolve_interior<'a, 'tcx>(
     let body = fcx.tcx.hir().body(body_id);
 
     let mut visitor = {
-        let mut drop_range_visitor = DropRangeVisitor {
+        let mut expr_use_visitor = ExprUseDelegate {
             hir: fcx.tcx.hir(),
             consumed_places: <_>::default(),
             borrowed_places: <_>::default(),
-            drop_ranges: <_>::default(),
-            expr_count: 0,
         };
 
         // Run ExprUseVisitor to find where values are consumed.
         ExprUseVisitor::new(
-            &mut drop_range_visitor,
+            &mut expr_use_visitor,
             &fcx.infcx,
             def_id.expect_local(),
             fcx.param_env,
             &fcx.typeck_results.borrow(),
         )
         .consume_body(body);
+
+        let mut drop_range_visitor = DropRangeVisitor::from(expr_use_visitor);
         intravisit::walk_body(&mut drop_range_visitor, body);
+
+        drop_range_visitor.drop_ranges.propagate_to_fixpoint();
 
         InteriorVisitor {
             fcx,
@@ -673,29 +672,46 @@ fn check_must_not_suspend_def(
     false
 }
 
-/// This struct facilitates computing the ranges for which a place is uninitialized.
-struct DropRangeVisitor<'tcx> {
+struct ExprUseDelegate<'tcx> {
     hir: Map<'tcx>,
     /// Maps a HirId to a set of HirIds that are dropped by that node.
     consumed_places: HirIdMap<HirIdSet>,
     borrowed_places: HirIdSet,
-    drop_ranges: HirIdMap<DropRange>,
-    expr_count: usize,
 }
 
-impl DropRangeVisitor<'tcx> {
+impl<'tcx> ExprUseDelegate<'tcx> {
     fn mark_consumed(&mut self, consumer: HirId, target: HirId) {
         if !self.consumed_places.contains_key(&consumer) {
             self.consumed_places.insert(consumer, <_>::default());
         }
         self.consumed_places.get_mut(&consumer).map(|places| places.insert(target));
     }
+}
 
-    fn drop_range(&mut self, hir_id: &HirId) -> &mut DropRange {
-        if !self.drop_ranges.contains_key(hir_id) {
-            self.drop_ranges.insert(*hir_id, DropRange::empty());
+/// This struct facilitates computing the ranges for which a place is uninitialized.
+struct DropRangeVisitor<'tcx> {
+    hir: Map<'tcx>,
+    /// Maps a HirId to a set of HirIds that are dropped by that node.
+    consumed_places: HirIdMap<HirIdSet>,
+    borrowed_places: HirIdSet,
+    drop_ranges: DropRanges,
+    expr_count: usize,
+}
+
+impl<'tcx> DropRangeVisitor<'tcx> {
+    fn from(uses: ExprUseDelegate<'tcx>) -> Self {
+        debug!("consumed_places: {:?}", uses.consumed_places);
+        let drop_ranges = DropRanges::new(
+            uses.consumed_places.iter().flat_map(|(_, places)| places.iter().copied()),
+            &uses.hir,
+        );
+        Self {
+            hir: uses.hir,
+            consumed_places: uses.consumed_places,
+            borrowed_places: uses.borrowed_places,
+            drop_ranges,
+            expr_count: 0,
         }
-        self.drop_ranges.get_mut(hir_id).unwrap()
     }
 
     fn record_drop(&mut self, hir_id: HirId) {
@@ -704,39 +720,8 @@ impl DropRangeVisitor<'tcx> {
         } else {
             debug!("marking {:?} as dropped at {}", hir_id, self.expr_count);
             let count = self.expr_count;
-            self.drop_range(&hir_id).drop(count);
+            self.drop_ranges.drop_at(hir_id, count);
         }
-    }
-
-    fn swap_drop_ranges(&mut self, mut other: HirIdMap<DropRange>) -> HirIdMap<DropRange> {
-        mem::swap(&mut self.drop_ranges, &mut other);
-        other
-    }
-
-    fn fork_drop_ranges(&self) -> HirIdMap<DropRange> {
-        self.drop_ranges.iter().map(|(k, v)| (*k, v.fork_at(self.expr_count))).collect()
-    }
-
-    fn intersect_drop_ranges(&mut self, drops: HirIdMap<DropRange>) {
-        drops.into_iter().for_each(|(k, v)| match self.drop_ranges.get_mut(&k) {
-            Some(ranges) => *ranges = ranges.intersect(&v),
-            None => {
-                self.drop_ranges.insert(k, v);
-            }
-        })
-    }
-
-    fn merge_drop_ranges_at(&mut self, drops: HirIdMap<DropRange>, join_point: usize) {
-        drops.into_iter().for_each(|(k, v)| {
-            if !self.drop_ranges.contains_key(&k) {
-                self.drop_ranges.insert(k, DropRange { events: vec![] });
-            }
-            self.drop_ranges.get_mut(&k).unwrap().merge_with(&v, join_point);
-        });
-    }
-
-    fn merge_drop_ranges(&mut self, drops: HirIdMap<DropRange>) {
-        self.merge_drop_ranges_at(drops, self.expr_count);
     }
 
     /// ExprUseVisitor's consume callback doesn't go deep enough for our purposes in all
@@ -748,18 +733,7 @@ impl DropRangeVisitor<'tcx> {
             .get(&expr.hir_id)
             .map_or(vec![], |places| places.iter().cloned().collect());
         for place in places {
-            self.record_drop(place);
-            if let Some(Node::Expr(expr)) = self.hir.find(place) {
-                match expr.kind {
-                    hir::ExprKind::Path(hir::QPath::Resolved(
-                        _,
-                        hir::Path { res: hir::def::Res::Local(hir_id), .. },
-                    )) => {
-                        self.record_drop(*hir_id);
-                    }
-                    _ => (),
-                }
-            }
+            for_each_consumable(place, self.hir.find(place), |hir_id| self.record_drop(hir_id));
         }
     }
 
@@ -771,9 +745,24 @@ impl DropRangeVisitor<'tcx> {
         {
             let location = self.expr_count;
             debug!("reinitializing {:?} at {}", hir_id, location);
-            self.drop_range(hir_id).reinit(location)
+            self.drop_ranges.reinit_at(*hir_id, location);
         } else {
             debug!("reinitializing {:?} is not supported", expr);
+        }
+    }
+}
+
+fn for_each_consumable(place: HirId, node: Option<Node<'_>>, mut f: impl FnMut(HirId)) {
+    f(place);
+    if let Some(Node::Expr(expr)) = node {
+        match expr.kind {
+            hir::ExprKind::Path(hir::QPath::Resolved(
+                _,
+                hir::Path { res: hir::def::Res::Local(hir_id), .. },
+            )) => {
+                f(*hir_id);
+            }
+            _ => (),
         }
     }
 }
@@ -786,7 +775,7 @@ fn place_hir_id(place: &Place<'_>) -> Option<HirId> {
     }
 }
 
-impl<'tcx> expr_use_visitor::Delegate<'tcx> for DropRangeVisitor<'tcx> {
+impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
     fn consume(
         &mut self,
         place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
@@ -839,58 +828,41 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         let mut reinit = None;
         match expr.kind {
-            ExprKind::AssignOp(_op, lhs, rhs) => {
-                // These operations are weird because their order of evaluation depends on whether
-                // the operator is overloaded. In a perfect world, we'd just ask the type checker
-                // whether this is a method call, but we also need to match the expression IDs
-                // from RegionResolutionVisitor. RegionResolutionVisitor doesn't know the order,
-                // so it runs both orders and picks the most conservative. We'll mirror that here.
-                let mut old_count = self.expr_count;
-                self.visit_expr(lhs);
-                self.visit_expr(rhs);
+            // ExprKind::AssignOp(_op, lhs, rhs) => {
+            //     // These operations are weird because their order of evaluation depends on whether
+            //     // the operator is overloaded. In a perfect world, we'd just ask the type checker
+            //     // whether this is a method call, but we also need to match the expression IDs
+            //     // from RegionResolutionVisitor. RegionResolutionVisitor doesn't know the order,
+            //     // so it runs both orders and picks the most conservative. We'll mirror that here.
+            //     let mut old_count = self.expr_count;
+            //     self.visit_expr(lhs);
+            //     self.visit_expr(rhs);
 
-                let old_drops = self.swap_drop_ranges(<_>::default());
-                std::mem::swap(&mut old_count, &mut self.expr_count);
-                self.visit_expr(rhs);
-                self.visit_expr(lhs);
+            //     let old_drops = self.swap_drop_ranges(<_>::default());
+            //     std::mem::swap(&mut old_count, &mut self.expr_count);
+            //     self.visit_expr(rhs);
+            //     self.visit_expr(lhs);
 
-                // We should have visited the same number of expressions in either order.
-                assert_eq!(old_count, self.expr_count);
+            //     // We should have visited the same number of expressions in either order.
+            //     assert_eq!(old_count, self.expr_count);
 
-                self.intersect_drop_ranges(old_drops);
-            }
+            //     self.intersect_drop_ranges(old_drops);
+            // }
             ExprKind::If(test, if_true, if_false) => {
                 self.visit_expr(test);
 
-                match if_false {
-                    Some(if_false) => {
-                        let mut true_ranges = self.fork_drop_ranges();
-                        let mut false_ranges = self.fork_drop_ranges();
+                let fork = self.expr_count - 1;
 
-                        true_ranges = self.swap_drop_ranges(true_ranges);
-                        self.visit_expr(if_true);
-                        true_ranges = self.swap_drop_ranges(true_ranges);
+                self.drop_ranges.add_control_edge(fork, self.expr_count);
+                self.visit_expr(if_true);
+                let true_end = self.expr_count - 1;
 
-                        false_ranges =
-                            self.swap_drop_ranges(trim_drop_ranges(&false_ranges, self.expr_count));
-                        self.visit_expr(if_false);
-                        false_ranges = self.swap_drop_ranges(false_ranges);
-
-                        self.merge_drop_ranges(true_ranges);
-                        self.merge_drop_ranges(false_ranges);
-                    }
-                    None => {
-                        let mut true_ranges = self.fork_drop_ranges();
-                        debug!("true branch drop range fork: {:?}", true_ranges);
-                        true_ranges = self.swap_drop_ranges(true_ranges);
-                        self.visit_expr(if_true);
-                        true_ranges = self.swap_drop_ranges(true_ranges);
-                        debug!("true branch computed drop_ranges: {:?}", true_ranges);
-                        debug!("drop ranges before merging: {:?}", self.drop_ranges);
-                        self.merge_drop_ranges(true_ranges);
-                        debug!("drop ranges after merging: {:?}", self.drop_ranges);
-                    }
+                if let Some(if_false) = if_false {
+                    self.drop_ranges.add_control_edge(fork, self.expr_count);
+                    self.visit_expr(if_false);
                 }
+
+                self.drop_ranges.add_control_edge(true_end, self.expr_count);
             }
             ExprKind::Assign(lhs, rhs, _) => {
                 self.visit_expr(lhs);
@@ -899,27 +871,18 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                 reinit = Some(lhs);
             }
             ExprKind::Loop(body, ..) => {
-                // FIXME: we probably need to iterate this to a fixpoint.
-                let body_drop_ranges = self.fork_drop_ranges();
-                let old_drop_ranges = self.swap_drop_ranges(body_drop_ranges);
-
-                let join_point = self.expr_count;
-
+                let loop_begin = self.expr_count;
                 self.visit_block(body);
-
-                let body_drop_ranges = self.swap_drop_ranges(old_drop_ranges);
-                self.merge_drop_ranges_at(body_drop_ranges, join_point);
+                self.drop_ranges.add_control_edge(self.expr_count - 1, loop_begin);
             }
             ExprKind::Match(scrutinee, arms, ..) => {
                 self.visit_expr(scrutinee);
 
-                let forked_ranges = self.fork_drop_ranges();
+                let fork = self.expr_count - 1;
                 let arm_drops = arms
                     .iter()
-                    .map(|Arm { hir_id, pat, body, guard, .. }| {
-                        debug!("match arm {:?} starts at {}", hir_id, self.expr_count);
-                        let old_ranges = self
-                            .swap_drop_ranges(trim_drop_ranges(&forked_ranges, self.expr_count));
+                    .map(|Arm { pat, body, guard, .. }| {
+                        self.drop_ranges.add_control_edge(fork, self.expr_count);
                         self.visit_pat(pat);
                         match guard {
                             Some(Guard::If(expr)) => self.visit_expr(expr),
@@ -930,10 +893,12 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                             None => (),
                         }
                         self.visit_expr(body);
-                        self.swap_drop_ranges(old_ranges)
+                        self.expr_count - 1
                     })
                     .collect::<Vec<_>>();
-                arm_drops.into_iter().for_each(|drops| self.merge_drop_ranges(drops));
+                arm_drops.into_iter().for_each(|arm_end| {
+                    self.drop_ranges.add_control_edge(arm_end, self.expr_count)
+                });
             }
             _ => intravisit::walk_expr(self, expr),
         }
@@ -950,162 +915,5 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
 
         // Increment expr_count here to match what InteriorVisitor expects.
         self.expr_count += 1;
-    }
-}
-
-fn trim_drop_ranges(drop_ranges: &HirIdMap<DropRange>, trim_from: usize) -> HirIdMap<DropRange> {
-    drop_ranges.iter().map(|(k, v)| (*k, v.trimmed(trim_from))).collect()
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum Event {
-    Drop(usize),
-    Reinit(usize),
-}
-
-impl Event {
-    fn location(&self) -> usize {
-        match *self {
-            Event::Drop(i) | Event::Reinit(i) => i,
-        }
-    }
-}
-
-impl PartialOrd for Event {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.location().partial_cmp(&other.location())
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct DropRange {
-    events: Vec<Event>,
-}
-
-impl DropRange {
-    fn empty() -> Self {
-        Self { events: vec![] }
-    }
-
-    fn intersect(&self, other: &Self) -> Self {
-        let mut events = vec![];
-        self.events
-            .iter()
-            .merge_join_by(other.events.iter(), |a, b| a.partial_cmp(b).unwrap())
-            .fold((false, false), |(left, right), event| match event {
-                itertools::EitherOrBoth::Both(_, _) => todo!(),
-                itertools::EitherOrBoth::Left(e) => match e {
-                    Event::Drop(i) => {
-                        if !left && right {
-                            events.push(Event::Drop(*i));
-                        }
-                        (true, right)
-                    }
-                    Event::Reinit(i) => {
-                        if left && !right {
-                            events.push(Event::Reinit(*i));
-                        }
-                        (false, right)
-                    }
-                },
-                itertools::EitherOrBoth::Right(e) => match e {
-                    Event::Drop(i) => {
-                        if left && !right {
-                            events.push(Event::Drop(*i));
-                        }
-                        (left, true)
-                    }
-                    Event::Reinit(i) => {
-                        if !left && right {
-                            events.push(Event::Reinit(*i));
-                        }
-                        (left, false)
-                    }
-                },
-            });
-        Self { events }
-    }
-
-    fn is_dropped_at(&self, id: usize) -> bool {
-        let dropped = match self.events.iter().try_fold(false, |is_dropped, event| {
-            if event.location() <= id {
-                Ok(match event {
-                    Event::Drop(_) => true,
-                    Event::Reinit(_) => false,
-                })
-            } else {
-                Err(is_dropped)
-            }
-        }) {
-            Ok(is_dropped) | Err(is_dropped) => is_dropped,
-        };
-        trace!("is_dropped_at({}): events = {:?}, dropped = {}", id, self.events, dropped);
-        dropped
-    }
-
-    fn drop(&mut self, location: usize) {
-        self.events.push(Event::Drop(location))
-    }
-
-    fn reinit(&mut self, location: usize) {
-        self.events.push(Event::Reinit(location));
-    }
-
-    /// Merges another range with this one. Meant to be used at control flow join points.
-    ///
-    /// After merging, the value will be dead at the end of the range only if it was dead
-    /// at the end of both self and other.
-    #[tracing::instrument]
-    fn merge_with(&mut self, other: &DropRange, join_point: usize) {
-        let join_event = if self.is_dropped_at(join_point) && other.is_dropped_at(join_point) {
-            Event::Drop(join_point)
-        } else {
-            Event::Reinit(join_point)
-        };
-        let events: Vec<_> = self
-            .events
-            .iter()
-            .merge([join_event].iter())
-            .merge(other.events.iter())
-            .dedup()
-            .cloned()
-            .collect();
-
-        trace!("events after merging: {:?}", events);
-
-        self.events = events;
-    }
-
-    /// Creates a new DropRange from this one at the split point.
-    ///
-    /// Used to model branching control flow.
-    fn fork_at(&self, split_point: usize) -> Self {
-        let result = Self {
-            events: vec![if self.is_dropped_at(split_point) {
-                Event::Drop(split_point)
-            } else {
-                Event::Reinit(split_point)
-            }],
-        };
-        trace!("forking at {}: {:?}; result = {:?}", split_point, self.events, result);
-        result
-    }
-
-    fn trimmed(&self, trim_from: usize) -> Self {
-        let start = if self.is_dropped_at(trim_from) {
-            Event::Drop(trim_from)
-        } else {
-            Event::Reinit(trim_from)
-        };
-
-        let result = Self {
-            events: [start]
-                .iter()
-                .chain(self.events.iter().skip_while(|event| event.location() <= trim_from))
-                .cloned()
-                .collect(),
-        };
-        trace!("trimmed {:?} at {}, got {:?}", self, trim_from, result);
-        result
     }
 }
