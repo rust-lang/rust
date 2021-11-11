@@ -105,7 +105,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
-    let path = dep_graph_path_from(&sess.incr_comp_session_dir());
+    let path = dep_graph_path(&sess);
     let report_incremental_info = sess.opts.debugging_opts.incremental_info;
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
