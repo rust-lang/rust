@@ -832,7 +832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     for (data, p, parent_p) in unsatisfied_predicates
                         .iter()
                         .filter_map(|(p, parent, c)| c.as_ref().map(|c| (p, parent, c)))
-                        .filter_map(|(p, parent, c)| match c.code {
+                        .filter_map(|(p, parent, c)| match c.code() {
                             ObligationCauseCode::ImplDerivedObligation(ref data) => {
                                 Some((data, p, parent))
                             }

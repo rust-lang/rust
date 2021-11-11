@@ -42,7 +42,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 sup_r,
             ) if **sub_r == RegionKind::ReStatic => {
                 // This is for an implicit `'static` requirement coming from `impl dyn Trait {}`.
-                if let ObligationCauseCode::UnifyReceiver(ctxt) = &cause.code {
+                if let ObligationCauseCode::UnifyReceiver(ctxt) = cause.code() {
                     // This may have a closure and it would cause ICE
                     // through `find_param_with_region` (#78262).
                     let anon_reg_sup = tcx.is_suitable_region(sup_r)?;
@@ -184,7 +184,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = sub_origin {
             if let ObligationCauseCode::ReturnValue(hir_id)
-            | ObligationCauseCode::BlockTailExpression(hir_id) = &cause.code
+            | ObligationCauseCode::BlockTailExpression(hir_id) = cause.code()
             {
                 let parent_id = tcx.hir().get_parent_item(*hir_id);
                 if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(parent_id) {
@@ -226,7 +226,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         let mut override_error_code = None;
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sup_origin {
-            if let ObligationCauseCode::UnifyReceiver(ctxt) = &cause.code {
+            if let ObligationCauseCode::UnifyReceiver(ctxt) = cause.code() {
                 // Handle case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a
                 // `'static` lifetime when called as a method on a binding: `bar.qux()`.
                 if self.find_impl_on_dyn_trait(&mut err, param.param_ty, &ctxt) {
@@ -235,9 +235,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sub_origin {
-            let code = match &cause.code {
-                ObligationCauseCode::MatchImpl(parent, ..) => &parent.code,
-                _ => &cause.code,
+            let code = match cause.code() {
+                ObligationCauseCode::MatchImpl(parent, ..) => parent.code(),
+                _ => cause.code(),
             };
             if let (ObligationCauseCode::ItemObligation(item_def_id), None) =
                 (code, override_error_code)

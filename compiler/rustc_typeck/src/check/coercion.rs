@@ -1444,7 +1444,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
                 let mut err;
                 let mut unsized_return = false;
-                match cause.code {
+                match *cause.code() {
                     ObligationCauseCode::ReturnNoExpression => {
                         err = struct_span_err!(
                             fcx.tcx.sess,

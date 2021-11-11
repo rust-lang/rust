@@ -519,7 +519,7 @@ impl<T> Trait<T> for X {
                             proj_ty,
                             values,
                             body_owner_def_id,
-                            &cause.code,
+                            cause.code(),
                         );
                     }
                     (_, ty::Projection(proj_ty)) => {

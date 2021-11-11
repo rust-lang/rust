@@ -1,7 +1,6 @@
 use crate::infer::InferCtxt;
 use crate::opaque_types::required_region_bounds;
 use crate::traits;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -227,7 +226,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                 if let Some(impl_item_span) =
                     items.iter().find(|item| item.ident == trait_assoc_item.ident).map(fix_span)
                 {
-                    cause.make_mut().span = impl_item_span;
+                    cause.span = impl_item_span;
                 }
             }
         }
@@ -242,7 +241,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                         items.iter().find(|i| i.ident == trait_assoc_item.ident).map(fix_span)
                     })
                 {
-                    cause.make_mut().span = impl_item_span;
+                    cause.span = impl_item_span;
                 }
             }
         }
@@ -302,9 +301,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 let derived_cause = traits::DerivedObligationCause {
                     // FIXME(fee1-dead): when improving error messages, change this to PolyTraitPredicate
                     parent_trait_ref: parent_trait_ref.map_bound(|t| t.trait_ref),
-                    parent_code: Lrc::new(obligation.cause.code.clone()),
+                    parent_code: obligation.cause.clone_code(),
                 };
-                cause.make_mut().code =
+                *cause.make_mut_code() =
                     traits::ObligationCauseCode::DerivedObligation(derived_cause);
             }
             extend_cause_with_original_assoc_item_obligation(
@@ -343,7 +342,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =
                             item.map(|i| &i.kind)
                         {
-                            new_cause.make_mut().span = self_ty.span;
+                            new_cause.span = self_ty.span;
                         }
                     }
                     traits::Obligation::with_depth(

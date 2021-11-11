@@ -359,13 +359,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match placeholder_origin {
             infer::Subtype(box ref trace)
                 if matches!(
-                    &trace.cause.code.peel_derives(),
+                    &trace.cause.code().peel_derives(),
                     ObligationCauseCode::BindingObligation(..)
                 ) =>
             {
                 // Hack to get around the borrow checker because trace.cause has an `Rc`.
                 if let ObligationCauseCode::BindingObligation(_, span) =
-                    &trace.cause.code.peel_derives()
+                    &trace.cause.code().peel_derives()
                 {
                     let span = *span;
                     let mut err = self.report_concrete_failure(placeholder_origin, sub, sup);

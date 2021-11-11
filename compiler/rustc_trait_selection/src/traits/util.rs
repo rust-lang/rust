@@ -232,7 +232,7 @@ pub fn predicates_for_generics<'tcx>(
     debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
 
     iter::zip(generic_bounds.predicates, generic_bounds.spans).map(move |(predicate, span)| {
-        let cause = match cause.code {
+        let cause = match *cause.code() {
             traits::ItemObligation(def_id) if !span.is_dummy() => traits::ObligationCause::new(
                 cause.span,
                 cause.body_id,

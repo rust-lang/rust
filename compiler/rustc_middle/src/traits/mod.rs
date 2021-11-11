@@ -23,9 +23,7 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
 
 use std::borrow::Cow;
-use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::ops::Deref;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 
@@ -80,38 +78,14 @@ pub enum Reveal {
 
 /// The reason why we incurred this obligation; used for error reporting.
 ///
-/// As the happy path does not care about this struct, storing this on the heap
-/// ends up increasing performance.
+/// Non-misc `ObligationCauseCode`s are stored on the heap. This gives the
+/// best trade-off between keeping the type small (which makes copies cheaper)
+/// while not doing too many heap allocations.
 ///
 /// We do not want to intern this as there are a lot of obligation causes which
 /// only live for a short period of time.
-#[derive(Clone, PartialEq, Eq, Hash, Lift)]
-pub struct ObligationCause<'tcx> {
-    /// `None` for `ObligationCause::dummy`, `Some` otherwise.
-    data: Option<Lrc<ObligationCauseData<'tcx>>>,
-}
-
-const DUMMY_OBLIGATION_CAUSE_DATA: ObligationCauseData<'static> =
-    ObligationCauseData { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: MiscObligation };
-
-// Correctly format `ObligationCause::dummy`.
-impl<'tcx> fmt::Debug for ObligationCause<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ObligationCauseData::fmt(self, f)
-    }
-}
-
-impl<'tcx> Deref for ObligationCause<'tcx> {
-    type Target = ObligationCauseData<'tcx>;
-
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        self.data.as_deref().unwrap_or(&DUMMY_OBLIGATION_CAUSE_DATA)
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Lift)]
-pub struct ObligationCauseData<'tcx> {
+pub struct ObligationCause<'tcx> {
     pub span: Span,
 
     /// The ID of the fn body that triggered this obligation. This is
@@ -122,16 +96,24 @@ pub struct ObligationCauseData<'tcx> {
     /// information.
     pub body_id: hir::HirId,
 
-    pub code: ObligationCauseCode<'tcx>,
+    /// `None` for `MISC_OBLIGATION_CAUSE_CODE` (a common case, occurs ~60% of
+    /// the time). `Some` otherwise.
+    code: Option<Lrc<ObligationCauseCode<'tcx>>>,
 }
 
-impl Hash for ObligationCauseData<'_> {
+// This custom hash function speeds up hashing for `Obligation` deduplication
+// greatly by skipping the `code` field, which can be large and complex. That
+// shouldn't affect hash quality much since there are several other fields in
+// `Obligation` which should be unique enough, especially the predicate itself
+// which is hashed as an interned pointer. See #90996.
+impl Hash for ObligationCause<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.body_id.hash(state);
         self.span.hash(state);
-        std::mem::discriminant(&self.code).hash(state);
     }
 }
+
+const MISC_OBLIGATION_CAUSE_CODE: ObligationCauseCode<'static> = MiscObligation;
 
 impl<'tcx> ObligationCause<'tcx> {
     #[inline]
@@ -140,28 +122,32 @@ impl<'tcx> ObligationCause<'tcx> {
         body_id: hir::HirId,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause { data: Some(Lrc::new(ObligationCauseData { span, body_id, code })) }
+        ObligationCause {
+            span,
+            body_id,
+            code: if code == MISC_OBLIGATION_CAUSE_CODE { None } else { Some(Lrc::new(code)) },
+        }
     }
 
     pub fn misc(span: Span, body_id: hir::HirId) -> ObligationCause<'tcx> {
         ObligationCause::new(span, body_id, MiscObligation)
     }
 
-    pub fn dummy_with_span(span: Span) -> ObligationCause<'tcx> {
-        ObligationCause::new(span, hir::CRATE_HIR_ID, MiscObligation)
-    }
-
     #[inline(always)]
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { data: None }
+        ObligationCause { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: None }
     }
 
-    pub fn make_mut(&mut self) -> &mut ObligationCauseData<'tcx> {
-        Lrc::make_mut(self.data.get_or_insert_with(|| Lrc::new(DUMMY_OBLIGATION_CAUSE_DATA)))
+    pub fn dummy_with_span(span: Span) -> ObligationCause<'tcx> {
+        ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: None }
+    }
+
+    pub fn make_mut_code(&mut self) -> &mut ObligationCauseCode<'tcx> {
+        Lrc::make_mut(self.code.get_or_insert_with(|| Lrc::new(MISC_OBLIGATION_CAUSE_CODE)))
     }
 
     pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
-        match self.code {
+        match *self.code() {
             ObligationCauseCode::CompareImplMethodObligation { .. }
             | ObligationCauseCode::MainFunctionType
             | ObligationCauseCode::StartFunctionType => {
@@ -172,6 +158,18 @@ impl<'tcx> ObligationCause<'tcx> {
                 ..
             }) => arm_span,
             _ => self.span,
+        }
+    }
+
+    #[inline]
+    pub fn code(&self) -> &ObligationCauseCode<'tcx> {
+        self.code.as_deref().unwrap_or(&MISC_OBLIGATION_CAUSE_CODE)
+    }
+
+    pub fn clone_code(&self) -> Lrc<ObligationCauseCode<'tcx>> {
+        match &self.code {
+            Some(code) => code.clone(),
+            None => Lrc::new(MISC_OBLIGATION_CAUSE_CODE),
         }
     }
 }

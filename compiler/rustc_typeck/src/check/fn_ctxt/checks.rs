@@ -997,7 +997,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 result_code
             }
-            let self_: ty::subst::GenericArg<'_> = match &*unpeel_to_top(Lrc::new(error.obligation.cause.code.clone())) {
+            let self_: ty::subst::GenericArg<'_> = match &*unpeel_to_top(error.obligation.cause.clone_code()) {
                 ObligationCauseCode::BuiltinDerivedObligation(code) |
                 ObligationCauseCode::ImplDerivedObligation(code) |
                 ObligationCauseCode::DerivedObligation(code) => {
@@ -1040,18 +1040,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 // We make sure that only *one* argument matches the obligation failure
                 // and we assign the obligation's span to its expression's.
-                error.obligation.cause.make_mut().span = args[ref_in].span;
-                let code = error.obligation.cause.code.clone();
-                error.obligation.cause.make_mut().code =
+                error.obligation.cause.span = args[ref_in].span;
+                let parent_code = error.obligation.cause.clone_code();
+                *error.obligation.cause.make_mut_code() =
                     ObligationCauseCode::FunctionArgumentObligation {
                         arg_hir_id: args[ref_in].hir_id,
                         call_hir_id: expr.hir_id,
-                        parent_code: Lrc::new(code),
+                        parent_code,
                     };
-            } else if error.obligation.cause.make_mut().span == call_sp {
+            } else if error.obligation.cause.span == call_sp {
                 // Make function calls point at the callee, not the whole thing.
                 if let hir::ExprKind::Call(callee, _) = expr.kind {
-                    error.obligation.cause.make_mut().span = callee.span;
+                    error.obligation.cause.span = callee.span;
                 }
             }
         }
@@ -1092,7 +1092,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, hir_ty);
                                     let ty = self.resolve_vars_if_possible(ty);
                                     if ty == predicate.self_ty() {
-                                        error.obligation.cause.make_mut().span = hir_ty.span;
+                                        error.obligation.cause.span = hir_ty.span;
                                     }
                                 }
                             }

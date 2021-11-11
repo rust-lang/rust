@@ -9,7 +9,6 @@ use crate::traits::normalize_projection_type;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{
     error_code, pluralize, struct_span_err, Applicability, DiagnosticBuilder, Style,
 };
@@ -497,7 +496,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         // It only make sense when suggesting dereferences for arguments
         let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
-            &obligation.cause.code
+            obligation.cause.code()
         {
             parent_code.clone()
         } else {
@@ -662,7 +661,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             _ => return,
         };
-        if matches!(obligation.cause.code, ObligationCauseCode::FunctionArgumentObligation { .. }) {
+        if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArgumentObligation { .. })
+        {
             // When the obligation error has been ensured to have been caused by
             // an argument, the `obligation.cause.span` points at the expression
             // of the argument, so we can provide a suggestion. Otherwise, we give
@@ -688,13 +688,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let span = obligation.cause.span;
 
         let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
-            &obligation.cause.code
+            obligation.cause.code()
         {
-            parent_code.clone()
+            &parent_code
         } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop) =
             span.ctxt().outer_expn_data().kind
         {
-            Lrc::new(obligation.cause.code.clone())
+            obligation.cause.code()
         } else {
             return false;
         };
@@ -805,10 +805,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             return false;
         };
 
-        if let ObligationCauseCode::ImplDerivedObligation(obligation) = &*code {
+        if let ObligationCauseCode::ImplDerivedObligation(obligation) = code {
             try_borrowing(obligation.parent_trait_ref, &[])
         } else if let ObligationCauseCode::BindingObligation(_, _)
-        | ObligationCauseCode::ItemObligation(_) = &*code
+        | ObligationCauseCode::ItemObligation(_) = code
         {
             try_borrowing(*poly_trait_ref, &never_suggest_borrow)
         } else {
@@ -886,7 +886,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         let span = obligation.cause.span;
 
-        if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code.peel_derives() {
+        if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code().peel_derives() {
             let hir = self.tcx.hir();
             if let Some(node) = hir_id.and_then(|hir_id| hir.find(hir_id)) {
                 if let hir::Node::Expr(expr) = node {
@@ -945,7 +945,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ) {
         let points_at_arg = matches!(
-            obligation.cause.code,
+            obligation.cause.code(),
             ObligationCauseCode::FunctionArgumentObligation { .. },
         );
 
@@ -1072,7 +1072,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ) -> bool {
-        match obligation.cause.code.peel_derives() {
+        match obligation.cause.code().peel_derives() {
             // Only suggest `impl Trait` if the return type is unsized because it is `dyn Trait`.
             ObligationCauseCode::SizedReturnType => {}
             _ => return false,
@@ -1267,7 +1267,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        match obligation.cause.code.peel_derives() {
+        match obligation.cause.code().peel_derives() {
             ObligationCauseCode::SizedReturnType => {}
             _ => return,
         }
@@ -1461,7 +1461,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
         let mut generator = None;
         let mut outer_generator = None;
-        let mut next_code = Some(&obligation.cause.code);
+        let mut next_code = Some(obligation.cause.code());
 
         let mut seen_upvar_tys_infer_tuple = false;
 

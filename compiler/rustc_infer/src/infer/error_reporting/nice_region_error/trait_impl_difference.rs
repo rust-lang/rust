@@ -36,7 +36,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     ValuePairs::Types(sub_expected_found),
                     ValuePairs::Types(sup_expected_found),
                     CompareImplMethodObligation { trait_item_def_id, .. },
-                ) = (&sub_trace.values, &sup_trace.values, &sub_trace.cause.code)
+                ) = (&sub_trace.values, &sup_trace.values, sub_trace.cause.code())
                 {
                     if sup_expected_found == sub_expected_found {
                         self.emit_err(

@@ -232,7 +232,7 @@ fn compare_predicate_entailment<'tcx>(
 
             inh.register_predicates(obligations);
             let mut cause = cause.clone();
-            cause.make_mut().span = span;
+            cause.span = span;
             inh.register_predicate(traits::Obligation::new(cause, param_env, predicate));
         }
 
@@ -293,7 +293,7 @@ fn compare_predicate_entailment<'tcx>(
             let (impl_err_span, trait_err_span) =
                 extract_spans_for_error_reporting(&infcx, &terr, &cause, impl_m, trait_m);
 
-            cause.make_mut().span = impl_err_span;
+            cause.span = impl_err_span;
 
             let mut diag = struct_span_err!(
                 tcx.sess,
@@ -1043,7 +1043,7 @@ crate fn compare_const_impl<'tcx>(
 
             // Locate the Span containing just the type of the offending impl
             match tcx.hir().expect_impl_item(impl_c.def_id.expect_local()).kind {
-                ImplItemKind::Const(ref ty, _) => cause.make_mut().span = ty.span,
+                ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
                 _ => bug!("{:?} is not a impl const", impl_c),
             }
 
