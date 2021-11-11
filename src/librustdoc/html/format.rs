@@ -13,8 +13,10 @@ use rustc_attr::{ConstStability, StabilityLevel};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
+use rustc_middle::ty::DefIdTree;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_target::spec::abi::Abi;
@@ -502,7 +504,16 @@ crate fn href_with_root_path(
     cx: &Context<'_>,
     root_path: Option<&str>,
 ) -> Result<(String, ItemType, Vec<String>), HrefError> {
-    let cache = &cx.cache();
+    let tcx = cx.tcx();
+    let def_kind = tcx.def_kind(did);
+    let did = match def_kind {
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+            // documented on their parent's page
+            tcx.parent(did).unwrap()
+        }
+        _ => did,
+    };
+    let cache = cx.cache();
     let relative_to = &cx.current;
     fn to_module_fqp(shortty: ItemType, fqp: &[String]) -> &[String] {
         if shortty == ItemType::Module { fqp } else { &fqp[..fqp.len() - 1] }

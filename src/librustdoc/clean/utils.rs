@@ -393,20 +393,12 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     debug!("register_res({:?})", res);
 
     let (did, kind) = match res {
-        Res::Def(DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst, i) => {
-            // associated items are documented, but on the page of their parent
-            (cx.tcx.parent(i).unwrap(), ItemType::Trait)
-        }
-        Res::Def(DefKind::Variant, i) => {
-            // variant items are documented, but on the page of their parent
-            (cx.tcx.parent(i).expect("cannot get parent def id"), ItemType::Enum)
-        }
         // Each of these have their own page.
         Res::Def(
             kind
             @
-            (Fn | TyAlias | Enum | Trait | Struct | Union | Mod | ForeignTy | Const | Static
-            | Macro(..) | TraitAlias),
+            (AssocTy | AssocFn | AssocConst | Variant | Fn | TyAlias | Enum | Trait | Struct
+            | Union | Mod | ForeignTy | Const | Static | Macro(..) | TraitAlias),
             i,
         ) => (i, kind.into()),
         // This is part of a trait definition; document the trait.
