@@ -833,20 +833,11 @@ fn symlink_noexist() {
 fn read_link() {
     if cfg!(windows) {
         // directory symlink
-        assert_eq!(
-            check!(fs::read_link(r"C:\Users\All Users")).to_str().unwrap(),
-            r"C:\ProgramData"
-        );
+        assert_eq!(check!(fs::read_link(r"C:\Users\All Users")), Path::new(r"C:\ProgramData"));
         // junction
-        assert_eq!(
-            check!(fs::read_link(r"C:\Users\Default User")).to_str().unwrap(),
-            r"C:\Users\Default"
-        );
+        assert_eq!(check!(fs::read_link(r"C:\Users\Default User")), Path::new(r"C:\Users\Default"));
         // junction with special permissions
-        assert_eq!(
-            check!(fs::read_link(r"C:\Documents and Settings\")).to_str().unwrap(),
-            r"C:\Users"
-        );
+        assert_eq!(check!(fs::read_link(r"C:\Documents and Settings\")), Path::new(r"C:\Users"));
     }
     let tmpdir = tmpdir();
     let link = tmpdir.join("link");
