@@ -752,14 +752,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             await_span,
             self.allow_into_future.clone(),
         );
-        //let expr = self.lower_expr_mut(expr);
         let into_future_expr = self.expr_call_lang_item_fn(
             into_future_span,
             hir::LangItem::IntoFutureIntoFuture,
             arena_vec![self; expr],
         );
 
-        // match <into_future_expr> {        //     mut pinned => loop { .. }
+        // match <into_future_expr> {
+        //     mut pinned => loop { .. }
         // }
         hir::ExprKind::Match(
             into_future_expr,
