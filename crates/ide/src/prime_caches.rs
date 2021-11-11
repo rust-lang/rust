@@ -4,7 +4,8 @@
 //! various caches, it's not really advanced at the moment.
 
 use hir::db::DefDatabase;
-use ide_db::base_db::SourceDatabase;
+use ide_db::base_db::{CrateGraph, CrateId, SourceDatabase, SourceDatabaseExt};
+use rustc_hash::FxHashSet;
 
 use crate::RootDatabase;
 
@@ -19,7 +20,18 @@ pub struct PrimeCachesProgress {
 pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) + Sync)) {
     let _p = profile::span("prime_caches");
     let graph = db.crate_graph();
-    let topo = &graph.crates_in_topological_order();
+    // We're only interested in the transitive dependencies of all workspace crates.
+    let to_prime: FxHashSet<_> = graph
+        .iter()
+        .filter(|&id| {
+            let file_id = graph[id].root_file_id;
+            let root_id = db.file_source_root(file_id);
+            !db.source_root(root_id).is_library
+        })
+        .flat_map(|id| graph.transitive_deps(id))
+        .collect();
+
+    let topo = toposort(&graph, &to_prime);
 
     // FIXME: This would be easy to parallelize, since it's in the ideal ordering for that.
     // Unfortunately rayon prevents panics from propagation out of a `scope`, which breaks
@@ -31,4 +43,17 @@ pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) 
         db.crate_def_map(crate_id);
         db.import_map(crate_id);
     }
+}
+
+fn toposort(graph: &CrateGraph, crates: &FxHashSet<CrateId>) -> Vec<CrateId> {
+    // Just subset the full topologically sorted set for simplicity.
+
+    let all = graph.crates_in_topological_order();
+    let mut result = Vec::with_capacity(crates.len());
+    for krate in all {
+        if crates.contains(&krate) {
+            result.push(krate);
+        }
+    }
+    result
 }
