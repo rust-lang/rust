@@ -459,7 +459,7 @@ pub enum RegionVariableOrigin {
     AddrOfRegion(Span),
 
     /// Regions created as part of an autoref of a method receiver
-    Autoref(Span, ty::AssocItem),
+    Autoref(Span),
 
     /// Regions created as part of an automatic coercion
     Coercion(Span),
@@ -1848,7 +1848,7 @@ impl RegionVariableOrigin {
             MiscVariable(a)
             | PatternRegion(a)
             | AddrOfRegion(a)
-            | Autoref(a, _)
+            | Autoref(a)
             | Coercion(a)
             | EarlyBoundRegion(a, ..)
             | LateBoundRegion(a, ..)
