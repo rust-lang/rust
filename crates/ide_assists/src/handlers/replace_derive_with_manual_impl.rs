@@ -1079,18 +1079,18 @@ impl<T, U> Default for Foo<T, U> {
     }
 
     #[test]
-    fn add_custom_impl_clone_generic_tuple_struct() {
+    fn add_custom_impl_clone_generic_tuple_struct_with_bounds() {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
 //- minicore: clone
 #[derive(Clo$0ne)]
-struct Foo<T>(T, usize);
+struct Foo<T: Clone>(T, usize);
 "#,
             r#"
-struct Foo<T>(T, usize);
+struct Foo<T: Clone>(T, usize);
 
-impl<T> Clone for Foo<T> {
+impl<T: Clone> Clone for Foo<T> {
     $0fn clone(&self) -> Self {
         Self(self.0.clone(), self.1.clone())
     }
