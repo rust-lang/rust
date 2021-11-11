@@ -19,6 +19,7 @@ use rustc_trait_selection::traits::query::normalize::AtExt;
 
 use crate::{match_def_path, must_use_attr};
 
+// Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_copy_modulo_regions(cx.tcx.at(DUMMY_SP), cx.param_env)
 }
