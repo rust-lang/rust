@@ -443,9 +443,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// expands it.
     fn push(&mut self, row: PatStack<'p, 'tcx>) {
         if !row.is_empty() && row.head().is_or_pat() {
-            for row in row.expand_or_pat() {
-                self.patterns.push(row);
-            }
+            self.patterns.extend(row.expand_or_pat());
         } else {
             self.patterns.push(row);
         }
