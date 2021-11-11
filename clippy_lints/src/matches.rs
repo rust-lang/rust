@@ -57,6 +57,7 @@ declare_clippy_lint! {
     ///     bar(foo);
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SINGLE_MATCH,
     style,
     "a `match` statement with a single nontrivial arm (i.e., where the other arm is `_ => {}`) instead of `if let`"
@@ -98,6 +99,7 @@ declare_clippy_lint! {
     ///     bar(&other_ref);
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SINGLE_MATCH_ELSE,
     pedantic,
     "a `match` statement with two arms where the second arm's pattern is a placeholder instead of a specific match pattern"
@@ -129,6 +131,7 @@ declare_clippy_lint! {
     ///     _ => frob(x),
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MATCH_REF_PATS,
     style,
     "a `match` or `if let` with all arms prefixed with `&` instead of deref-ing the match expression"
@@ -163,6 +166,7 @@ declare_clippy_lint! {
     ///     bar();
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MATCH_BOOL,
     pedantic,
     "a `match` on a boolean expression instead of an `if..else` block"
@@ -185,6 +189,7 @@ declare_clippy_lint! {
     ///     _ => (),
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MATCH_OVERLAPPING_ARM,
     style,
     "a `match` with overlapping arms"
@@ -207,6 +212,7 @@ declare_clippy_lint! {
     ///     Err(_) => panic!("err"),
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MATCH_WILD_ERR_ARM,
     pedantic,
     "a `match` with `Err(_)` arm and take drastic actions"
@@ -233,6 +239,7 @@ declare_clippy_lint! {
     /// // Good
     /// let r: Option<&()> = x.as_ref();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MATCH_AS_REF,
     complexity,
     "a `match` on an Option value instead of using `as_ref()` or `as_mut`"
@@ -265,6 +272,7 @@ declare_clippy_lint! {
     ///     Foo::B(_) => {},
     /// }
     /// ```
+    #[clippy::version = "1.34.0"]
     pub WILDCARD_ENUM_MATCH_ARM,
     restriction,
     "a wildcard enum match arm using `_`"
@@ -299,6 +307,7 @@ declare_clippy_lint! {
     ///     Foo::C => {},
     /// }
     /// ```
+    #[clippy::version = "1.45.0"]
     pub MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
     pedantic,
     "a wildcard enum match for a single variant"
@@ -326,6 +335,7 @@ declare_clippy_lint! {
     ///     _ => {},
     /// }
     /// ```
+    #[clippy::version = "1.42.0"]
     pub WILDCARD_IN_OR_PATTERNS,
     complexity,
     "a wildcard pattern used with others patterns in same match arm"
@@ -361,6 +371,7 @@ declare_clippy_lint! {
     /// let wrapper = Wrapper::Data(42);
     /// let Wrapper::Data(data) = wrapper;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INFALLIBLE_DESTRUCTURING_MATCH,
     style,
     "a `match` statement with a single infallible arm instead of a `let`"
@@ -392,6 +403,7 @@ declare_clippy_lint! {
     /// // Good
     /// let (c, d) = (a, b);
     /// ```
+    #[clippy::version = "1.43.0"]
     pub MATCH_SINGLE_BINDING,
     complexity,
     "a match with a single binding instead of using `let` statement"
@@ -422,6 +434,7 @@ declare_clippy_lint! {
     ///     _ => {},
     /// }
     /// ```
+    #[clippy::version = "1.43.0"]
     pub REST_PAT_IN_FULLY_BOUND_STRUCTS,
     restriction,
     "a match on a struct that binds all fields but still uses the wildcard pattern"
@@ -477,6 +490,7 @@ declare_clippy_lint! {
     /// if IpAddr::V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
     /// Ok::<i32, i32>(42).is_ok();
     /// ```
+    #[clippy::version = "1.31.0"]
     pub REDUNDANT_PATTERN_MATCHING,
     style,
     "use the proper utility function avoiding an `if let`"
@@ -513,6 +527,7 @@ declare_clippy_lint! {
     /// // Good
     /// let a = matches!(x, Some(0));
     /// ```
+    #[clippy::version = "1.47.0"]
     pub MATCH_LIKE_MATCHES_MACRO,
     style,
     "a match that could be written with the matches! macro"
@@ -557,6 +572,7 @@ declare_clippy_lint! {
     ///     Quz => quz(),
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MATCH_SAME_ARMS,
     pedantic,
     "`match` with identical arm bodies"

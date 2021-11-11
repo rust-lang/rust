@@ -26,6 +26,7 @@ declare_clippy_lint! {
     /// // is_ok() is marked #[must_use]
     /// let _ = f().is_ok();
     /// ```
+    #[clippy::version = "1.42.0"]
     pub LET_UNDERSCORE_MUST_USE,
     restriction,
     "non-binding let on a `#[must_use]` expression"
@@ -53,6 +54,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let _lock = mutex.lock();
     /// ```
+    #[clippy::version = "1.43.0"]
     pub LET_UNDERSCORE_LOCK,
     correctness,
     "non-binding let on a synchronization lock"
@@ -94,6 +96,7 @@ declare_clippy_lint! {
     ///     // dropped at end of scope
     /// }
     /// ```
+    #[clippy::version = "1.50.0"]
     pub LET_UNDERSCORE_DROP,
     pedantic,
     "non-binding let on a type that implements `Drop`"

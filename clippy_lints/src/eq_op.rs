@@ -34,6 +34,7 @@ declare_clippy_lint! {
     /// # let b = 4;
     /// assert_eq!(a, a);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EQ_OP,
     correctness,
     "equal operands on both sides of a comparison or bitwise combination (e.g., `x == x`)"
@@ -59,6 +60,7 @@ declare_clippy_lint! {
     /// // Good
     /// x == *y
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub OP_REF,
     style,
     "taking a reference to satisfy the type constraints on `==`"

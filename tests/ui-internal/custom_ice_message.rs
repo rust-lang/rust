@@ -4,6 +4,7 @@
 // normalize-stderr-test: "', .*clippy_lints" -> "', clippy_lints"
 
 #![deny(clippy::internal)]
+#![allow(clippy::missing_clippy_version_attribute)]
 
 fn it_looks_like_you_are_trying_to_kill_clippy() {}
 

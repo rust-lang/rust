@@ -40,6 +40,7 @@ declare_clippy_lint! {
     ///     ..zero_point
     /// };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_UPDATE,
     complexity,
     "using `Foo { ..base }` when there are no missing fields"

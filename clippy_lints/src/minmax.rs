@@ -26,6 +26,7 @@ declare_clippy_lint! {
     /// ```
     /// It will always be equal to `0`. Probably the author meant to clamp the value
     /// between 0 and 100, but has erroneously swapped `min` and `max`.
+    #[clippy::version = "pre 1.29.0"]
     pub MIN_MAX,
     correctness,
     "`min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant"

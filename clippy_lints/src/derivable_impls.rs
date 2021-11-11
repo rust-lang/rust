@@ -46,6 +46,7 @@ declare_clippy_lint! {
     /// has exactly equal bounds, and therefore this lint is disabled for types with
     /// generic parameters.
     ///
+    #[clippy::version = "1.57.0"]
     pub DERIVABLE_IMPLS,
     complexity,
     "manual implementation of the `Default` trait which is equal to a derive"

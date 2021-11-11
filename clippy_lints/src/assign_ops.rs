@@ -34,6 +34,7 @@ declare_clippy_lint! {
     /// // Good
     /// a += b;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ASSIGN_OP_PATTERN,
     style,
     "assigning the result of an operation on a variable to that same variable"
@@ -60,6 +61,7 @@ declare_clippy_lint! {
     /// // ...
     /// a += a + b;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MISREFACTORED_ASSIGN_OP,
     suspicious,
     "having a variable on both sides of an assign op"

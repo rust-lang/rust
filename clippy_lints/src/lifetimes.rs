@@ -45,6 +45,7 @@ declare_clippy_lint! {
     ///     x
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_LIFETIMES,
     complexity,
     "using explicit lifetimes for references in function arguments when elision rules \
@@ -73,6 +74,7 @@ declare_clippy_lint! {
     ///     // ...
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EXTRA_UNUSED_LIFETIMES,
     complexity,
     "unused lifetimes in function definitions"

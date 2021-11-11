@@ -41,6 +41,7 @@ declare_clippy_lint! {
     ///     …
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub IFS_SAME_COND,
     correctness,
     "consecutive `if`s with the same condition"
@@ -88,6 +89,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.41.0"]
     pub SAME_FUNCTIONS_IN_IF_CONDITION,
     pedantic,
     "consecutive `if`s with the same function call"
@@ -109,6 +111,7 @@ declare_clippy_lint! {
     ///     42
     /// };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub IF_SAME_THEN_ELSE,
     correctness,
     "`if` with the same `then` and `else` blocks"
@@ -147,6 +150,7 @@ declare_clippy_lint! {
     ///     42
     /// };
     /// ```
+    #[clippy::version = "1.53.0"]
     pub BRANCHES_SHARING_CODE,
     nursery,
     "`if` statement with shared code in all blocks"

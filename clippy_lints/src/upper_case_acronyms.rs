@@ -33,6 +33,7 @@ declare_clippy_lint! {
     /// ```rust
     /// struct HttpResponse;
     /// ```
+    #[clippy::version = "1.51.0"]
     pub UPPER_CASE_ACRONYMS,
     style,
     "capitalized acronyms are against the naming convention"

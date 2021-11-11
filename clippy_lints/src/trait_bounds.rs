@@ -28,6 +28,7 @@ declare_clippy_lint! {
     /// ```rust
     /// pub fn foo<T>(t: T) where T: Copy + Clone {}
     /// ```
+    #[clippy::version = "1.38.0"]
     pub TYPE_REPETITION_IN_BOUNDS,
     pedantic,
     "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
@@ -57,6 +58,7 @@ declare_clippy_lint! {
     /// ```rust
     /// fn func<T>(arg: T) where T: Clone + Default {}
     /// ```
+    #[clippy::version = "1.47.0"]
     pub TRAIT_DUPLICATION_IN_BOUNDS,
     pedantic,
     "Check if the same trait bounds are specified twice during a function declaration"

@@ -31,6 +31,7 @@ declare_clippy_lint! {
     /// ghi = []
     /// ```
     ///
+    #[clippy::version = "1.57.0"]
     pub REDUNDANT_FEATURE_NAMES,
     cargo,
     "usage of a redundant feature name"
@@ -60,6 +61,7 @@ declare_clippy_lint! {
     /// def = []
     ///
     /// ```
+    #[clippy::version = "1.57.0"]
     pub NEGATIVE_FEATURE_NAMES,
     cargo,
     "usage of a negative feature name"

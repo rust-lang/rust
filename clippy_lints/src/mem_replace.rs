@@ -35,6 +35,7 @@ declare_clippy_lint! {
     /// let mut an_option = Some(0);
     /// let taken = an_option.take();
     /// ```
+    #[clippy::version = "1.31.0"]
     pub MEM_REPLACE_OPTION_WITH_NONE,
     style,
     "replacing an `Option` with `None` instead of `take()`"
@@ -66,6 +67,7 @@ declare_clippy_lint! {
     /// The [take_mut](https://docs.rs/take_mut) crate offers a sound solution,
     /// at the cost of either lazily creating a replacement value or aborting
     /// on panic, to ensure that the uninitialized value cannot be observed.
+    #[clippy::version = "1.39.0"]
     pub MEM_REPLACE_WITH_UNINIT,
     correctness,
     "`mem::replace(&mut _, mem::uninitialized())` or `mem::replace(&mut _, mem::zeroed())`"
@@ -90,6 +92,7 @@ declare_clippy_lint! {
     /// let mut text = String::from("foo");
     /// let taken = std::mem::take(&mut text);
     /// ```
+    #[clippy::version = "1.42.0"]
     pub MEM_REPLACE_WITH_DEFAULT,
     style,
     "replacing a value of type `T` with `T::default()` instead of using `std::mem::take`"

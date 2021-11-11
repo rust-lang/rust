@@ -31,6 +31,7 @@ declare_clippy_lint! {
     /// // Good
     /// println!();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub PRINTLN_EMPTY_STRING,
     style,
     "using `println!(\"\")` with an empty string"
@@ -55,6 +56,7 @@ declare_clippy_lint! {
     /// # let name = "World";
     /// println!("Hello {}!", name);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub PRINT_WITH_NEWLINE,
     style,
     "using `print!()` with a format string that ends in a single newline"
@@ -76,6 +78,7 @@ declare_clippy_lint! {
     /// ```rust
     /// println!("Hello world!");
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub PRINT_STDOUT,
     restriction,
     "printing on stdout"
@@ -97,6 +100,7 @@ declare_clippy_lint! {
     /// ```rust
     /// eprintln!("Hello world!");
     /// ```
+    #[clippy::version = "1.50.0"]
     pub PRINT_STDERR,
     restriction,
     "printing on stderr"
@@ -116,6 +120,7 @@ declare_clippy_lint! {
     /// # let foo = "bar";
     /// println!("{:?}", foo);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub USE_DEBUG,
     restriction,
     "use of `Debug`-based formatting"
@@ -142,6 +147,7 @@ declare_clippy_lint! {
     /// ```rust
     /// println!("foo");
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub PRINT_LITERAL,
     style,
     "printing a literal with a format string"
@@ -165,6 +171,7 @@ declare_clippy_lint! {
     /// // Good
     /// writeln!(buf);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub WRITELN_EMPTY_STRING,
     style,
     "using `writeln!(buf, \"\")` with an empty string"
@@ -191,6 +198,7 @@ declare_clippy_lint! {
     /// // Good
     /// writeln!(buf, "Hello {}!", name);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub WRITE_WITH_NEWLINE,
     style,
     "using `write!()` with a format string that ends in a single newline"
@@ -219,6 +227,7 @@ declare_clippy_lint! {
     /// // Good
     /// writeln!(buf, "foo");
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub WRITE_LITERAL,
     style,
     "writing a literal with a format string"

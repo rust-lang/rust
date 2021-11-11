@@ -22,6 +22,7 @@ declare_clippy_lint! {
     /// ```rust
     /// 0;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NO_EFFECT,
     complexity,
     "statements with no effect"
@@ -44,6 +45,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let _i_serve_no_purpose = 1;
     /// ```
+    #[clippy::version = "1.58.0"]
     pub NO_EFFECT_UNDERSCORE_BINDING,
     pedantic,
     "binding to `_` prefixed variable with no side-effect"
@@ -62,6 +64,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// compute_array()[0];
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNNECESSARY_OPERATION,
     complexity,
     "outer expressions with no effect"

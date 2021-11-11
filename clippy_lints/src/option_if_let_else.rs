@@ -59,6 +59,7 @@ declare_clippy_lint! {
     ///     y*y
     /// }, |foo| foo);
     /// ```
+    #[clippy::version = "1.47.0"]
     pub OPTION_IF_LET_ELSE,
     nursery,
     "reimplementation of Option::map_or"

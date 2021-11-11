@@ -34,6 +34,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let _ = d.unwrap().deref();
     /// ```
+    #[clippy::version = "1.44.0"]
     pub EXPLICIT_DEREF_METHODS,
     pedantic,
     "Explicit use of deref or deref_mut method while not in a method chain."

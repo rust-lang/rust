@@ -26,6 +26,7 @@ declare_clippy_lint! {
     /// ```rust,no_run
     /// let _ = env!("HOME");
     /// ```
+    #[clippy::version = "1.43.0"]
     pub OPTION_ENV_UNWRAP,
     correctness,
     "using `option_env!(...).unwrap()` to get environment variable"

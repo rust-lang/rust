@@ -35,6 +35,7 @@ declare_clippy_lint! {
     ///     let x = String::from("hello world").clone();
     /// }
     /// ```
+    #[clippy::version = "1.47.0"]
     pub REPEAT_ONCE,
     complexity,
     "using `.repeat(1)` instead of `String.clone()`, `str.to_string()` or `slice.to_vec()` "

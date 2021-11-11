@@ -35,6 +35,7 @@ declare_clippy_lint! {
     ///     return x;
     /// }
     /// ```
+    #[clippy::version = "1.33.0"]
     pub IMPLICIT_RETURN,
     restriction,
     "use a return statement like `return expr` instead of an expression"

@@ -30,6 +30,7 @@ declare_clippy_lint! {
     /// let a = f(b);
     /// let c = d;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DEREF_ADDROF,
     complexity,
     "use of `*&` or `*&mut` in an expression"
@@ -124,6 +125,7 @@ declare_clippy_lint! {
     /// # let point = Point(30, 20);
     /// let x = point.0;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub REF_IN_DEREF,
     complexity,
     "Use of reference in auto dereference expression."

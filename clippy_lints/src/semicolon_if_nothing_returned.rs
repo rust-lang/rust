@@ -29,6 +29,7 @@ declare_clippy_lint! {
     ///     println!("Hello world");
     /// }
     /// ```
+    #[clippy::version = "1.52.0"]
     pub SEMICOLON_IF_NOTHING_RETURNED,
     pedantic,
     "add a semicolon if nothing is returned"

@@ -32,6 +32,7 @@ declare_clippy_lint! {
     /// // Good
     /// foo(0);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DOUBLE_PARENS,
     complexity,
     "Warn on unnecessary double parentheses"

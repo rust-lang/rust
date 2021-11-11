@@ -34,6 +34,7 @@ declare_clippy_lint! {
     /// use std::cmp::Ordering;
     /// foo(Ordering::Less)
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ENUM_GLOB_USE,
     pedantic,
     "use items that import all variants of an enum"
@@ -86,6 +87,7 @@ declare_clippy_lint! {
     ///
     /// foo();
     /// ```
+    #[clippy::version = "1.43.0"]
     pub WILDCARD_IMPORTS,
     pedantic,
     "lint `use _::*` statements"

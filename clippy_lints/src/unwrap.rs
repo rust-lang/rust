@@ -39,6 +39,7 @@ declare_clippy_lint! {
     ///     do_something_with(value)
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNNECESSARY_UNWRAP,
     complexity,
     "checks for calls of `unwrap[_err]()` that cannot fail"
@@ -65,6 +66,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// This code will always panic. The if condition should probably be inverted.
+    #[clippy::version = "pre 1.29.0"]
     pub PANICKING_UNWRAP,
     correctness,
     "checks for calls of `unwrap[_err]()` that will always fail"

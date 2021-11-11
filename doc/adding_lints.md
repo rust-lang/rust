@@ -189,6 +189,7 @@ declare_clippy_lint! {
     /// ```rust
     /// // example code
     /// ```
+    #[clippy::version = "1.29.0"]
     pub FOO_FUNCTIONS,
     pedantic,
     "function named `foo`, which is not a descriptive name"
@@ -199,6 +200,10 @@ declare_clippy_lint! {
   section. This is the default documentation style and will be displayed
   [like this][example_lint_page]. To render and open this documentation locally
   in a browser, run `cargo dev serve`.
+* The `#[clippy::version]` attribute will be rendered as part of the lint documentation.
+  The value should be set to the current Rust version that the lint is developed in,
+  it can be retrieved by running `rustc -vV` in the rust-clippy directory. The version
+  is listed under *release*. (Use the version without the `-nightly`) suffix.
 * `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the
   [lint naming guidelines][lint_naming] here when naming your lint.
   In short, the name should state the thing that is being checked for and
@@ -503,6 +508,7 @@ declare_clippy_lint! {
     /// // Good
     /// Insert a short example of improved code that doesn't trigger the lint
     /// ```
+    #[clippy::version = "1.29.0"]
     pub FOO_FUNCTIONS,
     pedantic,
     "function named `foo`, which is not a descriptive name"

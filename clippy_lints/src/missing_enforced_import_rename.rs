@@ -33,6 +33,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// use serde_json::Value as JsonValue;
     /// ```
+    #[clippy::version = "1.55.0"]
     pub MISSING_ENFORCED_IMPORT_RENAMES,
     restriction,
     "enforce import renames"

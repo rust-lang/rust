@@ -36,6 +36,7 @@ declare_clippy_lint! {
     ///     fn other() {}
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MULTIPLE_INHERENT_IMPL,
     restriction,
     "Multiple inherent impl that could be grouped"

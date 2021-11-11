@@ -26,6 +26,7 @@ declare_clippy_lint! {
     /// let a = Some(&1);
     /// let b = a;
     /// ```
+    #[clippy::version = "1.57.0"]
     pub NEEDLESS_OPTION_AS_DEREF,
     complexity,
     "no-op use of `deref` or `deref_mut` method to `Option`."

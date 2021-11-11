@@ -21,6 +21,7 @@ declare_clippy_lint! {
     ///     1;
     /// };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub LET_UNIT_VALUE,
     pedantic,
     "creating a `let` binding to a value of unit type, which usually can't be used afterwards"
@@ -68,6 +69,7 @@ declare_clippy_lint! {
     /// assert_eq!({ foo(); }, { bar(); });
     /// ```
     /// will always succeed
+    #[clippy::version = "pre 1.29.0"]
     pub UNIT_CMP,
     correctness,
     "comparing unit values"
@@ -88,6 +90,7 @@ declare_clippy_lint! {
     ///     baz(a);
     /// })
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNIT_ARG,
     complexity,
     "passing unit to a function"

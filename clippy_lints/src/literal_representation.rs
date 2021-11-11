@@ -28,6 +28,7 @@ declare_clippy_lint! {
     /// // Good
     /// let x: u64 = 61_864_918_973_511;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNREADABLE_LITERAL,
     pedantic,
     "long literal without underscores"
@@ -53,6 +54,7 @@ declare_clippy_lint! {
     /// // Good
     /// 2_i32;
     /// ```
+    #[clippy::version = "1.30.0"]
     pub MISTYPED_LITERAL_SUFFIXES,
     correctness,
     "mistyped literal suffix"
@@ -75,6 +77,7 @@ declare_clippy_lint! {
     /// // Good
     /// let x: u64 = 61_864_918_973_511;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INCONSISTENT_DIGIT_GROUPING,
     style,
     "integer literals with digits grouped inconsistently"
@@ -93,6 +96,7 @@ declare_clippy_lint! {
     /// let x: u32 = 0xFFF_FFF;
     /// let y: u8 = 0b01_011_101;
     /// ```
+    #[clippy::version = "1.49.0"]
     pub UNUSUAL_BYTE_GROUPINGS,
     style,
     "binary or hex literals that aren't grouped by four"
@@ -111,6 +115,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let x: u64 = 6186491_8973511;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub LARGE_DIGIT_GROUPS,
     pedantic,
     "grouping digits into groups that are too large"
@@ -128,6 +133,7 @@ declare_clippy_lint! {
     /// `255` => `0xFF`
     /// `65_535` => `0xFFFF`
     /// `4_042_322_160` => `0xF0F0_F0F0`
+    #[clippy::version = "pre 1.29.0"]
     pub DECIMAL_LITERAL_REPRESENTATION,
     restriction,
     "using decimal representation when hexadecimal would be better"

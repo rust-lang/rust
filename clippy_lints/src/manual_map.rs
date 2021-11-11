@@ -36,6 +36,7 @@ declare_clippy_lint! {
     /// ```rust
     /// Some(0).map(|x| x + 1);
     /// ```
+    #[clippy::version = "1.52.0"]
     pub MANUAL_MAP,
     style,
     "reimplementation of `map`"

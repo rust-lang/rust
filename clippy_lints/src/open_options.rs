@@ -22,6 +22,7 @@ declare_clippy_lint! {
     ///
     /// OpenOptions::new().read(true).truncate(true);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NONSENSICAL_OPEN_OPTIONS,
     correctness,
     "nonsensical combination of options for opening a file"

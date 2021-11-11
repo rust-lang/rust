@@ -31,6 +31,7 @@ declare_clippy_lint! {
     /// ```rust
     /// vec![1, 2, 3];
     /// ```
+    #[clippy::version = "1.55.0"]
     pub NONSTANDARD_MACRO_BRACES,
     nursery,
     "check consistent use of braces in macro"

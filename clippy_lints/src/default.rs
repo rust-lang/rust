@@ -29,6 +29,7 @@ declare_clippy_lint! {
     /// // Good
     /// let s = String::default();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DEFAULT_TRAIT_ACCESS,
     pedantic,
     "checks for literal calls to `Default::default()`"
@@ -62,6 +63,7 @@ declare_clippy_lint! {
     ///     .. Default::default()
     /// };
     /// ```
+    #[clippy::version = "1.49.0"]
     pub FIELD_REASSIGN_WITH_DEFAULT,
     style,
     "binding initialized with Default should have its fields set in the initializer"

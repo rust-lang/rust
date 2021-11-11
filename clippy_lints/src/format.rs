@@ -33,6 +33,7 @@ declare_clippy_lint! {
     /// // Good
     /// foo.to_owned();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub USELESS_FORMAT,
     complexity,
     "useless use of `format!`"

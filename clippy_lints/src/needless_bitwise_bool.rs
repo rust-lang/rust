@@ -30,6 +30,7 @@ declare_clippy_lint! {
     /// let (x,y) = (true, false);
     /// if x && !y {}
     /// ```
+    #[clippy::version = "1.54.0"]
     pub NEEDLESS_BITWISE_BOOL,
     pedantic,
     "Boolean expressions that use bitwise rather than lazy operators"

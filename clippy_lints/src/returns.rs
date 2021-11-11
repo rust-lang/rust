@@ -37,6 +37,7 @@ declare_clippy_lint! {
     ///     String::new()
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub LET_AND_RETURN,
     style,
     "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block"
@@ -62,6 +63,7 @@ declare_clippy_lint! {
     ///     x
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_RETURN,
     style,
     "using a return statement like `return expr;` where an expression would suffice"

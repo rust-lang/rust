@@ -31,6 +31,7 @@ declare_clippy_lint! {
     /// # use std::panic::Location;
     /// println!("error: something failed at {}", Location::caller());
     /// ```
+    #[clippy::version = "1.58.0"]
     pub FORMAT_IN_FORMAT_ARGS,
     perf,
     "`format!` used in a macro that does formatting"
@@ -56,6 +57,7 @@ declare_clippy_lint! {
     /// # use std::panic::Location;
     /// println!("error: something failed at {}", Location::caller());
     /// ```
+    #[clippy::version = "1.58.0"]
     pub TO_STRING_IN_FORMAT_ARGS,
     perf,
     "`to_string` applied to a type that implements `Display` in format args"

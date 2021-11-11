@@ -35,6 +35,7 @@ declare_clippy_lint! {
     /// let mut b = 2;
     /// std::mem::swap(&mut a, &mut b);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MANUAL_SWAP,
     complexity,
     "manual swap of two variables"
@@ -60,6 +61,7 @@ declare_clippy_lint! {
     /// # let mut b = 2;
     /// std::mem::swap(&mut a, &mut b);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ALMOST_SWAPPED,
     correctness,
     "`foo = bar; bar = foo` sequence"
