@@ -1,0 +1,11 @@
+error[E0381]: borrow of possibly-uninitialized variable: `x`
+  --> $DIR/move-of-addr-of-mut.rs:8:5
+   |
+LL |     std::ptr::addr_of_mut!(x);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ use of possibly-uninitialized `x`
+   |
+   = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0381`.
