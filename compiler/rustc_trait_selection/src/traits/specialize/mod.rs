@@ -291,6 +291,11 @@ pub(super) fn specialization_graph_provider(
     sg
 }
 
+// This function is only used when
+// encountering errors and inlining
+// it negatively impacts perf.
+#[cold]
+#[inline(never)]
 fn report_overlap_conflict(
     tcx: TyCtxt<'_>,
     overlap: OverlapError,
@@ -443,8 +448,12 @@ fn report_conflicting_impls(
     match used_to_be_allowed {
         None => {
             sg.has_errored = true;
-            let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
-            decorate(LintDiagnosticBuilder::new(err));
+            if overlap.with_impl.is_local() || !tcx.orphan_check_crate(()).contains(&impl_def_id) {
+                let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
+                decorate(LintDiagnosticBuilder::new(err));
+            } else {
+                tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check");
+            }
         }
         Some(kind) => {
             let lint = match kind {

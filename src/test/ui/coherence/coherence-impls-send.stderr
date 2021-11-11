@@ -1,14 +1,3 @@
-error[E0119]: conflicting implementations of trait `std::marker::Send` for type `&[NotSync]`
-  --> $DIR/coherence-impls-send.rs:25:1
-   |
-LL | unsafe impl Send for &'static [NotSync] {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: conflicting implementation in crate `core`:
-           - impl<T> Send for &T
-             where T: Sync, T: ?Sized;
-   = note: upstream crates may add a new impl of trait `std::marker::Sync` for type `[NotSync]` in future versions
-
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-impls-send.rs:16:1
    |
@@ -48,7 +37,7 @@ LL | unsafe impl Send for &'static [NotSync] {}
    |
    = note: define and implement a trait or new type instead
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0117, E0119, E0321.
+Some errors have detailed explanations: E0117, E0321.
 For more information about an error, try `rustc --explain E0117`.

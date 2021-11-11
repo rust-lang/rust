@@ -1,3 +1,36 @@
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impls-sized.rs:20:1
+   |
+LL | impl Sized for (MyType, MyType) {}
+   | ^^^^^^^^^^^^^^^----------------
+   | |              |
+   | |              this is not defined in the current crate because tuples are always foreign
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impls-sized.rs:27:1
+   |
+LL | impl Sized for [MyType] {}
+   | ^^^^^^^^^^^^^^^--------
+   | |              |
+   | |              this is not defined in the current crate because slices are always foreign
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impls-sized.rs:31:1
+   |
+LL | impl Sized for &'static [NotSync] {}
+   | ^^^^^^^^^^^^^^^------------------
+   | |              |
+   | |              this is not defined in the current crate because slices are always foreign
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
 error[E0322]: explicit impls for the `Sized` trait are not permitted
   --> $DIR/coherence-impls-sized.rs:14:1
    |
@@ -33,39 +66,6 @@ error[E0322]: explicit impls for the `Sized` trait are not permitted
    |
 LL | impl Sized for &'static [NotSync] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of 'Sized' not allowed
-
-error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-sized.rs:20:1
-   |
-LL | impl Sized for (MyType, MyType) {}
-   | ^^^^^^^^^^^^^^^----------------
-   | |              |
-   | |              this is not defined in the current crate because tuples are always foreign
-   | impl doesn't use only types from inside the current crate
-   |
-   = note: define and implement a trait or new type instead
-
-error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-sized.rs:27:1
-   |
-LL | impl Sized for [MyType] {}
-   | ^^^^^^^^^^^^^^^--------
-   | |              |
-   | |              this is not defined in the current crate because slices are always foreign
-   | impl doesn't use only types from inside the current crate
-   |
-   = note: define and implement a trait or new type instead
-
-error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-sized.rs:31:1
-   |
-LL | impl Sized for &'static [NotSync] {}
-   | ^^^^^^^^^^^^^^^------------------
-   | |              |
-   | |              this is not defined in the current crate because slices are always foreign
-   | impl doesn't use only types from inside the current crate
-   |
-   = note: define and implement a trait or new type instead
 
 error: aborting due to 9 previous errors
 
