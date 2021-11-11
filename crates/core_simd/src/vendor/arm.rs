@@ -1,6 +1,6 @@
 use crate::simd::*;
 
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", target_feature = "v7"))]
 use core::arch::arm::*;
 
 #[cfg(target_arch = "aarch64")]
@@ -35,7 +35,7 @@ from_transmute! { unsafe i64x2 => int64x2_t }
 from_transmute! { unsafe Simd<u64, 1> => poly64x1_t }
 from_transmute! { unsafe u64x2 => poly64x2_t }
 
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", target_feature = "v7"))]
 mod arm {
     use super::*;
     from_transmute! { unsafe Simd<u8, 4> => uint8x4_t }

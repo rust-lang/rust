@@ -21,7 +21,10 @@ mod x86;
 #[cfg(any(target_arch = "wasm32"))]
 mod wasm32;
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    target_arch = "aarch64",
+    all(target_arch = "arm", target_feature = "v7")
+))]
 mod arm;
 
 #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
