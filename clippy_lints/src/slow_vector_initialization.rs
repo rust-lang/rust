@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
-    get_enclosing_block, is_expr_path_def_path, is_integer_literal, path_to_local, path_to_local_id, paths, SpanlessEq,
+    get_enclosing_block, is_integer_literal, is_path_diagnostic_item, path_to_local, path_to_local_id, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -254,7 +254,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn is_repeat_zero(&self, expr: &Expr<'_>) -> bool {
         if_chain! {
             if let ExprKind::Call(fn_expr, [repeat_arg]) = expr.kind;
-            if is_expr_path_def_path(self.cx, fn_expr, &paths::ITER_REPEAT);
+            if is_path_diagnostic_item(self.cx, fn_expr, sym::iter_repeat);
             if is_integer_literal(repeat_arg, 0);
             then {
                 true
