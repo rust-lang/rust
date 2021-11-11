@@ -257,7 +257,7 @@ crate fn get_real_types<'tcx>(
         tcx: TyCtxt<'_>,
         ty: Type,
         mut generics: Vec<TypeWithKind>,
-        cache: &Cache,
+        _cache: &Cache,
     ) {
         let is_full_generic = ty.is_full_generic();
 
@@ -309,7 +309,7 @@ crate fn get_real_types<'tcx>(
             // We remove the name of the full generic because we have no use for it.
             index_ty.name = Some(String::new());
             res.push(TypeWithKind::from((index_ty, ItemType::Generic)));
-        } else if let Some(kind) = ty.def_id(cache).map(|did| tcx.def_kind(did).into()) {
+        } else if let Some(kind) = ty.def_id_no_primitives().map(|did| tcx.def_kind(did).into()) {
             res.push(TypeWithKind::from((index_ty, kind)));
         } else if ty.is_primitive() {
             // This is a primitive, let's store it as such.
@@ -324,7 +324,9 @@ crate fn get_real_types<'tcx>(
 
     if let Type::Generic(arg_s) = *arg {
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
-            WherePredicate::BoundPredicate { ty, .. } => ty.def_id(cache) == arg.def_id(cache),
+            WherePredicate::BoundPredicate { ty, .. } => {
+                ty.def_id_no_primitives() == arg.def_id_no_primitives()
+            }
             _ => false,
         }) {
             let mut ty_generics = Vec::new();
@@ -395,7 +397,8 @@ crate fn get_all_types<'tcx>(
             // `all_types.extend(args.drain(..));`.
             all_types.extend(args);
         } else {
-            if let Some(kind) = arg.type_.def_id(cache).map(|did| tcx.def_kind(did).into()) {
+            if let Some(kind) = arg.type_.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
+            {
                 all_types.push(TypeWithKind::from((get_index_type(&arg.type_, vec![]), kind)));
             }
         }
@@ -406,7 +409,9 @@ crate fn get_all_types<'tcx>(
         FnRetTy::Return(ref return_type) => {
             get_real_types(generics, return_type, tcx, 0, &mut ret_types, cache);
             if ret_types.is_empty() {
-                if let Some(kind) = return_type.def_id(cache).map(|did| tcx.def_kind(did).into()) {
+                if let Some(kind) =
+                    return_type.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
+                {
                     ret_types.push(TypeWithKind::from((get_index_type(return_type, vec![]), kind)));
                 }
             }
