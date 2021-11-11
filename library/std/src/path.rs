@@ -2892,6 +2892,14 @@ impl cmp::PartialEq for Path {
 impl Hash for Path {
     fn hash<H: Hasher>(&self, h: &mut H) {
         let bytes = self.as_u8_slice();
+        let prefix_len = match parse_prefix(&self.inner) {
+            Some(prefix) => {
+                prefix.hash(h);
+                prefix.len()
+            }
+            None => 0,
+        };
+        let bytes = &bytes[prefix_len..];
 
         let mut component_start = 0;
         let mut bytes_hashed = 0;
