@@ -699,23 +699,6 @@ impl<N: AstNode> InFile<N> {
     pub fn syntax(&self) -> InFile<&SyntaxNode> {
         self.with_value(self.value.syntax())
     }
-
-    pub fn nodes_with_attributes<'db>(
-        self,
-        db: &'db dyn db::AstDatabase,
-    ) -> impl Iterator<Item = InFile<N>> + 'db
-    where
-        N: 'db,
-    {
-        iter::successors(Some(self), move |node| {
-            let InFile { file_id, value } = node.file_id.call_node(db)?;
-            N::cast(value).map(|n| InFile::new(file_id, n))
-        })
-    }
-
-    pub fn node_with_attributes(self, db: &dyn db::AstDatabase) -> InFile<N> {
-        self.nodes_with_attributes(db).last().unwrap()
-    }
 }
 
 /// In Rust, macros expand token trees to token trees. When we want to turn a

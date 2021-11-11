@@ -236,9 +236,7 @@ fn find_related_tests(
                 .filter_map(|token| token.ancestors().find_map(ast::Fn::cast))
                 .map(|f| hir::InFile::new(sema.hir_file_for(f.syntax()), f));
 
-            for fn_def in functions {
-                // #[test/bench] expands to just the item causing us to lose the attribute, so recover them by going out of the attribute
-                let InFile { value: fn_def, .. } = &fn_def.node_with_attributes(sema.db);
+            for InFile { value: ref fn_def, .. } in functions {
                 if let Some(runnable) = as_test_runnable(sema, fn_def) {
                     // direct test
                     tests.insert(runnable);
@@ -294,8 +292,7 @@ fn parent_test_module(sema: &Semantics<RootDatabase>, fn_def: &ast::Fn) -> Optio
 }
 
 pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) -> Option<Runnable> {
-    // #[test/bench] expands to just the item causing us to lose the attribute, so recover them by going out of the attribute
-    let func = def.source(sema.db)?.node_with_attributes(sema.db);
+    let func = def.source(sema.db)?;
     let name_string = def.name(sema.db).to_string();
 
     let root = def.module(sema.db).krate().root_module(sema.db);
@@ -504,8 +501,6 @@ fn has_test_function_or_multiple_test_submodules(
         match item {
             hir::ModuleDef::Function(f) => {
                 if let Some(it) = f.source(sema.db) {
-                    // #[test/bench] expands to just the item causing us to lose the attribute, so recover them by going out of the attribute
-                    let it = it.node_with_attributes(sema.db);
                     if test_related_attribute(&it.value).is_some() {
                         return true;
                     }
