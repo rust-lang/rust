@@ -339,14 +339,35 @@ impl<T: Copy, const N: usize> Copy for [T; N] {}
 impl<T: Clone, const N: usize> Clone for [T; N] {
     #[inline]
     fn clone(&self) -> Self {
-        // SAFETY: we know for certain that this iterator will yield exactly `N`
-        // items.
-        unsafe { collect_into_array_unchecked(&mut self.iter().cloned()) }
+        SpecArrayClone::clone(self)
     }
 
     #[inline]
     fn clone_from(&mut self, other: &Self) {
         self.clone_from_slice(other);
+    }
+}
+
+#[cfg(not(bootstrap))]
+trait SpecArrayClone: Clone {
+    fn clone<const N: usize>(array: &[Self; N]) -> [Self; N];
+}
+
+#[cfg(not(bootstrap))]
+impl<T: Clone> SpecArrayClone for T {
+    #[inline]
+    default fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
+        // SAFETY: we know for certain that this iterator will yield exactly `N`
+        // items.
+        unsafe { collect_into_array_unchecked(&mut array.iter().cloned()) }
+    }
+}
+
+#[cfg(not(bootstrap))]
+impl<T: Copy> SpecArrayClone for T {
+    #[inline]
+    fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
+        *array
     }
 }
 
