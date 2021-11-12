@@ -646,31 +646,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// parameter while `f` is running (and restored afterwards).
     fn collect_in_band_defs<T>(
         &mut self,
-        parent_def_id: LocalDefId,
-        anonymous_lifetime_mode: AnonymousLifetimeMode,
-        f: impl FnOnce(&mut Self) -> (Vec<hir::GenericParam<'hir>>, T),
-    ) -> (Vec<hir::GenericParam<'hir>>, T) {
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> (Vec<(Span, ParamName)>, T) {
         assert!(!self.is_collecting_in_band_lifetimes);
         assert!(self.lifetimes_to_define.is_empty());
-        let old_anonymous_lifetime_mode = self.anonymous_lifetime_mode;
-
-        self.anonymous_lifetime_mode = anonymous_lifetime_mode;
         self.is_collecting_in_band_lifetimes = true;
 
-        let (in_band_ty_params, res) = f(self);
+        let res = f(self);
 
         self.is_collecting_in_band_lifetimes = false;
-        self.anonymous_lifetime_mode = old_anonymous_lifetime_mode;
 
-        let lifetimes_to_define = self.lifetimes_to_define.split_off(0);
-
-        let params = lifetimes_to_define
-            .into_iter()
-            .map(|(span, hir_name)| self.lifetime_to_generic_param(span, hir_name, parent_def_id))
-            .chain(in_band_ty_params.into_iter())
-            .collect();
-
-        (params, res)
+        let lifetimes_to_define = std::mem::take(&mut self.lifetimes_to_define);
+        (lifetimes_to_define, res)
     }
 
     /// Converts a lifetime into a new generic parameter.
@@ -785,27 +772,39 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         anonymous_lifetime_mode: AnonymousLifetimeMode,
         f: impl FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
     ) -> (hir::Generics<'hir>, T) {
-        let (in_band_defs, (mut lowered_generics, res)) =
-            self.with_in_scope_lifetime_defs(&generics.params, |this| {
-                this.collect_in_band_defs(parent_def_id, anonymous_lifetime_mode, |this| {
-                    let mut params = Vec::new();
-                    // Note: it is necessary to lower generics *before* calling `f`.
-                    // When lowering `async fn`, there's a final step when lowering
-                    // the return type that assumes that all in-scope lifetimes have
-                    // already been added to either `in_scope_lifetimes` or
-                    // `lifetimes_to_define`. If we swapped the order of these two,
-                    // in-band-lifetimes introduced by generics or where-clauses
-                    // wouldn't have been added yet.
-                    let generics = this.lower_generics_mut(
-                        generics,
-                        ImplTraitContext::Universal(&mut params, this.current_hir_id_owner),
-                    );
-                    let res = f(this, &mut params);
-                    (params, (generics, res))
+        let (lifetimes_to_define, (mut lowered_generics, impl_trait_defs, res)) = self
+            .collect_in_band_defs(|this| {
+                this.with_anonymous_lifetime_mode(anonymous_lifetime_mode, |this| {
+                    this.with_in_scope_lifetime_defs(&generics.params, |this| {
+                        let mut impl_trait_defs = Vec::new();
+                        // Note: it is necessary to lower generics *before* calling `f`.
+                        // When lowering `async fn`, there's a final step when lowering
+                        // the return type that assumes that all in-scope lifetimes have
+                        // already been added to either `in_scope_lifetimes` or
+                        // `lifetimes_to_define`. If we swapped the order of these two,
+                        // in-band-lifetimes introduced by generics or where-clauses
+                        // wouldn't have been added yet.
+                        let generics = this.lower_generics_mut(
+                            generics,
+                            ImplTraitContext::Universal(
+                                &mut impl_trait_defs,
+                                this.current_hir_id_owner,
+                            ),
+                        );
+                        let res = f(this, &mut impl_trait_defs);
+                        (generics, impl_trait_defs, res)
+                    })
                 })
             });
 
-        lowered_generics.params.extend(in_band_defs);
+        lowered_generics.params.extend(
+            lifetimes_to_define
+                .into_iter()
+                .map(|(span, hir_name)| {
+                    self.lifetime_to_generic_param(span, hir_name, parent_def_id)
+                })
+                .chain(impl_trait_defs),
+        );
 
         let lowered_generics = lowered_generics.into_generics(self.arena);
         (lowered_generics, res)
