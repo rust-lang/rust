@@ -1,10 +1,8 @@
-error: unused macro definition
-  --> $DIR/unused-macro-rules.rs:4:1
+error: unused macro definition: `unused`
+  --> $DIR/unused-macro-rules.rs:4:14
    |
-LL | / macro_rules! unused {
-LL | |     () => {};
-LL | | }
-   | |_^
+LL | macro_rules! unused {
+   |              ^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/unused-macro-rules.rs:1:9
@@ -12,26 +10,17 @@ note: the lint level is defined here
 LL | #![deny(unused_macros)]
    |         ^^^^^^^^^^^^^
 
-error: unused macro definition
-  --> $DIR/unused-macro-rules.rs:11:9
+error: unused macro definition: `m`
+  --> $DIR/unused-macro-rules.rs:11:22
    |
-LL | /         macro_rules! m {
-LL | |             () => {};
-LL | |         }
-   | |_________^
-...
-LL |   create_macro!();
-   |   --------------- in this macro invocation
-   |
-   = note: this error originates in the macro `create_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |         macro_rules! m {
+   |                      ^
 
-error: unused macro definition
-  --> $DIR/unused-macro-rules.rs:24:5
+error: unused macro definition: `unused`
+  --> $DIR/unused-macro-rules.rs:24:18
    |
-LL | /     macro_rules! unused {
-LL | |         () => {};
-LL | |     }
-   | |_____^
+LL |     macro_rules! unused {
+   |                  ^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/unused-macro-rules.rs:23:12

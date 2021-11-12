@@ -1,11 +1,8 @@
-warning: unused macro definition
-  --> $DIR/issue-70041.rs:4:1
+warning: unused macro definition: `regex`
+  --> $DIR/issue-70041.rs:4:14
    |
-LL | / macro_rules! regex {
-LL | |
-LL | |     () => {};
-LL | | }
-   | |_^
+LL | macro_rules! regex {
+   |              ^^^^^
    |
    = note: `#[warn(unused_macros)]` on by default
 
