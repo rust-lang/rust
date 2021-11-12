@@ -988,7 +988,7 @@ pub struct Resolver<'a> {
     non_macro_attr: Lrc<SyntaxExtension>,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'a>>,
-    unused_macros: FxHashMap<LocalDefId, (NodeId, Span)>,
+    unused_macros: FxHashMap<LocalDefId, (NodeId, Ident)>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:

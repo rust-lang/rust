@@ -558,8 +558,9 @@ impl<T> [T] {
     /// assert!(v == ["a", "b", "e", "d", "c"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     #[inline]
-    pub fn swap(&mut self, a: usize, b: usize) {
+    pub const fn swap(&mut self, a: usize, b: usize) {
         let _ = &self[a];
         let _ = &self[b];
 
@@ -595,7 +596,8 @@ impl<T> [T] {
     /// [`swap`]: slice::swap
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
-    pub unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
+    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+    pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
         #[cfg(debug_assertions)]
         {
             let _ = &self[a];

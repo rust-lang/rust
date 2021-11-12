@@ -554,7 +554,10 @@ macro_rules! writeln {
 ///
 /// # Panics
 ///
-/// This will always [`panic!`].
+/// This will always [`panic!`] because `unreachable!` is just a shorthand for `panic!` with a
+/// fixed, specific message.
+///
+/// Like `panic!`, this macro has a second form for displaying custom values.
 ///
 /// # Examples
 ///
@@ -581,7 +584,7 @@ macro_rules! writeln {
 ///         if 3*i < i { panic!("u32 overflow"); }
 ///         if x < 3*i { return i-1; }
 ///     }
-///     unreachable!();
+///     unreachable!("The loop should always return");
 /// }
 /// ```
 #[macro_export]

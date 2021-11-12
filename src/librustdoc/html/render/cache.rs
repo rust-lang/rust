@@ -244,8 +244,10 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
 /// The point of this function is to replace bounds with types.
 ///
 /// i.e. `[T, U]` when you have the following bounds: `T: Display, U: Option<T>` will return
-/// `[Display, Option]` (we just returns the list of the types, we don't care about the
-/// wrapped types in here).
+/// `[Display, Option]`. If a type parameter has no trait bound, it is discarded.
+///
+/// Important note: It goes through generics recursively. So if you have
+/// `T: Option<Result<(), ()>>`, it'll go into `Option` and then into `Result`.
 crate fn get_real_types<'tcx>(
     generics: &Generics,
     arg: &Type,
@@ -329,7 +331,10 @@ crate fn get_real_types<'tcx>(
         return;
     }
 
+    // If this argument is a type parameter and not a trait bound or a type, we need to look
+    // for its bounds.
     if let Type::Generic(arg_s) = *arg {
+        // First we check if the bounds are in a `where` predicate...
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
             WherePredicate::BoundPredicate { ty, .. } => {
                 ty.def_id_no_primitives() == arg.def_id_no_primitives()
@@ -352,6 +357,7 @@ crate fn get_real_types<'tcx>(
             }
             insert_ty(res, tcx, arg.clone(), ty_generics);
         }
+        // Otherwise we check if the trait bounds are "inlined" like `T: Option<u32>`...
         if let Some(bound) = generics.params.iter().find(|g| g.is_type() && g.name == arg_s) {
             let mut ty_generics = Vec::new();
             for bound in bound.get_bounds().unwrap_or(&[]) {
@@ -363,6 +369,11 @@ crate fn get_real_types<'tcx>(
             insert_ty(res, tcx, arg.clone(), ty_generics);
         }
     } else {
+        // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
+        // looking at `Option`, we enter this "else" condition, otherwise if it's `T`, we don't.
+        //
+        // So in here, we can add it directly and look for its own type parameters (so for `Option`,
+        // we will look for them but not for `T`).
         let mut ty_generics = Vec::new();
         if let Some(arg_generics) = arg.generics() {
             for gen in arg_generics.iter() {

@@ -315,8 +315,13 @@ impl<'a> ResolverExpand for Resolver<'a> {
     }
 
     fn check_unused_macros(&mut self) {
-        for (_, &(node_id, span)) in self.unused_macros.iter() {
-            self.lint_buffer.buffer_lint(UNUSED_MACROS, node_id, span, "unused macro definition");
+        for (_, &(node_id, ident)) in self.unused_macros.iter() {
+            self.lint_buffer.buffer_lint(
+                UNUSED_MACROS,
+                node_id,
+                ident.span,
+                &format!("unused macro definition: `{}`", ident.as_str()),
+            );
         }
     }
 
