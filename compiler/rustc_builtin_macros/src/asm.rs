@@ -19,7 +19,7 @@ struct AsmArgs {
     operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxHashMap<Symbol, usize>,
     reg_args: FxHashSet<usize>,
-    clobber_abi: Option<(Symbol, Span)>,
+    clobber_abis: Vec<(Symbol, Span)>,
     options: ast::InlineAsmOptions,
     options_spans: Vec<Span>,
 }
@@ -64,7 +64,7 @@ fn parse_args<'a>(
         operands: vec![],
         named_args: FxHashMap::default(),
         reg_args: FxHashSet::default(),
-        clobber_abi: None,
+        clobber_abis: Vec::new(),
         options: ast::InlineAsmOptions::empty(),
         options_spans: vec![],
     };
@@ -210,9 +210,9 @@ fn parse_args<'a>(
                 .span_labels(args.options_spans.clone(), "previous options")
                 .span_label(span, "argument")
                 .emit();
-        } else if let Some((_, abi_span)) = args.clobber_abi {
+        } else if let Some((_, abi_span)) = args.clobber_abis.last() {
             ecx.struct_span_err(span, "arguments are not allowed after clobber_abi")
-                .span_label(abi_span, "clobber_abi")
+                .span_label(*abi_span, "clobber_abi")
                 .span_label(span, "argument")
                 .emit();
         }
@@ -322,10 +322,13 @@ fn parse_args<'a>(
         // Bail out now since this is likely to confuse MIR
         return Err(err);
     }
-    if let Some((_, abi_span)) = args.clobber_abi {
+
+    if args.clobber_abis.len() > 0 {
         if is_global_asm {
-            let err =
-                ecx.struct_span_err(abi_span, "`clobber_abi` cannot be used with `global_asm!`");
+            let err = ecx.struct_span_err(
+                args.clobber_abis.iter().map(|(_, span)| *span).collect::<Vec<Span>>(),
+                "`clobber_abi` cannot be used with `global_asm!`",
+            );
 
             // Bail out now since this is likely to confuse later stages
             return Err(err);
@@ -335,7 +338,10 @@ fn parse_args<'a>(
                 regclass_outputs.clone(),
                 "asm with `clobber_abi` must specify explicit registers for outputs",
             )
-            .span_label(abi_span, "clobber_abi")
+            .span_labels(
+                args.clobber_abis.iter().map(|(_, span)| *span).collect::<Vec<Span>>(),
+                "clobber_abi",
+            )
             .span_labels(regclass_outputs, "generic outputs")
             .emit();
         }
@@ -439,37 +445,61 @@ fn parse_clobber_abi<'a>(
 
     p.expect(&token::OpenDelim(token::DelimToken::Paren))?;
 
-    let clobber_abi = match p.parse_str_lit() {
-        Ok(str_lit) => str_lit.symbol_unescaped,
-        Err(opt_lit) => {
-            let span = opt_lit.map_or(p.token.span, |lit| lit.span);
-            let mut err = p.sess.span_diagnostic.struct_span_err(span, "expected string literal");
-            err.span_label(span, "not a string literal");
-            return Err(err);
-        }
-    };
-
-    p.expect(&token::CloseDelim(token::DelimToken::Paren))?;
-
-    let new_span = span_start.to(p.prev_token.span);
-
-    if let Some((_, prev_span)) = args.clobber_abi {
-        let mut err = p
-            .sess
-            .span_diagnostic
-            .struct_span_err(new_span, "clobber_abi specified multiple times");
-        err.span_label(prev_span, "clobber_abi previously specified here");
+    if p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
+        let err = p.sess.span_diagnostic.struct_span_err(
+            p.token.span,
+            "at least one abi must be provided as an argument to `clobber_abi`",
+        );
         return Err(err);
-    } else if !args.options_spans.is_empty() {
+    }
+
+    let mut new_abis = Vec::new();
+    loop {
+        match p.parse_str_lit() {
+            Ok(str_lit) => {
+                new_abis.push((str_lit.symbol_unescaped, str_lit.span));
+            }
+            Err(opt_lit) => {
+                // If the non-string literal is a closing paren then it's the end of the list and is fine
+                if p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
+                    break;
+                }
+                let span = opt_lit.map_or(p.token.span, |lit| lit.span);
+                let mut err =
+                    p.sess.span_diagnostic.struct_span_err(span, "expected string literal");
+                err.span_label(span, "not a string literal");
+                return Err(err);
+            }
+        };
+
+        // Allow trailing commas
+        if p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
+            break;
+        }
+        p.expect(&token::Comma)?;
+    }
+
+    let full_span = span_start.to(p.prev_token.span);
+
+    if !args.options_spans.is_empty() {
         let mut err = p
             .sess
             .span_diagnostic
-            .struct_span_err(new_span, "clobber_abi is not allowed after options");
+            .struct_span_err(full_span, "clobber_abi is not allowed after options");
         err.span_labels(args.options_spans.clone(), "options");
         return Err(err);
     }
 
-    args.clobber_abi = Some((clobber_abi, new_span));
+    match &new_abis[..] {
+        // should have errored above during parsing
+        [] => unreachable!(),
+        [(abi, _span)] => args.clobber_abis.push((*abi, full_span)),
+        [abis @ ..] => {
+            for (abi, span) in abis {
+                args.clobber_abis.push((*abi, *span));
+            }
+        }
+    }
 
     Ok(())
 }
@@ -770,7 +800,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
         template,
         template_strs: template_strs.into_boxed_slice(),
         operands: args.operands,
-        clobber_abi: args.clobber_abi,
+        clobber_abis: args.clobber_abis,
         options: args.options,
         line_spans,
     })
@@ -815,7 +845,7 @@ pub fn expand_global_asm<'cx>(
                     ident: Ident::empty(),
                     attrs: Vec::new(),
                     id: ast::DUMMY_NODE_ID,
-                    kind: ast::ItemKind::GlobalAsm(inline_asm),
+                    kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
                     vis: ast::Visibility {
                         span: sp.shrink_to_lo(),
                         kind: ast::VisibilityKind::Inherited,

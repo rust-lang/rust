@@ -319,7 +319,7 @@ fn call_foo(arg: i32) -> i32 {
 
 Note that the `fn` or `static` item does not need to be public or `#[no_mangle]`: the compiler will automatically insert the appropriate mangled symbol name into the assembly code.
 
-By default, `asm!` assumes that any register not specified as an output will have its contents preserved by the assembly code. The [`clobber_abi`](#abi-clobbers) argument to `asm!` tells the compiler to automatically insert the necessary clobber operands according to the given calling convention ABI: any register which is not fully preserved in that ABI will be treated as clobbered.
+By default, `asm!` assumes that any register not specified as an output will have its contents preserved by the assembly code. The [`clobber_abi`](#abi-clobbers) argument to `asm!` tells the compiler to automatically insert the necessary clobber operands according to the given calling convention ABI: any register which is not fully preserved in that ABI will be treated as clobbered.  Multiple `clobber_abi` arguments may be provided and all clobbers from all specified ABIs will be inserted.
 
 ## Register template modifiers
 
@@ -453,10 +453,10 @@ reg_spec := <register class> / "<explicit register>"
 operand_expr := expr / "_" / expr "=>" expr / expr "=>" "_"
 reg_operand := dir_spec "(" reg_spec ")" operand_expr
 operand := reg_operand / "const" const_expr / "sym" path
-clobber_abi := "clobber_abi(" <abi> ")"
+clobber_abi := "clobber_abi(" <abi> *["," <abi>] [","] ")"
 option := "pure" / "nomem" / "readonly" / "preserves_flags" / "noreturn" / "nostack" / "att_syntax" / "raw"
 options := "options(" option *["," option] [","] ")"
-asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) ["," clobber_abi] *("," options) [","] ")"
+asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) *("," clobber_abi) *("," options) [","] ")"
 ```
 
 Inline assembly is currently supported on the following architectures:
@@ -801,6 +801,8 @@ As stated in the previous section, passing an input value smaller than the regis
 ## ABI clobbers
 
 The `clobber_abi` keyword can be used to apply a default set of clobbers to an `asm` block. This will automatically insert the necessary clobber constraints as needed for calling a function with a particular calling convention: if the calling convention does not fully preserve the value of a register across a call then a `lateout("reg") _` is implicitly added to the operands list.
+
+`clobber_abi` may be specified any number of times. It will insert a clobber for all unique registers in the union of all specified calling conventions.
 
 Generic register class outputs are disallowed by the compiler when `clobber_abi` is used: all outputs must specify an explicit register. Explicit register outputs have precedence over the implicit clobbers inserted by `clobber_abi`: a clobber will only be inserted for a register if that register is not used as an output.
 The following ABIs can be used with `clobber_abi`:
