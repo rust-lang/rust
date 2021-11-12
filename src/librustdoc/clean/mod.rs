@@ -1560,14 +1560,23 @@ impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
 
 impl Clean<Item> for hir::FieldDef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
-        let what_rustc_thinks = Item::from_hir_id_and_parts(
-            self.hir_id,
+        let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
+        let what_rustc_thinks = Item::from_def_id_and_parts(
+            def_id,
             Some(self.ident.name),
             StructFieldItem(self.ty.clean(cx)),
             cx,
         );
-        // Don't show `pub` for fields on enum variants; they are always public
-        Item { visibility: self.vis.clean(cx), ..what_rustc_thinks }
+        let parent = cx.tcx.parent(def_id).unwrap();
+        match cx.tcx.def_kind(parent) {
+            DefKind::Struct | DefKind::Union => what_rustc_thinks,
+            DefKind::Variant => {
+                // Variant fields inherit their enum's visibility.
+                Item { visibility: Visibility::Inherited, ..what_rustc_thinks }
+            }
+            // FIXME: what about DefKind::Ctor?
+            parent_kind => panic!("unexpected parent kind: {:?}", parent_kind),
+        }
     }
 }
 
@@ -1581,24 +1590,6 @@ impl Clean<Item> for ty::FieldDef {
         );
         // Don't show `pub` for fields on enum variants; they are always public
         Item { visibility: self.vis.clean(cx), ..what_rustc_thinks }
-    }
-}
-
-impl Clean<Visibility> for hir::Visibility<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Visibility {
-        match self.node {
-            hir::VisibilityKind::Public => Visibility::Public,
-            hir::VisibilityKind::Inherited => Visibility::Inherited,
-            hir::VisibilityKind::Crate(_) => {
-                let krate = DefId::local(CRATE_DEF_INDEX);
-                Visibility::Restricted(krate)
-            }
-            hir::VisibilityKind::Restricted { ref path, .. } => {
-                let path = path.clean(cx);
-                let did = register_res(cx, path.res);
-                Visibility::Restricted(did)
-            }
-        }
     }
 }
 
@@ -1793,9 +1784,9 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                     clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
                 }
                 ItemKind::Macro(ref macro_def) => {
-                    let vis = item.vis.clean(cx);
+                    let ty_vis = cx.tcx.visibility(def_id).clean(cx);
                     MacroItem(Macro {
-                        source: display_macro_source(cx, name, macro_def, def_id, vis),
+                        source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
                     })
                 }
                 ItemKind::Trait(is_auto, unsafety, ref generics, bounds, item_ids) => {
@@ -1884,7 +1875,8 @@ fn clean_extern_crate(
     // this is the ID of the crate itself
     let crate_def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
     let attrs = cx.tcx.hir().attrs(krate.hir_id());
-    let please_inline = cx.tcx.visibility(krate.def_id).is_public()
+    let ty_vis = cx.tcx.visibility(krate.def_id);
+    let please_inline = ty_vis.is_public()
         && attrs.iter().any(|a| {
             a.has_name(sym::doc)
                 && match a.meta_item_list() {
@@ -1916,7 +1908,7 @@ fn clean_extern_crate(
         name: Some(name),
         attrs: box attrs.clean(cx),
         def_id: crate_def_id.into(),
-        visibility: krate.vis.clean(cx),
+        visibility: ty_vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },
         cfg: attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
     }]
