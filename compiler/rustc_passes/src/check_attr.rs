@@ -11,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, NestedMetaItem};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability};
-use rustc_feature::{AttributeType, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -148,7 +148,7 @@ impl CheckAttrVisitor<'tcx> {
             }
 
             if hir_id != CRATE_HIR_ID {
-                if let Some((_, AttributeType::CrateLevel, ..)) =
+                if let Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) =
                     attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
                 {
                     self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {

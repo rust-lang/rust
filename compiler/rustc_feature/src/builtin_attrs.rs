@@ -115,16 +115,26 @@ macro_rules! template {
 
 macro_rules! ungated {
     ($attr:ident, $typ:expr, $tpl:expr $(,)?) => {
-        (sym::$attr, $typ, $tpl, Ungated)
+        BuiltinAttribute { name: sym::$attr, type_: $typ, template: $tpl, gate: Ungated }
     };
 }
 
 macro_rules! gated {
     ($attr:ident, $typ:expr, $tpl:expr, $gate:ident, $msg:expr $(,)?) => {
-        (sym::$attr, $typ, $tpl, Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)))
+        BuiltinAttribute {
+            name: sym::$attr,
+            type_: $typ,
+            template: $tpl,
+            gate: Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)),
+        }
     };
     ($attr:ident, $typ:expr, $tpl:expr, $msg:expr $(,)?) => {
-        (sym::$attr, $typ, $tpl, Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)))
+        BuiltinAttribute {
+            name: sym::$attr,
+            type_: $typ,
+            template: $tpl,
+            gate: Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)),
+        }
     };
 }
 
@@ -143,12 +153,12 @@ macro_rules! rustc_attr {
         )
     };
     ($attr:ident, $typ:expr, $tpl:expr, $msg:expr $(,)?) => {
-        (
-            sym::$attr,
-            $typ,
-            $tpl,
-            Gated(Stability::Unstable, sym::rustc_attrs, $msg, cfg_fn!(rustc_attrs)),
-        )
+        BuiltinAttribute {
+            name: sym::$attr,
+            type_: $typ,
+            template: $tpl,
+            gate: Gated(Stability::Unstable, sym::rustc_attrs, $msg, cfg_fn!(rustc_attrs)),
+        }
     };
 }
 
@@ -161,7 +171,12 @@ macro_rules! experimental {
 const IMPL_DETAIL: &str = "internal implementation detail";
 const INTERNAL_UNSTABLE: &str = "this is an internal attribute that will never be stable";
 
-pub type BuiltinAttribute = (Symbol, AttributeType, AttributeTemplate, AttributeGate);
+pub struct BuiltinAttribute {
+    pub name: Symbol,
+    pub type_: AttributeType,
+    pub template: AttributeTemplate,
+    pub gate: AttributeGate,
+}
 
 /// Attributes that have a special meaning to rustc or rustdoc.
 #[rustfmt::skip]
@@ -290,9 +305,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Plugins:
-    (
-        sym::plugin, CrateLevel, template!(List: "name"),
-        Gated(
+    BuiltinAttribute {
+        name: sym::plugin,
+        type_: CrateLevel,
+        template: template!(List: "name"),
+        gate: Gated(
             Stability::Deprecated(
                 "https://github.com/rust-lang/rust/pull/64675",
                 Some("may be removed in a future compiler version"),
@@ -300,8 +317,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             sym::plugin,
             "compiler plugins are deprecated",
             cfg_fn!(plugin)
-        )
-    ),
+        ),
+    },
 
     // Testing:
     gated!(allow_fail, Normal, template!(Word), experimental!(allow_fail)),
@@ -497,17 +514,17 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         lang, Normal, template!(NameValueStr: "name"), lang_items,
         "language items are subject to change",
     ),
-    (
-        sym::rustc_diagnostic_item,
-        Normal,
-        template!(NameValueStr: "name"),
-        Gated(
+    BuiltinAttribute {
+        name: sym::rustc_diagnostic_item,
+        type_: Normal,
+        template: template!(NameValueStr: "name"),
+        gate: Gated(
             Stability::Unstable,
             sym::rustc_attrs,
             "diagnostic items compiler internal support for linting",
             cfg_fn!(rustc_attrs),
         ),
-    ),
+    },
     gated!(
         // Used in resolve:
         prelude_import, Normal, template!(Word),
@@ -601,7 +618,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 ];
 
 pub fn deprecated_attributes() -> Vec<&'static BuiltinAttribute> {
-    BUILTIN_ATTRIBUTES.iter().filter(|(.., gate)| gate.is_deprecated()).collect()
+    BUILTIN_ATTRIBUTES.iter().filter(|attr| attr.gate.is_deprecated()).collect()
 }
 
 pub fn is_builtin_attr_name(name: Symbol) -> bool {
@@ -612,8 +629,8 @@ pub static BUILTIN_ATTRIBUTE_MAP: SyncLazy<FxHashMap<Symbol, &BuiltinAttribute>>
     SyncLazy::new(|| {
         let mut map = FxHashMap::default();
         for attr in BUILTIN_ATTRIBUTES.iter() {
-            if map.insert(attr.0, attr).is_some() {
-                panic!("duplicate builtin attribute `{}`", attr.0);
+            if map.insert(attr.name, attr).is_some() {
+                panic!("duplicate builtin attribute `{}`", attr.name);
             }
         }
         map

@@ -731,7 +731,7 @@ impl<'a> Resolver<'a> {
                         suggestions.extend(
                             BUILTIN_ATTRIBUTES
                                 .iter()
-                                .map(|(name, ..)| TypoSuggestion::typo_from_res(*name, res)),
+                                .map(|attr| TypoSuggestion::typo_from_res(attr.name, res)),
                         );
                     }
                 }
