@@ -327,6 +327,10 @@ impl Error for VarError {
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "1.58.0",
+    reason = "unclear soundness on POSIX, use `libc::setenv` or `std::process::Command::env` instead"
+)]
 pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
     _set_var(key.as_ref(), value.as_ref())
 }
@@ -369,6 +373,10 @@ fn _set_var(key: &OsStr, value: &OsStr) {
 /// assert!(env::var(key).is_err());
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "1.58.0",
+    reason = "unclear soundness on POSIX, use `libc::unsetenv` or `std::process::Command::env_remove` instead"
+)]
 pub fn remove_var<K: AsRef<OsStr>>(key: K) {
     _remove_var(key.as_ref())
 }
