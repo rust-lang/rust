@@ -149,7 +149,7 @@ fn exec(
 }
 
 fn cargo_fmt(context: &FmtContext, path: &Path) -> Result<bool, CliError> {
-    let mut args = vec!["+nightly", "fmt", "--all"];
+    let mut args = vec!["fmt", "--all"];
     if context.check {
         args.push("--");
         args.push("--check");
@@ -162,7 +162,7 @@ fn cargo_fmt(context: &FmtContext, path: &Path) -> Result<bool, CliError> {
 fn rustfmt_test(context: &FmtContext) -> Result<(), CliError> {
     let program = "rustfmt";
     let dir = std::env::current_dir()?;
-    let args = &["+nightly", "--version"];
+    let args = &["--version"];
 
     if context.verbose {
         println!("{}", format_command(&program, &dir, args));
@@ -186,7 +186,7 @@ fn rustfmt_test(context: &FmtContext) -> Result<(), CliError> {
 }
 
 fn rustfmt(context: &FmtContext, path: &Path) -> Result<bool, CliError> {
-    let mut args = vec!["+nightly".as_ref(), path.as_os_str()];
+    let mut args = vec![path.as_os_str()];
     if context.check {
         args.push("--check".as_ref());
     }
