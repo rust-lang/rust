@@ -12,6 +12,7 @@ use std::env;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
+#[allow(deprecated, deprecated_in_future)]
 fn main() {
     let mut args = env::args();
     let me = args.next().unwrap();

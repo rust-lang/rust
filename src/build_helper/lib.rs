@@ -46,6 +46,7 @@ pub fn tracked_env_var_os<K: AsRef<OsStr> + Display>(key: K) -> Option<OsString>
 // the one we want to use. As such, we restore the environment to what bootstrap saw. This isn't
 // perfect -- we might actually want to see something from Cargo's added library paths -- but
 // for now it works.
+#[allow(deprecated, deprecated_in_future)]
 pub fn restore_library_path() {
     let key = tracked_env_var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
     if let Some(env) = tracked_env_var_os("REAL_LIBRARY_PATH") {

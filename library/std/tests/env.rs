@@ -1,3 +1,5 @@
+#![allow(deprecated, deprecated_in_future)]
+
 use std::env::*;
 use std::ffi::{OsStr, OsString};
 

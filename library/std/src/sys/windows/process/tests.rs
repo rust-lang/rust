@@ -73,6 +73,7 @@ fn test_make_command_line() {
 // On Windows, environment args are case preserving but comparisons are case-insensitive.
 // See: #85242
 #[test]
+#[allow(deprecated, deprecated_in_future)]
 fn windows_env_unicode_case() {
     let test_cases = [
         ("ä", "Ä"),

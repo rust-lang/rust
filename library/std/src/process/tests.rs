@@ -260,6 +260,7 @@ fn test_add_to_env() {
 
 #[test]
 #[cfg_attr(target_os = "vxworks", ignore)]
+#[allow(deprecated, deprecated_in_future)]
 fn test_capture_env_at_spawn() {
     use crate::env;
 

@@ -40,6 +40,7 @@ impl CommandEnv {
     }
 
     // Apply these changes directly to the current environment
+    #[allow(deprecated, deprecated_in_future)]
     pub fn apply(&self) {
         if self.clear {
             for (k, _) in env::vars_os() {

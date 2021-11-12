@@ -257,6 +257,7 @@ fn pre_expansion_lint(
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
+#[allow(deprecated, deprecated_in_future)]
 pub fn configure_and_expand(
     sess: &Session,
     lint_store: &LintStore,

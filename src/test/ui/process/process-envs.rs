@@ -25,6 +25,7 @@ pub fn env_cmd() -> Command {
     cmd
 }
 
+#[allow(deprecated, deprecated_in_future)]
 fn main() {
     // save original environment
     let old_env = env::var_os("RUN_TEST_NEW_ENV");

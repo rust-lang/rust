@@ -24,6 +24,7 @@ fn main() {
     }
 }
 
+#[allow(deprecated, deprecated_in_future)]
 fn runtest(me: &str) {
     env::remove_var("RUST_BACKTRACE");
     env::remove_var("RUST_LIB_BACKTRACE");

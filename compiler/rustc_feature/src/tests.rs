@@ -1,6 +1,7 @@
 use super::UnstableFeatures;
 
 #[test]
+#[allow(deprecated, deprecated_in_future)]
 fn rustc_bootstrap_parsing() {
     let is_bootstrap = |env, krate| {
         std::env::set_var("RUSTC_BOOTSTRAP", env);
