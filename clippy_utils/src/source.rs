@@ -128,7 +128,7 @@ pub fn reindent_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<us
 fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, ch: char) -> String {
     let x = s
         .lines()
-        .skip(ignore_first as usize)
+        .skip(usize::from(ignore_first))
         .filter_map(|l| {
             if l.is_empty() {
                 None
