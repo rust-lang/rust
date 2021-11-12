@@ -25,18 +25,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2.3.3
 
-    - name: remove toolchain file
-      run: rm rust-toolchain
-
-    - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.6
-      with:
-        toolchain: nightly
-        target: x86_64-unknown-linux-gnu
-        profile: minimal
-        components: rustfmt
-        default: true
-
     # Run
     - name: Build
       run: cargo build --features deny-warnings
