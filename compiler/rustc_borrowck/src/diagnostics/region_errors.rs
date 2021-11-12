@@ -398,15 +398,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         diag.span_label(*span, message);
 
-        // FIXME(project-rfc-2229#48): This should store a captured_place not a hir id
-        if let ReturnConstraint::ClosureUpvar(upvar) = kind {
-            let def_id = match self.regioncx.universal_regions().defining_ty {
-                DefiningTy::Closure(def_id, _) => def_id,
-                ty => bug!("unexpected DefiningTy {:?}", ty),
-            };
+        if let ReturnConstraint::ClosureUpvar(upvar_field) = kind {
+            // let def_id = match self.regioncx.universal_regions().defining_ty {
+            //     DefiningTy::Closure(def_id, _) => def_id,
+            //     ty => bug!("unexpected DefiningTy {:?}", ty),
+            // };
 
-            let upvar_def_span = self.infcx.tcx.hir().span(upvar);
-            let upvar_span = self.infcx.tcx.upvars_mentioned(def_id).unwrap()[&upvar].span;
+            let upvar_capture_info = self.upvars[upvar_field.index()].place.info;
+
+            let upvar_def_span =
+                self.infcx.tcx.hir().span(upvar_capture_info.capture_kind_expr_id.unwrap());
+            let upvar_span = self.infcx.tcx.hir().span(upvar_capture_info.path_expr_id.unwrap());
             diag.span_label(upvar_def_span, "variable defined here");
             diag.span_label(upvar_span, "variable captured here");
         }

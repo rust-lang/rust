@@ -44,18 +44,6 @@ impl fmt::Display for HirId {
     }
 }
 
-impl Ord for HirId {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.index()).cmp(&(other.index()))
-    }
-}
-
-impl PartialOrd for HirId {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
-    }
-}
-
 rustc_data_structures::define_id_collections!(HirIdMap, HirIdSet, HirId);
 rustc_data_structures::define_id_collections!(ItemLocalMap, ItemLocalSet, ItemLocalId);
 

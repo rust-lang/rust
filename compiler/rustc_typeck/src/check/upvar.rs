@@ -86,7 +86,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// Intermediate format to store the hir_id pointing to the use that resulted in the
 /// corresponding place being captured and a String which contains the captured value's
 /// name (i.e: a.b.c)
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 enum UpvarMigrationInfo {
     /// We previously captured all of `x`, but now we capture some sub-path.
     CapturingPrecise { source_expr: Option<hir::HirId>, var_name: String },
@@ -94,6 +94,43 @@ enum UpvarMigrationInfo {
         // where the variable appears in the closure (but is not captured)
         use_span: Span,
     },
+}
+
+// This is needed becuase `HirId` does not implement `Ord`
+impl Ord for UpvarMigrationInfo {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        type SortKey = (Option<(usize, usize)>, Option<String>, Option<Span>);
+
+        let s: SortKey = match self {
+            Self::CapturingPrecise { source_expr, var_name } => {
+                let i = match source_expr {
+                    Some(h) => Some(h.index()),
+                    None => None,
+                };
+                (i, Some(var_name.to_string()), None)
+            }
+            Self::CapturingNothing { use_span } => (None, None, Some(*use_span)),
+        };
+
+        let o: SortKey = match other {
+            Self::CapturingPrecise { source_expr, var_name } => {
+                let i = match source_expr {
+                    Some(h) => Some(h.index()),
+                    None => None,
+                };
+                (i, Some(var_name.to_string()), None)
+            }
+            Self::CapturingNothing { use_span } => (None, None, Some(*use_span)),
+        };
+
+        s.cmp(&o)
+    }
+}
+
+impl PartialOrd for UpvarMigrationInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(&other))
+    }
 }
 
 /// Reasons that we might issue a migration warning.
