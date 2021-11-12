@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- Bumped minimum Rust version to 1.65.1 and edition to 2021
+- Bumped minimum Rust version to 1.56.1 and edition to 2021
 - Added `From<[T; N]>` and `From<[(K, V); N]>` for `HashSet` and `HashMap` respectively (#297)
 
 ## [v0.11.2] - 2021-03-25
