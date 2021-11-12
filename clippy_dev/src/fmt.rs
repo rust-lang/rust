@@ -1,6 +1,7 @@
 use crate::clippy_project_root;
+use itertools::Itertools;
 use shell_escape::escape;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::{self, Command};
 use std::{fs, io};
@@ -56,15 +57,22 @@ pub fn run(check: bool, verbose: bool) {
         success &= cargo_fmt(context, &project_root.join("rustc_tools_util"))?;
         success &= cargo_fmt(context, &project_root.join("lintcheck"))?;
 
-        for entry in WalkDir::new(project_root.join("tests")) {
-            let entry = entry?;
-            let path = entry.path();
+        let chunks = WalkDir::new(project_root.join("tests"))
+            .into_iter()
+            .filter_map(|entry| {
+                let entry = entry.expect("failed to find tests");
+                let path = entry.path();
 
-            if path.extension() != Some("rs".as_ref()) || entry.file_name() == "ice-3891.rs" {
-                continue;
-            }
+                if path.extension() != Some("rs".as_ref()) || entry.file_name() == "ice-3891.rs" {
+                    None
+                } else {
+                    Some(entry.into_path().into_os_string())
+                }
+            })
+            .chunks(250);
 
-            success &= rustfmt(context, path)?;
+        for chunk in &chunks {
+            success &= rustfmt(context, chunk)?;
         }
 
         Ok(success)
@@ -185,14 +193,14 @@ fn rustfmt_test(context: &FmtContext) -> Result<(), CliError> {
     }
 }
 
-fn rustfmt(context: &FmtContext, path: &Path) -> Result<bool, CliError> {
-    let mut args = vec![path.as_os_str()];
+fn rustfmt(context: &FmtContext, paths: impl Iterator<Item = OsString>) -> Result<bool, CliError> {
+    let mut args = Vec::new();
     if context.check {
-        args.push("--check".as_ref());
+        args.push(OsString::from("--check"));
     }
+    args.extend(paths);
+
     let success = exec(context, "rustfmt", std::env::current_dir()?, &args)?;
-    if !success {
-        eprintln!("rustfmt failed on {}", path.display());
-    }
+
     Ok(success)
 }
