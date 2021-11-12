@@ -40,9 +40,9 @@ fn main() {
         asm!("", clobber_abi(foo));
         //~^ ERROR expected string literal
         asm!("", clobber_abi("C" foo));
-        //~^ ERROR expected `)`, found `foo`
+        //~^ ERROR expected one of `)` or `,`, found `foo`
         asm!("", clobber_abi("C", foo));
-        //~^ ERROR expected `)`, found `,`
+        //~^ ERROR expected string literal
         asm!("{}", clobber_abi("C"), const foo);
         //~^ ERROR arguments are not allowed after clobber_abi
         //~^^ ERROR attempt to use a non-constant value in a constant
@@ -108,9 +108,9 @@ global_asm!("{}", options(), const FOO);
 global_asm!("", clobber_abi(FOO));
 //~^ ERROR expected string literal
 global_asm!("", clobber_abi("C" FOO));
-//~^ ERROR expected `)`, found `FOO`
+//~^ ERROR expected one of `)` or `,`, found `FOO`
 global_asm!("", clobber_abi("C", FOO));
-//~^ ERROR expected `)`, found `,`
+//~^ ERROR expected string literal
 global_asm!("{}", clobber_abi("C"), const FOO);
 //~^ ERROR arguments are not allowed after clobber_abi
 //~^^ ERROR `clobber_abi` cannot be used with `global_asm!`
