@@ -40,14 +40,23 @@ pub(super) fn check(
         },
     );
 
+    let message = if cast_from.is_bool() {
+        format!(
+            "casting `{0:}` to `{1:}` is more cleanly stated with `{1:}::from(_)`",
+            cast_from, cast_to
+        )
+    } else {
+        format!(
+            "casting `{}` to `{}` may become silently lossy if you later change the type",
+            cast_from, cast_to
+        )
+    };
+
     span_lint_and_sugg(
         cx,
         CAST_LOSSLESS,
         expr.span,
-        &format!(
-            "casting `{}` to `{}` may become silently lossy if you later change the type",
-            cast_from, cast_to
-        ),
+        &message,
         "try",
         format!("{}::from({})", cast_to, sugg),
         applicability,
