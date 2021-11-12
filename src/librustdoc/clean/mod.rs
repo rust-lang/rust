@@ -1792,9 +1792,12 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 ItemKind::Fn(ref sig, ref generics, body_id) => {
                     clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
                 }
-                ItemKind::Macro(ref macro_def) => MacroItem(Macro {
-                    source: display_macro_source(cx, name, macro_def, def_id, item.vis),
-                }),
+                ItemKind::Macro(ref macro_def) => {
+                    let vis = item.vis.clean(cx);
+                    MacroItem(Macro {
+                        source: display_macro_source(cx, name, macro_def, def_id, vis),
+                    })
+                }
                 ItemKind::Trait(is_auto, unsafety, ref generics, bounds, item_ids) => {
                     let items = item_ids
                         .iter()
