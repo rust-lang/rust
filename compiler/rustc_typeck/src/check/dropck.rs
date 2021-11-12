@@ -239,9 +239,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                     ty::PredicateKind::ConstEvaluatable(a),
                     ty::PredicateKind::ConstEvaluatable(b),
                 ) => tcx.try_unify_abstract_consts((a, b)),
-                (ty::PredicateKind::TypeOutlives(a), ty::PredicateKind::TypeOutlives(b)) => {
-                    relator.relate(predicate.rebind(a.0), p.rebind(b.0)).is_ok()
-                }
                 _ => predicate == p,
             }
         };
