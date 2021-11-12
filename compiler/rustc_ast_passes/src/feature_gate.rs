@@ -3,7 +3,7 @@ use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{AssocTyConstraint, AssocTyConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd, VariantData};
 use rustc_errors::struct_span_err;
-use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{AttributeGate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue};
 use rustc_session::parse::{feature_err, feature_err_issue};
 use rustc_session::Session;
@@ -301,11 +301,14 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        let attr_info =
-            attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).map(|a| **a);
+        let attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
         // Check feature gates for built-in attributes.
-        if let Some((.., AttributeGate::Gated(_, name, descr, has_feature))) = attr_info {
-            gate_feature_fn!(self, has_feature, attr.span, name, descr);
+        if let Some(BuiltinAttribute {
+            gate: AttributeGate::Gated(_, name, descr, has_feature),
+            ..
+        }) = attr_info
+        {
+            gate_feature_fn!(self, has_feature, attr.span, *name, descr);
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {

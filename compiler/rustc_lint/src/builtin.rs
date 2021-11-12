@@ -32,8 +32,7 @@ use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
-use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, AttributeType};
-use rustc_feature::{GateIssue, Stability};
+use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
@@ -959,7 +958,7 @@ impl EarlyLintPass for AnonymousParameters {
 pub struct DeprecatedAttr {
     // This is not free to compute, so we want to keep it around, rather than
     // compute it for every attribute.
-    depr_attrs: Vec<&'static (Symbol, AttributeType, AttributeTemplate, AttributeGate)>,
+    depr_attrs: Vec<&'static BuiltinAttribute>,
 }
 
 impl_lint_pass!(DeprecatedAttr => []);
@@ -990,14 +989,14 @@ fn lint_deprecated_attr(
 
 impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
-        for &&(n, _, _, ref g) in &self.depr_attrs {
-            if attr.ident().map(|ident| ident.name) == Some(n) {
+        for BuiltinAttribute { name, gate, .. } in &self.depr_attrs {
+            if attr.ident().map(|ident| ident.name) == Some(*name) {
                 if let &AttributeGate::Gated(
                     Stability::Deprecated(link, suggestion),
                     name,
                     reason,
                     _,
-                ) = g
+                ) = gate
                 {
                     let msg =
                         format!("use of deprecated attribute `{}`: {}. See {}", name, reason, link);
