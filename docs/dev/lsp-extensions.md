@@ -272,7 +272,7 @@ interface SsrParams {
     /// The specific syntax is specified outside of the protocol.
     query: string,
     /// If true, only check the syntax of the query and don't compute the actual edit.
-    parseOnly: bool,
+    parseOnly: boolean,
     /// The current text document. This and `position` will be used to determine in what scope
     /// paths in `query` should be resolved.
     textDocument: TextDocumentIdentifier;
@@ -449,7 +449,7 @@ interface ServerStatusParams {
     health: "ok" | "warning" | "error",
     /// Is there any pending background work which might change the status?
     /// For example, are dependencies being downloaded?
-    quiescent: bool,
+    quiescent: boolean,
     /// Explanatory message to show on hover.
     message?: string,
 }
