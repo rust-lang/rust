@@ -621,100 +621,41 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn reverse(&mut self) {
-        let mut i: usize = 0;
-        let ln = self.len();
+        let half_len = self.len() / 2;
+        let Range { start, end } = self.as_mut_ptr_range();
 
-        // For very small types, all the individual reads in the normal
-        // path perform poorly.  We can do better, given efficient unaligned
-        // load/store, by loading a larger chunk and reversing a register.
-
-        // Ideally LLVM would do this for us, as it knows better than we do
-        // whether unaligned reads are efficient (since that changes between
-        // different ARM versions, for example) and what the best chunk size
-        // would be.  Unfortunately, as of LLVM 4.0 (2017-05) it only unrolls
-        // the loop, so we need to do this ourselves.  (Hypothesis: reverse
-        // is troublesome because the sides can be aligned differently --
-        // will be, when the length is odd -- so there's no way of emitting
-        // pre- and postludes to use fully-aligned SIMD in the middle.)
-
-        let fast_unaligned = cfg!(any(target_arch = "x86", target_arch = "x86_64"));
-
-        if fast_unaligned && mem::size_of::<T>() == 1 {
-            // Use the llvm.bswap intrinsic to reverse u8s in a usize
-            let chunk = mem::size_of::<usize>();
-            while i + chunk - 1 < ln / 2 {
-                // SAFETY: There are several things to check here:
-                //
-                // - Note that `chunk` is either 4 or 8 due to the cfg check
-                //   above. So `chunk - 1` is positive.
-                // - Indexing with index `i` is fine as the loop check guarantees
-                //   `i + chunk - 1 < ln / 2`
-                //   <=> `i < ln / 2 - (chunk - 1) < ln / 2 < ln`.
-                // - Indexing with index `ln - i - chunk = ln - (i + chunk)` is fine:
-                //   - `i + chunk > 0` is trivially true.
-                //   - The loop check guarantees:
-                //     `i + chunk - 1 < ln / 2`
-                //     <=> `i + chunk ≤ ln / 2 ≤ ln`, thus subtraction does not underflow.
-                // - The `read_unaligned` and `write_unaligned` calls are fine:
-                //   - `pa` points to index `i` where `i < ln / 2 - (chunk - 1)`
-                //     (see above) and `pb` points to index `ln - i - chunk`, so
-                //     both are at least `chunk`
-                //     many bytes away from the end of `self`.
-                //   - Any initialized memory is valid `usize`.
-                unsafe {
-                    let ptr = self.as_mut_ptr();
-                    let pa = ptr.add(i);
-                    let pb = ptr.add(ln - i - chunk);
-                    let va = ptr::read_unaligned(pa as *mut usize);
-                    let vb = ptr::read_unaligned(pb as *mut usize);
-                    ptr::write_unaligned(pa as *mut usize, vb.swap_bytes());
-                    ptr::write_unaligned(pb as *mut usize, va.swap_bytes());
-                }
-                i += chunk;
-            }
-        }
-
-        if fast_unaligned && mem::size_of::<T>() == 2 {
-            // Use rotate-by-16 to reverse u16s in a u32
-            let chunk = mem::size_of::<u32>() / 2;
-            while i + chunk - 1 < ln / 2 {
-                // SAFETY: An unaligned u32 can be read from `i` if `i + 1 < ln`
-                // (and obviously `i < ln`), because each element is 2 bytes and
-                // we're reading 4.
-                //
-                // `i + chunk - 1 < ln / 2` # while condition
-                // `i + 2 - 1 < ln / 2`
-                // `i + 1 < ln / 2`
-                //
-                // Since it's less than the length divided by 2, then it must be
-                // in bounds.
-                //
-                // This also means that the condition `0 < i + chunk <= ln` is
-                // always respected, ensuring the `pb` pointer can be used
-                // safely.
-                unsafe {
-                    let ptr = self.as_mut_ptr();
-                    let pa = ptr.add(i);
-                    let pb = ptr.add(ln - i - chunk);
-                    let va = ptr::read_unaligned(pa as *mut u32);
-                    let vb = ptr::read_unaligned(pb as *mut u32);
-                    ptr::write_unaligned(pa as *mut u32, vb.rotate_left(16));
-                    ptr::write_unaligned(pb as *mut u32, va.rotate_left(16));
-                }
-                i += chunk;
-            }
-        }
-
-        while i < ln / 2 {
-            // SAFETY: `i` is inferior to half the length of the slice so
-            // accessing `i` and `ln - i - 1` is safe (`i` starts at 0 and
-            // will not go further than `ln / 2 - 1`).
-            // The resulting pointers `pa` and `pb` are therefore valid and
-            // aligned, and can be read from and written to.
+        // These slices will skip the middle item for an odd length,
+        // since that one doesn't need to move.
+        let (front_half, back_half) =
+            // SAFETY: Both are subparts of the original slice, so the memory
+            // range is valid, and they don't overlap because they're each only
+            // half (or less) of the original slice.
             unsafe {
-                self.swap_unchecked(i, ln - i - 1);
+                (
+                    slice::from_raw_parts_mut(start, half_len),
+                    slice::from_raw_parts_mut(end.sub(half_len), half_len),
+                )
+            };
+
+        // Introducing a function boundary here means that the two halves
+        // get `noalias` markers, allowing better optimization as LLVM
+        // knows that they're disjoint, unlike in the original slice.
+        revswap(front_half, back_half, half_len);
+
+        #[inline]
+        fn revswap<T>(a: &mut [T], b: &mut [T], n: usize) {
+            debug_assert_eq!(a.len(), n);
+            debug_assert_eq!(b.len(), n);
+
+            // Because this function is first compiled in isolation,
+            // this check tells LLVM that the indexing below is
+            // in-bounds.  Then after inlining -- once the actual
+            // lengths of the slices are known -- it's removed.
+            let (a, b) = (&mut a[..n], &mut b[..n]);
+
+            for i in 0..n {
+                mem::swap(&mut a[i], &mut b[n - 1 - i]);
             }
-            i += 1;
         }
     }
 
