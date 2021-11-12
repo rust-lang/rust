@@ -326,13 +326,13 @@ impl CargoActor {
         );
         match output {
             Ok(_) if read_at_least_one_message => Ok(()),
-            Ok(output) if output.status.success() => {
+            Ok(output) if output.status.success() => Ok(()),
+            Ok(output)  => {
                 Err(io::Error::new(io::ErrorKind::Other, format!(
                     "Cargo watcher failed, the command produced no valid metadata (exit code: {:?})",
                     output.status
                 )))
             }
-            Ok(_) => Err(io::Error::new(io::ErrorKind::Other, error)),
             Err(e) => Err(e),
         }
     }
