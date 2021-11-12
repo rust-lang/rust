@@ -26,7 +26,6 @@ crate enum ExternalLocation {
 /// Builds the search index from the collected metadata
 crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<'tcx>) -> String {
     let mut defid_to_pathid = FxHashMap::default();
-    let mut crate_items = Vec::with_capacity(cache.search_index.len());
     let mut crate_paths = vec![];
 
     // Attach all orphan items to the type's definition if the type
@@ -77,34 +76,38 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
 
     // Reduce `DefId` in paths into smaller sequential numbers,
     // and prune the paths that do not appear in the index.
-    let mut lastpath = String::new();
+    let mut lastpath = "";
     let mut lastpathid = 0usize;
 
-    for item in search_index {
-        item.parent_idx = item.parent.and_then(|defid| match defid_to_pathid.entry(defid) {
-            Entry::Occupied(entry) => Some(*entry.get()),
-            Entry::Vacant(entry) => {
-                let pathid = lastpathid;
-                entry.insert(pathid);
-                lastpathid += 1;
+    let crate_items: Vec<&IndexItem> = search_index
+        .iter_mut()
+        .map(|item| {
+            item.parent_idx = item.parent.and_then(|defid| match defid_to_pathid.entry(defid) {
+                Entry::Occupied(entry) => Some(*entry.get()),
+                Entry::Vacant(entry) => {
+                    let pathid = lastpathid;
+                    entry.insert(pathid);
+                    lastpathid += 1;
 
-                if let Some(&(ref fqp, short)) = paths.get(&defid) {
-                    crate_paths.push((short, fqp.last().unwrap().clone()));
-                    Some(pathid)
-                } else {
-                    None
+                    if let Some(&(ref fqp, short)) = paths.get(&defid) {
+                        crate_paths.push((short, fqp.last().unwrap().clone()));
+                        Some(pathid)
+                    } else {
+                        None
+                    }
                 }
-            }
-        });
+            });
 
-        // Omit the parent path if it is same to that of the prior item.
-        if lastpath == item.path {
-            item.path.clear();
-        } else {
-            lastpath = item.path.clone();
-        }
-        crate_items.push(&*item);
-    }
+            // Omit the parent path if it is same to that of the prior item.
+            if lastpath == &item.path {
+                item.path.clear();
+            } else {
+                lastpath = &item.path;
+            }
+
+            &*item
+        })
+        .collect();
 
     struct CrateData<'a> {
         doc: String,
