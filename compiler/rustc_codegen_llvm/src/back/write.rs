@@ -337,13 +337,8 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
 
             if enabled {
                 diag_handler.note_without_error(&format!(
-                    "optimization {} for {} at {}:{}:{}: {}",
-                    opt.kind.describe(),
-                    opt.pass_name,
-                    opt.filename,
-                    opt.line,
-                    opt.column,
-                    opt.message
+                    "{}:{}:{}: {}: {}",
+                    opt.filename, opt.line, opt.column, opt.pass_name, opt.message,
                 ));
             }
         }
