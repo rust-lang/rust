@@ -612,6 +612,9 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
     static HAS_SENDFILE: AtomicBool = AtomicBool::new(true);
     static HAS_SPLICE: AtomicBool = AtomicBool::new(true);
 
+    // Android builds use feature level 14, but the libc wrapper for splice is
+    // gated on feature level 21+, so we have to invoke the syscall directly.
+    #[cfg(target_os = "android")]
     syscall! {
         fn splice(
             srcfd: libc::c_int,
@@ -622,6 +625,9 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
             flags: libc::c_int
         ) -> libc::ssize_t
     }
+
+    #[cfg(target_os = "linux")]
+    use libc::splice;
 
     match mode {
         SpliceMode::Sendfile if !HAS_SENDFILE.load(Ordering::Relaxed) => {
