@@ -567,7 +567,7 @@ mod parse {
             v => {
                 let mut passes = vec![];
                 if parse_list(&mut passes, v) {
-                    *slot = Passes::Some(passes);
+                    slot.extend(passes);
                     true
                 } else {
                     false
