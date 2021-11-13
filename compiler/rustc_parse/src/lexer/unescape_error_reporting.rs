@@ -7,6 +7,10 @@ use rustc_errors::{pluralize, Applicability, Handler};
 use rustc_lexer::unescape::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 
+fn printing(ch: char) -> bool {
+    unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0) != 0 && !ch.is_whitespace()
+}
+
 pub(crate) fn emit_unescape_error(
     handler: &Handler,
     // interior part of the literal, without quotes
@@ -83,13 +87,24 @@ pub(crate) fn emit_unescape_error(
                     );
                 }
             } else {
-                if lit.chars().filter(|x| x.is_whitespace() || x.is_control()).count() >= 1 {
+                let printable: Vec<char> = lit.chars().filter(|x| printing(*x)).collect();
+
+                if let [ch] = printable.as_slice() {
+                    has_help = true;
+
                     handler.span_note(
                         span,
                         &format!(
                             "there are non-printing characters, the full sequence is `{}`",
                             lit.escape_default(),
                         ),
+                    );
+
+                    handler.span_suggestion(
+                        span,
+                        "consider removing the non-printing characters",
+                        ch.to_string(),
+                        Applicability::MaybeIncorrect,
                     );
                 }
             }
