@@ -295,6 +295,32 @@ where
     result
 }
 
+#[instrument(level = "info", skip(selcx, param_env, cause, obligations))]
+pub fn try_normalize_with_depth_to<'a, 'b, 'tcx, T>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+    depth: usize,
+    value: T,
+    obligations: &mut Vec<PredicateObligation<'tcx>>,
+) -> T
+where
+    T: TypeFoldable<'tcx>,
+{
+    debug!(obligations.len = obligations.len());
+    let mut normalizer = AssocTypeNormalizer::new_without_eager_inference_replacement(
+        selcx,
+        param_env,
+        cause,
+        depth,
+        obligations,
+    );
+    let result = ensure_sufficient_stack(|| normalizer.fold(value));
+    debug!(?result, obligations.len = normalizer.obligations.len());
+    debug!(?normalizer.obligations,);
+    result
+}
+
 pub(crate) fn needs_normalization<'tcx, T: TypeFoldable<'tcx>>(value: &T, reveal: Reveal) -> bool {
     match reveal {
         Reveal::UserFacing => value
@@ -314,6 +340,10 @@ struct AssocTypeNormalizer<'a, 'b, 'tcx> {
     obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     depth: usize,
     universes: Vec<Option<ty::UniverseIndex>>,
+    /// If true, when a projection is unable to be completed, an inference
+    /// variable will be created and an obligation registered to project to that
+    /// inference variable. Also, constants will be eagerly evaluated.
+    eager_inference_replacement: bool,
 }
 
 impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
@@ -324,7 +354,33 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         depth: usize,
         obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     ) -> AssocTypeNormalizer<'a, 'b, 'tcx> {
-        AssocTypeNormalizer { selcx, param_env, cause, obligations, depth, universes: vec![] }
+        AssocTypeNormalizer {
+            selcx,
+            param_env,
+            cause,
+            obligations,
+            depth,
+            universes: vec![],
+            eager_inference_replacement: true,
+        }
+    }
+
+    fn new_without_eager_inference_replacement(
+        selcx: &'a mut SelectionContext<'b, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: ObligationCause<'tcx>,
+        depth: usize,
+        obligations: &'a mut Vec<PredicateObligation<'tcx>>,
+    ) -> AssocTypeNormalizer<'a, 'b, 'tcx> {
+        AssocTypeNormalizer {
+            selcx,
+            param_env,
+            cause,
+            obligations,
+            depth,
+            universes: vec![],
+            eager_inference_replacement: false,
+        }
     }
 
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
@@ -428,14 +484,28 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 // there won't be bound vars there.
 
                 let data = data.super_fold_with(self);
-                let normalized_ty = normalize_projection_type(
-                    self.selcx,
-                    self.param_env,
-                    data,
-                    self.cause.clone(),
-                    self.depth,
-                    &mut self.obligations,
-                );
+                let normalized_ty = if self.eager_inference_replacement {
+                    normalize_projection_type(
+                        self.selcx,
+                        self.param_env,
+                        data,
+                        self.cause.clone(),
+                        self.depth,
+                        &mut self.obligations,
+                    )
+                } else {
+                    opt_normalize_projection_type(
+                        self.selcx,
+                        self.param_env,
+                        data,
+                        self.cause.clone(),
+                        self.depth,
+                        &mut self.obligations,
+                    )
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| ty::Term::Ty(ty.super_fold_with(self)))
+                };
                 debug!(
                     ?self.depth,
                     ?ty,
@@ -501,7 +571,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold_const(&mut self, constant: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if self.selcx.tcx().lazy_normalization() {
+        if self.selcx.tcx().lazy_normalization() || !self.eager_inference_replacement {
             constant
         } else {
             let constant = constant.super_fold_with(self);
