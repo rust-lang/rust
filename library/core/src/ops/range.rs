@@ -113,7 +113,7 @@ impl<Idx: Add<Idx, Output=Idx> + Copy> Range<Idx> {
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
     pub fn offset_to(&self, position: Idx) -> Range<Idx> {
-        (position+self.start)..(position+self.end)
+        (position + self.start)..(position + self.end)
     }
 }
 
@@ -132,7 +132,7 @@ impl<Idx: Sub<Idx, Output=Idx> + Copy> Range<Idx> {
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
     pub fn offset_from(&self, position: Idx) -> Range<Idx> {
-        (self.start-position)..(self.end-position)
+        (self.start - position)..(self.end - position)
     }
 }
 
@@ -254,7 +254,7 @@ impl<Idx: Add<Idx, Output=Idx> + Copy> RangeFrom<Idx> {
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
     pub fn offset_to(&self, position: Idx) -> RangeFrom<Idx> {
-        (position+self.start)..
+        (position + self.start)..
     }
 }
 
@@ -273,7 +273,7 @@ impl<Idx: Sub<Idx, Output=Idx> + Copy> RangeFrom<Idx> {
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
     pub fn offset_from(&self, position: Idx) -> RangeFrom<Idx> {
-        (self.start-position)..
+        (self.start - position)..
     }
 }
 
@@ -373,7 +373,7 @@ impl<Idx: Add<Idx, Output=Idx> + Copy> RangeTo<Idx> {
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
     pub fn offset_to(&self, position: Idx) -> RangeTo<Idx> {
-        ..(position+self.end)
+        ..(position + self.end)
     }
 }
 
@@ -392,7 +392,7 @@ impl<Idx: Sub<Idx, Output=Idx> + Copy> RangeTo<Idx> {
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
     pub fn offset_from(&self, position: Idx) -> RangeTo<Idx> {
-        ..(self.end-position)
+        ..(self.end - position)
     }
 }
 
@@ -487,11 +487,7 @@ impl<Idx: Add<Idx, Output=Idx> + Copy> RangeInclusive<Idx> {
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
     pub fn offset_to(&self, position: Idx) -> RangeInclusive<Idx> {
-        Self {
-            start: position+self.start,
-            end: position+self.end,
-            exhausted: self.exhausted,
-        }
+        Self { start: position + self.start, end: position + self.end, exhausted: self.exhausted }
     }
 }
 
@@ -510,11 +506,7 @@ impl<Idx: Sub<Idx, Output=Idx> + Copy> RangeInclusive<Idx> {
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
     pub fn offset_from(&self, position: Idx) -> RangeInclusive<Idx> {
-        Self {
-            start: self.start-position,
-            end: self.end-position,
-            exhausted: self.exhausted,
-        }
+        Self { start: self.start - position, end: self.end - position, exhausted: self.exhausted }
     }
 }
 
@@ -775,7 +767,7 @@ impl<Idx: Add<Idx, Output=Idx> + Copy> RangeToInclusive<Idx> {
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
     pub fn offset_to(&self, position: Idx) -> RangeToInclusive<Idx> {
-        ..=position+self.end
+        ..=(position + self.end)
     }
 }
 
@@ -794,7 +786,7 @@ impl<Idx: Sub<Idx, Output=Idx> + Copy> RangeToInclusive<Idx> {
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
     pub fn offset_from(&self, position: Idx) -> RangeToInclusive<Idx> {
-        ..=self.end-position
+        ..=(self.end - position)
     }
 }
 
