@@ -2166,7 +2166,7 @@ fn sidebar_deref_methods(
         }
 
         // Recurse into any further impls that might exist for `target`
-        if let Some(target_did) = target.def_id_no_primitives() {
+        if let Some(target_did) = target.def_id(c) {
             if let Some(target_impls) = c.impls.get(&target_did) {
                 if let Some(target_deref_impl) = target_impls.iter().find(|i| {
                     i.inner_impl()

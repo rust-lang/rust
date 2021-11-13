@@ -42,7 +42,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 desc,
                 parent: Some(did),
                 parent_idx: None,
-                search_type: get_index_search_type(item, tcx),
+                search_type: get_index_search_type(item, tcx, cache),
                 aliases: item.attrs.get_doc_aliases(),
             });
         }
@@ -194,11 +194,12 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
 crate fn get_index_search_type<'tcx>(
     item: &clean::Item,
     tcx: TyCtxt<'tcx>,
+    cache: &Cache,
 ) -> Option<IndexItemFunctionType> {
     let (mut inputs, mut output) = match *item.kind {
-        clean::FunctionItem(ref f) => get_all_types(&f.generics, &f.decl, tcx),
-        clean::MethodItem(ref m, _) => get_all_types(&m.generics, &m.decl, tcx),
-        clean::TyMethodItem(ref m) => get_all_types(&m.generics, &m.decl, tcx),
+        clean::FunctionItem(ref f) => get_all_types(&f.generics, &f.decl, tcx, cache),
+        clean::MethodItem(ref m, _) => get_all_types(&m.generics, &m.decl, tcx, cache),
+        clean::TyMethodItem(ref m) => get_all_types(&m.generics, &m.decl, tcx, cache),
         _ => return None,
     };
 
@@ -254,12 +255,14 @@ crate fn get_real_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     recurse: usize,
     res: &mut Vec<TypeWithKind>,
+    cache: &Cache,
 ) {
     fn insert_ty(
         res: &mut Vec<TypeWithKind>,
         tcx: TyCtxt<'_>,
         ty: Type,
         mut generics: Vec<TypeWithKind>,
+        _cache: &Cache,
     ) {
         let is_full_generic = ty.is_full_generic();
 
@@ -350,12 +353,19 @@ crate fn get_real_types<'tcx>(
                             continue;
                         }
                         if let Some(ty) = x.get_type() {
-                            get_real_types(generics, &ty, tcx, recurse + 1, &mut ty_generics);
+                            get_real_types(
+                                generics,
+                                &ty,
+                                tcx,
+                                recurse + 1,
+                                &mut ty_generics,
+                                cache,
+                            );
                         }
                     }
                 }
             }
-            insert_ty(res, tcx, arg.clone(), ty_generics);
+            insert_ty(res, tcx, arg.clone(), ty_generics, cache);
         }
         // Otherwise we check if the trait bounds are "inlined" like `T: Option<u32>`...
         if let Some(bound) = generics.params.iter().find(|g| g.is_type() && g.name == arg_s) {
@@ -363,10 +373,10 @@ crate fn get_real_types<'tcx>(
             for bound in bound.get_bounds().unwrap_or(&[]) {
                 if let Some(path) = bound.get_trait_path() {
                     let ty = Type::ResolvedPath { did: path.def_id(), path };
-                    get_real_types(generics, &ty, tcx, recurse + 1, &mut ty_generics);
+                    get_real_types(generics, &ty, tcx, recurse + 1, &mut ty_generics, cache);
                 }
             }
-            insert_ty(res, tcx, arg.clone(), ty_generics);
+            insert_ty(res, tcx, arg.clone(), ty_generics, cache);
         }
     } else {
         // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
@@ -377,10 +387,10 @@ crate fn get_real_types<'tcx>(
         let mut ty_generics = Vec::new();
         if let Some(arg_generics) = arg.generics() {
             for gen in arg_generics.iter() {
-                get_real_types(generics, gen, tcx, recurse + 1, &mut ty_generics);
+                get_real_types(generics, gen, tcx, recurse + 1, &mut ty_generics, cache);
             }
         }
-        insert_ty(res, tcx, arg.clone(), ty_generics);
+        insert_ty(res, tcx, arg.clone(), ty_generics, cache);
     }
 }
 
@@ -392,6 +402,7 @@ crate fn get_all_types<'tcx>(
     generics: &Generics,
     decl: &FnDecl,
     tcx: TyCtxt<'tcx>,
+    cache: &Cache,
 ) -> (Vec<TypeWithKind>, Vec<TypeWithKind>) {
     let mut all_types = Vec::new();
     for arg in decl.inputs.values.iter() {
@@ -401,7 +412,7 @@ crate fn get_all_types<'tcx>(
         // FIXME: performance wise, it'd be much better to move `args` declaration outside of the
         // loop and replace this line with `args.clear()`.
         let mut args = Vec::new();
-        get_real_types(generics, &arg.type_, tcx, 0, &mut args);
+        get_real_types(generics, &arg.type_, tcx, 0, &mut args, cache);
         if !args.is_empty() {
             // FIXME: once back to performance improvements, replace this line with:
             // `all_types.extend(args.drain(..));`.
@@ -417,7 +428,7 @@ crate fn get_all_types<'tcx>(
     let mut ret_types = Vec::new();
     match decl.output {
         FnRetTy::Return(ref return_type) => {
-            get_real_types(generics, return_type, tcx, 0, &mut ret_types);
+            get_real_types(generics, return_type, tcx, 0, &mut ret_types, cache);
             if ret_types.is_empty() {
                 if let Some(kind) =
                     return_type.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
