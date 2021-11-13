@@ -107,8 +107,8 @@ impl<Idx: Add<Idx, Output = Idx> + Copy> Range<Idx> {
     /// ```
     /// #![feature(range_offset)]
     /// let r = 0..3;
-    /// assert_eq!(&"Hello"[2..][r], "llo");
     /// let r_offset = r.offset_to(2);
+    /// assert_eq!(&"Hello"[2..][r], "llo");
     /// assert_eq!(&"Hello"[r_offset], "llo");
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
@@ -126,8 +126,8 @@ impl<Idx: Sub<Idx, Output = Idx> + Copy> Range<Idx> {
     /// ```
     /// #![feature(range_offset)]
     /// let r = 2..5;
-    /// assert_eq!(&"Hello"[r], "llo");
     /// let r_offset = r.offset_from(2);
+    /// assert_eq!(&"Hello"[r], "llo");
     /// assert_eq!(&"Hello"[2..][r_offset], "llo");
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
@@ -248,8 +248,8 @@ impl<Idx: Add<Idx, Output = Idx> + Copy> RangeFrom<Idx> {
     /// ```
     /// #![feature(range_offset)]
     /// let r = 0..;
-    /// assert_eq!(&"Hello"[2..][r], "llo");
     /// let r_offset = r.offset_to(2);
+    /// assert_eq!(&"Hello"[2..][r], "llo");
     /// assert_eq!(&"Hello"[r_offset], "llo");
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
@@ -267,8 +267,8 @@ impl<Idx: Sub<Idx, Output = Idx> + Copy> RangeFrom<Idx> {
     /// ```
     /// #![feature(range_offset)]
     /// let r = 2..;
-    /// assert_eq!(&"Hello"[r], "llo");
     /// let r_offset = r.offset_from(2);
+    /// assert_eq!(&"Hello"[r], "llo");
     /// assert_eq!(&"Hello"[2..][r_offset], "llo");
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
@@ -367,8 +367,8 @@ impl<Idx: Add<Idx, Output = Idx> + Copy> RangeTo<Idx> {
     /// ```
     /// #![feature(range_offset)]
     /// let r = ..3;
-    /// assert_eq!(&"Hello"[2..][r], "llo");
     /// let r_offset = r.offset_to(2);
+    /// assert_eq!(&"Hello"[2..][r], "llo");
     /// assert_eq!(&"Hello"[r_offset], "Hello");
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
@@ -386,8 +386,8 @@ impl<Idx: Sub<Idx, Output = Idx> + Copy> RangeTo<Idx> {
     /// ```
     /// #![feature(range_offset)]
     /// let r = ..5;
-    /// assert_eq!(&"Hello"[r], "Hello");
     /// let r_offset = r.offset_from(2);
+    /// assert_eq!(&"Hello"[r], "Hello");
     /// assert_eq!(&"Hello"[2..][r_offset], "llo");
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
@@ -481,8 +481,8 @@ impl<Idx: Add<Idx, Output = Idx> + Copy> RangeInclusive<Idx> {
     /// ```
     /// #![feature(range_offset)]
     /// let r = 0..=2;
-    /// assert_eq!(&"Hello"[2..][r], "llo");
     /// let r_offset = r.offset_to(2);
+    /// assert_eq!(&"Hello"[2..][r], "llo");
     /// assert_eq!(&"Hello"[r_offset], "llo");
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
@@ -500,8 +500,8 @@ impl<Idx: Sub<Idx, Output = Idx> + Copy> RangeInclusive<Idx> {
     /// ```
     /// #![feature(range_offset)]
     /// let r = 2..=4;
-    /// assert_eq!(&"Hello"[r], "llo");
     /// let r_offset = r.offset_from(2);
+    /// assert_eq!(&"Hello"[r], "llo");
     /// assert_eq!(&"Hello"[2..][r_offset], "llo");
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
@@ -761,8 +761,8 @@ impl<Idx: Add<Idx, Output = Idx> + Copy> RangeToInclusive<Idx> {
     /// ```
     /// #![feature(range_offset)]
     /// let r = ..=2;
-    /// assert_eq!(&"Hello"[2..][r], "llo");
     /// let r_offset = r.offset_to(2);
+    /// assert_eq!(&"Hello"[2..][r], "llo");
     /// assert_eq!(&"Hello"[r_offset], "Hello");
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
@@ -780,8 +780,8 @@ impl<Idx: Sub<Idx, Output = Idx> + Copy> RangeToInclusive<Idx> {
     /// ```
     /// #![feature(range_offset)]
     /// let r = ..=4;
-    /// assert_eq!(&"Hello"[r], "Hello");
     /// let r_offset = r.offset_from(2);
+    /// assert_eq!(&"Hello"[r], "Hello");
     /// assert_eq!(&"Hello"[2..][r_offset], "llo");
     /// ```
     #[unstable(feature = "range_offset", issue = "none")]
