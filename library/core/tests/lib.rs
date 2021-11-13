@@ -60,6 +60,7 @@
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(result_into_ok_or_err)]
+#![cfg_attr(not(bootstrap), feature(portable_simd))]
 #![feature(ptr_metadata)]
 #![feature(once_cell)]
 #![feature(unsized_tuple_coercion)]
@@ -105,6 +106,8 @@ mod pattern;
 mod pin;
 mod ptr;
 mod result;
+#[cfg(not(bootstrap))]
+mod simd;
 mod slice;
 mod str;
 mod str_lossy;

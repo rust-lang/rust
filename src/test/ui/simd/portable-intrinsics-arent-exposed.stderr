@@ -1,0 +1,15 @@
+error[E0603]: module `intrinsics` is private
+  --> $DIR/portable-intrinsics-arent-exposed.rs:4:16
+   |
+LL | use std::simd::intrinsics;
+   |                ^^^^^^^^^^ private module
+   |
+note: the module `intrinsics` is defined here
+  --> $SRC_DIR/core/src/lib.rs:LL:COL
+   |
+LL |     pub use crate::core_simd::simd::*;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0603`.
