@@ -56,7 +56,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_pin)]
 #![feature(const_slice_from_raw_parts)]
-#![feature(const_raw_ptr_deref)]
+#![cfg_attr(bootstrap, feature(const_raw_ptr_deref))]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(result_into_ok_or_err)]

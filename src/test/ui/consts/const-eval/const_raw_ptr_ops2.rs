@@ -1,5 +1,3 @@
-#![feature(const_raw_ptr_deref)]
-
 fn main() {}
 
 // fine

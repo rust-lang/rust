@@ -1,17 +1,17 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/mut_ref_in_final_dynamic_check.rs:14:10
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:13:10
    |
 LL |     Some(&mut *(42 as *mut i32))
    |          ^^^^^^^^^^^^^^^^^^^^^^
    |          |
    |          0x2a is not a valid pointer
-   |          inside `helper` at $DIR/mut_ref_in_final_dynamic_check.rs:14:10
+   |          inside `helper` at $DIR/mut_ref_in_final_dynamic_check.rs:13:10
 ...
 LL | const A: Option<&mut i32> = helper();
-   |                             -------- inside `A` at $DIR/mut_ref_in_final_dynamic_check.rs:19:29
+   |                             -------- inside `A` at $DIR/mut_ref_in_final_dynamic_check.rs:18:29
 
 error: encountered dangling pointer in final constant
-  --> $DIR/mut_ref_in_final_dynamic_check.rs:26:1
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:25:1
    |
 LL | const B: Option<&mut i32> = helper2();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_raw_ptr_ops.rs:4:29
+  --> $DIR/promoted_raw_ptr_ops.rs:2:29
    |
 LL |     let x: &'static bool = &(42 as *const i32 == 43 as *const i32);
    |            -------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
@@ -10,7 +10,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_raw_ptr_ops.rs:6:30
+  --> $DIR/promoted_raw_ptr_ops.rs:4:30
    |
 LL |     let y: &'static usize = &(&1 as *const i32 as usize + 1);
    |            --------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
@@ -21,7 +21,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_raw_ptr_ops.rs:8:28
+  --> $DIR/promoted_raw_ptr_ops.rs:6:28
    |
 LL |     let z: &'static i32 = &(unsafe { *(42 as *const i32) });
    |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
@@ -32,7 +32,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_raw_ptr_ops.rs:10:29
+  --> $DIR/promoted_raw_ptr_ops.rs:8:29
    |
 LL |     let a: &'static bool = &(main as fn() == main as fn());
    |            -------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use

@@ -1,5 +1,5 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/assign-to-static-within-other-static.rs:10:5
+  --> $DIR/assign-to-static-within-other-static.rs:8:5
    |
 LL |     FOO = 5;
    |     ^^^^^^^ modifying a static's initial value from another static's initializer

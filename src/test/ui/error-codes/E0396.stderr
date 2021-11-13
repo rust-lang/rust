@@ -1,29 +1,29 @@
-error[E0658]: dereferencing raw pointers in constants is unstable
-  --> $DIR/E0396.rs:5:28
+error[E0658]: dereferencing raw mutable pointers in constants is unstable
+  --> $DIR/E0396.rs:3:28
    |
 LL | const VALUE: u8 = unsafe { *REG_ADDR };
    |                            ^^^^^^^^^
    |
-   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
-   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0658]: dereferencing raw pointers in constant functions is unstable
-  --> $DIR/E0396.rs:12:11
+error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
+  --> $DIR/E0396.rs:10:11
    |
 LL |     match *INFALLIBLE {}
    |           ^^^^^^^^^^^
    |
-   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
-   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0658]: dereferencing raw pointers in constants is unstable
-  --> $DIR/E0396.rs:15:36
+error[E0658]: dereferencing raw mutable pointers in constants is unstable
+  --> $DIR/E0396.rs:13:36
    |
 LL |     const BAD: () = unsafe { match *INFALLIBLE {} };
    |                                    ^^^^^^^^^^^
    |
-   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
-   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

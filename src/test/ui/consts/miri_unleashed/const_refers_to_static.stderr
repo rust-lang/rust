@@ -33,11 +33,6 @@ help: skipping check that does not even have a feature gate
    |
 LL |     unsafe { *(&FOO as *const _ as *const usize) }
    |                 ^^^
-help: skipping check for `const_raw_ptr_deref` feature
-  --> $DIR/const_refers_to_static.rs:18:14
-   |
-LL |     unsafe { *(&FOO as *const _ as *const usize) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
   --> $DIR/const_refers_to_static.rs:22:32
    |

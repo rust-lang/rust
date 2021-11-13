@@ -722,7 +722,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
         match elem {
             ProjectionElem::Deref => {
                 let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
-                if let ty::RawPtr(_) = base_ty.kind() {
+                if base_ty.is_unsafe_ptr() {
                     if proj_base.is_empty() {
                         let decl = &self.body.local_decls[place_local];
                         if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
@@ -731,7 +731,13 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                             return;
                         }
                     }
-                    self.check_op(ops::RawPtrDeref);
+
+                    // `*const T` is stable, `*mut T` is not
+                    if !base_ty.is_mutable_ptr() {
+                        return;
+                    }
+
+                    self.check_op(ops::RawMutPtrDeref);
                 }
 
                 if context.is_mutating_use() {

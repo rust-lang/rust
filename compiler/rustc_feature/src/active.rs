@@ -408,9 +408,6 @@ declare_features! (
     /// Allows inferring `'static` outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
-    /// Allows dereferencing raw pointers during const eval.
-    (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
-
     /// Allows inconsistent bounds in where clauses.
     (active, trivial_bounds, "1.28.0", Some(48214), None),
 
