@@ -82,6 +82,16 @@ pub(crate) fn emit_unescape_error(
                         Applicability::MachineApplicable,
                     );
                 }
+            } else {
+                if lit.chars().filter(|x| x.is_whitespace() || x.is_control()).count() >= 1 {
+                    handler.span_note(
+                        span,
+                        &format!(
+                            "there are non-printing characters, the full sequence is `{}`",
+                            lit.escape_default(),
+                        ),
+                    );
+                }
             }
 
             if !has_help {
