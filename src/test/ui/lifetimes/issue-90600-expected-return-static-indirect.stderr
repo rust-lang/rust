@@ -1,0 +1,12 @@
+error[E0621]: explicit lifetime required in the type of `foo`
+  --> $DIR/issue-90600-expected-return-static-indirect.rs:10:16
+   |
+LL | fn inner(mut foo: &[u8]) {
+   |                   ----- the type of `foo` does not have lifetime `'static'`
+...
+LL |     read_thing(read);
+   |                ^^^^ lifetime `'static` required
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0621`.
