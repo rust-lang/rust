@@ -200,7 +200,8 @@ $ pacman -S rust-analyzer
 
 `rust-analyzer` is available in the GURU repository:
 
-- https://gitweb.gentoo.org/repo/proj/guru.git/tree/dev-util/rust-analyzer-bin/rust-analyzer-bin-9999.ebuild[`dev-util/rust-analyzer-bin-9999`] (the https://github.com/rust-analyzer/rust-analyzer/releases/latest[latest release] as a live binary ebuild)
+- https://gitweb.gentoo.org/repo/proj/guru.git/tree/dev-util/rust-analyzer?id=9895cea62602cfe599bd48e0fb02127411ca6e81[`dev-util/rust-analyzer`] builds from source
+- https://gitweb.gentoo.org/repo/proj/guru.git/tree/dev-util/rust-analyzer-bin?id=9895cea62602cfe599bd48e0fb02127411ca6e81[`dev-util/rust-analyzer-bin`] installs an official binary release
 
 If not already, GURU must be enabled (e.g. using `app-eselect/eselect-repository`) and sync'd before running `emerge`:
 
