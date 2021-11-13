@@ -7,13 +7,16 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
+use crate::type_check::constraint_conversion::ConstraintConversion;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::*;
-use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::Ty;
 use rustc_span::Span;
-use rustc_trait_selection::traits::query::normalize::AtExt;
+use rustc_span::DUMMY_SP;
+use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
+use rustc_trait_selection::traits::query::Fallible;
+use type_op::TypeOpOutput;
 
 use crate::universal_regions::UniversalRegions;
 
@@ -29,6 +32,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) {
         let (&normalized_output_ty, normalized_input_tys) =
             normalized_inputs_and_output.split_last().unwrap();
+
+        debug!(?normalized_output_ty);
+        debug!(?normalized_input_tys);
 
         let mir_def_id = body.source.def_id().expect_local();
 
@@ -75,10 +81,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     .delay_span_bug(body.span, "found more normalized_input_ty than local_decls");
                 break;
             }
+
             // In MIR, argument N is stored in local N+1.
             let local = Local::new(argument_index + 1);
 
             let mir_input_ty = body.local_decls[local].ty;
+
             let mir_input_span = body.local_decls[local].source_info.span;
             self.equate_normalized_input_or_output(
                 normalized_input_ty,
@@ -100,6 +108,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // If the user explicitly annotated the input types, enforce those.
                 let user_provided_input_ty =
                     self.normalize(user_provided_input_ty, Locations::All(mir_input_span));
+
                 self.equate_normalized_input_or_output(
                     user_provided_input_ty,
                     mir_input_ty,
@@ -167,30 +176,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // `rustc_traits::normalize_after_erasing_regions`. Ideally, we'd
             // like to normalize *before* inserting into `local_decls`, but
             // doing so ends up causing some other trouble.
-            let b = match self
-                .infcx
-                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-                .normalize(b)
-            {
-                Ok(n) => {
-                    debug!("equate_inputs_and_outputs: {:?}", n);
-                    if n.obligations.iter().all(|o| {
-                        matches!(
-                            o.predicate.kind().skip_binder(),
-                            ty::PredicateKind::RegionOutlives(_)
-                                | ty::PredicateKind::TypeOutlives(_)
-                        )
-                    }) {
-                        n.value
-                    } else {
-                        b
-                    }
-                }
+            let b = match self.normalize_and_add_constraints(b) {
+                Ok(n) => n,
                 Err(_) => {
                     debug!("equate_inputs_and_outputs: NoSolution");
                     b
                 }
             };
+
             // Note: if we have to introduce new placeholders during normalization above, then we won't have
             // added those universes to the universe info, which we would want in `relate_tys`.
             if let Err(terr) =
@@ -206,5 +199,28 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 );
             }
         }
+    }
+
+    pub(crate) fn normalize_and_add_constraints(&mut self, t: Ty<'tcx>) -> Fallible<Ty<'tcx>> {
+        let TypeOpOutput { output: norm_ty, constraints, .. } =
+            self.param_env.and(type_op::normalize::Normalize::new(t)).fully_perform(self.infcx)?;
+
+        debug!("{:?} normalized to {:?}", t, norm_ty);
+
+        for data in constraints.into_iter().collect::<Vec<_>>() {
+            ConstraintConversion::new(
+                self.infcx,
+                &self.borrowck_context.universal_regions,
+                &self.region_bound_pairs,
+                Some(self.implicit_region_bound),
+                self.param_env,
+                Locations::All(DUMMY_SP),
+                ConstraintCategory::Internal,
+                &mut self.borrowck_context.constraints,
+            )
+            .convert_all(&*data);
+        }
+
+        Ok(norm_ty)
     }
 }
