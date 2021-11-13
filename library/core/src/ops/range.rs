@@ -96,6 +96,44 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
     }
 }
 
+impl<Idx: Add<Idx> + Copy> Range<Idx> {
+    /// Returns a new `Range` analogous to this range, but moved to the
+    /// given position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_offset)]
+    /// let r = 0..3;
+    /// assert_eq!(&"Hello"[2..][r], "llo");
+    /// let r_offset = r.offset_to(2);
+    /// assert_eq!(&"Hello"[r_offset], "llo");
+    /// ```
+    #[unstable(feature = "range_offset", issue = "none")]
+    pub fn offset_to(&self, position: Idx) -> Range<Idx> {
+        (position+self.start)..(position+self.end)
+    }
+}
+
+impl<Idx: Sub<Idx> + Copy> Range<Idx> {
+    /// Returns a new `Range` analogous to this range, but moved from the
+    /// given position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_offset)]
+    /// let r = 2..5;
+    /// assert_eq!(&"Hello"[r], "llo");
+    /// let r_offset = r.offset_from(2);
+    /// assert_eq!(&"Hello"[2..][r_offset], "llo");
+    /// ```
+    #[unstable(feature = "range_offset", issue = "none")]
+    pub fn offset_from(&self, position: Idx) -> Range<Idx> {
+        (self.start-position)..(self.end-position)
+    }
+}
+
 impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -199,6 +237,44 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
     }
 }
 
+impl<Idx: Add<Idx> + Copy> RangeFrom<Idx> {
+    /// Returns a new `RangeFrom` analogous to this range, but moved to the
+    /// given position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_offset)]
+    /// let r = 0..;
+    /// assert_eq!(&"Hello"[2..][r], "llo");
+    /// let r_offset = r.offset_to(2);
+    /// assert_eq!(&"Hello"[r_offset], "llo");
+    /// ```
+    #[unstable(feature = "range_offset", issue = "none")]
+    pub fn offset_to(&self, position: Idx) -> RangeFrom<Idx> {
+        (position+self.start)..
+    }
+}
+
+impl<Idx: Sub<Idx> + Copy> RangeFrom<Idx> {
+    /// Returns a new `RangeFrom` analogous to this range, but moved from the
+    /// given position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_offset)]
+    /// let r = 2..;
+    /// assert_eq!(&"Hello"[r], "llo");
+    /// let r_offset = r.offset_from(2);
+    /// assert_eq!(&"Hello"[2..][r_offset], "llo");
+    /// ```
+    #[unstable(feature = "range_offset", issue = "none")]
+    pub fn offset_from(&self, position: Idx) -> RangeFrom<Idx> {
+        (self.start-position)..
+    }
+}
+
 impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -280,6 +356,44 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
     }
 }
 
+impl<Idx: Add<Idx> + Copy> RangeTo<Idx> {
+    /// Returns a new `RangeTo` analogous to this range, but moved to the
+    /// given position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_offset)]
+    /// let r = ..3;
+    /// assert_eq!(&"Hello"[2..][r], "llo");
+    /// let r_offset = r.offset_to(2);
+    /// assert_eq!(&"Hello"[r_offset], "Hello");
+    /// ```
+    #[unstable(feature = "range_offset", issue = "none")]
+    pub fn offset_to(&self, position: Idx) -> RangeTo<Idx> {
+        ..(position+self.end)
+    }
+}
+
+impl<Idx: Sub<Idx> + Copy> RangeTo<Idx> {
+    /// Returns a new `RangeTo` analogous to this range, but moved from the
+    /// given position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_offset)]
+    /// let r = ..5;
+    /// assert_eq!(&"Hello"[r], "Hello");
+    /// let r_offset = r.offset_from(2);
+    /// assert_eq!(&"Hello"[2..][r_offset], "llo");
+    /// ```
+    #[unstable(feature = "range_offset", issue = "none")]
+    pub fn offset_from(&self, position: Idx) -> RangeTo<Idx> {
+        ..(self.end-position)
+    }
+}
+
 impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -354,6 +468,52 @@ pub struct RangeInclusive<Idx> {
     //
     // This is required to support PartialEq and Hash without a PartialOrd bound or specialization.
     pub(crate) exhausted: bool,
+}
+
+impl<Idx: Add<Idx> + Copy> RangeInclusive<Idx> {
+    /// Returns a new `RangeInclusive` analogous to this range, but moved to the
+    /// given position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_offset)]
+    /// let r = 0..=2;
+    /// assert_eq!(&"Hello"[2..][r], "llo");
+    /// let r_offset = r.offset_to(2);
+    /// assert_eq!(&"Hello"[r_offset], "llo");
+    /// ```
+    #[unstable(feature = "range_offset", issue = "none")]
+    pub fn offset_to(&self, position: Idx) -> RangeInclusive<Idx> {
+        Self {
+            start: position+self.start,
+            end: position+self.end,
+            exhausted: self.exhausted,
+        }
+    }
+}
+
+impl<Idx: Sub<Idx> + Copy> RangeInclusive<Idx> {
+    /// Returns a new `RangeInclusive` analogous to this range, but moved from the
+    /// given position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_offset)]
+    /// let r = 2..=4;
+    /// assert_eq!(&"Hello"[r], "llo");
+    /// let r_offset = r.offset_from(2);
+    /// assert_eq!(&"Hello"[2..][r_offset], "llo");
+    /// ```
+    #[unstable(feature = "range_offset", issue = "none")]
+    pub fn offset_from(&self, position: Idx) -> RangeInclusive<Idx> {
+        Self {
+            start: self.start-position,
+            end: self.end-position,
+            exhausted: self.exhausted,
+        }
+    }
 }
 
 impl<Idx> RangeInclusive<Idx> {
@@ -595,6 +755,44 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeToInclusive<Idx> {
         write!(fmt, "..=")?;
         self.end.fmt(fmt)?;
         Ok(())
+    }
+}
+
+impl<Idx: Add<Idx> + Copy> RangeToInclusive<Idx> {
+    /// Returns a new `RangeToInclusive` analogous to this range, but moved to the
+    /// given position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_offset)]
+    /// let r = ..=2;
+    /// assert_eq!(&"Hello"[2..][r], "llo");
+    /// let r_offset = r.offset_to(2);
+    /// assert_eq!(&"Hello"[r_offset], "Hello");
+    /// ```
+    #[unstable(feature = "range_offset", issue = "none")]
+    pub fn offset_to(&self, position: Idx) -> RangeToInclusive<Idx> {
+        ..=position+self.end
+    }
+}
+
+impl<Idx: Sub<Idx> + Copy> RangeToInclusive<Idx> {
+    /// Returns a new `RangeToInclusive` analogous to this range, but moved from the
+    /// given position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_offset)]
+    /// let r = ..=4;
+    /// assert_eq!(&"Hello"[r], "Hello");
+    /// let r_offset = r.offset_from(2);
+    /// assert_eq!(&"Hello"[2..][r_offset], "llo");
+    /// ```
+    #[unstable(feature = "range_offset", issue = "none")]
+    pub fn offset_from(&self, position: Idx) -> RangeToInclusive<Idx> {
+        ..=self.end-position
     }
 }
 
