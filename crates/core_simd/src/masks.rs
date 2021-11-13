@@ -129,6 +129,7 @@ where
     /// # Safety
     /// All lanes must be either 0 or -1.
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     pub unsafe fn from_int_unchecked(value: Simd<T, LANES>) -> Self {
         unsafe { Self(mask_impl::Mask::from_int_unchecked(value)) }
     }
@@ -139,6 +140,7 @@ where
     /// # Panics
     /// Panics if any lane is not 0 or -1.
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn from_int(value: Simd<T, LANES>) -> Self {
         assert!(T::valid(value), "all values must be either 0 or -1",);
         unsafe { Self::from_int_unchecked(value) }
@@ -147,6 +149,7 @@ where
     /// Converts the mask to a vector of integers, where 0 represents `false` and -1
     /// represents `true`.
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
     pub fn to_int(self) -> Simd<T, LANES> {
         self.0.to_int()
     }
@@ -156,6 +159,7 @@ where
     /// # Safety
     /// `lane` must be less than `LANES`.
     #[inline]
+    #[must_use = "method returns a new bool and does not mutate the original value"]
     pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
         unsafe { self.0.test_unchecked(lane) }
     }
@@ -165,6 +169,7 @@ where
     /// # Panics
     /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
     #[inline]
+    #[must_use = "method returns a new bool and does not mutate the original value"]
     pub fn test(&self, lane: usize) -> bool {
         assert!(lane < LANES, "lane index out of range");
         unsafe { self.test_unchecked(lane) }
@@ -195,24 +200,30 @@ where
 
     /// Convert this mask to a bitmask, with one bit set per lane.
     #[cfg(feature = "generic_const_exprs")]
+    #[inline]
+    #[must_use = "method returns a new array and does not mutate the original value"]
     pub fn to_bitmask(self) -> [u8; LaneCount::<LANES>::BITMASK_LEN] {
         self.0.to_bitmask()
     }
 
     /// Convert a bitmask to a mask.
     #[cfg(feature = "generic_const_exprs")]
+    #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn from_bitmask(bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN]) -> Self {
         Self(mask_impl::Mask::from_bitmask(bitmask))
     }
 
     /// Returns true if any lane is set, or false otherwise.
     #[inline]
+    #[must_use = "method returns a new bool and does not mutate the original value"]
     pub fn any(self) -> bool {
         self.0.any()
     }
 
     /// Returns true if all lanes are set, or false otherwise.
     #[inline]
+    #[must_use = "method returns a new bool and does not mutate the original value"]
     pub fn all(self) -> bool {
         self.0.all()
     }
@@ -245,6 +256,7 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[inline]
+    #[must_use = "method returns a defaulted mask with all lanes set to false (0)"]
     fn default() -> Self {
         Self::splat(false)
     }
@@ -256,6 +268,7 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[inline]
+    #[must_use = "method returns a new bool and does not mutate the original value"]
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
@@ -267,6 +280,7 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[inline]
+    #[must_use = "method returns a new Ordering and does not mutate the original value"]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.0.partial_cmp(&other.0)
     }
@@ -291,6 +305,7 @@ where
 {
     type Output = Self;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitand(self, rhs: Self) -> Self {
         Self(self.0 & rhs.0)
     }
@@ -303,6 +318,7 @@ where
 {
     type Output = Self;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitand(self, rhs: bool) -> Self {
         self & Self::splat(rhs)
     }
@@ -315,6 +331,7 @@ where
 {
     type Output = Mask<T, LANES>;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitand(self, rhs: Mask<T, LANES>) -> Mask<T, LANES> {
         Mask::splat(self) & rhs
     }
@@ -327,6 +344,7 @@ where
 {
     type Output = Self;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitor(self, rhs: Self) -> Self {
         Self(self.0 | rhs.0)
     }
@@ -339,6 +357,7 @@ where
 {
     type Output = Self;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitor(self, rhs: bool) -> Self {
         self | Self::splat(rhs)
     }
@@ -351,6 +370,7 @@ where
 {
     type Output = Mask<T, LANES>;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitor(self, rhs: Mask<T, LANES>) -> Mask<T, LANES> {
         Mask::splat(self) | rhs
     }
@@ -363,6 +383,7 @@ where
 {
     type Output = Self;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitxor(self, rhs: Self) -> Self::Output {
         Self(self.0 ^ rhs.0)
     }
@@ -375,6 +396,7 @@ where
 {
     type Output = Self;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitxor(self, rhs: bool) -> Self::Output {
         self ^ Self::splat(rhs)
     }
@@ -387,6 +409,7 @@ where
 {
     type Output = Mask<T, LANES>;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitxor(self, rhs: Mask<T, LANES>) -> Self::Output {
         Mask::splat(self) ^ rhs
     }
@@ -399,6 +422,7 @@ where
 {
     type Output = Mask<T, LANES>;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn not(self) -> Self::Output {
         Self(!self.0)
     }

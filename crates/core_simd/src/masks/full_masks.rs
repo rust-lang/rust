@@ -23,6 +23,7 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn clone(&self) -> Self {
         *self
     }
@@ -70,11 +71,14 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn splat(value: bool) -> Self {
         Self(Simd::splat(if value { T::TRUE } else { T::FALSE }))
     }
 
     #[inline]
+    #[must_use = "method returns a new bool and does not mutate the original value"]
     pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
         T::eq(self.0[lane], T::TRUE)
     }
@@ -85,16 +89,19 @@ where
     }
 
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
     pub fn to_int(self) -> Simd<T, LANES> {
         self.0
     }
 
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     pub unsafe fn from_int_unchecked(value: Simd<T, LANES>) -> Self {
         Self(value)
     }
 
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn convert<U>(self) -> Mask<U, LANES>
     where
         U: MaskElement,
@@ -104,6 +111,7 @@ where
 
     #[cfg(feature = "generic_const_exprs")]
     #[inline]
+    #[must_use = "method returns a new array and does not mutate the original value"]
     pub fn to_bitmask(self) -> [u8; LaneCount::<LANES>::BITMASK_LEN] {
         unsafe {
             let mut bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN] =
@@ -124,6 +132,7 @@ where
 
     #[cfg(feature = "generic_const_exprs")]
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn from_bitmask(mut bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN]) -> Self {
         unsafe {
             // There is a bug where LLVM appears to implement this operation with the wrong
@@ -144,11 +153,13 @@ where
     }
 
     #[inline]
+    #[must_use = "method returns a new bool and does not mutate the original value"]
     pub fn any(self) -> bool {
         unsafe { intrinsics::simd_reduce_any(self.to_int()) }
     }
 
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original value"]
     pub fn all(self) -> bool {
         unsafe { intrinsics::simd_reduce_all(self.to_int()) }
     }
@@ -171,6 +182,7 @@ where
 {
     type Output = Self;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitand(self, rhs: Self) -> Self {
         unsafe { Self(intrinsics::simd_and(self.0, rhs.0)) }
     }
@@ -183,6 +195,7 @@ where
 {
     type Output = Self;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitor(self, rhs: Self) -> Self {
         unsafe { Self(intrinsics::simd_or(self.0, rhs.0)) }
     }
@@ -195,6 +208,7 @@ where
 {
     type Output = Self;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitxor(self, rhs: Self) -> Self {
         unsafe { Self(intrinsics::simd_xor(self.0, rhs.0)) }
     }
@@ -207,6 +221,7 @@ where
 {
     type Output = Self;
     #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn not(self) -> Self::Output {
         Self::splat(true) ^ self
     }
