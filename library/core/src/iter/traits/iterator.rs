@@ -1,5 +1,5 @@
 use crate::cmp::{self, Ordering};
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
 use super::super::TrustedRandomAccessNoCoerce;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
@@ -2161,16 +2161,17 @@ pub trait Iterator {
     #[doc(alias = "inject", alias = "foldl")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    fn fold<B, F>(mut self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x);
+        #[inline]
+        fn call<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> NeverShortCircuit<B> {
+            move |accum, item| NeverShortCircuit(f(accum, item))
         }
-        accum
+
+        self.try_fold(init, call(f)).0
     }
 
     /// Reduces the elements to a single one, by repeatedly applying a reducing

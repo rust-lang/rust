@@ -338,3 +338,37 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     fn from_residual(residual: R) -> Self;
 }
+
+/// An adapter for implementing non-try methods via the `Try` implementation.
+///
+/// Conceptually the same as `Result<T, !>`, but requiring less work in trait
+/// solving and inhabited-ness checking and such, by being an obvious newtype
+/// and not having `From` bounds lying around.
+///
+/// Not currently planned to be exposed publicly, so just `pub(crate)`.
+#[repr(transparent)]
+pub(crate) struct NeverShortCircuit<T>(pub T);
+
+pub(crate) enum NeverShortCircuitResidual {}
+
+impl<T> Try for NeverShortCircuit<T> {
+    type Output = T;
+    type Residual = NeverShortCircuitResidual;
+
+    #[inline]
+    fn branch(self) -> ControlFlow<NeverShortCircuitResidual, T> {
+        ControlFlow::Continue(self.0)
+    }
+
+    #[inline]
+    fn from_output(x: T) -> Self {
+        NeverShortCircuit(x)
+    }
+}
+
+impl<T> FromResidual for NeverShortCircuit<T> {
+    #[inline]
+    fn from_residual(never: NeverShortCircuitResidual) -> Self {
+        match never {}
+    }
+}
