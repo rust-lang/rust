@@ -178,6 +178,19 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
                             None => Cursor::Before(first_new_arm.syntax()),
                         };
                     let snippet = render_snippet(cap, new_match_arm_list.syntax(), cursor);
+                    // remove the second last line if it only contains trailing whitespace
+                    let lines = snippet.lines().collect_vec();
+                    let snippet = lines
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, &line)| {
+                            if index + 2 == lines.len() && line.trim().is_empty() {
+                                return None;
+                            }
+                            return Some(line);
+                        })
+                        .join("\n");
+
                     builder.replace_snippet(cap, old_range, snippet);
                 }
                 _ => builder.replace(old_range, new_match_arm_list.to_string()),
@@ -195,6 +208,19 @@ fn cursor_at_trivial_match_arm_list(
     if match_arm_list.arms().next() == None {
         cov_mark::hit!(add_missing_match_arms_empty_body);
         return Some(());
+    }
+
+    // match x {
+    //     bar => baz,
+    //     $0
+    // }
+    if let Some(last_arm) = match_arm_list.arms().last() {
+        let last_arm_range = last_arm.syntax().text_range();
+        let match_expr_range = match_expr.syntax().text_range();
+        if last_arm_range.end() <= ctx.offset() && ctx.offset() < match_expr_range.end() {
+            cov_mark::hit!(add_missing_match_arms_end_of_last_arm);
+            return Some(());
+        }
     }
 
     // match { _$0 => {...} }
@@ -670,6 +696,42 @@ fn main() {
         A::Cs(_) => todo!(),
         A::Ds(_, _) => todo!(),
         A::Es { x, y } => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_missing_match_arms_end_of_last_arm() {
+        cov_mark::check!(add_missing_match_arms_end_of_last_arm);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum A { One, Two }
+enum B { One, Two }
+
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => {},
+        $0
+    }
+}
+"#,
+            r#"
+enum A { One, Two }
+enum B { One, Two }
+
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => {},
+        $0(A::One, B::One) => todo!(),
+        (A::One, B::Two) => todo!(),
+        (A::Two, B::Two) => todo!(),
     }
 }
 "#,
