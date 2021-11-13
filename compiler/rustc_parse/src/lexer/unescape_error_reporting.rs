@@ -7,10 +7,6 @@ use rustc_errors::{pluralize, Applicability, Handler};
 use rustc_lexer::unescape::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 
-fn printing(ch: char) -> bool {
-    unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0) != 0 && !ch.is_whitespace()
-}
-
 pub(crate) fn emit_unescape_error(
     handler: &Handler,
     // interior part of the literal, without quotes
@@ -87,7 +83,13 @@ pub(crate) fn emit_unescape_error(
                     );
                 }
             } else {
-                let printable: Vec<char> = lit.chars().filter(|x| printing(*x)).collect();
+                let printable: Vec<char> = lit
+                    .chars()
+                    .filter(|&x| {
+                        unicode_width::UnicodeWidthChar::width(x).unwrap_or(0) != 0
+                            && !x.is_whitespace()
+                    })
+                    .collect();
 
                 if let [ch] = printable.as_slice() {
                     has_help = true;
