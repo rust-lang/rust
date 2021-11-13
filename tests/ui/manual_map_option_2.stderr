@@ -39,5 +39,25 @@ LL +             if let Some(ref s) = s { (x.clone(), s) } else { panic!() }
 LL ~         });
    |
 
-error: aborting due to 2 previous errors
+error: manual implementation of `Option::map`
+  --> $DIR/manual_map_option_2.rs:61:17
+   |
+LL |           let _ = match Some(0) {
+   |  _________________^
+LL | |             Some(x) => Some(f(x)),
+LL | |             None => None,
+LL | |         };
+   | |_________^ help: try this: `Some(0).map(|x| f(x))`
+
+error: manual implementation of `Option::map`
+  --> $DIR/manual_map_option_2.rs:66:13
+   |
+LL |       let _ = match Some(0) {
+   |  _____________^
+LL | |         Some(x) => unsafe { Some(f(x)) },
+LL | |         None => None,
+LL | |     };
+   | |_____^ help: try this: `Some(0).map(|x| unsafe { f(x) })`
+
+error: aborting due to 4 previous errors
 
