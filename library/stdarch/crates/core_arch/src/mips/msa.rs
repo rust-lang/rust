@@ -498,8 +498,8 @@ extern "C" {
     fn msa_fexp2_w(a: v4f32, b: v4i32) -> v4f32;
     #[link_name = "llvm.mips.fexp2.d"]
     fn msa_fexp2_d(a: v2f64, b: v2i64) -> v2f64;
-    #[link_name = "llvm.mips.fexupl.w"]
     // FIXME: 16-bit floats
+    // #[link_name = "llvm.mips.fexupl.w"]
     // fn msa_fexupl_w(a: f16x8) -> v4f32;
     #[link_name = "llvm.mips.fexupl.d"]
     fn msa_fexupl_d(a: v4f32) -> v2f64;
