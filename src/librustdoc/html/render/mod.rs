@@ -117,7 +117,7 @@ crate struct RenderType {
 #[derive(Debug)]
 crate struct IndexItemFunctionType {
     inputs: Vec<TypeWithKind>,
-    output: Option<Vec<TypeWithKind>>,
+    output: Vec<TypeWithKind>,
 }
 
 impl Serialize for IndexItemFunctionType {
@@ -126,21 +126,16 @@ impl Serialize for IndexItemFunctionType {
         S: Serializer,
     {
         // If we couldn't figure out a type, just write `null`.
-        let mut iter = self.inputs.iter();
-        if match self.output {
-            Some(ref output) => iter.chain(output.iter()).any(|i| i.ty.name.is_none()),
-            None => iter.any(|i| i.ty.name.is_none()),
-        } {
+        let has_missing = self.inputs.iter().chain(self.output.iter()).any(|i| i.ty.name.is_none());
+        if has_missing {
             serializer.serialize_none()
         } else {
             let mut seq = serializer.serialize_seq(None)?;
             seq.serialize_element(&self.inputs)?;
-            if let Some(output) = &self.output {
-                if output.len() > 1 {
-                    seq.serialize_element(&output)?;
-                } else {
-                    seq.serialize_element(&output[0])?;
-                }
+            match self.output.as_slice() {
+                [] => {}
+                [one] => seq.serialize_element(one)?,
+                all => seq.serialize_element(all)?,
             }
             seq.end()
         }
