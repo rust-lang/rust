@@ -42,10 +42,7 @@ where
 
 struct Wrapper<'a>(&'a str);
 
-// Because nll currently succeeds and migrate doesn't
-#[rustc_error]
 fn main() {
-    //[nll]~^ fatal
     fn bar<'a>(s: &'a str) -> (&'a str, &'a str) {
         (&s[..1], &s[..])
     }
@@ -56,14 +53,10 @@ fn main() {
 
     foo(bar, "string", |s| s.len() == 5);
     //[migrate]~^ ERROR implementation of `Parser` is not general enough
-    //[migrate]~| ERROR implementation of `Parser` is not general enough
-    //[migrate]~| ERROR implementation of `Parser` is not general enough
-    //[migrate]~| ERROR implementation of `Parser` is not general enough
-    //[migrate]~| ERROR implementation of `Parser` is not general enough
+    //[nll]~^^ ERROR mismatched types
+    //[nll]~| ERROR mismatched types
     foo(baz, "string", |s| s.0.len() == 5);
     //[migrate]~^ ERROR implementation of `Parser` is not general enough
-    //[migrate]~| ERROR implementation of `Parser` is not general enough
-    //[migrate]~| ERROR implementation of `Parser` is not general enough
-    //[migrate]~| ERROR implementation of `Parser` is not general enough
-    //[migrate]~| ERROR implementation of `Parser` is not general enough
+    //[nll]~^^ ERROR mismatched types
+    //[nll]~| ERROR mismatched types
 }

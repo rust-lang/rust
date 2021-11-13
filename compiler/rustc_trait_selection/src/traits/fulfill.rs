@@ -346,6 +346,8 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
         let obligation = &mut pending_obligation.obligation;
 
+        debug!(?obligation, "process_obligation pre-resolve");
+
         if obligation.predicate.has_infer_types_or_consts() {
             obligation.predicate =
                 self.selcx.infcx().resolve_vars_if_possible(obligation.predicate);
@@ -355,6 +357,21 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
+        if obligation.predicate.has_projections() {
+            let mut obligations = Vec::new();
+            let predicate = crate::traits::project::try_normalize_with_depth_to(
+                self.selcx,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                obligation.predicate,
+                &mut obligations,
+            );
+            if predicate != obligation.predicate {
+                obligations.push(obligation.with(predicate));
+                return ProcessResult::Changed(mk_pending(obligations));
+            }
+        }
         let binder = obligation.predicate.kind();
         match binder.no_bound_vars() {
             None => match binder.skip_binder() {
