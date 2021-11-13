@@ -127,7 +127,7 @@ def test_cargo_miri_test():
     test("`cargo miri test` (raw-ptr tracking)",
         cargo_miri("test"),
         default_ref, "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-track-raw-pointers"},
+        env={'MIRIFLAGS': "-Zmiri-tag-raw-pointers"},
     )
     test("`cargo miri test` (with filter)",
         cargo_miri("test") + ["--", "--format=pretty", "le1"],

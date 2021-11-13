@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-track-raw-pointers
+// compile-flags: -Zmiri-tag-raw-pointers
 #![feature(new_uninit)]
 #![feature(get_mut_unchecked)]
 

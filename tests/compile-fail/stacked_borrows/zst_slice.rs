@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-track-raw-pointers
+// compile-flags: -Zmiri-tag-raw-pointers
 // error-pattern: does not have an appropriate item in the borrow stack
 
 fn main() {
