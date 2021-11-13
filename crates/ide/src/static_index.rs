@@ -106,6 +106,7 @@ impl StaticIndex<'_> {
                     type_hints: true,
                     parameter_hints: true,
                     chaining_hints: true,
+                    hide_named_constructor_hints: false,
                     max_length: Some(25),
                 },
                 file_id,

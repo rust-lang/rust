@@ -16,6 +16,7 @@ pub struct InlayHintsConfig {
     pub type_hints: bool,
     pub parameter_hints: bool,
     pub chaining_hints: bool,
+    pub hide_named_constructor_hints: bool,
     pub max_length: Option<usize>,
 }
 
@@ -213,7 +214,9 @@ fn get_bind_pat_hints(
         Some(label) => label,
         None => {
             let ty_name = ty.display_truncated(sema.db, config.max_length).to_string();
-            if is_named_constructor(sema, pat, &ty_name).is_some() {
+            if config.hide_named_constructor_hints
+                && is_named_constructor(sema, pat, &ty_name).is_some()
+            {
                 return None;
             }
             ty_name.into()
@@ -537,6 +540,7 @@ mod tests {
         type_hints: true,
         parameter_hints: true,
         chaining_hints: true,
+        hide_named_constructor_hints: false,
         max_length: None,
     };
 
@@ -552,6 +556,7 @@ mod tests {
                 parameter_hints: true,
                 type_hints: false,
                 chaining_hints: false,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             ra_fixture,
@@ -565,6 +570,7 @@ mod tests {
                 parameter_hints: false,
                 type_hints: true,
                 chaining_hints: false,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             ra_fixture,
@@ -578,6 +584,7 @@ mod tests {
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             ra_fixture,
@@ -608,6 +615,7 @@ mod tests {
                 type_hints: false,
                 parameter_hints: false,
                 chaining_hints: false,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             r#"
@@ -1313,7 +1321,14 @@ fn main() {
 
     #[test]
     fn skip_constructor_type_hints() {
-        check_types(
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                parameter_hints: true,
+                chaining_hints: true,
+                hide_named_constructor_hints: true,
+                max_length: None,
+            },
             r#"
 //- minicore: try
 use core::ops::ControlFlow;
@@ -1348,6 +1363,53 @@ fn main() {
 
 fn fallible() -> ControlFlow<()> {
     let strukt = Struct::try_new()?;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn shows_constructor_type_hints_when_enabled() {
+        check_types(
+            r#"
+//- minicore: try
+use core::ops::ControlFlow;
+
+struct Struct;
+struct TupleStruct();
+
+impl Struct {
+    fn new() -> Self {
+        Struct
+    }
+    fn try_new() -> ControlFlow<(), Self> {
+        ControlFlow::Continue(Struct)
+    }
+}
+
+struct Generic<T>(T);
+impl Generic<i32> {
+    fn new() -> Self {
+        Generic(0)
+    }
+}
+
+fn main() {
+    let strukt = Struct::new();
+     // ^^^^^^ Struct
+    let tuple_struct = TupleStruct();
+     // ^^^^^^^^^^^^ TupleStruct
+    let generic0 = Generic::new();
+     // ^^^^^^^^ Generic<i32>
+    let generic1 = Generic::<i32>::new();
+     // ^^^^^^^^ Generic<i32>
+    let generic2 = <Generic<i32>>::new();
+     // ^^^^^^^^ Generic<i32>
+}
+
+fn fallible() -> ControlFlow<()> {
+    let strukt = Struct::try_new()?;
+     // ^^^^^^ Struct
 }
 "#,
         );
@@ -1408,6 +1470,7 @@ fn main() {
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             r#"
@@ -1464,6 +1527,7 @@ fn main() {
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             r#"
@@ -1508,6 +1572,7 @@ fn main() {
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             r#"
@@ -1553,6 +1618,7 @@ fn main() {
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             r#"
