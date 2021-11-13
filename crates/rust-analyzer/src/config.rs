@@ -195,14 +195,16 @@ config_data! {
         hoverActions_run: bool             = "true",
 
         /// Whether to show inlay type hints for method chains.
-        inlayHints_chainingHints: bool      = "true",
+        inlayHints_chainingHints: bool              = "true",
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
-        inlayHints_maxLength: Option<usize> = "25",
+        inlayHints_maxLength: Option<usize>         = "25",
         /// Whether to show function parameter name inlay hints at the call
         /// site.
-        inlayHints_parameterHints: bool     = "true",
+        inlayHints_parameterHints: bool             = "true",
         /// Whether to show inlay type hints for variables.
-        inlayHints_typeHints: bool          = "true",
+        inlayHints_typeHints: bool                  = "true",
+        /// Whether to hide inlay hints for constructors.
+        inlayHints_hideNamedConstructorHints: bool  = "true",
 
         /// Join lines inserts else between consecutive ifs.
         joinLines_joinElseIf: bool = "true",
@@ -768,6 +770,7 @@ impl Config {
             type_hints: self.data.inlayHints_typeHints,
             parameter_hints: self.data.inlayHints_parameterHints,
             chaining_hints: self.data.inlayHints_chainingHints,
+            hide_named_constructor_hints: self.data.inlayHints_hideNamedConstructorHints,
             max_length: self.data.inlayHints_maxLength,
         }
     }

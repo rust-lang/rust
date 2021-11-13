@@ -752,6 +752,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.hideNamedConstructorHints": {
+                    "markdownDescription": "Whether to hide inlay hints for constructors.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.joinLines.joinElseIf": {
                     "markdownDescription": "Join lines inserts else between consecutive ifs.",
                     "default": true,
