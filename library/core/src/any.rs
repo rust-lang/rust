@@ -285,7 +285,7 @@ impl dyn Any {
     ///
     /// The contained value must be of type `T`. Calling this method
     /// with the incorrect type is *undefined behavior*.
-    #[unstable(feature = "downcast_unchecked", issue = "none")]
+    #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
         debug_assert!(self.is::<T>());
@@ -317,7 +317,7 @@ impl dyn Any {
     ///
     /// The contained value must be of type `T`. Calling this method
     /// with the incorrect type is *undefined behavior*.
-    #[unstable(feature = "downcast_unchecked", issue = "none")]
+    #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
         debug_assert!(self.is::<T>());
@@ -422,7 +422,7 @@ impl dyn Any + Send {
     /// # Safety
     ///
     /// Same as the method on the type `dyn Any`.
-    #[unstable(feature = "downcast_unchecked", issue = "none")]
+    #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
         // SAFETY: guaranteed by caller
@@ -450,7 +450,7 @@ impl dyn Any + Send {
     /// # Safety
     ///
     /// Same as the method on the type `dyn Any`.
-    #[unstable(feature = "downcast_unchecked", issue = "none")]
+    #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
         // SAFETY: guaranteed by caller
@@ -550,7 +550,7 @@ impl dyn Any + Send + Sync {
     ///     assert_eq!(*x.downcast_ref_unchecked::<usize>(), 1);
     /// }
     /// ```
-    #[unstable(feature = "downcast_unchecked", issue = "none")]
+    #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
         // SAFETY: guaranteed by caller
@@ -574,7 +574,7 @@ impl dyn Any + Send + Sync {
     ///
     /// assert_eq!(*x.downcast_ref::<usize>().unwrap(), 2);
     /// ```
-    #[unstable(feature = "downcast_unchecked", issue = "none")]
+    #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
         // SAFETY: guaranteed by caller
