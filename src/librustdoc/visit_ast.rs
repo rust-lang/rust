@@ -11,12 +11,35 @@ use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::Span;
 
 use std::mem;
 
 use crate::clean::{self, cfg::Cfg, AttributesExt, NestedAttributesExt};
 use crate::core;
-use crate::doctree::*;
+
+/// This module is used to store stuff from Rust's AST in a more convenient
+/// manner (and with prettier names) before cleaning.
+#[derive(Debug)]
+crate struct Module<'hir> {
+    crate name: Symbol,
+    crate where_inner: Span,
+    crate mods: Vec<Module<'hir>>,
+    crate id: hir::HirId,
+    // (item, renamed)
+    crate items: Vec<(&'hir hir::Item<'hir>, Option<Symbol>)>,
+    crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
+}
+
+impl Module<'hir> {
+    crate fn new(name: Symbol, id: hir::HirId, where_inner: Span) -> Module<'hir> {
+        Module { name, id, where_inner, mods: Vec::new(), items: Vec::new(), foreigns: Vec::new() }
+    }
+
+    crate fn where_outer(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.hir().span(self.id)
+    }
+}
 
 // FIXME: Should this be replaced with tcx.def_path_str?
 fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {

@@ -36,8 +36,8 @@ use std::hash::Hash;
 use std::{mem, vec};
 
 use crate::core::{self, DocContext, ImplTraitParam};
-use crate::doctree;
 use crate::formats::item_type::ItemType;
+use crate::visit_ast::Module as DocModule;
 
 use utils::*;
 
@@ -54,7 +54,7 @@ crate trait Clean<T> {
     fn clean(&self, cx: &mut DocContext<'_>) -> T;
 }
 
-impl Clean<Item> for doctree::Module<'_> {
+impl Clean<Item> for DocModule<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let mut items: Vec<Item> = vec![];
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
