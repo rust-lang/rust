@@ -1,5 +1,4 @@
-#![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
-#![doc(hidden)]
+#![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
 use core::alloc::LayoutError;
 use core::cmp;
@@ -50,7 +49,7 @@ enum AllocInit {
 /// `usize::MAX`. This means that you need to be careful when round-tripping this type with a
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
-pub struct RawVec<T, A: Allocator = Global> {
+pub(crate) struct RawVec<T, A: Allocator = Global> {
     ptr: Unique<T>,
     cap: usize,
     alloc: A,
@@ -87,7 +86,7 @@ impl<T> RawVec<T, Global> {
     /// # Aborts
     ///
     /// Aborts on OOM.
-    #[cfg(not(no_global_oom_handling))]
+    #[cfg(not(any(no_global_oom_handling, test)))]
     #[must_use]
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
@@ -95,24 +94,11 @@ impl<T> RawVec<T, Global> {
     }
 
     /// Like `with_capacity`, but guarantees the buffer is zeroed.
-    #[cfg(not(no_global_oom_handling))]
+    #[cfg(not(any(no_global_oom_handling, test)))]
     #[must_use]
     #[inline]
     pub fn with_capacity_zeroed(capacity: usize) -> Self {
         Self::with_capacity_zeroed_in(capacity, Global)
-    }
-
-    /// Reconstitutes a `RawVec` from a pointer and capacity.
-    ///
-    /// # Safety
-    ///
-    /// The `ptr` must be allocated (on the system heap), and with the given `capacity`.
-    /// The `capacity` cannot exceed `isize::MAX` for sized types. (only a concern on 32-bit
-    /// systems). ZST vectors may have a capacity up to `usize::MAX`.
-    /// If the `ptr` and `capacity` come from a `RawVec`, then this is guaranteed.
-    #[inline]
-    pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {
-        unsafe { Self::from_raw_parts_in(ptr, capacity, Global) }
     }
 }
 
@@ -152,14 +138,6 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[inline]
     pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
         Self::allocate_in(capacity, AllocInit::Zeroed, alloc)
-    }
-
-    /// Converts a `Box<[T]>` into a `RawVec<T>`.
-    pub fn from_box(slice: Box<[T], A>) -> Self {
-        unsafe {
-            let (slice, alloc) = Box::into_raw_with_allocator(slice);
-            RawVec::from_raw_parts_in(slice.as_mut_ptr(), slice.len(), alloc)
-        }
     }
 
     /// Converts the entire buffer into `Box<[MaybeUninit<T>]>` with the specified `len`.
@@ -290,37 +268,6 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// # Aborts
     ///
     /// Aborts on OOM.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(raw_vec_internals)]
-    /// # extern crate alloc;
-    /// # use std::ptr;
-    /// # use alloc::raw_vec::RawVec;
-    /// struct MyVec<T> {
-    ///     buf: RawVec<T>,
-    ///     len: usize,
-    /// }
-    ///
-    /// impl<T: Clone> MyVec<T> {
-    ///     pub fn push_all(&mut self, elems: &[T]) {
-    ///         self.buf.reserve(self.len, elems.len());
-    ///         // reserve would have aborted or panicked if the len exceeded
-    ///         // `isize::MAX` so this is safe to do unchecked now.
-    ///         for x in elems {
-    ///             unsafe {
-    ///                 ptr::write(self.buf.ptr().add(self.len), x.clone());
-    ///             }
-    ///             self.len += 1;
-    ///         }
-    ///     }
-    /// }
-    /// # fn main() {
-    /// #   let mut vector = MyVec { buf: RawVec::new(), len: 0 };
-    /// #   vector.push_all(&[1, 3, 5, 7, 9]);
-    /// # }
-    /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     pub fn reserve(&mut self, len: usize, additional: usize) {
