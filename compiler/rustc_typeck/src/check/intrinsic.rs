@@ -164,7 +164,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::abort => (0, Vec::new(), tcx.types.never),
             sym::unreachable => (0, Vec::new(), tcx.types.never),
             sym::breakpoint => (0, Vec::new(), tcx.mk_unit()),
-            sym::size_of | sym::pref_align_of | sym::min_align_of | sym::variant_count => {
+            sym::size_of | sym::min_align_of | sym::variant_count => {
                 (1, Vec::new(), tcx.types.usize)
             }
             sym::size_of_val | sym::min_align_of_val => {

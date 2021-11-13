@@ -981,7 +981,6 @@ symbols! {
         pre_dash_lto: "pre-lto",
         precise_pointer_size_matching,
         precision,
-        pref_align_of,
         prefetch_read_data,
         prefetch_read_instruction,
         prefetch_write_data,

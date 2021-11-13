@@ -103,11 +103,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
                 }
             }
-            sym::pref_align_of
-            | sym::needs_drop
-            | sym::type_id
-            | sym::type_name
-            | sym::variant_count => {
+            sym::needs_drop | sym::type_id | sym::type_name | sym::variant_count => {
                 let value = bx
                     .tcx()
                     .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
