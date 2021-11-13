@@ -1,0 +1,28 @@
+[package]
+name = "core_simd"
+version = "0.1.0"
+edition = "2021"
+homepage = "https://github.com/rust-lang/portable-simd"
+repository = "https://github.com/rust-lang/portable-simd"
+keywords = ["core", "simd", "intrinsics"]
+categories = ["hardware-support", "no-std"]
+license = "MIT OR Apache-2.0"
+
+[features]
+default = ["std", "generic_const_exprs"]
+std = []
+generic_const_exprs = []
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies.wasm-bindgen]
+version = "0.2"
+
+[dev-dependencies.wasm-bindgen-test]
+version = "0.3"
+
+[dev-dependencies.proptest]
+version = "0.10"
+default-features = false
+features = ["alloc"]
+
+[dev-dependencies.test_helpers]
+path = "../test_helpers"

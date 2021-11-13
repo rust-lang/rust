@@ -1,0 +1,260 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+
+jobs:
+  rustfmt:
+    name: "rustfmt"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+          rustup component add rustfmt
+      - name: Run rustfmt
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: "clippy on ${{ matrix.target }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          # We shouldn't really have any OS-specific code, so think of this as a list of architectures
+          - x86_64-unknown-linux-gnu
+          - i686-unknown-linux-gnu
+          - i586-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - armv7-unknown-linux-gnueabihf
+          - mips-unknown-linux-gnu
+          - mips64-unknown-linux-gnuabi64
+          - powerpc-unknown-linux-gnu
+          - powerpc64-unknown-linux-gnu
+          - riscv64gc-unknown-linux-gnu
+          - s390x-unknown-linux-gnu
+          - sparc64-unknown-linux-gnu
+          - wasm32-unknown-unknown
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+          rustup target add ${{ matrix.target }}
+          rustup component add clippy
+      - name: Run Clippy
+        run: cargo clippy --all-targets --target ${{ matrix.target }}
+
+  x86-tests:
+    name: "${{ matrix.target_feature }} on ${{ matrix.target }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc, i586-pc-windows-msvc, x86_64-unknown-linux-gnu, x86_64-apple-darwin]
+        # `default` means we use the default target config for the target,
+        # `native` means we run with `-Ctarget-cpu=native`, and anything else is
+        # an arg to `-Ctarget-feature`
+        target_feature: [default, native, +sse3, +ssse3, +sse4.1, +sse4.2, +avx, +avx2]
+
+        exclude:
+          # The macos runners seem to only reliably support up to `avx`.
+          - { target: x86_64-apple-darwin, target_feature: +avx2 }
+          # These features are statically known to be present for all 64 bit
+          # macs, and thus are covered by the `default` test
+          - { target: x86_64-apple-darwin, target_feature: +sse3 }
+          - { target: x86_64-apple-darwin, target_feature: +ssse3 }
+          # -Ctarget-cpu=native sounds like bad-news if target != host
+          - { target: i686-pc-windows-msvc, target_feature: native }
+          - { target: i586-pc-windows-msvc, target_feature: native }
+
+        include:
+          # Populate the `matrix.os` field
+          - { target: x86_64-apple-darwin,      os: macos-latest }
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest }
+          - { target: x86_64-pc-windows-msvc,   os: windows-latest }
+          - { target: i686-pc-windows-msvc,     os: windows-latest }
+          - { target: i586-pc-windows-msvc,     os: windows-latest }
+
+          # These are globally available on all the other targets.
+          - { target: i586-pc-windows-msvc, target_feature: +sse, os: windows-latest }
+          - { target: i586-pc-windows-msvc, target_feature: +sse2, os: windows-latest }
+
+          # Annoyingly, the x86_64-unknown-linux-gnu runner *almost* always has
+          # avx512vl, but occasionally doesn't.  Maybe one day we can enable it.
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+          rustup target add ${{ matrix.target }}
+
+      - name: Configure RUSTFLAGS
+        shell: bash
+        run: |
+          case "${{ matrix.target_feature }}" in
+            default)
+              echo "RUSTFLAGS=-Dwarnings" >> $GITHUB_ENV;;
+            native)
+              echo "RUSTFLAGS=-Dwarnings -Ctarget-cpu=native" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "RUSTFLAGS=-Dwarnings -Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
+              ;;
+          esac
+
+      # Super useful for debugging why a SIGILL occurred.
+      - name: Dump target configuration and support
+        run: |
+          rustc -Vv
+
+          echo "Caveat: not all target features are expected to be logged"
+
+          echo "## Requested target configuration (RUSTFLAGS=$RUSTFLAGS)"
+          rustc --print=cfg --target=${{ matrix.target }} $RUSTFLAGS
+
+          echo "## Supported target configuration for --target=${{ matrix.target }}"
+          rustc --print=cfg --target=${{ matrix.target }} -Ctarget-cpu=native
+
+          echo "## Natively supported target configuration"
+          rustc --print=cfg -Ctarget-cpu=native
+
+      - name: Test (debug)
+        run: cargo test --verbose --target=${{ matrix.target }}
+
+      - name: Test (release)
+        run: cargo test --verbose --target=${{ matrix.target }} --release
+
+  wasm-tests:
+    name: "wasm (firefox, ${{ matrix.name }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { name: default, RUSTFLAGS: "" }
+          - { name: simd128, RUSTFLAGS: "-C target-feature=+simd128" }
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Test (debug)
+        run: wasm-pack test --firefox --headless crates/core_simd
+        env:
+            RUSTFLAGS: ${{ matrix.rustflags }}
+      - name: Test (release)
+        run: wasm-pack test --firefox --headless crates/core_simd --release
+        env:
+            RUSTFLAGS: ${{ matrix.rustflags }}
+
+  cross-tests:
+    name: "${{ matrix.target }} (via cross)"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # TODO: Sadly, we cant configure target-feature in a meaningful way
+      # because `cross` doesn't tell qemu to enable any non-default cpu
+      # features, nor does it give us a way to do so.
+      #
+      # Ultimately, we'd like to do something like [rust-lang/stdarch][stdarch].
+      # This is a lot more complex... but in practice it's likely that we can just
+      # snarf the docker config from around [here][1000-dockerfiles].
+      #
+      # [stdarch]: https://github.com/rust-lang/stdarch/blob/a5db4eaf/.github/workflows/main.yml#L67
+      # [1000-dockerfiles]: https://github.com/rust-lang/stdarch/tree/a5db4eaf/ci/docker
+
+      matrix:
+        target:
+          - i586-unknown-linux-gnu
+          # 32-bit arm has a few idiosyncracies like having subnormal flushing
+          # to zero on by default. Ideally we'd set
+          - armv7-unknown-linux-gnueabihf
+          - aarch64-unknown-linux-gnu
+          # Note: The issue above means neither of these mips targets will use
+          # MSA (mips simd) but MIPS uses a nonstandard binary representation
+          # for NaNs which makes it worth testing on despite that.
+          - mips-unknown-linux-gnu
+          - mips64-unknown-linux-gnuabi64
+          - riscv64gc-unknown-linux-gnu
+          # TODO this test works, but it appears to time out
+          # - powerpc-unknown-linux-gnu
+          # TODO this test is broken, but it appears to be a problem with QEMU, not us.
+          # - powerpc64le-unknown-linux-gnu
+          # TODO enable this once a new version of cross is released
+          # - powerpc64-unknown-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+          rustup target add ${{ matrix.target }}
+          rustup component add rust-src
+
+      - name: Install Cross
+        # Equivalent to `cargo install cross`, but downloading a prebuilt
+        # binary. Ideally we wouldn't hardcode a version, but the version number
+        # being part of the tarball means we can't just use the download/latest
+        # URL :(
+        run: |
+          CROSS_URL=https://github.com/rust-embedded/cross/releases/download/v0.2.1/cross-v0.2.1-x86_64-unknown-linux-gnu.tar.gz
+          mkdir -p "$HOME/.bin"
+          curl -sfSL --retry-delay 10 --retry 5 "${CROSS_URL}" | tar zxf - -C "$HOME/.bin"
+          echo "$HOME/.bin" >> $GITHUB_PATH
+
+      - name: Test (debug)
+        run: cross test --verbose --target=${{ matrix.target }}
+
+      - name: Test (release)
+        run: cross test --verbose --target=${{ matrix.target }} --release
+
+  features:
+    name: "Check cargo features (${{ matrix.simd }} × ${{ matrix.features }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        simd:
+          - ""
+          - "avx512"
+        features:
+          - ""
+          - "--features std"
+          - "--features generic_const_exprs"
+          - "--features std --features generic_const_exprs"
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+      - name: Detect AVX512
+        run: echo "CPU_FEATURE=$(lscpu | grep -o avx512[a-z]* | sed s/avx/+avx/ | tr '\n' ',' )" >> $GITHUB_ENV
+      - name: Check build
+        if: ${{ matrix.simd == '' }}
+        run: RUSTFLAGS="-Dwarnings" cargo check --all-targets --no-default-features ${{ matrix.features }}
+      - name: Check AVX
+        if: ${{ matrix.simd == 'avx512' && contains(env.CPU_FEATURE, 'avx512') }}
+        run: |
+          echo "Found AVX features: $CPU_FEATURE"
+          RUSTFLAGS="-Dwarnings -Ctarget-feature=$CPU_FEATURE" cargo check --all-targets --no-default-features ${{ matrix.features }}
