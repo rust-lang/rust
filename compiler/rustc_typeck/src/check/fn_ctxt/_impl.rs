@@ -952,7 +952,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut err = rustc_errors::struct_span_err!(
                         self.sess(),
                         self_ty.span,
-                        E0783,
+                        E0782,
                         "{}",
                         msg,
                     );
