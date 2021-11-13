@@ -113,6 +113,7 @@ ENV HOSTS=x86_64-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS \
       --enable-full-tools \
+      --tools=cargo,src \
       --enable-sanitizers \
       --enable-profiler \
       --enable-compiler-docs \
