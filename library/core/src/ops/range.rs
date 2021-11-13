@@ -98,7 +98,7 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
     }
 }
 
-impl<Idx: Add<Idx> + Copy> Range<Idx> {
+impl<Idx: Add<Idx, Output=Idx> + Copy> Range<Idx> {
     /// Returns a new `Range` analogous to this range, but moved to the
     /// given position.
     ///
@@ -117,7 +117,7 @@ impl<Idx: Add<Idx> + Copy> Range<Idx> {
     }
 }
 
-impl<Idx: Sub<Idx> + Copy> Range<Idx> {
+impl<Idx: Sub<Idx, Output=Idx> + Copy> Range<Idx> {
     /// Returns a new `Range` analogous to this range, but moved from the
     /// given position.
     ///
@@ -239,7 +239,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
     }
 }
 
-impl<Idx: Add<Idx> + Copy> RangeFrom<Idx> {
+impl<Idx: Add<Idx, Output=Idx> + Copy> RangeFrom<Idx> {
     /// Returns a new `RangeFrom` analogous to this range, but moved to the
     /// given position.
     ///
@@ -258,7 +258,7 @@ impl<Idx: Add<Idx> + Copy> RangeFrom<Idx> {
     }
 }
 
-impl<Idx: Sub<Idx> + Copy> RangeFrom<Idx> {
+impl<Idx: Sub<Idx, Output=Idx> + Copy> RangeFrom<Idx> {
     /// Returns a new `RangeFrom` analogous to this range, but moved from the
     /// given position.
     ///
@@ -358,7 +358,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
     }
 }
 
-impl<Idx: Add<Idx> + Copy> RangeTo<Idx> {
+impl<Idx: Add<Idx, Output=Idx> + Copy> RangeTo<Idx> {
     /// Returns a new `RangeTo` analogous to this range, but moved to the
     /// given position.
     ///
@@ -377,7 +377,7 @@ impl<Idx: Add<Idx> + Copy> RangeTo<Idx> {
     }
 }
 
-impl<Idx: Sub<Idx> + Copy> RangeTo<Idx> {
+impl<Idx: Sub<Idx, Output=Idx> + Copy> RangeTo<Idx> {
     /// Returns a new `RangeTo` analogous to this range, but moved from the
     /// given position.
     ///
@@ -472,7 +472,7 @@ pub struct RangeInclusive<Idx> {
     pub(crate) exhausted: bool,
 }
 
-impl<Idx: Add<Idx> + Copy> RangeInclusive<Idx> {
+impl<Idx: Add<Idx, Output=Idx> + Copy> RangeInclusive<Idx> {
     /// Returns a new `RangeInclusive` analogous to this range, but moved to the
     /// given position.
     ///
@@ -495,7 +495,7 @@ impl<Idx: Add<Idx> + Copy> RangeInclusive<Idx> {
     }
 }
 
-impl<Idx: Sub<Idx> + Copy> RangeInclusive<Idx> {
+impl<Idx: Sub<Idx, Output=Idx> + Copy> RangeInclusive<Idx> {
     /// Returns a new `RangeInclusive` analogous to this range, but moved from the
     /// given position.
     ///
@@ -760,7 +760,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeToInclusive<Idx> {
     }
 }
 
-impl<Idx: Add<Idx> + Copy> RangeToInclusive<Idx> {
+impl<Idx: Add<Idx, Output=Idx> + Copy> RangeToInclusive<Idx> {
     /// Returns a new `RangeToInclusive` analogous to this range, but moved to the
     /// given position.
     ///
@@ -779,7 +779,7 @@ impl<Idx: Add<Idx> + Copy> RangeToInclusive<Idx> {
     }
 }
 
-impl<Idx: Sub<Idx> + Copy> RangeToInclusive<Idx> {
+impl<Idx: Sub<Idx, Output=Idx> + Copy> RangeToInclusive<Idx> {
     /// Returns a new `RangeToInclusive` analogous to this range, but moved from the
     /// given position.
     ///
