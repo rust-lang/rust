@@ -101,11 +101,25 @@ impl<K: Eq + Hash + Copy> ShardedHashMap<K, ()> {
     {
         let hash = make_hash(&value);
         let mut shard = self.get_shard_by_hash(hash).lock();
+        let len = shard.len();
+        let cap = shard.capacity();
         let entry = shard.raw_entry_mut().from_key_hashed_nocheck(hash, &value);
 
         match entry {
             RawEntryMut::Occupied(e) => *e.key(),
             RawEntryMut::Vacant(e) => {
+                if cap == len {
+                    drop(e);
+                    shard.reserve(cap * 2);
+                    match shard.raw_entry_mut().from_key_hashed_nocheck(hash, &value) {
+                        RawEntryMut::Vacant(e) => {
+                            let v = make(value);
+                            e.insert_hashed_nocheck(hash, v, ());
+                            return v;
+                        }
+                        _ => unreachable!(),
+                    };
+                }
                 let v = make(value);
                 e.insert_hashed_nocheck(hash, v, ());
                 v

@@ -27,7 +27,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sharded::{IntoPointer, Sharded, ShardedHashMap};
+use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
@@ -57,7 +57,6 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 
-use rustc_data_structures::sharded;
 use smallvec::SmallVec;
 use std::any::Any;
 use std::borrow::Borrow;
@@ -118,22 +117,15 @@ pub struct CtxtInterners<'tcx> {
 
 impl<'tcx> CtxtInterners<'tcx> {
     fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> {
-        const TYS_CAPACITY: usize = 16 * 1024 / sharded::SHARDS;
-        const PRED_CAPACITY: usize = 128 * 1024 / sharded::SHARDS;
-        let type_interner =
-            Sharded::new(|| FxHashMap::with_capacity_and_hasher(TYS_CAPACITY, Default::default()));
-        let pred_interner =
-            Sharded::new(|| FxHashMap::with_capacity_and_hasher(PRED_CAPACITY, Default::default()));
-
         CtxtInterners {
             arena,
-            type_: type_interner,
+            type_: Default::default(),
             type_list: Default::default(),
             substs: Default::default(),
             region: Default::default(),
             poly_existential_predicates: Default::default(),
             canonical_var_infos: Default::default(),
-            predicate: pred_interner,
+            predicate: Default::default(),
             predicates: Default::default(),
             projs: Default::default(),
             place_elems: Default::default(),
