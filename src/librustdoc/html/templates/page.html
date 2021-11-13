@@ -20,6 +20,16 @@
     ></script> {#- -#}
     <script src="{{static_root_path | safe}}storage{{page.resource_suffix}}.js"></script> {#- -#}
     <script src="{{page.root_path | safe}}crates{{page.resource_suffix}}.js"></script> {#- -#}
+    <script defer src="{{static_root_path | safe}}main{{page.resource_suffix}}.js"></script> {#- -#}
+    {%- for script in page.static_extra_scripts -%}
+    <script defer src="{{static_root_path | safe}}{{script}}.js"></script> {#- -#}
+    {% endfor %}
+    {%- if layout.scrape_examples_extension -%}
+    <script defer src="{{page.root_path | safe}}scrape-examples{{page.resource_suffix}}.js"></script> {#- -#}
+    {%- endif -%}
+    {%- for script in page.extra_scripts -%}
+    <script defer src="{{page.root_path | safe}}{{script}}.js"></script> {#- -#}
+    {% endfor %}
     <noscript> {#- -#}
         <link rel="stylesheet" {# -#}
            href="{{static_root_path | safe}}noscript{{page.resource_suffix}}.css"> {#- -#}
@@ -107,15 +117,5 @@
          data-search-index-js="{{page.root_path | safe}}search-index{{page.resource_suffix}}.js" {# -#}
          data-search-js="{{static_root_path | safe}}search{{page.resource_suffix}}.js"> {#- -#}
     </div>
-    <script src="{{static_root_path | safe}}main{{page.resource_suffix}}.js"></script> {#- -#}
-    {%- for script in page.static_extra_scripts -%}
-    <script src="{{static_root_path | safe}}{{script}}.js"></script> {#- -#}
-    {% endfor %}
-    {%- if layout.scrape_examples_extension -%}
-    <script src="{{page.root_path | safe}}scrape-examples{{page.resource_suffix}}.js"></script> {#- -#}
-    {%- endif -%}
-    {%- for script in page.extra_scripts -%}
-    <script src="{{page.root_path | safe}}{{script}}.js"></script> {#- -#}
-    {% endfor %}
 </body> {#- -#}
 </html> {#- -#}
