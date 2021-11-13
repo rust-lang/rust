@@ -1561,35 +1561,36 @@ impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
 impl Clean<Item> for hir::FieldDef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
-        let what_rustc_thinks = Item::from_def_id_and_parts(
-            def_id,
-            Some(self.ident.name),
-            StructFieldItem(self.ty.clean(cx)),
-            cx,
-        );
-        let parent = cx.tcx.parent(def_id).unwrap();
-        match cx.tcx.def_kind(parent) {
-            DefKind::Struct | DefKind::Union => what_rustc_thinks,
-            DefKind::Variant => {
-                // Variant fields inherit their enum's visibility.
-                Item { visibility: Visibility::Inherited, ..what_rustc_thinks }
-            }
-            // FIXME: what about DefKind::Ctor?
-            parent_kind => panic!("unexpected parent kind: {:?}", parent_kind),
-        }
+        clean_field(def_id, self.ident.name, self.ty.clean(cx), cx)
     }
 }
 
 impl Clean<Item> for ty::FieldDef {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
-        let what_rustc_thinks = Item::from_def_id_and_parts(
-            self.did,
-            Some(self.ident.name),
-            StructFieldItem(cx.tcx.type_of(self.did).clean(cx)),
-            cx,
-        );
-        // Don't show `pub` for fields on enum variants; they are always public
-        Item { visibility: self.vis.clean(cx), ..what_rustc_thinks }
+        clean_field(self.did, self.ident.name, cx.tcx.type_of(self.did).clean(cx), cx)
+    }
+}
+
+fn clean_field(def_id: DefId, name: Symbol, ty: Type, cx: &mut DocContext<'_>) -> Item {
+    let what_rustc_thinks =
+        Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx);
+    if is_field_vis_inherited(cx.tcx, def_id) {
+        // Variant fields inherit their enum's visibility.
+        Item { visibility: Visibility::Inherited, ..what_rustc_thinks }
+    } else {
+        what_rustc_thinks
+    }
+}
+
+fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    let parent = tcx
+        .parent(def_id)
+        .expect("is_field_vis_inherited can only be called on struct or variant fields");
+    match tcx.def_kind(parent) {
+        DefKind::Struct | DefKind::Union => false,
+        DefKind::Variant => true,
+        // FIXME: what about DefKind::Ctor?
+        parent_kind => panic!("unexpected parent kind: {:?}", parent_kind),
     }
 }
 
@@ -1600,8 +1601,7 @@ impl Clean<Visibility> for ty::Visibility {
             // NOTE: this is not quite right: `ty` uses `Invisible` to mean 'private',
             // while rustdoc really does mean inherited. That means that for enum variants, such as
             // `pub enum E { V }`, `V` will be marked as `Public` by `ty`, but as `Inherited` by rustdoc.
-            // This is the main reason `impl Clean for hir::Visibility` still exists; various parts of clean
-            // override `tcx.visibility` explicitly to make sure this distinction is captured.
+            // Various parts of clean override `tcx.visibility` explicitly to make sure this distinction is captured.
             ty::Visibility::Invisible => Visibility::Inherited,
             ty::Visibility::Restricted(module) => Visibility::Restricted(module),
         }
@@ -1628,39 +1628,18 @@ impl Clean<Item> for ty::VariantDef {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let kind = match self.ctor_kind {
             CtorKind::Const => Variant::CLike,
-            CtorKind::Fn => Variant::Tuple(
-                self.fields
-                    .iter()
-                    .map(|field| {
-                        let name = Some(field.ident.name);
-                        let kind = StructFieldItem(cx.tcx.type_of(field.did).clean(cx));
-                        let what_rustc_thinks =
-                            Item::from_def_id_and_parts(field.did, name, kind, cx);
-                        // don't show `pub` for fields, which are always public
-                        Item { visibility: Visibility::Inherited, ..what_rustc_thinks }
-                    })
-                    .collect(),
-            ),
+            CtorKind::Fn => {
+                Variant::Tuple(self.fields.iter().map(|field| field.clean(cx)).collect())
+            }
             CtorKind::Fictive => Variant::Struct(VariantStruct {
                 struct_type: CtorKind::Fictive,
                 fields_stripped: false,
-                fields: self
-                    .fields
-                    .iter()
-                    .map(|field| {
-                        let name = Some(field.ident.name);
-                        let kind = StructFieldItem(cx.tcx.type_of(field.did).clean(cx));
-                        let what_rustc_thinks =
-                            Item::from_def_id_and_parts(field.did, name, kind, cx);
-                        // don't show `pub` for fields, which are always public
-                        Item { visibility: Visibility::Inherited, ..what_rustc_thinks }
-                    })
-                    .collect(),
+                fields: self.fields.iter().map(|field| field.clean(cx)).collect(),
             }),
         };
         let what_rustc_thinks =
             Item::from_def_id_and_parts(self.def_id, Some(self.ident.name), VariantItem(kind), cx);
-        // don't show `pub` for fields, which are always public
+        // don't show `pub` for variants, which always inherit visibility
         Item { visibility: Inherited, ..what_rustc_thinks }
     }
 }
