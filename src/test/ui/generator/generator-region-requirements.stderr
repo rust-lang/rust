@@ -1,6 +1,9 @@
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/generator-region-requirements.rs:12:51
    |
+LL | fn dangle(x: &mut i32) -> &'static mut i32 {
+   |              -------- the type of `x` does not have lifetime `'static'`
+...
 LL |             GeneratorState::Complete(c) => return c,
    |                                                   ^ lifetime `'static` required
 

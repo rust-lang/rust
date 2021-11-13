@@ -123,6 +123,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 new_ty.to_string(),
                 Applicability::Unspecified,
             );
+        } else {
+            diag.span_label(
+                new_ty_span,
+                &format!("{} does not have lifetime `'static'`", span_label_var),
+            );
         }
 
         Some(diag)
