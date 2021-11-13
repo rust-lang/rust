@@ -53,12 +53,12 @@ pub(super) fn check<'tcx>(
             let self_snippet = snippet(cx, recv.span, "..");
             let func_snippet = snippet(cx, map_arg.span, "..");
             let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
-                       `and_then(..)` instead";
+                       `map(..)` instead";
             (
                 OPTION_MAP_OR_NONE,
                 msg,
-                "try using `and_then` instead",
-                format!("{0}.and_then({1})", self_snippet, func_snippet),
+                "try using `map` instead",
+                format!("{0}.map({1})", self_snippet, func_snippet),
             )
         } else if f_arg_is_some {
             let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
