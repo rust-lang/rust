@@ -204,7 +204,7 @@ config_data! {
         /// Whether to show inlay type hints for variables.
         inlayHints_typeHints: bool                  = "true",
         /// Whether to hide inlay hints for constructors.
-        inlayHints_hideNamedConstructorHints: bool  = "true",
+        inlayHints_hideNamedConstructorHints: bool  = "false",
 
         /// Join lines inserts else between consecutive ifs.
         joinLines_joinElseIf: bool = "true",

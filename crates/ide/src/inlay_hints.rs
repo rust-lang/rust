@@ -540,7 +540,7 @@ mod tests {
         type_hints: true,
         parameter_hints: true,
         chaining_hints: true,
-        hide_named_constructor_hints: true,
+        hide_named_constructor_hints: false,
         max_length: None,
     };
 
@@ -556,7 +556,7 @@ mod tests {
                 parameter_hints: true,
                 type_hints: false,
                 chaining_hints: false,
-                hide_named_constructor_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             ra_fixture,
@@ -570,7 +570,7 @@ mod tests {
                 parameter_hints: false,
                 type_hints: true,
                 chaining_hints: false,
-                hide_named_constructor_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             ra_fixture,
@@ -584,7 +584,7 @@ mod tests {
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
-                hide_named_constructor_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             ra_fixture,
@@ -615,7 +615,7 @@ mod tests {
                 type_hints: false,
                 parameter_hints: false,
                 chaining_hints: false,
-                hide_named_constructor_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             r#"
@@ -1321,7 +1321,14 @@ fn main() {
 
     #[test]
     fn skip_constructor_type_hints() {
-        check_types(
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                parameter_hints: true,
+                chaining_hints: true,
+                hide_named_constructor_hints: true,
+                max_length: None,
+            },
             r#"
 //- minicore: try
 use core::ops::ControlFlow;
@@ -1363,14 +1370,7 @@ fn fallible() -> ControlFlow<()> {
 
     #[test]
     fn shows_constructor_type_hints_when_enabled() {
-        check_with_config(
-            InlayHintsConfig {
-                type_hints: true,
-                parameter_hints: true,
-                chaining_hints: true,
-                hide_named_constructor_hints: false,
-                max_length: None,
-            },
+        check_types(
             r#"
 //- minicore: try
 use core::ops::ControlFlow;
@@ -1470,7 +1470,7 @@ fn main() {
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
-                hide_named_constructor_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             r#"
@@ -1527,7 +1527,7 @@ fn main() {
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
-                hide_named_constructor_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             r#"
@@ -1572,7 +1572,7 @@ fn main() {
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
-                hide_named_constructor_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             r#"
@@ -1618,7 +1618,7 @@ fn main() {
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
-                hide_named_constructor_hints: true,
+                hide_named_constructor_hints: false,
                 max_length: None,
             },
             r#"

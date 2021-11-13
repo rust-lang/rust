@@ -308,7 +308,7 @@ site.
 --
 Whether to show inlay type hints for variables.
 --
-[[rust-analyzer.inlayHints.hideNamedConstructorHints]]rust-analyzer.inlayHints.hideNamedConstructorHints (default: `true`)::
+[[rust-analyzer.inlayHints.hideNamedConstructorHints]]rust-analyzer.inlayHints.hideNamedConstructorHints (default: `false`)::
 +
 --
 Whether to hide inlay hints for constructors.

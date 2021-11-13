@@ -754,7 +754,7 @@
                 },
                 "rust-analyzer.inlayHints.hideNamedConstructorHints": {
                     "markdownDescription": "Whether to hide inlay hints for constructors.",
-                    "default": true,
+                    "default": false,
                     "type": "boolean"
                 },
                 "rust-analyzer.joinLines.joinElseIf": {
