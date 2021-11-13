@@ -1,4 +1,3 @@
-['x']
 error: character literal may only contain one codepoint
   --> $DIR/whitespace-character-literal.rs:5:30
    |
