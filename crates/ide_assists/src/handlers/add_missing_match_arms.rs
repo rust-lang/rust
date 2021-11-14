@@ -197,6 +197,19 @@ fn cursor_at_trivial_match_arm_list(
         return Some(());
     }
 
+    // match x {
+    //     bar => baz,
+    //     $0
+    // }
+    if let Some(last_arm) = match_arm_list.arms().last() {
+        let last_arm_range = last_arm.syntax().text_range();
+        let match_expr_range = match_expr.syntax().text_range();
+        if last_arm_range.end() <= ctx.offset() && ctx.offset() < match_expr_range.end() {
+            cov_mark::hit!(add_missing_match_arms_end_of_last_arm);
+            return Some(());
+        }
+    }
+
     // match { _$0 => {...} }
     let wild_pat = ctx.find_node_at_offset_with_descend::<ast::WildcardPat>()?;
     let arm = wild_pat.syntax().parent().and_then(ast::MatchArm::cast)?;
@@ -670,6 +683,41 @@ fn main() {
         A::Cs(_) => todo!(),
         A::Ds(_, _) => todo!(),
         A::Es { x, y } => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_missing_match_arms_end_of_last_arm() {
+        cov_mark::check!(add_missing_match_arms_end_of_last_arm);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum A { One, Two }
+enum B { One, Two }
+
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => {},$0
+    }
+}
+"#,
+            r#"
+enum A { One, Two }
+enum B { One, Two }
+
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => {},
+        $0(A::One, B::One) => todo!(),
+        (A::One, B::Two) => todo!(),
+        (A::Two, B::Two) => todo!(),
     }
 }
 "#,
