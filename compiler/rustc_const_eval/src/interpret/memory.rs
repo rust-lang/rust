@@ -1057,20 +1057,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(dest_ptr) => dest_ptr,
         };
 
-        // first copy the relocations to a temporary buffer, because
-        // `get_bytes_mut` will clear the relocations, which is correct,
-        // since we don't want to keep any relocations at the target.
-        // (`get_bytes_with_uninit_and_ptr` below checks that there are no
-        // relocations overlapping the edges; those would not be handled correctly).
-        let relocations =
-            src_alloc.prepare_relocation_copy(self, src_range, dest_offset, num_copies);
-        // Prepare a copy of the initialization mask.
-        let compressed = src_alloc.compress_uninit_range(src_range);
-        // This checks relocation edges on the src.
+        // This checks relocation edges on the src, which needs to happen before
+        // `prepare_relocation_copy`.
         let src_bytes = src_alloc
             .get_bytes_with_uninit_and_ptr(&tcx, src_range)
             .map_err(|e| e.to_interp_error(src_alloc_id))?
             .as_ptr(); // raw ptr, so we can also get a ptr to the destination allocation
+        // first copy the relocations to a temporary buffer, because
+        // `get_bytes_mut` will clear the relocations, which is correct,
+        // since we don't want to keep any relocations at the target.
+        let relocations =
+            src_alloc.prepare_relocation_copy(self, src_range, dest_offset, num_copies);
+        // Prepare a copy of the initialization mask.
+        let compressed = src_alloc.compress_uninit_range(src_range);
 
         // Destination alloc preparations and access hooks.
         let (dest_alloc, extra) = self.get_raw_mut(dest_alloc_id)?;
