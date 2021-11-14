@@ -1584,6 +1584,14 @@ impl<T: Ord, I: IntoIterator<Item = T>> SpecExtend<I> for BinaryHeap<T> {
     }
 }
 
+impl<T: Ord> SpecExtend<Vec<T>> for BinaryHeap<T> {
+    fn spec_extend(&mut self, ref mut other: Vec<T>) {
+        let start = self.data.len();
+        self.data.append(other);
+        self.rebuild_tail(start);
+    }
+}
+
 impl<T: Ord> SpecExtend<BinaryHeap<T>> for BinaryHeap<T> {
     fn spec_extend(&mut self, ref mut other: BinaryHeap<T>) {
         self.append(other);
