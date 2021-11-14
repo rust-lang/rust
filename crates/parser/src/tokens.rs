@@ -49,10 +49,18 @@ impl Tokens {
     pub fn len(&self) -> usize {
         self.kind.len()
     }
-    pub(crate) fn get(&self, idx: usize) -> Option<(SyntaxKind, bool, IdentKind)> {
-        let kind = *self.kind.get(idx)?;
+    pub(crate) fn get(&self, idx: usize) -> (SyntaxKind, bool, IdentKind) {
+        if idx > self.len() {
+            return self.eof();
+        }
+        let kind = self.kind[idx];
         let joint = self.get_joint(idx);
-        let ident_kind = *self.ident_kind.get(idx)?;
-        Some((kind, joint, ident_kind))
+        let ident_kind = self.ident_kind[idx];
+        (kind, joint, ident_kind)
+    }
+
+    #[cold]
+    fn eof(&self) -> (SyntaxKind, bool, IdentKind) {
+        (SyntaxKind::EOF, false, 0)
     }
 }
