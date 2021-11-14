@@ -1600,6 +1600,13 @@ fn render_impl(
         }
 
         if let Some(ref dox) = i.impl_item.collapsed_doc_value() {
+            if trait_.is_none() && i.inner_impl().items.is_empty() {
+                w.write_str(
+                    "<div class=\"item-info\">\
+                    <div class=\"stab empty-impl\">This impl block contains no items.</div>
+                </div>",
+                );
+            }
             write!(
                 w,
                 "<div class=\"docblock\">{}</div>",

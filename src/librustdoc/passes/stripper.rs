@@ -124,8 +124,9 @@ pub(crate) struct ImplStripper<'a> {
 impl<'a> DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = *i.kind {
-            // emptied none trait impls can be stripped
-            if imp.trait_.is_none() && imp.items.is_empty() {
+            // Impl blocks can be skipped if they are: empty; not a trait impl; and have no
+            // documentation.
+            if imp.trait_.is_none() && imp.items.is_empty() && i.doc_value().is_none() {
                 return None;
             }
             if let Some(did) = imp.for_.def_id(self.cache) {
