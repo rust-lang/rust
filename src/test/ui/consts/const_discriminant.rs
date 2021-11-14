@@ -25,6 +25,12 @@ enum SingleVariant {
 
 const TEST_V: Discriminant<SingleVariant> = discriminant(&SingleVariant::V);
 
+pub const TEST_VOID: () = {
+    // This is UB, but CTFE does not check validity so it does not detect this.
+    unsafe { std::mem::discriminant(&*(&() as *const () as *const Void)); };
+};
+
+
 fn main() {
     assert_eq!(TEST_A, TEST_A_OTHER);
     assert_eq!(TEST_A, discriminant(black_box(&Test::A(17))));

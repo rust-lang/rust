@@ -2067,7 +2067,9 @@ impl<'tcx> TyS<'tcx> {
     ) -> Option<Discr<'tcx>> {
         match self.kind() {
             TyKind::Adt(adt, _) if adt.variants.is_empty() => {
-                bug!("discriminant_for_variant called on zero variant enum");
+                // This can actually happen during CTFE, see
+                // https://github.com/rust-lang/rust/issues/89765.
+                None
             }
             TyKind::Adt(adt, _) if adt.is_enum() => {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
