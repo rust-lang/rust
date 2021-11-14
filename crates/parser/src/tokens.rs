@@ -1,8 +1,7 @@
-use crate::SyntaxKind;
+use crate::{SyntaxKind, Token};
 
+#[allow(non_camel_case_types)]
 type bits = u64;
-
-pub type IdentKind = u8;
 
 /// Main input to the parser.
 ///
@@ -11,17 +10,17 @@ pub type IdentKind = u8;
 pub struct Tokens {
     kind: Vec<SyntaxKind>,
     joint: Vec<bits>,
-    ident_kind: Vec<IdentKind>,
+    contextual_kw: Vec<SyntaxKind>,
 }
 
 impl Tokens {
     pub fn push(&mut self, was_joint: bool, kind: SyntaxKind) {
-        self.push_impl(was_joint, kind, 0)
+        self.push_impl(was_joint, kind, SyntaxKind::EOF)
     }
-    pub fn push_ident(&mut self, ident_kind: IdentKind) {
-        self.push_impl(false, SyntaxKind::IDENT, ident_kind)
+    pub fn push_ident(&mut self, contextual_kw: SyntaxKind) {
+        self.push_impl(false, SyntaxKind::IDENT, contextual_kw)
     }
-    fn push_impl(&mut self, was_joint: bool, kind: SyntaxKind, ctx: IdentKind) {
+    fn push_impl(&mut self, was_joint: bool, kind: SyntaxKind, contextual_kw: SyntaxKind) {
         let idx = self.len();
         if idx % (bits::BITS as usize) == 0 {
             self.joint.push(0);
@@ -30,7 +29,7 @@ impl Tokens {
             self.set_joint(idx - 1);
         }
         self.kind.push(kind);
-        self.ident_kind.push(ctx);
+        self.contextual_kw.push(contextual_kw);
     }
     fn set_joint(&mut self, n: usize) {
         let (idx, b_idx) = self.bit_index(n);
@@ -49,18 +48,18 @@ impl Tokens {
     pub fn len(&self) -> usize {
         self.kind.len()
     }
-    pub(crate) fn get(&self, idx: usize) -> (SyntaxKind, bool, IdentKind) {
+    pub(crate) fn get(&self, idx: usize) -> Token {
         if idx > self.len() {
             return self.eof();
         }
         let kind = self.kind[idx];
-        let joint = self.get_joint(idx);
-        let ident_kind = self.ident_kind[idx];
-        (kind, joint, ident_kind)
+        let is_jointed_to_next = self.get_joint(idx);
+        let contextual_kw = self.contextual_kw[idx];
+        Token { kind, is_jointed_to_next, contextual_kw }
     }
 
     #[cold]
-    fn eof(&self) -> (SyntaxKind, bool, IdentKind) {
-        (SyntaxKind::EOF, false, 0)
+    fn eof(&self) -> Token {
+        Token { kind: SyntaxKind::EOF, is_jointed_to_next: false, contextual_kw: SyntaxKind::EOF }
     }
 }

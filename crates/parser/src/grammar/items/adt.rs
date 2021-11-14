@@ -10,7 +10,7 @@ pub(super) fn strukt(p: &mut Parser, m: Marker) {
 // test union_item
 // struct U { i: i32, f: f32 }
 pub(super) fn union(p: &mut Parser, m: Marker) {
-    assert!(p.at_contextual_kw("union"));
+    assert!(p.at_contextual_kw(T![union]));
     p.bump_remap(T![union]);
     struct_or_union(p, m, false);
 }

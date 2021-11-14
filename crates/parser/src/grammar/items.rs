@@ -122,14 +122,14 @@ pub(super) fn opt_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         has_mods = true;
         abi(p);
     }
-    if p.at(IDENT) && p.at_contextual_kw("auto") && p.nth(1) == T![trait] {
+    if p.at_contextual_kw(T![auto]) && p.nth(1) == T![trait] {
         p.bump_remap(T![auto]);
         has_mods = true;
     }
 
     // test default_item
     // default impl T for Foo {}
-    if p.at(IDENT) && p.at_contextual_kw("default") {
+    if p.at_contextual_kw(T![default]) {
         match p.nth(1) {
             T![fn] | T![type] | T![const] | T![impl] => {
                 p.bump_remap(T![default]);
@@ -176,7 +176,7 @@ pub(super) fn opt_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
 
     // test existential_type
     // existential type Foo: Fn() -> usize;
-    if p.at(IDENT) && p.at_contextual_kw("existential") && p.nth(1) == T![type] {
+    if p.at_contextual_kw(T![existential]) && p.nth(1) == T![type] {
         p.bump_remap(T![existential]);
         has_mods = true;
     }
@@ -224,10 +224,10 @@ fn opt_item_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         T![type] => type_alias(p, m),
         T![struct] => adt::strukt(p, m),
         T![enum] => adt::enum_(p, m),
-        IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => adt::union(p, m),
+        IDENT if p.at_contextual_kw(T![union]) && p.nth(1) == IDENT => adt::union(p, m),
 
         T![macro] => macro_def(p, m),
-        IDENT if p.at_contextual_kw("macro_rules") && p.nth(1) == BANG => macro_rules(p, m),
+        IDENT if p.at_contextual_kw(T![macro_rules]) && p.nth(1) == BANG => macro_rules(p, m),
 
         T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::konst(p, m),
         T![static] => consts::static_(p, m),
@@ -319,7 +319,7 @@ pub(crate) fn extern_item_list(p: &mut Parser) {
 }
 
 fn macro_rules(p: &mut Parser, m: Marker) {
-    assert!(p.at_contextual_kw("macro_rules"));
+    assert!(p.at_contextual_kw(T![macro_rules]));
     p.bump_remap(T![macro_rules]);
     p.expect(T![!]);
 

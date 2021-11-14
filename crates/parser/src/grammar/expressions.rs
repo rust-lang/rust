@@ -296,10 +296,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
         T![&] => {
             m = p.start();
             p.bump(T![&]);
-            if p.at(IDENT)
-                && p.at_contextual_kw("raw")
-                && (p.nth_at(1, T![mut]) || p.nth_at(1, T![const]))
-            {
+            if p.at_contextual_kw(T![raw]) && (p.nth_at(1, T![mut]) || p.nth_at(1, T![const])) {
                 p.bump_remap(T![raw]);
                 p.bump_any();
             } else {

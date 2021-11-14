@@ -26,6 +26,8 @@ pub(crate) use token_set::TokenSet;
 
 pub use syntax_kind::SyntaxKind;
 
+use crate::tokens::Tokens;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseError(pub Box<String>);
 
@@ -53,6 +55,7 @@ pub struct Token {
 
     /// Is the current token joined to the next one (`> >` vs `>>`).
     pub is_jointed_to_next: bool,
+    pub contextual_kw: SyntaxKind,
 }
 
 /// `TreeSink` abstracts details of a particular syntax tree implementation.
@@ -93,15 +96,11 @@ pub enum ParserEntryPoint {
 }
 
 /// Parse given tokens into the given sink as a rust file.
-pub fn parse_source_file(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse(token_source, tree_sink, ParserEntryPoint::SourceFile);
+pub fn parse_source_file(tokens: &Tokens, tree_sink: &mut dyn TreeSink) {
+    parse(tokens, tree_sink, ParserEntryPoint::SourceFile);
 }
 
-pub fn parse(
-    token_source: &mut dyn TokenSource,
-    tree_sink: &mut dyn TreeSink,
-    entry_point: ParserEntryPoint,
-) {
+pub fn parse(tokens: &Tokens, tree_sink: &mut dyn TreeSink, entry_point: ParserEntryPoint) {
     let entry_point: fn(&'_ mut parser::Parser) = match entry_point {
         ParserEntryPoint::SourceFile => grammar::entry_points::source_file,
         ParserEntryPoint::Path => grammar::entry_points::path,
@@ -119,7 +118,7 @@ pub fn parse(
         ParserEntryPoint::Attr => grammar::entry_points::attr,
     };
 
-    let mut p = parser::Parser::new(token_source);
+    let mut p = parser::Parser::new(tokens);
     entry_point(&mut p);
     let events = p.finish();
     event::process(tree_sink, events);
@@ -142,9 +141,9 @@ impl Reparser {
     ///
     /// Tokens must start with `{`, end with `}` and form a valid brace
     /// sequence.
-    pub fn parse(self, token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    pub fn parse(self, tokens: &Tokens, tree_sink: &mut dyn TreeSink) {
         let Reparser(r) = self;
-        let mut p = parser::Parser::new(token_source);
+        let mut p = parser::Parser::new(tokens);
         r(&mut p);
         let events = p.finish();
         event::process(tree_sink, events);
