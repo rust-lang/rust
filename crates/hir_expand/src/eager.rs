@@ -119,7 +119,7 @@ pub fn expand_eager_macro(
     // When `lazy_expand` is called, its *parent* file must be already exists.
     // Here we store an eager macro id for the argument expanded subtree here
     // for that purpose.
-    let arg_id = db.intern_macro(MacroCallLoc {
+    let arg_id = db.intern_macro_call(MacroCallLoc {
         def,
         krate,
         eager: Some(EagerCallInfo {
@@ -157,7 +157,7 @@ pub fn expand_eager_macro(
             kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
         };
 
-        Ok(db.intern_macro(loc))
+        Ok(db.intern_macro_call(loc))
     } else {
         panic!("called `expand_eager_macro` on non-eager macro def {:?}", def);
     }

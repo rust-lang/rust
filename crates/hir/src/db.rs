@@ -5,7 +5,7 @@
 //! But we need this for at least LRU caching at the query level.
 pub use hir_def::db::*;
 pub use hir_expand::db::{
-    AstDatabase, AstDatabaseStorage, AstIdMapQuery, HygieneFrameQuery, InternMacroQuery,
+    AstDatabase, AstDatabaseStorage, AstIdMapQuery, HygieneFrameQuery, InternMacroCallQuery,
     MacroArgTextQuery, MacroDefQuery, MacroExpandQuery, ParseMacroExpansionQuery,
 };
 pub use hir_ty::db::*;

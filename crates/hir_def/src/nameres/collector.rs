@@ -1141,7 +1141,7 @@ impl DefCollector<'_> {
                         &resolver,
                     ) {
                         Ok(call_id) => {
-                            let loc: MacroCallLoc = self.db.lookup_intern_macro(call_id);
+                            let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
                             if let MacroDefKind::ProcMacro(exp, ..) = &loc.def.kind {
                                 if exp.is_dummy() {
                                     // Proc macros that cannot be expanded are treated as not
@@ -1214,7 +1214,7 @@ impl DefCollector<'_> {
         // First, fetch the raw expansion result for purposes of error reporting. This goes through
         // `macro_expand_error` to avoid depending on the full expansion result (to improve
         // incrementality).
-        let loc: MacroCallLoc = self.db.lookup_intern_macro(macro_call_id);
+        let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
         let err = self.db.macro_expand_error(macro_call_id);
         if let Some(err) = err {
             let diag = match err {

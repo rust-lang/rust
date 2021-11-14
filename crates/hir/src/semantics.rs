@@ -842,7 +842,7 @@ impl<'db> SemanticsImpl<'db> {
     fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<MacroDef> {
         let item_in_file = self.find_file(item.syntax().clone()).with_value(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(item_in_file))?;
-        Some(MacroDef { id: self.db.lookup_intern_macro(macro_call_id).def })
+        Some(MacroDef { id: self.db.lookup_intern_macro_call(macro_call_id).def })
     }
 
     fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {

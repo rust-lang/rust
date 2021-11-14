@@ -103,7 +103,7 @@ pub trait AstDatabase: SourceDatabase {
     /// We encode macro definitions into ids of macro calls, this what allows us
     /// to be incremental.
     #[salsa::interned]
-    fn intern_macro(&self, macro_call: MacroCallLoc) -> MacroCallId;
+    fn intern_macro_call(&self, macro_call: MacroCallLoc) -> MacroCallId;
 
     /// Lowers syntactic macro call to a token tree representation.
     #[salsa::transparent]
@@ -139,7 +139,7 @@ pub fn expand_speculative(
     speculative_args: &SyntaxNode,
     token_to_map: SyntaxToken,
 ) -> Option<(SyntaxNode, SyntaxToken)> {
-    let loc = db.lookup_intern_macro(actual_macro_call);
+    let loc = db.lookup_intern_macro_call(actual_macro_call);
     let macro_def = db.macro_def(loc.def).ok()?;
     let token_range = token_to_map.text_range();
 
@@ -231,7 +231,7 @@ fn parse_macro_expansion(
         // Note:
         // The final goal we would like to make all parse_macro success,
         // such that the following log will not call anyway.
-        let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+        let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
         let node = loc.kind.to_node(db);
 
         // collect parent information for warning log
@@ -296,7 +296,7 @@ fn parse_macro_expansion(
 
 fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
     let arg = db.macro_arg_text(id)?;
-    let loc = db.lookup_intern_macro(id);
+    let loc = db.lookup_intern_macro_call(id);
 
     let node = SyntaxNode::new_root(arg);
     let censor = censor_for_macro_input(&loc, &node);
@@ -339,7 +339,7 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
 }
 
 fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
-    let loc = db.lookup_intern_macro(id);
+    let loc = db.lookup_intern_macro_call(id);
     let arg = loc.kind.arg(db)?;
     if matches!(loc.kind, MacroCallKind::FnLike { .. }) {
         let first = arg.first_child_or_token().map_or(T![.], |it| it.kind());
@@ -402,7 +402,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Result<Arc<TokenExpander>,
 
 fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>> {
     let _p = profile::span("macro_expand");
-    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+    let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     if let Some(eager) = &loc.eager {
         return ExpandResult {
             value: Some(eager.arg_or_expansion.clone()),
@@ -443,7 +443,7 @@ fn macro_expand_error(db: &dyn AstDatabase, macro_call: MacroCallId) -> Option<E
 }
 
 fn expand_proc_macro(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<tt::Subtree> {
-    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+    let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     let macro_arg = match db.macro_arg(id) {
         Some(it) => it,
         None => return ExpandResult::str_err("No arguments for proc-macro".to_string()),
@@ -488,7 +488,7 @@ fn hygiene_frame(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<HygieneFrame> 
 }
 
 fn macro_expand_to(db: &dyn AstDatabase, id: MacroCallId) -> ExpandTo {
-    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+    let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     loc.kind.expand_to()
 }
 
