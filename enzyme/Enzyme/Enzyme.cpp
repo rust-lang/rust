@@ -862,6 +862,8 @@ public:
         }
       }
     }
+    StructType *CIsty = dyn_cast<StructType>(CI->getType());
+    StructType *diffretsty = dyn_cast<StructType>(diffret->getType());
 
     if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy() &&
         !CI->getType()->isEmptyTy() &&
@@ -869,6 +871,14 @@ public:
          CI->paramHasAttr(0, Attribute::StructRet))) {
       if (diffret->getType() == CI->getType()) {
         CI->replaceAllUsesWith(diffret);
+      } else if (CIsty && diffretsty && CIsty->isLayoutIdentical(diffretsty)) {
+        IRBuilder<> Builder(CI);
+        Value *newStruct = UndefValue::get(CIsty);
+        for (unsigned int i = 0; i < CIsty->getStructNumElements(); i++) {
+          Value *elem = Builder.CreateExtractValue(diffret, {i});
+          newStruct = Builder.CreateInsertValue(newStruct, elem, {i});
+        }
+        CI->replaceAllUsesWith(newStruct);
       } else if (mode == DerivativeMode::ReverseModePrimal) {
         auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
         if (DL.getTypeSizeInBits(CI->getType()) >=
