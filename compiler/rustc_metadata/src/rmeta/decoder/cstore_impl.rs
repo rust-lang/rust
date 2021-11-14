@@ -43,7 +43,9 @@ macro_rules! provide {
                 // doesn't need to do this (and can't, as it would cause a query cycle).
                 use rustc_middle::dep_graph::DepKind;
                 if DepKind::$name != DepKind::crate_hash && $tcx.dep_graph.is_fully_enabled() {
-                    $tcx.ensure().crate_hash($def_id.krate);
+                    // Do not use `ensure` since we want this to be recomputed when the hash
+                    // changes.
+                    let _ = $tcx.crate_hash($def_id.krate);
                 }
 
                 let $cdata = CStore::from_tcx($tcx).get_crate_data($def_id.krate);

@@ -14,6 +14,7 @@
 
 use super::query::DepGraphQuery;
 use super::{DepKind, DepNode, DepNodeIndex};
+use crate::query::QueryMode;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -33,6 +34,40 @@ rustc_index::newtype_index! {
     }
 }
 
+/// Pack a serialized index and whether the query was `ensure`d inside a single u32.
+#[derive(Copy, Clone, Debug, Encodable, Decodable, Hash, PartialEq, Eq)]
+pub struct IndexAndForce<I> {
+    index_and_ensure: u32,
+    _phantom: std::marker::PhantomData<I>,
+}
+
+impl<I: Idx> IndexAndForce<I> {
+    const ENSURE_MASK: u32 = 0x8000_0000;
+
+    pub fn new(idx: I, mode: QueryMode) -> IndexAndForce<I> {
+        let index: u32 = idx.index().try_into().unwrap();
+        debug_assert!(index & Self::ENSURE_MASK == 0);
+        let flag = match mode {
+            QueryMode::Ensure => Self::ENSURE_MASK,
+            QueryMode::Get => 0,
+        };
+        IndexAndForce { index_and_ensure: index | flag, _phantom: std::marker::PhantomData }
+    }
+
+    pub fn index(self) -> I {
+        let index = self.index_and_ensure & !Self::ENSURE_MASK;
+        <I as Idx>::new(index as usize)
+    }
+
+    pub fn ensure(self) -> QueryMode {
+        if self.index_and_ensure & Self::ENSURE_MASK != 0 {
+            QueryMode::Ensure
+        } else {
+            QueryMode::Get
+        }
+    }
+}
+
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug)]
 pub struct SerializedDepGraph<K: DepKind> {
@@ -47,7 +82,7 @@ pub struct SerializedDepGraph<K: DepKind> {
     edge_list_indices: IndexVec<SerializedDepNodeIndex, (u32, u32)>,
     /// A flattened list of all edge targets in the graph. Edge sources are
     /// implicit in edge_list_indices.
-    edge_list_data: Vec<SerializedDepNodeIndex>,
+    edge_list_data: Vec<IndexAndForce<SerializedDepNodeIndex>>,
     /// Reciprocal map to `nodes`.
     index: FxHashMap<DepNode<K>, SerializedDepNodeIndex>,
 }
@@ -66,7 +101,10 @@ impl<K: DepKind> Default for SerializedDepGraph<K> {
 
 impl<K: DepKind> SerializedDepGraph<K> {
     #[inline]
-    pub fn edge_targets_from(&self, source: SerializedDepNodeIndex) -> &[SerializedDepNodeIndex] {
+    pub fn edge_targets_from(
+        &self,
+        source: SerializedDepNodeIndex,
+    ) -> &[IndexAndForce<SerializedDepNodeIndex>] {
         let targets = self.edge_list_indices[source];
         &self.edge_list_data[targets.0 as usize..targets.1 as usize]
     }
@@ -159,7 +197,7 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
 pub struct NodeInfo<K: DepKind> {
     node: DepNode<K>,
     fingerprint: Fingerprint,
-    edges: SmallVec<[DepNodeIndex; 8]>,
+    edges: SmallVec<[IndexAndForce<DepNodeIndex>; 8]>,
 }
 
 struct Stat<K: DepKind> {
@@ -327,7 +365,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
         profiler: &SelfProfilerRef,
         node: DepNode<K>,
         fingerprint: Fingerprint,
-        edges: SmallVec<[DepNodeIndex; 8]>,
+        edges: SmallVec<[IndexAndForce<DepNodeIndex>; 8]>,
     ) -> DepNodeIndex {
         let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, fingerprint, edges };

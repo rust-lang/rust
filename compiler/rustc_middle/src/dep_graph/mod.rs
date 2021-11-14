@@ -11,6 +11,7 @@ pub use rustc_query_system::dep_graph::{
     debug::DepNodeFilter, hash_result, DepContext, DepNodeColor, DepNodeIndex,
     SerializedDepNodeIndex, WorkProduct, WorkProductId,
 };
+pub use rustc_query_system::query::QueryMode;
 
 pub use dep_node::{label_strs, DepKind, DepKindStruct, DepNode, DepNodeExt};
 crate use dep_node::{make_compile_codegen_unit, make_compile_mono_item};

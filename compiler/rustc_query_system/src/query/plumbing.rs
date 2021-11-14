@@ -356,6 +356,7 @@ pub fn try_get_cached<'a, CTX, C, R, OnHit>(
     tcx: CTX,
     cache: &'a QueryCacheStore<C>,
     key: &C::Key,
+    mode: QueryMode,
     // `on_hit` can be called while holding a lock to the query cache
     on_hit: OnHit,
 ) -> Result<R, QueryLookup>
@@ -368,7 +369,7 @@ where
         if unlikely!(tcx.profiler().enabled()) {
             tcx.profiler().query_cache_hit(index.into());
         }
-        tcx.dep_graph().read_index(index);
+        tcx.dep_graph().read_index(index, mode);
         on_hit(value)
     })
 }
@@ -655,7 +656,7 @@ where
             (true, Some(dep_node))
         }
         Some((_, dep_node_index)) => {
-            dep_graph.read_index(dep_node_index);
+            dep_graph.read_index(dep_node_index, QueryMode::Ensure);
             tcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
             (false, None)
         }
@@ -702,7 +703,7 @@ where
         &query,
     );
     if let Some(dep_node_index) = dep_node_index {
-        tcx.dep_context().dep_graph().read_index(dep_node_index)
+        tcx.dep_context().dep_graph().read_index(dep_node_index, mode)
     }
     Some(result)
 }

@@ -32,7 +32,7 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
-use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
+use rustc_middle::dep_graph::{DepKind, DepNodeIndex, QueryMode};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fast_reject;
@@ -1121,7 +1121,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         let (result, dep_node) =
             self.tcx().dep_graph.with_anon_task(self.tcx(), DepKind::TraitSelect, || op(self));
-        self.tcx().dep_graph.read_index(dep_node);
+        self.tcx().dep_graph.read_index(dep_node, QueryMode::Get);
         (result, dep_node)
     }
 

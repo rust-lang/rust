@@ -1,6 +1,7 @@
 //! Cache for candidate selection.
 
 use crate::dep_graph::{DepContext, DepNodeIndex};
+use crate::query::QueryMode;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
@@ -47,7 +48,7 @@ impl<T: Clone> WithDepNode<T> {
     }
 
     pub fn get<CTX: DepContext>(&self, tcx: CTX) -> T {
-        tcx.dep_graph().read_index(self.dep_node);
+        tcx.dep_graph().read_index(self.dep_node, QueryMode::Get);
         self.cached_value.clone()
     }
 }

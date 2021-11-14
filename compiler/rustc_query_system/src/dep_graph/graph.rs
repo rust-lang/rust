@@ -16,10 +16,10 @@ use std::marker::PhantomData;
 use std::sync::atomic::Ordering::Relaxed;
 
 use super::query::DepGraphQuery;
-use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
+use super::serialized::{GraphEncoder, IndexAndForce, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
 use crate::ich::StableHashingContext;
-use crate::query::{QueryContext, QuerySideEffects};
+use crate::query::{QueryContext, QueryMode, QuerySideEffects};
 
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
@@ -321,7 +321,7 @@ impl<K: DepKind> DepGraph<K> {
                 }
                 1 => {
                     // When there is only one dependency, don't bother creating a node.
-                    task_deps[0]
+                    task_deps[0].index()
                 }
                 _ => {
                     // The dep node indices are hashed here instead of hashing the dep nodes of the
@@ -356,7 +356,7 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     #[inline]
-    pub fn read_index(&self, dep_node_index: DepNodeIndex) {
+    pub fn read_index(&self, dep_node_index: DepNodeIndex, mode: QueryMode) {
         if let Some(ref data) = self.data {
             K::read_deps(|task_deps| {
                 if let Some(task_deps) = task_deps {
@@ -365,6 +365,7 @@ impl<K: DepKind> DepGraph<K> {
                     if cfg!(debug_assertions) {
                         data.current.total_read_count.fetch_add(1, Relaxed);
                     }
+                    let dep_node_index = IndexAndForce::new(dep_node_index, mode);
 
                     // As long as we only have a low number of reads we can avoid doing a hash
                     // insert and potentially allocating/reallocating the hashmap
@@ -385,7 +386,8 @@ impl<K: DepKind> DepGraph<K> {
                         {
                             if let Some(target) = task_deps.node {
                                 if let Some(ref forbidden_edge) = data.current.forbidden_edge {
-                                    let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
+                                    let src = forbidden_edge.index_to_node.lock()
+                                        [&dep_node_index.index()];
                                     if forbidden_edge.test(&src, &target) {
                                         panic!("forbidden edge {:?} -> {:?} created", src, target)
                                     }
@@ -501,13 +503,17 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
+    /// Try to mark `parent_dep_node_index` green.
+    /// Returns:
+    /// - `Some(is_green)` if managed to create a DepNode and color it;
+    /// - `None` if we failed to create a DepNode.
     fn try_mark_parent_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         data: &DepGraphData<K>,
         parent_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
-    ) -> Option<()> {
+    ) -> Option<bool> {
         let dep_dep_node_color = data.colors.get(parent_dep_node_index);
         let dep_dep_node = &data.previous.index_to_node(parent_dep_node_index);
 
@@ -521,7 +527,7 @@ impl<K: DepKind> DepGraph<K> {
                             be immediately green",
                     dep_node, dep_dep_node,
                 );
-                return Some(());
+                return Some(true);
             }
             Some(DepNodeColor::Red) => {
                 // We found a dependency the value of which has changed
@@ -532,7 +538,7 @@ impl<K: DepKind> DepGraph<K> {
                     "try_mark_previous_green({:?}) - END - dependency {:?} was immediately red",
                     dep_node, dep_dep_node,
                 );
-                return None;
+                return Some(false);
             }
             None => {}
         }
@@ -553,7 +559,7 @@ impl<K: DepKind> DepGraph<K> {
                     "try_mark_previous_green({:?}) --- managed to MARK dependency {:?} as green",
                     dep_node, dep_dep_node
                 );
-                return Some(());
+                return Some(true);
             }
         }
 
@@ -579,14 +585,14 @@ impl<K: DepKind> DepGraph<K> {
                     "try_mark_previous_green({:?}) --- managed to FORCE dependency {:?} to green",
                     dep_node, dep_dep_node
                 );
-                return Some(());
+                return Some(true);
             }
             Some(DepNodeColor::Red) => {
                 debug!(
                     "try_mark_previous_green({:?}) - END - dependency {:?} was red after forcing",
                     dep_node, dep_dep_node
                 );
-                return None;
+                return Some(false);
             }
             None => {}
         }
@@ -636,7 +642,15 @@ impl<K: DepKind> DepGraph<K> {
         let prev_deps = data.previous.edge_targets_from(prev_dep_node_index);
 
         for &dep_dep_node_index in prev_deps {
-            self.try_mark_parent_green(tcx, data, dep_dep_node_index, dep_node)?
+            let is_green =
+                self.try_mark_parent_green(tcx, data, dep_dep_node_index.index(), dep_node)?;
+            match (is_green, dep_dep_node_index.ensure()) {
+                // It's ok to keep going if this was an `ensure` dependency, we weren't going to
+                // use the value.
+                (true, _) | (false, QueryMode::Ensure) => {}
+                // The returned value has changed, so we need to rerun the query.
+                (false, QueryMode::Get) => return None,
+            }
         }
 
         // If we got here without hitting a `return` that means that all
@@ -1080,7 +1094,9 @@ impl<K: DepKind> CurrentDepGraph<K> {
                     prev_graph
                         .edge_targets_from(prev_index)
                         .iter()
-                        .map(|i| prev_index_to_index[*i].unwrap())
+                        .map(|i| {
+                            IndexAndForce::new(prev_index_to_index[i.index()].unwrap(), i.ensure())
+                        })
                         .collect(),
                 );
                 prev_index_to_index[prev_index] = Some(dep_node_index);
@@ -1107,13 +1123,13 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
 /// The capacity of the `reads` field `SmallVec`
 const TASK_DEPS_READS_CAP: usize = 8;
-type EdgesVec = SmallVec<[DepNodeIndex; TASK_DEPS_READS_CAP]>;
+type EdgesVec = SmallVec<[IndexAndForce<DepNodeIndex>; TASK_DEPS_READS_CAP]>;
 
 pub struct TaskDeps<K> {
     #[cfg(debug_assertions)]
     node: Option<DepNode<K>>,
     reads: EdgesVec,
-    read_set: FxHashSet<DepNodeIndex>,
+    read_set: FxHashSet<IndexAndForce<DepNodeIndex>>,
     phantom_data: PhantomData<DepNode<K>>,
 }
 

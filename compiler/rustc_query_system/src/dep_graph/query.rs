@@ -2,6 +2,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
 use rustc_index::vec::IndexVec;
 
+use super::serialized::IndexAndForce;
 use super::{DepKind, DepNode, DepNodeIndex};
 
 pub struct DepGraphQuery<K> {
@@ -22,7 +23,12 @@ impl<K: DepKind> DepGraphQuery<K> {
         DepGraphQuery { graph, indices, dep_index_to_index }
     }
 
-    pub fn push(&mut self, index: DepNodeIndex, node: DepNode<K>, edges: &[DepNodeIndex]) {
+    pub fn push(
+        &mut self,
+        index: DepNodeIndex,
+        node: DepNode<K>,
+        edges: &[IndexAndForce<DepNodeIndex>],
+    ) {
         let source = self.graph.add_node(node);
         if index.index() >= self.dep_index_to_index.len() {
             self.dep_index_to_index.resize(index.index() + 1, None);
@@ -31,7 +37,7 @@ impl<K: DepKind> DepGraphQuery<K> {
         self.indices.insert(node, source);
 
         for &target in edges.iter() {
-            let target = self.dep_index_to_index[target];
+            let target = self.dep_index_to_index[target.index()];
             // We may miss the edges that are pushed while the `DepGraphQuery` is being accessed.
             // Skip them to issues.
             if let Some(target) = target {
