@@ -16,6 +16,12 @@ pub fn make_true() -> bool {
     issue_1691::use_me()
 }
 
+/// ```rust
+/// cargo_miri_test::miri_only_fn();
+/// ```
+#[cfg(miri)]
+pub fn miri_only_fn() {}
+
 pub fn main() {
     println!("imported main");
 }

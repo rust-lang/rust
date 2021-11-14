@@ -1008,6 +1008,8 @@ fn phase_rustdoc(fst_arg: &str, mut args: env::Args) {
 
     // rustdoc needs to know the right sysroot.
     forward_miri_sysroot(&mut cmd);
+    // make sure the 'miri' flag is set for rustdoc
+    cmd.arg("--cfg").arg("miri");
 
     // Make rustdoc call us back.
     let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
