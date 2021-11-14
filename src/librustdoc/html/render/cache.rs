@@ -408,13 +408,9 @@ crate fn get_all_types<'tcx>(
         if arg.type_.is_self_type() {
             continue;
         }
-        // FIXME: performance wise, it'd be much better to move `args` declaration outside of the
-        // loop and replace this line with `args.clear()`.
         let mut args = Vec::new();
         get_real_types(generics, &arg.type_, tcx, 0, &mut args, cache);
         if !args.is_empty() {
-            // FIXME: once back to performance improvements, replace this line with:
-            // `all_types.extend(args.drain(..));`.
             all_types.extend(args);
         } else {
             if let Some(kind) = arg.type_.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
