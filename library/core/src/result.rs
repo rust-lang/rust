@@ -1896,9 +1896,14 @@ impl<T, E> ops::Try for Result<T, E> {
 
     #[inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        #[cold]
+        fn cold_err<E>(e: E) -> Result<convert::Infallible, E> {
+            Err(e)
+        }
+
         match self {
             Ok(v) => ControlFlow::Continue(v),
-            Err(e) => ControlFlow::Break(Err(e)),
+            Err(e) => ControlFlow::Break(cold_err(e)),
         }
     }
 }
