@@ -178,19 +178,6 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
                             None => Cursor::Before(first_new_arm.syntax()),
                         };
                     let snippet = render_snippet(cap, new_match_arm_list.syntax(), cursor);
-                    // remove the second last line if it only contains trailing whitespace
-                    let lines = snippet.lines().collect_vec();
-                    let snippet = lines
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(index, &line)| {
-                            if index + 2 == lines.len() && line.trim().is_empty() {
-                                return None;
-                            }
-                            return Some(line);
-                        })
-                        .join("\n");
-
                     builder.replace_snippet(cap, old_range, snippet);
                 }
                 _ => builder.replace(old_range, new_match_arm_list.to_string()),
@@ -715,8 +702,7 @@ fn main() {
     let a = A::One;
     let b = B::One;
     match (a, b) {
-        (A::Two, B::One) => {},
-        $0
+        (A::Two, B::One) => {},$0
     }
 }
 "#,
