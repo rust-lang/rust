@@ -331,6 +331,7 @@ symbols! {
         asm_const,
         asm_experimental_arch,
         asm_sym,
+        asm_unwind,
         assert,
         assert_inhabited,
         assert_macro,
