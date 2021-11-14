@@ -45,6 +45,7 @@ pub(crate) enum ImmediateLocation {
     StmtList,
     ItemList,
     TypeBound,
+    Variant,
     /// Fake file ast node
     Attribute(ast::Attr),
     /// Fake file ast node
@@ -213,6 +214,7 @@ pub(crate) fn determine_location(
             ast::SourceFile(_it) => ImmediateLocation::ItemList,
             ast::ItemList(_it) => ImmediateLocation::ItemList,
             ast::RefExpr(_it) => ImmediateLocation::RefExpr,
+            ast::Variant(_it) => ImmediateLocation::Variant,
             ast::RecordField(it) => if it.ty().map_or(false, |it| it.syntax().text_range().contains(offset)) {
                 return None;
             } else {

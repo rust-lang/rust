@@ -1012,3 +1012,34 @@ use self as Str$0;
         expect![[r#""#]],
     );
 }
+
+#[test]
+fn flyimport_enum_variant() {
+    check(
+        r#"
+mod foo {
+    pub struct Barbara;
+}
+
+enum Foo {
+    Barba$0()
+}
+}"#,
+        expect![[r#""#]],
+    );
+
+    check(
+        r#"
+mod foo {
+    pub struct Barbara;
+}
+
+enum Foo {
+    Barba(Barba$0)
+}
+}"#,
+        expect![[r#"
+            st Barbara (use foo::Barbara)
+        "#]],
+    )
+}

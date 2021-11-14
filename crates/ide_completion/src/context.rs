@@ -171,6 +171,10 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::Trait | ImmediateLocation::Impl))
     }
 
+    pub(crate) fn expects_variant(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::Variant))
+    }
+
     pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::Impl))
     }
