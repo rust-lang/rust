@@ -205,7 +205,6 @@ crate fn get_index_search_type<'tcx>(
 
     inputs.retain(|a| a.ty.name.is_some());
     output.retain(|a| a.ty.name.is_some());
-    let output = if output.is_empty() { None } else { Some(output) };
 
     Some(IndexItemFunctionType { inputs, output })
 }
