@@ -109,7 +109,6 @@ mod config;
 mod core;
 mod docfs;
 mod doctest;
-mod doctree;
 mod error;
 mod externalfiles;
 mod fold;
