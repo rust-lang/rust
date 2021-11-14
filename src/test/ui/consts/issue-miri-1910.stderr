@@ -1,0 +1,26 @@
+error: any use of this value will cause an error
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+LL |           copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           |
+   |           unable to turn pointer into raw bytes
+   |           inside `std::ptr::read::<u8>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |           inside `ptr::const_ptr::<impl *const u8>::read` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |           inside `C` at $DIR/issue-miri-1910.rs:8:5
+   |
+  ::: $DIR/issue-miri-1910.rs:5:1
+   |
+LL | / const C: () = unsafe {
+LL | |     let foo = Some(&42 as *const i32);
+LL | |     let one_and_a_half_pointers = std::mem::size_of::<*const i32>()/2*3;
+LL | |     (&foo as *const _ as *const u8).add(one_and_a_half_pointers).read();
+LL | | };
+   | |__-
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: aborting due to previous error
+
