@@ -37,7 +37,7 @@ Currently there is no support to run the rustc test suite for this target.
 
 To test your developed rust programs for PlayStation Vita, first you have to prepare a proper executable for the device using the resulting ELF file you get from compilation step. The needed steps can be automated using tools like `cargo-make`. Use the example below as a template for your project:
 
-```
+```toml
 [env]
 TITLE = "Rust Hello World"
 TITLEID = "RUST00001"
