@@ -1,5 +1,5 @@
 warning: irrefutable `while let` pattern
-  --> $DIR/while-let.rs:7:19
+  --> $DIR/while-let-2.rs:7:19
    |
 LL |               while let $p = $e $b
    |                     ^^^
@@ -15,7 +15,7 @@ LL | |     });
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: irrefutable `while let` pattern
-  --> $DIR/while-let.rs:7:19
+  --> $DIR/while-let-2.rs:7:19
    |
 LL |               while let $p = $e $b
    |                     ^^^
@@ -30,7 +30,7 @@ LL | |     });
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: irrefutable `while let` pattern
-  --> $DIR/while-let.rs:27:11
+  --> $DIR/while-let-2.rs:27:11
    |
 LL |     while let _a = 1 {
    |           ^^^^^^^^^^
