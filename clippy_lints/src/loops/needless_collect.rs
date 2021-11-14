@@ -3,13 +3,15 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_trait_method, path_to_local_id};
+use clippy_utils::{can_move_expr_to_closure, is_trait_method, path_to_local_id, CaptureKind};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, Local, Mutability, Node, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
+use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::{TyKind, TyS};
 use rustc_span::sym;
 use rustc_span::{MultiSpan, Span};
 
@@ -83,7 +85,8 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                     is_type_diagnostic_item(cx, ty, sym::VecDeque) ||
                     is_type_diagnostic_item(cx, ty, sym::BinaryHeap) ||
                     is_type_diagnostic_item(cx, ty, sym::LinkedList);
-                if let Some(iter_calls) = detect_iter_and_into_iters(block, id);
+                let iter_ty = cx.typeck_results().expr_ty(iter_source);
+                if let Some(iter_calls) = detect_iter_and_into_iters(block, id, cx, get_captured_ids(cx, iter_ty));
                 if let [iter_call] = &*iter_calls;
                 then {
                     let mut used_count_visitor = UsedCountVisitor {
@@ -167,34 +170,57 @@ enum IterFunctionKind {
     Contains(Span),
 }
 
-struct IterFunctionVisitor {
+struct IterFunctionVisitor<'b, 'a> {
+    illegal_mutable_capture_ids: HirIdSet,
+    current_mutably_captured_ids: HirIdSet,
+    cx: &'a LateContext<'b>,
     uses: Vec<IterFunction>,
     seen_other: bool,
     target: HirId,
 }
-impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
+impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
+    fn visit_block(&mut self, block: &'txc Block<'tcx>) {
+        for elem in block.stmts.iter().filter_map(get_expr_from_stmt).chain(block.expr) {
+            self.current_mutably_captured_ids = HirIdSet::default();
+            self.visit_expr(elem);
+        }
+    }
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         // Check function calls on our collection
         if let ExprKind::MethodCall(method_name, _, [recv, args @ ..], _) = &expr.kind {
+            if method_name.ident.name == sym!(collect) && is_trait_method(self.cx, expr, sym::Iterator) {
+                self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));
+                self.visit_expr(recv);
+                return;
+            }
+
             if path_to_local_id(recv, self.target) {
-                match &*method_name.ident.name.as_str() {
-                    "into_iter" => self.uses.push(IterFunction {
-                        func: IterFunctionKind::IntoIter,
-                        span: expr.span,
-                    }),
-                    "len" => self.uses.push(IterFunction {
-                        func: IterFunctionKind::Len,
-                        span: expr.span,
-                    }),
-                    "is_empty" => self.uses.push(IterFunction {
-                        func: IterFunctionKind::IsEmpty,
-                        span: expr.span,
-                    }),
-                    "contains" => self.uses.push(IterFunction {
-                        func: IterFunctionKind::Contains(args[0].span),
-                        span: expr.span,
-                    }),
-                    _ => self.seen_other = true,
+                if self
+                    .illegal_mutable_capture_ids
+                    .intersection(&self.current_mutably_captured_ids)
+                    .next()
+                    .is_none()
+                {
+                    match &*method_name.ident.name.as_str() {
+                        "into_iter" => self.uses.push(IterFunction {
+                            func: IterFunctionKind::IntoIter,
+                            span: expr.span,
+                        }),
+                        "len" => self.uses.push(IterFunction {
+                            func: IterFunctionKind::Len,
+                            span: expr.span,
+                        }),
+                        "is_empty" => self.uses.push(IterFunction {
+                            func: IterFunctionKind::IsEmpty,
+                            span: expr.span,
+                        }),
+                        "contains" => self.uses.push(IterFunction {
+                            func: IterFunctionKind::Contains(args[0].span),
+                            span: expr.span,
+                        }),
+                        _ => self.seen_other = true,
+                    }
                 }
                 return;
             }
@@ -210,6 +236,14 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
     type Map = Map<'tcx>;
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
+    }
+}
+
+fn get_expr_from_stmt<'v>(stmt: &'v Stmt<'v>) -> Option<&'v Expr<'v>> {
+    match stmt.kind {
+        StmtKind::Expr(expr) | StmtKind::Semi(expr) => Some(expr),
+        StmtKind::Item(..) => None,
+        StmtKind::Local(Local { init, .. }) => *init,
     }
 }
 
@@ -237,12 +271,55 @@ impl<'a, 'tcx> Visitor<'tcx> for UsedCountVisitor<'a, 'tcx> {
 
 /// Detect the occurrences of calls to `iter` or `into_iter` for the
 /// given identifier
-fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, id: HirId) -> Option<Vec<IterFunction>> {
+fn detect_iter_and_into_iters<'tcx: 'a, 'a>(
+    block: &'tcx Block<'tcx>,
+    id: HirId,
+    cx: &'a LateContext<'tcx>,
+    captured_ids: HirIdSet,
+) -> Option<Vec<IterFunction>> {
     let mut visitor = IterFunctionVisitor {
         uses: Vec::new(),
         target: id,
         seen_other: false,
+        cx,
+        current_mutably_captured_ids: HirIdSet::default(),
+        illegal_mutable_capture_ids: captured_ids,
     };
     visitor.visit_block(block);
     if visitor.seen_other { None } else { Some(visitor.uses) }
+}
+
+#[allow(rustc::usage_of_ty_tykind)]
+fn get_captured_ids(cx: &LateContext<'tcx>, ty: &'_ TyS<'_>) -> HirIdSet {
+    fn get_captured_ids_recursive(cx: &LateContext<'tcx>, ty: &'_ TyS<'_>, set: &mut HirIdSet) {
+        match ty.kind() {
+            TyKind::Adt(_, generics) => {
+                for generic in *generics {
+                    if let GenericArgKind::Type(ty) = generic.unpack() {
+                        get_captured_ids_recursive(cx, ty, set);
+                    }
+                }
+            },
+            TyKind::Closure(def_id, _) => {
+                let closure_hir_node = cx.tcx.hir().get_if_local(*def_id).unwrap();
+                if let Node::Expr(closure_expr) = closure_hir_node {
+                    can_move_expr_to_closure(cx, closure_expr)
+                        .unwrap()
+                        .into_iter()
+                        .for_each(|(hir_id, capture_kind)| {
+                            if matches!(capture_kind, CaptureKind::Ref(Mutability::Mut)) {
+                                set.insert(hir_id);
+                            }
+                        });
+                }
+            },
+            _ => (),
+        }
+    }
+
+    let mut set = HirIdSet::default();
+
+    get_captured_ids_recursive(cx, ty, &mut set);
+
+    set
 }

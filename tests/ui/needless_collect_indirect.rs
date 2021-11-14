@@ -76,6 +76,18 @@ mod issue7110 {
     }
 }
 
+mod issue7975 {
+    use super::*;
+
+    fn shouldnt_lint() -> Vec<()> {
+        let test_vec: Vec<()> = vec![];
+        let mut vec_2: Vec<()> = vec![];
+        let mut_ref = &mut vec_2;
+        let collected_vec: Vec<_> = test_vec.into_iter().map(|_| mut_ref.push(())).collect();
+        collected_vec.into_iter().map(|_| mut_ref.push(())).collect()
+    }
+}
+
 fn allow_test() {
     #[allow(clippy::needless_collect)]
     let v = [1].iter().collect::<Vec<_>>();
