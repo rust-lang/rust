@@ -290,6 +290,8 @@ declare_features! (
     (active, asm_experimental_arch, "1.58.0", Some(72016), None),
     /// Allows using `sym` operands in inline assembly.
     (active, asm_sym, "1.58.0", Some(72016), None),
+    /// Allows the `may_unwind` option in inline assembly.
+    (active, asm_unwind, "1.58.0", Some(72016), None),
     /// Allows the user of associated type bounds.
     (active, associated_type_bounds, "1.34.0", Some(52662), None),
     /// Allows associated type defaults.
