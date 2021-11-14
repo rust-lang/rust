@@ -113,6 +113,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         || ctx.is_path_disallowed()
         || ctx.expects_item()
         || ctx.expects_assoc_item()
+        || ctx.expects_variant()
     {
         return None;
     }
