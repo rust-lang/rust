@@ -118,32 +118,54 @@ macro_rules! newtype_index {
         }
 
         impl $type {
+            /// Maximum value the index can take, as a `u32`.
             $v const MAX_AS_U32: u32 = $max;
 
+            /// Maximum value the index can take.
             $v const MAX: Self = Self::from_u32($max);
 
+            /// Creates a new index from a given `usize`.
+            ///
+            /// # Panics
+            ///
+            /// Will panic if `value` exceeds `MAX`.
             #[inline]
             $v const fn from_usize(value: usize) -> Self {
                 assert!(value <= ($max as usize));
+                // SAFETY: We just checked that `value <= max`.
                 unsafe {
                     Self::from_u32_unchecked(value as u32)
                 }
             }
 
+            /// Creates a new index from a given `u32`.
+            ///
+            /// # Panics
+            ///
+            /// Will panic if `value` exceeds `MAX`.
             #[inline]
             $v const fn from_u32(value: u32) -> Self {
                 assert!(value <= $max);
+                // SAFETY: We just checked that `value <= max`.
                 unsafe {
                     Self::from_u32_unchecked(value)
                 }
             }
 
+            /// Creates a new index from a given `u32`.
+            ///
+            /// # Safety
+            ///
+            /// The provided value must be less than or equal to the maximum value for the newtype.
+            /// Providing a value outside this range is undefined due to layout restrictions.
+            ///
+            /// Prefer using `from_u32`.
             #[inline]
             $v const unsafe fn from_u32_unchecked(value: u32) -> Self {
                 Self { private: value }
             }
 
-            /// Extracts the value of this index as an integer.
+            /// Extracts the value of this index as a `usize`.
             #[inline]
             $v const fn index(self) -> usize {
                 self.as_usize()
