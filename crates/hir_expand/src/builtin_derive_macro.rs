@@ -168,7 +168,7 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: MacroCallId) -> tt::TokenTree {
     // FIXME: make hygiene works for builtin derive macro
     // such that $crate can be used here.
     let cg = db.crate_graph();
-    let krate = db.lookup_intern_macro(id).krate;
+    let krate = db.lookup_intern_macro_call(id).krate;
 
     // XXX
     //  All crates except core itself should have a dependency on core,

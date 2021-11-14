@@ -326,7 +326,7 @@ fn cfg_expand(
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
-    let loc = db.lookup_intern_macro(id);
+    let loc = db.lookup_intern_macro_call(id);
     let expr = CfgExpr::parse(tt);
     let enabled = db.crate_graph()[loc.krate].cfg_options.check(&expr) != Some(false);
     let expanded = if enabled { quote!(true) } else { quote!(false) };
@@ -338,7 +338,7 @@ fn panic_expand(
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
-    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+    let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     // Expand to a macro call `$crate::panic::panic_{edition}`
     let krate = tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() };
     let mut call = if db.crate_graph()[loc.krate].edition == Edition::Edition2021 {
@@ -531,7 +531,7 @@ fn include_str_expand(
 }
 
 fn get_env_inner(db: &dyn AstDatabase, arg_id: MacroCallId, key: &str) -> Option<String> {
-    let krate = db.lookup_intern_macro(arg_id).krate;
+    let krate = db.lookup_intern_macro_call(arg_id).krate;
     db.crate_graph()[krate].env.get(key)
 }
 

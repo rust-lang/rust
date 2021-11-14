@@ -141,7 +141,7 @@ impl HygieneInfo {
         let token_id = self.exp_map.token_by_range(token)?;
         let (mut token_id, origin) = self.macro_def.map_id_up(token_id);
 
-        let loc = db.lookup_intern_macro(self.file.macro_call_id);
+        let loc = db.lookup_intern_macro_call(self.file.macro_call_id);
 
         let (token_map, tt) = match &loc.kind {
             MacroCallKind::Attr { attr_args, .. } => match self.macro_arg_shift.unshift(token_id) {
@@ -213,7 +213,7 @@ impl HygieneFrame {
         let (info, krate, local_inner) = match file_id.0 {
             HirFileIdRepr::FileId(_) => (None, None, false),
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 let info =
                     make_hygiene_info(db, macro_file, &loc).map(|info| (loc.kind.file_id(), info));
                 match loc.def.kind {

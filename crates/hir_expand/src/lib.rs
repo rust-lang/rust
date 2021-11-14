@@ -148,7 +148,7 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(file_id) => file_id,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 let file_id = match &loc.eager {
                     Some(EagerCallInfo { included_file: Some(file), .. }) => (*file).into(),
                     _ => loc.kind.file_id(),
@@ -162,7 +162,7 @@ impl HirFileId {
         let mut level = 0;
         let mut curr = self;
         while let HirFileIdRepr::MacroFile(macro_file) = curr.0 {
-            let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+            let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
 
             level += 1;
             curr = loc.kind.file_id();
@@ -175,7 +175,7 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 Some(loc.kind.to_node(db))
             }
         }
@@ -186,7 +186,7 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
 
                 let arg_tt = loc.kind.arg(db)?;
 
@@ -231,7 +231,7 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 let item = match loc.def.kind {
                     MacroDefKind::BuiltInDerive(..) => loc.kind.to_node(db),
                     _ => return None,
@@ -245,7 +245,7 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(_) => false,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 match loc.def.kind {
                     MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _) => true,
                     _ => false,
@@ -258,7 +258,7 @@ impl HirFileId {
     pub fn is_include_macro(&self, db: &dyn db::AstDatabase) -> bool {
         match self.0 {
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 matches!(loc.eager, Some(EagerCallInfo { included_file: Some(_), .. }))
             }
             _ => false,
@@ -269,7 +269,7 @@ impl HirFileId {
     pub fn is_attr_macro(&self, db: &dyn db::AstDatabase) -> bool {
         match self.0 {
             HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 matches!(loc.kind, MacroCallKind::Attr { .. })
             }
             _ => false,
@@ -288,7 +288,7 @@ impl MacroDefId {
         krate: CrateId,
         kind: MacroCallKind,
     ) -> MacroCallId {
-        db.intern_macro(MacroCallLoc { def: self, krate, eager: None, kind })
+        db.intern_macro_call(MacroCallLoc { def: self, krate, eager: None, kind })
     }
 
     pub fn ast_id(&self) -> Either<AstId<ast::Macro>, AstId<ast::Fn>> {
@@ -402,7 +402,7 @@ impl ExpansionInfo {
                 HirFileIdRepr::FileId(_) => return None,
                 HirFileIdRepr::MacroFile(macro_file) => macro_file.macro_call_id,
             };
-            let loc = db.lookup_intern_macro(call_id);
+            let loc = db.lookup_intern_macro_call(call_id);
 
             let token_range = token.value.text_range();
             match &loc.kind {
@@ -458,7 +458,7 @@ impl ExpansionInfo {
             HirFileIdRepr::FileId(_) => return None,
             HirFileIdRepr::MacroFile(macro_file) => macro_file.macro_call_id,
         };
-        let loc = db.lookup_intern_macro(call_id);
+        let loc = db.lookup_intern_macro_call(call_id);
 
         let (token_map, tt) = match &loc.kind {
             MacroCallKind::Attr { attr_args, .. } => match self.macro_arg_shift.unshift(token_id) {

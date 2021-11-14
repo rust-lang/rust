@@ -78,7 +78,7 @@ impl RootDatabase {
             hir::db::ParseMacroExpansionQuery
             hir::db::MacroExpandQuery
             hir::db::HygieneFrameQuery
-            hir::db::InternMacroQuery
+            hir::db::InternMacroCallQuery
 
             // DefDatabase
             hir::db::FileItemTreeQuery
