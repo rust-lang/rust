@@ -20,6 +20,7 @@ mod syntax_kind;
 mod event;
 mod parser;
 mod grammar;
+mod tokens;
 
 pub(crate) use token_set::TokenSet;
 
