@@ -186,8 +186,17 @@ To run the UI test suite in NLL mode, one would use the following:
 ./x.py test src/test/ui --compare-mode=nll
 ```
 
-Other examples of compare-modes are "noopt", "migrate", and
-[revisions](./adding.html#revisions).
+The possible compare modes are:
+
+* nll - currently nll is implemented in migrate mode, this option runs with true nll.
+* polonius
+* chalk
+* split-dwarf
+* split-dwarf-single
+
+Note that compare modes are seperate to [revisions](./adding.html#revisions).
+All revisions are tested when running `./x.py test src/test/ui`,
+however compare-modes must be manually run individually via the `--compare-mode` flag.
 
 ## Running tests manually
 
