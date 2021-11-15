@@ -128,13 +128,13 @@ this chapter for more info][config].
 In the top level of the repo:
 
 ```sh
-$ x.py setup
+$ ./x.py setup
 ```
 
-This will walk you through an interactive setup for x.py that looks like this:
+This will walk you through an interactive setup for `x.py` that looks like this:
 
 ```
-$ x.py setup
+$ ./x.py setup
 Welcome to the Rust project! What do you want to do with x.py?
 a) Contribute to the standard library
 b) Contribute to the compiler
@@ -150,13 +150,13 @@ To get started, try one of the following commands:
 For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html
 ```
 
-Note that by default, `x.py setup` will use CI-built LLVM if available for your
+Note that by default, `./x.py setup` will use CI-built LLVM if available for your
 platform so that you don't need to build LLVM in addition to building the
 compiler. In some circumstances, such as when updating the version of LLVM used
 by `rustc`, you may want to temporarily disable this feature. See the ["Updating
 LLVM" section] for more.
 
-If you want to download LLVM from CI without running `x.py setup`, you can set
+If you want to download LLVM from CI without running `./x.py setup`, you can set
 the `download-ci-llvm` option to `true` in your `config.toml`:
 
 ```toml
@@ -166,7 +166,7 @@ download-ci-llvm = true
 
 ["Updating LLVM" section]: https://rustc-dev-guide.rust-lang.org/backend/updating-llvm.html?highlight=download-ci-llvm#feature-updates
 
-### x.py Intro
+### `x.py` Intro
 
 `rustc` is a _bootstrapping_ compiler, which means that it is written in Rust
 and thus needs to be compiled by itself. So where do you
@@ -177,7 +177,7 @@ to build a new compiler. Then, we use that compiler to build itself. Thus,
 
 [boot]: ./building/bootstrapping.md
 
-We have a special tool `./x.py` that drives this process. It is used for
+We have a special tool `x.py` that drives this process. It is used for
 building the compiler, the standard libraries, and `rustdoc`. It is also used
 for driving CI and building the final release artifacts.
 
@@ -195,14 +195,14 @@ should still read the rest of the section:
 
 | Command | When to use it |
 | --- | --- |
-| `x.py check` | Quick check to see if things compile; [rust-analyzer can run this automatically for you][rust-analyzer] |
-| `x.py build --stage 0 [library/std]` | Build only the standard library, without building the compiler |
-| `x.py build library/std` | Build just the 1st stage of the compiler, along with the standard library; this is faster than building stage 2 and usually good enough |
-| `x.py build --keep-stage 1 library/std` | Build the 1st stage of the compiler and skips rebuilding the standard library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
-| `x.py test [--keep-stage 1]` | Run the test suite using the stage1 compiler |
-| `x.py test --bless [--keep-stage 1]` | Run the test suite using the stage1 compiler _and_ update expected test output. |
-| `x.py build --stage 2 compiler/rustc` | Do a full 2-stage build. You almost never want to do this. |
-| `x.py test --stage 2` | Do a full 2-stage build and run all tests. You almost never want to do this. |
+| `./x.py check` | Quick check to see if things compile; [rust-analyzer can run this automatically for you][rust-analyzer] |
+| `./x.py build --stage 0 [library/std]` | Build only the standard library, without building the compiler |
+| `./x.py build library/std` | Build just the 1st stage of the compiler, along with the standard library; this is faster than building stage 2 and usually good enough |
+| `./x.py build --keep-stage 1 library/std` | Build the 1st stage of the compiler and skips rebuilding the standard library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
+| `./x.py test [--keep-stage 1]` | Run the test suite using the stage1 compiler |
+| `./x.py test --bless [--keep-stage 1]` | Run the test suite using the stage1 compiler _and_ update expected test output. |
+| `./x.py build --stage 2 compiler/rustc` | Do a full 2-stage build. You almost never want to do this. |
+| `./x.py test --stage 2` | Do a full 2-stage build and run all tests. You almost never want to do this. |
 
 To do a full 2-stage build of the whole compiler, you should run this (after
 updating `config.toml` as mentioned above):
@@ -231,7 +231,7 @@ For most contributions, you only need to build stage 1, which saves a lot of tim
 ```
 
 This will take a while, especially the first time. Be wary of accidentally
-touching or formatting the compiler, as `./x.py` will try to recompile it.
+touching or formatting the compiler, as `x.py` will try to recompile it.
 
 **NOTE**: The `--keep-stage 1` will _assume_ that the stage 0 standard library
 does not need to be rebuilt, which is usually true, which will save some time.

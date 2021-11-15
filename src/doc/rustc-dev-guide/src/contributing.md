@@ -97,7 +97,7 @@ of the status of a particular pull request.
 Rust has plenty of CI capacity, and you should never have to worry about wasting
 computational resources each time you push a change. It is also perfectly fine
 (and even encouraged!) to use the CI to test your changes if it can help your
-productivity. In particular, we don't recommend running the full `x.py test` suite locally,
+productivity. In particular, we don't recommend running the full `./x.py test` suite locally,
 since it takes a very long time to execute.
 
 After someone has reviewed your pull request, they will leave an annotation
@@ -173,32 +173,32 @@ differently from other crates that are directly in this repo:
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 
 In contrast to `submodule` dependencies
-(see below for those), the `subtree` dependencies are just regular files and directories which can 
-be updated in tree. However, enhancements, bug fixes, etc. specific to these tools should be filed 
+(see below for those), the `subtree` dependencies are just regular files and directories which can
+be updated in tree. However, enhancements, bug fixes, etc. specific to these tools should be filed
 against the tools directly in their respective upstream repositories.
 
 #### Synchronizing a subtree
 
-Periodically the changes made to subtree based dependencies need to be synchronized between this 
+Periodically the changes made to subtree based dependencies need to be synchronized between this
 repository and the upstream tool repositories.
 
-Subtree synchronizations are typically handled by the respective tool maintainers. Other users 
-are welcome to submit synchronization PRs, however, in order to do so you you will need to modify 
-your local git installation and follow a very precise set of instructions. 
-These instructions are documented, along with several useful tips and tricks, in the 
-[syncing subtree changes][clippy-sync-docs] section in Clippy's Contributing guide. 
-The instructions are applicable for use with any subtree based tool, just be sure to 
-use the correct corresponding subtree directory and remote repository. 
+Subtree synchronizations are typically handled by the respective tool maintainers. Other users
+are welcome to submit synchronization PRs, however, in order to do so you you will need to modify
+your local git installation and follow a very precise set of instructions.
+These instructions are documented, along with several useful tips and tricks, in the
+[syncing subtree changes][clippy-sync-docs] section in Clippy's Contributing guide.
+The instructions are applicable for use with any subtree based tool, just be sure to
+use the correct corresponding subtree directory and remote repository.
 
 The synchronization process goes in two directions: `subtree push` and `subtree pull`.
 
-A `subtree push` takes all the changes that happened to the copy in this repo and creates commits 
-on the remote repo that match the local changes. Every local 
-commit that touched the subtree causes a commit on the remote repo, but 
+A `subtree push` takes all the changes that happened to the copy in this repo and creates commits
+on the remote repo that match the local changes. Every local
+commit that touched the subtree causes a commit on the remote repo, but
 is modified to move the files from the specified directory to the tool repo root.
 
-A `subtree pull` takes all changes since the last `subtree pull` 
-from the tool repo and adds these commits to the rustc repo along with a merge commit that moves 
+A `subtree pull` takes all changes since the last `subtree pull`
+from the tool repo and adds these commits to the rustc repo along with a merge commit that moves
 the tool changes into the specified directory in the rust repository.
 
 It is recommended that you always do a push first and get that merged to the tool master branch.

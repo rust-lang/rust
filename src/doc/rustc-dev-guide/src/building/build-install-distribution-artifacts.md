@@ -18,7 +18,7 @@ test that it works on your target system. You’ll want to run this command:
 
    Note: If you are testing out a modification to a compiler, you
    might want to use it to compile some project.
-   Usually, you do not want to use ./x.py install for testing.
+   Usually, you do not want to use `./x.py install` for testing.
    Rather, you should create a toolchain as discussed in
    [here][create-rustup-toolchain].
 

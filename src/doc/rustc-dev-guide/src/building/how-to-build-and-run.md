@@ -20,7 +20,7 @@ cd rust
 
 ## Create a `config.toml`
 
-To start, run `x.py setup`. This will create a `config.toml` with reasonable defaults.
+To start, run `./x.py setup`. This will create a `config.toml` with reasonable defaults.
 
 You may also want to change some of the following settings (and possibly others, such as
 `llvm.ccache`):

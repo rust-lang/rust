@@ -49,7 +49,7 @@ with the debuginfo test suite:
 ```
 
 If you only need to test a specific subdirectory of tests for any
-given test suite, you can pass that directory to `x.py test`:
+given test suite, you can pass that directory to `./x.py test`:
 
 ```bash
 ./x.py test src/test/ui/const-generics

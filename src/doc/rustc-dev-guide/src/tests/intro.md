@@ -3,7 +3,7 @@
 <!-- toc -->
 
 The Rust project runs a wide variety of different tests, orchestrated by
-the build system (`x.py test`).  The main test harness for testing the
+the build system (`./x.py test`).  The main test harness for testing the
 compiler itself is a tool called compiletest (located in the
 [`src/tools/compiletest`] directory). This section gives a brief
 overview of how the testing framework is setup, and then gets into some

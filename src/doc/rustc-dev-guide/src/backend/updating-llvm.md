@@ -102,7 +102,7 @@ through each in detail.
    with updated LLVM bindings. Note that you should use `#ifdef` and such to ensure
    that the bindings still compile on older LLVM versions.
 
-   Note that `profile = "compiler"` and other defaults set by `x.py setup`
+   Note that `profile = "compiler"` and other defaults set by `./x.py setup`
    download LLVM from CI instead of building it from source. You should
    disable this temporarily to make sure your changes are being used, by setting
    ```toml

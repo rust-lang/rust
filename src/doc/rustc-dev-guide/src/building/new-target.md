@@ -8,7 +8,7 @@ relevant to your desired goal.
 
 For very new targets, you may need to use a different fork of LLVM
 than what is currently shipped with Rust. In that case, navigate to
-the `src/llvm-project` git submodule (you might need to run `x.py
+the `src/llvm-project` git submodule (you might need to run `./x.py
 check` at least once so the submodule is updated), check out the
 appropriate commit for your fork, then commit that new submodule
 reference in the main Rust repository.

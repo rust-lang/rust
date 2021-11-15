@@ -44,7 +44,7 @@ extension in LLVM bitcode format.
 Example usage:
 ```
 cargo install cargo-llvm-lines
-# On a normal crate you could now run `cargo llvm-lines`, but x.py isn't normal :P
+# On a normal crate you could now run `cargo llvm-lines`, but `x.py` isn't normal :P
 
 # Do a clean before every run, to not mix in the results from previous runs.
 ./x.py clean
@@ -88,7 +88,7 @@ Example output for the compiler:
     326903 (0.7%)      642 (0.0%)  rustc_query_system::query::plumbing::try_execute_query
 ```
 
-Since this doesn't seem to work with incremental compilation or `x.py check`,
+Since this doesn't seem to work with incremental compilation or `./x.py check`,
 you will be compiling rustc _a lot_.
 I recommend changing a few settings in `config.toml` to make it bearable:
 ```

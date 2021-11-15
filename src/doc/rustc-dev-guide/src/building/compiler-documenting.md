@@ -4,7 +4,7 @@ You might want to build documentation of the various components
 available like the standard library. There’s two ways to go about this.
 You can run rustdoc directly on the file to make sure the HTML is
 correct, which is fast. Alternatively, you can build the documentation
-as part of the build process through x.py. Both are viable methods
+as part of the build process through `x.py`. Both are viable methods
 since documentation is more about the content.
 
 ## Document everything
