@@ -14,6 +14,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Binder, Ty};
 use rustc_span::symbol::{kw, sym};
 
+use rustc_middle::ty::subst::GenericArgKind;
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -232,48 +233,72 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let is_struct_pat_shorthand_field =
                 self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, expr.span);
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
-            if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
-                let mut suggestions = iter::zip(iter::repeat(&expr_text), &methods)
-                    .filter_map(|(receiver, method)| {
-                        let method_call = format!(".{}()", method.ident);
-                        if receiver.ends_with(&method_call) {
-                            None // do not suggest code that is already there (#53348)
-                        } else {
-                            let method_call_list = [".to_vec()", ".to_string()"];
-                            let mut sugg = if receiver.ends_with(".clone()")
-                                && method_call_list.contains(&method_call.as_str())
-                            {
-                                let max_len = receiver.rfind('.').unwrap();
-                                vec![(
-                                    expr.span,
-                                    format!("{}{}", &receiver[..max_len], method_call),
-                                )]
+            if !methods.is_empty() {
+                if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
+                    let mut suggestions = iter::zip(iter::repeat(&expr_text), &methods)
+                        .filter_map(|(receiver, method)| {
+                            let method_call = format!(".{}()", method.ident);
+                            if receiver.ends_with(&method_call) {
+                                None // do not suggest code that is already there (#53348)
                             } else {
-                                if expr.precedence().order() < ExprPrecedence::MethodCall.order() {
-                                    vec![
-                                        (expr.span.shrink_to_lo(), "(".to_string()),
-                                        (expr.span.shrink_to_hi(), format!("){}", method_call)),
-                                    ]
+                                let method_call_list = [".to_vec()", ".to_string()"];
+                                let mut sugg = if receiver.ends_with(".clone()")
+                                    && method_call_list.contains(&method_call.as_str())
+                                {
+                                    let max_len = receiver.rfind('.').unwrap();
+                                    vec![(
+                                        expr.span,
+                                        format!("{}{}", &receiver[..max_len], method_call),
+                                    )]
                                 } else {
-                                    vec![(expr.span.shrink_to_hi(), method_call)]
+                                    if expr.precedence().order()
+                                        < ExprPrecedence::MethodCall.order()
+                                    {
+                                        vec![
+                                            (expr.span.shrink_to_lo(), "(".to_string()),
+                                            (expr.span.shrink_to_hi(), format!("){}", method_call)),
+                                        ]
+                                    } else {
+                                        vec![(expr.span.shrink_to_hi(), method_call)]
+                                    }
+                                };
+                                if is_struct_pat_shorthand_field {
+                                    sugg.insert(
+                                        0,
+                                        (expr.span.shrink_to_lo(), format!("{}: ", receiver)),
+                                    );
                                 }
-                            };
-                            if is_struct_pat_shorthand_field {
-                                sugg.insert(
-                                    0,
-                                    (expr.span.shrink_to_lo(), format!("{}: ", receiver)),
+                                Some(sugg)
+                            }
+                        })
+                        .peekable();
+                    if suggestions.peek().is_some() {
+                        err.multipart_suggestions(
+                            "try using a conversion method",
+                            suggestions,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            } else if found.to_string().starts_with("Option<")
+                && expected.to_string() == "Option<&str>"
+            {
+                if let ty::Adt(_def, subst) = found.kind() {
+                    if subst.len() != 0 {
+                        if let GenericArgKind::Type(ty) = subst[0].unpack() {
+                            let peeled = ty.peel_refs().to_string();
+                            if peeled == "String" {
+                                let ref_cnt = ty.to_string().len() - peeled.len();
+                                let result = format!(".map(|x| &*{}x)", "*".repeat(ref_cnt));
+                                err.span_suggestion_verbose(
+                                    expr.span.shrink_to_hi(),
+                                    "try converting the passed type into a `&str`",
+                                    result,
+                                    Applicability::MaybeIncorrect,
                                 );
                             }
-                            Some(sugg)
                         }
-                    })
-                    .peekable();
-                if suggestions.peek().is_some() {
-                    err.multipart_suggestions(
-                        "try using a conversion method",
-                        suggestions,
-                        Applicability::MaybeIncorrect,
-                    );
+                    }
                 }
             }
         }
