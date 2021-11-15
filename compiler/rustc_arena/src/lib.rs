@@ -517,9 +517,9 @@ impl DroplessArena {
 }
 
 #[rustc_macro_transparency = "semitransparent"]
-pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
+pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     #[derive(Default)]
-    pub struct Arena<$tcx> {
+    pub struct Arena<'tcx> {
         pub dropless: $crate::DroplessArena,
         $($name: $crate::TypedArena<$ty>,)*
     }
@@ -547,9 +547,9 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
 
     }
     $(
-        impl<$tcx> ArenaAllocatable<$tcx, $ty> for $ty {
+        impl<'tcx> ArenaAllocatable<'tcx, $ty> for $ty {
             #[inline]
-            fn allocate_on<'a>(self, arena: &'a Arena<$tcx>) -> &'a mut Self {
+            fn allocate_on<'a>(self, arena: &'a Arena<'tcx>) -> &'a mut Self {
                 if !::std::mem::needs_drop::<Self>() {
                     arena.dropless.alloc(self)
                 } else {
@@ -559,7 +559,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
 
             #[inline]
             fn allocate_from_iter<'a>(
-                arena: &'a Arena<$tcx>,
+                arena: &'a Arena<'tcx>,
                 iter: impl ::std::iter::IntoIterator<Item = Self>,
             ) -> &'a mut [Self] {
                 if !::std::mem::needs_drop::<Self>() {
