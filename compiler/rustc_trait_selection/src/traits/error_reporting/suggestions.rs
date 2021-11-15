@@ -706,36 +706,29 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         let param_env = obligation.param_env;
-        let trait_ref = poly_trait_ref.skip_binder();
-
-        let found_ty = trait_ref.self_ty();
-        let found_ty_str = found_ty.to_string();
-        let imm_borrowed_found_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, found_ty);
-        let imm_substs = self.tcx.mk_substs_trait(imm_borrowed_found_ty, &[]);
-        let mut_borrowed_found_ty = self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, found_ty);
-        let mut_substs = self.tcx.mk_substs_trait(mut_borrowed_found_ty, &[]);
 
         // Try to apply the original trait binding obligation by borrowing.
-        let mut try_borrowing = |new_imm_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-                                 new_mut_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-                                 expected_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        let mut try_borrowing = |old_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
                                  blacklist: &[DefId]|
          -> bool {
-            if blacklist.contains(&expected_trait_ref.def_id()) {
+            if blacklist.contains(&old_ref.def_id()) {
                 return false;
             }
 
-            let imm_result = self.predicate_must_hold_modulo_regions(&Obligation::new(
-                ObligationCause::dummy(),
-                param_env,
-                new_imm_trait_ref.without_const().to_predicate(self.tcx),
-            ));
-
-            let mut_result = self.predicate_must_hold_modulo_regions(&Obligation::new(
-                ObligationCause::dummy(),
-                param_env,
-                new_mut_trait_ref.without_const().to_predicate(self.tcx),
-            ));
+            let orig_ty = old_ref.self_ty().skip_binder();
+            let mk_result = |new_ty| {
+                let new_ref = old_ref.rebind(ty::TraitRef::new(
+                    old_ref.def_id(),
+                    self.tcx.mk_substs_trait(new_ty, &old_ref.skip_binder().substs[1..]),
+                ));
+                self.predicate_must_hold_modulo_regions(&Obligation::new(
+                    ObligationCause::dummy(),
+                    param_env,
+                    new_ref.without_const().to_predicate(self.tcx),
+                ))
+            };
+            let imm_result = mk_result(self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, orig_ty));
+            let mut_result = mk_result(self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, orig_ty));
 
             if imm_result || mut_result {
                 if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
@@ -747,8 +740,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                     let msg = format!(
                         "the trait bound `{}: {}` is not satisfied",
-                        found_ty_str,
-                        expected_trait_ref.print_only_trait_path(),
+                        orig_ty.to_string(),
+                        old_ref.print_only_trait_path(),
                     );
                     if has_custom_message {
                         err.note(&msg);
@@ -764,7 +757,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span,
                         &format!(
                             "expected an implementor of trait `{}`",
-                            expected_trait_ref.print_only_trait_path(),
+                            old_ref.print_only_trait_path(),
                         ),
                     );
 
@@ -807,21 +800,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
 
         if let ObligationCauseCode::ImplDerivedObligation(obligation) = &*code {
-            let expected_trait_ref = obligation.parent_trait_ref;
-            let new_imm_trait_ref = poly_trait_ref
-                .rebind(ty::TraitRef::new(obligation.parent_trait_ref.def_id(), imm_substs));
-            let new_mut_trait_ref = poly_trait_ref
-                .rebind(ty::TraitRef::new(obligation.parent_trait_ref.def_id(), mut_substs));
-            return try_borrowing(new_imm_trait_ref, new_mut_trait_ref, expected_trait_ref, &[]);
+            try_borrowing(obligation.parent_trait_ref, &[])
         } else if let ObligationCauseCode::BindingObligation(_, _)
         | ObligationCauseCode::ItemObligation(_) = &*code
         {
-            return try_borrowing(
-                poly_trait_ref.rebind(ty::TraitRef::new(trait_ref.def_id, imm_substs)),
-                poly_trait_ref.rebind(ty::TraitRef::new(trait_ref.def_id, mut_substs)),
-                *poly_trait_ref,
-                &never_suggest_borrow[..],
-            );
+            try_borrowing(*poly_trait_ref, &never_suggest_borrow[..])
         } else {
             false
         }
