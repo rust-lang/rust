@@ -1,14 +1,8 @@
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:12:1
+  --> $DIR/issue-67185-2.rs:15:5
    |
-LL | / trait Foo
-LL | |
-LL | |     where
-LL | |         [<u8 as Baz>::Quaks; 2]: Bar,
-LL | |         <u8 as Baz>::Quaks: Bar,
-LL | | {
-LL | | }
-   | |_^ the trait `Bar` is not implemented for `[u16; 3]`
+LL |     <u8 as Baz>::Quaks: Bar,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `[u16; 3]`
    |
    = help: the following implementations were found:
              <[[u16; 3]; 3] as Bar>
@@ -17,16 +11,10 @@ LL | | }
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:12:1
+  --> $DIR/issue-67185-2.rs:14:5
    |
-LL | / trait Foo
-LL | |
-LL | |     where
-LL | |         [<u8 as Baz>::Quaks; 2]: Bar,
-LL | |         <u8 as Baz>::Quaks: Bar,
-LL | | {
-LL | | }
-   | |_^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
+LL |     [<u8 as Baz>::Quaks; 2]: Bar,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
    |
    = help: the following implementations were found:
              <[[u16; 3]; 3] as Bar>
@@ -35,7 +23,7 @@ LL | | }
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:22:6
+  --> $DIR/issue-67185-2.rs:21:6
    |
 LL | impl Foo for FooImpl {}
    |      ^^^ the trait `Bar` is not implemented for `[u16; 3]`
@@ -44,16 +32,16 @@ LL | impl Foo for FooImpl {}
              <[[u16; 3]; 3] as Bar>
              <[u16; 4] as Bar>
 note: required by a bound in `Foo`
-  --> $DIR/issue-67185-2.rs:16:29
+  --> $DIR/issue-67185-2.rs:15:25
    |
 LL | trait Foo
    |       --- required by a bound in this
 ...
-LL |         <u8 as Baz>::Quaks: Bar,
-   |                             ^^^ required by this bound in `Foo`
+LL |     <u8 as Baz>::Quaks: Bar,
+   |                         ^^^ required by this bound in `Foo`
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:22:6
+  --> $DIR/issue-67185-2.rs:21:6
    |
 LL | impl Foo for FooImpl {}
    |      ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
@@ -62,16 +50,16 @@ LL | impl Foo for FooImpl {}
              <[[u16; 3]; 3] as Bar>
              <[u16; 4] as Bar>
 note: required by a bound in `Foo`
-  --> $DIR/issue-67185-2.rs:15:34
+  --> $DIR/issue-67185-2.rs:14:30
    |
 LL | trait Foo
    |       --- required by a bound in this
-...
-LL |         [<u8 as Baz>::Quaks; 2]: Bar,
-   |                                  ^^^ required by this bound in `Foo`
+LL | where
+LL |     [<u8 as Baz>::Quaks; 2]: Bar,
+   |                              ^^^ required by this bound in `Foo`
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:26:14
+  --> $DIR/issue-67185-2.rs:25:14
    |
 LL | fn f(_: impl Foo) {}
    |              ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
@@ -80,16 +68,16 @@ LL | fn f(_: impl Foo) {}
              <[[u16; 3]; 3] as Bar>
              <[u16; 4] as Bar>
 note: required by a bound in `Foo`
-  --> $DIR/issue-67185-2.rs:15:34
+  --> $DIR/issue-67185-2.rs:14:30
    |
 LL | trait Foo
    |       --- required by a bound in this
-...
-LL |         [<u8 as Baz>::Quaks; 2]: Bar,
-   |                                  ^^^ required by this bound in `Foo`
+LL | where
+LL |     [<u8 as Baz>::Quaks; 2]: Bar,
+   |                              ^^^ required by this bound in `Foo`
 
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:26:14
+  --> $DIR/issue-67185-2.rs:25:14
    |
 LL | fn f(_: impl Foo) {}
    |              ^^^ the trait `Bar` is not implemented for `[u16; 3]`
@@ -98,13 +86,13 @@ LL | fn f(_: impl Foo) {}
              <[[u16; 3]; 3] as Bar>
              <[u16; 4] as Bar>
 note: required by a bound in `Foo`
-  --> $DIR/issue-67185-2.rs:16:29
+  --> $DIR/issue-67185-2.rs:15:25
    |
 LL | trait Foo
    |       --- required by a bound in this
 ...
-LL |         <u8 as Baz>::Quaks: Bar,
-   |                             ^^^ required by this bound in `Foo`
+LL |     <u8 as Baz>::Quaks: Bar,
+   |                         ^^^ required by this bound in `Foo`
 
 error: aborting due to 6 previous errors
 

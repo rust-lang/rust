@@ -1,14 +1,8 @@
 error[E0277]: the trait bound `i32: Bar<u32>` is not satisfied
-  --> $DIR/cross-fn-cache-hole.rs:15:1
+  --> $DIR/cross-fn-cache-hole.rs:16:11
    |
-LL | / fn vacuous<A>()
-LL | |     where i32: Foo<u32, A>
-LL | | {
-LL | |     // ... the original intention was to check that we don't use that
-...  |
-LL | |     require::<i32, u32>();
-LL | | }
-   | |_^ the trait `Bar<u32>` is not implemented for `i32`
+LL |     where i32: Foo<u32, A>
+   |           ^^^^^^^^^^^^^^^^ the trait `Bar<u32>` is not implemented for `i32`
    |
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
