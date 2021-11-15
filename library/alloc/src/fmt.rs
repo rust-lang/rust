@@ -17,6 +17,8 @@
 //! format!("The number is {}", 1);   // => "The number is 1"
 //! format!("{:?}", (3, 4));          // => "(3, 4)"
 //! format!("{value}", value=4);      // => "4"
+//! let people = "Rustaceans";
+//! format!("Hello {people}!");       // => "Hello Rustaceans!"
 //! format!("{} {}", 1, 2);           // => "1 2"
 //! format!("{:04}", 42);             // => "0042" with leading zeros
 //! format!("{:#?}", (100, 200));     // => "(
@@ -80,6 +82,19 @@
 //! format!("{a} {c} {b}", a="a", b='b', c=3);  // => "a 3 b"
 //! ```
 //!
+//! If a named parameter does not appear in the argument list, `format!` will
+//! reference a variable with that name in the current scope.
+//!
+//! ```
+//! let argument = 2 + 2;
+//! format!("{argument}");   // => "4"
+//!
+//! fn make_string(a: u32, b: &str) -> String {
+//!     format!("{b} {a}")
+//! }
+//! make_string(927, "label"); // => "label 927"
+//! ```
+//!
 //! It is not valid to put positional parameters (those without names) after
 //! arguments that have names. Like with positional parameters, it is not
 //! valid to provide named parameters that are unused by the format string.
@@ -98,6 +113,8 @@
 //! println!("Hello {:1$}!", "x", 5);
 //! println!("Hello {1:0$}!", 5, "x");
 //! println!("Hello {:width$}!", "x", width = 5);
+//! let width = 5;
+//! println!("Hello {:width$}!", "x");
 //! ```
 //!
 //! This is a parameter for the "minimum width" that the format should take up.

@@ -527,17 +527,9 @@ impl<'a, 'b> Context<'a, 'b> {
                         self.verify_arg_type(Exact(idx), ty)
                     }
                     None => {
-                        let capture_feature_enabled = self
-                            .ecx
-                            .ecfg
-                            .features
-                            .map_or(false, |features| features.format_args_capture);
-
                         // For the moment capturing variables from format strings expanded from macros is
                         // disabled (see RFC #2795)
-                        let can_capture = capture_feature_enabled && self.is_literal;
-
-                        if can_capture {
+                        if self.is_literal {
                             // Treat this name as a variable to capture from the surrounding scope
                             let idx = self.args.len();
                             self.arg_types.push(Vec::new());
@@ -559,23 +551,15 @@ impl<'a, 'b> Context<'a, 'b> {
                             };
                             let mut err = self.ecx.struct_span_err(sp, &msg[..]);
 
-                            if capture_feature_enabled && !self.is_literal {
-                                err.note(&format!(
-                                    "did you intend to capture a variable `{}` from \
-                                     the surrounding scope?",
-                                    name
-                                ));
-                                err.note(
-                                    "to avoid ambiguity, `format_args!` cannot capture variables \
-                                     when the format string is expanded from a macro",
-                                );
-                            } else if self.ecx.parse_sess().unstable_features.is_nightly_build() {
-                                err.help(&format!(
-                                    "if you intended to capture `{}` from the surrounding scope, add \
-                                     `#![feature(format_args_capture)]` to the crate attributes",
-                                    name
-                                ));
-                            }
+                            err.note(&format!(
+                                "did you intend to capture a variable `{}` from \
+                                 the surrounding scope?",
+                                name
+                            ));
+                            err.note(
+                                "to avoid ambiguity, `format_args!` cannot capture variables \
+                                 when the format string is expanded from a macro",
+                            );
 
                             err.emit();
                         }

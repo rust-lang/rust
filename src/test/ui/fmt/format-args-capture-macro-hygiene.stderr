@@ -1,5 +1,5 @@
 error: there is no argument named `foo`
-  --> $DIR/format-args-capture-macro-hygiene.rs:4:13
+  --> $DIR/format-args-capture-macro-hygiene.rs:2:13
    |
 LL |     format!(concat!("{foo}"));
    |             ^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     format!(concat!("{foo}"));
    = note: this error originates in the macro `concat` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: there is no argument named `bar`
-  --> $DIR/format-args-capture-macro-hygiene.rs:5:13
+  --> $DIR/format-args-capture-macro-hygiene.rs:3:13
    |
 LL |     format!(concat!("{ba", "r} {}"), 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^

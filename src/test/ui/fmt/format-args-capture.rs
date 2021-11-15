@@ -1,5 +1,4 @@
 // run-pass
-#![feature(format_args_capture)]
 #![feature(cfg_panic)]
 
 fn main() {

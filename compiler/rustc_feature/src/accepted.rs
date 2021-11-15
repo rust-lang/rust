@@ -301,6 +301,8 @@ declare_features! (
     (accepted, relaxed_struct_unsize, "1.58.0", Some(81793), None),
     /// Allows dereferencing raw pointers during const eval.
     (accepted, const_raw_ptr_deref, "1.58.0", Some(51911), None),
+    /// Allows capturing variables in scope using format_args!
+    (accepted, format_args_capture, "1.58.0", Some(67984), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
