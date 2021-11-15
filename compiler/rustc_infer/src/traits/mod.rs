@@ -8,10 +8,14 @@ mod project;
 mod structural_impls;
 pub mod util;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::Span;
+use std::borrow::{Borrow, Cow};
+use std::collections::hash_map::RawEntryMut;
+use std::hash::Hash;
 
 pub use self::FulfillmentErrorCode::*;
 pub use self::ImplSource::*;
@@ -93,6 +97,65 @@ pub enum FulfillmentErrorCode<'tcx> {
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
     CodeConstEquateError(ExpectedFound<&'tcx Const<'tcx>>, TypeError<'tcx>),
     CodeAmbiguity,
+}
+
+pub struct ObligationsDedup<'a, 'tcx, T> {
+    obligations: &'a mut Vec<Obligation<'tcx, T>>,
+}
+
+impl<'a, 'tcx, T: 'tcx> ObligationsDedup<'a, 'tcx, T>
+where
+    T: Clone + Hash + Eq,
+{
+    pub fn from_vec(vec: &'a mut Vec<Obligation<'tcx, T>>) -> Self {
+        ObligationsDedup { obligations: vec }
+    }
+
+    pub fn extend<'b>(&mut self, iter: impl ExactSizeIterator<Item = Cow<'b, Obligation<'tcx, T>>>)
+    where
+        'tcx: 'b,
+    {
+        // obligation tracing has shown that initial batches added to an empty vec do not
+        // contain any duplicates, so there's no need to attempt deduplication
+        if self.obligations.is_empty() {
+            *self.obligations = iter.into_iter().map(Cow::into_owned).collect();
+            return;
+        }
+
+        let initial_size = self.obligations.len();
+        let iter = iter.into_iter();
+        let expected_new = iter.len();
+        let combined_size = initial_size + expected_new;
+
+        if combined_size <= 16 || combined_size < initial_size.next_power_of_two() {
+            // small case/not crossing a power of two. don't bother with dedup
+            self.obligations.extend(iter.map(Cow::into_owned));
+        } else {
+            // crossing power of two threshold. this would incur a vec growth anyway if we didn't do
+            // anything. piggyback a dedup on that
+            let obligations = std::mem::take(self.obligations);
+
+            let mut seen = FxHashMap::default();
+            seen.reserve(initial_size);
+
+            *self.obligations = obligations
+                .into_iter()
+                .map(Cow::Owned)
+                .chain(iter)
+                .filter_map(|obligation| {
+                    match seen.raw_entry_mut().from_key(obligation.borrow()) {
+                        RawEntryMut::Occupied(..) => {
+                            return None;
+                        }
+                        RawEntryMut::Vacant(vacant) => {
+                            vacant.insert(obligation.clone().into_owned(), ());
+                        }
+                    }
+                    Some(obligation.into_owned())
+                })
+                .collect();
+        }
+    }
 }
 
 impl<'tcx, O> Obligation<'tcx, O> {

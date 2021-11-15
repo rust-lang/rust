@@ -138,6 +138,20 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
         Ok(())
     }
 
+    pub fn try_start_borrowed<'a, T>(
+        &'a mut self,
+        key: ProjectionCacheKey<'tcx>,
+        with: impl FnOnce(&'_ ProjectionCacheEntry<'tcx>) -> T + 'a,
+    ) -> Option<T> {
+        let mut map = self.map();
+        if let Some(entry) = map.get(&key) {
+            return Some(with(entry));
+        }
+
+        map.insert(key, ProjectionCacheEntry::InProgress);
+        None
+    }
+
     /// Indicates that `key` was normalized to `value`.
     pub fn insert_ty(&mut self, key: ProjectionCacheKey<'tcx>, value: NormalizedTy<'tcx>) {
         debug!(
