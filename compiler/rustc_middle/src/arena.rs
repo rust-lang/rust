@@ -1,10 +1,5 @@
 /// This declares a list of types which can be allocated by `Arena`.
 ///
-/// The `few` modifier will cause allocation to use the shared arena and recording the destructor.
-/// This is faster and more memory efficient if there's only a few allocations of the type.
-/// Leaving `few` out will cause the type to get its own dedicated `TypedArena` which is
-/// faster and more memory efficient if there is lots of allocations.
-///
 /// Specifying the `decode` modifier will add decode impls for `&T` and `&[T]` where `T` is the type
 /// listed. These impls will appear in the implement_ty_decoder! macro.
 #[macro_export]
@@ -37,7 +32,7 @@ macro_rules! arena_types {
             [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
             // Required for the incremental on-disk cache
-            [few] mir_keys: rustc_hir::def_id::DefIdSet,
+            [] mir_keys: rustc_hir::def_id::DefIdSet,
             [] region_scope_tree: rustc_middle::middle::region::ScopeTree,
             [] dropck_outlives:
                 rustc_middle::infer::canonical::Canonical<'tcx,
@@ -77,10 +72,10 @@ macro_rules! arena_types {
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
-            [few] all_traits: Vec<rustc_hir::def_id::DefId>,
-            [few] privacy_access_levels: rustc_middle::middle::privacy::AccessLevels,
-            [few] foreign_module: rustc_session::cstore::ForeignModule,
-            [few] foreign_modules: Vec<rustc_session::cstore::ForeignModule>,
+            [] all_traits: Vec<rustc_hir::def_id::DefId>,
+            [] privacy_access_levels: rustc_middle::middle::privacy::AccessLevels,
+            [] foreign_module: rustc_session::cstore::ForeignModule,
+            [] foreign_modules: Vec<rustc_session::cstore::ForeignModule>,
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<$tcx>,
