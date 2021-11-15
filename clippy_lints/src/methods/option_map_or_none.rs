@@ -11,6 +11,7 @@ use rustc_span::symbol::sym;
 use super::OPTION_MAP_OR_NONE;
 use super::RESULT_MAP_OR_INTO_OPTION;
 
+/// The expression inside a closure may or may not have surrounding braces
 fn reduce_unit_expression<'a>(
     cx: &LateContext<'_>,
     expr: &'a hir::Expr<'_>,
