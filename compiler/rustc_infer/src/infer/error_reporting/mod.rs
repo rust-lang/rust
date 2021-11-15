@@ -1704,13 +1704,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let ty::Opaque(def_id, substs) = ty.kind() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
             // Future::Output
-            let item_def_id = self
-                .tcx
-                .associated_items(future_trait)
-                .in_definition_order()
-                .next()
-                .unwrap()
-                .def_id;
+            let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
             let bounds = self.tcx.explicit_item_bounds(*def_id);
 
@@ -2528,7 +2522,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::MiscVariable(_) => String::new(),
             infer::PatternRegion(_) => " for pattern".to_string(),
             infer::AddrOfRegion(_) => " for borrow expression".to_string(),
-            infer::Autoref(_, _) => " for autoref".to_string(),
+            infer::Autoref(_) => " for autoref".to_string(),
             infer::Coercion(_) => " for automatic coercion".to_string(),
             infer::LateBoundRegion(_, br, infer::FnCall) => {
                 format!(" for lifetime parameter {}in function call", br_string(br))

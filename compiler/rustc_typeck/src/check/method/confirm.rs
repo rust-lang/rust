@@ -162,7 +162,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         match &pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
-                let region = self.next_region_var(infer::Autoref(self.span, pick.item));
+                let region = self.next_region_var(infer::Autoref(self.span));
                 target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl: *mutbl, ty: target });
                 let mutbl = match mutbl {
                     hir::Mutability::Not => AutoBorrowMutability::Not,
