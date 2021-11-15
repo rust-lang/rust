@@ -34,7 +34,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `let _ = sync_lock`
+    /// Checks for `let _ = sync_lock`.
+    /// This supports `mutex` and `rwlock` in `std::sync` and `parking_lot`.
     ///
     /// ### Why is this bad?
     /// This statement immediately drops the lock instead of
@@ -104,10 +105,12 @@ declare_clippy_lint! {
 
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_DROP]);
 
-const SYNC_GUARD_PATHS: [&[&str]; 3] = [
+const SYNC_GUARD_PATHS: [&[&str]; 5] = [
     &paths::MUTEX_GUARD,
     &paths::RWLOCK_READ_GUARD,
     &paths::RWLOCK_WRITE_GUARD,
+    &paths::PARKING_LOT_RAWMUTEX,
+    &paths::PARKING_LOT_RAWRWLOCK,
 ];
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
