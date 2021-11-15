@@ -316,7 +316,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     extended_asm.add_input_operand(None, "r", result.llval);
                     extended_asm.add_clobber("memory");
                     extended_asm.set_volatile_flag(true);
-                    
+
                     // We have copied the value to `result` already.
                     return;
                 }
@@ -361,10 +361,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn expect(&mut self, cond: Self::Value, _expected: bool) -> Self::Value {
         // TODO(antoyo)
         cond
-    }
-
-    fn sideeffect(&mut self) {
-        // TODO(antoyo)
     }
 
     fn type_test(&mut self, _pointer: Self::Value, _typeid: Self::Value) -> Self::Value {
