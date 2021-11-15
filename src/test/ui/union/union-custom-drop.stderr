@@ -7,7 +7,7 @@ LL |     bar: Bar,
 help: wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped
    |
 LL |     bar: std::mem::ManuallyDrop<Bar>,
-   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |          +++++++++++++++++++++++   +
 
 error: aborting due to previous error
 

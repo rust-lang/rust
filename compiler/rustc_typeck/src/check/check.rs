@@ -371,14 +371,12 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
         let param_env = tcx.param_env(item_def_id);
         for field in fields {
             let field_ty = field.ty(tcx, substs);
-            let (field_span, ty_span) =
-                // We are currently checking the type this field came from, so it must be local.
-                if let Node::Field(field) = tcx.hir().get_if_local(field.did).unwrap() {
-                    (field.span, field.ty.span)
-                } else {
-                    unreachable!("mir field has to correspond to hir field");
-                };
             if field_ty.needs_drop(tcx, param_env) {
+                let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
+                    // We are currently checking the type this field came from, so it must be local.
+                    Some(Node::Field(field)) => (field.span, field.ty.span),
+                    _ => unreachable!("mir field has to correspond to hir field"),
+                };
                 struct_span_err!(
                     tcx.sess,
                     field_span,
@@ -387,7 +385,10 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 )
                 .multipart_suggestion_verbose(
                     "wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped",
-                    vec![(ty_span, format!("std::mem::ManuallyDrop<{}>", field_ty))],
+                    vec![
+                        (ty_span.shrink_to_lo(), format!("std::mem::ManuallyDrop<")),
+                        (ty_span.shrink_to_hi(), ">".into()),
+                    ],
                     Applicability::MaybeIncorrect,
                 )
                 .emit();
