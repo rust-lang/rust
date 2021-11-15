@@ -107,12 +107,11 @@ The hash includes a variety of elements:
   Disambiguator](#crate-disambiguator), and all CLI options marked with
   `[TRACKED]`).
 
-See [`finalize_and_compute_crate_hash`] for where the hash is actually
-computed.
+See [`compute_hir_hash`] for where the hash is actually computed.
 
 [SVH]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/svh/struct.Svh.html
 [incremental compilation]: ../queries/incremental-compilation.md
-[`finalize_and_compute_crate_hash`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/collector/struct.NodeCollector.html#method.finalize_and_compute_crate_hash
+[`compute_hir_hash`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/struct.LoweringContext.html#method.compute_hir_hash
 
 ### Stable Crate Id
 

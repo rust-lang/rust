@@ -39,7 +39,7 @@ why the array length in `foo<const N: usize>() -> [u8; N + 1]` can use `N`.
 
 Without any manual adjustments, this causes us to include parameters even if
 the constant doesn't use them in any way. This can cause
-[some interesting errors](pcg-unused-substs) and breaks some already stable code.
+[some interesting errors][pcg-unused-substs] and breaks some already stable code.
 
 To deal with this, we intend to look at the generic parameters explicitly mentioned
 by the constants and then search the predicates of its parents to figure out which
