@@ -21,7 +21,7 @@ fn reduce_unit_expression<'a>(
             match block.expr {
                 Some(inner_expr) => {
                     // If block only contains an expression,
-                    // reduce `{ X }` to `X`
+                    // reduce `|x| { x + 1 }` to `|x| x + 1`
                     reduce_unit_expression(cx, inner_expr)
                 },
                 _ => None,
@@ -51,7 +51,6 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    // let (lint_name, msg, instead, hint) = {
     let default_arg_is_none = if let hir::ExprKind::Path(ref qpath) = def_arg.kind {
         is_lang_ctor(cx, qpath, OptionNone)
     } else {
@@ -71,7 +70,8 @@ pub(super) fn check<'tcx>(
 
     if is_option {
         let self_snippet = snippet(cx, recv.span, "..");
-        if let hir::ExprKind::Closure(_, _, id, _, _) = map_arg.kind {
+        if let hir::ExprKind::Closure(_, _, id, span, _) = map_arg.kind {
+            let arg_snippet = snippet(cx, span, "..");
             if_chain! {
                 let body = cx.tcx.hir().body(id);
                 if let Some((func, arg_char)) = reduce_unit_expression(cx, &body.value);
@@ -89,7 +89,7 @@ pub(super) fn check<'tcx>(
                         expr.span,
                         msg,
                         "try using `map` instead",
-                        format!("{0}.map({1})", self_snippet, func_snippet),
+                        format!("{0}.map({1} {2})", self_snippet, arg_snippet,func_snippet),
                         Applicability::MachineApplicable,
                     );
                 }
@@ -99,7 +99,7 @@ pub(super) fn check<'tcx>(
         let func_snippet = snippet(cx, map_arg.span, "..");
         let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
                        `and_then(..)` instead";
-        span_lint_and_sugg(
+        return span_lint_and_sugg(
             cx,
             OPTION_MAP_OR_NONE,
             expr.span,
@@ -107,12 +107,12 @@ pub(super) fn check<'tcx>(
             "try using `and_then` instead",
             format!("{0}.and_then({1})", self_snippet, func_snippet),
             Applicability::MachineApplicable,
-        )
+        );
     } else if f_arg_is_some {
         let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
                        `ok()` instead";
         let self_snippet = snippet(cx, recv.span, "..");
-        span_lint_and_sugg(
+        return span_lint_and_sugg(
             cx,
             RESULT_MAP_OR_INTO_OPTION,
             expr.span,
@@ -120,9 +120,6 @@ pub(super) fn check<'tcx>(
             "try using `ok` instead",
             format!("{0}.ok()", self_snippet),
             Applicability::MachineApplicable,
-        )
-    } else {
-        // nothing to lint!
-        return;
+        );
     }
 }

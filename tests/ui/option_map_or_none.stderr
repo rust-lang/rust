@@ -13,14 +13,7 @@ LL |       let _ :Option<i32> = opt.map_or(None, |x| {
    |  __________________________^
 LL | |                         Some(x + 1)
 LL | |                        });
-   | |_________________________^
-   |
-help: try using `map` instead
-   |
-LL ~     let _ :Option<i32> = opt.map(|x| {
-LL +                         x + 1
-LL ~                        });
-   |
+   | |_________________________^ help: try using `map` instead: `opt.map(|x| x + 1)`
 
 error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `and_then(..)` instead
   --> $DIR/option_map_or_none.rs:20:26
