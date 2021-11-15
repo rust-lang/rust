@@ -392,15 +392,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         self.call_intrinsic("llvm.expect.i1", &[cond, self.const_bool(expected)])
     }
 
-    fn sideeffect(&mut self) {
-        // This kind of check would make a ton of sense in the caller, but currently the only
-        // caller of this function is in `rustc_codegen_ssa`, which is agnostic to whether LLVM
-        // codegen backend being used, and so is unable to check the LLVM version.
-        if unsafe { llvm::LLVMRustVersionMajor() } < 12 {
-            self.call_intrinsic("llvm.sideeffect", &[]);
-        }
-    }
-
     fn type_test(&mut self, pointer: Self::Value, typeid: Self::Value) -> Self::Value {
         // Test the called operand using llvm.type.test intrinsic. The LowerTypeTests link-time
         // optimization pass replaces calls to this intrinsic with code to test type membership.
