@@ -74,8 +74,8 @@ pub(super) fn check<'tcx>(
         let self_snippet = snippet(cx, recv.span, "..");
         if let hir::ExprKind::Closure(_, _, id, span, _) = map_arg.kind {
             let arg_snippet = snippet(cx, span, "..");
+            let body = cx.tcx.hir().body(id);
             if_chain! {
-                let body = cx.tcx.hir().body(id);
                 if let Some((func, arg_char)) = reduce_unit_expression(cx, &body.value);
                 if arg_char.len() == 1;
                 if let hir::ExprKind::Path(ref qpath) = func.kind;
