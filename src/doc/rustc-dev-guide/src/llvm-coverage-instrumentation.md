@@ -453,7 +453,7 @@ The nodes contain information in sections:
    its `BasicCoverageBlockData`).
 2. The first content section shows the assigned `Counter` or `Expression` for
    each contiguous section of code. (There may be more than one `Expression`
-   incremented by the same `Counter` for discontiguous sections of code
+   incremented by the same `Counter` for noncontiguous sections of code
    representing the same sequential actions.) Note the code is represented by
    the line and column ranges (for example: `52:28-52:33`, representing the
    original source line 52, for columns 28-33). These are followed by the MIR

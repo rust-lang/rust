@@ -21,7 +21,7 @@ As of <!-- date: 2021-07 --> July 2021, we lint against direct declarations
 without the use of the macro today (although this may change in the future, as
 the macro is somewhat unwieldy to add new fields to, like all macros).
 
-Lint declarations don't carry any "state" - they are merely global identifers and descriptions of
+Lint declarations don't carry any "state" - they are merely global identifiers and descriptions of
 lints. We assert at runtime that they are not registered twice (by lint name).
 
 Lint passes are the meat of any lint. Notably, there is not a one-to-one relationship between

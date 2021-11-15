@@ -253,7 +253,7 @@ the regular expression matched.
 
 ### Example: Where does MIR borrowck spend its time?
 
-Often we want to do a more "explorational" queries. Like, we know that
+Often we want to do more "explorational" queries. Like, we know that
 MIR borrowck is 29% of the time, but where does that time get spent?
 For that, the `--tree-callees` option is often the best tool. You
 usually also want to give `--tree-min-percent` or

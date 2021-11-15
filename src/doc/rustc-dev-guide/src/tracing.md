@@ -176,7 +176,7 @@ here. There is no perfect balance to hit here, and is left to the reviewer's
 discretion to decide whether to let you leave `debug!` statements in or whether to ask
 you to remove them before merging.
 
-It may be preferrable to use `trace!` over `debug!` for very noisy logs.
+It may be preferable to use `trace!` over `debug!` for very noisy logs.
 
 A loosely followed convention is to use `#[instrument(level = "debug")]`
 ([also see the attribute's documentation](https://docs.rs/tracing-attributes/0.1.17/tracing_attributes/attr.instrument.html))

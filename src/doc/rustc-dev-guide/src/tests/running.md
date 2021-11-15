@@ -194,7 +194,7 @@ The possible compare modes are:
 * split-dwarf
 * split-dwarf-single
 
-Note that compare modes are seperate to [revisions](./adding.html#revisions).
+Note that compare modes are separate to [revisions](./adding.html#revisions).
 All revisions are tested when running `./x.py test src/test/ui`,
 however compare-modes must be manually run individually via the `--compare-mode` flag.
 

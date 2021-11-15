@@ -24,7 +24,7 @@ of type `for<T> fn(T)`, we would need a single function pointer that can be
 used for a parameter of any type, but in Rust we generate customized code for
 each parameter type.
 
-One consequence of this asymmetry is a weird split in how we represesent some
+One consequence of this asymmetry is a weird split in how we represent some
 generic types: _early-_ and _late-_ bound parameters.
 Basically, if we cannot represent a type (e.g. a universally quantified type),
 we have to bind it _early_ so that the unrepresentable type is never around.

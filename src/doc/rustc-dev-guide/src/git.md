@@ -408,7 +408,7 @@ nothing to commit, working tree clean
 ```
 
 As far as git is concerned, you are no longer in the `rust` repo, but in the `miri` repo.
-You will notice that we are in "detatched HEAD" state, i.e. not on a branch but on a
+You will notice that we are in "detached HEAD" state, i.e. not on a branch but on a
 particular commit.
 
 This is because, like any dependency, we want to be able to control which version to use.

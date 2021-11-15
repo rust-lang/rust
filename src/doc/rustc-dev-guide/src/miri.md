@@ -119,7 +119,7 @@ allocation. These allocations can be accessed via the methods on
 see [the next section](#memory) for more on that.
 
 If you are expecting a numeric result, you can use `eval_usize` (panics on
-anything that can't be representad as a `u64`) or `try_eval_usize` which results
+anything that can't be represented as a `u64`) or `try_eval_usize` which results
 in an `Option<u64>` yielding the `Scalar` if possible.
 
 ## Memory

@@ -585,7 +585,7 @@ syntactic sugar and are allowed to be in namespaces.
 
 ## Procedural Macros
 
-Precedural macros are also expanded during parsing, as mentioned above.
+Procedural macros are also expanded during parsing, as mentioned above.
 However, they use a rather different mechanism. Rather than having a parser in
 the compiler, procedural macros are implemented as custom, third-party crates.
 The compiler will compile the proc macro crate and specially annotated
