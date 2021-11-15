@@ -74,10 +74,10 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
                     if (p == sym::iter || p == sym!(iter_mut)) && args.len() == 1 {
                         &args[0]
                     } else {
-                        &filter_recv
+                        filter_recv
                     }
                 } else {
-                    &filter_recv
+                    filter_recv
                 };
                 let mut applicability = Applicability::MaybeIncorrect;
                 span_lint_and_sugg(

@@ -297,7 +297,6 @@ mod mutex_atomic;
 mod needless_arbitrary_self_type;
 mod needless_bitwise_bool;
 mod needless_bool;
-mod needless_borrow;
 mod needless_borrowed_ref;
 mod needless_continue;
 mod needless_for_each;
@@ -602,7 +601,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(zero_div_zero::ZeroDiv));
     store.register_late_pass(|| Box::new(mutex_atomic::Mutex));
     store.register_late_pass(|| Box::new(needless_update::NeedlessUpdate));
-    store.register_late_pass(|| Box::new(needless_borrow::NeedlessBorrow::default()));
     store.register_late_pass(|| Box::new(needless_borrowed_ref::NeedlessBorrowedRef));
     store.register_late_pass(|| Box::new(no_effect::NoEffect));
     store.register_late_pass(|| Box::new(temporary_assignment::TemporaryAssignment));
