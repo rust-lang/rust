@@ -1,16 +1,16 @@
 error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `map(..)` instead
-  --> $DIR/option_map_or_none.rs:10:13
+  --> $DIR/option_map_or_none.rs:13:26
    |
 LL |     let _ :Option<i32> = opt.map_or(None, |x| Some(x + 1));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `map` instead: `opt.map(|x| x + 1)`
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `map` instead: `opt.map(|x| x + 1)`
    |
    = note: `-D clippy::option-map-or-none` implied by `-D warnings`
 
 error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `map(..)` instead
-  --> $DIR/option_map_or_none.rs:13:13
+  --> $DIR/option_map_or_none.rs:16:26
    |
 LL |       let _ :Option<i32> = opt.map_or(None, |x| {
-   |  _____________^
+   |  __________________________^
 LL | |                         Some(x + 1)
 LL | |                        });
    | |_________________________^
@@ -22,7 +22,7 @@ LL +                         x + 1
 LL ~                        });
    |
 
-error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `map(..)` instead
+error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `and_then(..)` instead
   --> $DIR/option_map_or_none.rs:20:26
    |
 LL |     let _ :Option<i32> = opt.map_or(None, bar);
