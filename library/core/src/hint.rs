@@ -46,6 +46,7 @@ use crate::intrinsics;
 #[stable(feature = "unreachable", since = "1.27.0")]
 #[rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
 pub const unsafe fn unreachable_unchecked() -> ! {
+    debug_assert!(false, "entered unreachable code");
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
     unsafe { intrinsics::unreachable() }
