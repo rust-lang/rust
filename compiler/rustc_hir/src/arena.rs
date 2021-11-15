@@ -1,4 +1,4 @@
-/// This declares a list of types which can be allocated by `Arena`.
+/// This higher-order macro declares a list of types which can be allocated by `Arena`.
 ///
 /// Specifying the `decode` modifier will add decode impls for `&T` and `&[T]`,
 /// where `T` is the type listed. These impls will appear in the implement_ty_decoder! macro.
