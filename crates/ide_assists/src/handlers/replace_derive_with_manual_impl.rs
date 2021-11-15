@@ -160,7 +160,24 @@ fn impl_def_from_trait(
     if trait_items.is_empty() {
         return None;
     }
-    let impl_def = make::impl_trait(&trait_path, &adt, "");
+    let impl_def = {
+        use syntax::ast::Impl;
+        let text = generate_trait_impl_text(adt, trait_path.to_string().as_str(), "");
+        let parse = syntax::SourceFile::parse(&text);
+        let node = match parse.tree().syntax().descendants().find_map(Impl::cast) {
+            Some(it) => it,
+            None => {
+                panic!(
+                    "Failed to make ast node `{}` from text {}",
+                    std::any::type_name::<Impl>(),
+                    text
+                )
+            }
+        };
+        let node = node.clone_subtree();
+        assert_eq!(node.syntax().text_range().start(), 0.into());
+        node
+    };
 
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);

@@ -10,13 +10,9 @@
 //! `parse(format!())` we use internally is an implementation detail -- long
 //! term, it will be replaced with direct tree manipulation.
 use itertools::Itertools;
-use smol_str::SmolStr;
 use stdx::{format_to, never};
 
-use crate::{
-    ast::{self, HasAttrs, HasGenericParams, HasName, HasTypeBounds},
-    AstNode, SourceFile, SyntaxKind, SyntaxToken,
-};
+use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxToken};
 
 /// While the parent module defines basic atomic "constructors", the `ext`
 /// module defines shortcuts for common things.
@@ -153,65 +149,13 @@ pub fn impl_(
     ast_from_text(&format!("impl{} {}{} {{}}", params, ty, ty_params))
 }
 
-pub fn impl_trait(trait_: &ast::Path, adt: &ast::Adt, code: &str) -> ast::Impl {
-    let generic_params = adt.generic_param_list();
-    let mut buf = String::with_capacity(code.len());
-    buf.push_str("\n\n");
-    adt.attrs()
-        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false))
-        .for_each(|attr| buf.push_str(format!("{}\n", attr.to_string()).as_str()));
-    buf.push_str("impl");
-    if let Some(generic_params) = &generic_params {
-        let lifetimes = generic_params.lifetime_params().map(|lt| format!("{}", lt.syntax()));
-        let type_params = generic_params.type_params().map(|type_param| {
-            let mut buf = String::new();
-            if let Some(it) = type_param.name() {
-                format_to!(buf, "{}", it.syntax());
-            }
-            if let Some(it) = type_param.colon_token() {
-                format_to!(buf, "{} ", it);
-            }
-            if let Some(it) = type_param.type_bound_list() {
-                format_to!(buf, "{}", it.syntax());
-            }
-            buf
-        });
-        let const_params = generic_params.const_params().map(|t| t.syntax().to_string());
-        let generics = lifetimes.chain(type_params).chain(const_params).format(", ");
-        format_to!(buf, "<{}>", generics);
-    }
-    buf.push(' ');
-    let trait_text = trait_.to_string();
-    buf.push_str(&trait_text);
-    buf.push_str(" for ");
-
-    buf.push_str(&adt.name().unwrap().text());
-    if let Some(generic_params) = generic_params {
-        let lifetime_params = generic_params
-            .lifetime_params()
-            .filter_map(|it| it.lifetime())
-            .map(|it| SmolStr::from(it.text()));
-        let type_params = generic_params
-            .type_params()
-            .filter_map(|it| it.name())
-            .map(|it| SmolStr::from(it.text()));
-        let const_params = generic_params
-            .const_params()
-            .filter_map(|it| it.name())
-            .map(|it| SmolStr::from(it.text()));
-        format_to!(buf, "<{}>", lifetime_params.chain(type_params).chain(const_params).format(", "))
-    }
-
-    match adt.where_clause() {
-        Some(where_clause) => {
-            format_to!(buf, "\n{}\n{{\n{}\n}}", where_clause, code);
-        }
-        None => {
-            format_to!(buf, " {{\n{}\n}}", code);
-        }
-    }
-
-    ast_from_text(&buf)
+pub fn impl_trait(
+    trait_: ast::Path,
+    ty: ast::Path,
+    ty_params: Option<ast::GenericParamList>,
+) -> ast::Impl {
+    let ty_params = ty_params.map_or_else(String::new, |params| params.to_string());
+    ast_from_text(&format!("impl{2} {} for {}{2} {{}}", trait_, ty, ty_params))
 }
 
 pub(crate) fn generic_arg_list() -> ast::GenericArgList {
