@@ -130,7 +130,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::AsyncGeneratorKind::Block,
                         |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
                     ),
-                ExprKind::Await(ref expr) => self.lower_expr_await(e.span, expr),
+                ExprKind::Await(ref expr) => {
+                    let span = if expr.span.hi() < e.span.hi() {
+                        expr.span.shrink_to_hi().with_hi(e.span.hi())
+                    } else {
+                        // this is a recovered `await expr`
+                        e.span
+                    };
+                    self.lower_expr_await(span, expr)
+                }
                 ExprKind::Closure(
                     capture_clause,
                     asyncness,
@@ -639,6 +647,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.allow_gen_future.clone(),
         );
         let expr = self.lower_expr_mut(expr);
+        let expr_hir_id = expr.hir_id;
 
         let pinned_ident = Ident::with_dummy_span(sym::pinned);
         let (pinned_pat, pinned_pat_hid) =
@@ -665,19 +674,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
                 hir::LangItem::PinNewUnchecked,
                 arena_vec![self; ref_mut_pinned],
-                Some(expr.hir_id),
+                Some(expr_hir_id),
             );
             let get_context = self.expr_call_lang_item_fn_mut(
                 gen_future_span,
                 hir::LangItem::GetContext,
                 arena_vec![self; task_context],
-                Some(expr.hir_id),
+                Some(expr_hir_id),
             );
             let call = self.expr_call_lang_item_fn(
                 span,
                 hir::LangItem::FuturePoll,
                 arena_vec![self; new_unchecked, get_context],
-                Some(expr.hir_id),
+                Some(expr_hir_id),
             );
             self.arena.alloc(self.expr_unsafe(call))
         };
@@ -694,7 +703,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
                 hir::LangItem::PollReady,
                 ready_field,
-                Some(expr.hir_id),
+                Some(expr_hir_id),
             );
             let break_x = self.with_loop_scope(loop_node_id, move |this| {
                 let expr_break =
@@ -710,7 +719,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
                 hir::LangItem::PollPending,
                 &[],
-                Some(expr.hir_id),
+                Some(expr_hir_id),
             );
             let empty_block = self.expr_block_empty(span);
             self.arm(pending_pat, empty_block)
@@ -731,7 +740,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let unit = self.expr_unit(span);
             let yield_expr = self.expr(
                 span,
-                hir::ExprKind::Yield(unit, hir::YieldSource::Await { expr: Some(expr.hir_id) }),
+                hir::ExprKind::Yield(unit, hir::YieldSource::Await { expr: Some(expr_hir_id) }),
                 ThinVec::new(),
             );
             let yield_expr = self.arena.alloc(yield_expr);
@@ -778,6 +787,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             into_future_span,
             hir::LangItem::IntoFutureIntoFuture,
             arena_vec![self; expr],
+            Some(expr_hir_id),
         );
 
         // match <into_future_expr> {

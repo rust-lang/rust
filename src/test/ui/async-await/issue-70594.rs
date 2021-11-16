@@ -6,7 +6,6 @@ async fn fun() {
     //~| error: `.await` is not allowed in a `const`
     //~| error: `.await` is not allowed in a `const`
     //~| error: `()` is not a future
-    //~| error: `()` is not a future
 }
 
 fn main() {}
