@@ -887,8 +887,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let span = obligation.cause.span;
 
         if let ObligationCauseCode::AwaitableExpr = obligation.cause.code {
-            // FIXME: use `trait_ref.self_ty().no_bound_vars()` to typecheck if `()` and if not
-            // maybe suggest returning instead?
+            // FIXME: use `obligation.predicate.kind()...trait_ref.self_ty()` to see if we have `()`
+            // and if not maybe suggest doing something else? If we kept the expression around we
+            // could also check if it is an fn call (very likely) and suggest changing *that*, if
+            // it is from the local crate.
             err.span_suggestion_verbose(
                 span,
                 "do not `.await` the expression",
@@ -1961,6 +1963,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::ReturnValue(_)
             | ObligationCauseCode::BlockTailExpression(_)
             | ObligationCauseCode::AwaitableExpr
+            | ObligationCauseCode::ForLoopIterator
             | ObligationCauseCode::LetElse => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");

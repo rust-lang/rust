@@ -350,6 +350,8 @@ pub enum ObligationCauseCode<'tcx> {
 
     AwaitableExpr,
 
+    ForLoopIterator,
+
     /// Well-formed checking. If a `WellFormedLoc` is provided,
     /// then it will be used to eprform HIR-based wf checking
     /// after an error occurs, in order to generate a more precise error span.

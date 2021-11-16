@@ -810,8 +810,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &substs,
             match lang_item {
                 hir::LangItem::FuturePoll => ObligationCauseCode::AwaitableExpr,
-                // FIXME: see if there are other obligation specializations we could do here beyond
-                // what we do above for `.await`.
+                hir::LangItem::IntoIterIntoIter => ObligationCauseCode::ForLoopIterator,
+                // FIXME: This could also be used for `?`.  See if there are others.
                 _ => traits::ItemObligation(def_id),
             },
         );
