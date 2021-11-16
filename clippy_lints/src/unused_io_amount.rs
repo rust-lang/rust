@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
                 if let hir::ExprKind::Call(func, [ref arg_0, ..]) = res.kind {
                     if matches!(
                         func.kind,
-                        hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, _))
+                        hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, ..))
                     ) {
                         check_map_error(cx, arg_0, expr);
                     }
