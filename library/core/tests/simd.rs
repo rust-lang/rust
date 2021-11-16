@@ -1,3 +1,5 @@
+#![cfg(not(miri))] // Miri does not support all SIMD intrinsics
+
 use core::simd::f32x4;
 
 #[test]
