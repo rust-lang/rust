@@ -358,7 +358,7 @@ impl File {
     ///
     /// It is equivalent to `OpenOptions::new()` but allows you to write more
     /// readable code. Instead of `OpenOptions::new().read(true).open("foo.txt")`
-    /// you can write `File::with_options().read(true).open("foo.txt")`. This
+    /// you can write `File::options().read(true).open("foo.txt")`. This
     /// also avoids the need to import `OpenOptions`.
     ///
     /// See the [`OpenOptions::new`] function for more details.
@@ -366,17 +366,16 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(with_options)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let mut f = File::with_options().read(true).open("foo.txt")?;
+    ///     let mut f = File::options().read(true).open("foo.txt")?;
     ///     Ok(())
     /// }
     /// ```
     #[must_use]
-    #[unstable(feature = "with_options", issue = "65439")]
-    pub fn with_options() -> OpenOptions {
+    #[stable(feature = "with_options", since = "1.58.0")]
+    pub fn options() -> OpenOptions {
         OpenOptions::new()
     }
 

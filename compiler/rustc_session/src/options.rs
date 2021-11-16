@@ -219,7 +219,7 @@ top_level_options!(
 /// generated code to parse an option into its respective field in the struct. There are a few
 /// hand-written parsers for parsing specific types of values in this module.
 macro_rules! options {
-    ($struct_name:ident, $stat:ident, $prefix:expr, $outputname:expr,
+    ($struct_name:ident, $stat:ident, $optmod:ident, $prefix:expr, $outputname:expr,
      $($( #[$attr:meta] )* $opt:ident : $t:ty = (
         $init:expr,
         $parse:ident,
@@ -264,13 +264,15 @@ macro_rules! options {
     }
 
     pub const $stat: OptionDescrs<$struct_name> =
-        &[ $( (stringify!($opt), $opt, desc::$parse, $desc) ),* ];
+        &[ $( (stringify!($opt), $optmod::$opt, desc::$parse, $desc) ),* ];
 
+    mod $optmod {
     $(
-        fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
-            parse::$parse(&mut redirect_field!(cg.$opt), v)
+        pub(super) fn $opt(cg: &mut super::$struct_name, v: Option<&str>) -> bool {
+            super::parse::$parse(&mut redirect_field!(cg.$opt), v)
         }
     )*
+    }
 
 ) }
 
@@ -918,7 +920,7 @@ mod parse {
 }
 
 options! {
-    CodegenOptions, CG_OPTIONS, "C", "codegen",
+    CodegenOptions, CG_OPTIONS, cgopts, "C", "codegen",
 
     // This list is in alphabetical order.
     //
@@ -1013,6 +1015,8 @@ options! {
         "use soft float ABI (*eabihf targets only) (default: no)"),
     split_debuginfo: Option<SplitDebuginfo> = (None, parse_split_debuginfo, [TRACKED],
         "how to handle split-debuginfo, a platform-specific option"),
+    strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
+        "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (`rustc --print target-cpus` for details)"),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
@@ -1027,7 +1031,7 @@ options! {
 }
 
 options! {
-    DebuggingOptions, DB_OPTIONS, "Z", "debugging",
+    DebuggingOptions, DB_OPTIONS, dbopts, "Z", "debugging",
 
     // This list is in alphabetical order.
     //

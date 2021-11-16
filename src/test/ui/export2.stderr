@@ -1,9 +1,0 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `bar`
-  --> $DIR/export2.rs:2:18
-   |
-LL |     pub fn x() { bar::x(); }
-   |                  ^^^ use of undeclared crate or module `bar`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0433`.

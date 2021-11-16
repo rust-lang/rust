@@ -37,7 +37,7 @@ use std::iter::{self, FromIterator};
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 
-/// The different settings that the `-Z strip` flag can have.
+/// The different settings that the `-C strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Strip {
     /// Do not strip at all.

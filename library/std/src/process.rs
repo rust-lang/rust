@@ -106,6 +106,7 @@ mod tests;
 
 use crate::io::prelude::*;
 
+use crate::convert::Infallible;
 use crate::ffi::OsStr;
 use crate::fmt;
 use crate::fs;
@@ -2062,6 +2063,14 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
         let Err(err) = self;
         eprintln!("Error: {:?}", err);
         ExitCode::FAILURE.report()
+    }
+}
+
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
+impl<E: fmt::Debug> Termination for Result<Infallible, E> {
+    fn report(self) -> i32 {
+        let Err(err) = self;
+        Err::<!, _>(err).report()
     }
 }
 
