@@ -95,12 +95,6 @@ depending on the target pointer size.
 
 macro_rules! widening_impl {
     ($SelfT:ty, $WideT:ty, $BITS:literal, unsigned) => {
-        widening_impl!($SelfT, $WideT, $BITS, "");
-    };
-    ($SelfT:ty, $WideT:ty, $BITS:literal, signed) => {
-        widening_impl!($SelfT, $WideT, $BITS, "# //");
-    };
-    ($SelfT:ty, $WideT:ty, $BITS:literal, $AdaptiveTestPrefix:literal) => {
         /// Calculates the complete product `self * rhs` without the possibility to overflow.
         ///
         /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
@@ -154,7 +148,7 @@ macro_rules! widening_impl {
         /// assert_eq!(5u32.carrying_mul(2, 10), (20, 0));
         /// assert_eq!(1_000_000_000u32.carrying_mul(10, 0), (1410065408, 2));
         /// assert_eq!(1_000_000_000u32.carrying_mul(10, 10), (1410065418, 2));
-        #[doc = concat!($AdaptiveTestPrefix, "assert_eq!(",
+        #[doc = concat!("assert_eq!(",
             stringify!($SelfT), "::MAX.carrying_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(0, ", stringify!($SelfT), "::MAX));"
         )]
@@ -203,14 +197,12 @@ macro_rules! widening_impl {
 impl i8 {
     int_impl! { i8, i8, u8, 8, 7, -128, 127, 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
     "[0x12]", "[0x12]", "", "" }
-    widening_impl! { i8, i16, 8, signed }
 }
 
 #[lang = "i16"]
 impl i16 {
     int_impl! { i16, i16, u16, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
     "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
-    widening_impl! { i16, i32, 16, signed }
 }
 
 #[lang = "i32"]
@@ -218,7 +210,6 @@ impl i32 {
     int_impl! { i32, i32, u32, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]", "", "" }
-    widening_impl! { i32, i64, 32, signed }
 }
 
 #[lang = "i64"]
@@ -227,7 +218,6 @@ impl i64 {
     "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
     "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "" }
-    widening_impl! { i64, i128, 64, signed }
 }
 
 #[lang = "i128"]
@@ -248,7 +238,6 @@ impl isize {
     int_impl! { isize, i16, usize, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234",
     "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
-    widening_impl! { isize, i32, 16, signed }
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -258,7 +247,6 @@ impl isize {
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
-    widening_impl! { isize, i64, 32, signed }
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -269,7 +257,6 @@ impl isize {
     "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
-    widening_impl! { isize, i128, 64, signed }
 }
 
 /// If 6th bit set ascii is upper case.
