@@ -348,7 +348,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
     OpaqueType,
 
-    AwaitableExpr,
+    AwaitableExpr(Option<hir::HirId>),
 
     ForLoopIterator,
 

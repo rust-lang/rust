@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             if let hir::ExprKind::Call(path, [arg]) = &arg.kind {
                 if let hir::ExprKind::Path(hir::QPath::LangItem(
                     hir::LangItem::IntoIterIntoIter,
-                    _,
+                    ..,
                 )) = &path.kind
                 {
                     self.for_expr_span = arg.span;

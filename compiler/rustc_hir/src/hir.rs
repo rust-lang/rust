@@ -1629,13 +1629,13 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
                     | LangItem::RangeFrom
                     | LangItem::RangeFull
                     | LangItem::RangeToInclusive,
-                _,
+                ..
             )
         ),
 
         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
         ExprKind::Call(ref func, _) => {
-            matches!(func.kind, ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, _)))
+            matches!(func.kind, ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)))
         }
 
         _ => false,
@@ -1790,8 +1790,8 @@ pub enum QPath<'hir> {
     /// the `X` and `Y` nodes each being a `TyKind::Path(QPath::TypeRelative(..))`.
     TypeRelative(&'hir Ty<'hir>, &'hir PathSegment<'hir>),
 
-    /// Reference to a `#[lang = "foo"]` item.
-    LangItem(LangItem, Span),
+    /// Reference to a `#[lang = "foo"]` item. `HirId` of the inner expr.
+    LangItem(LangItem, Span, Option<HirId>),
 }
 
 impl<'hir> QPath<'hir> {
@@ -1800,7 +1800,7 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, ps) => qself.span.to(ps.ident.span),
-            QPath::LangItem(_, span) => span,
+            QPath::LangItem(_, span, _) => span,
         }
     }
 
@@ -1810,7 +1810,7 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, _) => qself.span,
-            QPath::LangItem(_, span) => span,
+            QPath::LangItem(_, span, _) => span,
         }
     }
 
@@ -1820,7 +1820,7 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.segments.last().unwrap().ident.span,
             QPath::TypeRelative(_, segment) => segment.ident.span,
-            QPath::LangItem(_, span) => span,
+            QPath::LangItem(_, span, _) => span,
         }
     }
 }

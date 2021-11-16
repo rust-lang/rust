@@ -797,6 +797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lang_item: hir::LangItem,
         span: Span,
         hir_id: hir::HirId,
+        expr_hir_id: Option<hir::HirId>,
     ) -> (Res, Ty<'tcx>) {
         let def_id = self.tcx.require_lang_item(lang_item, Some(span));
         let def_kind = self.tcx.def_kind(def_id);
@@ -815,7 +816,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             def_id,
             &substs,
             match lang_item {
-                hir::LangItem::FuturePoll => ObligationCauseCode::AwaitableExpr,
+                hir::LangItem::FuturePoll => ObligationCauseCode::AwaitableExpr(expr_hir_id),
                 hir::LangItem::IteratorNext | hir::LangItem::IntoIterIntoIter => {
                     ObligationCauseCode::ForLoopIterator
                 }
