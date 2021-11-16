@@ -893,11 +893,11 @@ struct TypeChecker<'a, 'tcx> {
 }
 
 struct BorrowCheckContext<'a, 'tcx> {
-    universal_regions: &'a UniversalRegions<'tcx>,
+    pub(crate) universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a LocationTable,
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
-    constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    pub(crate) constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     upvars: &'a [Upvar<'tcx>],
 }
 
@@ -1157,6 +1157,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(sup, ty::Variance::Contravariant, sub, locations, category)
     }
 
+    #[instrument(skip(self, category), level = "debug")]
     fn eq_types(
         &mut self,
         expected: Ty<'tcx>,
