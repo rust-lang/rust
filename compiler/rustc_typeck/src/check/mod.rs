@@ -536,8 +536,8 @@ fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
 }
 
 fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: Span) {
-    // Only restricted on wasm32 target for now
-    if !tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+    // Only restricted on wasm target for now
+    if !tcx.sess.target.is_like_wasm {
         return;
     }
 

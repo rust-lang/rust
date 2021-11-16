@@ -16,7 +16,7 @@ panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core" }
 libc = { version = "0.2.106", default-features = false, features = ['rustc-dep-of-std'] }
-compiler_builtins = { version = "0.1.44" }
+compiler_builtins = { version = "0.1.52" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.11", default-features = false, features = ['rustc-dep-of-std'] }
@@ -35,8 +35,8 @@ features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive']
 [dev-dependencies]
 rand = "0.7"
 
-[target.'cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
-dlmalloc = { version = "0.2.1", features = ['rustc-dep-of-std'] }
+[target.'cfg(any(all(target_family = "wasm", not(target_os = "emscripten")), all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
+dlmalloc = { version = "0.2.3", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
 fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }

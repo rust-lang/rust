@@ -490,7 +490,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
 
             // Wasm statics with custom link sections get special treatment as they
             // go into custom sections of the wasm executable.
-            if self.tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+            if self.tcx.sess.target.is_like_wasm {
                 if let Some(section) = attrs.link_section {
                     let section = llvm::LLVMMDStringInContext(
                         self.llcx,
