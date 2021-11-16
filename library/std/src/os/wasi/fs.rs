@@ -444,18 +444,22 @@ pub trait FileTypeExt {
     /// Returns `true` if this file type is a block device.
     fn is_block_device(&self) -> bool;
     /// Returns `true` if this file type is a character device.
-    fn is_character_device(&self) -> bool;
+    fn is_char_device(&self) -> bool;
     /// Returns `true` if this file type is a socket datagram.
     fn is_socket_dgram(&self) -> bool;
     /// Returns `true` if this file type is a socket stream.
     fn is_socket_stream(&self) -> bool;
+    /// Returns `true` if this file type is any type of socket.
+    fn is_socket(&self) -> bool {
+        self.is_socket_stream() || self.is_socket_dgram()
+    }
 }
 
 impl FileTypeExt for fs::FileType {
     fn is_block_device(&self) -> bool {
         self.as_inner().bits() == wasi::FILETYPE_BLOCK_DEVICE
     }
-    fn is_character_device(&self) -> bool {
+    fn is_char_device(&self) -> bool {
         self.as_inner().bits() == wasi::FILETYPE_CHARACTER_DEVICE
     }
     fn is_socket_dgram(&self) -> bool {
