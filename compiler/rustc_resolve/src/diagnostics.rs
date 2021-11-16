@@ -454,22 +454,20 @@ impl<'a> Resolver<'a> {
                 // edit:
                 // only do this if the const and usage of the non-constant value are on the same line
                 // the further the two are apart, the higher the chance of the suggestion being wrong
-                // also make sure that this line isn't the first one (ICE #90878)
+                // also make sure that the pos for the suggestion is not 0 (ICE #90878)
 
                 let sp =
                     self.session.source_map().span_extend_to_prev_str(ident.span, current, true);
 
-                let is_first_line = self
-                    .session
-                    .source_map()
-                    .lookup_line(sp.lo())
-                    .map(|file_and_line| file_and_line.line == 0)
-                    .unwrap_or(true);
+                let pos_for_suggestion = sp.lo().0.saturating_sub(current.len() as u32);
 
-                if sp.lo().0 == 0 || self.session.source_map().is_multiline(sp) || is_first_line {
+                if sp.lo().0 == 0
+                    || pos_for_suggestion == 0
+                    || self.session.source_map().is_multiline(sp)
+                {
                     err.span_label(ident.span, &format!("this would need to be a `{}`", sugg));
                 } else {
-                    let sp = sp.with_lo(BytePos(sp.lo().0 - current.len() as u32));
+                    let sp = sp.with_lo(BytePos(pos_for_suggestion));
                     err.span_suggestion(
                         sp,
                         &format!("consider using `{}` instead of `{}`", sugg, current),
