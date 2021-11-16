@@ -817,7 +817,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match lang_item {
                 hir::LangItem::FuturePoll => ObligationCauseCode::AwaitableExpr,
                 hir::LangItem::IntoIterIntoIter => ObligationCauseCode::ForLoopIterator,
-                hir::LangItem::TryTraitBranch => ObligationCauseCode::QuestionMark,
+                hir::LangItem::TryTraitFromResidual | hir::LangItem::TryTraitBranch => {
+                    ObligationCauseCode::QuestionMark
+                }
                 _ => traits::ItemObligation(def_id),
             },
         );
