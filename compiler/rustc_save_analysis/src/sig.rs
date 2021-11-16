@@ -286,7 +286,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
                     refs: vec![SigElement { id, start, end }],
                 })
             }
-            hir::TyKind::Path(hir::QPath::LangItem(lang_item, _)) => {
+            hir::TyKind::Path(hir::QPath::LangItem(lang_item, _, _)) => {
                 Ok(text_sig(format!("#[lang = \"{}\"]", lang_item.name())))
             }
             hir::TyKind::TraitObject(bounds, ..) => {

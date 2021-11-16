@@ -886,7 +886,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         let span = obligation.cause.span;
 
-        if let ObligationCauseCode::AwaitableExpr = obligation.cause.code {
+        if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code {
             // FIXME: use `obligation.predicate.kind()...trait_ref.self_ty()` to see if we have `()`
             // and if not maybe suggest doing something else? If we kept the expression around we
             // could also check if it is an fn call (very likely) and suggest changing *that*, if
@@ -897,6 +897,40 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 String::new(),
                 Applicability::MachineApplicable,
             );
+            // FIXME: account for associated `async fn`s.
+            let hir = self.tcx.hir();
+            if let Some(node) = hir_id.and_then(|hir_id| hir.find(hir_id)) {
+                if let hir::Node::Expr(hir::Expr {
+                    span, kind: hir::ExprKind::Call(base, _), ..
+                }) = node
+                {
+                    if let ty::PredicateKind::Trait(pred) =
+                        obligation.predicate.kind().skip_binder()
+                    {
+                        err.span_label(*span, &format!("this call returns `{}`", pred.self_ty()));
+                    }
+                    if let Some(typeck_results) =
+                        self.in_progress_typeck_results.map(|t| t.borrow())
+                    {
+                        let ty = typeck_results.expr_ty_adjusted(base);
+                        if let ty::FnDef(def_id, _substs) = ty.kind() {
+                            if let Some(hir::Node::Item(hir::Item { span, ident, .. })) =
+                                hir.get_if_local(*def_id)
+                            {
+                                err.span_suggestion_verbose(
+                                    span.shrink_to_lo(),
+                                    &format!(
+                                        "alternatively, consider making `fn {}` asynchronous",
+                                        ident
+                                    ),
+                                    "async ".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1962,7 +1996,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::ReturnType
             | ObligationCauseCode::ReturnValue(_)
             | ObligationCauseCode::BlockTailExpression(_)
-            | ObligationCauseCode::AwaitableExpr
+            | ObligationCauseCode::AwaitableExpr(_)
             | ObligationCauseCode::ForLoopIterator
             | ObligationCauseCode::QuestionMark
             | ObligationCauseCode::LetElse => {}

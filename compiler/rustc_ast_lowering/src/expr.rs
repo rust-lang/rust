@@ -479,8 +479,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         expr: &'hir hir::Expr<'hir>,
         overall_span: Span,
     ) -> &'hir hir::Expr<'hir> {
-        let constructor =
-            self.arena.alloc(self.expr_lang_item_path(method_span, lang_item, ThinVec::new()));
+        let constructor = self.arena.alloc(self.expr_lang_item_path(
+            method_span,
+            lang_item,
+            ThinVec::new(),
+            None,
+        ));
         self.expr_call(overall_span, constructor, std::slice::from_ref(expr))
     }
 
@@ -584,8 +588,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `future::from_generator`:
         let unstable_span =
             self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
-        let gen_future =
-            self.expr_lang_item_path(unstable_span, hir::LangItem::FromGenerator, ThinVec::new());
+        let gen_future = self.expr_lang_item_path(
+            unstable_span,
+            hir::LangItem::FromGenerator,
+            ThinVec::new(),
+            None,
+        );
 
         // `future::from_generator(generator)`:
         hir::ExprKind::Call(self.arena.alloc(gen_future), arena_vec![self; generator])
@@ -657,16 +665,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
                 hir::LangItem::PinNewUnchecked,
                 arena_vec![self; ref_mut_pinned],
+                Some(expr.hir_id),
             );
             let get_context = self.expr_call_lang_item_fn_mut(
                 gen_future_span,
                 hir::LangItem::GetContext,
                 arena_vec![self; task_context],
+                Some(expr.hir_id),
             );
             let call = self.expr_call_lang_item_fn(
                 span,
                 hir::LangItem::FuturePoll,
                 arena_vec![self; new_unchecked, get_context],
+                Some(expr.hir_id),
             );
             self.arena.alloc(self.expr_unsafe(call))
         };
@@ -679,7 +690,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let (x_pat, x_pat_hid) = self.pat_ident(span, x_ident);
             let x_expr = self.expr_ident(span, x_ident, x_pat_hid);
             let ready_field = self.single_pat_field(span, x_pat);
-            let ready_pat = self.pat_lang_item_variant(span, hir::LangItem::PollReady, ready_field);
+            let ready_pat = self.pat_lang_item_variant(
+                span,
+                hir::LangItem::PollReady,
+                ready_field,
+                Some(expr.hir_id),
+            );
             let break_x = self.with_loop_scope(loop_node_id, move |this| {
                 let expr_break =
                     hir::ExprKind::Break(this.lower_loop_destination(None), Some(x_expr));
@@ -690,7 +706,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `::std::task::Poll::Pending => {}`
         let pending_arm = {
-            let pending_pat = self.pat_lang_item_variant(span, hir::LangItem::PollPending, &[]);
+            let pending_pat = self.pat_lang_item_variant(
+                span,
+                hir::LangItem::PollPending,
+                &[],
+                Some(expr.hir_id),
+            );
             let empty_block = self.expr_block_empty(span);
             self.arm(pending_pat, empty_block)
         };
@@ -1161,7 +1182,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_range_closed(&mut self, span: Span, e1: &Expr, e2: &Expr) -> hir::ExprKind<'hir> {
         let e1 = self.lower_expr_mut(e1);
         let e2 = self.lower_expr_mut(e2);
-        let fn_path = hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, self.lower_span(span));
+        let fn_path =
+            hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, self.lower_span(span), None);
         let fn_expr =
             self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path), ThinVec::new()));
         hir::ExprKind::Call(fn_expr, arena_vec![self; e1, e2])
@@ -1195,7 +1217,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         hir::ExprKind::Struct(
-            self.arena.alloc(hir::QPath::LangItem(lang_item, self.lower_span(span))),
+            self.arena.alloc(hir::QPath::LangItem(lang_item, self.lower_span(span), None)),
             fields,
             None,
         )
@@ -1390,6 +1412,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 head_span,
                 hir::LangItem::IteratorNext,
                 arena_vec![self; ref_mut_iter],
+                None,
             );
             let arms = arena_vec![self; none_arm, some_arm];
 
@@ -1418,6 +1441,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 head_span,
                 hir::LangItem::IntoIterIntoIter,
                 arena_vec![self; head],
+                None,
             )
         };
 
@@ -1473,6 +1497,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 unstable_span,
                 hir::LangItem::TryTraitBranch,
                 arena_vec![self; sub_expr],
+                None,
             )
         };
 
@@ -1629,8 +1654,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         lang_item: hir::LangItem,
         args: &'hir [hir::Expr<'hir>],
+        hir_id: Option<hir::HirId>,
     ) -> hir::Expr<'hir> {
-        let path = self.arena.alloc(self.expr_lang_item_path(span, lang_item, ThinVec::new()));
+        let path =
+            self.arena.alloc(self.expr_lang_item_path(span, lang_item, ThinVec::new(), hir_id));
         self.expr_call_mut(span, path, args)
     }
 
@@ -1639,8 +1666,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         lang_item: hir::LangItem,
         args: &'hir [hir::Expr<'hir>],
+        hir_id: Option<hir::HirId>,
     ) -> &'hir hir::Expr<'hir> {
-        self.arena.alloc(self.expr_call_lang_item_fn_mut(span, lang_item, args))
+        self.arena.alloc(self.expr_call_lang_item_fn_mut(span, lang_item, args, hir_id))
     }
 
     fn expr_lang_item_path(
@@ -1648,10 +1676,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         lang_item: hir::LangItem,
         attrs: AttrVec,
+        hir_id: Option<hir::HirId>,
     ) -> hir::Expr<'hir> {
         self.expr(
             span,
-            hir::ExprKind::Path(hir::QPath::LangItem(lang_item, self.lower_span(span))),
+            hir::ExprKind::Path(hir::QPath::LangItem(lang_item, self.lower_span(span), hir_id)),
             attrs,
         )
     }
