@@ -34,6 +34,10 @@ use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 /// `base_db` is normally also needed in places where `ide_db` is used, so this re-export is for convenience.
 pub use base_db;
 
+pub type FxIndexSet<T> = indexmap::IndexSet<T, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
+pub type FxIndexMap<K, V> =
+    indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
+
 #[salsa::database(
     base_db::SourceDatabaseStorage,
     base_db::SourceDatabaseExtStorage,

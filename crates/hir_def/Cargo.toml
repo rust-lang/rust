@@ -20,7 +20,7 @@ anymap = "0.12.1"
 drop_bomb = "0.1.4"
 fst = { version = "0.4", default-features = false }
 itertools = "0.10.0"
-indexmap = "1.4.0"
+indexmap = "1.7.0"
 smallvec = "1.4.0"
 la-arena = { version = "0.3.0", path = "../../lib/arena" }
 

@@ -12,7 +12,6 @@ doctest = false
 [dependencies]
 cov-mark = "2.0.0-pre.1"
 either = "1.5.3"
-indexmap = "1.4.0"
 itertools = "0.10.0"
 tracing = "0.1"
 rustc-hash = "1.1.0"

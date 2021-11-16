@@ -1,4 +1,4 @@
-use std::{hash::BuildHasherDefault, iter};
+use std::iter;
 
 use ast::make;
 use either::Either;
@@ -12,10 +12,9 @@ use ide_db::{
         FamousDefs,
     },
     search::{FileReference, ReferenceCategory, SearchScope},
-    RootDatabase,
+    FxIndexSet, RootDatabase,
 };
 use itertools::Itertools;
-use rustc_hash::FxHasher;
 use stdx::format_to;
 use syntax::{
     ast::{
@@ -32,8 +31,6 @@ use crate::{
     assist_context::{AssistContext, Assists, TreeMutator},
     AssistId,
 };
-
-type FxIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<FxHasher>>;
 
 // Assist: extract_function
 //
