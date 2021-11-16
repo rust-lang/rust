@@ -1,7 +1,7 @@
 use hir::Semantics;
 use ide_db::{
-    base_db::FilePosition,
-    defs::{Definition, NameClass, NameRefClass},
+    base_db::{FileId, FilePosition},
+    defs::Definition,
     helpers::{for_each_break_expr, for_each_tail_expr, node_ext::walk_expr, pick_best_token},
     search::{FileReference, ReferenceCategory, SearchScope},
     RootDatabase,
@@ -11,7 +11,7 @@ use syntax::{
     ast::{self, HasLoopBody},
     match_ast, AstNode,
     SyntaxKind::IDENT,
-    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
+    SyntaxNode, SyntaxToken, TextRange, T,
 };
 
 use crate::{display::TryToNav, references, NavigationTarget};
@@ -45,12 +45,12 @@ pub struct HighlightRelatedConfig {
 pub(crate) fn highlight_related(
     sema: &Semantics<RootDatabase>,
     config: HighlightRelatedConfig,
-    position: FilePosition,
+    FilePosition { offset, file_id }: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
     let _p = profile::span("highlight_related");
-    let syntax = sema.parse(position.file_id).syntax().clone();
+    let syntax = sema.parse(file_id).syntax().clone();
 
-    let token = pick_best_token(syntax.token_at_offset(position.offset), |kind| match kind {
+    let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
         T![?] => 4, // prefer `?` when the cursor is sandwiched like in `await$0?`
         T![->] => 3,
         kind if kind.is_keyword() => 2,
@@ -68,17 +68,18 @@ pub(crate) fn highlight_related(
             highlight_break_points(token)
         }
         T![break] | T![loop] | T![while] if config.break_points => highlight_break_points(token),
-        _ if config.references => highlight_references(sema, &syntax, position),
+        _ if config.references => highlight_references(sema, &syntax, token, file_id),
         _ => None,
     }
 }
 
 fn highlight_references(
     sema: &Semantics<RootDatabase>,
-    syntax: &SyntaxNode,
-    FilePosition { offset, file_id }: FilePosition,
+    node: &SyntaxNode,
+    token: SyntaxToken,
+    file_id: FileId,
 ) -> Option<Vec<HighlightedRange>> {
-    let defs = find_defs(sema, syntax, offset);
+    let defs = find_defs(sema, token.clone());
     let usages = defs
         .iter()
         .filter_map(|&d| {
@@ -105,11 +106,8 @@ fn highlight_references(
         .filter(|decl| decl.file_id == file_id)
         .and_then(|decl| {
             let range = decl.focus_range?;
-            let category = if references::decl_mutability(&def, syntax, range) {
-                Some(ReferenceCategory::Write)
-            } else {
-                None
-            };
+            let category =
+                references::decl_mutability(&def, node, range).then(|| ReferenceCategory::Write);
             Some(HighlightedRange { range, category })
         })
     });
@@ -293,43 +291,10 @@ fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange
     }
 }
 
-fn find_defs(
-    sema: &Semantics<RootDatabase>,
-    syntax: &SyntaxNode,
-    offset: TextSize,
-) -> FxHashSet<Definition> {
-    sema.find_nodes_at_offset_with_descend(syntax, offset)
-        .flat_map(|name_like| {
-            Some(match name_like {
-                ast::NameLike::NameRef(name_ref) => {
-                    match NameRefClass::classify(sema, &name_ref)? {
-                        NameRefClass::Definition(def) => vec![def],
-                        NameRefClass::FieldShorthand { local_ref, field_ref } => {
-                            vec![Definition::Local(local_ref), Definition::Field(field_ref)]
-                        }
-                    }
-                }
-                ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
-                    NameClass::Definition(it) | NameClass::ConstReference(it) => vec![it],
-                    NameClass::PatFieldShorthand { local_def, field_ref } => {
-                        vec![Definition::Local(local_def), Definition::Field(field_ref)]
-                    }
-                },
-                ast::NameLike::Lifetime(lifetime) => {
-                    NameRefClass::classify_lifetime(sema, &lifetime)
-                        .and_then(|class| match class {
-                            NameRefClass::Definition(it) => Some(it),
-                            _ => None,
-                        })
-                        .or_else(|| {
-                            NameClass::classify_lifetime(sema, &lifetime)
-                                .and_then(NameClass::defined)
-                        })
-                        .map(|it| vec![it])?
-                }
-            })
-        })
-        .flatten()
+fn find_defs(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> FxHashSet<Definition> {
+    sema.descend_into_macros(token)
+        .into_iter()
+        .flat_map(|token| Definition::from_token(sema, &token))
         .collect()
 }
 
