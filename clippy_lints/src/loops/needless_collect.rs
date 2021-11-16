@@ -12,7 +12,7 @@ use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, Local, Mutability, Node,
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{TyKind, TyS};
+use rustc_middle::ty::{self, TyS};
 use rustc_span::sym;
 use rustc_span::{MultiSpan, Span};
 
@@ -171,10 +171,10 @@ enum IterFunctionKind {
     Contains(Span),
 }
 
-struct IterFunctionVisitor<'b, 'a> {
+struct IterFunctionVisitor<'a, 'tcx> {
     illegal_mutable_capture_ids: HirIdSet,
     current_mutably_captured_ids: HirIdSet,
-    cx: &'a LateContext<'b>,
+    cx: &'a LateContext<'tcx>,
     uses: Vec<Option<IterFunction>>,
     hir_id_uses_map: FxHashMap<HirId, usize>,
     current_statement_hir_id: Option<HirId>,
@@ -182,16 +182,12 @@ struct IterFunctionVisitor<'b, 'a> {
     target: HirId,
 }
 impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
-    fn visit_block(&mut self, block: &'txc Block<'tcx>) {
-        for (expr, hir_id) in block
-            .stmts
-            .iter()
-            .filter_map(get_expr_and_hir_id_from_stmt)
-            .chain(block.expr.map(|expr| (expr, None)))
-        {
-            self.current_statement_hir_id = hir_id;
-            self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(expr));
-            self.visit_expr(expr);
+    fn visit_block(&mut self, block: &'tcx Block<'tcx>) {
+        for (expr, hir_id) in block.stmts.iter().filter_map(get_expr_and_hir_id_from_stmt) {
+            self.visit_block_expr(expr, hir_id);
+        }
+        if let Some(expr) = block.expr {
+            self.visit_block_expr(expr, None);
         }
     }
 
@@ -273,6 +269,14 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
     }
 }
 
+impl<'tcx> IterFunctionVisitor<'_, 'tcx> {
+    fn visit_block_expr(&mut self, expr: &'tcx Expr<'tcx>, hir_id: Option<HirId>) {
+        self.current_statement_hir_id = hir_id;
+        self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(expr));
+        self.visit_expr(expr);
+    }
+}
+
 fn get_expr_and_hir_id_from_stmt<'v>(stmt: &'v Stmt<'v>) -> Option<(&'v Expr<'v>, Option<HirId>)> {
     match stmt.kind {
         StmtKind::Expr(expr) | StmtKind::Semi(expr) => Some((expr, None)),
@@ -335,18 +339,17 @@ fn detect_iter_and_into_iters<'tcx: 'a, 'a>(
     }
 }
 
-#[allow(rustc::usage_of_ty_tykind)]
 fn get_captured_ids(cx: &LateContext<'tcx>, ty: &'_ TyS<'_>) -> HirIdSet {
     fn get_captured_ids_recursive(cx: &LateContext<'tcx>, ty: &'_ TyS<'_>, set: &mut HirIdSet) {
         match ty.kind() {
-            TyKind::Adt(_, generics) => {
+            ty::Adt(_, generics) => {
                 for generic in *generics {
                     if let GenericArgKind::Type(ty) = generic.unpack() {
                         get_captured_ids_recursive(cx, ty, set);
                     }
                 }
             },
-            TyKind::Closure(def_id, _) => {
+            ty::Closure(def_id, _) => {
                 let closure_hir_node = cx.tcx.hir().get_if_local(*def_id).unwrap();
                 if let Node::Expr(closure_expr) = closure_hir_node {
                     can_move_expr_to_closure(cx, closure_expr)
