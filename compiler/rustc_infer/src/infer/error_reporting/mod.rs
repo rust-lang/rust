@@ -1794,31 +1794,38 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             },
             (_, Some(ty)) if ty::TyS::same_type(exp_found.expected, ty) => {
-                let span = match cause.code {
-                    // scrutinee's span
-                    ObligationCauseCode::Pattern { span: Some(span), .. } => span,
-                    _ => exp_span,
-                };
                 diag.span_suggestion_verbose(
-                    span.shrink_to_hi(),
+                    exp_span.shrink_to_hi(),
                     "consider `await`ing on the `Future`",
                     ".await".to_string(),
                     Applicability::MaybeIncorrect,
                 );
             }
-            (Some(ty), _) if ty::TyS::same_type(ty, exp_found.found) => {
-                let span = match cause.code {
-                    // scrutinee's span
-                    ObligationCauseCode::Pattern { span: Some(span), .. } => span,
-                    _ => exp_span,
-                };
-                diag.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    "consider `await`ing on the `Future`",
-                    ".await".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            }
+            (Some(ty), _) if ty::TyS::same_type(ty, exp_found.found) => match cause.code {
+                ObligationCauseCode::Pattern { span: Some(span), .. }
+                | ObligationCauseCode::IfExpression(box IfExpressionCause { then: span, .. }) => {
+                    diag.span_suggestion_verbose(
+                        span.shrink_to_hi(),
+                        "consider `await`ing on the `Future`",
+                        ".await".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                    ref prior_arms,
+                    ..
+                }) => {
+                    diag.multipart_suggestion_verbose(
+                        "consider `await`ing on the `Future`",
+                        prior_arms
+                            .iter()
+                            .map(|arm| (arm.shrink_to_hi(), ".await".to_string()))
+                            .collect(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {}
+            },
             _ => {}
         }
     }
