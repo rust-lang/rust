@@ -647,6 +647,22 @@ pub struct WhereBoundPredicate<'hir> {
     pub bounds: GenericBounds<'hir>,
 }
 
+impl WhereBoundPredicate<'hir> {
+    /// Returns `true` if `param_def_id` matches the `bounded_ty` of this predicate.
+    pub fn is_param_bound(&self, param_def_id: DefId) -> bool {
+        let path = match self.bounded_ty.kind {
+            TyKind::Path(QPath::Resolved(None, path)) => path,
+            _ => return false,
+        };
+        match path.res {
+            Res::Def(DefKind::TyParam, def_id) | Res::SelfTy(Some(def_id), None) => {
+                def_id == param_def_id
+            }
+            _ => false,
+        }
+    }
+}
+
 /// A lifetime predicate (e.g., `'a: 'b + 'c`).
 #[derive(Debug, HashStable_Generic)]
 pub struct WhereRegionPredicate<'hir> {

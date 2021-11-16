@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `(): Marker<u32>` is not satisfied
+  --> $DIR/issue-90804-incorrect-reference-suggestion.rs:10:17
+   |
+LL |     check::<()>(());
+   |     ----------- ^^ the trait `Marker<u32>` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `check`
+  --> $DIR/issue-90804-incorrect-reference-suggestion.rs:7:17
+   |
+LL | pub fn check<T: Marker<u32>>(_: T) {}
+   |                 ^^^^^^^^^^^ required by this bound in `check`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
