@@ -626,6 +626,7 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 ///
 /// Without this check the above code is incorrectly accepted: we would ICE if
 /// some tried, for example, to clone an `Option<X<&mut ()>>`.
+#[instrument(skip(tcx))]
 fn check_opaque_meets_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -643,7 +644,7 @@ fn check_opaque_meets_bounds<'tcx>(
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let param_env = tcx.param_env(def_id);
 
-    tcx.infer_ctxt().enter(move |infcx| {
+    tcx.infer_ctxt().with_opaque_type_inference(def_id).enter(move |infcx| {
         let inh = Inherited::new(infcx, def_id);
         let infcx = &inh.infcx;
         let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
@@ -656,16 +657,15 @@ fn check_opaque_meets_bounds<'tcx>(
 
         let opaque_type_map = infcx.inner.borrow().opaque_types.clone();
         for (OpaqueTypeKey { def_id, substs }, opaque_defn) in opaque_type_map {
-            match infcx
-                .at(&misc_cause, param_env)
-                .eq(opaque_defn.concrete_ty, tcx.type_of(def_id).subst(tcx, substs))
-            {
+            let hidden_type = tcx.type_of(def_id).subst(tcx, substs);
+            trace!(?hidden_type);
+            match infcx.at(&misc_cause, param_env).eq(opaque_defn.concrete_ty, hidden_type) {
                 Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
                 Err(ty_err) => tcx.sess.delay_span_bug(
-                    opaque_defn.definition_span,
+                    span,
                     &format!(
-                        "could not unify `{}` with revealed type:\n{}",
-                        opaque_defn.concrete_ty, ty_err,
+                        "could not check bounds on revealed type `{}`:\n{}",
+                        hidden_type, ty_err,
                     ),
                 ),
             }
