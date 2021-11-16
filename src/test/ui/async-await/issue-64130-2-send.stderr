@@ -6,12 +6,12 @@ LL |     is_send(bar());
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Foo`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-64130-2-send.rs:15:5
+  --> $DIR/issue-64130-2-send.rs:15:10
    |
 LL |     let x = Foo;
    |         - has type `Foo` which is not `Send`
 LL |     baz().await;
-   |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
+   |          ^^^^^^ await occurs here, with `x` maybe used later
 LL | }
    | - `x` is later dropped here
 note: required by a bound in `is_send`
