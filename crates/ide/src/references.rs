@@ -9,9 +9,6 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element definition, we get a reference.
 
-use std::iter;
-
-use either::Either;
 use hir::{PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,
@@ -58,69 +55,67 @@ pub(crate) fn find_all_refs(
 ) -> Option<Vec<ReferenceSearchResult>> {
     let _p = profile::span("find_all_refs");
     let syntax = sema.parse(position.file_id).syntax().clone();
+    let make_searcher = |literal_search: bool| {
+        move |def: Definition| {
+            let mut usages =
+                def.usages(sema).set_scope(search_scope.clone()).include_self_refs().all();
+            let declaration = match def {
+                Definition::Module(module) => {
+                    Some(NavigationTarget::from_module_to_decl(sema.db, module))
+                }
+                def => def.try_to_nav(sema.db),
+            }
+            .map(|nav| {
+                let decl_range = nav.focus_or_full_range();
+                Declaration {
+                    is_mut: decl_mutability(&def, sema.parse(nav.file_id).syntax(), decl_range),
+                    nav,
+                }
+            });
+            if literal_search {
+                retain_adt_literal_usages(&mut usages, def, sema);
+            }
 
-    let mut is_literal_search = false;
-    let defs = match name_for_constructor_search(&syntax, position) {
+            let references = usages
+                .into_iter()
+                .map(|(file_id, refs)| {
+                    (
+                        file_id,
+                        refs.into_iter()
+                            .map(|file_ref| (file_ref.range, file_ref.category))
+                            .collect(),
+                    )
+                })
+                .collect();
+
+            ReferenceSearchResult { declaration, references }
+        }
+    };
+
+    match name_for_constructor_search(&syntax, position) {
         Some(name) => {
-            is_literal_search = true;
             let def = match NameClass::classify(sema, &name)? {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
                 NameClass::PatFieldShorthand { local_def: _, field_ref } => {
                     Definition::Field(field_ref)
                 }
             };
-            Either::Left(iter::once(def))
+            Some(vec![make_searcher(true)(def)])
         }
-        None => Either::Right(find_defs(sema, &syntax, position.offset)),
-    };
-
-    Some(
-        defs.into_iter()
-            .map(|def| {
-                let mut usages =
-                    def.usages(sema).set_scope(search_scope.clone()).include_self_refs().all();
-                let declaration = match def {
-                    Definition::Module(module) => {
-                        Some(NavigationTarget::from_module_to_decl(sema.db, module))
-                    }
-                    def => def.try_to_nav(sema.db),
-                }
-                .map(|nav| {
-                    let decl_range = nav.focus_or_full_range();
-                    Declaration {
-                        is_mut: decl_mutability(&def, sema.parse(nav.file_id).syntax(), decl_range),
-                        nav,
-                    }
-                });
-                if is_literal_search {
-                    retain_adt_literal_usages(&mut usages, def, sema);
-                }
-
-                let references = usages
-                    .into_iter()
-                    .map(|(file_id, refs)| {
-                        (
-                            file_id,
-                            refs.into_iter()
-                                .map(|file_ref| (file_ref.range, file_ref.category))
-                                .collect(),
-                        )
-                    })
-                    .collect();
-
-                ReferenceSearchResult { declaration, references }
-            })
-            .collect(),
-    )
+        None => {
+            let search = make_searcher(false);
+            Some(find_defs(sema, &syntax, position.offset).into_iter().map(search).collect())
+        }
+    }
 }
 
-pub(crate) fn find_defs<'a>(
+fn find_defs<'a>(
     sema: &'a Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     offset: TextSize,
 ) -> impl Iterator<Item = Definition> + 'a {
-    sema.find_nodes_at_offset_with_descend(syntax, offset).filter_map(move |node| {
-        Some(match node {
+    sema.find_nodes_at_offset_with_descend(syntax, offset).filter_map(move |name_like| {
+        let def = match name_like {
             ast::NameLike::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
                 NameRefClass::Definition(def) => def,
                 NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
@@ -141,7 +136,8 @@ pub(crate) fn find_defs<'a>(
                 .or_else(|| {
                     NameClass::classify_lifetime(sema, &lifetime).and_then(NameClass::defined)
                 })?,
-        })
+        };
+        Some(def)
     })
 }
 

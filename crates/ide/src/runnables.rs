@@ -209,7 +209,7 @@ pub(crate) fn related_tests(
 
     find_related_tests(&sema, position, search_scope, &mut res);
 
-    res.into_iter().collect_vec()
+    res.into_iter().collect()
 }
 
 fn find_related_tests(
@@ -218,56 +218,59 @@ fn find_related_tests(
     search_scope: Option<SearchScope>,
     tests: &mut FxHashSet<Runnable>,
 ) {
-    if let Some(refs) = references::find_all_refs(sema, position, search_scope) {
-        for (file_id, refs) in refs.into_iter().flat_map(|refs| refs.references) {
-            let file = sema.parse(file_id);
-            let file = file.syntax();
+    let refs = match references::find_all_refs(sema, position, search_scope) {
+        Some(it) => it,
+        _ => return,
+    };
+    for (file_id, refs) in refs.into_iter().flat_map(|refs| refs.references) {
+        let file = sema.parse(file_id);
+        let file = file.syntax();
 
-            // create flattened vec of tokens
-            let tokens = refs.iter().flat_map(|(range, _)| {
-                match file.token_at_offset(range.start()).next() {
-                    Some(token) => sema.descend_into_macros(token),
-                    None => Default::default(),
-                }
+        // create flattened vec of tokens
+        let tokens =
+            refs.iter().flat_map(|(range, _)| match file.token_at_offset(range.start()).next() {
+                Some(token) => sema.descend_into_macros(token),
+                None => Default::default(),
             });
 
-            // find first suitable ancestor
-            let functions = tokens
-                .filter_map(|token| token.ancestors().find_map(ast::Fn::cast))
-                .map(|f| hir::InFile::new(sema.hir_file_for(f.syntax()), f));
+        // find first suitable ancestor
+        let functions = tokens
+            .filter_map(|token| token.ancestors().find_map(ast::Fn::cast))
+            .map(|f| hir::InFile::new(sema.hir_file_for(f.syntax()), f));
 
-            for fn_def in functions {
-                let InFile { value: fn_def, .. } = &fn_def;
-                if let Some(runnable) = as_test_runnable(sema, fn_def) {
-                    // direct test
-                    tests.insert(runnable);
-                } else if let Some(module) = parent_test_module(sema, fn_def) {
-                    // indirect test
-                    find_related_tests_in_module(sema, fn_def, &module, tests);
-                }
+        for InFile { value: fn_def, .. } in functions {
+            if let Some(runnable) = as_test_runnable(sema, &fn_def) {
+                // direct test
+                tests.insert(runnable);
+            } else if let Some(module) = parent_test_module(sema, &fn_def) {
+                // indirect test
+                find_related_tests_in_module(sema, &fn_def, &module, tests);
             }
         }
     }
 }
+
 fn find_related_tests_in_module(
     sema: &Semantics<RootDatabase>,
     fn_def: &ast::Fn,
     parent_module: &hir::Module,
     tests: &mut FxHashSet<Runnable>,
 ) {
-    if let Some(fn_name) = fn_def.name() {
-        let mod_source = parent_module.definition_source(sema.db);
-        let range = match mod_source.value {
-            hir::ModuleSource::Module(m) => m.syntax().text_range(),
-            hir::ModuleSource::BlockExpr(b) => b.syntax().text_range(),
-            hir::ModuleSource::SourceFile(f) => f.syntax().text_range(),
-        };
+    let fn_name = match fn_def.name() {
+        Some(it) => it,
+        _ => return,
+    };
+    let mod_source = parent_module.definition_source(sema.db);
+    let range = match &mod_source.value {
+        hir::ModuleSource::Module(m) => m.syntax().text_range(),
+        hir::ModuleSource::BlockExpr(b) => b.syntax().text_range(),
+        hir::ModuleSource::SourceFile(f) => f.syntax().text_range(),
+    };
 
-        let file_id = mod_source.file_id.original_file(sema.db);
-        let mod_scope = SearchScope::file_range(FileRange { file_id, range });
-        let fn_pos = FilePosition { file_id, offset: fn_name.syntax().text_range().start() };
-        find_related_tests(sema, fn_pos, Some(mod_scope), tests)
-    }
+    let file_id = mod_source.file_id.original_file(sema.db);
+    let mod_scope = SearchScope::file_range(FileRange { file_id, range });
+    let fn_pos = FilePosition { file_id, offset: fn_name.syntax().text_range().start() };
+    find_related_tests(sema, fn_pos, Some(mod_scope), tests)
 }
 
 fn as_test_runnable(sema: &Semantics<RootDatabase>, fn_def: &ast::Fn) -> Option<Runnable> {
