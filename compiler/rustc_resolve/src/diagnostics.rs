@@ -4,7 +4,7 @@ use std::ptr;
 use rustc_ast::{self as ast, Path};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, Transcription};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
@@ -1843,6 +1843,11 @@ crate fn show_candidates(
                 accessible_path_strings.into_iter().map(|a| a.0),
                 Applicability::Unspecified,
             );
+            let last_idx = err.suggestions.len() - 1;
+            // rust#87613: for `use` suggestions, transcribed source
+            // code can yield incorrect suggestions. Instead, use
+            // source span solely to establish line number and indent.
+            err.suggestions[last_idx].transcription = Transcription::Blank;
         } else {
             msg.push(':');
 

@@ -31,7 +31,7 @@ pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_serialize::json::Json;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{Loc, MultiSpan, Span};
+use rustc_span::{Loc, MultiSpan, SourceFile, Span};
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
@@ -142,6 +142,10 @@ pub struct CodeSuggestion {
     pub msg: String,
     /// Visual representation of this suggestion.
     pub style: SuggestionStyle,
+    /// Role of context of spans. Usually the context around every
+    /// span should be included in the output. But sometimes the
+    /// suggestion stands entirely on its own.
+    pub transcription: Transcription,
     /// Whether or not the suggestion is approximate
     ///
     /// Sometimes we may show suggestions with placeholders,
@@ -150,6 +154,24 @@ pub struct CodeSuggestion {
     pub applicability: Applicability,
     /// Tool-specific metadata
     pub tool_metadata: ToolMetadata,
+}
+
+#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
+pub enum Transcription {
+    /// The characters in the line(s) around each span should be
+    /// included in the output.
+    Copy,
+
+    /// The span is solely providing the indentation and lexical
+    /// context; the source code contents of the surrounding code is
+    /// irrelevant and should not be included in the suggestion.
+    Blank,
+}
+
+impl Default for Transcription {
+    fn default() -> Self {
+        Transcription::Copy
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
@@ -193,6 +215,19 @@ impl SubstitutionPart {
 }
 
 impl CodeSuggestion {
+    fn get_line<'a>(&self, sf: &'a SourceFile, line_number: usize) -> Option<Cow<'a, str>> {
+        self.transcribe(sf.get_line(line_number))
+    }
+
+    fn transcribe<'a>(&self, text: Option<Cow<'a, str>>) -> Option<Cow<'a, str>> {
+        match self.transcription {
+            Transcription::Copy => text,
+            Transcription::Blank => text.map(|s| {
+                s.chars().map(|c| if c.is_whitespace() { c } else { ' ' }).collect()
+            }),
+        }
+    }
+
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
     pub fn splice_lines(
@@ -283,7 +318,7 @@ impl CodeSuggestion {
                 let mut prev_hi = sm.lookup_char_pos(bounding_span.lo());
                 prev_hi.col = CharPos::from_usize(0);
                 let mut prev_line =
-                    lines.lines.get(0).and_then(|line0| sf.get_line(line0.line_index));
+                    lines.lines.get(0).and_then(|line0| self.get_line(sf, line0.line_index));
                 let mut buf = String::new();
 
                 let mut line_highlight = vec![];
@@ -310,13 +345,13 @@ impl CodeSuggestion {
                         }
                         // push lines between the previous and current span (if any)
                         for idx in prev_hi.line..(cur_lo.line - 1) {
-                            if let Some(line) = sf.get_line(idx) {
+                            if let Some(line) = self.get_line(sf, idx) {
                                 buf.push_str(line.as_ref());
                                 buf.push('\n');
                                 highlights.push(std::mem::take(&mut line_highlight));
                             }
                         }
-                        if let Some(cur_line) = sf.get_line(cur_lo.line - 1) {
+                        if let Some(cur_line) = self.get_line(sf, cur_lo.line - 1) {
                             let end = match cur_line.char_indices().nth(cur_lo.col.to_usize()) {
                                 Some((i, _)) => i,
                                 None => cur_line.len(),
@@ -349,7 +384,7 @@ impl CodeSuggestion {
                         acc += len as isize - (cur_hi.col.0 - cur_lo.col.0) as isize;
                     }
                     prev_hi = cur_hi;
-                    prev_line = sf.get_line(prev_hi.line - 1);
+                    prev_line = self.get_line(sf, prev_hi.line - 1);
                     for line in part.snippet.split('\n').skip(1) {
                         acc = 0;
                         highlights.push(std::mem::take(&mut line_highlight));

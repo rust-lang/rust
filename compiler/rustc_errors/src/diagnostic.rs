@@ -350,6 +350,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style,
             applicability,
+            transcription: Default::default(),
             tool_metadata: Default::default(),
         });
         self
@@ -378,6 +379,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::CompletelyHidden,
             applicability,
+            transcription: Default::default(),
             tool_metadata: Default::default(),
         });
         self
@@ -433,6 +435,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style,
             applicability,
+            transcription: Default::default(),
             tool_metadata: Default::default(),
         });
         self
@@ -476,6 +479,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
             applicability,
+            transcription: Default::default(),
             tool_metadata: Default::default(),
         });
         self
@@ -501,6 +505,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
             applicability,
+            transcription: Default::default(),
             tool_metadata: Default::default(),
         });
         self
@@ -583,6 +588,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::CompletelyHidden,
             applicability,
+            transcription: Default::default(),
             tool_metadata: ToolMetadata::new(tool_metadata),
         })
     }
