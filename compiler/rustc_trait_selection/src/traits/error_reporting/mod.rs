@@ -2009,6 +2009,19 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             Some(param) => param,
             _ => return,
         };
+        let param_def_id = self.tcx.hir().local_def_id(param.hir_id).to_def_id();
+        let preds = generics.where_clause.predicates.iter();
+        let explicitly_sized = preds
+            .filter_map(|pred| match pred {
+                hir::WherePredicate::BoundPredicate(bp) => Some(bp),
+                _ => None,
+            })
+            .filter(|bp| bp.is_param_bound(param_def_id))
+            .flat_map(|bp| bp.bounds)
+            .any(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) == sized_trait);
+        if explicitly_sized {
+            return;
+        }
         debug!("maybe_suggest_unsized_generics: param={:?}", param);
         match node {
             hir::Node::Item(

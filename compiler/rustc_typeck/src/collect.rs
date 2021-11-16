@@ -28,7 +28,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::weak_lang_items;
@@ -668,6 +668,7 @@ impl ItemCtxt<'tcx> {
             })
             .flat_map(|b| predicates_from_bound(self, ty, b));
 
+        let param_def_id = self.tcx.hir().local_def_id(param_id).to_def_id();
         let from_where_clauses = ast_generics
             .where_clause
             .predicates
@@ -677,7 +678,7 @@ impl ItemCtxt<'tcx> {
                 _ => None,
             })
             .flat_map(|bp| {
-                let bt = if is_param(self.tcx, bp.bounded_ty, param_id) {
+                let bt = if bp.is_param_bound(param_def_id) {
                     Some(ty)
                 } else if !only_self_bounds.0 {
                     Some(self.to_ty(bp.bounded_ty))
@@ -711,23 +712,6 @@ impl ItemCtxt<'tcx> {
             }
             _ => false,
         }
-    }
-}
-
-/// Tests whether this is the AST for a reference to the type
-/// parameter with ID `param_id`. We use this so as to avoid running
-/// `ast_ty_to_ty`, because we want to avoid triggering an all-out
-/// conversion of the type to avoid inducing unnecessary cycles.
-fn is_param(tcx: TyCtxt<'_>, ast_ty: &hir::Ty<'_>, param_id: hir::HirId) -> bool {
-    if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ast_ty.kind {
-        match path.res {
-            Res::SelfTy(Some(def_id), None) | Res::Def(DefKind::TyParam, def_id) => {
-                def_id == tcx.hir().local_def_id(param_id).to_def_id()
-            }
-            _ => false,
-        }
-    } else {
-        false
     }
 }
 
