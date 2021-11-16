@@ -133,9 +133,12 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         },
         ExprKind::Call(callee, args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {
-                let res = cx.qpath_res(qpath, callee.hir_id);
+                if cx.typeck_results().type_dependent_def(expr.hir_id).is_some() {
+                    // type-dependent function call like `impl FnOnce for X`
+                    return false;
+                }
                 let def_matched = matches!(
-                    res,
+                    cx.qpath_res(qpath, callee.hir_id),
                     Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..)
                 );
                 if def_matched || is_range_literal(expr) {
@@ -238,6 +241,10 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
         },
         ExprKind::Call(callee, args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {
+                if cx.typeck_results().type_dependent_def(expr.hir_id).is_some() {
+                    // type-dependent function call like `impl FnOnce for X`
+                    return None;
+                }
                 let res = cx.qpath_res(qpath, callee.hir_id);
                 match res {
                     Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..)
