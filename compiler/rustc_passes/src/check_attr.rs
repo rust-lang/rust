@@ -1062,7 +1062,7 @@ impl CheckAttrVisitor<'tcx> {
                     lint.build(
                         "`must_use` attribute on `async` functions \
                               applies to the anonymous `Future` returned by the \
-                              function, not the value within.",
+                              function, not the value within",
                     )
                     .span_label(
                         *span,
