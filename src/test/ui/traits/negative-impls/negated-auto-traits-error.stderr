@@ -65,7 +65,7 @@ LL |     is_send(Box::new(TestType));
    |     |
    |     required by a bound introduced by this call
    |
-   = note: the trait bound `dummy2::TestType: Send` is not satisfied
+   = note: the trait bound `Unique<dummy2::TestType>: Send` is not satisfied
    = note: required because of the requirements on the impl of `Send` for `Unique<dummy2::TestType>`
    = note: required because it appears within the type `Box<dummy2::TestType>`
 note: required by a bound in `is_send`
@@ -104,11 +104,11 @@ error[E0277]: `main::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:66:13
    |
 LL |     is_sync(Outer2(TestType));
-   |     ------- ^^^^^^^^^^^^^^^^ expected an implementor of trait `Sync`
+   |     ------- ^^^^^^^^^^^^^^^^ `main::TestType` cannot be sent between threads safely
    |     |
    |     required by a bound introduced by this call
    |
-   = note: the trait bound `main::TestType: Sync` is not satisfied
+   = help: the trait `Send` is not implemented for `main::TestType`
 note: required because of the requirements on the impl of `Sync` for `Outer2<main::TestType>`
   --> $DIR/negated-auto-traits-error.rs:14:22
    |
@@ -119,12 +119,6 @@ note: required by a bound in `is_sync`
    |
 LL | fn is_sync<T: Sync>(_: T) {}
    |               ^^^^ required by this bound in `is_sync`
-help: consider borrowing here
-   |
-LL |     is_sync(&Outer2(TestType));
-   |             +
-LL |     is_sync(&mut Outer2(TestType));
-   |             ++++
 
 error: aborting due to 7 previous errors
 
