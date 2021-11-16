@@ -165,6 +165,7 @@ macro_rules! __thread_local_inner {
         #[cfg_attr(not(windows), inline)] // see comments below
         unsafe fn __getit() -> $crate::option::Option<&'static $t> {
             const _REQUIRE_UNSTABLE: () = $crate::thread::require_unstable_const_init_thread_local();
+            const INIT_EXPR: $t = $init;
 
             // wasm without atomics maps directly to `static mut`, and dtors
             // aren't implemented because thread dtors aren't really a thing
@@ -174,7 +175,7 @@ macro_rules! __thread_local_inner {
             // block.
             #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
             {
-                static mut VAL: $t = $init;
+                static mut VAL: $t = INIT_EXPR;
                 Some(&VAL)
             }
 
@@ -184,18 +185,17 @@ macro_rules! __thread_local_inner {
                 not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
             ))]
             {
+                #[thread_local]
+                static mut VAL: $t = INIT_EXPR;
+
                 // If a dtor isn't needed we can do something "very raw" and
                 // just get going.
                 if !$crate::mem::needs_drop::<$t>() {
-                    #[thread_local]
-                    static mut VAL: $t = $init;
                     unsafe {
                         return Some(&VAL)
                     }
                 }
 
-                #[thread_local]
-                static mut VAL: $t = $init;
                 // 0 == dtor not registered
                 // 1 == dtor registered, dtor not run
                 // 2 == dtor registered and is running or has run
@@ -242,7 +242,7 @@ macro_rules! __thread_local_inner {
             ))]
             {
                 #[inline]
-                const fn __init() -> $t { $init }
+                const fn __init() -> $t { INIT_EXPR }
                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                     $crate::thread::__OsLocalKeyInner::new();
                 #[allow(unused_unsafe)]
