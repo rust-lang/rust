@@ -551,6 +551,7 @@ fn test_codegen_options_tracking_hash() {
     untracked!(remark, Passes::Some(vec![String::from("pass1"), String::from("pass2")]));
     untracked!(rpath, true);
     untracked!(save_temps, true);
+    untracked!(strip, Strip::Debuginfo);
 
     macro_rules! tracked {
         ($name: ident, $non_default_value: expr) => {
@@ -684,7 +685,6 @@ fn test_debugging_options_tracking_hash() {
     untracked!(self_profile_events, Some(vec![String::new()]));
     untracked!(span_debug, true);
     untracked!(span_free_formats, true);
-    untracked!(strip, Strip::Debuginfo);
     untracked!(temps_dir, Some(String::from("abc")));
     untracked!(terminal_width, Some(80));
     untracked!(threads, 99);

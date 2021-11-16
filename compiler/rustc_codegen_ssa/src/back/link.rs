@@ -1034,12 +1034,22 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         SplitDebuginfo::Packed => link_dwarf_object(sess, &out_filename),
     }
 
+    let strip = strip_value(sess);
+
     if sess.target.is_like_osx {
-        match sess.opts.debugging_opts.strip {
+        match strip {
             Strip::Debuginfo => strip_symbols_in_osx(sess, &out_filename, Some("-S")),
             Strip::Symbols => strip_symbols_in_osx(sess, &out_filename, None),
             Strip::None => {}
         }
+    }
+}
+
+// Temporarily support both -Z strip and -C strip
+fn strip_value(sess: &Session) -> Strip {
+    match (sess.opts.debugging_opts.strip, sess.opts.cg.strip) {
+        (s, Strip::None) => s,
+        (_, s) => s,
     }
 }
 
@@ -2014,7 +2024,7 @@ fn add_order_independent_options(
     cmd.optimize();
 
     // Pass debuginfo and strip flags down to the linker.
-    cmd.debuginfo(sess.opts.debugging_opts.strip);
+    cmd.debuginfo(strip_value(sess));
 
     // We want to prevent the compiler from accidentally leaking in any system libraries,
     // so by default we tell linkers not to link to any default libraries.
