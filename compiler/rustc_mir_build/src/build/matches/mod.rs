@@ -1762,8 +1762,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         let expr_span = expr.span;
         let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr, expr_span));
-        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), &pat, false);
         let wildcard = Pat::wildcard_from_ty(pat.ty);
+        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), &pat, false);
         let mut otherwise_candidate = Candidate::new(expr_place_builder.clone(), &wildcard, false);
         let fake_borrow_temps = self.lower_match_tree(
             block,
