@@ -245,8 +245,6 @@ fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxError>) {
 }
 
 fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxError>) {
-    use ast::PathSegmentKind;
-
     let path = segment.parent_path();
     let is_path_start = segment.coloncolon_token().is_none() && path.qualifier().is_none();
 
@@ -263,26 +261,6 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
                 "The `crate` keyword is only allowed as the first segment of a path",
                 token.text_range(),
             ));
-        }
-    } else if let Some(token) = segment.super_token() {
-        if segment.coloncolon_token().is_some() || !all_supers(&path) {
-            errors.push(SyntaxError::new(
-                "The `super` keyword may only be preceded by other `super`s",
-                token.text_range(),
-            ));
-            return;
-        }
-
-        let mut curr_path = path;
-        while let Some(prefix) = use_prefix(curr_path) {
-            if !all_supers(&prefix) {
-                errors.push(SyntaxError::new(
-                    "The `super` keyword may only be preceded by other `super`s",
-                    token.text_range(),
-                ));
-                return;
-            }
-            curr_path = prefix;
         }
     }
 
@@ -304,23 +282,6 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
             };
         }
         None
-    }
-
-    fn all_supers(path: &ast::Path) -> bool {
-        let segment = match path.segment() {
-            Some(it) => it,
-            None => return false,
-        };
-
-        if segment.kind() != Some(PathSegmentKind::SuperKw) {
-            return false;
-        }
-
-        if let Some(ref subpath) = path.qualifier() {
-            return all_supers(subpath);
-        }
-
-        true
     }
 }
 
