@@ -19,7 +19,6 @@
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]
 
-use rustc_data_structures::sync;
 use smallvec::SmallVec;
 
 use std::alloc::Layout;
@@ -517,130 +516,12 @@ impl DroplessArena {
     }
 }
 
-/// Calls the destructor for an object when dropped.
-struct DropType {
-    drop_fn: unsafe fn(*mut u8),
-    obj: *mut u8,
-}
-
-// SAFETY: we require `T: Send` before type-erasing into `DropType`.
-#[cfg(parallel_compiler)]
-unsafe impl sync::Send for DropType {}
-
-impl DropType {
-    #[inline]
-    unsafe fn new<T: sync::Send>(obj: *mut T) -> Self {
-        unsafe fn drop_for_type<T>(to_drop: *mut u8) {
-            std::ptr::drop_in_place(to_drop as *mut T)
-        }
-
-        DropType { drop_fn: drop_for_type::<T>, obj: obj as *mut u8 }
-    }
-}
-
-impl Drop for DropType {
-    fn drop(&mut self) {
-        unsafe { (self.drop_fn)(self.obj) }
-    }
-}
-
-/// An arena which can be used to allocate any type.
-///
-/// # Safety
-///
-/// Allocating in this arena is unsafe since the type system
-/// doesn't know which types it contains. In order to
-/// allocate safely, you must store a `PhantomData<T>`
-/// alongside this arena for each type `T` you allocate.
-#[derive(Default)]
-pub struct DropArena {
-    /// A list of destructors to run when the arena drops.
-    /// Ordered so `destructors` gets dropped before the arena
-    /// since its destructor can reference memory in the arena.
-    destructors: RefCell<Vec<DropType>>,
-    arena: DroplessArena,
-}
-
-impl DropArena {
-    #[inline]
-    pub unsafe fn alloc<T>(&self, object: T) -> &mut T
-    where
-        T: sync::Send,
-    {
-        let mem = self.arena.alloc_raw(Layout::new::<T>()) as *mut T;
-        // Write into uninitialized memory.
-        ptr::write(mem, object);
-        let result = &mut *mem;
-        // Record the destructor after doing the allocation as that may panic
-        // and would cause `object`'s destructor to run twice if it was recorded before.
-        self.destructors.borrow_mut().push(DropType::new(result));
-        result
-    }
-
-    #[inline]
-    pub unsafe fn alloc_from_iter<T, I>(&self, iter: I) -> &mut [T]
-    where
-        T: sync::Send,
-        I: IntoIterator<Item = T>,
-    {
-        let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
-        if vec.is_empty() {
-            return &mut [];
-        }
-        let len = vec.len();
-
-        let start_ptr = self.arena.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
-
-        let mut destructors = self.destructors.borrow_mut();
-        // Reserve space for the destructors so we can't panic while adding them.
-        destructors.reserve(len);
-
-        // Move the content to the arena by copying it and then forgetting
-        // the content of the SmallVec.
-        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-        mem::forget(vec.drain(..));
-
-        // Record the destructors after doing the allocation as that may panic
-        // and would cause `object`'s destructor to run twice if it was recorded before.
-        for i in 0..len {
-            destructors.push(DropType::new(start_ptr.add(i)));
-        }
-
-        slice::from_raw_parts_mut(start_ptr, len)
-    }
-}
-
-pub macro arena_for_type {
-    ([][$ty:ty]) => {
-        $crate::TypedArena<$ty>
-    },
-    ([few $(, $attrs:ident)*][$ty:ty]) => {
-        ::std::marker::PhantomData<$ty>
-    },
-    ([$ignore:ident $(, $attrs:ident)*]$args:tt) => {
-        $crate::arena_for_type!([$($attrs),*]$args)
-    },
-}
-
-pub macro which_arena_for_type {
-    ([][$arena:expr]) => {
-        ::std::option::Option::Some($arena)
-    },
-    ([few$(, $attrs:ident)*][$arena:expr]) => {
-        ::std::option::Option::None
-    },
-    ([$ignore:ident$(, $attrs:ident)*]$args:tt) => {
-        $crate::which_arena_for_type!([$($attrs),*]$args)
-    },
-}
-
 #[rustc_macro_transparency = "semitransparent"]
 pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
     #[derive(Default)]
     pub struct Arena<$tcx> {
         pub dropless: $crate::DroplessArena,
-        drop: $crate::DropArena,
-        $($name: $crate::arena_for_type!($a[$ty]),)*
+        $($name: $crate::TypedArena<$ty>,)*
     }
 
     pub trait ArenaAllocatable<'tcx, T = Self>: Sized {
@@ -670,13 +551,9 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
             #[inline]
             fn allocate_on<'a>(self, arena: &'a Arena<$tcx>) -> &'a mut Self {
                 if !::std::mem::needs_drop::<Self>() {
-                    return arena.dropless.alloc(self);
-                }
-                match $crate::which_arena_for_type!($a[&arena.$name]) {
-                    ::std::option::Option::<&$crate::TypedArena<Self>>::Some(ty_arena) => {
-                        ty_arena.alloc(self)
-                    }
-                    ::std::option::Option::None => unsafe { arena.drop.alloc(self) },
+                    arena.dropless.alloc(self)
+                } else {
+                    arena.$name.alloc(self)
                 }
             }
 
@@ -686,13 +563,9 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
                 iter: impl ::std::iter::IntoIterator<Item = Self>,
             ) -> &'a mut [Self] {
                 if !::std::mem::needs_drop::<Self>() {
-                    return arena.dropless.alloc_from_iter(iter);
-                }
-                match $crate::which_arena_for_type!($a[&arena.$name]) {
-                    ::std::option::Option::<&$crate::TypedArena<Self>>::Some(ty_arena) => {
-                        ty_arena.alloc_from_iter(iter)
-                    }
-                    ::std::option::Option::None => unsafe { arena.drop.alloc_from_iter(iter) },
+                    arena.dropless.alloc_from_iter(iter)
+                } else {
+                    arena.$name.alloc_from_iter(iter)
                 }
             }
         }
