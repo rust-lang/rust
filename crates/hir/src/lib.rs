@@ -3035,6 +3035,18 @@ impl HasCrate for Function {
     }
 }
 
+impl HasCrate for Const {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
+    }
+}
+
+impl HasCrate for TypeAlias {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
+    }
+}
+
 impl HasCrate for Type {
     fn krate(&self, _db: &dyn HirDatabase) -> Crate {
         self.krate.into()
