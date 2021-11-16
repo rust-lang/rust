@@ -822,6 +822,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::LangItem::TryTraitFromOutput
                 | hir::LangItem::TryTraitFromResidual
                 | hir::LangItem::TryTraitBranch => ObligationCauseCode::QuestionMark,
+                _ => traits::ItemObligation(def_id),
             },
         );
         (Res::Def(def_kind, def_id), ty)
