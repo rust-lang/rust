@@ -72,10 +72,10 @@ pub(super) fn check<'tcx>(
 
     if is_option {
         let self_snippet = snippet(cx, recv.span, "..");
-        if let hir::ExprKind::Closure(_, _, id, span, _) = map_arg.kind {
+        if_chain! {
+        if let hir::ExprKind::Closure(_, _, id, span, _) = map_arg.kind;
             let arg_snippet = snippet(cx, span, "..");
             let body = cx.tcx.hir().body(id);
-            if_chain! {
                 if let Some((func, arg_char)) = reduce_unit_expression(cx, &body.value);
                 if arg_char.len() == 1;
                 if let hir::ExprKind::Path(ref qpath) = func.kind;
@@ -95,7 +95,7 @@ pub(super) fn check<'tcx>(
                         Applicability::MachineApplicable,
                     );
                 }
-            }
+
         }
 
         let func_snippet = snippet(cx, map_arg.span, "..");
