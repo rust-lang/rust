@@ -349,9 +349,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::FnPtr(sig) => (sig, None),
             ref t => {
                 let mut unit_variant = None;
+                let mut removal_span = call_expr.span;
                 if let ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
                         if let hir::ExprKind::Call(expr, _) = call_expr.kind {
+                            removal_span =
+                                expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
                             unit_variant =
                                 self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
                         }
@@ -379,14 +382,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
 
                 if let Some(ref path) = unit_variant {
-                    err.span_suggestion(
-                        call_expr.span,
+                    err.span_suggestion_verbose(
+                        removal_span,
                         &format!(
-                            "`{}` is a unit variant, you need to write it \
-                                 without the parentheses",
+                            "`{}` is a unit variant, you need to write it without the parentheses",
                             path
                         ),
-                        path.to_string(),
+                        String::new(),
                         Applicability::MachineApplicable,
                     );
                 }
