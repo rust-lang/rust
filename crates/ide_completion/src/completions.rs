@@ -86,6 +86,10 @@ impl Completions {
         local_name: hir::Name,
         resolution: &hir::ScopeDef,
     ) {
+        if ctx.is_scope_def_hidden(resolution) {
+            cov_mark::hit!(qualified_path_doc_hidden);
+            return;
+        }
         self.add_opt(render_resolution(RenderContext::new(ctx), local_name, resolution));
     }
 
@@ -108,6 +112,9 @@ impl Completions {
         func: hir::Function,
         local_name: Option<hir::Name>,
     ) {
+        if !ctx.is_visible(&func) {
+            return;
+        }
         self.add_opt(render_fn(RenderContext::new(ctx), None, local_name, func));
     }
 
@@ -118,14 +125,23 @@ impl Completions {
         receiver: Option<hir::Name>,
         local_name: Option<hir::Name>,
     ) {
+        if !ctx.is_visible(&func) {
+            return;
+        }
         self.add_opt(render_method(RenderContext::new(ctx), None, receiver, local_name, func));
     }
 
-    pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
-        self.add_opt(render_const(RenderContext::new(ctx), constant));
+    pub(crate) fn add_const(&mut self, ctx: &CompletionContext, konst: hir::Const) {
+        if !ctx.is_visible(&konst) {
+            return;
+        }
+        self.add_opt(render_const(RenderContext::new(ctx), konst));
     }
 
     pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
+        if !ctx.is_visible(&type_alias) {
+            return;
+        }
         self.add_opt(render_type_alias(RenderContext::new(ctx), type_alias));
     }
 
@@ -164,6 +180,9 @@ impl Completions {
         field: hir::Field,
         ty: &hir::Type,
     ) {
+        if !ctx.is_visible(&field) {
+            return;
+        }
         let item = render_field(RenderContext::new(ctx), receiver, field, ty);
         self.add(item);
     }

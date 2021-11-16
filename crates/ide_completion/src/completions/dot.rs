@@ -63,9 +63,6 @@ fn complete_fields(
 ) {
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
-            if !ctx.is_visible(&field) {
-                continue;
-            }
             f(Either::Left(field), ty);
         }
         for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
@@ -84,10 +81,7 @@ fn complete_methods(
         let mut seen_methods = FxHashSet::default();
         let traits_in_scope = ctx.scope.traits_in_scope();
         receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
-            if func.self_param(ctx.db).is_some()
-                && ctx.is_visible(&func)
-                && seen_methods.insert(func.name(ctx.db))
-            {
+            if func.self_param(ctx.db).is_some() && seen_methods.insert(func.name(ctx.db)) {
                 f(func);
             }
             None::<()>
