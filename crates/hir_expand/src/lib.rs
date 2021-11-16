@@ -701,16 +701,6 @@ impl<N: AstNode> InFile<N> {
     }
 }
 
-impl InFile<ast::Fn> {
-    pub fn map_out_of_test_attr(self, db: &dyn db::AstDatabase) -> InFile<ast::Fn> {
-        (|| {
-            let InFile { file_id, value } = self.file_id.call_node(db)?;
-            ast::Fn::cast(value).map(|n| InFile::new(file_id, n))
-        })()
-        .unwrap_or(self)
-    }
-}
-
 /// In Rust, macros expand token trees to token trees. When we want to turn a
 /// token tree into an AST node, we need to figure out what kind of AST node we
 /// want: something like `foo` can be a type, an expression, or a pattern.

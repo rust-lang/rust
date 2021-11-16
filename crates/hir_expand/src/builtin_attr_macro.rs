@@ -46,6 +46,16 @@ register_builtin! {
     (test_case, TestCase) => dummy_attr_expand
 }
 
+pub fn is_builtin_test_or_bench_attr(makro: MacroDefId) -> bool {
+    match makro.kind {
+        MacroDefKind::BuiltInAttr(expander, ..) => {
+            BuiltinAttrExpander::find_by_name(&name!(test)) == Some(expander)
+                || BuiltinAttrExpander::find_by_name(&name!(bench)) == Some(expander)
+        }
+        _ => false,
+    }
+}
+
 pub fn find_builtin_attr(
     ident: &name::Name,
     krate: CrateId,

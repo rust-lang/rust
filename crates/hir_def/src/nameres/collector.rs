@@ -9,7 +9,7 @@ use base_db::{CrateId, Edition, FileId, ProcMacroId};
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{
     ast_id_map::FileAstId,
-    builtin_attr_macro::find_builtin_attr,
+    builtin_attr_macro::{find_builtin_attr, is_builtin_test_or_bench_attr},
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
@@ -1142,7 +1142,30 @@ impl DefCollector<'_> {
                     ) {
                         Ok(call_id) => {
                             let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
-                            if let MacroDefKind::ProcMacro(exp, ..) = &loc.def.kind {
+
+                            // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
+                            // due to duplicating functions into macro expansions
+                            if is_builtin_test_or_bench_attr(loc.def) {
+                                let file_id = ast_id.ast_id.file_id;
+                                let item_tree = self.db.file_item_tree(file_id);
+                                let mod_dir = self.mod_dirs[&directive.module_id].clone();
+                                self.skip_attrs.insert(InFile::new(file_id, *mod_item), attr.id);
+                                ModCollector {
+                                    def_collector: &mut *self,
+                                    macro_depth: directive.depth,
+                                    module_id: directive.module_id,
+                                    tree_id: TreeId::new(file_id, None),
+                                    item_tree: &item_tree,
+                                    mod_dir,
+                                }
+                                .collect(&[*mod_item]);
+
+                                // Remove the original directive since we resolved it.
+                                res = ReachedFixedPoint::No;
+                                return false;
+                            }
+
+                            if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
                                 if exp.is_dummy() {
                                     // Proc macros that cannot be expanded are treated as not
                                     // resolved, in order to fall back later.
@@ -1774,7 +1797,6 @@ impl ModCollector<'_, '_> {
                 let name = name.to_smol_str();
                 let is_inert = builtin_attr::INERT_ATTRIBUTES
                     .iter()
-                    .chain(builtin_attr::EXTRA_ATTRIBUTES)
                     .copied()
                     .chain(self.def_collector.registered_attrs.iter().map(AsRef::as_ref))
                     .any(|attr| name == *attr);
