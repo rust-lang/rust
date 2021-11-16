@@ -363,8 +363,10 @@ fn cell_allows_array_cycle() {
 
 #[test]
 fn array_from_fn() {
-    let array = core::array::from_fn(|idx| idx);
-    assert_eq!(array, [0, 1, 2, 3, 4]);
+    #[derive(Debug, PartialEq)]
+    struct Foo;
+    let array = core::array::from_fn(|| Foo);
+    assert_eq!(array, [Foo, Foo]);
 }
 
 #[test]
@@ -374,10 +376,11 @@ fn array_try_from_fn() {
         Foo,
     }
 
-    let array = core::array::try_from_fn(|i| Ok::<_, SomeError>(i));
-    assert_eq!(array, Ok([0, 1, 2, 3, 4]));
+    let array: Result<[i32; 5], SomeError> = core::array::try_from_fn(|| Ok(1));
+    assert_eq!(array, Ok([1, 1, 1, 1, 1]));
 
-    let another_array = core::array::try_from_fn::<SomeError, _, (), 2>(|_| Err(SomeError::Foo));
+    let another_array: Result<[(); 2], SomeError> =
+        core::array::try_from_fn(|| Err(SomeError::Foo));
     assert_eq!(another_array, Err(SomeError::Foo));
 }
 
@@ -394,10 +397,12 @@ fn array_try_from_fn_drops_inserted_elements_on_err() {
     }
 
     let _ = catch_unwind_silent(move || {
-        let _: Result<[CountDrop; 4], ()> = core::array::try_from_fn(|idx| {
+        let mut idx = 0;
+        let _: Result<[CountDrop; 4], ()> = core::array::try_from_fn(|| {
             if idx == 2 {
                 return Err(());
             }
+            idx += 1;
             Ok(CountDrop)
         });
     });
@@ -418,10 +423,12 @@ fn array_try_from_fn_drops_inserted_elements_on_panic() {
     }
 
     let _ = catch_unwind_silent(move || {
-        let _: Result<[CountDrop; 4], ()> = core::array::try_from_fn(|idx| {
+        let mut idx = 0;
+        let _: Result<[CountDrop; 4], ()> = core::array::try_from_fn(|| {
             if idx == 2 {
                 panic!("peek a boo");
             }
+            idx += 1;
             Ok(CountDrop)
         });
     });
