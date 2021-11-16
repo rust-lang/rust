@@ -109,7 +109,7 @@ pub(crate) fn find_all_refs(
     }
 }
 
-fn find_defs<'a>(
+pub(crate) fn find_defs<'a>(
     sema: &'a Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     offset: TextSize,
