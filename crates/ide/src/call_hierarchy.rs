@@ -1,13 +1,11 @@
 //! Entry point for call-hierarchy
 
-use indexmap::IndexMap;
-
 use hir::Semantics;
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
     search::FileReference,
-    RootDatabase,
+    FxIndexMap, RootDatabase,
 };
 use syntax::{ast, AstNode, SyntaxKind::NAME, TextRange};
 
@@ -125,7 +123,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
 
 #[derive(Default)]
 struct CallLocations {
-    funcs: IndexMap<NavigationTarget, Vec<TextRange>>,
+    funcs: FxIndexMap<NavigationTarget, Vec<TextRange>>,
 }
 
 impl CallLocations {
