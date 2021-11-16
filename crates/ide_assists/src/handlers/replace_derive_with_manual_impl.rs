@@ -160,8 +160,25 @@ fn impl_def_from_trait(
     if trait_items.is_empty() {
         return None;
     }
-    let impl_def =
-        make::impl_trait(trait_path.clone(), make::ext::ident_path(&annotated_name.text()));
+    let impl_def = {
+        use syntax::ast::Impl;
+        let text = generate_trait_impl_text(adt, trait_path.to_string().as_str(), "");
+        let parse = syntax::SourceFile::parse(&text);
+        let node = match parse.tree().syntax().descendants().find_map(Impl::cast) {
+            Some(it) => it,
+            None => {
+                panic!(
+                    "Failed to make ast node `{}` from text {}",
+                    std::any::type_name::<Impl>(),
+                    text
+                )
+            }
+        };
+        let node = node.clone_subtree();
+        assert_eq!(node.syntax().text_range().start(), 0.into());
+        node
+    };
+
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
 
@@ -1045,6 +1062,54 @@ impl Debug for Foo {
     $0
 }
             "#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_default_generic_record_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: default
+#[derive(Defau$0lt)]
+struct Foo<T, U> {
+    foo: T,
+    bar: U,
+}
+"#,
+            r#"
+struct Foo<T, U> {
+    foo: T,
+    bar: U,
+}
+
+impl<T, U> Default for Foo<T, U> {
+    $0fn default() -> Self {
+        Self { foo: Default::default(), bar: Default::default() }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_clone_generic_tuple_struct_with_bounds() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone
+#[derive(Clo$0ne)]
+struct Foo<T: Clone>(T, usize);
+"#,
+            r#"
+struct Foo<T: Clone>(T, usize);
+
+impl<T: Clone> Clone for Foo<T> {
+    $0fn clone(&self) -> Self {
+        Self(self.0.clone(), self.1.clone())
+    }
+}
+"#,
         )
     }
 
