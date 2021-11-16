@@ -778,21 +778,18 @@ fn attr_macro_as_call_id(
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
 ) -> Result<MacroCallId, UnresolvedMacro> {
-    let def: MacroDefId = resolver(item_attr.path.clone())
+    let attr_path = &item_attr.path;
+
+    let def = resolver(attr_path.clone())
         .filter(MacroDefId::is_attribute)
-        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
-    let last_segment = item_attr
-        .path
-        .segments()
-        .last()
-        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
-    let mut arg = match &macro_attr.input {
-        Some(input) => match &**input {
-            attr::AttrInput::Literal(_) => Default::default(),
-            attr::AttrInput::TokenTree(tt, map) => (tt.clone(), map.clone()),
-        },
-        None => Default::default(),
+        .ok_or_else(|| UnresolvedMacro { path: attr_path.clone() })?;
+    let last_segment =
+        attr_path.segments().last().ok_or_else(|| UnresolvedMacro { path: attr_path.clone() })?;
+    let mut arg = match macro_attr.input.as_deref() {
+        Some(attr::AttrInput::TokenTree(tt, map)) => (tt.clone(), map.clone()),
+        _ => Default::default(),
     };
+
     // The parentheses are always disposed here.
     arg.0.delimiter = None;
 
