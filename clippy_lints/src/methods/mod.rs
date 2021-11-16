@@ -57,6 +57,7 @@ mod uninit_assumed_init;
 mod unnecessary_filter_map;
 mod unnecessary_fold;
 mod unnecessary_lazy_eval;
+mod unnecessary_to_owned;
 mod unwrap_or_else_default;
 mod unwrap_used;
 mod useless_asref;
@@ -1885,6 +1886,32 @@ declare_clippy_lint! {
     "usages of `str::splitn` that can be replaced with `str::split`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for unnecessary calls to [`ToOwned::to_owned`](https://doc.rust-lang.org/std/borrow/trait.ToOwned.html#tymethod.to_owned)
+    /// and other `to_owned`-like functions.
+    ///
+    /// ### Why is this bad?
+    /// The unnecessary calls result in unnecessary allocations.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let path = std::path::Path::new("x");
+    /// foo(&path.to_string_lossy().to_string());
+    /// fn foo(s: &str) {}
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let path = std::path::Path::new("x");
+    /// foo(&path.to_string_lossy());
+    /// fn foo(s: &str) {}
+    /// ```
+    #[clippy::version = "1.58.0"]
+    pub UNNECESSARY_TO_OWNED,
+    perf,
+    "unnecessary calls to `to_owned`-like functions"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -1964,7 +1991,8 @@ impl_lint_pass!(Methods => [
     MANUAL_STR_REPEAT,
     EXTEND_WITH_DRAIN,
     MANUAL_SPLIT_ONCE,
-    NEEDLESS_SPLITN
+    NEEDLESS_SPLITN,
+    UNNECESSARY_TO_OWNED
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2007,6 +2035,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 single_char_add_str::check(cx, expr, args);
                 into_iter_on_ref::check(cx, expr, *method_span, method_call.ident.name, args);
                 single_char_pattern::check(cx, expr, method_call.ident.name, args);
+                unnecessary_to_owned::check(cx, expr, method_call.ident.name, args);
             },
             hir::ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {

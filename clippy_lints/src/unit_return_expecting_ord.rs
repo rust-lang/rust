@@ -169,7 +169,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
                                     trait_name
                                 ),
                                 Some(last_semi),
-                                &"probably caused by this trailing semicolon".to_string(),
+                                "probably caused by this trailing semicolon",
                             );
                         },
                         None => {},
