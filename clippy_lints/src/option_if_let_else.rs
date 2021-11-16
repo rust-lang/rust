@@ -147,11 +147,7 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
             let capture_mut = if bind_annotation == &BindingAnnotation::Mutable { "mut " } else { "" };
             let some_body = extract_body_from_expr(if_then)?;
             let none_body = extract_body_from_expr(if_else)?;
-            let method_sugg = if eager_or_lazy::is_eagerness_candidate(cx, none_body) {
-                "map_or"
-            } else {
-                "map_or_else"
-            };
+            let method_sugg = if eager_or_lazy::switch_to_eager_eval(cx, none_body) { "map_or" } else { "map_or_else" };
             let capture_name = id.name.to_ident_string();
             let (as_ref, as_mut) = match &let_expr.kind {
                 ExprKind::AddrOf(_, Mutability::Not, _) => (true, false),

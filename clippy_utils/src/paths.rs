@@ -28,6 +28,7 @@ pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
 pub(super) const BEGIN_PANIC: [&str; 3] = ["std", "panicking", "begin_panic"];
 /// Preferably use the diagnostic item `sym::Borrow` where possible
 pub const BORROW_TRAIT: [&str; 3] = ["core", "borrow", "Borrow"];
+pub const BORROW_MUT_TRAIT: [&str; 3] = ["core", "borrow", "BorrowMut"];
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
 pub const BTREEMAP_ENTRY: [&str; 6] = ["alloc", "collections", "btree", "map", "entry", "Entry"];
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];

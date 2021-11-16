@@ -1,9 +1,11 @@
 use crate::path_to_local_id;
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{def::Res, Arm, Block, Body, BodyId, Expr, ExprKind, HirId, Stmt};
+use rustc_hir::{Arm, Block, Body, BodyId, Expr, ExprKind, HirId, Stmt, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
+use rustc_middle::ty;
 
 /// Convenience method for creating a `Visitor` with just `visit_expr` overridden and nested
 /// bodies (i.e. closures) are visited.
@@ -224,4 +226,94 @@ pub fn is_local_used(cx: &LateContext<'tcx>, visitable: impl Visitable<'tcx>, id
     visitable.visit(&mut visitor);
     drop(visitor);
     is_used
+}
+
+/// Checks if the given expression is a constant.
+pub fn is_const_evaluatable(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
+    struct V<'a, 'tcx> {
+        cx: &'a LateContext<'tcx>,
+        is_const: bool,
+    }
+    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+        type Map = Map<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+        }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            if !self.is_const {
+                return;
+            }
+            match e.kind {
+                ExprKind::ConstBlock(_) => return,
+                ExprKind::Call(
+                    &Expr {
+                        kind: ExprKind::Path(ref p),
+                        hir_id,
+                        ..
+                    },
+                    _,
+                ) if self
+                    .cx
+                    .qpath_res(p, hir_id)
+                    .opt_def_id()
+                    .map_or(false, |id| self.cx.tcx.is_const_fn_raw(id)) => {},
+                ExprKind::MethodCall(..)
+                    if self
+                        .cx
+                        .typeck_results()
+                        .type_dependent_def_id(e.hir_id)
+                        .map_or(false, |id| self.cx.tcx.is_const_fn_raw(id)) => {},
+                ExprKind::Binary(_, lhs, rhs)
+                    if self.cx.typeck_results().expr_ty(lhs).peel_refs().is_primitive_ty()
+                        && self.cx.typeck_results().expr_ty(rhs).peel_refs().is_primitive_ty() => {},
+                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_ref() => (),
+                ExprKind::Unary(_, e) if self.cx.typeck_results().expr_ty(e).peel_refs().is_primitive_ty() => (),
+                ExprKind::Index(base, _)
+                    if matches!(
+                        self.cx.typeck_results().expr_ty(base).peel_refs().kind(),
+                        ty::Slice(_) | ty::Array(..)
+                    ) => {},
+                ExprKind::Path(ref p)
+                    if matches!(
+                        self.cx.qpath_res(p, e.hir_id),
+                        Res::Def(
+                            DefKind::Const
+                                | DefKind::AssocConst
+                                | DefKind::AnonConst
+                                | DefKind::ConstParam
+                                | DefKind::Ctor(..)
+                                | DefKind::Fn
+                                | DefKind::AssocFn,
+                            _
+                        ) | Res::SelfCtor(_)
+                    ) => {},
+
+                ExprKind::AddrOf(..)
+                | ExprKind::Array(_)
+                | ExprKind::Block(..)
+                | ExprKind::Cast(..)
+                | ExprKind::DropTemps(_)
+                | ExprKind::Field(..)
+                | ExprKind::If(..)
+                | ExprKind::Let(..)
+                | ExprKind::Lit(_)
+                | ExprKind::Match(..)
+                | ExprKind::Repeat(..)
+                | ExprKind::Struct(..)
+                | ExprKind::Tup(_)
+                | ExprKind::Type(..) => (),
+
+                _ => {
+                    self.is_const = false;
+                    return;
+                },
+            }
+            walk_expr(self, e);
+        }
+    }
+
+    let mut v = V { cx, is_const: true };
+    v.visit_expr(e);
+    v.is_const
 }

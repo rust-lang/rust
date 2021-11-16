@@ -180,11 +180,11 @@ LL +             }
 LL ~         });
    |
 
-error: use Option::map_or_else instead of an if let/else
+error: use Option::map_or instead of an if let/else
   --> $DIR/option_if_let_else.rs:151:13
    |
 LL |     let _ = if let Some(x) = Some(0) { s.len() + x } else { s.len() };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(0).map_or_else(|| s.len(), |x| s.len() + x)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(0).map_or(s.len(), |x| s.len() + x)`
 
 error: use Option::map_or instead of an if let/else
   --> $DIR/option_if_let_else.rs:155:13
