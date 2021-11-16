@@ -260,7 +260,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn qpath(&self, qpath: &Binding<&QPath<'_>>) {
-        if let QPath::LangItem(lang_item, _) = *qpath.value {
+        if let QPath::LangItem(lang_item, ..) = *qpath.value {
             out!("if matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _));");
         } else {
             out!("if match_qpath({qpath}, &[{}]);", path_to_string(qpath.value));
