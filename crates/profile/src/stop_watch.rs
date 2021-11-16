@@ -23,16 +23,27 @@ impl StopWatch {
     pub fn start() -> StopWatch {
         #[cfg(target_os = "linux")]
         let counter = {
-            let mut counter = perf_event::Builder::new()
-                .build()
-                .map_err(|err| eprintln!("Failed to create perf counter: {}", err))
-                .ok();
-            if let Some(counter) = &mut counter {
-                if let Err(err) = counter.enable() {
-                    eprintln!("Failed to start perf counter: {}", err)
+            // When debugging rust-analyzer using rr, the perf-related syscalls cause it to abort.
+            // We allow disabling perf by setting the env var `RA_DISABLE_PERF`.
+
+            use once_cell::sync::Lazy;
+            static PERF_ENABLED: Lazy<bool> =
+                Lazy::new(|| std::env::var_os("RA_DISABLE_PERF").is_none());
+
+            if *PERF_ENABLED {
+                let mut counter = perf_event::Builder::new()
+                    .build()
+                    .map_err(|err| eprintln!("Failed to create perf counter: {}", err))
+                    .ok();
+                if let Some(counter) = &mut counter {
+                    if let Err(err) = counter.enable() {
+                        eprintln!("Failed to start perf counter: {}", err)
+                    }
                 }
+                counter
+            } else {
+                None
             }
-            counter
         };
         let time = Instant::now();
         StopWatch {
