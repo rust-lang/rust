@@ -89,6 +89,12 @@ pub trait InferCtxtExt<'tcx> {
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     );
 
+    fn suggest_remove_await(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
+    );
+
     fn suggest_change_mut(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -870,6 +876,25 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     break;
                 }
             }
+        }
+    }
+
+    fn suggest_remove_await(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
+    ) {
+        let span = obligation.cause.span;
+
+        if let ObligationCauseCode::AwaitableExpr = obligation.cause.code {
+            // FIXME: use `trait_ref.self_ty().no_bound_vars()` to typecheck if `()` and if not
+            // maybe suggest returning instead?
+            err.span_suggestion_verbose(
+                span,
+                "do not `.await` the expression",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
         }
     }
 
@@ -1935,6 +1960,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::ReturnType
             | ObligationCauseCode::ReturnValue(_)
             | ObligationCauseCode::BlockTailExpression(_)
+            | ObligationCauseCode::AwaitableExpr
             | ObligationCauseCode::LetElse => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");

@@ -607,6 +607,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// }
     /// ```
     fn lower_expr_await(&mut self, await_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
+        let dot_await_span = expr.span.shrink_to_hi().to(await_span);
         match self.generator_kind {
             Some(hir::GeneratorKind::Async(_)) => {}
             Some(hir::GeneratorKind::Gen) | None => {
@@ -623,7 +624,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 err.emit();
             }
         }
-        let span = self.mark_span_with_reason(DesugaringKind::Await, await_span, None);
+        let span = self.mark_span_with_reason(DesugaringKind::Await, dot_await_span, None);
         let gen_future_span = self.mark_span_with_reason(
             DesugaringKind::Await,
             await_span,
@@ -682,7 +683,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let break_x = self.with_loop_scope(loop_node_id, move |this| {
                 let expr_break =
                     hir::ExprKind::Break(this.lower_loop_destination(None), Some(x_expr));
-                this.arena.alloc(this.expr(await_span, expr_break, ThinVec::new()))
+                this.arena.alloc(this.expr(span, expr_break, ThinVec::new()))
             });
             self.arm(ready_pat, break_x)
         };

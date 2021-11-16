@@ -439,6 +439,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         self.suggest_remove_reference(&obligation, &mut err, trait_ref);
                         self.suggest_semicolon_removal(&obligation, &mut err, span, trait_ref);
                         self.note_version_mismatch(&mut err, &trait_ref);
+                        self.suggest_remove_await(&obligation, &mut err);
 
                         if Some(trait_ref.def_id()) == tcx.lang_items().try_trait() {
                             self.suggest_await_before_try(&mut err, &obligation, trait_ref, span);

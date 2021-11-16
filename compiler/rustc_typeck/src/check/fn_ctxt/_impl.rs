@@ -810,7 +810,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = item_ty.subst(self.tcx, substs);
 
         self.write_resolution(hir_id, Ok((def_kind, def_id)));
-        self.add_required_obligations(span, def_id, &substs);
+        self.add_required_obligations_with_code(
+            span,
+            def_id,
+            &substs,
+            match lang_item {
+                hir::LangItem::FuturePoll => ObligationCauseCode::AwaitableExpr,
+                // FIXME: see if there are other obligation specializations we could do here beyond
+                // what we do above for `.await`.
+                _ => traits::ItemObligation(def_id),
+            },
+        );
         (Res::Def(def_kind, def_id), ty)
     }
 
@@ -1492,12 +1502,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Add all the obligations that are required, substituting and normalized appropriately.
-    #[tracing::instrument(level = "debug", skip(self, span, def_id, substs))]
     crate fn add_required_obligations(&self, span: Span, def_id: DefId, substs: &SubstsRef<'tcx>) {
+        self.add_required_obligations_with_code(
+            span,
+            def_id,
+            substs,
+            traits::ItemObligation(def_id),
+        )
+    }
+
+    #[tracing::instrument(level = "debug", skip(self, span, def_id, substs))]
+    fn add_required_obligations_with_code(
+        &self,
+        span: Span,
+        def_id: DefId,
+        substs: &SubstsRef<'tcx>,
+        code: ObligationCauseCode<'tcx>,
+    ) {
         let (bounds, _) = self.instantiate_bounds(span, def_id, &substs);
 
         for obligation in traits::predicates_for_generics(
-            traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def_id)),
+            traits::ObligationCause::new(span, self.body_id, code),
             self.param_env,
             bounds,
         ) {
