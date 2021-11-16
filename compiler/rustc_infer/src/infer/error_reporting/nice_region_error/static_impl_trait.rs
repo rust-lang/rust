@@ -151,9 +151,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         if mention_capture {
             spans.push(sup_origin.span());
         }
-        // We sort the spans *ignoring* expansion context. Below, the closure logic is repeated
-        // because one method expects a closure taking `&Span` and the other `&mut Span`.
-        spans.sort_by_key(|span| (span.lo(), span.hi()));
+        // We dedup the spans *ignoring* expansion context.
+        spans.sort();
         spans.dedup_by_key(|span| (span.lo(), span.hi()));
 
         // We try to make the output have fewer overlapping spans if possible.
@@ -183,7 +182,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             err.span_note(*bound, "`'static` lifetime requirement introduced by this bound");
         }
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = sub_origin {
-            if let ObligationCauseCode::BlockTailExpression(hir_id) = &cause.code {
+            if let ObligationCauseCode::ReturnValue(hir_id)
+            | ObligationCauseCode::BlockTailExpression(hir_id) = &cause.code
+            {
                 let parent_id = tcx.hir().get_parent_item(*hir_id);
                 if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(parent_id) {
                     let mut span: MultiSpan = fn_decl.output.span().into();

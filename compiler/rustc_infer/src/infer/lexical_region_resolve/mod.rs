@@ -97,7 +97,7 @@ pub enum RegionResolutionError<'tcx> {
         Region<'tcx>,
         SubregionOrigin<'tcx>,
         Region<'tcx>,
-        Vec<Span>,
+        Vec<Span>, // All the influences on a given value that didn't meet its constraints.
     ),
 
     /// Indicates a `'b: 'a` constraint where `'a` is in a universe that
@@ -570,9 +570,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // have to revisit this portion of the code and
                     // think hard about it. =) -- nikomatsakis
 
-                    // Obtain the spans for all the capture points for
+                    // Obtain the spans for all the places that can
+                    // influence the constraints on this value for
                     // richer diagnostics in `static_impl_trait`.
-                    let captures: Vec<Span> = self
+                    let influences: Vec<Span> = self
                         .data
                         .constraints
                         .iter()
@@ -590,7 +591,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         &mut dup_vec,
                         node_vid,
                         errors,
-                        captures,
+                        influences,
                     );
                 }
             }
@@ -645,7 +646,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         dup_vec: &mut IndexVec<RegionVid, Option<RegionVid>>,
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
-        captures: Vec<Span>,
+        influences: Vec<Span>,
     ) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
@@ -700,7 +701,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         lower_bound.region,
                         upper_bound.origin.clone(),
                         upper_bound.region,
-                        captures,
+                        influences,
                     ));
                     return;
                 }
