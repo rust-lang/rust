@@ -3,8 +3,9 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{can_move_expr_to_closure, is_trait_method, path_to_local_id, CaptureKind};
+use clippy_utils::{can_move_expr_to_closure, is_trait_method, path_to_local, path_to_local_id, CaptureKind};
 use if_chain::if_chain;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, Local, Mutability, Node, PatKind, Stmt, StmtKind};
@@ -174,15 +175,23 @@ struct IterFunctionVisitor<'b, 'a> {
     illegal_mutable_capture_ids: HirIdSet,
     current_mutably_captured_ids: HirIdSet,
     cx: &'a LateContext<'b>,
-    uses: Vec<IterFunction>,
+    uses: Vec<Option<IterFunction>>,
+    hir_id_uses_map: FxHashMap<HirId, usize>,
+    current_statement_hir_id: Option<HirId>,
     seen_other: bool,
     target: HirId,
 }
 impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
     fn visit_block(&mut self, block: &'txc Block<'tcx>) {
-        for elem in block.stmts.iter().filter_map(get_expr_from_stmt).chain(block.expr) {
-            self.current_mutably_captured_ids = HirIdSet::default();
-            self.visit_expr(elem);
+        for (expr, hir_id) in block
+            .stmts
+            .iter()
+            .filter_map(get_expr_and_hir_id_from_stmt)
+            .chain(block.expr.map(|expr| (expr, None)))
+        {
+            self.current_statement_hir_id = hir_id;
+            self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(expr));
+            self.visit_expr(expr);
         }
     }
 
@@ -202,27 +211,52 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                     .next()
                     .is_none()
                 {
+                    if let Some(hir_id) = self.current_statement_hir_id {
+                        self.hir_id_uses_map.insert(hir_id, self.uses.len());
+                    }
                     match &*method_name.ident.name.as_str() {
-                        "into_iter" => self.uses.push(IterFunction {
+                        "into_iter" => self.uses.push(Some(IterFunction {
                             func: IterFunctionKind::IntoIter,
                             span: expr.span,
-                        }),
-                        "len" => self.uses.push(IterFunction {
+                        })),
+                        "len" => self.uses.push(Some(IterFunction {
                             func: IterFunctionKind::Len,
                             span: expr.span,
-                        }),
-                        "is_empty" => self.uses.push(IterFunction {
+                        })),
+                        "is_empty" => self.uses.push(Some(IterFunction {
                             func: IterFunctionKind::IsEmpty,
                             span: expr.span,
-                        }),
-                        "contains" => self.uses.push(IterFunction {
+                        })),
+                        "contains" => self.uses.push(Some(IterFunction {
                             func: IterFunctionKind::Contains(args[0].span),
                             span: expr.span,
-                        }),
-                        _ => self.seen_other = true,
+                        })),
+                        _ => {
+                            self.seen_other = true;
+                            if let Some(hir_id) = self.current_statement_hir_id {
+                                self.hir_id_uses_map.remove(&hir_id);
+                            }
+                        },
                     }
                 }
                 return;
+            }
+
+            if let Some(hir_id) = path_to_local(recv) {
+                if let Some(index) = self.hir_id_uses_map.remove(&hir_id) {
+                    if self
+                        .illegal_mutable_capture_ids
+                        .intersection(&self.current_mutably_captured_ids)
+                        .next()
+                        .is_none()
+                    {
+                        if let Some(hir_id) = self.current_statement_hir_id {
+                            self.hir_id_uses_map.insert(hir_id, index);
+                        }
+                    } else {
+                        self.uses[index] = None;
+                    }
+                }
             }
         }
         // Check if the collection is used for anything else
@@ -239,11 +273,17 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
     }
 }
 
-fn get_expr_from_stmt<'v>(stmt: &'v Stmt<'v>) -> Option<&'v Expr<'v>> {
+fn get_expr_and_hir_id_from_stmt<'v>(stmt: &'v Stmt<'v>) -> Option<(&'v Expr<'v>, Option<HirId>)> {
     match stmt.kind {
-        StmtKind::Expr(expr) | StmtKind::Semi(expr) => Some(expr),
+        StmtKind::Expr(expr) | StmtKind::Semi(expr) => Some((expr, None)),
         StmtKind::Item(..) => None,
-        StmtKind::Local(Local { init, .. }) => *init,
+        StmtKind::Local(Local { init, pat, .. }) => {
+            if let PatKind::Binding(_, hir_id, ..) = pat.kind {
+                init.map(|init_expr| (init_expr, Some(hir_id)))
+            } else {
+                init.map(|init_expr| (init_expr, None))
+            }
+        },
     }
 }
 
@@ -284,9 +324,15 @@ fn detect_iter_and_into_iters<'tcx: 'a, 'a>(
         cx,
         current_mutably_captured_ids: HirIdSet::default(),
         illegal_mutable_capture_ids: captured_ids,
+        hir_id_uses_map: FxHashMap::default(),
+        current_statement_hir_id: None,
     };
     visitor.visit_block(block);
-    if visitor.seen_other { None } else { Some(visitor.uses) }
+    if visitor.seen_other {
+        None
+    } else {
+        Some(visitor.uses.into_iter().flatten().collect())
+    }
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
