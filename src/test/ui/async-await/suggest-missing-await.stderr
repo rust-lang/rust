@@ -39,7 +39,7 @@ LL |     dummy();
    |            +
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/suggest-missing-await.rs:35:17
+  --> $DIR/suggest-missing-await.rs:35:9
    |
 LL |       let _x = if true {
    |  ______________-
@@ -48,7 +48,7 @@ LL | |         dummy()
 LL | |
 LL | |     } else {
 LL | |         dummy().await
-   | |                 ^^^^^ expected opaque type, found `()`
+   | |         ^^^^^^^^^^^^^ expected opaque type, found `()`
 LL | |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
@@ -61,7 +61,7 @@ LL |         dummy().await
    |                ++++++
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/suggest-missing-await.rs:45:22
+  --> $DIR/suggest-missing-await.rs:45:14
    |
 LL |       let _x = match 0usize {
    |  ______________-
@@ -70,7 +70,7 @@ LL | |         0 => dummy(),
 LL | |         1 => dummy(),
    | |              ------- this is found to be of type `impl Future<Output = ()>`
 LL | |         2 => dummy().await,
-   | |                      ^^^^^ expected opaque type, found `()`
+   | |              ^^^^^^^^^^^^^ expected opaque type, found `()`
 LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types

@@ -12,5 +12,4 @@ fn main() {
     (|_| 2333).await;
     //~^ ERROR `await` is only allowed inside `async` functions and blocks
     //~| ERROR is not a future
-    //~| ERROR is not a future
 }

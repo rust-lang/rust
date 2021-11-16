@@ -810,7 +810,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             def_id,
             &substs,
             match lang_item {
-                hir::LangItem::FuturePoll => ObligationCauseCode::AwaitableExpr(expr_hir_id),
+                hir::LangItem::IntoFutureIntoFuture => {
+                    ObligationCauseCode::AwaitableExpr(expr_hir_id)
+                }
                 hir::LangItem::IteratorNext | hir::LangItem::IntoIterIntoIter => {
                     ObligationCauseCode::ForLoopIterator
                 }
