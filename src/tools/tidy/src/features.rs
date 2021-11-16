@@ -7,7 +7,7 @@
 //! * Library features have at most one stability level.
 //! * Library features have at most one `since` value.
 //! * All unstable lang features have tests to ensure they are actually unstable.
-//! * Language features in a group are sorted by `since` value.
+//! * Language features in a group are sorted by feature name.
 
 use std::collections::HashMap;
 use std::fmt;
@@ -258,7 +258,7 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
     let mut next_feature_omits_tracking_issue = false;
 
     let mut in_feature_group = false;
-    let mut prev_since = None;
+    let mut prev_name = None;
 
     contents
         .lines()
@@ -291,11 +291,11 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
                 }
 
                 in_feature_group = true;
-                prev_since = None;
+                prev_name = None;
                 return None;
             } else if line.starts_with(FEATURE_GROUP_END_PREFIX) {
                 in_feature_group = false;
-                prev_since = None;
+                prev_name = None;
                 return None;
             }
 
@@ -325,16 +325,16 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
                 }
             };
             if in_feature_group {
-                if prev_since > since {
+                if prev_name > Some(name) {
                     tidy_error!(
                         bad,
-                        "{}:{}: feature {} is not sorted by \"since\" (version number)",
+                        "{}:{}: feature {} is not sorted by feature name",
                         path.display(),
                         line_number,
                         name,
                     );
                 }
-                prev_since = since;
+                prev_name = Some(name);
             }
 
             let issue_str = parts.next().unwrap().trim();
