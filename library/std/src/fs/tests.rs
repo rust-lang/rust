@@ -1439,4 +1439,8 @@ fn create_dir_long_paths() {
     // This will fail if the path isn't converted to verbatim.
     path.push("a");
     fs::create_dir(&path).unwrap();
+
+    // #90940: Ensure an empty path returns the "Not Found" error.
+    let path = Path::new("");
+    assert_eq!(path.canonicalize().unwrap_err().kind(), crate::io::ErrorKind::NotFound);
 }
