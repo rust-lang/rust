@@ -112,6 +112,7 @@ impl CheckAttrVisitor<'tcx> {
                     self.check_default_method_body_is_const(attr, span, target)
                 }
                 sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
+                sym::must_use => self.check_must_use(hir_id, &attr, span, target),
                 sym::rustc_const_unstable
                 | sym::rustc_const_stable
                 | sym::unstable
@@ -1044,6 +1045,37 @@ impl CheckAttrVisitor<'tcx> {
         }
 
         is_valid
+    }
+
+    /// Warns against some misuses of `#[must_use]`
+    fn check_must_use(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: &Span,
+        _target: Target,
+    ) -> bool {
+        let node = self.tcx.hir().get(hir_id);
+        if let Some(fn_node) = node.fn_kind() {
+            if let rustc_hir::IsAsync::Async = fn_node.asyncness() {
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build(
+                        "`must_use` attribute on `async` functions \
+                              applies to the anonymous `Future` returned by the \
+                              function, not the value within",
+                    )
+                    .span_label(
+                        *span,
+                        "this attribute does nothing, the `Future`s \
+                                returned by async functions are already `must_use`",
+                    )
+                    .emit();
+                });
+            }
+        }
+
+        // For now, its always valid
+        true
     }
 
     /// Checks if `#[must_not_suspend]` is applied to a function. Returns `true` if valid.
