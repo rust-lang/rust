@@ -1641,19 +1641,38 @@ fn report_bivariance(tcx: TyCtxt<'_>, param: &rustc_hir::GenericParam<'_>) {
 
 /// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
 /// aren't true.
-fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, span: Span, id: hir::HirId) {
+fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirId) {
     let empty_env = ty::ParamEnv::empty();
 
     let def_id = fcx.tcx.hir().local_def_id(id);
-    let predicates = fcx.tcx.predicates_of(def_id).predicates.iter().map(|(p, _)| *p);
+    let predicates_with_span =
+        fcx.tcx.predicates_of(def_id).predicates.iter().map(|(p, span)| (*p, *span));
     // Check elaborated bounds.
-    let implied_obligations = traits::elaborate_predicates(fcx.tcx, predicates);
+    let implied_obligations = traits::elaborate_predicates_with_span(fcx.tcx, predicates_with_span);
 
     for obligation in implied_obligations {
         let pred = obligation.predicate;
         // Match the existing behavior.
         if pred.is_global(fcx.tcx) && !pred.has_late_bound_regions() {
             let pred = fcx.normalize_associated_types_in(span, pred);
+            let hir_node = fcx.tcx.hir().find(id);
+
+            // only use the span of the predicate clause (#90869)
+
+            if let Some(hir::Generics { where_clause, .. }) =
+                hir_node.and_then(|node| node.generics())
+            {
+                let obligation_span = obligation.cause.span(fcx.tcx);
+
+                span = where_clause
+                    .predicates
+                    .iter()
+                    // There seems to be no better way to find out which predicate we are in
+                    .find(|pred| pred.span().contains(obligation_span))
+                    .map(|pred| pred.span())
+                    .unwrap_or(obligation_span);
+            }
+
             let obligation = traits::Obligation::new(
                 traits::ObligationCause::new(span, id, traits::TrivialBound),
                 empty_env,
