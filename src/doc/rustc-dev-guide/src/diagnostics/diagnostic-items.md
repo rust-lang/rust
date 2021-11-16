@@ -23,7 +23,7 @@ struct Penguin;
 
 Diagnostic items are usually only added to traits, types and standalone functions. If the goal
 is to check for an associated type or method, please use the diagnostic item of the item and
-reference [*Using Diagnostic Items*](#using-diagnostic-items).
+reference [*How To Use Diagnostic Items*](#how-to-use-diagnostic-items).
 
 ## How To Add Diagnostic Items
 
