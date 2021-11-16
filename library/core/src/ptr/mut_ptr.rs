@@ -1142,7 +1142,7 @@ impl<T: ?Sized> *mut T {
     /// # } }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_align_offset", issue = "none")]
+    #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
     pub const fn align_offset(self, align: usize) -> usize
     where
         T: Sized,
