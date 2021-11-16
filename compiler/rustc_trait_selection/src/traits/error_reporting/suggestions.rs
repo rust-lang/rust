@@ -1964,6 +1964,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::BlockTailExpression(_)
             | ObligationCauseCode::AwaitableExpr
             | ObligationCauseCode::ForLoopIterator
+            | ObligationCauseCode::QuestionMark
             | ObligationCauseCode::LetElse => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
