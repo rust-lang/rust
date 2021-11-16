@@ -1,9 +1,8 @@
 use super::{c, fill_utf16_buf, to_u16s};
-use crate::ffi::OsStr;
+use crate::ffi::{OsStr, OsString};
 use crate::io;
 use crate::mem;
-use crate::path::Path;
-use crate::path::Prefix;
+use crate::path::{Path, PathBuf, Prefix};
 use crate::ptr;
 
 #[cfg(test)]
@@ -30,6 +29,25 @@ pub fn is_sep_byte(b: u8) -> bool {
 #[inline]
 pub fn is_verbatim_sep(b: u8) -> bool {
     b == b'\\'
+}
+
+/// Returns true if `path` looks like a lone filename.
+pub(crate) fn is_file_name(path: &OsStr) -> bool {
+    !path.bytes().iter().copied().any(is_sep_byte)
+}
+pub(crate) fn has_trailing_slash(path: &OsStr) -> bool {
+    let is_verbatim = path.bytes().starts_with(br"\\?\");
+    let is_separator = if is_verbatim { is_verbatim_sep } else { is_sep_byte };
+    if let Some(&c) = path.bytes().last() { is_separator(c) } else { false }
+}
+
+/// Appends a suffix to a path.
+///
+/// Can be used to append an extension without removing an existing extension.
+pub(crate) fn append_suffix(path: PathBuf, suffix: &OsStr) -> PathBuf {
+    let mut path = OsString::from(path);
+    path.push(suffix);
+    path.into()
 }
 
 pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
