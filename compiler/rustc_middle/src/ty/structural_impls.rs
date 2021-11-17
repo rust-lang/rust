@@ -625,6 +625,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             Sorts(x) => return tcx.lift(x).map(Sorts),
             ExistentialMismatch(x) => return tcx.lift(x).map(ExistentialMismatch),
             ConstMismatch(x) => return tcx.lift(x).map(ConstMismatch),
+            ConstMismatchTooGeneric(x, s) => {
+                return tcx.lift(x).map(|x| ConstMismatchTooGeneric(x, s));
+            }
             IntrinsicCast => IntrinsicCast,
             TargetFeatureCast(x) => TargetFeatureCast(x),
             ObjectUnsafeCoercion(x) => return tcx.lift(x).map(ObjectUnsafeCoercion),
