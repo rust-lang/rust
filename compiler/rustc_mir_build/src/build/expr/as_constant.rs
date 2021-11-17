@@ -23,7 +23,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         inferred_ty: ty,
                     })
                 });
-                assert_eq!(literal.ty, ty);
+                assert_eq!(literal.ty(), ty);
                 Constant { span, user_ty, literal: literal.into() }
             }
             ExprKind::StaticRef { literal, .. } => {

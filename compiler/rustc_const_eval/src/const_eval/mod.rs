@@ -146,7 +146,7 @@ pub(crate) fn destructure_const<'tcx>(
     let op = ecx.const_to_op(val, None).unwrap();
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
-    let (field_count, variant, down) = match val.ty.kind() {
+    let (field_count, variant, down) = match val.ty().kind() {
         ty::Array(_, len) => (usize::try_from(len.eval_usize(tcx, param_env)).unwrap(), None, op),
         ty::Adt(def, _) if def.variants.is_empty() => {
             return mir::DestructuredConst { variant: None, fields: &[] };
@@ -203,5 +203,5 @@ pub(crate) fn deref_const<'tcx>(
         },
     };
 
-    tcx.mk_const(ty::Const { val: ty::ConstKind::Value(op_to_const(&ecx, &mplace.into())), ty })
+    tcx.mk_const(ty, ty::ConstKind::Value(op_to_const(&ecx, &mplace.into())))
 }

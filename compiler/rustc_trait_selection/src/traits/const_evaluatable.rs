@@ -203,7 +203,7 @@ impl<'tcx> AbstractConst<'tcx> {
         tcx: TyCtxt<'tcx>,
         ct: &ty::Const<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
-        match ct.val {
+        match ct.val() {
             ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv.shrink()),
             ty::ConstKind::Error(_) => Err(ErrorReported),
             _ => Ok(None),
@@ -335,10 +335,12 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         self.recurse_build(self.body_id)?;
 
         for n in self.nodes.iter() {
-            if let Node::Leaf(ty::Const { val: ty::ConstKind::Unevaluated(ct), ty: _ }) = n {
-                // `AbstractConst`s should not contain any promoteds as they require references which
-                // are not allowed.
-                assert_eq!(ct.promoted, None);
+            if let Node::Leaf(c) = n {
+                if let ty::ConstKind::Unevaluated(ct) = c.val() {
+                    // `AbstractConst`s should not contain any promoteds as they require references which
+                    // are not allowed.
+                    assert_eq!(ct.promoted, None);
+                }
             }
         }
 
@@ -591,11 +593,11 @@ pub(super) fn try_unify<'tcx>(
 
     match (a.root(tcx), b.root(tcx)) {
         (Node::Leaf(a_ct), Node::Leaf(b_ct)) => {
-            if a_ct.ty != b_ct.ty {
+            if a_ct.ty() != b_ct.ty() {
                 return false;
             }
 
-            match (a_ct.val, b_ct.val) {
+            match (a_ct.val(), b_ct.val()) {
                 // We can just unify errors with everything to reduce the amount of
                 // emitted errors here.
                 (ty::ConstKind::Error(_), _) | (_, ty::ConstKind::Error(_)) => true,

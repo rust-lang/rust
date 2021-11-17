@@ -711,14 +711,14 @@ impl<'tcx> Cx<'tcx> {
                                 // in case we are offsetting from a computed discriminant
                                 // and not the beginning of discriminants (which is always `0`)
                                 let substs = InternalSubsts::identity_for_item(self.tcx(), did);
-                                let lhs = ty::Const {
-                                    val: ty::ConstKind::Unevaluated(ty::Unevaluated::new(
+
+                                let lhs = self.thir.exprs.push(mk_const(self.tcx().mk_const(
+                                    var_ty,
+                                    ty::ConstKind::Unevaluated(ty::Unevaluated::new(
                                         ty::WithOptConstParam::unknown(did),
                                         substs,
                                     )),
-                                    ty: var_ty,
-                                };
-                                let lhs = self.thir.exprs.push(mk_const(self.tcx().mk_const(lhs)));
+                                )));
                                 let bin =
                                     ExprKind::Binary { op: BinOp::Add, lhs: lhs, rhs: offset };
                                 self.thir.exprs.push(Expr {
@@ -893,10 +893,7 @@ impl<'tcx> Cx<'tcx> {
                 let name = self.tcx.hir().name(hir_id);
                 let val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
                 ExprKind::Literal {
-                    literal: self.tcx.mk_const(ty::Const {
-                        val,
-                        ty: self.typeck_results().node_type(expr.hir_id),
-                    }),
+                    literal: self.tcx.mk_const(self.typeck_results().node_type(expr.hir_id), val),
                     user_ty: None,
                     const_id: Some(def_id),
                 }
@@ -906,13 +903,13 @@ impl<'tcx> Cx<'tcx> {
                 let user_ty = self.user_substs_applied_to_res(expr.hir_id, res);
                 debug!("convert_path_expr: (const) user_ty={:?}", user_ty);
                 ExprKind::Literal {
-                    literal: self.tcx.mk_const(ty::Const {
-                        val: ty::ConstKind::Unevaluated(ty::Unevaluated::new(
+                    literal: self.tcx.mk_const(
+                        self.typeck_results().node_type(expr.hir_id),
+                        ty::ConstKind::Unevaluated(ty::Unevaluated::new(
                             ty::WithOptConstParam::unknown(def_id),
                             substs,
                         )),
-                        ty: self.typeck_results().node_type(expr.hir_id),
-                    }),
+                    ),
                     user_ty,
                     const_id: Some(def_id),
                 }

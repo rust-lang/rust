@@ -1249,7 +1249,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                 }
 
                 fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-                    if let ty::ConstKind::Param(param) = c.val {
+                    if let ty::ConstKind::Param(param) = c.val() {
                         self.params.insert(param.index);
                     }
                     c.super_visit_with(self)

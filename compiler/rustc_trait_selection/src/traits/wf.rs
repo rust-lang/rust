@@ -42,7 +42,7 @@ pub fn obligations<'a, 'tcx>(
             .into()
         }
         GenericArgKind::Const(ct) => {
-            match ct.val {
+            match ct.val() {
                 ty::ConstKind::Infer(infer) => {
                     let resolved = infcx.shallow_resolve(infer);
                     if resolved == infer {
@@ -50,7 +50,7 @@ pub fn obligations<'a, 'tcx>(
                         return None;
                     }
 
-                    infcx.tcx.mk_const(ty::Const { val: ty::ConstKind::Infer(resolved), ty: ct.ty })
+                    infcx.tcx.mk_const(ct.ty(), ty::ConstKind::Infer(resolved))
                 }
                 _ => ct,
             }
@@ -435,7 +435,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 GenericArgKind::Lifetime(_) => continue,
 
                 GenericArgKind::Const(constant) => {
-                    match constant.val {
+                    match constant.val() {
                         ty::ConstKind::Unevaluated(uv) => {
                             assert!(uv.promoted.is_none());
                             let substs = uv.substs(self.tcx());
@@ -461,10 +461,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             if resolved != infer {
                                 let cause = self.cause(traits::MiscObligation);
 
-                                let resolved_constant = self.infcx.tcx.mk_const(ty::Const {
-                                    val: ty::ConstKind::Infer(resolved),
-                                    ..*constant
-                                });
+                                let resolved_constant = self
+                                    .infcx
+                                    .tcx
+                                    .mk_const(constant.ty(), ty::ConstKind::Infer(resolved));
                                 self.out.push(traits::Obligation::with_depth(
                                     cause,
                                     self.recursion_depth,

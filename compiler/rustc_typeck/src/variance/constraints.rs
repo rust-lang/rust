@@ -403,7 +403,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     ) {
         debug!("add_constraints_from_const(val={:?}, variance={:?})", val, variance);
 
-        match &val.val {
+        match val.val() {
             ty::ConstKind::Unevaluated(uv) => {
                 let substs = uv.substs(self.tcx());
                 self.add_constraints_from_invariant_substs(current, substs, variance);

@@ -622,23 +622,22 @@ impl TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        match *ct {
-            ty::Const { val: ty::ConstKind::Bound(debruijn, _), ty: _ }
+        match ct.val() {
+            ty::ConstKind::Bound(debruijn, _)
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
             {
                 bug!("Bound vars outside of `self.universe_indices`");
             }
-            ty::Const { val: ty::ConstKind::Bound(debruijn, bound_const), ty }
-                if debruijn >= self.current_index =>
-            {
+            ty::ConstKind::Bound(debruijn, bound_const) if debruijn >= self.current_index => {
+                let ty = ct.ty();
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderConst {
                     universe,
                     name: ty::BoundConst { var: bound_const, ty },
                 };
                 self.mapped_consts.insert(p, bound_const);
-                self.infcx.tcx.mk_const(ty::Const { val: ty::ConstKind::Placeholder(p), ty })
+                self.infcx.tcx.mk_const(ty, ty::ConstKind::Placeholder(p))
             }
             _ if ct.has_vars_bound_at_or_above(self.current_index) => ct.super_fold_with(self),
             _ => ct,
@@ -758,7 +757,8 @@ impl TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ty::ConstKind::Placeholder(p), ty } = *ct {
+        if let ty::ConstKind::Placeholder(p) = ct.val() {
+            let ty = ct.ty();
             let replace_var = self.mapped_consts.get(&p);
             match replace_var {
                 Some(replace_var) => {
@@ -770,8 +770,7 @@ impl TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
                     let db = ty::DebruijnIndex::from_usize(
                         self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                     );
-                    self.tcx()
-                        .mk_const(ty::Const { val: ty::ConstKind::Bound(db, *replace_var), ty })
+                    self.tcx().mk_const(ty, ty::ConstKind::Bound(db, *replace_var))
                 }
                 None => ct,
             }

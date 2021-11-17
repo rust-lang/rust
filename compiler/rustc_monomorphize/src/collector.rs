@@ -718,7 +718,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         let literal = self.monomorphize(constant.literal);
         let val = match literal {
             mir::ConstantKind::Val(val, _) => val,
-            mir::ConstantKind::Ty(ct) => match ct.val {
+            mir::ConstantKind::Ty(ct) => match ct.val() {
                 ty::ConstKind::Value(val) => val,
                 ty::ConstKind::Unevaluated(ct) => {
                     let param_env = ty::ParamEnv::reveal_all();
@@ -746,7 +746,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         let substituted_constant = self.monomorphize(*constant);
         let param_env = ty::ParamEnv::reveal_all();
 
-        match substituted_constant.val {
+        match substituted_constant.val() {
             ty::ConstKind::Value(val) => collect_const_value(self.tcx, val, self.output),
             ty::ConstKind::Unevaluated(unevaluated) => {
                 match self.tcx.const_eval_resolve(param_env, unevaluated, None) {

@@ -126,8 +126,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         end: RangeEnd,
         span: Span,
     ) -> PatKind<'tcx> {
-        assert_eq!(lo.ty, ty);
-        assert_eq!(hi.ty, ty);
+        assert_eq!(lo.ty(), ty);
+        assert_eq!(hi.ty(), ty);
         let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env, ty);
         match (end, cmp) {
             // `x..y` where `x < y`.
@@ -514,7 +514,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                                 user_ty_span: span,
                             },
                         }),
-                        ty: const_.ty,
+                        ty: const_.ty(),
                     }
                 } else {
                     pattern
@@ -545,7 +545,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 hir::ExprKind::ConstBlock(ref anon_const) => {
                     let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
                     let value = ty::Const::from_inline_const(self.tcx, anon_const_def_id);
-                    if matches!(value.val, ConstKind::Param(_)) {
+                    if matches!(value.val(), ConstKind::Param(_)) {
                         let span = self.tcx.hir().span(anon_const.hir_id);
                         self.errors.push(PatternError::ConstParamInPattern(span));
                         return PatKind::Wild;
@@ -735,13 +735,13 @@ crate fn compare_const_vals<'tcx>(
     let fallback = || from_bool(a == b);
 
     // Use the fallback if any type differs
-    if a.ty != b.ty || a.ty != ty {
+    if a.ty() != b.ty() || a.ty() != ty {
         return fallback();
     }
 
     // Early return for equal constants (so e.g. references to ZSTs can be compared, even if they
     // are just integer addresses).
-    if a.val == b.val {
+    if a.val() == b.val() {
         return from_bool(true);
     }
 
@@ -776,7 +776,7 @@ crate fn compare_const_vals<'tcx>(
         if let (
             ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
             ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),
-        ) = (a.val, b.val)
+        ) = (a.val(), b.val())
         {
             let a_bytes = get_slice_bytes(&tcx, a_val);
             let b_bytes = get_slice_bytes(&tcx, b_val);

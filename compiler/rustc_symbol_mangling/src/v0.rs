@@ -577,7 +577,7 @@ impl Printer<'tcx> for &mut SymbolMangler<'tcx> {
     fn print_const(mut self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         // We only mangle a typed value if the const can be evaluated.
         let ct = ct.eval(self.tcx, ty::ParamEnv::reveal_all());
-        match ct.val {
+        match ct.val() {
             ty::ConstKind::Value(_) => {}
 
             // Placeholders (should be demangled as `_`).
@@ -601,14 +601,14 @@ impl Printer<'tcx> for &mut SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
-        match ct.ty.kind() {
+        match ct.ty().kind() {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
-                self = ct.ty.print(self)?;
+                self = ct.ty().print(self)?;
 
-                let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ct.ty);
+                let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ct.ty());
 
                 // Negative integer values are mangled using `n` as a "sign prefix".
-                if let ty::Int(ity) = ct.ty.kind() {
+                if let ty::Int(ity) = ct.ty().kind() {
                     let val =
                         Integer::from_int_ty(&self.tcx, *ity).size().sign_extend(bits) as i128;
                     if val < 0 {
@@ -625,7 +625,7 @@ impl Printer<'tcx> for &mut SymbolMangler<'tcx> {
             // handle `&str` and include both `&` ("R") and `str` ("e") prefixes.
             ty::Ref(_, ty, hir::Mutability::Not) if *ty == self.tcx.types.str_ => {
                 self.push("R");
-                match ct.val {
+                match ct.val() {
                     ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
                         // NOTE(eddyb) the following comment was kept from `ty::print::pretty`:
                         // The `inspect` here is okay since we checked the bounds, and there are no
@@ -669,7 +669,7 @@ impl Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     Ok(this)
                 };
 
-                match *ct.ty.kind() {
+                match *ct.ty().kind() {
                     ty::Array(..) => {
                         self.push("A");
                         self = print_field_list(self)?;
@@ -720,7 +720,7 @@ impl Printer<'tcx> for &mut SymbolMangler<'tcx> {
             }
 
             _ => {
-                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty, ct);
+                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty(), ct);
             }
         }
 

@@ -1,3 +1,6 @@
+use std::hash::{Hash, Hasher};
+use std::ptr;
+
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::{LitToConstInput, Scalar};
 use crate::ty::{
@@ -18,18 +21,28 @@ pub use kind::*;
 pub use valtree::*;
 
 /// Typed constant value.
-#[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, Ord, PartialOrd)]
 #[derive(HashStable)]
 pub struct Const<'tcx> {
-    pub ty: Ty<'tcx>,
+    pub(super) ty: Ty<'tcx>,
 
-    pub val: ConstKind<'tcx>,
+    pub(super) val: ConstKind<'tcx>,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Const<'_>, 48);
 
 impl<'tcx> Const<'tcx> {
+    #[inline]
+    pub fn ty(&self) -> Ty<'tcx> {
+        self.ty
+    }
+
+    #[inline]
+    pub fn val(&self) -> ConstKind<'tcx> {
+        self.val
+    }
+
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
@@ -58,14 +71,14 @@ impl<'tcx> Const<'tcx> {
 
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
-            None => tcx.mk_const(ty::Const {
-                val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+            None => tcx.mk_const(
+                ty,
+                ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: def.to_global(),
                     substs_: None,
                     promoted: None,
                 }),
-                ty,
-            }),
+            ),
         }
     }
 
@@ -115,10 +128,7 @@ impl<'tcx> Const<'tcx> {
                 let generics = tcx.generics_of(item_def_id.to_def_id());
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.hir().name(hir_id);
-                Some(tcx.mk_const(ty::Const {
-                    val: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
-                    ty,
-                }))
+                Some(tcx.mk_const(ty, ty::ConstKind::Param(ty::ParamConst::new(index, name))))
             }
             _ => None,
         }
@@ -150,14 +160,14 @@ impl<'tcx> Const<'tcx> {
                 let substs =
                     InlineConstSubsts::new(tcx, InlineConstSubstsParts { parent_substs, ty })
                         .substs;
-                tcx.mk_const(ty::Const {
-                    val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                tcx.mk_const(
+                    ty,
+                    ty::ConstKind::Unevaluated(ty::Unevaluated {
                         def: ty::WithOptConstParam::unknown(def_id).to_global(),
                         substs_: Some(substs),
                         promoted: None,
                     }),
-                    ty,
-                })
+                )
             }
         };
         debug_assert!(!ret.has_free_regions(tcx));
@@ -167,7 +177,7 @@ impl<'tcx> Const<'tcx> {
     /// Interns the given value as a constant.
     #[inline]
     pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        tcx.mk_const(Self { val: ConstKind::Value(val), ty })
+        tcx.mk_const(ty, ConstKind::Value(val))
     }
 
     #[inline]
@@ -256,6 +266,20 @@ impl<'tcx> Const<'tcx> {
     pub fn eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
         self.try_eval_usize(tcx, param_env)
             .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
+    }
+}
+
+impl PartialEq for Const<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        ptr::eq(self, other)
+    }
+}
+
+impl Eq for Const<'tcx> {}
+
+impl Hash for Const<'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (self as *const Const<'tcx>).hash(state)
     }
 }
 

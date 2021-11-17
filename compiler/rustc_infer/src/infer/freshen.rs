@@ -222,7 +222,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        match ct.val {
+        match ct.val() {
             ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
                 let opt_ct = self
                     .infcx
@@ -236,7 +236,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     opt_ct,
                     ty::InferConst::Var(v),
                     ty::InferConst::Fresh,
-                    ct.ty,
+                    ct.ty(),
                 );
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {

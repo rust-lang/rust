@@ -151,12 +151,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
-                self.tcx
-                    .mk_const(ty::Const {
-                        val: ty::ConstKind::Placeholder(placeholder_mapped),
-                        ty: name.ty,
-                    })
-                    .into()
+                self.tcx.mk_const(name.ty, ty::ConstKind::Placeholder(placeholder_mapped)).into()
             }
         }
     }

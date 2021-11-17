@@ -138,10 +138,10 @@ impl IntRange {
         param_env: ty::ParamEnv<'tcx>,
         value: &Const<'tcx>,
     ) -> Option<IntRange> {
-        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
-            let ty = value.ty;
+        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty()) {
+            let ty = value.ty();
             let val = (|| {
-                if let ty::ConstKind::Value(ConstValue::Scalar(scalar)) = value.val {
+                if let ty::ConstKind::Value(ConstValue::Scalar(scalar)) = value.val() {
                     // For this specific pattern we can skip a lot of effort and go
                     // straight to the result, after doing a bit of checking. (We
                     // could remove this branch and just fall through, which
@@ -1401,11 +1401,11 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             &PatKind::Range(PatRange { lo, hi, end }) => {
-                let ty = lo.ty;
+                let ty = lo.ty();
                 ctor = if let Some(int_range) = IntRange::from_range(
                     cx.tcx,
-                    lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
-                    hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
+                    lo.eval_bits(cx.tcx, cx.param_env, lo.ty()),
+                    hi.eval_bits(cx.tcx, cx.param_env, hi.ty()),
                     ty,
                     &end,
                 ) {

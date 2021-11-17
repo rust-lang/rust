@@ -1316,13 +1316,10 @@ pub fn check_type_bounds<'tcx>(
         GenericParamDefKind::Const { .. } => {
             let bound_var = ty::BoundVariableKind::Const;
             bound_vars.push(bound_var);
-            tcx.mk_const(ty::Const {
-                ty: tcx.type_of(param.def_id),
-                val: ty::ConstKind::Bound(
-                    ty::INNERMOST,
-                    ty::BoundVar::from_usize(bound_vars.len() - 1),
-                ),
-            })
+            tcx.mk_const(
+                tcx.type_of(param.def_id),
+                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(bound_vars.len() - 1)),
+            )
             .into()
         }
     });

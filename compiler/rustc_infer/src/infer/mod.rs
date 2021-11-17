@@ -1734,7 +1734,7 @@ impl TyOrConstInferVar<'tcx> {
     /// Tries to extract an inference variable from a constant, returns `None`
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
     pub fn maybe_from_const(ct: &'tcx ty::Const<'tcx>) -> Option<Self> {
-        match ct.val {
+        match ct.val() {
             ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
             _ => None,
         }
@@ -1755,12 +1755,12 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = ct {
+        if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.val() {
             self.infcx
                 .inner
                 .borrow_mut()
                 .const_unification_table()
-                .probe_value(*vid)
+                .probe_value(vid)
                 .val
                 .known()
                 .unwrap_or(ct)

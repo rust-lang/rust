@@ -173,10 +173,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             // If we were able to successfully convert the const to some pat,
             // double-check that all types in the const implement `Structural`.
 
-            let structural = self.search_for_structural_match_violation(cv.ty);
+            let structural = self.search_for_structural_match_violation(cv.ty());
             debug!(
                 "search_for_structural_match_violation cv.ty: {:?} returned: {:?}",
-                cv.ty, structural
+                cv.ty(),
+                structural
             );
 
             // This can occur because const qualification treats all associated constants as
@@ -191,7 +192,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             }
 
             if let Some(msg) = structural {
-                if !self.type_may_have_partial_eq_impl(cv.ty) {
+                if !self.type_may_have_partial_eq_impl(cv.ty()) {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
                     self.tcx().sess.span_fatal(self.span, &msg);
                 } else if mir_structural_match_violation && !self.saw_const_match_lint.get() {
@@ -270,7 +271,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         let tcx = self.tcx();
         let param_env = self.param_env;
 
-        let kind = match cv.ty.kind() {
+        let kind = match cv.ty().kind() {
             ty::Float(_) => {
                 if self.include_lint_checks {
                     tcx.struct_span_lint_hir(
@@ -294,14 +295,14 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 PatKind::Wild
             }
             ty::Adt(..)
-                if !self.type_may_have_partial_eq_impl(cv.ty)
+                if !self.type_may_have_partial_eq_impl(cv.ty())
                     // FIXME(#73448): Find a way to bring const qualification into parity with
                     // `search_for_structural_match_violation` and then remove this condition.
-                    && self.search_for_structural_match_violation(cv.ty).is_some() =>
+                    && self.search_for_structural_match_violation(cv.ty()).is_some() =>
             {
                 // Obtain the actual type that isn't annotated. If we just looked at `cv.ty` we
                 // could get `Option<NonStructEq>`, even though `Option` is annotated with derive.
-                let msg = self.search_for_structural_match_violation(cv.ty).unwrap();
+                let msg = self.search_for_structural_match_violation(cv.ty()).unwrap();
                 self.saw_const_match_error.set(true);
                 if self.include_lint_checks {
                     tcx.sess.span_err(self.span, &msg);
@@ -319,7 +320,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             // details.
             // Backwards compatibility hack because we can't cause hard errors on these
             // types, so we compare them via `PartialEq::eq` at runtime.
-            ty::Adt(..) if !self.type_marked_structural(cv.ty) && self.behind_reference.get() => {
+            ty::Adt(..) if !self.type_marked_structural(cv.ty()) && self.behind_reference.get() => {
                 if self.include_lint_checks
                     && !self.saw_const_match_error.get()
                     && !self.saw_const_match_lint.get()
@@ -333,7 +334,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                             let msg = format!(
                                 "to use a constant of type `{}` in a pattern, \
                                  `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                                cv.ty, cv.ty,
+                                cv.ty(),
+                                cv.ty(),
                             );
                             lint.build(&msg).emit()
                         },
@@ -344,8 +346,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // `PartialEq::eq` on it.
                 return Err(fallback_to_const_ref(self));
             }
-            ty::Adt(adt_def, _) if !self.type_marked_structural(cv.ty) => {
-                debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, cv.ty);
+            ty::Adt(adt_def, _) if !self.type_marked_structural(cv.ty()) => {
+                debug!(
+                    "adt_def {:?} has !type_marked_structural for cv.ty: {:?}",
+                    adt_def,
+                    cv.ty()
+                );
                 let path = tcx.def_path_str(adt_def.did);
                 let msg = format!(
                     "to use a constant of type `{}` in a pattern, \
@@ -389,7 +395,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // These are not allowed and will error elsewhere anyway.
                 ty::Dynamic(..) => {
                     self.saw_const_match_error.set(true);
-                    let msg = format!("`{}` cannot be used in patterns", cv.ty);
+                    let msg = format!("`{}` cannot be used in patterns", cv.ty());
                     if self.include_lint_checks {
                         tcx.sess.span_err(span, &msg);
                     } else {
@@ -546,7 +552,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             }
             _ => {
                 self.saw_const_match_error.set(true);
-                let msg = format!("`{}` cannot be used in patterns", cv.ty);
+                let msg = format!("`{}` cannot be used in patterns", cv.ty());
                 if self.include_lint_checks {
                     tcx.sess.span_err(span, &msg);
                 } else {
@@ -562,12 +568,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             && mir_structural_match_violation
             // FIXME(#73448): Find a way to bring const qualification into parity with
             // `search_for_structural_match_violation` and then remove this condition.
-            && self.search_for_structural_match_violation(cv.ty).is_some()
+            && self.search_for_structural_match_violation(cv.ty()).is_some()
         {
             self.saw_const_match_lint.set(true);
             // Obtain the actual type that isn't annotated. If we just looked at `cv.ty` we
             // could get `Option<NonStructEq>`, even though `Option` is annotated with derive.
-            let msg = self.search_for_structural_match_violation(cv.ty).unwrap().replace(
+            let msg = self.search_for_structural_match_violation(cv.ty()).unwrap().replace(
                 "in a pattern,",
                 "in a pattern, the constant's initializer must be trivial or",
             );
@@ -579,6 +585,6 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             );
         }
 
-        Ok(Pat { span, ty: cv.ty, kind: Box::new(kind) })
+        Ok(Pat { span, ty: cv.ty(), kind: Box::new(kind) })
     }
 }

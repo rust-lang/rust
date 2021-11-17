@@ -849,9 +849,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     span,
                     user_ty: None,
                     literal: tcx
-                        .mk_const(ty::Const {
+                        .mk_const(
                             ty,
-                            val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                            ty::ConstKind::Unevaluated(ty::Unevaluated {
                                 def,
                                 substs_: Some(InternalSubsts::for_item(
                                     tcx,
@@ -866,7 +866,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                                 )),
                                 promoted: Some(promoted_id),
                             }),
-                        })
+                        )
                         .into(),
                 }))
             };

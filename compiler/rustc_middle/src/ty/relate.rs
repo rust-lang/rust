@@ -598,14 +598,14 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                 au.substs(tcx),
                 bu.substs(tcx),
             )?;
-            return Ok(tcx.mk_const(ty::Const {
-                val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+            return Ok(tcx.mk_const(
+                a.ty,
+                ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: au.def,
                     substs_: Some(substs),
                     promoted: au.promoted,
                 }),
-                ty: a.ty,
-            }));
+            ));
         }
         _ => false,
     };

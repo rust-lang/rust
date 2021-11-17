@@ -743,10 +743,10 @@ fn bound_vars_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
         }
 
         ty::GenericParamDefKind::Const { .. } => tcx
-            .mk_const(ty::Const {
-                val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
-                ty: tcx.type_of(param.def_id),
-            })
+            .mk_const(
+                tcx.type_of(param.def_id),
+                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
+            )
             .into(),
     })
 }
@@ -763,7 +763,7 @@ fn binders_for<'tcx>(
                 chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
             }
             ty::subst::GenericArgKind::Const(c) => {
-                chalk_ir::VariableKind::Const(c.ty.lower_into(interner))
+                chalk_ir::VariableKind::Const(c.ty().lower_into(interner))
             }
         }),
     )

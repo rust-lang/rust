@@ -239,10 +239,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
             c // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
             let c = self.infcx.shallow_resolve(c);
-            match c.val {
+            match c.val() {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     self.err = Some(FixupError::UnresolvedConst(vid));
-                    return self.tcx().const_error(c.ty);
+                    return self.tcx().const_error(c.ty());
                 }
                 ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);

@@ -619,7 +619,7 @@ where
             b = self.infcx.shallow_resolve(b);
         }
 
-        match b.val {
+        match b.val() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
                 bug!("unexpected inference var {:?}", b)
@@ -1001,7 +1001,7 @@ where
         a: &'tcx ty::Const<'tcx>,
         _: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        match a.val {
+        match a.val() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }
@@ -1016,7 +1016,7 @@ where
                             origin: var_value.origin,
                             val: ConstVariableValue::Unknown { universe: self.universe },
                         });
-                        Ok(self.tcx().mk_const_var(new_var_id, a.ty))
+                        Ok(self.tcx().mk_const_var(new_var_id, a.ty()))
                     }
                 }
             }

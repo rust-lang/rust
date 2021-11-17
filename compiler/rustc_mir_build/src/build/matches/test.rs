@@ -59,8 +59,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             },
 
             PatKind::Range(range) => {
-                assert_eq!(range.lo.ty, match_pair.pattern.ty);
-                assert_eq!(range.hi.ty, match_pair.pattern.ty);
+                assert_eq!(range.lo.ty(), match_pair.pattern.ty);
+                assert_eq!(range.hi.ty(), match_pair.pattern.ty);
                 Test { span: match_pair.pattern.span, kind: TestKind::Range(range) }
             }
 
@@ -270,7 +270,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         ty,
                     );
                 } else if let [success, fail] = *make_target_blocks(self) {
-                    assert_eq!(value.ty, ty);
+                    assert_eq!(value.ty(), ty);
                     let expect = self.literal_operand(test.span, value);
                     let val = Operand::Copy(place);
                     self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
@@ -396,7 +396,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => None,
         };
         let opt_ref_ty = unsize(ty);
-        let opt_ref_test_ty = unsize(value.ty);
+        let opt_ref_test_ty = unsize(value.ty());
         match (opt_ref_ty, opt_ref_test_ty) {
             // nothing to do, neither is an array
             (None, None) => {}
@@ -653,7 +653,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let tcx = self.tcx;
 
-                    let test_ty = test.lo.ty;
+                    let test_ty = test.lo.ty();
                     let lo = compare_const_vals(tcx, test.lo, pat.hi, self.param_env, test_ty)?;
                     let hi = compare_const_vals(tcx, test.hi, pat.lo, self.param_env, test_ty)?;
 
@@ -782,8 +782,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let tcx = self.tcx;
 
-        let a = compare_const_vals(tcx, range.lo, value, self.param_env, range.lo.ty)?;
-        let b = compare_const_vals(tcx, value, range.hi, self.param_env, range.lo.ty)?;
+        let a = compare_const_vals(tcx, range.lo, value, self.param_env, range.lo.ty())?;
+        let b = compare_const_vals(tcx, value, range.hi, self.param_env, range.lo.ty())?;
 
         match (b, range.end) {
             (Less, _) | (Equal, RangeEnd::Included) if a != Greater => Some(true),

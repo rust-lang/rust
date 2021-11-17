@@ -552,7 +552,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         val: &ty::Const<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        match val.val {
+        match val.val() {
             ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
             ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorReported)),
             ty::ConstKind::Unevaluated(uv) => {
@@ -562,7 +562,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
                 span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", val)
             }
-            ty::ConstKind::Value(val_val) => self.const_val_to_op(val_val, val.ty, layout),
+            ty::ConstKind::Value(val_val) => self.const_val_to_op(val_val, val.ty(), layout),
         }
     }
 

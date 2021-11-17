@@ -717,13 +717,13 @@ impl<'tcx> TyCtxt<'tcx> {
                 ))
             },
             |c, ty| {
-                self.mk_const(ty::Const {
-                    val: ty::ConstKind::Bound(
+                self.mk_const(
+                    ty,
+                    ty::ConstKind::Bound(
                         ty::INNERMOST,
                         ty::BoundVar::from_usize(c.as_usize() + bound_vars),
                     ),
-                    ty,
-                })
+                )
             },
         )
     }
@@ -981,7 +981,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
                 ct
             } else {
                 let debruijn = debruijn.shifted_in(self.amount);
-                self.tcx.mk_const(ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty })
+                self.tcx.mk_const(ty, ty::ConstKind::Bound(debruijn, bound_ct))
             }
         } else {
             ct.super_fold_with(self)

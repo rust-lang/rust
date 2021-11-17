@@ -369,8 +369,8 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             },
             TyKind::Array(ty, c) => {
                 let ty = ty.lower_into(interner);
-                let c = c.lower_into(interner);
-                ty::Array(ty, interner.tcx.mk_const(c))
+                let (c_ty, c_val) = c.lower_into(interner);
+                ty::Array(ty, interner.tcx.mk_const(c_ty, c_val))
             }
             TyKind::FnDef(id, substitution) => ty::FnDef(id.0, substitution.lower_into(interner)),
             TyKind::Closure(closure, substitution) => {
@@ -488,8 +488,8 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
 
 impl<'tcx> LowerInto<'tcx, chalk_ir::Const<RustInterner<'tcx>>> for ty::Const<'tcx> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::Const<RustInterner<'tcx>> {
-        let ty = self.ty.lower_into(interner);
-        let value = match self.val {
+        let ty = self.ty().lower_into(interner);
+        let value = match self.val() {
             ty::ConstKind::Value(val) => {
                 chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: val })
             }
@@ -502,8 +502,10 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Const<RustInterner<'tcx>>> for ty::Const<'t
     }
 }
 
-impl<'tcx> LowerInto<'tcx, ty::Const<'tcx>> for &chalk_ir::Const<RustInterner<'tcx>> {
-    fn lower_into(self, interner: &RustInterner<'tcx>) -> ty::Const<'tcx> {
+impl<'tcx> LowerInto<'tcx, (Ty<'tcx>, ty::ConstKind<'tcx>)>
+    for &chalk_ir::Const<RustInterner<'tcx>>
+{
+    fn lower_into(self, interner: &RustInterner<'tcx>) -> (Ty<'tcx>, ty::ConstKind<'tcx>) {
         let data = self.data(interner);
         let ty = data.ty.lower_into(interner);
         let val = match data.value {
@@ -515,7 +517,7 @@ impl<'tcx> LowerInto<'tcx, ty::Const<'tcx>> for &chalk_ir::Const<RustInterner<'t
             chalk_ir::ConstValue::Placeholder(_p) => unimplemented!(),
             chalk_ir::ConstValue::Concrete(c) => ty::ConstKind::Value(c.interned),
         };
-        ty::Const { ty, val }
+        (ty, val)
     }
 }
 
@@ -550,8 +552,8 @@ impl<'tcx> LowerInto<'tcx, ty::subst::GenericArg<'tcx>>
                 r.into()
             }
             chalk_ir::GenericArgData::Const(c) => {
-                let c: ty::Const<'tcx> = c.lower_into(interner);
-                interner.tcx.mk_const(c).into()
+                let (ty, val) = c.lower_into(interner);
+                interner.tcx.mk_const(ty, val).into()
             }
         }
     }

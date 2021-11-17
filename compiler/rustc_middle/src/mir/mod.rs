@@ -2497,7 +2497,7 @@ pub enum ConstantKind<'tcx> {
 
 impl Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
-        match self.literal.const_for_ty()?.val.try_to_scalar() {
+        match self.literal.const_for_ty()?.val().try_to_scalar() {
             Some(Scalar::Ptr(ptr, _size)) => match tcx.global_alloc(ptr.provenance) {
                 GlobalAlloc::Static(def_id) => {
                     assert!(!tcx.is_thread_local_static(def_id));
@@ -2532,7 +2532,7 @@ impl ConstantKind<'tcx> {
 
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
-            ConstantKind::Ty(c) => c.ty,
+            ConstantKind::Ty(c) => c.ty(),
             ConstantKind::Val(_, ty) => ty,
         }
     }
@@ -2540,7 +2540,7 @@ impl ConstantKind<'tcx> {
     #[inline]
     pub fn try_to_value(self) -> Option<interpret::ConstValue<'tcx>> {
         match self {
-            ConstantKind::Ty(c) => c.val.try_to_value(),
+            ConstantKind::Ty(c) => c.val().try_to_value(),
             ConstantKind::Val(val, _) => Some(val),
         }
     }

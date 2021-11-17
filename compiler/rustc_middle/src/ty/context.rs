@@ -174,6 +174,11 @@ impl<'tcx> CtxtInterners<'tcx> {
             })
             .0
     }
+
+    #[inline(never)]
+    fn intern_const(&self, ty: Ty<'tcx>, val: ty::ConstKind<'tcx>) -> &'tcx Const<'tcx> {
+        self.const_.intern(Const { ty, val }, |c| Interned(self.arena.alloc(c))).0
+    }
 }
 
 pub struct CommonTypes<'tcx> {
@@ -1209,7 +1214,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_error(self, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
         self.sess
             .delay_span_bug(DUMMY_SP, "ty::ConstKind::Error constructed but no error reported.");
-        self.mk_const(ty::Const { val: ty::ConstKind::Error(DelaySpanBugEmitted(())), ty })
+        self.mk_const(ty, ty::ConstKind::Error(DelaySpanBugEmitted(())))
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
@@ -2053,6 +2058,27 @@ impl<'tcx, T> Borrow<[T]> for Interned<'tcx, List<T>> {
     }
 }
 
+impl<'tcx> PartialEq for Interned<'tcx, Const<'tcx>> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<'tcx> Eq for Interned<'tcx, Const<'tcx>> {}
+
+impl<'tcx> Hash for Interned<'tcx, Const<'tcx>> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.ty.hash(state);
+        self.0.val.hash(state);
+    }
+}
+
+impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
+    fn borrow(&self) -> &Const<'tcx> {
+        &self.0
+    }
+}
+
 macro_rules! direct_interners {
     ($($name:ident: $method:ident($ty:ty),)+) => {
         $(impl<'tcx> PartialEq for Interned<'tcx, $ty> {
@@ -2087,7 +2113,6 @@ macro_rules! direct_interners {
 
 direct_interners! {
     region: mk_region(RegionKind),
-    const_: mk_const(Const<'tcx>),
     const_allocation: intern_const_alloc(Allocation),
     layout: intern_layout(Layout),
 }
@@ -2199,6 +2224,11 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_predicate(self, binder: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
         let inner = self.interners.intern_predicate(binder);
         Predicate { inner }
+    }
+
+    #[inline]
+    pub fn mk_const(self, ty: Ty<'tcx>, val: ty::ConstKind<'tcx>) -> &'tcx Const<'tcx> {
+        self.interners.intern_const(ty, val)
     }
 
     #[inline]
@@ -2410,7 +2440,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
-        self.mk_const(ty::Const { val: ty::ConstKind::Infer(InferConst::Var(v)), ty })
+        self.mk_const(ty, ty::ConstKind::Infer(InferConst::Var(v)))
     }
 
     #[inline]
@@ -2430,7 +2460,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_infer(self, ic: InferConst<'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
-        self.mk_const(ty::Const { val: ty::ConstKind::Infer(ic), ty })
+        self.mk_const(ty, ty::ConstKind::Infer(ic))
     }
 
     #[inline]
@@ -2440,7 +2470,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_param(self, index: u32, name: Symbol, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
-        self.mk_const(ty::Const { val: ty::ConstKind::Param(ParamConst { index, name }), ty })
+        self.mk_const(ty, ty::ConstKind::Param(ParamConst { index, name }))
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
