@@ -503,16 +503,16 @@ fn hover_const_static() {
     check(
         r#"const foo$0: u32 = 123;"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                const foo: u32
-                ```
-            "#]],
+            ```rust
+            const foo: u32 = 123
+            ```
+        "#]],
     );
     check(
         r#"static foo$0: u32 = 456;"#,
@@ -788,16 +788,16 @@ fn main() {
 }
 "#,
         expect![[r#"
-                *C*
+            *C*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                const C: u32
-                ```
-            "#]],
+            ```rust
+            const C: u32 = 1
+            ```
+        "#]],
     )
 }
 
@@ -3176,20 +3176,20 @@ fn foo() {
 }
 "#,
         expect![[r#"
-                *FOO*
+            *FOO*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                const FOO: usize
-                ```
+            ```rust
+            const FOO: usize = 3
+            ```
 
-                ---
+            ---
 
-                This is a doc
-            "#]],
+            This is a doc
+        "#]],
     );
 }
 
