@@ -9,7 +9,7 @@ use base_db::{CrateId, Edition, FileId, ProcMacroId};
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{
     ast_id_map::FileAstId,
-    builtin_attr_macro::{find_builtin_attr, is_builtin_test_or_bench_attr},
+    builtin_attr_macro::find_builtin_attr,
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
@@ -781,7 +781,7 @@ impl DefCollector<'_> {
     }
 
     fn resolve_extern_crate(&self, name: &Name) -> PerNs {
-        if name == &name!(self) {
+        if *name == name!(self) {
             cov_mark::hit!(extern_crate_self_as);
             let root = match self.def_map.block {
                 Some(_) => {
@@ -1105,7 +1105,7 @@ impl DefCollector<'_> {
                                 let mod_dir = self.mod_dirs[&directive.module_id].clone();
                                 self.skip_attrs.insert(InFile::new(file_id, *mod_item), attr.id);
                                 ModCollector {
-                                    def_collector: &mut *self,
+                                    def_collector: self,
                                     macro_depth: directive.depth,
                                     module_id: directive.module_id,
                                     tree_id: TreeId::new(file_id, None),
@@ -1119,6 +1119,65 @@ impl DefCollector<'_> {
                                 return false;
                             }
                         }
+                    }
+
+                    let def = resolver(ast_id.path.clone()).filter(MacroDefId::is_attribute);
+                    if matches!(
+                        def,
+                        Some(MacroDefId {  kind:MacroDefKind::BuiltInAttr(expander, _),.. })
+                        if expander.is_derive()
+                    ) {
+                        // Resolved to derive
+                        let file_id = ast_id.ast_id.file_id;
+                        let item_tree = self.db.file_item_tree(file_id);
+
+                        let ast_id: FileAstId<ast::Item> = match *mod_item {
+                            ModItem::Struct(it) => item_tree[it].ast_id.upcast(),
+                            ModItem::Union(it) => item_tree[it].ast_id.upcast(),
+                            ModItem::Enum(it) => item_tree[it].ast_id.upcast(),
+                            _ => {
+                                // Cannot use derive on this item.
+                                // FIXME: diagnose
+                                res = ReachedFixedPoint::No;
+                                return false;
+                            }
+                        };
+
+                        match attr.parse_derive() {
+                            Some(derive_macros) => {
+                                for path in derive_macros {
+                                    let ast_id = AstIdWithPath::new(file_id, ast_id, path);
+                                    self.unresolved_macros.push(MacroDirective {
+                                        module_id: directive.module_id,
+                                        depth: directive.depth + 1,
+                                        kind: MacroDirectiveKind::Derive {
+                                            ast_id,
+                                            derive_attr: attr.id,
+                                        },
+                                    });
+                                }
+                            }
+                            None => {
+                                // FIXME: diagnose
+                                tracing::debug!("malformed derive: {:?}", attr);
+                            }
+                        }
+
+                        let mod_dir = self.mod_dirs[&directive.module_id].clone();
+                        self.skip_attrs.insert(InFile::new(file_id, *mod_item), attr.id);
+                        ModCollector {
+                            def_collector: &mut *self,
+                            macro_depth: directive.depth,
+                            module_id: directive.module_id,
+                            tree_id: TreeId::new(file_id, None),
+                            item_tree: &item_tree,
+                            mod_dir,
+                        }
+                        .collect(&[*mod_item]);
+
+                        // Remove the original directive since we resolved it.
+                        res = ReachedFixedPoint::No;
+                        return false;
                     }
 
                     if !self.db.enable_proc_attr_macros() {
@@ -1138,7 +1197,11 @@ impl DefCollector<'_> {
 
                             // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
                             // due to duplicating functions into macro expansions
-                            if is_builtin_test_or_bench_attr(loc.def) {
+                            if matches!(
+                                loc.def.kind,
+                                MacroDefKind::BuiltInAttr(expander, _)
+                                if expander.is_test() || expander.is_bench()
+                            ) {
                                 let file_id = ast_id.ast_id.file_id;
                                 let item_tree = self.db.file_item_tree(file_id);
                                 let mod_dir = self.mod_dirs[&directive.module_id].clone();
@@ -1281,7 +1344,7 @@ impl DefCollector<'_> {
         for directive in &self.unresolved_macros {
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to } => {
-                    match macro_call_as_call_id(
+                    let macro_call_as_call_id = macro_call_as_call_id(
                         ast_id,
                         *expand_to,
                         self.db,
@@ -1297,15 +1360,13 @@ impl DefCollector<'_> {
                             resolved_res.resolved_def.take_macros()
                         },
                         &mut |_| (),
-                    ) {
-                        Ok(_) => (),
-                        Err(UnresolvedMacro { path }) => {
-                            self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
-                                directive.module_id,
-                                ast_id.ast_id,
-                                path,
-                            ));
-                        }
+                    );
+                    if let Err(UnresolvedMacro { path }) = macro_call_as_call_id {
+                        self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
+                            directive.module_id,
+                            ast_id.ast_id,
+                            path,
+                        ));
                     }
                 }
                 MacroDirectiveKind::Derive { .. } | MacroDirectiveKind::Attr { .. } => {
@@ -1747,26 +1808,23 @@ impl ModCollector<'_, '_> {
             });
 
         for attr in iter {
-            if attr.path.as_ident() == Some(&hir_expand::name![derive]) {
-                self.collect_derive(attr, mod_item);
-            } else if self.is_builtin_or_registered_attr(&attr.path) {
+            if self.is_builtin_or_registered_attr(&attr.path) {
                 continue;
-            } else {
-                tracing::debug!("non-builtin attribute {}", attr.path);
-
-                let ast_id = AstIdWithPath::new(
-                    self.file_id(),
-                    mod_item.ast_id(self.item_tree),
-                    attr.path.as_ref().clone(),
-                );
-                self.def_collector.unresolved_macros.push(MacroDirective {
-                    module_id: self.module_id,
-                    depth: self.macro_depth + 1,
-                    kind: MacroDirectiveKind::Attr { ast_id, attr: attr.clone(), mod_item },
-                });
-
-                return Err(());
             }
+            tracing::debug!("non-builtin attribute {}", attr.path);
+
+            let ast_id = AstIdWithPath::new(
+                self.file_id(),
+                mod_item.ast_id(self.item_tree),
+                attr.path.as_ref().clone(),
+            );
+            self.def_collector.unresolved_macros.push(MacroDirective {
+                module_id: self.module_id,
+                depth: self.macro_depth + 1,
+                kind: MacroDirectiveKind::Attr { ast_id, attr: attr.clone(), mod_item },
+            });
+
+            return Err(());
         }
 
         Ok(())
@@ -1798,36 +1856,6 @@ impl ModCollector<'_, '_> {
         }
 
         false
-    }
-
-    fn collect_derive(&mut self, attr: &Attr, mod_item: ModItem) {
-        let ast_id: FileAstId<ast::Item> = match mod_item {
-            ModItem::Struct(it) => self.item_tree[it].ast_id.upcast(),
-            ModItem::Union(it) => self.item_tree[it].ast_id.upcast(),
-            ModItem::Enum(it) => self.item_tree[it].ast_id.upcast(),
-            _ => {
-                // Cannot use derive on this item.
-                // FIXME: diagnose
-                return;
-            }
-        };
-
-        match attr.parse_derive() {
-            Some(derive_macros) => {
-                for path in derive_macros {
-                    let ast_id = AstIdWithPath::new(self.file_id(), ast_id, path);
-                    self.def_collector.unresolved_macros.push(MacroDirective {
-                        module_id: self.module_id,
-                        depth: self.macro_depth + 1,
-                        kind: MacroDirectiveKind::Derive { ast_id, derive_attr: attr.id },
-                    });
-                }
-            }
-            None => {
-                // FIXME: diagnose
-                tracing::debug!("malformed derive: {:?}", attr);
-            }
-        }
     }
 
     /// If `attrs` registers a procedural macro, collects its definition.

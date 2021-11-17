@@ -367,9 +367,7 @@ fn main() {
         check(
             r#"
 //- proc_macros: identity
-
-#[rustc_builtin_macro]
-pub macro Clone {}
+//- minicore: clone, derive
 
 #[proc_macros::identity]
 #[derive(C$0lone)]
@@ -377,7 +375,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl< >crate::clone::Clone for Foo< >{}
+                impl< >core::clone::Clone for Foo< >{}
 
             "#]],
         );
@@ -387,10 +385,7 @@ struct Foo {}
     fn macro_expand_derive2() {
         check(
             r#"
-#[rustc_builtin_macro]
-pub macro Clone {}
-#[rustc_builtin_macro]
-pub macro Copy {}
+//- minicore: copy, clone, derive
 
 #[derive(Cop$0y)]
 #[derive(Clone)]
@@ -398,7 +393,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl< >crate::marker::Copy for Foo< >{}
+                impl< >core::marker::Copy for Foo< >{}
 
             "#]],
         );
@@ -408,19 +403,16 @@ struct Foo {}
     fn macro_expand_derive_multi() {
         check(
             r#"
-#[rustc_builtin_macro]
-pub macro Clone {}
-#[rustc_builtin_macro]
-pub macro Copy {}
+//- minicore: copy, clone, derive
 
 #[derive(Cop$0y, Clone)]
 struct Foo {}
 "#,
             expect![[r#"
                 Copy, Clone
-                impl< >crate::marker::Copy for Foo< >{}
+                impl< >core::marker::Copy for Foo< >{}
 
-                impl< >crate::clone::Clone for Foo< >{}
+                impl< >core::clone::Clone for Foo< >{}
 
             "#]],
         );

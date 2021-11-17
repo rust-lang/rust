@@ -805,6 +805,9 @@ bar = {path = "../bar"}
 
 //- /foo/src/main.rs
 use bar::Bar;
+
+#[rustc_builtin_macro]
+macro derive($item:item) {}
 trait Bar {
   fn bar();
 }

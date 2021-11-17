@@ -974,58 +974,9 @@ fn infer_builtin_macros_env() {
 fn infer_derive_clone_simple() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: derive, clone
 #[derive(Clone)]
 struct S;
-fn test() {
-    S.clone();
-} //^^^^^^^^^ S
-
-//- /lib.rs crate:core
-pub mod prelude {
-    pub mod rust_2018 {
-        #[rustc_builtin_macro]
-        pub macro Clone {}
-        pub use crate::clone::Clone;
-    }
-}
-
-pub mod clone {
-    pub trait Clone {
-        fn clone(&self) -> Self;
-    }
-}
-"#,
-    );
-}
-
-#[test]
-fn infer_derive_clone_in_core() {
-    check_types(
-        r#"
-//- /lib.rs crate:core
-#[prelude_import]
-use prelude::rust_2018::*;
-
-pub mod prelude {
-    pub mod rust_2018 {
-        #[rustc_builtin_macro]
-        pub macro Clone {}
-        pub use crate::clone::Clone;
-    }
-}
-
-pub mod clone {
-    pub trait Clone {
-        fn clone(&self) -> Self;
-    }
-}
-
-#[derive(Clone)]
-pub struct S;
-
-//- /main.rs crate:main deps:core
-use core::S;
 fn test() {
     S.clone();
 } //^^^^^^^^^ S
@@ -1037,7 +988,7 @@ fn test() {
 fn infer_derive_clone_with_params() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: clone, derive
 #[derive(Clone)]
 struct S;
 #[derive(Clone)]
@@ -1048,21 +999,6 @@ fn test() {
     x;
   //^ (Wrapper<S>, {unknown})
 }
-
-//- /lib.rs crate:core
-pub mod prelude {
-    pub mod rust_2018 {
-        #[rustc_builtin_macro]
-        pub macro Clone {}
-        pub use crate::clone::Clone;
-    }
-}
-
-pub mod clone {
-    pub trait Clone {
-        fn clone(&self) -> Self;
-    }
-}
 "#,
     );
 }
@@ -1072,7 +1008,7 @@ fn infer_custom_derive_simple() {
     // FIXME: this test current now do nothing
     check_types(
         r#"
-//- /main.rs crate:main
+//- minicore: derive
 use foo::Foo;
 
 #[derive(Foo)]
