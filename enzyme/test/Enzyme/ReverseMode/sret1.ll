@@ -47,15 +47,15 @@ attributes #2 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-
 ; CHECK: define {{(dso_local )?}}void @_Z5dtestddd(%struct.Diffe* noalias sret %agg.result, double %x, double %y, double %z)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call { double, double, double } @diffe_Z4testddd(double %x, double %y, double %z, double 1.000000e+00)
-; CHECK-NEXT:   %1 = getelementptr inbounds %struct.Diffe, %struct.Diffe* %agg.result, i32 0, i32 0
-; CHECK-NEXT:   %2 = extractvalue { double, double, double } %0, 0
-; CHECK-NEXT:   store double %2, double* %1
-; CHECK-NEXT:   %3 = getelementptr inbounds %struct.Diffe, %struct.Diffe* %agg.result, i32 0, i32 1
-; CHECK-NEXT:   %4 = extractvalue { double, double, double } %0, 1
-; CHECK-NEXT:   store double %4, double* %3
-; CHECK-NEXT:   %5 = getelementptr inbounds %struct.Diffe, %struct.Diffe* %agg.result, i32 0, i32 2
-; CHECK-NEXT:   %6 = extractvalue { double, double, double } %0, 2
-; CHECK-NEXT:   store double %6, double* %5
+; CHECK-DAG:    %[[a0:.+]] = getelementptr inbounds %struct.Diffe, %struct.Diffe* %agg.result, i32 0, i32 0
+; CHECK-DAG:    %[[a1:.+]] = extractvalue { double, double, double } %0, 0
+; CHECK-NEXT:   store double %[[a1]], double* %[[a0]]
+; CHECK-DAG:    %[[b0:.+]] = getelementptr inbounds %struct.Diffe, %struct.Diffe* %agg.result, i32 0, i32 1
+; CHECK-DAG:    %[[b1:.+]] = extractvalue { double, double, double } %0, 1
+; CHECK-NEXT:   store double %[[b1]], double* %[[b0]]
+; CHECK-DAG:    %[[c0:.+]] = getelementptr inbounds %struct.Diffe, %struct.Diffe* %agg.result, i32 0, i32 2
+; CHECK-DAG:    %[[c1:.+]] = extractvalue { double, double, double } %0, 2
+; CHECK-NEXT:   store double %[[c1]], double* %[[c0]]
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

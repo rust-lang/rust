@@ -1440,10 +1440,15 @@ public:
     if (Mode == DerivativeMode::ReverseModePrimal)
       return;
 
-    auto st = cast<StructType>(IVI.getType());
     bool hasNonPointer = false;
-    for (unsigned i = 0; i < st->getNumElements(); ++i) {
-      if (!st->getElementType(i)->isPointerTy()) {
+    if (auto st = dyn_cast<StructType>(IVI.getType())) {
+      for (unsigned i = 0; i < st->getNumElements(); ++i) {
+        if (!st->getElementType(i)->isPointerTy()) {
+          hasNonPointer = true;
+        }
+      }
+    } else if (auto at = dyn_cast<ArrayType>(IVI.getType())) {
+      if (!at->getElementType()->isPointerTy()) {
         hasNonPointer = true;
       }
     }

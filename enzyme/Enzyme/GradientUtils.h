@@ -1755,6 +1755,25 @@ public:
         }
       }
       return addedSelects;
+    } else if (auto at = dyn_cast<ArrayType>(old->getType())) {
+      assert(!mask);
+      if (mask)
+        llvm_unreachable("cannot handle recursive addToDiffe with mask");
+      if (at->getElementType()->isPointerTy())
+        return addedSelects;
+      for (unsigned i = 0; i < at->getNumElements(); ++i) {
+        // TODO pass in full type tree here and recurse into tree.
+        Value *v = ConstantInt::get(Type::getInt32Ty(at->getContext()), i);
+        SmallVector<Value *, 2> idx2(idxs.begin(), idxs.end());
+        idx2.push_back(v);
+        auto selects = addToDiffe(
+            val, BuilderM.CreateExtractValue(dif, ArrayRef<unsigned>(i)),
+            BuilderM, nullptr, idx2);
+        for (auto select : selects) {
+          addedSelects.push_back(select);
+        }
+      }
+      return addedSelects;
     } else {
       llvm_unreachable("unknown type to add to diffe");
       exit(1);
