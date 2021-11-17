@@ -246,7 +246,12 @@ pub fn resolve_interior<'a, 'tcx>(
         )
         .consume_body(body);
 
-        let mut drop_range_visitor = DropRangeVisitor::from(expr_use_visitor);
+        let region_scope_tree = fcx.tcx.region_scope_tree(def_id);
+
+        let mut drop_range_visitor = DropRangeVisitor::from(
+            expr_use_visitor,
+            region_scope_tree.body_expr_count(body.id()).unwrap_or(0),
+        );
         intravisit::walk_body(&mut drop_range_visitor, body);
 
         drop_range_visitor.drop_ranges.propagate_to_fixpoint();
@@ -254,7 +259,7 @@ pub fn resolve_interior<'a, 'tcx>(
         InteriorVisitor {
             fcx,
             types: FxIndexSet::default(),
-            region_scope_tree: fcx.tcx.region_scope_tree(def_id),
+            region_scope_tree,
             expr_count: 0,
             kind,
             prev_unresolved_span: None,
@@ -699,11 +704,12 @@ struct DropRangeVisitor<'tcx> {
 }
 
 impl<'tcx> DropRangeVisitor<'tcx> {
-    fn from(uses: ExprUseDelegate<'tcx>) -> Self {
+    fn from(uses: ExprUseDelegate<'tcx>, num_exprs: usize) -> Self {
         debug!("consumed_places: {:?}", uses.consumed_places);
         let drop_ranges = DropRanges::new(
             uses.consumed_places.iter().flat_map(|(_, places)| places.iter().copied()),
             &uses.hir,
+            num_exprs,
         );
         Self {
             hir: uses.hir,
@@ -851,18 +857,18 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
             ExprKind::If(test, if_true, if_false) => {
                 self.visit_expr(test);
 
-                let fork = self.expr_count - 1;
+                let fork = self.expr_count;
 
-                self.drop_ranges.add_control_edge(fork, self.expr_count);
+                self.drop_ranges.add_control_edge(fork, self.expr_count + 1);
                 self.visit_expr(if_true);
-                let true_end = self.expr_count - 1;
+                let true_end = self.expr_count;
 
+                self.drop_ranges.add_control_edge(fork, self.expr_count + 1);
                 if let Some(if_false) = if_false {
-                    self.drop_ranges.add_control_edge(fork, self.expr_count);
                     self.visit_expr(if_false);
                 }
 
-                self.drop_ranges.add_control_edge(true_end, self.expr_count);
+                self.drop_ranges.add_control_edge(true_end, self.expr_count + 1);
             }
             ExprKind::Assign(lhs, rhs, _) => {
                 self.visit_expr(lhs);
@@ -873,13 +879,13 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
             ExprKind::Loop(body, ..) => {
                 let loop_begin = self.expr_count;
                 self.visit_block(body);
-                self.drop_ranges.add_control_edge(self.expr_count - 1, loop_begin);
+                self.drop_ranges.add_control_edge(self.expr_count, loop_begin);
             }
             ExprKind::Match(scrutinee, arms, ..) => {
                 self.visit_expr(scrutinee);
 
                 let fork = self.expr_count - 1;
-                let arm_drops = arms
+                let arm_end_ids = arms
                     .iter()
                     .map(|Arm { pat, body, guard, .. }| {
                         self.drop_ranges.add_control_edge(fork, self.expr_count);
@@ -893,16 +899,22 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                             None => (),
                         }
                         self.visit_expr(body);
-                        self.expr_count - 1
+                        self.expr_count
                     })
                     .collect::<Vec<_>>();
-                arm_drops.into_iter().for_each(|arm_end| {
-                    self.drop_ranges.add_control_edge(arm_end, self.expr_count)
+                arm_end_ids.into_iter().for_each(|arm_end| {
+                    self.drop_ranges.add_control_edge(arm_end, self.expr_count + 1)
                 });
             }
+            ExprKind::Break(hir::Destination { target_id: Ok(target), .. }, ..)
+            | ExprKind::Continue(hir::Destination { target_id: Ok(target), .. }, ..) => {
+                self.drop_ranges.add_control_edge_hir_id(self.expr_count, target);
+            }
+
             _ => intravisit::walk_expr(self, expr),
         }
 
+        self.drop_ranges.add_node_mapping(expr.hir_id, self.expr_count);
         self.expr_count += 1;
         self.consume_expr(expr);
         if let Some(expr) = reinit {
