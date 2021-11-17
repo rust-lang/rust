@@ -82,6 +82,33 @@ pub(crate) fn emit_unescape_error(
                         Applicability::MachineApplicable,
                     );
                 }
+            } else {
+                let printable: Vec<char> = lit
+                    .chars()
+                    .filter(|&x| {
+                        unicode_width::UnicodeWidthChar::width(x).unwrap_or(0) != 0
+                            && !x.is_whitespace()
+                    })
+                    .collect();
+
+                if let [ch] = printable.as_slice() {
+                    has_help = true;
+
+                    handler.span_note(
+                        span,
+                        &format!(
+                            "there are non-printing characters, the full sequence is `{}`",
+                            lit.escape_default(),
+                        ),
+                    );
+
+                    handler.span_suggestion(
+                        span,
+                        "consider removing the non-printing characters",
+                        ch.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
 
             if !has_help {
