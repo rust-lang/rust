@@ -269,3 +269,35 @@ fn uninit_const_assume_init_read() {
     const FOO: u32 = unsafe { MaybeUninit::new(42).assume_init_read() };
     assert_eq!(FOO, 42);
 }
+
+#[test]
+fn const_maybe_uninit() {
+    use std::ptr;
+
+    #[derive(Debug, PartialEq)]
+    struct Foo {
+        x: u8,
+        y: u8,
+    }
+
+    const FIELD_BY_FIELD: Foo = unsafe {
+        let mut val = MaybeUninit::uninit();
+        init_y(&mut val); // order shouldn't matter
+        init_x(&mut val);
+        val.assume_init()
+    };
+
+    const fn init_x(foo: &mut MaybeUninit<Foo>) {
+        unsafe {
+            *ptr::addr_of_mut!((*foo.as_mut_ptr()).x) = 1;
+        }
+    }
+
+    const fn init_y(foo: &mut MaybeUninit<Foo>) {
+        unsafe {
+            *ptr::addr_of_mut!((*foo.as_mut_ptr()).y) = 2;
+        }
+    }
+
+    assert_eq!(FIELD_BY_FIELD, Foo { x: 1, y: 2 });
+}
