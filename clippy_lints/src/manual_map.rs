@@ -179,37 +179,22 @@ impl LateLintPass<'_> for ManualMap {
                     } else {
                         ""
                     };
+                    let expr_snip = snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0;
                     if some_expr.needs_unsafe_block {
-                        format!(
-                            "|{}{}| unsafe {{ {} }}",
-                            annotation,
-                            some_binding,
-                            snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0
-                        )
+                        format!("|{}{}| unsafe {{ {} }}", annotation, some_binding, expr_snip)
                     } else {
-                        format!(
-                            "|{}{}| {}",
-                            annotation,
-                            some_binding,
-                            snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0
-                        )
+                        format!("|{}{}| {}", annotation, some_binding, expr_snip)
                     }
                 }
             }
         } else if !is_wild_none && explicit_ref.is_none() {
             // TODO: handle explicit reference annotations.
+            let pat_snip = snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0;
+            let expr_snip = snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0;
             if some_expr.needs_unsafe_block {
-                format!(
-                    "|{}| unsafe {{ {} }}",
-                    snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0,
-                    snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0
-                )
+                format!("|{}| unsafe {{ {} }}", pat_snip, expr_snip)
             } else {
-                format!(
-                    "|{}| {}",
-                    snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0,
-                    snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0
-                )
+                format!("|{}| {}", pat_snip, expr_snip)
             }
         } else {
             // Refutable bindings and mixed reference annotations can't be handled by `map`.
