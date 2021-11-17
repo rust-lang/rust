@@ -1,5 +1,4 @@
 use std::hash::{Hash, Hasher};
-use std::ptr;
 
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::{LitToConstInput, Scalar};
@@ -21,7 +20,7 @@ pub use kind::*;
 pub use valtree::*;
 
 /// Typed constant value.
-#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, PartialEq, Eq, Ord, PartialOrd)]
 #[derive(HashStable)]
 pub struct Const<'tcx> {
     pub(super) ty: Ty<'tcx>,
@@ -268,14 +267,6 @@ impl<'tcx> Const<'tcx> {
             .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
     }
 }
-
-impl PartialEq for Const<'tcx> {
-    fn eq(&self, other: &Self) -> bool {
-        ptr::eq(self, other)
-    }
-}
-
-impl Eq for Const<'tcx> {}
 
 impl Hash for Const<'tcx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
