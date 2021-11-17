@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:9:5
+  --> $DIR/issue-46983.rs:2:5
    |
 LL | fn foo(x: &u32) -> &'static u32 {
    |           - let's call the lifetime of this reference `'1`

@@ -7,7 +7,7 @@
 
 fn foo(x: &u32) -> &'static u32 {
     &*x
-        //~^ ERROR explicit lifetime required in the type of `x`
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() { }

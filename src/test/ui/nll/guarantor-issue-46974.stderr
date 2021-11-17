@@ -9,13 +9,15 @@ LL |     *s = (2,);
 LL |     *x
    |     -- borrow later used here
 
-error[E0621]: explicit lifetime required in the type of `s`
+error: lifetime may not live long enough
   --> $DIR/guarantor-issue-46974.rs:15:5
    |
+LL | fn bar(s: &Box<(i32,)>) -> &'static i32 {
+   |           - let's call the lifetime of this reference `'1`
+LL |     // FIXME(#46983): error message should be better
 LL |     &s.0
-   |     ^^^^ lifetime `'static` required
+   |     ^^^^ returning this value requires that `'1` must outlive `'static`
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0506, E0621.
-For more information about an error, try `rustc --explain E0506`.
+For more information about this error, try `rustc --explain E0506`.
