@@ -1,0 +1,138 @@
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-errors.rs:9:30
+   |
+LL | fn foo1<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + 2}, { N }>> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { M + 1 }]:`
+note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 2}, N>`
+  --> $DIR/mismatched-const-errors.rs:6:22
+   |
+LL | impl<const M: usize> Trait for HasCastInTraitImpl<M, { M + 1 }> {}
+   |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `HasTrait`
+  --> $DIR/mismatched-const-errors.rs:7:24
+   |
+LL | pub struct HasTrait<T: Trait>(T);
+   |                        ^^^^^ required by this bound in `HasTrait`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-errors.rs:9:30
+   |
+LL | fn foo1<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + 2}, { N }>> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `N`, found `{ N + 2 + 1 }`
+   |
+   = note: expected type `N`
+              found type `{ N + 2 + 1 }`
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-errors.rs:15:30
+   |
+LL | fn foo2<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + 1}, { N + 1 }>> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { M + 1 }]:`
+note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1}, { N + 1 }>`
+  --> $DIR/mismatched-const-errors.rs:6:22
+   |
+LL | impl<const M: usize> Trait for HasCastInTraitImpl<M, { M + 1 }> {}
+   |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `HasTrait`
+  --> $DIR/mismatched-const-errors.rs:7:24
+   |
+LL | pub struct HasTrait<T: Trait>(T);
+   |                        ^^^^^ required by this bound in `HasTrait`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-errors.rs:15:30
+   |
+LL | fn foo2<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + 1}, { N + 1 }>> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ N + 1 }`, found `{ N + 1 + 1 }`
+   |
+   = note: expected type `{ N + 1 }`
+              found type `{ N + 1 + 1 }`
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-errors.rs:21:30
+   |
+LL | fn foo3<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + 1}, { N - 1}>> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { M + 1 }]:`
+note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1}, { N - 1}>`
+  --> $DIR/mismatched-const-errors.rs:6:22
+   |
+LL | impl<const M: usize> Trait for HasCastInTraitImpl<M, { M + 1 }> {}
+   |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `HasTrait`
+  --> $DIR/mismatched-const-errors.rs:7:24
+   |
+LL | pub struct HasTrait<T: Trait>(T);
+   |                        ^^^^^ required by this bound in `HasTrait`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-errors.rs:21:30
+   |
+LL | fn foo3<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + 1}, { N - 1}>> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ N - 1}`, found `{ N + 1 + 1 }`
+   |
+   = note: expected type `{ N - 1}`
+              found type `{ N + 1 + 1 }`
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-errors.rs:28:44
+   |
+LL | fn foo4<const N: usize>(c : [usize; N]) -> HasTrait<HasCastInTraitImpl<{ N - 1}, { N }>> {
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { M + 1 }]:`
+note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N - 1}, N>`
+  --> $DIR/mismatched-const-errors.rs:6:22
+   |
+LL | impl<const M: usize> Trait for HasCastInTraitImpl<M, { M + 1 }> {}
+   |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `HasTrait`
+  --> $DIR/mismatched-const-errors.rs:7:24
+   |
+LL | pub struct HasTrait<T: Trait>(T);
+   |                        ^^^^^ required by this bound in `HasTrait`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-errors.rs:28:44
+   |
+LL | fn foo4<const N: usize>(c : [usize; N]) -> HasTrait<HasCastInTraitImpl<{ N - 1}, { N }>> {
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `N`, found `{ N - 1 + 1 }`
+   |
+   = note: expected type `N`
+              found type `{ N - 1 + 1 }`
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-errors.rs:34:30
+   |
+LL | fn foo5<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + N }, { 2 * N }>> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { M + 1 }]:`
+note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + N }, { 2 * N }>`
+  --> $DIR/mismatched-const-errors.rs:6:22
+   |
+LL | impl<const M: usize> Trait for HasCastInTraitImpl<M, { M + 1 }> {}
+   |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `HasTrait`
+  --> $DIR/mismatched-const-errors.rs:7:24
+   |
+LL | pub struct HasTrait<T: Trait>(T);
+   |                        ^^^^^ required by this bound in `HasTrait`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-errors.rs:34:30
+   |
+LL | fn foo5<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + N }, { 2 * N }>> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ 2 * N }`, found `{ N + N + 1 }`
+   |
+   = note: expected type `{ 2 * N }`
+              found type `{ N + N + 1 }`
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
