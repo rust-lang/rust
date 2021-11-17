@@ -2386,8 +2386,10 @@ void createTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
       } else if (!ret->getType()->isFPOrFPVectorTy() &&
                  TR.getReturnAnalysis().Inner0().isPossiblePointer()) {
         toret = gutils->invertPointerM(ret, nBuilder);
-      } else {
+      } else if (!gutils->isConstantValue(ret)) {
         toret = gutils->diffe(ret, nBuilder);
+      } else {
+        toret = Constant::getNullValue(ret->getType());
       }
 
       break;
@@ -2404,9 +2406,12 @@ void createTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
           TR.getReturnAnalysis().Inner0().isPossiblePointer()) {
         toret = nBuilder.CreateInsertValue(
             toret, gutils->invertPointerM(ret, nBuilder), 1);
-      } else {
+      } else if (!gutils->isConstantValue(ret)) {
         toret =
             nBuilder.CreateInsertValue(toret, gutils->diffe(ret, nBuilder), 1);
+      } else {
+        toret = nBuilder.CreateInsertValue(
+            toret, Constant::getNullValue(ret->getType()), 1);
       }
       break;
     }
