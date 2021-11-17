@@ -137,10 +137,10 @@ impl UndocumentedUnsafeBlocks {
 
         let between_span = if block_span.from_expansion() {
             self.macro_expansion = true;
-            enclosing_scope_span.with_hi(block_span.hi())
+            enclosing_scope_span.with_hi(block_span.hi()).source_callsite()
         } else {
             self.macro_expansion = false;
-            enclosing_scope_span.to(block_span)
+            enclosing_scope_span.to(block_span).source_callsite()
         };
 
         let file_name = source_map.span_to_filename(between_span);
