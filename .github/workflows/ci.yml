@@ -10,8 +10,7 @@ on:
     branches:
       - 'master'
   schedule:
-    # Use <https://crontab.guru> to conveniently edit cron schedule.
-    - cron: '0 7 * * *' # At 07:00 UTC every day.
+    - cron: '5 15 * * *' # At 15:05 UTC every day.
 
 jobs:
   build:
