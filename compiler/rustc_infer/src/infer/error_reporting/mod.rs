@@ -856,7 +856,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .regions()
             .map(|lifetime| {
                 let s = lifetime.to_string();
-                if s.is_empty() { "'_".to_string() } else { s }
+                if s.is_empty() {
+                    "'_".to_string()
+                } else {
+                    s
+                }
             })
             .collect::<Vec<_>>()
             .join(", ");
@@ -1175,7 +1179,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                     fn lifetime_display(lifetime: Region<'_>) -> String {
                         let s = lifetime.to_string();
-                        if s.is_empty() { "'_".to_string() } else { s }
+                        if s.is_empty() {
+                            "'_".to_string()
+                        } else {
+                            s
+                        }
                     }
                     // At one point we'd like to elide all lifetimes here, they are irrelevant for
                     // all diagnostics that use this output
@@ -1449,7 +1457,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         swap_secondary_and_primary: bool,
     ) {
         let span = cause.span(self.tcx);
-        debug!("note_type_err cause={:?} values={:?}, terr={:?}", cause, values, terr);
 
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
@@ -1581,11 +1588,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         }
 
-        debug!("note_type_err(diag={:?})", diag);
         enum Mismatch<'a> {
             Variable(ty::error::ExpectedFound<Ty<'a>>),
             Fixed(&'static str),
         }
+
         let (expected_found, exp_found, is_simple_error) = match values {
             None => (None, Mismatch::Fixed("type"), false),
             Some(values) => {
@@ -1652,6 +1659,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
         };
+
         if let Some((expected, found)) = expected_found {
             let (expected_label, found_label, exp_found) = match exp_found {
                 Mismatch::Variable(ef) => (
@@ -1705,6 +1713,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 (TypeError::ObjectUnsafeCoercion(_), _) => {
                     diag.note_unsuccessful_coercion(found, expected);
                 }
+                (TypeError::ConstMismatchTooGeneric(_, Some(sugg)), _) => {
+                    if !is_simple_error {
+                        let found =
+                            DiagnosticStyledString::highlighted(format!("{}", sugg.clone()));
+
+                        diag.note_expected_found(
+                            &expected_label,
+                            expected,
+                            &"type".to_string(),
+                            found,
+                        );
+                    }
+                }
                 (_, _) => {
                     debug!(
                         "note_type_err: exp_found={:?}, expected={:?} found={:?}",
@@ -1716,10 +1737,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
         }
+
         let exp_found = match exp_found {
             Mismatch::Variable(exp_found) => Some(exp_found),
             Mismatch::Fixed(_) => None,
         };
+
         let exp_found = match terr {
             // `terr` has more accurate type information than `exp_found` in match expressions.
             ty::error::TypeError::Sorts(terr)
@@ -1730,6 +1753,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => exp_found,
         };
         debug!("exp_found {:?} terr {:?} cause.code {:?}", exp_found, terr, cause.code());
+
         if let Some(exp_found) = exp_found {
             let should_suggest_fixes = if let ObligationCauseCode::Pattern { root_ty, .. } =
                 cause.code()
@@ -1756,6 +1780,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.tcx.hir().opt_local_def_id(cause.body_id).unwrap_or_else(|| {
                 self.tcx.hir().body_owner_def_id(hir::BodyId { hir_id: cause.body_id })
             });
+
         self.check_and_note_conflicting_crates(diag, terr);
         self.tcx.note_and_explain_type_err(diag, terr, cause, span, body_owner_def_id.to_def_id());
 
@@ -2021,10 +2046,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> DiagnosticBuilder<'tcx> {
         use crate::traits::ObligationCauseCode::MatchExpressionArm;
 
-        debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
-
         let span = trace.cause.span(self.tcx);
         let failure_code = trace.cause.as_failure_code(terr);
+
         let mut diag = match failure_code {
             FailureCode::Error0038(did) => {
                 let violations = self.tcx.object_safety_violations(did);
@@ -2038,9 +2062,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             FailureCode::Error0308(failure_str) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str);
+
                 if let ValuePairs::Types(ty::error::ExpectedFound { expected, found }) =
                     trace.values
                 {
+                    debug!(?expected, ?found);
+
                     // If a tuple of length one was expected and the found expression has
                     // parentheses around it, perhaps the user meant to write `(expr,)` to
                     // build a tuple (issue #86100)
