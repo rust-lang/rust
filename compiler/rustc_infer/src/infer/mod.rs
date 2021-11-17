@@ -1484,6 +1484,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.report_and_explain_type_error(trace, &err)
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn report_mismatched_consts(
         &self,
         cause: &ObligationCause<'tcx>,

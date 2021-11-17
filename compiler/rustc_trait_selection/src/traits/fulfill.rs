@@ -27,6 +27,7 @@ use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
 use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::error_reporting::InferCtxtPrivExt;
 use crate::traits::project::PolyProjectionObligation;
 use crate::traits::project::ProjectionCacheKeyExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -629,11 +630,35 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                             if c1.has_infer_types_or_consts() || c2.has_infer_types_or_consts() {
                                 ProcessResult::Unchanged
                             } else {
+                                debug!(
+                                    "ConstEquate error found, expected {:?}, found {:?}",
+                                    c1, c2
+                                );
+
                                 // Two different constants using generic parameters ~> error.
                                 let expected_found = ExpectedFound::new(true, c1, c2);
+
+                                let suggestion = self
+                                    .selcx
+                                    .infcx()
+                                    .try_create_suggestion_for_mismatched_const(expected_found)
+                                    .map(|sugg| {
+                                        let found_is_uneval = match expected_found.found.val {
+                                            ty::ConstKind::Unevaluated(_) => true,
+                                            _ => false,
+                                        };
+
+                                        if found_is_uneval {
+                                            format!("{{ {} }}", sugg)
+                                        } else {
+                                            sugg
+                                        }
+                                    });
+                                debug!(?suggestion);
+
                                 ProcessResult::Error(FulfillmentErrorCode::CodeConstEquateError(
                                     expected_found,
-                                    TypeError::ConstMismatch(expected_found),
+                                    TypeError::ConstMismatchTooGeneric(expected_found, suggestion),
                                 ))
                             }
                         }
