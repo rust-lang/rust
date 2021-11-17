@@ -13,11 +13,10 @@ error[E0740]: unions may not contain fields that need dropping
 LL |     a: String,
    |     ^^^^^^^^^
    |
-note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/feature-gate-untagged_unions.rs:16:5
+help: wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped
    |
-LL |     a: String,
-   |     ^^^^^^^^^
+LL |     a: std::mem::ManuallyDrop<String>,
+   |        +++++++++++++++++++++++      +
 
 error[E0740]: unions may not contain fields that need dropping
   --> $DIR/feature-gate-untagged_unions.rs:24:5
@@ -25,11 +24,10 @@ error[E0740]: unions may not contain fields that need dropping
 LL |     a: T,
    |     ^^^^
    |
-note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/feature-gate-untagged_unions.rs:24:5
+help: wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped
    |
-LL |     a: T,
-   |     ^^^^
+LL |     a: std::mem::ManuallyDrop<T>,
+   |        +++++++++++++++++++++++ +
 
 error: aborting due to 3 previous errors
 
