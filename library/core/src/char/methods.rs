@@ -41,6 +41,54 @@ impl char {
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const UNICODE_VERSION: (u8, u8, u8) = crate::unicode::UNICODE_VERSION;
 
+    /// Creates an iterator over the UTF-8 encoded code points in `iter`, returning
+    /// invalid bytes as `Err`s.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::char::decode_utf8;
+    ///
+    /// // 🦀the<invalid>crab<invalid>
+    /// let v = b"\xf0\x9f\xa6\x80the\xFFcrab\x80";
+    ///
+    /// assert_eq!(
+    ///     decode_utf8(v.iter().copied())
+    ///         .map(|r| r.map_err(|e| e.invalid_byte()))
+    ///         .collect::<Vec<_>>(),
+    ///     vec![
+    ///         Ok('🦀'),
+    ///         Ok('t'), Ok('h'), Ok('e'),
+    ///         Err(0xFF),
+    ///         Ok('c'), Ok('r'), Ok('a'), Ok('b'),
+    ///         Err(0x80),
+    ///     ]
+    /// );
+    /// ```
+    ///
+    /// A lossy decoder can be obtained by replacing `Err` results with the replacement character:
+    ///
+    /// ```
+    /// use std::char::{decode_utf8, REPLACEMENT_CHARACTER};
+    ///
+    /// // 🦀the<invalid>crab<invalid>
+    /// let v = b"\xf0\x9f\xa6\x80the\xFFcrab\x80";
+    ///
+    /// assert_eq!(
+    ///     decode_utf8(v.iter().copied())
+    ///        .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
+    ///        .collect::<String>(),
+    ///     "🦀the�crab�"
+    /// );
+    /// ```
+    #[unstable(feature = "decode_utf8", issue = "none")]
+    #[inline]
+    pub fn decode_utf8<I: IntoIterator<Item = u8>>(iter: I) -> DecodeUtf8<I::IntoIter> {
+        super::decode::decode_utf8(iter)
+    }
+
     /// Creates an iterator over the UTF-16 encoded code points in `iter`,
     /// returning unpaired surrogates as `Err`s.
     ///
