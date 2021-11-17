@@ -377,6 +377,7 @@ impl<'a, 'b> Rustc<'a, 'b> {
         }
     }
 
+    #[inline]
     fn sess(&self) -> &ParseSess {
         self.ecx.parse_sess()
     }

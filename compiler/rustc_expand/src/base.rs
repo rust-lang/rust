@@ -1011,6 +1011,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn source_map(&self) -> &'a SourceMap {
         self.sess.parse_sess.source_map()
     }
+    #[inline]
     pub fn parse_sess(&self) -> &'a ParseSess {
         &self.sess.parse_sess
     }
