@@ -1458,14 +1458,7 @@ impl Const {
     }
 
     pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
-        let ast_id = item_tree[loc.id.value].ast_id;
-        let ast_id_map = db.ast_id_map(loc.id.file_id());
-        let ast_ptr = ast_id_map.get(ast_id);
-        let syntax_node = db.parse_or_expand(loc.id.file_id())?;
-        let ast_node = ast_ptr.to_node(&syntax_node);
-        ast_node.body()
+        self.source(db)?.value.body()
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
