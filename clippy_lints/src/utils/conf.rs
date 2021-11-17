@@ -23,7 +23,7 @@ pub enum DisallowedMethod {
     WithReason { path: String, reason: Option<String> },
 }
 
-/// A single disallowed type, used by the `DISALLOWED_TYPE` lint.
+/// A single disallowed type, used by the `DISALLOWED_TYPES` lint.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
 pub enum DisallowedType {
@@ -260,7 +260,7 @@ define_Conf! {
     ///
     /// The list of disallowed methods, written as fully qualified paths.
     (disallowed_methods: Vec<crate::utils::conf::DisallowedMethod> = Vec::new()),
-    /// Lint: DISALLOWED_TYPE.
+    /// Lint: DISALLOWED_TYPES.
     ///
     /// The list of disallowed types, written as fully qualified paths.
     (disallowed_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),

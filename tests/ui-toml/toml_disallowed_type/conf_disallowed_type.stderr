@@ -4,7 +4,7 @@ error: `std::sync::atomic::AtomicU32` is not allowed according to config
 LL | use std::sync::atomic::AtomicU32;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::disallowed-type` implied by `-D warnings`
+   = note: `-D clippy::disallowed-types` implied by `-D warnings`
 
 error: `std::time::Instant` is not allowed according to config
   --> $DIR/conf_disallowed_type.rs:8:1

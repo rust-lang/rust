@@ -1,4 +1,4 @@
-#![warn(clippy::disallowed_type)]
+#![warn(clippy::disallowed_types)]
 
 extern crate quote;
 extern crate syn;

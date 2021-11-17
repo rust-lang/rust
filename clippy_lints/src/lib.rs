@@ -827,7 +827,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || Box::new(module_style::ModStyle));
     store.register_late_pass(|| Box::new(unused_async::UnusedAsync));
     let disallowed_types = conf.disallowed_types.clone();
-    store.register_late_pass(move || Box::new(disallowed_type::DisallowedType::new(disallowed_types.clone())));
+    store.register_late_pass(move || Box::new(disallowed_type::DisallowedTypes::new(disallowed_types.clone())));
     let import_renames = conf.enforced_import_renames.clone();
     store.register_late_pass(move || {
         Box::new(missing_enforced_import_rename::ImportRename::new(
@@ -924,6 +924,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::zero_width_space", "clippy::invisible_characters");
     ls.register_renamed("clippy::single_char_push_str", "clippy::single_char_add_str");
     ls.register_renamed("clippy::if_let_some_result", "clippy::match_result_ok");
+    ls.register_renamed("clippy::disallowed_type", "clippy::disallowed_types");
 
     // uplifted lints
     ls.register_renamed("clippy::invalid_ref", "invalid_value");

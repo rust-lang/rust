@@ -17,6 +17,7 @@
 #![allow(clippy::invisible_characters)]
 #![allow(clippy::single_char_add_str)]
 #![allow(clippy::match_result_ok)]
+#![allow(clippy::disallowed_types)]
 // uplifted lints
 #![allow(invalid_value)]
 #![allow(array_into_iter)]
@@ -49,6 +50,7 @@
 #![warn(clippy::invisible_characters)]
 #![warn(clippy::single_char_add_str)]
 #![warn(clippy::match_result_ok)]
+#![warn(clippy::disallowed_types)]
 // uplifted lints
 #![warn(invalid_value)]
 #![warn(array_into_iter)]
