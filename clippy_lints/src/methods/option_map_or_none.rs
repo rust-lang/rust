@@ -20,8 +20,8 @@ fn reduce_unit_expression<'a>(
     match expr.kind {
         hir::ExprKind::Call(func, arg_char) => Some((func, arg_char)),
         hir::ExprKind::Block(block, _) => {
-            match block.expr {
-                Some(inner_expr) => {
+            match (block.stmts, block.expr) {
+                (&[], Some(inner_expr)) => {
                     // If block only contains an expression,
                     // reduce `|x| { x + 1 }` to `|x| x + 1`
                     reduce_unit_expression(cx, inner_expr)
