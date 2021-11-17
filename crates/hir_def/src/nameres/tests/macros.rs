@@ -669,19 +669,20 @@ pub struct bar;
 fn expand_derive() {
     let map = compute_crate_def_map(
         r#"
-        //- /main.rs crate:main deps:core
-        use core::Copy;
+//- /main.rs crate:main deps:core
+use core::Copy;
 
-        #[derive(Copy, core::Clone)]
-        struct Foo;
+#[core::derive(Copy, core::Clone)]
+struct Foo;
 
-        //- /core.rs crate:core
-        #[rustc_builtin_macro]
-        pub macro Copy {}
-
-        #[rustc_builtin_macro]
-        pub macro Clone {}
-        "#,
+//- /core.rs crate:core
+#[rustc_builtin_macro]
+pub macro derive($item:item) {}
+#[rustc_builtin_macro]
+pub macro Copy {}
+#[rustc_builtin_macro]
+pub macro Clone {}
+"#,
     );
     assert_eq!(map.modules[map.root].scope.impls().len(), 2);
 }
@@ -712,17 +713,19 @@ fn builtin_derive_with_unresolved_attributes_fall_back() {
     cov_mark::check!(unresolved_attribute_fallback);
     let map = compute_crate_def_map(
         r#"
-        //- /main.rs crate:main deps:core
-        use core::Clone;
+//- /main.rs crate:main deps:core
+use core::{Clone, derive};
 
-        #[derive(Clone)]
-        #[unresolved]
-        struct Foo;
+#[derive(Clone)]
+#[unresolved]
+struct Foo;
 
-        //- /core.rs crate:core
-        #[rustc_builtin_macro]
-        pub macro Clone {}
-        "#,
+//- /core.rs crate:core
+#[rustc_builtin_macro]
+pub macro derive($item:item) {}
+#[rustc_builtin_macro]
+pub macro Clone {}
+"#,
     );
     assert_eq!(map.modules[map.root].scope.impls().len(), 1);
 }
@@ -799,6 +802,9 @@ fn resolves_derive_helper() {
     check(
         r#"
 //- /main.rs crate:main deps:proc
+#[rustc_builtin_macro]
+pub macro derive($item:item) {}
+
 #[derive(proc::Derive)]
 #[helper]
 #[unresolved]
@@ -811,6 +817,7 @@ fn derive() {}
         expect![[r#"
             crate
             S: t v
+            derive: m
         "#]],
     );
 }

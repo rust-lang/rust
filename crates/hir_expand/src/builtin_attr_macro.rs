@@ -36,6 +36,18 @@ macro_rules! register_builtin {
     };
 }
 
+impl BuiltinAttrExpander {
+    pub fn is_derive(self) -> bool {
+        matches!(self, BuiltinAttrExpander::Derive)
+    }
+    pub fn is_test(self) -> bool {
+        matches!(self, BuiltinAttrExpander::Test)
+    }
+    pub fn is_bench(self) -> bool {
+        matches!(self, BuiltinAttrExpander::Bench)
+    }
+}
+
 register_builtin! {
     (bench, Bench) => dummy_attr_expand,
     (cfg_accessible, CfgAccessible) => dummy_attr_expand,
@@ -44,16 +56,6 @@ register_builtin! {
     (global_allocator, GlobalAllocator) => dummy_attr_expand,
     (test, Test) => dummy_attr_expand,
     (test_case, TestCase) => dummy_attr_expand
-}
-
-pub fn is_builtin_test_or_bench_attr(makro: MacroDefId) -> bool {
-    match makro.kind {
-        MacroDefKind::BuiltInAttr(expander, ..) => {
-            BuiltinAttrExpander::find_by_name(&name!(test)) == Some(expander)
-                || BuiltinAttrExpander::find_by_name(&name!(bench)) == Some(expander)
-        }
-        _ => false,
-    }
 }
 
 pub fn find_builtin_attr(
