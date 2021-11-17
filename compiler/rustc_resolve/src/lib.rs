@@ -201,13 +201,13 @@ enum ResolutionError<'a> {
     /// parameter list.
     NameAlreadyUsedInParameterList(Symbol, Span),
     /// Error E0407: method is not a member of trait.
-    MethodNotMemberOfTrait(Ident, &'a str, Option<Symbol>),
+    MethodNotMemberOfTrait(Ident, String, Option<Symbol>),
     /// Error E0437: type is not a member of trait.
-    TypeNotMemberOfTrait(Ident, &'a str, Option<Symbol>),
+    TypeNotMemberOfTrait(Ident, String, Option<Symbol>),
     /// Error E0438: const is not a member of trait.
-    ConstNotMemberOfTrait(Ident, &'a str, Option<Symbol>),
+    ConstNotMemberOfTrait(Ident, String, Option<Symbol>),
     /// Error E0408: variable `{}` is not bound in all patterns.
-    VariableNotBoundInPattern(&'a BindingError),
+    VariableNotBoundInPattern(BindingError, ParentScope<'a>),
     /// Error E0409: variable `{}` is bound in inconsistent ways within the same match arm.
     VariableBoundWithDifferentMode(Symbol, Span),
     /// Error E0415: identifier is bound more than once in this parameter list.

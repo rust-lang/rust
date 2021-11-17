@@ -1422,7 +1422,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
     /// label and reports an error if the label is not found or is unreachable.
-    fn resolve_label(&self, mut label: Ident) -> Option<NodeId> {
+    fn resolve_label(&mut self, mut label: Ident) -> Option<NodeId> {
         let mut suggestion = None;
 
         // Preserve the original span so that errors contain "in this macro invocation"
@@ -1442,6 +1442,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             let ident = label.normalize_to_macro_rules();
             if let Some((ident, id)) = rib.bindings.get_key_value(&ident) {
+                let definition_span = ident.span;
                 return if self.is_label_valid_from_rib(i) {
                     Some(*id)
                 } else {
@@ -1449,7 +1450,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         original_span,
                         ResolutionError::UnreachableLabel {
                             name: label.name,
-                            definition_span: ident.span,
+                            definition_span,
                             suggestion,
                         },
                     );
@@ -2135,7 +2136,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         span: Span,
         err: F,
     ) where
-        F: FnOnce(Ident, &str, Option<Symbol>) -> ResolutionError<'_>,
+        F: FnOnce(Ident, String, Option<Symbol>) -> ResolutionError<'a>,
     {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         let Some((module, _)) = &self.current_trait_ref else { return; };
@@ -2159,7 +2160,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // We could not find the method: report an error.
             let candidate = self.find_similarly_named_assoc_item(ident.name, kind);
             let path = &self.current_trait_ref.as_ref().unwrap().1.path;
-            self.report_error(span, err(ident, &path_names_to_string(path), candidate));
+            let path_names = path_names_to_string(path);
+            self.report_error(span, err(ident, path_names, candidate));
             return;
         };
 
@@ -2183,13 +2185,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             AssocItemKind::TyAlias(..) => (rustc_errors::error_code!(E0325), "type"),
             AssocItemKind::MacCall(..) => span_bug!(span, "unexpanded macro"),
         };
+        let trait_path = path_names_to_string(path);
         self.report_error(
             span,
             ResolutionError::TraitImplMismatch {
                 name: ident.name,
                 kind,
                 code,
-                trait_path: path_names_to_string(path),
+                trait_path,
                 trait_item_span: binding.span,
             },
         );
@@ -2304,16 +2307,16 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
 
         // 3) Report all missing variables we found.
-        let mut missing_vars = missing_vars.iter_mut().collect::<Vec<_>>();
-        missing_vars.sort_by_key(|(sym, _err)| sym.as_str());
+        let mut missing_vars = missing_vars.into_iter().collect::<Vec<_>>();
+        missing_vars.sort_by_key(|&(sym, ref _err)| sym);
 
-        for (name, mut v) in missing_vars {
-            if inconsistent_vars.contains_key(name) {
+        for (name, mut v) in missing_vars.into_iter() {
+            if inconsistent_vars.contains_key(&name) {
                 v.could_be_path = false;
             }
             self.report_error(
                 *v.origin.iter().next().unwrap(),
-                ResolutionError::VariableNotBoundInPattern(v),
+                ResolutionError::VariableNotBoundInPattern(v, self.parent_scope),
             );
         }
 
@@ -2815,7 +2818,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     /// A wrapper around [`Resolver::report_error`].
     ///
     /// This doesn't emit errors for function bodies if this is rustdoc.
-    fn report_error(&self, span: Span, resolution_error: ResolutionError<'_>) {
+    fn report_error(&mut self, span: Span, resolution_error: ResolutionError<'a>) {
         if self.should_report_errs() {
             self.r.report_error(span, resolution_error);
         }
