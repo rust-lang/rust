@@ -13,7 +13,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
 use rustc_middle::thir;
 use rustc_middle::thir::abstract_const::{self, Node, NodeId, NotConstEvaluatable};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
@@ -33,7 +33,8 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
-    debug!("is_const_evaluatable({:?})", uv);
+    debug!("param_env: {:#?}", param_env);
+
     if infcx.tcx.features().generic_const_exprs {
         let tcx = infcx.tcx;
         match AbstractConst::new(tcx, uv)? {
@@ -223,6 +224,61 @@ impl<'tcx> AbstractConst<'tcx> {
             Node::Cast(kind, operand, ty) => Node::Cast(kind, operand, ty.subst(tcx, self.substs)),
             // Don't perform substitution on the following as they can't directly contain generic params
             Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => node,
+        }
+    }
+
+    /// Used for diagnostics only.
+    /// Tries to create a String of an `AbstractConst` while recursively applying substs. This
+    /// will fail for `AbstractConst`s that contain `Leaf`s including inference variables or errors,
+    /// and any non-Leaf `Node`s other than `BinOp` and `UnOp`.
+    pub(crate) fn try_print_with_replacing_substs(mut self, tcx: TyCtxt<'tcx>) -> Option<String> {
+        // try to replace substs
+        while let abstract_const::Node::Leaf(ct) = self.root(tcx) {
+            match AbstractConst::from_const(tcx, ct) {
+                Ok(Some(act)) => self = act,
+                Ok(None) => break,
+                Err(_) => bug!("should be able to create AbstractConst here"),
+            }
+        }
+
+        match self.root(tcx) {
+            abstract_const::Node::Leaf(ct) => match ct.val {
+                ty::ConstKind::Error(_) | ty::ConstKind::Infer(_) => return None,
+                ty::ConstKind::Param(c) => return Some(format!("{}", c)),
+                ty::ConstKind::Value(ConstValue::Scalar(scalar)) => match scalar.to_i64() {
+                    Ok(s) => return Some(format!("{}", s)),
+                    Err(_) => return None,
+                },
+                _ => return None,
+            },
+            abstract_const::Node::Binop(op, l, r) => {
+                let op = match op.try_as_string() {
+                    Some(o) => o,
+                    None => return None,
+                };
+
+                let left = self.subtree(l).try_print_with_replacing_substs(tcx);
+                debug!(?left);
+
+                let right = self.subtree(r).try_print_with_replacing_substs(tcx);
+                debug!(?right);
+
+                match (left, right) {
+                    (Some(l), Some(r)) => {
+                        return Some(format!("{} {} {}", l, op, r));
+                    }
+                    _ => return None,
+                }
+            }
+            abstract_const::Node::UnaryOp(op, v) => {
+                match self.subtree(v).try_print_with_replacing_substs(tcx) {
+                    Some(operand) => {
+                        return Some(format!("{}{}", op, operand));
+                    }
+                    None => return None,
+                }
+            }
+            _ => return None,
         }
     }
 }
