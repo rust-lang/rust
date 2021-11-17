@@ -276,7 +276,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.60.0"
+version = "0.59.0"
 dependencies = [
  "anyhow",
  "atty",
@@ -419,7 +419,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-util"
-version = "0.1.2"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "core-foundation",
@@ -768,7 +768,7 @@ checksum = "8aebca1129a03dc6dc2b127edd729435bbc4a37e1d5f4d7513165089ceb02634"
 
 [[package]]
 name = "crates-io"
-version = "0.33.1"
+version = "0.33.0"
 dependencies = [
  "anyhow",
  "curl",
