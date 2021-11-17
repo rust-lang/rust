@@ -1,0 +1,26 @@
+warning: `must_use` attribute on `async` functions applies to the anonymous `Future` returned by the function, not the value within
+  --> $DIR/unused-async.rs:5:1
+   |
+LL |   #[must_use]
+   |   ^^^^^^^^^^^
+LL |
+LL | / async fn test() -> i32 {
+LL | |     1
+LL | | }
+   | |_- this attribute does nothing, the `Future`s returned by async functions are already `must_use`
+   |
+   = note: `#[warn(unused_attributes)]` on by default
+
+warning: `must_use` attribute on `async` functions applies to the anonymous `Future` returned by the function, not the value within
+  --> $DIR/unused-async.rs:15:5
+   |
+LL |       #[must_use]
+   |       ^^^^^^^^^^^
+LL |
+LL | /     async fn test_method() -> i32 {
+LL | |         1
+LL | |     }
+   | |_____- this attribute does nothing, the `Future`s returned by async functions are already `must_use`
+
+warning: 2 warnings emitted
+
