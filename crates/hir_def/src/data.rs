@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_expand::{ast_id_map::FileAstId, name::Name, HirFileId, InFile};
+use hir_expand::{name::Name, InFile};
 use syntax::ast;
 
 use crate::{
@@ -255,8 +255,6 @@ pub struct ConstData {
     pub name: Option<Name>,
     pub type_ref: Interned<TypeRef>,
     pub visibility: RawVisibility,
-    pub ast_id: FileAstId<ast::Const>,
-    pub file_id: HirFileId,
 }
 
 impl ConstData {
@@ -269,8 +267,6 @@ impl ConstData {
             name: konst.name.clone(),
             type_ref: konst.type_ref.clone(),
             visibility: item_tree[konst.visibility].clone(),
-            ast_id: konst.ast_id.clone(),
-            file_id: loc.id.file_id(),
         })
     }
 }

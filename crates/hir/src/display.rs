@@ -401,8 +401,7 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), Hir
 
 impl HirDisplay for Const {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        let module_id = self.module(f.db).id;
-        write_visibility(module_id, self.visibility(f.db), f)?;
+        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         let data = f.db.const_data(self.id);
         write!(f, "const ")?;
         match &data.name {
@@ -410,15 +409,6 @@ impl HirDisplay for Const {
             None => write!(f, "_: ")?,
         }
         data.type_ref.hir_fmt(f)?;
-        let ast_id_map = f.db.ast_id_map(data.file_id);
-        let ast_node = ast_id_map.get(data.ast_id);
-        if let Some(syntax_node) = f.db.parse_or_expand(data.file_id) {
-            let ast_node = ast_node.to_node(&syntax_node);
-            if let Some(body) = ast_node.body() {
-                write!(f, " = {}", body)?;
-            }
-        }
-
         Ok(())
     }
 }
