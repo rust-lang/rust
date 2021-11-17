@@ -99,7 +99,7 @@ store.register_lints(&[
     derive::UNSAFE_DERIVE_DESERIALIZE,
     disallowed_method::DISALLOWED_METHOD,
     disallowed_script_idents::DISALLOWED_SCRIPT_IDENTS,
-    disallowed_type::DISALLOWED_TYPES,
+    disallowed_types::DISALLOWED_TYPES,
     doc::DOC_MARKDOWN,
     doc::MISSING_ERRORS_DOC,
     doc::MISSING_PANICS_DOC,

@@ -196,7 +196,7 @@ mod derivable_impls;
 mod derive;
 mod disallowed_method;
 mod disallowed_script_idents;
-mod disallowed_type;
+mod disallowed_types;
 mod doc;
 mod double_comparison;
 mod double_parens;
@@ -827,7 +827,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || Box::new(module_style::ModStyle));
     store.register_late_pass(|| Box::new(unused_async::UnusedAsync));
     let disallowed_types = conf.disallowed_types.clone();
-    store.register_late_pass(move || Box::new(disallowed_type::DisallowedTypes::new(disallowed_types.clone())));
+    store.register_late_pass(move || Box::new(disallowed_types::DisallowedTypes::new(disallowed_types.clone())));
     let import_renames = conf.enforced_import_renames.clone();
     store.register_late_pass(move || {
         Box::new(missing_enforced_import_rename::ImportRename::new(
