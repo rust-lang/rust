@@ -776,13 +776,10 @@ fn attr_macro_as_call_id(
     macro_attr: &Attr,
     db: &dyn db::DefDatabase,
     krate: CrateId,
-    resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    def: Option<MacroDefId>,
 ) -> Result<MacroCallId, UnresolvedMacro> {
     let attr_path = &item_attr.path;
-
-    let def = resolver(attr_path.clone())
-        .filter(MacroDefId::is_attribute)
-        .ok_or_else(|| UnresolvedMacro { path: attr_path.clone() })?;
+    let def = def.ok_or_else(|| UnresolvedMacro { path: attr_path.clone() })?;
     let last_segment =
         attr_path.segments().last().ok_or_else(|| UnresolvedMacro { path: attr_path.clone() })?;
     let mut arg = match macro_attr.input.as_deref() {

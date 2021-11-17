@@ -878,7 +878,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("foo/src/main.rs"),
-            Position::new(7, 9),
+            Position::new(10, 9),
         ),
         work_done_progress_params: Default::default(),
     });

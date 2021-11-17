@@ -1054,14 +1054,15 @@ impl DefCollector<'_> {
 
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to } => {
-                    match macro_call_as_call_id(
+                    let call_id = macro_call_as_call_id(
                         ast_id,
                         *expand_to,
                         self.db,
                         self.def_map.krate,
                         &resolver,
                         &mut |_err| (),
-                    ) {
+                    );
+                    match call_id {
                         Ok(Ok(call_id)) => {
                             resolved.push((directive.module_id, call_id, directive.depth));
                             res = ReachedFixedPoint::No;
@@ -1071,13 +1072,14 @@ impl DefCollector<'_> {
                     }
                 }
                 MacroDirectiveKind::Derive { ast_id, derive_attr } => {
-                    match derive_macro_as_call_id(
+                    let call_id = derive_macro_as_call_id(
                         ast_id,
                         *derive_attr,
                         self.db,
                         self.def_map.krate,
                         &resolver,
-                    ) {
+                    );
+                    match call_id {
                         Ok(call_id) => {
                             self.def_map.modules[directive.module_id].scope.add_derive_macro_invoc(
                                 ast_id.ast_id,
@@ -1089,34 +1091,36 @@ impl DefCollector<'_> {
                             res = ReachedFixedPoint::No;
                             return false;
                         }
-                        Err(UnresolvedMacro { .. }) => (),
+                        Err(UnresolvedMacro { .. }) => {}
                     }
                 }
                 MacroDirectiveKind::Attr { ast_id, mod_item, attr } => {
+                    let file_id = ast_id.ast_id.file_id;
+                    let mut recollect_without = |collector: &mut Self, item_tree| {
+                        // Remove the original directive since we resolved it.
+                        let mod_dir = collector.mod_dirs[&directive.module_id].clone();
+                        collector.skip_attrs.insert(InFile::new(file_id, *mod_item), attr.id);
+                        ModCollector {
+                            def_collector: collector,
+                            macro_depth: directive.depth,
+                            module_id: directive.module_id,
+                            tree_id: TreeId::new(file_id, None),
+                            item_tree,
+                            mod_dir,
+                        }
+                        .collect(&[*mod_item]);
+                        res = ReachedFixedPoint::No;
+                        false
+                    };
+
                     if let Some(ident) = ast_id.path.as_ident() {
                         if let Some(helpers) = self.derive_helpers_in_scope.get(&ast_id.ast_id) {
                             if helpers.contains(ident) {
                                 cov_mark::hit!(resolved_derive_helper);
-
                                 // Resolved to derive helper. Collect the item's attributes again,
                                 // starting after the derive helper.
-                                let file_id = ast_id.ast_id.file_id;
                                 let item_tree = self.db.file_item_tree(file_id);
-                                let mod_dir = self.mod_dirs[&directive.module_id].clone();
-                                self.skip_attrs.insert(InFile::new(file_id, *mod_item), attr.id);
-                                ModCollector {
-                                    def_collector: self,
-                                    macro_depth: directive.depth,
-                                    module_id: directive.module_id,
-                                    tree_id: TreeId::new(file_id, None),
-                                    item_tree: &item_tree,
-                                    mod_dir,
-                                }
-                                .collect(&[*mod_item]);
-
-                                // Remove the original directive since we resolved it.
-                                res = ReachedFixedPoint::No;
-                                return false;
+                                return recollect_without(self, &item_tree);
                             }
                         }
                     }
@@ -1127,7 +1131,7 @@ impl DefCollector<'_> {
                         Some(MacroDefId {  kind:MacroDefKind::BuiltInAttr(expander, _),.. })
                         if expander.is_derive()
                     ) {
-                        // Resolved to derive
+                        // Resolved to `#[derive]`
                         let file_id = ast_id.ast_id.file_id;
                         let item_tree = self.db.file_item_tree(file_id);
 
@@ -1163,35 +1167,15 @@ impl DefCollector<'_> {
                             }
                         }
 
-                        let mod_dir = self.mod_dirs[&directive.module_id].clone();
-                        self.skip_attrs.insert(InFile::new(file_id, *mod_item), attr.id);
-                        ModCollector {
-                            def_collector: &mut *self,
-                            macro_depth: directive.depth,
-                            module_id: directive.module_id,
-                            tree_id: TreeId::new(file_id, None),
-                            item_tree: &item_tree,
-                            mod_dir,
-                        }
-                        .collect(&[*mod_item]);
-
-                        // Remove the original directive since we resolved it.
-                        res = ReachedFixedPoint::No;
-                        return false;
+                        return recollect_without(self, &item_tree);
                     }
 
                     if !self.db.enable_proc_attr_macros() {
                         return true;
                     }
 
-                    // Not resolved to a derive helper, so try to resolve as a macro.
-                    match attr_macro_as_call_id(
-                        ast_id,
-                        attr,
-                        self.db,
-                        self.def_map.krate,
-                        &resolver,
-                    ) {
+                    // Not resolved to a derive helper or the derive attribute, so try to resolve as a normal attribute.
+                    match attr_macro_as_call_id(ast_id, attr, self.db, self.def_map.krate, def) {
                         Ok(call_id) => {
                             let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
 
@@ -1202,23 +1186,8 @@ impl DefCollector<'_> {
                                 MacroDefKind::BuiltInAttr(expander, _)
                                 if expander.is_test() || expander.is_bench()
                             ) {
-                                let file_id = ast_id.ast_id.file_id;
                                 let item_tree = self.db.file_item_tree(file_id);
-                                let mod_dir = self.mod_dirs[&directive.module_id].clone();
-                                self.skip_attrs.insert(InFile::new(file_id, *mod_item), attr.id);
-                                ModCollector {
-                                    def_collector: &mut *self,
-                                    macro_depth: directive.depth,
-                                    module_id: directive.module_id,
-                                    tree_id: TreeId::new(file_id, None),
-                                    item_tree: &item_tree,
-                                    mod_dir,
-                                }
-                                .collect(&[*mod_item]);
-
-                                // Remove the original directive since we resolved it.
-                                res = ReachedFixedPoint::No;
-                                return false;
+                                return recollect_without(self, &item_tree);
                             }
 
                             if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
@@ -1234,21 +1203,7 @@ impl DefCollector<'_> {
 
                                     let file_id = ast_id.ast_id.file_id;
                                     let item_tree = self.db.file_item_tree(file_id);
-                                    let mod_dir = self.mod_dirs[&directive.module_id].clone();
-                                    self.skip_attrs
-                                        .insert(InFile::new(file_id, *mod_item), attr.id);
-                                    ModCollector {
-                                        def_collector: &mut *self,
-                                        macro_depth: directive.depth,
-                                        module_id: directive.module_id,
-                                        tree_id: TreeId::new(file_id, None),
-                                        item_tree: &item_tree,
-                                        mod_dir,
-                                    }
-                                    .collect(&[*mod_item]);
-
-                                    // Remove the macro directive.
-                                    return false;
+                                    return recollect_without(self, &item_tree);
                                 }
                             }
 
