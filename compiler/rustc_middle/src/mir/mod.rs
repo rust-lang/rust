@@ -2328,6 +2328,30 @@ impl BinOp {
         use self::BinOp::*;
         matches!(self, Add | Sub | Mul | Shl | Shr)
     }
+
+    pub fn try_as_string(self) -> Option<String> {
+        use self::BinOp::*;
+
+        match self {
+            Add => Some("+".to_string()),
+            Sub => Some("-".to_string()),
+            Mul => Some("*".to_string()),
+            Div => Some("/".to_string()),
+            Rem => Some("%".to_string()),
+            BitXor => Some("^".to_string()),
+            BitAnd => Some("&".to_string()),
+            BitOr => Some("|".to_string()),
+            Shl => Some("<<".to_string()),
+            Shr => Some(">>".to_string()),
+            Eq => Some("=".to_string()),
+            Lt => Some("<".to_string()),
+            Le => Some("<=".to_string()),
+            Ne => Some("!=".to_string()),
+            Ge => Some(">=".to_string()),
+            Gt => Some(">".to_string()),
+            Offset => None,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -2346,6 +2370,15 @@ pub enum UnOp {
     Not,
     /// The `-` operator for negation
     Neg,
+}
+
+impl fmt::Display for UnOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UnOp::Not => write!(f, "!"),
+            UnOp::Neg => write!(f, "-"),
+        }
+    }
 }
 
 impl<'tcx> Debug for Rvalue<'tcx> {
