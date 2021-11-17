@@ -151,18 +151,15 @@ fn compute_block_scopes(
         match stmt {
             Statement::Let { pat, initializer, else_branch, .. } => {
                 if let Some(expr) = initializer {
-                    scopes.set_scope(*expr, scope);
                     compute_expr_scopes(*expr, body, scopes, scope);
                 }
                 if let Some(expr) = else_branch {
-                    scopes.set_scope(*expr, scope);
                     compute_expr_scopes(*expr, body, scopes, scope);
                 }
                 scope = scopes.new_scope(scope);
                 scopes.add_bindings(body, scope, *pat);
             }
             Statement::Expr { expr, .. } => {
-                scopes.set_scope(*expr, scope);
                 compute_expr_scopes(*expr, body, scopes, scope);
             }
         }
