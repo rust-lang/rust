@@ -21,7 +21,7 @@ use itertools::Itertools;
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::ast;
+use syntax::{ast, SmolStr};
 
 use crate::{
     attr::{Attr, AttrId, AttrInput, Attrs},
@@ -94,7 +94,6 @@ pub(super) fn collect_defs(
         glob_imports: FxHashMap::default(),
         unresolved_imports: Vec::new(),
         resolved_imports: Vec::new(),
-
         unresolved_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
         cfg_options,
@@ -107,12 +106,8 @@ pub(super) fn collect_defs(
         registered_tools: Default::default(),
     };
     match block {
-        Some(block) => {
-            collector.seed_with_inner(block);
-        }
-        None => {
-            collector.seed_with_top_level();
-        }
+        Some(block) => collector.seed_with_inner(block),
+        None => collector.seed_with_top_level(),
     }
     collector.collect();
     let mut def_map = collector.finish();
@@ -126,16 +121,15 @@ enum PartialResolvedImport {
     Unresolved,
     /// One of namespaces is resolved
     Indeterminate(PerNs),
-    /// All namespaces are resolved, OR it is came from other crate
+    /// All namespaces are resolved, OR it comes from other crate
     Resolved(PerNs),
 }
 
 impl PartialResolvedImport {
-    fn namespaces(&self) -> PerNs {
+    fn namespaces(self) -> PerNs {
         match self {
             PartialResolvedImport::Unresolved => PerNs::none(),
-            PartialResolvedImport::Indeterminate(ns) => *ns,
-            PartialResolvedImport::Resolved(ns) => *ns,
+            PartialResolvedImport::Indeterminate(ns) | PartialResolvedImport::Resolved(ns) => ns,
         }
     }
 }
@@ -268,9 +262,9 @@ struct DefCollector<'a> {
     /// attributes.
     derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<Name>>,
     /// Custom attributes registered with `#![register_attr]`.
-    registered_attrs: Vec<String>,
+    registered_attrs: Vec<SmolStr>,
     /// Custom tool modules registered with `#![register_tool]`.
-    registered_tools: Vec<String>,
+    registered_tools: Vec<SmolStr>,
 }
 
 impl DefCollector<'_> {
@@ -292,31 +286,31 @@ impl DefCollector<'_> {
                     None => continue,
                 };
 
-                let registered_name = if *attr_name == hir_expand::name![register_attr]
-                    || *attr_name == hir_expand::name![register_tool]
-                {
-                    match attr.input.as_deref() {
-                        Some(AttrInput::TokenTree(subtree, _)) => match &*subtree.token_trees {
-                            [tt::TokenTree::Leaf(tt::Leaf::Ident(name))] => name.as_name(),
-                            _ => continue,
-                        },
-                        _ => continue,
-                    }
-                } else {
+                let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
+                    || *attr_name == hir_expand::name![register_tool];
+                if !attr_is_register_like {
                     continue;
+                }
+
+                let registered_name = match attr.input.as_deref() {
+                    Some(AttrInput::TokenTree(subtree, _)) => match &*subtree.token_trees {
+                        [tt::TokenTree::Leaf(tt::Leaf::Ident(name))] => name.as_name(),
+                        _ => continue,
+                    },
+                    _ => continue,
                 };
 
                 if *attr_name == hir_expand::name![register_attr] {
-                    self.registered_attrs.push(registered_name.to_string());
+                    self.registered_attrs.push(registered_name.to_smol_str());
                     cov_mark::hit!(register_attr);
                 } else {
-                    self.registered_tools.push(registered_name.to_string());
+                    self.registered_tools.push(registered_name.to_smol_str());
                     cov_mark::hit!(register_tool);
                 }
             }
 
             ModCollector {
-                def_collector: &mut *self,
+                def_collector: self,
                 macro_depth: 0,
                 module_id,
                 tree_id: TreeId::new(file_id.into(), None),
@@ -330,13 +324,14 @@ impl DefCollector<'_> {
     fn seed_with_inner(&mut self, block: AstId<ast::BlockExpr>) {
         let item_tree = self.db.file_item_tree(block.file_id);
         let module_id = self.def_map.root;
-        if item_tree
+
+        let is_cfg_enabled = item_tree
             .top_level_attrs(self.db, self.def_map.krate)
             .cfg()
-            .map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false))
-        {
+            .map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false));
+        if is_cfg_enabled {
             ModCollector {
-                def_collector: &mut *self,
+                def_collector: self,
                 macro_depth: 0,
                 module_id,
                 // FIXME: populate block once we have per-block ItemTrees
@@ -444,7 +439,7 @@ impl DefCollector<'_> {
                 let item_tree = self.db.file_item_tree(file_id);
                 let mod_dir = self.mod_dirs[&directive.module_id].clone();
                 ModCollector {
-                    def_collector: &mut *self,
+                    def_collector: self,
                     macro_depth: directive.depth,
                     module_id: directive.module_id,
                     tree_id: TreeId::new(file_id, None),
@@ -522,16 +517,16 @@ impl DefCollector<'_> {
                 BuiltinShadowMode::Other,
             );
 
-            match &per_ns.types {
+            match per_ns.types {
                 Some((ModuleDefId::ModuleId(m), _)) => {
-                    self.def_map.prelude = Some(*m);
+                    self.def_map.prelude = Some(m);
                     return;
                 }
-                _ => {
+                types => {
                     tracing::debug!(
                         "could not resolve prelude path `{}` to module (resolved to {:?})",
                         path,
-                        per_ns.types
+                        types
                     );
                 }
             }
@@ -558,9 +553,9 @@ impl DefCollector<'_> {
         let kind = def.kind.to_basedb_kind();
         self.exports_proc_macros = true;
         let macro_def = match self.proc_macros.iter().find(|(n, _)| n == &def.name) {
-            Some((_, expander)) => MacroDefId {
+            Some(&(_, expander)) => MacroDefId {
                 krate: self.def_map.krate,
-                kind: MacroDefKind::ProcMacro(*expander, kind, ast_id),
+                kind: MacroDefKind::ProcMacro(expander, kind, ast_id),
                 local_inner: false,
             },
             None => MacroDefId {
@@ -786,18 +781,16 @@ impl DefCollector<'_> {
     }
 
     fn resolve_extern_crate(&self, name: &Name) -> PerNs {
-        let arc;
-        let root = match self.def_map.block {
-            Some(_) => {
-                arc = self.def_map.crate_root(self.db).def_map(self.db);
-                &*arc
-            }
-            None => &self.def_map,
-        };
-
         if name == &name!(self) {
             cov_mark::hit!(extern_crate_self_as);
-            PerNs::types(root.module_id(root.root()).into(), Visibility::Public)
+            let root = match self.def_map.block {
+                Some(_) => {
+                    let def_map = self.def_map.crate_root(self.db).def_map(self.db);
+                    def_map.module_id(def_map.root())
+                }
+                None => self.def_map.module_id(self.def_map.root()),
+            };
+            PerNs::types(root.into(), Visibility::Public)
         } else {
             self.deps.get(name).map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public))
         }
@@ -817,10 +810,10 @@ impl DefCollector<'_> {
         match import.kind {
             ImportKind::Plain | ImportKind::TypeOnly => {
                 let name = match &import.alias {
-                    Some(ImportAlias::Alias(name)) => Some(name.clone()),
+                    Some(ImportAlias::Alias(name)) => Some(name),
                     Some(ImportAlias::Underscore) => None,
                     None => match import.path.segments().last() {
-                        Some(last_segment) => Some(last_segment.clone()),
+                        Some(last_segment) => Some(last_segment),
                         None => {
                             cov_mark::hit!(bogus_paths);
                             return;
@@ -837,12 +830,12 @@ impl DefCollector<'_> {
 
                 // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
                 if import.is_extern_crate && module_id == self.def_map.root {
-                    if let (Some(def), Some(name)) = (def.take_types(), name.as_ref()) {
+                    if let (Some(def), Some(name)) = (def.take_types(), name) {
                         self.def_map.extern_prelude.insert(name.clone(), def);
                     }
                 }
 
-                self.update(module_id, &[(name, def)], vis, ImportType::Named);
+                self.update(module_id, &[(name.cloned(), def)], vis, ImportType::Named);
             }
             ImportKind::Glob => {
                 tracing::debug!("glob import: {:?}", import);
@@ -1763,7 +1756,7 @@ impl ModCollector<'_, '_> {
                 let is_tool = builtin_attr::TOOL_MODULES
                     .iter()
                     .copied()
-                    .chain(self.def_collector.registered_tools.iter().map(AsRef::as_ref))
+                    .chain(self.def_collector.registered_tools.iter().map(SmolStr::as_str))
                     .any(|m| tool_module == *m);
                 if is_tool {
                     return true;
@@ -1776,7 +1769,7 @@ impl ModCollector<'_, '_> {
                     .iter()
                     .chain(builtin_attr::EXTRA_ATTRIBUTES)
                     .copied()
-                    .chain(self.def_collector.registered_attrs.iter().map(AsRef::as_ref))
+                    .chain(self.def_collector.registered_attrs.iter().map(SmolStr::as_str))
                     .any(|attr| name == *attr);
                 return is_inert;
             }
