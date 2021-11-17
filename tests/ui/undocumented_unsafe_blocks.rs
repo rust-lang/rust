@@ -284,4 +284,8 @@ fn interference() {
     unsafe {};
 }
 
+pub fn print_binary_tree() {
+    println!("{}", unsafe { String::from_utf8_unchecked(vec![]) });
+}
+
 fn main() {}
