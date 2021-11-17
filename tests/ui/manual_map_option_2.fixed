@@ -48,11 +48,13 @@ fn main() {
             if let Some(ref s) = s { (x.clone(), s) } else { panic!() }
         });
 
+    // Issue #7820
     unsafe fn f(x: u32) -> u32 {
         x
     }
     unsafe {
         let _ = Some(0).map(|x| f(x));
     }
+    let _ = Some(0).map(|x| unsafe { f(x) });
     let _ = Some(0).map(|x| unsafe { f(x) });
 }
