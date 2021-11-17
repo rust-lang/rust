@@ -1,21 +1,27 @@
-error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/projection-type-lifetime-mismatch.rs:17:5
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/projection-type-lifetime-mismatch.rs:17:7
    |
+LL | fn f(x: &impl for<'a> X<Y<'a> = &'a ()>) -> &'static () {
+   |         ------------------------------- this data with an anonymous lifetime `'_`...
 LL |     x.m()
-   |     ^^^^^ lifetime `'static` required
+   |     --^-- ...is captured and required to live as long as `'static` here
 
-error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/projection-type-lifetime-mismatch.rs:22:5
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/projection-type-lifetime-mismatch.rs:22:7
    |
+LL | fn g<T: for<'a> X<Y<'a> = &'a ()>>(x: &T) -> &'static () {
+   |                                       -- this data with an anonymous lifetime `'_`...
 LL |     x.m()
-   |     ^^^^^ lifetime `'static` required
+   |     --^-- ...is captured and required to live as long as `'static` here
 
-error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/projection-type-lifetime-mismatch.rs:27:5
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/projection-type-lifetime-mismatch.rs:27:7
    |
+LL | fn h(x: &()) -> &'static () {
+   |         --- this data with an anonymous lifetime `'_`...
 LL |     x.m()
-   |     ^^^^^ lifetime `'static` required
+   |     --^-- ...is captured and required to live as long as `'static` here
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0621`.
+For more information about this error, try `rustc --explain E0759`.

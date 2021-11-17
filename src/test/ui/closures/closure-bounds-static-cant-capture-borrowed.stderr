@@ -1,9 +1,21 @@
-error[E0621]: explicit lifetime required in the type of `x`
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:9
+   |
+LL |   fn foo(x: &()) {
+   |             --- this data with an anonymous lifetime `'_`...
+LL |       bar(|| {
+   |  _________^
+LL | |
+LL | |         let _ = x;
+LL | |     })
+   | |_____^ ...is captured here...
+   |
+note: ...and is required to live as long as `'static` here
   --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:5
    |
 LL |     bar(|| {
-   |     ^^^ lifetime `'static` required
+   |     ^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0621`.
+For more information about this error, try `rustc --explain E0759`.

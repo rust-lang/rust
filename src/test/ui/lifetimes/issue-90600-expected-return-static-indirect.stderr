@@ -1,0 +1,14 @@
+error[E0759]: `foo` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/issue-90600-expected-return-static-indirect.rs:7:32
+   |
+LL | fn inner(mut foo: &[u8]) {
+   |                   ----- this data with an anonymous lifetime `'_`...
+LL |     let refcell = RefCell::new(&mut foo);
+   |                                ^^^^^^^^ ...is captured here...
+...
+LL |     read_thing(read);
+   |                ---- ...and is required to live as long as `'static` here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0759`.
