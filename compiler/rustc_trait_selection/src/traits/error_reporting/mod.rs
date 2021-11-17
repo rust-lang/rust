@@ -11,6 +11,7 @@ use super::{
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
+use crate::traits::const_evaluatable::AbstractConst;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
@@ -19,6 +20,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
+//use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
@@ -1064,7 +1066,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     }
 }
 
-trait InferCtxtPrivExt<'hir, 'tcx> {
+pub(crate) trait InferCtxtPrivExt<'hir, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool;
@@ -1173,6 +1175,11 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
         obligated_types: &mut Vec<&ty::TyS<'tcx>>,
         cause_code: &ObligationCauseCode<'tcx>,
     ) -> bool;
+
+    fn try_create_suggestion_for_mismatched_const(
+        &self,
+        expected_found: ExpectedFound<&'tcx ty::Const<'tcx>>,
+    ) -> Option<String>;
 }
 
 impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
@@ -1246,6 +1253,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 .emit();
             }
             FulfillmentErrorCode::CodeConstEquateError(ref expected_found, ref err) => {
+                debug!(
+                    "expected: {:?}, found: {:?}",
+                    expected_found.expected, expected_found.found
+                );
+
                 self.report_mismatched_consts(
                     &error.obligation.cause,
                     expected_found.expected,
@@ -1486,6 +1498,16 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     self.tcx.impl_trait_ref(def_id)
                 })
                 .collect(),
+        }
+    }
+
+    fn try_create_suggestion_for_mismatched_const(
+        &self,
+        expected_found: ExpectedFound<&'tcx ty::Const<'tcx>>,
+    ) -> Option<String> {
+        match AbstractConst::from_const(self.tcx, expected_found.found) {
+            Ok(Some(f_abstract)) => f_abstract.try_print_with_replacing_substs(self.tcx),
+            _ => None,
         }
     }
 
