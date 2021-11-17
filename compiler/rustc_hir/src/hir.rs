@@ -17,7 +17,7 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{def_id::LocalDefId, BytePos, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{def_id::LocalDefId, BytePos, ExpnKind, MacroKind, MultiSpan, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 
@@ -527,8 +527,17 @@ pub struct GenericParam<'hir> {
 impl GenericParam<'hir> {
     pub fn bounds_span(&self) -> Option<Span> {
         self.bounds.iter().fold(None, |span, bound| {
-            let span = span.map(|s| s.to(bound.span())).unwrap_or_else(|| bound.span());
-            Some(span)
+            if let ExpnKind::Macro(MacroKind::Derive, _) =
+                bound.span().ctxt().outer_expn_data().kind
+            {
+                // We ignore bounds that come from exclusively from a `#[derive(_)]`, because we
+                // can't really point at them, and we sometimes use this method to get a span
+                // appropriate for suggestions.
+                span
+            } else {
+                let span = span.map(|s| s.to(bound.span())).unwrap_or_else(|| bound.span());
+                Some(span)
+            }
         })
     }
 }
