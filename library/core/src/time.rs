@@ -727,7 +727,7 @@ impl Duration {
     pub const fn from_secs_f64(secs: f64) -> Duration {
         match Duration::try_from_secs_f64(secs) {
             Ok(v) => v,
-            Err(e) => crate::panicking::panic(e.description()),
+            Err(e) => panic!("{}", e.description()),
         }
     }
 
@@ -788,7 +788,7 @@ impl Duration {
     pub const fn from_secs_f32(secs: f32) -> Duration {
         match Duration::try_from_secs_f32(secs) {
             Ok(v) => v,
-            Err(e) => crate::panicking::panic(e.description()),
+            Err(e) => panic!("{}", e.description()),
         }
     }
 
