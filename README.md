@@ -276,14 +276,13 @@ environment variable:
   is popped from a borrow stack (which is where the tag becomes invalid and any
   future use of it will error).  This helps you in finding out why UB is
   happening and where in your code would be a good place to look for it.
-* `-Zmiri-track-raw-pointers` makes Stacked Borrows track a pointer tag even for
-  raw pointers. This can make valid code fail to pass the checks, but also can
-  help identify latent aliasing issues in code that Miri accepts by default. You
-  can recognize false positives by `<untagged>` occurring in the message -- this
-  indicates a pointer that was cast from an integer, so Miri was unable to track
-  this pointer. Note that it is not currently guaranteed that code that works
-  with `-Zmiri-track-raw-pointers` also works without
-  `-Zmiri-track-raw-pointers`, but for the vast majority of code, this will be the case.
+* `-Zmiri-tag-raw-pointers` makes Stacked Borrows assign proper tags even for raw pointers. This can
+  make valid code using int-to-ptr casts fail to pass the checks, but also can help identify latent
+  aliasing issues in code that Miri accepts by default. You can recognize false positives by
+  `<untagged>` occurring in the message -- this indicates a pointer that was cast from an integer,
+  so Miri was unable to track this pointer. Note that it is not currently guaranteed that code that
+  works with `-Zmiri-tag-raw-pointers` also works without `-Zmiri-tag-raw-pointers`, but for the
+  vast majority of code, this will be the case.
 
 [function ABI]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
 

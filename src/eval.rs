@@ -87,7 +87,7 @@ pub struct MiriConfig {
     /// The allocation id to report about.
     pub tracked_alloc_id: Option<AllocId>,
     /// Whether to track raw pointers in stacked borrows.
-    pub track_raw: bool,
+    pub tag_raw: bool,
     /// Determine if data race detection should be enabled
     pub data_race_detector: bool,
     /// Rate of spurious failures for compare_exchange_weak atomic operations,
@@ -116,7 +116,7 @@ impl Default for MiriConfig {
             tracked_pointer_tag: None,
             tracked_call_id: None,
             tracked_alloc_id: None,
-            track_raw: false,
+            tag_raw: false,
             data_race_detector: true,
             cmpxchg_weak_failure_rate: 0.8,
             measureme_out: None,

@@ -105,7 +105,7 @@ pub struct GlobalState {
     /// The call id to trace
     tracked_call_id: Option<CallId>,
     /// Whether to track raw pointers.
-    track_raw: bool,
+    tag_raw: bool,
 }
 /// Memory extra state gives us interior mutable access to the global state.
 pub type MemoryExtra = RefCell<GlobalState>;
@@ -156,7 +156,7 @@ impl GlobalState {
     pub fn new(
         tracked_pointer_tag: Option<PtrId>,
         tracked_call_id: Option<CallId>,
-        track_raw: bool,
+        tag_raw: bool,
     ) -> Self {
         GlobalState {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
@@ -165,7 +165,7 @@ impl GlobalState {
             active_calls: FxHashSet::default(),
             tracked_pointer_tag,
             tracked_call_id,
-            track_raw,
+            tag_raw,
         }
     }
 
@@ -532,7 +532,7 @@ impl Stacks {
                 MiriMemoryKind::Rust | MiriMemoryKind::C | MiriMemoryKind::WinHeap,
             ) => {
                 let tag =
-                    if extra.track_raw { extra.base_tag(id) } else { extra.base_tag_untagged(id) };
+                    if extra.tag_raw { extra.base_tag(id) } else { extra.base_tag_untagged(id) };
                 (tag, Permission::SharedReadWrite)
             }
         };
@@ -719,7 +719,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let mem_extra = this.memory.extra.stacked_borrows.as_mut().unwrap().get_mut();
             match kind {
                 // Give up tracking for raw pointers.
-                RefKind::Raw { .. } if !mem_extra.track_raw => SbTag::Untagged,
+                RefKind::Raw { .. } if !mem_extra.tag_raw => SbTag::Untagged,
                 // All other pointers are properly tracked.
                 _ => SbTag::Tagged(mem_extra.new_ptr()),
             }

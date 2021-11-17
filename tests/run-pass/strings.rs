@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-track-raw-pointers
+// compile-flags: -Zmiri-tag-raw-pointers
 
 fn empty() -> &'static str {
     ""

@@ -359,8 +359,14 @@ fn main() {
                 "-Zmiri-panic-on-unsupported" => {
                     miri_config.panic_on_unsupported = true;
                 }
+                "-Zmiri-tag-raw-pointers" => {
+                    miri_config.tag_raw = true;
+                }
                 "-Zmiri-track-raw-pointers" => {
-                    miri_config.track_raw = true;
+                    eprintln!(
+                        "WARNING: -Zmiri-track-raw-pointers has been renamed to -Zmiri-tag-raw-pointers, the old name is deprecated."
+                    );
+                    miri_config.tag_raw = true;
                 }
                 "--" => {
                     after_dashdash = true;

@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-track-raw-pointers
+// compile-flags: -Zmiri-tag-raw-pointers
 use std::collections::VecDeque;
 
 fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {

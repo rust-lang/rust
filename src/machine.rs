@@ -194,7 +194,7 @@ impl MemoryExtra {
             Some(RefCell::new(stacked_borrows::GlobalState::new(
                 config.tracked_pointer_tag,
                 config.tracked_call_id,
-                config.track_raw,
+                config.tag_raw,
             )))
         } else {
             None

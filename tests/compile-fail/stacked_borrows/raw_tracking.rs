@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-track-raw-pointers
+// compile-flags: -Zmiri-tag-raw-pointers
 //! This demonstrates a provenance problem that requires tracking of raw pointers to be detected.
 
 fn main() {

@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-track-raw-pointers
+// compile-flags: -Zmiri-tag-raw-pointers
 #![feature(btree_drain_filter)]
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
