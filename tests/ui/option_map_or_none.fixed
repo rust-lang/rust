@@ -14,4 +14,9 @@ fn main() {
     let _: Option<i32> = opt.map(|x| x + 1);
     // function returning `Option`
     let _: Option<i32> = opt.and_then(bar);
+    let _: Option<i32> = opt.and_then(|x| {
+        let offset = 0;
+        let height = x;
+        Some(offset + height)
+    });
 }

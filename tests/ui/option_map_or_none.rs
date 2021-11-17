@@ -18,7 +18,7 @@ fn main() {
     let _: Option<i32> = opt.map_or(None, bar);
     let _: Option<i32> = opt.map_or(None, |x| {
         let offset = 0;
-        let height = 1;
+        let height = x;
         Some(offset + height)
     });
 }

@@ -21,5 +21,25 @@ error: called `map_or(None, ..)` on an `Option` value. This can be done more dir
 LL |     let _: Option<i32> = opt.map_or(None, bar);
    |                          ^^^^^^^^^^^^^^^^^^^^^ help: try using `and_then` instead: `opt.and_then(bar)`
 
-error: aborting due to 3 previous errors
+error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `and_then(..)` instead
+  --> $DIR/option_map_or_none.rs:19:26
+   |
+LL |       let _: Option<i32> = opt.map_or(None, |x| {
+   |  __________________________^
+LL | |         let offset = 0;
+LL | |         let height = x;
+LL | |         Some(offset + height)
+LL | |     });
+   | |______^
+   |
+help: try using `and_then` instead
+   |
+LL ~     let _: Option<i32> = opt.and_then(|x| {
+LL +         let offset = 0;
+LL +         let height = x;
+LL +         Some(offset + height)
+LL ~     });
+   |
+
+error: aborting due to 4 previous errors
 
