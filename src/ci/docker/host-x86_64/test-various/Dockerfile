@@ -22,6 +22,7 @@ RUN curl -sL https://nodejs.org/dist/v15.14.0/node-v15.14.0-linux-x64.tar.xz | \
   tar -xJ
 
 WORKDIR /build/
+COPY scripts/musl-patch-configure.diff /build/
 COPY scripts/musl-toolchain.sh /build/
 RUN bash musl-toolchain.sh x86_64 && rm -rf build
 WORKDIR /
