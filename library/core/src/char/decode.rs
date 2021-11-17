@@ -10,6 +10,7 @@ use super::{from_u32, from_u32_unchecked};
 /// documentation for more.
 ///
 /// [`decode_utf8`]: char::decode_utf8
+#[unstable(feature = "decode_utf8", issue = "none")]
 #[derive(Clone, Debug)]
 pub struct DecodeUtf8<I>
 where
@@ -22,6 +23,7 @@ where
 /// An error that can be returned when decoding UTF-8 code points.
 ///
 /// This `struct` is created when using the [`DecodeUtf8`] type.
+#[unstable(feature = "decode_utf8", issue = "none")]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DecodeUtf8Error {
     code: u8,
@@ -70,6 +72,7 @@ pub struct DecodeUtf8Error {
 /// );
 /// ```
 #[inline]
+#[unstable(feature = "decode_utf8", issue = "none")]
 pub fn decode_utf8<I: IntoIterator<Item = u8>>(iter: I) -> DecodeUtf8<I::IntoIter> {
     DecodeUtf8 {
         iter: iter.into_iter(),
@@ -85,6 +88,7 @@ enum DecodeUtf8Buffer {
     Three(u8, u8, u8),
 }
 
+#[unstable(feature = "decode_utf8", issue = "none")]
 impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
     type Item = Result<char, DecodeUtf8Error>;
 
@@ -278,11 +282,13 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
 impl DecodeUtf8Error {
     /// Returns the invalid byte which caused this error.
     #[must_use]
+    #[unstable(feature = "decode_utf8", issue = "none")]
     pub fn invalid_byte(&self) -> u8 {
         self.code
     }
 }
 
+#[unstable(feature = "decode_utf8", issue = "none")]
 impl fmt::Display for DecodeUtf8Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "invalid byte found: {:x}", self.code)
