@@ -933,10 +933,32 @@ impl<'a> Parser<'a> {
         attrs: &mut Vec<Attribute>,
         unsafety: Unsafe,
     ) -> PResult<'a, ItemInfo> {
+        let sp_start = self.prev_token.span;
         let abi = self.parse_abi(); // ABI?
-        let items = self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?;
-        let module = ast::ForeignMod { unsafety, abi, items };
-        Ok((Ident::empty(), ItemKind::ForeignMod(module)))
+        match self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No)) {
+            Ok(items) => {
+                let module = ast::ForeignMod { unsafety, abi, items };
+                Ok((Ident::empty(), ItemKind::ForeignMod(module)))
+            }
+            Err(mut err) => {
+                let current_qual_sp = self.prev_token.span;
+                let current_qual_sp = current_qual_sp.to(sp_start);
+                if let Ok(current_qual) = self.span_to_snippet(current_qual_sp) {
+                    if err.message() == "expected `{`, found keyword `unsafe`" {
+                        let invalid_qual_sp = self.token.uninterpolated_span();
+                        let invalid_qual = self.span_to_snippet(invalid_qual_sp).unwrap();
+
+                        err.span_suggestion(
+                                current_qual_sp.to(invalid_qual_sp),
+                                &format!("`{}` must come before `{}`", invalid_qual, current_qual),
+                                format!("{} {}", invalid_qual, current_qual),
+                                Applicability::MachineApplicable,
+                            ).note("keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`");
+                    }
+                }
+                Err(err)
+            }
+        }
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).
