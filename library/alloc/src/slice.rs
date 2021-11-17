@@ -955,7 +955,7 @@ where
 /// # Safety
 ///
 /// The two slices must be non-empty and `mid` must be in bounds. Buffer `buf` must be long enough
-/// to hold a copy of the shorter slice. Also, `T` must not be a zero-sized type.
+/// to hold a copy of the shorter slice.
 #[allow(unused_unsafe)]
 #[cfg(not(no_global_oom_handling))]
 unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
@@ -1088,10 +1088,7 @@ where
     macro_rules! gt {
         ($v: ident, $left: expr, $right: expr, $is_less: ident) => {
             // $is_less(&$v[$right], &$v[$left])
-            {
-                debug_assert!($left < $v.len() && $right < $v.len());
-                $is_less(unsafe { &$v.get_unchecked($right) }, unsafe { &$v.get_unchecked($left) })
-            }
+            $is_less(unsafe { &$v.get_unchecked($right) }, unsafe { &$v.get_unchecked($left) })
         };
     }
 
@@ -1171,7 +1168,9 @@ where
                         return;
                     } else if gt!(v, 0, len - 1, is_less) {
                         // strictly reverse sorted
-                        swap_slices(v, mid, buf_ptr);
+                        unsafe {
+                            swap_slices(v, mid, buf_ptr);
+                        }
                         return;
                     }
                 } else {
@@ -1202,7 +1201,8 @@ where
     ///
     /// `mid` must be <= `v.len()`
     ///   `mid <= v.len()` because `swap_slices` is only called when: `sorted < len && mid == sorted.max(len / 2)`
-    fn swap_slices<T>(v: &mut [T], mid: usize, buf_ptr: *mut T) {
+    #[allow(unused_unsafe)]
+    unsafe fn swap_slices<T>(v: &mut [T], mid: usize, buf_ptr: *mut T) {
         let rlen = v.len() - mid;
         let v_ptr = v.as_mut_ptr();
         unsafe {
