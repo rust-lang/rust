@@ -609,28 +609,13 @@ impl<'a> TraitDef<'a> {
 
         // and similarly for where clauses
         where_clause.predicates.extend(generics.where_clause.predicates.iter().map(|clause| {
-            match *clause {
-                ast::WherePredicate::BoundPredicate(ref wb) => {
-                    ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                        span: wb.span,
-                        bound_generic_params: wb.bound_generic_params.clone(),
-                        bounded_ty: wb.bounded_ty.clone(),
-                        bounds: wb.bounds.to_vec(),
-                    })
-                }
-                ast::WherePredicate::RegionPredicate(ref rb) => {
-                    ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
-                        span: rb.span,
-                        lifetime: rb.lifetime,
-                        bounds: rb.bounds.to_vec(),
-                    })
-                }
-                ast::WherePredicate::EqPredicate(ref we) => {
+            match clause {
+                ast::WherePredicate::BoundPredicate(_)
+                | ast::WherePredicate::RegionPredicate(_) => clause.clone(),
+                ast::WherePredicate::EqPredicate(we) => {
                     ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                         id: ast::DUMMY_NODE_ID,
-                        span: we.span,
-                        lhs_ty: we.lhs_ty.clone(),
-                        rhs_ty: we.rhs_ty.clone(),
+                        ..we.clone()
                     })
                 }
             }
