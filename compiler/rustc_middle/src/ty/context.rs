@@ -177,7 +177,7 @@ impl<'tcx> CtxtInterners<'tcx> {
 
     #[inline(never)]
     fn intern_const(&self, ty: Ty<'tcx>, val: ty::ConstKind<'tcx>) -> &'tcx Const<'tcx> {
-        self.const_.intern(Const { ty, val }, |c| Interned(self.arena.alloc(c))).0
+        self.const_.intern(CstHash(Const { ty, val }), |c| Interned(self.arena.alloc(c.0))).0
     }
 }
 
@@ -934,13 +934,10 @@ impl<'tcx> CommonLifetimes<'tcx> {
 
 impl<'tcx> CommonConsts<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>, types: &CommonTypes<'tcx>) -> CommonConsts<'tcx> {
-        let mk_const = |c| interners.const_.intern(c, |c| Interned(interners.arena.alloc(c))).0;
+        let mk_const = |ty, val| interners.intern_const(ty, val);
 
         CommonConsts {
-            unit: mk_const(ty::Const {
-                val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::ZST)),
-                ty: types.unit,
-            }),
+            unit: mk_const(types.unit, ty::ConstKind::Value(ConstValue::Scalar(Scalar::ZST))),
         }
     }
 }
@@ -2060,11 +2057,30 @@ impl<'tcx, T> Borrow<[T]> for Interned<'tcx, List<T>> {
 
 impl<'tcx> PartialEq for Interned<'tcx, Const<'tcx>> {
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+        self.0.ty == other.0.ty && self.0.val == other.0.val
     }
 }
 
 impl<'tcx> Eq for Interned<'tcx, Const<'tcx>> {}
+
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct CstHash<'tcx>(Const<'tcx>);
+
+impl<'tcx> Hash for CstHash<'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.ty.hash(state);
+        self.0.val.hash(state);
+    }
+}
+
+impl<'tcx> PartialEq for CstHash<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.ty == other.0.ty && self.0.val == other.0.val
+    }
+}
+
+impl Eq for CstHash<'tcx> {}
 
 impl<'tcx> Hash for Interned<'tcx, Const<'tcx>> {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -2073,9 +2089,13 @@ impl<'tcx> Hash for Interned<'tcx, Const<'tcx>> {
     }
 }
 
-impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
-    fn borrow(&self) -> &Const<'tcx> {
-        &self.0
+impl<'tcx> Borrow<CstHash<'tcx>> for Interned<'tcx, Const<'tcx>> {
+    fn borrow(&self) -> &CstHash<'tcx> {
+        let c: &Const<'tcx> = &self.0;
+        unsafe {
+            // SAFETY: safe because CstHash is repr(transparent) over Const
+            &*(c as *const Const<'tcx> as *const CstHash<'tcx>)
+        }
     }
 }
 

@@ -268,9 +268,10 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
-impl Hash for Const<'tcx> {
+impl Hash for &'tcx Const<'tcx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        (self as *const Const<'tcx>).hash(state)
+        let c: &'tcx Const<'tcx> = *self;
+        (c as *const Const<'tcx>).hash(state)
     }
 }
 
