@@ -4,11 +4,10 @@ error[E0740]: unions may not contain fields that need dropping
 LL |     a: String,
    |     ^^^^^^^^^
    |
-note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/union-with-drop-fields.rs:11:5
+help: wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped
    |
-LL |     a: String,
-   |     ^^^^^^^^^
+LL |     a: std::mem::ManuallyDrop<String>,
+   |        +++++++++++++++++++++++      +
 
 error[E0740]: unions may not contain fields that need dropping
   --> $DIR/union-with-drop-fields.rs:19:5
@@ -16,11 +15,10 @@ error[E0740]: unions may not contain fields that need dropping
 LL |     a: S,
    |     ^^^^
    |
-note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/union-with-drop-fields.rs:19:5
+help: wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped
    |
-LL |     a: S,
-   |     ^^^^
+LL |     a: std::mem::ManuallyDrop<S>,
+   |        +++++++++++++++++++++++ +
 
 error[E0740]: unions may not contain fields that need dropping
   --> $DIR/union-with-drop-fields.rs:24:5
@@ -28,11 +26,10 @@ error[E0740]: unions may not contain fields that need dropping
 LL |     a: T,
    |     ^^^^
    |
-note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/union-with-drop-fields.rs:24:5
+help: wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped
    |
-LL |     a: T,
-   |     ^^^^
+LL |     a: std::mem::ManuallyDrop<T>,
+   |        +++++++++++++++++++++++ +
 
 error: aborting due to 3 previous errors
 

@@ -4,11 +4,10 @@ error[E0740]: unions may not contain fields that need dropping
 LL |     bar: Bar,
    |     ^^^^^^^^
    |
-note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/union-custom-drop.rs:7:5
+help: wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped
    |
-LL |     bar: Bar,
-   |     ^^^^^^^^
+LL |     bar: std::mem::ManuallyDrop<Bar>,
+   |          +++++++++++++++++++++++   +
 
 error: aborting due to previous error
 
