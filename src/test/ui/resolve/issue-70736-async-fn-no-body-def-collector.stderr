@@ -58,7 +58,7 @@ LL |     async fn associated();
    |
    = note: while checking the return type of the `async fn`
    = note: expected fn pointer `fn()`
-              found fn pointer `fn() -> impl Future`
+              found fn pointer `fn() -> impl Future<Output = ()>`
 
 error: aborting due to 6 previous errors
 

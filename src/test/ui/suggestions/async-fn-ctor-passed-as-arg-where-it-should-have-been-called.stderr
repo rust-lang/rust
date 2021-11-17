@@ -1,15 +1,15 @@
-error[E0277]: `fn() -> impl Future {foo}` is not a future
+error[E0277]: `fn() -> impl Future<Output = ()> {foo}` is not a future
   --> $DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:10:9
    |
 LL | async fn foo() {}
    |          --- consider calling this function
 ...
 LL |     bar(foo);
-   |     --- ^^^ `fn() -> impl Future {foo}` is not a future
+   |     --- ^^^ `fn() -> impl Future<Output = ()> {foo}` is not a future
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Future` is not implemented for `fn() -> impl Future {foo}`
+   = help: the trait `Future` is not implemented for `fn() -> impl Future<Output = ()> {foo}`
 note: required by a bound in `bar`
   --> $DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:7:16
    |

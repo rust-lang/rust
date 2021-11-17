@@ -25,8 +25,8 @@ note: while checking the return type of the `async fn`
    |
 LL | async fn two() {}
    |                ^ checked the `Output` of this `async fn`, found opaque type
-   = note: expected opaque type `impl Future` (opaque type at <$DIR/generator-desc.rs:5:16>)
-              found opaque type `impl Future` (opaque type at <$DIR/generator-desc.rs:6:16>)
+   = note: expected opaque type `impl Future<Output = ()>` (opaque type at <$DIR/generator-desc.rs:5:16>)
+              found opaque type `impl Future<Output = ()>` (opaque type at <$DIR/generator-desc.rs:6:16>)
    = help: consider `await`ing on both `Future`s
    = note: distinct uses of `impl Trait` result in different opaque types
 

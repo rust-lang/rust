@@ -10,7 +10,7 @@ note: while checking the return type of the `async fn`
 LL | async fn make_u32() -> u32 {
    |                        ^^^ checked the `Output` of this `async fn`, found opaque type
    = note:     expected type `u32`
-           found opaque type `impl Future`
+           found opaque type `impl Future<Output = u32>`
 help: consider `await`ing on the `Future`
    |
 LL |         take_u32(x.await)

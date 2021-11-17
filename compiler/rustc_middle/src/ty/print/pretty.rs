@@ -649,30 +649,74 @@ pub trait PrettyPrinter<'tcx>:
 
                     let mut first = true;
                     let mut is_sized = false;
+                    let mut is_future = false;
+                    let mut future_output_ty = None;
+
                     p!("impl");
                     for (predicate, _) in bounds {
                         let predicate = predicate.subst(self.tcx(), substs);
                         let bound_predicate = predicate.kind();
-                        if let ty::PredicateKind::Trait(pred) = bound_predicate.skip_binder() {
-                            let trait_ref = bound_predicate.rebind(pred.trait_ref);
-                            // Don't print +Sized, but rather +?Sized if absent.
-                            if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {
-                                is_sized = true;
-                                continue;
-                            }
 
-                            p!(
-                                write("{}", if first { " " } else { "+" }),
-                                print(trait_ref.print_only_trait_path())
-                            );
-                            first = false;
+                        match bound_predicate.skip_binder() {
+                            ty::PredicateKind::Projection(projection_predicate) => {
+                                let Some(future_trait) = self.tcx().lang_items().future_trait() else { continue };
+                                let future_output_def_id =
+                                    self.tcx().associated_item_def_ids(future_trait)[0];
+
+                                if projection_predicate.projection_ty.item_def_id
+                                    == future_output_def_id
+                                {
+                                    // We don't account for multiple `Future::Output = Ty` contraints.
+                                    is_future = true;
+                                    future_output_ty = Some(projection_predicate.ty);
+                                }
+                            }
+                            ty::PredicateKind::Trait(pred) => {
+                                let trait_ref = bound_predicate.rebind(pred.trait_ref);
+                                // Don't print +Sized, but rather +?Sized if absent.
+                                if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait()
+                                {
+                                    is_sized = true;
+                                    continue;
+                                }
+
+                                if Some(trait_ref.def_id())
+                                    == self.tcx().lang_items().future_trait()
+                                {
+                                    is_future = true;
+                                    continue;
+                                }
+
+                                p!(
+                                    write("{}", if first { " " } else { "+" }),
+                                    print(trait_ref.print_only_trait_path())
+                                );
+
+                                first = false;
+                            }
+                            _ => {}
                         }
                     }
+
+                    if is_future {
+                        p!(write("{}Future", if first { " " } else { "+" }));
+                        first = false;
+
+                        if let Some(future_output_ty) = future_output_ty {
+                            // Don't print projection types, which we (unfortunately) see often
+                            // in the error outputs involving async blocks.
+                            if !matches!(future_output_ty.kind(), ty::Projection(_)) {
+                                p!("<Output = ", print(future_output_ty), ">");
+                            }
+                        }
+                    }
+
                     if !is_sized {
                         p!(write("{}?Sized", if first { " " } else { "+" }));
                     } else if first {
                         p!(" Sized");
                     }
+
                     Ok(self)
                 });
             }
