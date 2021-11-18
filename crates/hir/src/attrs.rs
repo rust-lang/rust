@@ -147,7 +147,7 @@ fn resolve_doc_path(
         AttrDefId::MacroDefId(_) => return None,
     };
     let path = ast::Path::parse(link).ok()?;
-    let modpath = ModPath::from_src(db.upcast(), path, &Hygiene::new_unhygienic()).unwrap();
+    let modpath = ModPath::from_src(db.upcast(), path, &Hygiene::new_unhygienic())?;
     let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
     let resolved = if resolved == PerNs::none() {
         resolver.resolve_module_path_in_trait_assoc_items(db.upcast(), &modpath)?
