@@ -1006,7 +1006,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         match item.kind {
             ItemKind::TyAlias(box TyAlias { ref generics, .. })
             | ItemKind::Fn(box Fn { ref generics, .. }) => {
-                self.compute_num_lifetime_params(item.id, generics);
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_item(this, item)
                 });
@@ -1015,7 +1014,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::Enum(_, ref generics)
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics) => {
-                self.compute_num_lifetime_params(item.id, generics);
                 self.resolve_adt(item, generics);
             }
 
@@ -1026,12 +1024,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 items: ref impl_items,
                 ..
             }) => {
-                self.compute_num_lifetime_params(item.id, generics);
                 self.resolve_implementation(generics, of_trait, &self_ty, item.id, impl_items);
             }
 
             ItemKind::Trait(box Trait { ref generics, ref bounds, ref items, .. }) => {
-                self.compute_num_lifetime_params(item.id, generics);
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     let def = this.r.local_def_id(item.id).to_def_id();
@@ -1083,7 +1079,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ItemKind::TraitAlias(ref generics, ref bounds) => {
-                self.compute_num_lifetime_params(item.id, generics);
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     let def = this.r.local_def_id(item.id).to_def_id();
@@ -2576,20 +2571,51 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             Some((ident.name, ns)),
         )
     }
+}
 
-    fn compute_num_lifetime_params(&mut self, id: NodeId, generics: &Generics) {
-        let def_id = self.r.local_def_id(id);
-        let count = generics
-            .params
-            .iter()
-            .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime { .. }))
-            .count();
-        self.r.item_generics_num_lifetimes.insert(def_id, count);
+struct LifetimeCountVisitor<'a, 'b> {
+    r: &'b mut Resolver<'a>,
+}
+
+/// Walks the whole crate in DFS order, visiting each item, counting the declared number of
+/// lifetime generic parameters.
+impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_> {
+    fn visit_item(&mut self, item: &'ast Item) {
+        match &item.kind {
+            ItemKind::TyAlias(box TyAlias { ref generics, .. })
+            | ItemKind::Fn(box Fn { ref generics, .. })
+            | ItemKind::Enum(_, ref generics)
+            | ItemKind::Struct(_, ref generics)
+            | ItemKind::Union(_, ref generics)
+            | ItemKind::Impl(box Impl { ref generics, .. })
+            | ItemKind::Trait(box Trait { ref generics, .. })
+            | ItemKind::TraitAlias(ref generics, _) => {
+                let def_id = self.r.local_def_id(item.id);
+                let count = generics
+                    .params
+                    .iter()
+                    .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime { .. }))
+                    .count();
+                self.r.item_generics_num_lifetimes.insert(def_id, count);
+            }
+
+            ItemKind::Mod(..)
+            | ItemKind::ForeignMod(..)
+            | ItemKind::Static(..)
+            | ItemKind::Const(..)
+            | ItemKind::Use(..)
+            | ItemKind::ExternCrate(..)
+            | ItemKind::MacroDef(..)
+            | ItemKind::GlobalAsm(..)
+            | ItemKind::MacCall(..) => {}
+        }
+        visit::walk_item(self, item)
     }
 }
 
 impl<'a> Resolver<'a> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
+        visit::walk_crate(&mut LifetimeCountVisitor { r: self }, krate);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.diagnostic_metadata.unused_labels.iter() {
