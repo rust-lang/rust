@@ -28,6 +28,7 @@ use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::stmt::Stmt;
+use crate::types::opaque_ty;
 use crate::utils::*;
 use crate::vertical::rewrite_with_alignment;
 use crate::visitor::FmtVisitor;
@@ -581,13 +582,10 @@ impl<'a> FmtVisitor<'a> {
         if self.get_context().config.reorder_impl_items() {
             type TyOpt = Option<ptr::P<ast::Ty>>;
             use crate::ast::AssocItemKind::*;
-            let is_type = |ty: &TyOpt| {
-                ty.as_ref()
-                    .map_or(true, |t| !matches!(t.kind, ast::TyKind::ImplTrait(..)))
-            };
-            let is_opaque = |ty: &TyOpt| !is_type(ty);
-            let both_type = |left: &TyOpt, right: &TyOpt| is_type(left) && is_type(right);
-            let both_opaque = |left: &TyOpt, right: &TyOpt| is_opaque(left) && is_opaque(right);
+            let is_type = |ty: &TyOpt| opaque_ty(ty).is_none();
+            let is_opaque = |ty: &TyOpt| opaque_ty(ty).is_some();
+            let both_type = |l: &TyOpt, r: &TyOpt| is_type(l) && is_type(r);
+            let both_opaque = |l: &TyOpt, r: &TyOpt| is_opaque(l) && is_opaque(r);
             let need_empty_line = |a: &ast::AssocItemKind, b: &ast::AssocItemKind| match (a, b) {
                 (TyAlias(lty), TyAlias(rty))
                     if both_type(&lty.ty, &rty.ty) || both_opaque(&lty.ty, &rty.ty) =>
@@ -1508,42 +1506,37 @@ pub(crate) fn rewrite_type_alias<'a, 'b>(
         ref bounds,
         ref ty,
     } = *ty_alias_kind;
-    let ty_opt = ty.as_ref().map(|t| &**t);
+    let ty_opt = ty.as_ref();
     let (ident, vis) = match visitor_kind {
         Item(i) => (i.ident, &i.vis),
         AssocTraitItem(i) | AssocImplItem(i) => (i.ident, &i.vis),
         ForeignItem(i) => (i.ident, &i.vis),
     };
     let rw_info = &TyAliasRewriteInfo(context, indent, generics, ident, span);
-
+    let op_ty = opaque_ty(ty);
     // Type Aliases are formatted slightly differently depending on the context
     // in which they appear, whether they are opaque, and whether they are associated.
     // https://rustc-dev-guide.rust-lang.org/opaque-types-type-alias-impl-trait.html
     // https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/items.md#type-aliases
-    match (visitor_kind, ty_opt) {
-        (Item(_), None) => {
-            let op_ty = OpaqueType { bounds };
-            rewrite_ty(rw_info, Some(bounds), Some(&op_ty), vis)
+    match (visitor_kind, &op_ty) {
+        (Item(_) | AssocTraitItem(_) | ForeignItem(_), Some(ref op_bounds)) => {
+            let op = OpaqueType { bounds: op_bounds };
+            rewrite_ty(rw_info, Some(bounds), Some(&op), vis)
         }
-        (Item(_), Some(ty)) => rewrite_ty(rw_info, Some(bounds), Some(&*ty), vis),
+        (Item(_) | AssocTraitItem(_) | ForeignItem(_), None) => {
+            rewrite_ty(rw_info, Some(bounds), ty_opt, vis)
+        }
         (AssocImplItem(_), _) => {
-            let result = if let Some(ast::Ty {
-                kind: ast::TyKind::ImplTrait(_, ref bounds),
-                ..
-            }) = ty_opt
-            {
-                let op_ty = OpaqueType { bounds };
-                rewrite_ty(rw_info, None, Some(&op_ty), &DEFAULT_VISIBILITY)
+            let result = if let Some(ref op_bounds) = op_ty {
+                let op = OpaqueType { bounds: op_bounds };
+                rewrite_ty(rw_info, Some(bounds), Some(&op), &DEFAULT_VISIBILITY)
             } else {
-                rewrite_ty(rw_info, None, ty.as_ref(), vis)
+                rewrite_ty(rw_info, Some(bounds), ty_opt, vis)
             }?;
             match defaultness {
                 ast::Defaultness::Default(..) => Some(format!("default {}", result)),
                 _ => Some(result),
             }
-        }
-        (AssocTraitItem(_), _) | (ForeignItem(_), _) => {
-            rewrite_ty(rw_info, Some(bounds), ty.as_ref(), vis)
         }
     }
 }
@@ -1867,6 +1860,12 @@ fn rewrite_static(
         Some(format!("{}{};", prefix, ty_str))
     }
 }
+
+// FIXME(calebcartwright) - This is a hack around a bug in the handling of TyKind::ImplTrait.
+// This should be removed once that bug is resolved, with the type alias formatting using the
+// defined Ty for the RHS directly.
+// https://github.com/rust-lang/rustfmt/issues/4373
+// https://github.com/rust-lang/rustfmt/issues/5027
 struct OpaqueType<'a> {
     bounds: &'a ast::GenericBounds,
 }

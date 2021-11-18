@@ -2,6 +2,7 @@ use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
 use rustc_ast::ast::{self, FnRetTy, Mutability};
+use rustc_ast::ptr;
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, contains_comment};
@@ -1029,6 +1030,13 @@ fn join_bounds_inner(
     } else {
         Some(result.0)
     }
+}
+
+pub(crate) fn opaque_ty(ty: &Option<ptr::P<ast::Ty>>) -> Option<&ast::GenericBounds> {
+    ty.as_ref().and_then(|t| match &t.kind {
+        ast::TyKind::ImplTrait(_, bounds) => Some(bounds),
+        _ => None,
+    })
 }
 
 pub(crate) fn can_be_overflowed_type(
