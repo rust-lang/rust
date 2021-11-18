@@ -9,7 +9,7 @@ fn foo(x: Ty) -> Ty {
         Ty::List(elem) => foo(elem),
         //~^ ERROR mismatched types
         //~| HELP try dereferencing the `Box`
-        //~| HELP try using a variant of the expected enum
+        //~| HELP try wrapping
     }
 }
 
