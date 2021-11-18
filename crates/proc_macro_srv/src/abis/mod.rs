@@ -69,22 +69,26 @@ impl Abi {
         symbol_name: String,
         info: RustCInfo,
     ) -> Result<Abi, LoadProcMacroDylibError> {
-        if info.version.0 != 1 {
-            Err(LoadProcMacroDylibError::UnsupportedABI)
-        } else if info.version.1 < 47 {
-            Err(LoadProcMacroDylibError::UnsupportedABI)
-        } else if info.version.1 < 54 {
-            let inner = unsafe { Abi_1_47::from_lib(lib, symbol_name) }?;
-            Ok(Abi::Abi1_47(inner))
-        } else if info.version.1 < 56 {
-            let inner = unsafe { Abi_1_55::from_lib(lib, symbol_name) }?;
-            Ok(Abi::Abi1_55(inner))
-        } else if info.version.1 < 57 {
-            let inner = unsafe { Abi_1_56::from_lib(lib, symbol_name) }?;
-            Ok(Abi::Abi1_56(inner))
-        } else {
-            let inner = unsafe { Abi_1_58::from_lib(lib, symbol_name) }?;
-            Ok(Abi::Abi1_58(inner))
+        // FIXME: this should use exclusive ranges when they're stable
+        // https://github.com/rust-lang/rust/issues/37854
+        match (info.version.0, info.version.1) {
+            (1, 47..=54) => {
+                let inner = unsafe { Abi_1_47::from_lib(lib, symbol_name) }?;
+                Ok(Abi::Abi1_47(inner))
+            }
+            (1, 55..=55) => {
+                let inner = unsafe { Abi_1_55::from_lib(lib, symbol_name) }?;
+                Ok(Abi::Abi1_55(inner))
+            }
+            (1, 56..=57) => {
+                let inner = unsafe { Abi_1_56::from_lib(lib, symbol_name) }?;
+                Ok(Abi::Abi1_56(inner))
+            }
+            (1, 58..) => {
+                let inner = unsafe { Abi_1_58::from_lib(lib, symbol_name) }?;
+                Ok(Abi::Abi1_58(inner))
+            }
+            _ => Err(LoadProcMacroDylibError::UnsupportedABI),
         }
     }
 
