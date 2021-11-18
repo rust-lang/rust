@@ -804,6 +804,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 )
             }
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsParam) => {
+                debug!("NotConstEvaluatable::MentionsParam error");
+
                 if !self.tcx.features().generic_const_exprs {
                     let mut err = self.tcx.sess.struct_span_err(
                         span,
@@ -822,16 +824,41 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 match obligation.predicate.kind().skip_binder() {
                     ty::PredicateKind::ConstEvaluatable(uv) => {
+                        debug!(?uv);
+
                         let mut err =
                             self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
-                        let const_span = self.tcx.def_span(uv.def.did);
-                        match self.tcx.sess.source_map().span_to_snippet(const_span) {
-                            Ok(snippet) => err.help(&format!(
+
+                        let anon_const_sugg = match AbstractConst::new(self.tcx, uv) {
+                            Ok(Some(a)) => a.try_print_with_replacing_substs(self.tcx).map_or(
+                                {
+                                    let const_span = self.tcx.def_span(uv.def.did);
+                                    self.tcx
+                                        .sess
+                                        .source_map()
+                                        .span_to_snippet(const_span)
+                                        .map_or(None, Some)
+                                },
+                                |s| Some(format!("{{ {} }}", s)),
+                            ),
+                            _ => {
+                                let const_span = self.tcx.def_span(uv.def.did);
+                                self.tcx
+                                    .sess
+                                    .source_map()
+                                    .span_to_snippet(const_span)
+                                    .map_or(None, Some)
+                            }
+                        };
+
+                        match anon_const_sugg {
+                            Some(snippet) => err.help(&format!(
                                 "try adding a `where` bound using this expression: `where [(); {}]:`",
                                 snippet
                             )),
-                            _ => err.help("consider adding a `where` bound using this expression"),
+                            None => err.help("consider adding a `where` bound using this expression"),
                         };
+
                         err
                     }
                     _ => {
