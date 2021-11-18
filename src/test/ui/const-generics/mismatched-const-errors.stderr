@@ -4,7 +4,7 @@ error: unconstrained generic constant
 LL | fn foo1<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + 2}, { N }>> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); { M + 1 }]:`
+   = help: try adding a `where` bound using this expression: `where [(); { N + 2 + 1 }]:`
 note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 2}, N>`
   --> $DIR/mismatched-const-errors.rs:6:22
    |
@@ -31,7 +31,7 @@ error: unconstrained generic constant
 LL | fn foo2<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + 1}, { N + 1 }>> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); { M + 1 }]:`
+   = help: try adding a `where` bound using this expression: `where [(); { N + 1 + 1 }]:`
 note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1}, { N + 1 }>`
   --> $DIR/mismatched-const-errors.rs:6:22
    |
@@ -58,7 +58,7 @@ error: unconstrained generic constant
 LL | fn foo3<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + 1}, { N - 1}>> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); { M + 1 }]:`
+   = help: try adding a `where` bound using this expression: `where [(); { N + 1 + 1 }]:`
 note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1}, { N - 1}>`
   --> $DIR/mismatched-const-errors.rs:6:22
    |
@@ -80,12 +80,12 @@ LL | fn foo3<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + 1}, { N - 1}
               found type `{ N + 1 + 1 }`
 
 error: unconstrained generic constant
-  --> $DIR/mismatched-const-errors.rs:28:44
+  --> $DIR/mismatched-const-errors.rs:27:44
    |
 LL | fn foo4<const N: usize>(c : [usize; N]) -> HasTrait<HasCastInTraitImpl<{ N - 1}, { N }>> {
    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); { M + 1 }]:`
+   = help: try adding a `where` bound using this expression: `where [(); { N - 1 + 1 }]:`
 note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N - 1}, N>`
   --> $DIR/mismatched-const-errors.rs:6:22
    |
@@ -98,7 +98,7 @@ LL | pub struct HasTrait<T: Trait>(T);
    |                        ^^^^^ required by this bound in `HasTrait`
 
 error[E0308]: mismatched types
-  --> $DIR/mismatched-const-errors.rs:28:44
+  --> $DIR/mismatched-const-errors.rs:27:44
    |
 LL | fn foo4<const N: usize>(c : [usize; N]) -> HasTrait<HasCastInTraitImpl<{ N - 1}, { N }>> {
    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `N`, found `{ N - 1 + 1 }`
@@ -107,12 +107,12 @@ LL | fn foo4<const N: usize>(c : [usize; N]) -> HasTrait<HasCastInTraitImpl<{ N 
               found type `{ N - 1 + 1 }`
 
 error: unconstrained generic constant
-  --> $DIR/mismatched-const-errors.rs:34:30
+  --> $DIR/mismatched-const-errors.rs:33:30
    |
 LL | fn foo5<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + N }, { 2 * N }>> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); { M + 1 }]:`
+   = help: try adding a `where` bound using this expression: `where [(); { N + N + 1 }]:`
 note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + N }, { 2 * N }>`
   --> $DIR/mismatched-const-errors.rs:6:22
    |
@@ -125,7 +125,7 @@ LL | pub struct HasTrait<T: Trait>(T);
    |                        ^^^^^ required by this bound in `HasTrait`
 
 error[E0308]: mismatched types
-  --> $DIR/mismatched-const-errors.rs:34:30
+  --> $DIR/mismatched-const-errors.rs:33:30
    |
 LL | fn foo5<const N: usize>() -> HasTrait<HasCastInTraitImpl<{ N + N }, { 2 * N }>> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ 2 * N }`, found `{ N + N + 1 }`
