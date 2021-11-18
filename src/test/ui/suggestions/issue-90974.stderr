@@ -1,0 +1,14 @@
+error[E0689]: can't call method `recip` on ambiguous numeric type `{float}`
+  --> $DIR/issue-90974.rs:2:25
+   |
+LL |     println!("{}", (3.).recip());
+   |                         ^^^^^
+   |
+help: you must specify a concrete type for this numeric value, like `f32`
+   |
+LL |     println!("{}", (3_f32).recip());
+   |                     ~~~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0689`.
