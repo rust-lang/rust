@@ -123,8 +123,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     thir_abstract_const => { cdata.get_thir_abstract_const(tcx, def_id.index) }
     unused_generic_params => { cdata.get_unused_generic_params(def_id.index) }
     const_param_default => {
-        let c = cdata.get_const_param_default(tcx, def_id.index);
-        tcx.mk_const(c.ty(), c.val())
+        tcx.mk_const_(cdata.get_const_param_default(tcx, def_id.index))
     }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }

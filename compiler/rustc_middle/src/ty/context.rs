@@ -176,8 +176,8 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 
     #[inline(never)]
-    fn intern_const(&self, ty: Ty<'tcx>, val: ty::ConstKind<'tcx>) -> &'tcx Const<'tcx> {
-        self.const_.intern(CstHash(Const { ty, val }), |c| Interned(self.arena.alloc(c.0))).0
+    fn intern_const(&self, const_: Const<'tcx>) -> &'tcx Const<'tcx> {
+        self.const_.intern(CstHash(const_), |c| Interned(self.arena.alloc(c.0))).0
     }
 }
 
@@ -934,7 +934,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
 
 impl<'tcx> CommonConsts<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>, types: &CommonTypes<'tcx>) -> CommonConsts<'tcx> {
-        let mk_const = |ty, val| interners.intern_const(ty, val);
+        let mk_const = |ty, val| interners.intern_const(ty::Const { ty, val });
 
         CommonConsts {
             unit: mk_const(types.unit, ty::ConstKind::Value(ConstValue::Scalar(Scalar::ZST))),
@@ -2248,7 +2248,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const(self, ty: Ty<'tcx>, val: ty::ConstKind<'tcx>) -> &'tcx Const<'tcx> {
-        self.interners.intern_const(ty, val)
+        self.interners.intern_const(ty::Const { ty, val })
+    }
+
+    /// Same as `mk_const` but interns a constructed `ty::Const` which one might get from decoding the on-disk cache
+    #[inline]
+    pub fn mk_const_(self, const_: ty::Const<'tcx>) -> &'tcx Const<'tcx> {
+        self.interners.intern_const(const_)
     }
 
     #[inline]

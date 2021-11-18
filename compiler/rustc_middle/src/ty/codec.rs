@@ -333,8 +333,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
 
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::Const<'tcx> {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
-        let c: ty::Const<'_> = Decodable::decode(decoder)?;
-        Ok(decoder.tcx().mk_const(c.ty, c.val))
+        Ok(decoder.tcx().mk_const_(Decodable::decode(decoder)?))
     }
 }
 
