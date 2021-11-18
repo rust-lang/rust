@@ -305,6 +305,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(res, dest)?;
             }
 
+            // SIMD operations
+            "simd_add" => {
+                let &[ref left, ref right] = check_arg_count(args)?;
+                let (left, left_len) = this.operand_to_simd(left)?;
+                let (right, right_len) = this.operand_to_simd(right)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert_eq!(dest_len, left_len);
+                assert_eq!(dest_len, right_len);
+
+                for i in 0..dest_len {
+                    let left = this.read_immediate(&this.mplace_index(&left, i)?.into())?;
+                    let right = this.read_immediate(&this.mplace_index(&right, i)?.into())?;
+                    let dest = this.mplace_index(&dest, i)?.into();
+                    this.binop_ignore_overflow(mir::BinOp::Add, &left, &right, &dest)?;
+                }
+            }
+
             // Atomic operations
             "atomic_load" => this.atomic_load(args, dest, AtomicReadOp::SeqCst)?,
             "atomic_load_relaxed" => this.atomic_load(args, dest, AtomicReadOp::Relaxed)?,
