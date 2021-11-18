@@ -54,4 +54,21 @@ async fn suggest_await_on_match_expr() {
     };
 }
 
+async fn dummy_result() -> Result<(), ()> {
+    Ok(())
+}
+
+#[allow(unused)]
+async fn suggest_await_in_generic_pattern() {
+    match dummy_result() {
+        //~^ HELP consider `await`ing on the `Future`
+        //~| HELP consider `await`ing on the `Future`
+        //~| SUGGESTION .await
+        Ok(_) => {}
+        //~^ ERROR mismatched types [E0308]
+        Err(_) => {}
+        //~^ ERROR mismatched types [E0308]
+    }
+}
+
 fn main() {}
