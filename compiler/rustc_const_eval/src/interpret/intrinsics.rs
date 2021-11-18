@@ -265,6 +265,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::discriminant_value => {
                 let place = self.deref_operand(&args[0])?;
+                if M::enforce_validity(self) {
+                    // This is 'using' the value, so make sure the validity invariant is satisfied.
+                    // (Also see https://github.com/rust-lang/rust/pull/89764.)
+                    self.validate_operand(&place.into())?;
+                }
+
                 let discr_val = self.read_discriminant(&place.into())?.0;
                 self.write_scalar(discr_val, dest)?;
             }
