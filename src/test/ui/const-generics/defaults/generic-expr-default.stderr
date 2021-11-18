@@ -4,7 +4,7 @@ error: unconstrained generic constant
 LL | pub fn needs_evaluatable_bound<const N1: usize>() -> Foo<N1> {
    |                                                      ^^^^^^^
    |
-   = help: try adding a `where` bound using this expression: `where [(); { N + 1 }]:`
+   = help: try adding a `where` bound using this expression: `where [(); { N1 + 1 }]:`
 
 error: unconstrained generic constant
   --> $DIR/generic-expr-default.rs:14:58
