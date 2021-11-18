@@ -3,10 +3,8 @@ use clippy_utils::source::snippet;
 use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{
-    self as hir, GenericArg, GenericBounds, GenericParamKind, HirId, Lifetime, MutTy, Mutability, Node, QPath,
-    SyntheticTyParamKind, TyKind,
-};
+use rustc_hir::{self as hir, GenericArg, GenericBounds, GenericParamKind};
+use rustc_hir::{HirId, Lifetime, MutTy, Mutability, Node, QPath, TyKind};
 use rustc_lint::LateContext;
 
 use super::BORROWED_BOX;
@@ -105,7 +103,7 @@ fn get_bounds_if_impl_trait<'tcx>(cx: &LateContext<'tcx>, qpath: &QPath<'_>, id:
         if let Some(did) = cx.qpath_res(qpath, id).opt_def_id();
         if let Some(Node::GenericParam(generic_param)) = cx.tcx.hir().get_if_local(did);
         if let GenericParamKind::Type { synthetic, .. } = generic_param.kind;
-        if synthetic == Some(SyntheticTyParamKind::ImplTrait);
+        if synthetic;
         then {
             Some(generic_param.bounds)
         } else {

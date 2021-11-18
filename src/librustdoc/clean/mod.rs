@@ -456,9 +456,7 @@ impl Clean<Generics> for hir::Generics<'_> {
         // scans them first.
         fn is_impl_trait(param: &hir::GenericParam<'_>) -> bool {
             match param.kind {
-                hir::GenericParamKind::Type { synthetic, .. } => {
-                    synthetic == Some(hir::SyntheticTyParamKind::ImplTrait)
-                }
+                hir::GenericParamKind::Type { synthetic, .. } => synthetic,
                 _ => false,
             }
         }
@@ -557,7 +555,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                         assert_eq!(param.index, 0);
                         return None;
                     }
-                    if synthetic == Some(hir::SyntheticTyParamKind::ImplTrait) {
+                    if synthetic {
                         impl_trait.insert(param.index.into(), vec![]);
                         return None;
                     }

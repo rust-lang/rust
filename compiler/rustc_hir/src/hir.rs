@@ -504,7 +504,7 @@ pub enum GenericParamKind<'hir> {
     },
     Type {
         default: Option<&'hir Ty<'hir>>,
-        synthetic: Option<SyntheticTyParamKind>,
+        synthetic: bool,
     },
     Const {
         ty: &'hir Ty<'hir>,
@@ -575,16 +575,6 @@ impl Generics<'hir> {
             self.params.iter().map(|p| p.span).collect::<Vec<Span>>().into()
         }
     }
-}
-
-/// Synthetic type parameters are converted to another form during lowering; this allows
-/// us to track the original form they had, and is useful for error messages.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
-pub enum SyntheticTyParamKind {
-    ImplTrait,
-    // Created by the `#[rustc_synthetic]` attribute.
-    FromAttr,
 }
 
 /// A where-clause in a definition.
