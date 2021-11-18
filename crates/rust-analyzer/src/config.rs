@@ -288,6 +288,10 @@ config_data! {
         workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = "\"workspace\"",
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = "\"only_types\"",
+        /// Limits the number of items returned from a workspace symbol search (Defaults to 128).
+        /// Some clients like vs-code issue new searches on result filtering and don't require all results to be returned in the initial search.
+        /// Other clients requires all results upfront and might require a higher limit.
+        workspace_symbol_search_limit: usize = "128",
     }
 }
 
@@ -421,8 +425,10 @@ pub struct RunnablesConfig {
 pub struct WorkspaceSymbolConfig {
     /// In what scope should the symbol be searched in.
     pub search_scope: WorkspaceSymbolSearchScope,
-    /// What kind of symbol is being search for.
+    /// What kind of symbol is being searched for.
     pub search_kind: WorkspaceSymbolSearchKind,
+    /// How many items are returned at most.
+    pub search_limit: usize,
 }
 
 pub struct ClientCommandsConfig {
@@ -893,6 +899,7 @@ impl Config {
                 WorkspaceSymbolSearchKindDef::OnlyTypes => WorkspaceSymbolSearchKind::OnlyTypes,
                 WorkspaceSymbolSearchKindDef::AllSymbols => WorkspaceSymbolSearchKind::AllSymbols,
             },
+            search_limit: self.data.workspace_symbol_search_limit,
         }
     }
 
@@ -1159,6 +1166,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
 
     match ty {
         "bool" => set!("type": "boolean"),
+        "usize" => set!("type": "integer", "minimum": 0),
         "String" => set!("type": "string"),
         "Vec<String>" => set! {
             "type": "array",

@@ -34,7 +34,7 @@ use vfs::AbsPathBuf;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
-    config::RustfmtConfig,
+    config::{RustfmtConfig, WorkspaceSymbolConfig},
     diff::diff,
     from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
@@ -392,7 +392,9 @@ pub(crate) fn handle_workspace_symbol(
 ) -> Result<Option<Vec<SymbolInformation>>> {
     let _p = profile::span("handle_workspace_symbol");
 
-    let (all_symbols, libs) = decide_search_scope_and_kind(&params, &snap);
+    let config = snap.config.workspace_symbol();
+    let (all_symbols, libs) = decide_search_scope_and_kind(&params, &config);
+    let limit = config.search_limit;
 
     let query = {
         let query: String = params.query.chars().filter(|&c| c != '#' && c != '*').collect();
@@ -403,13 +405,13 @@ pub(crate) fn handle_workspace_symbol(
         if libs {
             q.libs();
         }
-        q.limit(128);
+        q.limit(limit);
         q
     };
     let mut res = exec_query(&snap, query)?;
     if res.is_empty() && !all_symbols {
         let mut query = Query::new(params.query);
-        query.limit(128);
+        query.limit(limit);
         res = exec_query(&snap, query)?;
     }
 
@@ -417,13 +419,11 @@ pub(crate) fn handle_workspace_symbol(
 
     fn decide_search_scope_and_kind(
         params: &WorkspaceSymbolParams,
-        snap: &GlobalStateSnapshot,
+        config: &WorkspaceSymbolConfig,
     ) -> (bool, bool) {
         // Support old-style parsing of markers in the query.
         let mut all_symbols = params.query.contains('#');
         let mut libs = params.query.contains('*');
-
-        let config = snap.config.workspace_symbol();
 
         // If no explicit marker was set, check request params. If that's also empty
         // use global config.
