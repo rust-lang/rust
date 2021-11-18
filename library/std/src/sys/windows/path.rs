@@ -174,8 +174,8 @@ pub(crate) fn maybe_verbatim(path: &Path) -> io::Result<Vec<u16>> {
     const UNC_PREFIX: &[u16] = &[SEP, SEP, QUERY, SEP, U, N, C, SEP];
 
     let mut path = to_u16s(path)?;
-    if path.starts_with(VERBATIM_PREFIX) || path.starts_with(NT_PREFIX) {
-        // Early return for paths that are already verbatim.
+    if path.starts_with(VERBATIM_PREFIX) || path.starts_with(NT_PREFIX) || path == &[0] {
+        // Early return for paths that are already verbatim or empty.
         return Ok(path);
     } else if path.len() < LEGACY_MAX_PATH {
         // Early return if an absolute path is less < 260 UTF-16 code units.
