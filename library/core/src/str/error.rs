@@ -72,7 +72,7 @@ impl Utf8Error {
     /// assert_eq!(1, error.valid_up_to());
     /// ```
     #[stable(feature = "utf8_error", since = "1.5.0")]
-    #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "none")]
+    #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
     #[must_use]
     #[inline]
     pub const fn valid_up_to(&self) -> usize {
@@ -95,7 +95,7 @@ impl Utf8Error {
     ///
     /// [U+FFFD]: ../../std/char/constant.REPLACEMENT_CHARACTER.html
     #[stable(feature = "utf8_error_error_len", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "none")]
+    #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
     #[must_use]
     #[inline]
     pub const fn error_len(&self) -> Option<usize> {
