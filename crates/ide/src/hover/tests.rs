@@ -539,16 +539,16 @@ const foo$0: u32 = {
     check(
         r#"static foo$0: u32 = 456;"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                static foo: u32
-                ```
-            "#]],
+            ```rust
+            static foo: u32 = 456
+            ```
+        "#]],
     );
 }
 
