@@ -1,5 +1,5 @@
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:11:18
+  --> $DIR/mistyped_literal_suffix.rs:12:18
    |
 LL |     let fail14 = 2_32;
    |                  ^^^^ help: did you mean to write: `2_i32`
@@ -7,49 +7,49 @@ LL |     let fail14 = 2_32;
    = note: `#[deny(clippy::mistyped_literal_suffixes)]` on by default
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:12:18
+  --> $DIR/mistyped_literal_suffix.rs:13:18
    |
 LL |     let fail15 = 4_64;
    |                  ^^^^ help: did you mean to write: `4_i64`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:13:18
+  --> $DIR/mistyped_literal_suffix.rs:14:18
    |
 LL |     let fail16 = 7_8; //
    |                  ^^^ help: did you mean to write: `7_i8`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:14:18
+  --> $DIR/mistyped_literal_suffix.rs:15:18
    |
 LL |     let fail17 = 23_16; //
    |                  ^^^^^ help: did you mean to write: `23_i16`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:17:18
+  --> $DIR/mistyped_literal_suffix.rs:18:18
    |
 LL |     let fail20 = 2__8; //
    |                  ^^^^ help: did you mean to write: `2_i8`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:18:18
+  --> $DIR/mistyped_literal_suffix.rs:19:18
    |
 LL |     let fail21 = 4___16; //
    |                  ^^^^^^ help: did you mean to write: `4_i16`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:21:18
+  --> $DIR/mistyped_literal_suffix.rs:22:18
    |
 LL |     let fail25 = 1E2_32;
    |                  ^^^^^^ help: did you mean to write: `1E2_f32`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:22:18
+  --> $DIR/mistyped_literal_suffix.rs:23:18
    |
 LL |     let fail26 = 43E7_64;
    |                  ^^^^^^^ help: did you mean to write: `43E7_f64`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:23:18
+  --> $DIR/mistyped_literal_suffix.rs:24:18
    |
 LL |     let fail27 = 243E17_32;
    |                  ^^^^^^^^^ help: did you mean to write: `243E17_f32`

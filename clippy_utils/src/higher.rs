@@ -3,12 +3,12 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::ty::is_type_diagnostic_item;
-use crate::{is_expn_of, last_path_segment, match_def_path, path_to_local_id, paths};
+use crate::{is_expn_of, last_path_segment, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitKind};
 use rustc_hir as hir;
 use rustc_hir::{
-    Arm, Block, BorrowKind, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, PatKind, QPath, StmtKind, UnOp,
+    Arm, Block, BorrowKind, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StmtKind, UnOp,
 };
 use rustc_lint::LateContext;
 use rustc_span::{sym, symbol, ExpnKind, Span, Symbol};
@@ -513,8 +513,6 @@ pub struct FormatArgsExpn<'tcx> {
     pub format_string_parts: &'tcx [Expr<'tcx>],
     /// Symbols corresponding to [`Self::format_string_parts`]
     pub format_string_symbols: Vec<Symbol>,
-    /// Match arm patterns, the `arg0`, etc. from the next field `args`
-    pub arg_names: &'tcx [Pat<'tcx>],
     /// Expressions like `ArgumentV1::new(arg0, Debug::fmt)`
     pub args: &'tcx [Expr<'tcx>],
     /// The final argument passed to `Arguments::new_v1_formatted`, if applicable
@@ -559,7 +557,6 @@ impl FormatArgsExpn<'tcx> {
                     _ => None,
                 })
                 .collect();
-            if let PatKind::Tuple(arg_names, None) = arm.pat.kind;
             if let ExprKind::Array(args) = arm.body.kind;
             then {
                 Some(FormatArgsExpn {
@@ -567,7 +564,6 @@ impl FormatArgsExpn<'tcx> {
                     value_args,
                     format_string_parts,
                     format_string_symbols,
-                    arg_names,
                     args,
                     fmt_expr,
                 })
@@ -594,10 +590,8 @@ impl FormatArgsExpn<'tcx> {
                             if let Ok(i) = usize::try_from(position);
                             let arg = &self.args[i];
                             if let ExprKind::Call(_, [arg_name, _]) = arg.kind;
-                            if let Some(j) = self
-                                .arg_names
-                                .iter()
-                                .position(|pat| path_to_local_id(arg_name, pat.hir_id));
+                            if let ExprKind::Field(_, j) = arg_name.kind;
+                            if let Ok(j) = j.name.as_str().parse::<usize>();
                             then {
                                 Some(FormatArgsArg { value: self.value_args[j], arg, fmt: Some(fmt) })
                             } else {

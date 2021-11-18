@@ -1,4 +1,5 @@
 #![warn(clippy::fn_params_excessive_bools)]
+#![allow(clippy::too_many_arguments)]
 
 extern "C" {
     fn f(_: bool, _: bool, _: bool, _: bool);

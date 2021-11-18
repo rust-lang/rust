@@ -1,5 +1,5 @@
 error: this `else` block is redundant
-  --> $DIR/needless_continue.rs:28:16
+  --> $DIR/needless_continue.rs:29:16
    |
 LL |           } else {
    |  ________________^
@@ -35,7 +35,7 @@ LL | |         }
                    }
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> $DIR/needless_continue.rs:43:9
+  --> $DIR/needless_continue.rs:44:9
    |
 LL | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
 LL | |             continue;
@@ -55,7 +55,7 @@ LL | |         }
                    }
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:56:9
+  --> $DIR/needless_continue.rs:57:9
    |
 LL |         continue; // should lint here
    |         ^^^^^^^^^
@@ -63,7 +63,7 @@ LL |         continue; // should lint here
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:63:9
+  --> $DIR/needless_continue.rs:64:9
    |
 LL |         continue; // should lint here
    |         ^^^^^^^^^
@@ -71,7 +71,7 @@ LL |         continue; // should lint here
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:70:9
+  --> $DIR/needless_continue.rs:71:9
    |
 LL |         continue // should lint here
    |         ^^^^^^^^
@@ -79,7 +79,7 @@ LL |         continue // should lint here
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:78:9
+  --> $DIR/needless_continue.rs:79:9
    |
 LL |         continue // should lint here
    |         ^^^^^^^^
@@ -87,7 +87,7 @@ LL |         continue // should lint here
    = help: consider dropping the `continue` expression
 
 error: this `else` block is redundant
-  --> $DIR/needless_continue.rs:128:24
+  --> $DIR/needless_continue.rs:129:24
    |
 LL |                   } else {
    |  ________________________^
@@ -110,7 +110,7 @@ LL | |                 }
                            }
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> $DIR/needless_continue.rs:134:17
+  --> $DIR/needless_continue.rs:135:17
    |
 LL | /                 if condition() {
 LL | |                     continue; // should lint here
