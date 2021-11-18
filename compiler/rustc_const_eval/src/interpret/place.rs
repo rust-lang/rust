@@ -200,7 +200,7 @@ impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
             }
         } else {
             // Go through the layout.  There are lots of types that support a length,
-            // e.g., SIMD types.
+            // e.g., SIMD types. (But not all repr(simd) types even have FieldsShape::Array!)
             match self.layout.fields {
                 FieldsShape::Array { count, .. } => Ok(count),
                 _ => bug!("len not supported on sized type {:?}", self.layout.ty),
@@ -533,6 +533,22 @@ where
         })
     }
 
+    /// Converts a repr(simd) place into a place where `place_index` accesses the SIMD elements.
+    /// Also returns the number of elements.
+    pub fn mplace_to_simd(
+        &self,
+        base: &MPlaceTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, u64)> {
+        // Basically we just transmute this place into an array following simd_size_and_type.
+        // (Transmuting is okay since this is an in-memory place. We also double-check the size
+        // stays the same.)
+        let (len, e_ty) = base.layout.ty.simd_size_and_type(*self.tcx);
+        let array = self.tcx.mk_array(e_ty, len);
+        let layout = self.layout_of(array)?;
+        assert_eq!(layout.size, base.layout.size);
+        Ok((MPlaceTy { layout, ..*base }, len))
+    }
+
     /// Gets the place of a field inside the place, and also the field's type.
     /// Just a convenience function, but used quite a bit.
     /// This is the only projection that might have a side-effect: We cannot project
@@ -592,6 +608,16 @@ where
                 self.mplace_projection(&mplace, proj_elem)?.into()
             }
         })
+    }
+
+    /// Converts a repr(simd) place into a place where `place_index` accesses the SIMD elements.
+    /// Also returns the number of elements.
+    pub fn place_to_simd(
+        &mut self,
+        base: &PlaceTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, u64)> {
+        let mplace = self.force_allocation(base)?;
+        self.mplace_to_simd(&mplace)
     }
 
     /// Computes a place. You should only use this if you intend to write into this

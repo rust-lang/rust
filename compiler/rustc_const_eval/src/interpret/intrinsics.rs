@@ -413,48 +413,33 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::simd_insert => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let elem = &args[2];
-                let input = &args[0];
-                let (len, e_ty) = input.layout.ty.simd_size_and_type(*self.tcx);
+                let (input, input_len) = self.operand_to_simd(&args[0])?;
+                let (dest, dest_len) = self.place_to_simd(dest)?;
+                assert_eq!(input_len, dest_len, "Return vector length must match input length");
                 assert!(
-                    index < len,
-                    "Index `{}` must be in bounds of vector type `{}`: `[0, {})`",
+                    index < dest_len,
+                    "Index `{}` must be in bounds of vector with length {}`",
                     index,
-                    e_ty,
-                    len
-                );
-                assert_eq!(
-                    input.layout, dest.layout,
-                    "Return type `{}` must match vector type `{}`",
-                    dest.layout.ty, input.layout.ty
-                );
-                assert_eq!(
-                    elem.layout.ty, e_ty,
-                    "Scalar element type `{}` must match vector element type `{}`",
-                    elem.layout.ty, e_ty
+                    dest_len
                 );
 
-                for i in 0..len {
-                    let place = self.place_index(dest, i)?;
-                    let value = if i == index { *elem } else { self.operand_index(input, i)? };
-                    self.copy_op(&value, &place)?;
+                for i in 0..dest_len {
+                    let place = self.mplace_index(&dest, i)?;
+                    let value =
+                        if i == index { *elem } else { self.mplace_index(&input, i)?.into() };
+                    self.copy_op(&value, &place.into())?;
                 }
             }
             sym::simd_extract => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
-                let (len, e_ty) = args[0].layout.ty.simd_size_and_type(*self.tcx);
+                let (input, input_len) = self.operand_to_simd(&args[0])?;
                 assert!(
-                    index < len,
-                    "index `{}` is out-of-bounds of vector type `{}` with length `{}`",
+                    index < input_len,
+                    "index `{}` must be in bounds of vector with length `{}`",
                     index,
-                    e_ty,
-                    len
+                    input_len
                 );
-                assert_eq!(
-                    e_ty, dest.layout.ty,
-                    "Return type `{}` must match vector element type `{}`",
-                    dest.layout.ty, e_ty
-                );
-                self.copy_op(&self.operand_index(&args[0], index)?, dest)?;
+                self.copy_op(&self.mplace_index(&input, index)?.into(), dest)?;
             }
             sym::likely | sym::unlikely | sym::black_box => {
                 // These just return their argument
