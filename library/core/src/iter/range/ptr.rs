@@ -32,6 +32,20 @@ macro_rules! impl_iterator_for_ptr_range {
         /// start is misaligned, then the pointers in the range are misaligned
         /// as well. The alignedness of the range's end is not relevant.
         ///
+        /// # Optimizability
+        ///
+        /// Iteration being a safe operation imposes some restrictions on the
+        /// kinds of pointer arithmetic operations available to this
+        /// implementation. In code that meets the unsafe requirements of
+        /// [\<\*const T\>::add][add] or
+        /// [\<\*const \[T\]\>::get_unchecked][get_unchecked], it is possible
+        /// that performing the iteration unsafely in terms of those functions
+        /// could yield more optimized code than safely iterating a pointer
+        /// range.
+        ///
+        /// [add]: pointer::add
+        /// [get_unchecked]: pointer::get_unchecked
+        ///
         /// # Example
         ///
         #[doc = example!($mutability)]
