@@ -228,14 +228,8 @@ fn compare_predicate_entailment<'tcx>(
                 traits::normalize(&mut selcx, param_env, normalize_cause, predicate);
 
             inh.register_predicates(obligations);
-            let cause = ObligationCause::new(
-                span,
-                impl_m_hir_id,
-                ObligationCauseCode::CompareImplMethodObligation {
-                    impl_item_def_id: impl_m.def_id,
-                    trait_item_def_id: trait_m.def_id,
-                },
-            );
+            let mut cause = cause.clone();
+            cause.make_mut().span = span;
             inh.register_predicate(traits::Obligation::new(cause, param_env, predicate));
         }
 
