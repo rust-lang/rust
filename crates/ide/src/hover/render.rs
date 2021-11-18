@@ -1,6 +1,6 @@
 //! Logic for rendering the different hover messages
 use either::Either;
-use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
+use hir::{AsAssocItem, Const, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
 use ide_db::{
     base_db::SourceDatabase,
     defs::Definition,
@@ -352,7 +352,7 @@ pub(super) fn definition(
         Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_docs(db, it),
         Definition::Variant(it) => label_and_docs(db, it),
-        Definition::Const(it) => label_and_docs(db, it),
+        Definition::Const(it) => const_label_value_and_docs(db, it),
         Definition::Static(it) => label_and_docs(db, it),
         Definition::Trait(it) => label_and_docs(db, it),
         Definition::TypeAlias(it) => label_and_docs(db, it),
@@ -378,6 +378,21 @@ where
 {
     let label = def.display(db).to_string();
     let docs = def.attrs(db).docs();
+    (label, docs)
+}
+
+fn const_label_value_and_docs(
+    db: &RootDatabase,
+    konst: Const,
+) -> (String, Option<hir::Documentation>) {
+    let label = if let Some(expr) = konst.value(db) {
+        format!("{} = {}", konst.display(db), expr)
+    } else {
+        konst.display(db).to_string()
+    };
+
+    let docs = konst.attrs(db).docs();
+
     (label, docs)
 }
 

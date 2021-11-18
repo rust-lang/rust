@@ -1457,6 +1457,10 @@ impl Const {
         db.const_data(self.id).name.clone()
     }
 
+    pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
+        self.source(db)?.value.body()
+    }
+
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let data = db.const_data(self.id);
         let resolver = self.id.resolver(db.upcast());
