@@ -1718,40 +1718,43 @@ fn test_hover_test_has_action() {
 fn foo_$0test() {}
 "#,
         expect![[r#"
-                [
-                    Reference(
-                        FilePosition {
+            [
+                Reference(
+                    FilePosition {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 11,
+                    },
+                ),
+                Runnable(
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
                             file_id: FileId(
                                 0,
                             ),
-                            offset: 11,
+                            full_range: 0..24,
+                            focus_range: 11..19,
+                            name: "foo_test",
+                            kind: Function,
                         },
-                    ),
-                    Runnable(
-                        Runnable {
-                            use_name_in_title: false,
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                full_range: 0..24,
-                                focus_range: 11..19,
-                                name: "foo_test",
-                                kind: Function,
+                        kind: Test {
+                            test_id: Path(
+                                "foo_test",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
                             },
-                            kind: Test {
-                                test_id: Path(
-                                    "foo_test",
-                                ),
-                                attr: TestAttr {
-                                    ignore: false,
-                                },
-                            },
-                            cfg: None,
                         },
-                    ),
-                ]
-            "#]],
+                        cfg: None,
+                    },
+                ),
+                GoToType(
+                    [],
+                ),
+            ]
+        "#]],
     );
 }
 
