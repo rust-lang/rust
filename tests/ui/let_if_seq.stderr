@@ -1,3 +1,23 @@
+error: unneeded late initalization
+  --> $DIR/let_if_seq.rs:48:5
+   |
+LL |     let foo;
+   |     ^^^^^^^^
+   |
+   = note: `-D clippy::needless-late-init` implied by `-D warnings`
+help: declare `foo` here
+   |
+LL |     let foo = if f() {
+   |     +++++++++
+help: remove the assignments from the branches
+   |
+LL |         0
+   |
+help: add a semicolon after the if expression
+   |
+LL |     };
+   |      +
+
 error: `if _ { .. } else { .. }` is an expression
   --> $DIR/let_if_seq.rs:65:5
    |
@@ -46,5 +66,26 @@ LL | |     }
    |
    = note: you might not need `mut` at all
 
-error: aborting due to 4 previous errors
+error: unneeded late initalization
+  --> $DIR/let_if_seq.rs:78:5
+   |
+LL |     let quz;
+   |     ^^^^^^^^
+   |
+help: declare `quz` here
+   |
+LL |     let quz = if f() {
+   |     +++++++++
+help: remove the assignments from the branches
+   |
+LL ~         42
+LL |     } else {
+LL ~         0
+   |
+help: add a semicolon after the if expression
+   |
+LL |     };
+   |      +
+
+error: aborting due to 6 previous errors
 
