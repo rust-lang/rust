@@ -109,7 +109,10 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
                 };
 
                 GenericBound::TraitBound(
-                    PolyTrait { trait_: (trait_ref, &*bindings).clean(cx), generic_params: vec![] },
+                    PolyTrait {
+                        trait_: (trait_ref, &bindings[..]).clean(cx),
+                        generic_params: vec![],
+                    },
                     hir::TraitBoundModifier::None,
                 )
             }
@@ -456,9 +459,7 @@ impl Clean<Generics> for hir::Generics<'_> {
         // scans them first.
         fn is_impl_trait(param: &hir::GenericParam<'_>) -> bool {
             match param.kind {
-                hir::GenericParamKind::Type { synthetic, .. } => {
-                    synthetic == Some(hir::SyntheticTyParamKind::ImplTrait)
-                }
+                hir::GenericParamKind::Type { synthetic, .. } => synthetic,
                 _ => false,
             }
         }
@@ -557,7 +558,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                         assert_eq!(param.index, 0);
                         return None;
                     }
-                    if synthetic == Some(hir::SyntheticTyParamKind::ImplTrait) {
+                    if synthetic {
                         impl_trait.insert(param.index.into(), vec![]);
                         return None;
                     }
@@ -761,8 +762,13 @@ fn clean_fn_or_proc_macro(
 
 impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::BodyId) {
     fn clean(&self, cx: &mut DocContext<'_>) -> Function {
-        let (generics, decl) =
-            enter_impl_trait(cx, |cx| (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx)));
+        let (generics, decl) = enter_impl_trait(cx, |cx| {
+            // NOTE: generics must be cleaned before args
+            let generics = self.1.clean(cx);
+            let args = (self.0.decl.inputs, self.2).clean(cx);
+            let decl = clean_fn_decl_with_args(cx, self.0.decl, args);
+            (generics, decl)
+        });
         Function { decl, generics, header: self.0.header }
     }
 }
@@ -804,17 +810,12 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
     }
 }
 
-impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl<'a>, A)
-where
-    (&'a [hir::Ty<'a>], A): Clean<Arguments>,
-{
-    fn clean(&self, cx: &mut DocContext<'_>) -> FnDecl {
-        FnDecl {
-            inputs: (self.0.inputs, self.1).clean(cx),
-            output: self.0.output.clean(cx),
-            c_variadic: self.0.c_variadic,
-        }
-    }
+fn clean_fn_decl_with_args(
+    cx: &mut DocContext<'_>,
+    decl: &hir::FnDecl<'_>,
+    args: Arguments,
+) -> FnDecl {
+    FnDecl { inputs: args, output: decl.output.clean(cx), c_variadic: decl.c_variadic }
 }
 
 impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
@@ -894,7 +895,11 @@ impl Clean<Item> for hir::TraitItem<'_> {
                 }
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
-                        (self.generics.clean(cx), (sig.decl, names).clean(cx))
+                        // NOTE: generics must be cleaned before args
+                        let generics = self.generics.clean(cx);
+                        let args = (sig.decl.inputs, names).clean(cx);
+                        let decl = clean_fn_decl_with_args(cx, sig.decl, args);
+                        (generics, decl)
                     });
                     let mut t = Function { header: sig.header, decl, generics };
                     if t.header.constness == hir::Constness::Const
@@ -1727,8 +1732,10 @@ impl Clean<PathSegment> for hir::PathSegment<'_> {
 impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> BareFunctionDecl {
         let (generic_params, decl) = enter_impl_trait(cx, |cx| {
+            // NOTE: generics must be cleaned before args
             let generic_params = self.generic_params.iter().map(|x| x.clean(cx)).collect();
-            let decl = (self.decl, self.param_names).clean(cx);
+            let args = (self.decl.inputs, self.param_names).clean(cx);
+            let decl = clean_fn_decl_with_args(cx, self.decl, args);
             (generic_params, decl)
         });
         BareFunctionDecl { unsafety: self.unsafety, abi: self.abi, decl, generic_params }
@@ -2029,8 +2036,13 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
             let kind = match item.kind {
                 hir::ForeignItemKind::Fn(decl, names, ref generics) => {
                     let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
-                    let (generics, decl) =
-                        enter_impl_trait(cx, |cx| (generics.clean(cx), (decl, names).clean(cx)));
+                    let (generics, decl) = enter_impl_trait(cx, |cx| {
+                        // NOTE: generics must be cleaned before args
+                        let generics = generics.clean(cx);
+                        let args = (decl.inputs, names).clean(cx);
+                        let decl = clean_fn_decl_with_args(cx, decl, args);
+                        (generics, decl)
+                    });
                     ForeignFunctionItem(Function {
                         decl,
                         generics,

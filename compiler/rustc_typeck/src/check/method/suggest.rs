@@ -317,6 +317,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .span_to_snippet(lit.span)
                                     .unwrap_or_else(|_| "<numeric literal>".to_owned());
 
+                                // If this is a floating point literal that ends with '.',
+                                // get rid of it to stop this from becoming a member access.
+                                let snippet = snippet.strip_suffix('.').unwrap_or(&snippet);
+
                                 err.span_suggestion(
                                     lit.span,
                                     &format!(
@@ -324,7 +328,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                          like `{}`",
                                         concrete_type
                                     ),
-                                    format!("{}_{}", snippet, concrete_type),
+                                    format!("{snippet}_{concrete_type}"),
                                     Applicability::MaybeIncorrect,
                                 );
                             }
@@ -1490,7 +1494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Node::GenericParam(param) => {
                             let mut impl_trait = false;
                             let has_bounds =
-                                if let hir::GenericParamKind::Type { synthetic: Some(_), .. } =
+                                if let hir::GenericParamKind::Type { synthetic: true, .. } =
                                     &param.kind
                                 {
                                     // We've found `fn foo(x: impl Trait)` instead of

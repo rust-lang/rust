@@ -348,6 +348,18 @@ Using this flag looks like this:
 $ rustdoc src/lib.rs -Z unstable-options --show-coverage
 ```
 
+It generates something like this:
+
+```bash
++-------------------------------------+------------+------------+------------+------------+
+| File                                | Documented | Percentage |   Examples | Percentage |
++-------------------------------------+------------+------------+------------+------------+
+| lib.rs                              |          4 |     100.0% |          1 |      25.0% |
++-------------------------------------+------------+------------+------------+------------+
+| Total                               |          4 |     100.0% |          1 |      25.0% |
++-------------------------------------+------------+------------+------------+------------+
+```
+
 If you want to determine how many items in your crate are documented, pass this flag to rustdoc.
 When it receives this flag, it will count the public items in your crate that have documentation,
 and print out the counts and a percentage instead of generating docs.
@@ -367,17 +379,25 @@ Some methodology notes about what rustdoc counts in this metric:
 Public items that are not documented can be seen with the built-in `missing_docs` lint. Private
 items that are not documented can be seen with Clippy's `missing_docs_in_private_items` lint.
 
-### `-w`/`--output-format`: output format
+Calculating code examples follows these rules:
 
-When using
-[`--show-coverage`](https://doc.rust-lang.org/nightly/rustdoc/unstable-features.html#--show-coverage-get-statistics-about-code-documentation-coverage),
-passing `--output-format json` will display the coverage information in JSON format. For example,
-here is the JSON for a file with one documented item and one undocumented item:
+1. These items aren't accounted by default:
+  * struct/union field
+  * enum variant
+  * constant
+  * static
+  * typedef
+2. If one of the previously listed items has a code example, then it'll be counted.
+
+#### JSON output
+
+When using `--output-format json` with this option, it will display the coverage information in
+JSON format. For example, here is the JSON for a file with one documented item and one
+undocumented item:
 
 ```rust
 /// This item has documentation
 pub fn foo() {}
-
 pub fn no_documentation() {}
 ```
 
@@ -387,9 +407,15 @@ pub fn no_documentation() {}
 
 Note that the third item is the crate root, which in this case is undocumented.
 
-When not using `--show-coverage`, `--output-format json` emits documentation in the experimental
+### `-w`/`--output-format`: output format
+
+`--output-format json` emits documentation in the experimental
 [JSON format](https://github.com/rust-lang/rfcs/pull/2963). `--output-format html` has no effect,
 and is also accepted on stable toolchains.
+
+It can also be used with `--show-coverage`. Take a look at its
+[documentation](#--show-coverage-get-statistics-about-code-documentation-coverage) for more
+information.
 
 ### `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
 
@@ -440,39 +466,6 @@ $ rustdoc src/lib.rs -Z unstable-options --runtool valgrind
 ```
 
 Another use case would be to run a test inside an emulator, or through a Virtual Machine.
-
-### `--show-coverage`: get statistics about code documentation coverage
-
-This option allows you to get a nice overview over your code documentation coverage, including both
-doc-comments and code examples in the doc-comments. Example:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --show-coverage
-+-------------------------------------+------------+------------+------------+------------+
-| File                                | Documented | Percentage |   Examples | Percentage |
-+-------------------------------------+------------+------------+------------+------------+
-| lib.rs                              |          4 |     100.0% |          1 |      25.0% |
-+-------------------------------------+------------+------------+------------+------------+
-| Total                               |          4 |     100.0% |          1 |      25.0% |
-+-------------------------------------+------------+------------+------------+------------+
-```
-
-You can also use this option with the `--output-format` one:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --show-coverage --output-format json
-{"lib.rs":{"total":4,"with_docs":4,"total_examples":4,"with_examples":1}}
-```
-
-Calculating code examples follows these rules:
-
-1. These items aren't accounted by default:
-  * struct/union field
-  * enum variant
-  * constant
-  * static
-  * typedef
-2. If one of the previously listed items has a code example, then it'll be counted.
 
 ### `--with-examples`: include examples of uses of items as documentation
 
