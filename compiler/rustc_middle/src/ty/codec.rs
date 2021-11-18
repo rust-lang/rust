@@ -417,17 +417,17 @@ macro_rules! __impl_decoder_methods {
 macro_rules! impl_arena_allocatable_decoder {
     ([]$args:tt) => {};
     ([decode $(, $attrs:ident)*]
-     [[$name:ident: $ty:ty], $tcx:lifetime]) => {
-        impl<$tcx, D: TyDecoder<$tcx>> RefDecodable<$tcx, D> for $ty {
+     [$name:ident: $ty:ty]) => {
+        impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
             #[inline]
-            fn decode(decoder: &mut D) -> Result<&$tcx Self, D::Error> {
+            fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
                 decode_arena_allocable(decoder)
             }
         }
 
-        impl<$tcx, D: TyDecoder<$tcx>> RefDecodable<$tcx, D> for [$ty] {
+        impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [$ty] {
             #[inline]
-            fn decode(decoder: &mut D) -> Result<&$tcx Self, D::Error> {
+            fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
                 decode_arena_allocable_slice(decoder)
             }
         }
@@ -438,15 +438,15 @@ macro_rules! impl_arena_allocatable_decoder {
 }
 
 macro_rules! impl_arena_allocatable_decoders {
-    ([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
+    ([$($a:tt $name:ident: $ty:ty,)*]) => {
         $(
-            impl_arena_allocatable_decoder!($a [[$name: $ty], $tcx]);
+            impl_arena_allocatable_decoder!($a [$name: $ty]);
         )*
     }
 }
 
-rustc_hir::arena_types!(impl_arena_allocatable_decoders, 'tcx);
-arena_types!(impl_arena_allocatable_decoders, 'tcx);
+rustc_hir::arena_types!(impl_arena_allocatable_decoders);
+arena_types!(impl_arena_allocatable_decoders);
 
 #[macro_export]
 macro_rules! implement_ty_decoder {
