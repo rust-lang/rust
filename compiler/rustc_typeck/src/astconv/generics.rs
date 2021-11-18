@@ -464,16 +464,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .params
                 .iter()
                 .filter(|param| {
-                    matches!(
-                        param.kind,
-                        ty::GenericParamDefKind::Type {
-                            synthetic: Some(
-                                hir::SyntheticTyParamKind::ImplTrait
-                                    | hir::SyntheticTyParamKind::FromAttr
-                            ),
-                            ..
-                        }
-                    )
+                    matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. })
                 })
                 .count()
         } else {

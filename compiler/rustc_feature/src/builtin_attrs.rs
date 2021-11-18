@@ -601,7 +601,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         TEST, rustc_expected_cgu_reuse, Normal,
         template!(List: r#"cfg = "...", module = "...", kind = "...""#),
     ),
-    rustc_attr!(TEST, rustc_synthetic, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_symbol_name, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_polymorphize_error, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_def_path, Normal, template!(Word)),

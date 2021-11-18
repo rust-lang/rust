@@ -3,7 +3,6 @@ use crate::ty;
 use crate::ty::subst::{Subst, SubstsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -13,14 +12,8 @@ use super::{EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Predi
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
     Lifetime,
-    Type {
-        has_default: bool,
-        object_lifetime_default: ObjectLifetimeDefault,
-        synthetic: Option<hir::SyntheticTyParamKind>,
-    },
-    Const {
-        has_default: bool,
-    },
+    Type { has_default: bool, object_lifetime_default: ObjectLifetimeDefault, synthetic: bool },
+    Const { has_default: bool },
 }
 
 impl GenericParamDefKind {
@@ -202,15 +195,7 @@ impl<'tcx> Generics {
     /// Returns `true` if `params` has `impl Trait`.
     pub fn has_impl_trait(&'tcx self) -> bool {
         self.params.iter().any(|param| {
-            matches!(
-                param.kind,
-                ty::GenericParamDefKind::Type {
-                    synthetic: Some(
-                        hir::SyntheticTyParamKind::ImplTrait | hir::SyntheticTyParamKind::FromAttr,
-                    ),
-                    ..
-                }
-            )
+            matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. })
         })
     }
 }

@@ -1494,7 +1494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Node::GenericParam(param) => {
                             let mut impl_trait = false;
                             let has_bounds =
-                                if let hir::GenericParamKind::Type { synthetic: Some(_), .. } =
+                                if let hir::GenericParamKind::Type { synthetic: true, .. } =
                                     &param.kind
                                 {
                                     // We've found `fn foo(x: impl Trait)` instead of
