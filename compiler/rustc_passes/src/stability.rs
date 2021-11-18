@@ -577,17 +577,21 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
     }
 
     fn check_missing_const_stability(&self, def_id: LocalDefId, span: Span) {
-        let stab_map = self.tcx.stability();
-        let stab = stab_map.local_stability(def_id);
-        if stab.map_or(false, |stab| stab.level.is_stable()) {
-            let const_stab = stab_map.local_const_stability(def_id);
-            if const_stab.is_none() {
-                self.tcx.sess.span_err(
-                    span,
-                    "`#[stable]` const functions must also be either \
-                    `#[rustc_const_stable]` or `#[rustc_const_unstable]`",
-                );
-            }
+        if !self.tcx.features().staged_api {
+            return;
+        }
+
+        let is_const = self.tcx.is_const_fn(def_id.to_def_id());
+        let is_stable = self
+            .tcx
+            .lookup_stability(def_id)
+            .map_or(false, |stability| stability.level.is_stable());
+        let missing_const_stability_attribute = self.tcx.lookup_const_stability(def_id).is_none();
+        let is_reachable = self.access_levels.is_reachable(def_id);
+
+        if is_const && is_stable && missing_const_stability_attribute && is_reachable {
+            let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
+            self.tcx.sess.span_err(span, &format!("{descr} has missing const stability attribute"));
         }
     }
 }
@@ -612,13 +616,8 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
             self.check_missing_stability(i.def_id, i.span);
         }
 
-        // Ensure `const fn` that are `stable` have one of `rustc_const_unstable` or
-        // `rustc_const_stable`.
-        if self.tcx.features().staged_api
-            && matches!(&i.kind, hir::ItemKind::Fn(sig, ..) if sig.header.is_const())
-        {
-            self.check_missing_const_stability(i.def_id, i.span);
-        }
+        // Ensure stable `const fn` have a const stability attribute.
+        self.check_missing_const_stability(i.def_id, i.span);
 
         intravisit::walk_item(self, i)
     }
@@ -632,6 +631,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         let impl_def_id = self.tcx.hir().get_parent_item(ii.hir_id());
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
             self.check_missing_stability(ii.def_id, ii.span);
+            self.check_missing_const_stability(ii.def_id, ii.span);
         }
         intravisit::walk_impl_item(self, ii);
     }
