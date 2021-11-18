@@ -15,7 +15,7 @@ pub struct Rename {
     pub rename: String,
 }
 
-/// A single disallowed method, used by the `DISALLOWED_METHOD` lint.
+/// A single disallowed method, used by the `DISALLOWED_METHODS` lint.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
 pub enum DisallowedMethod {
@@ -256,7 +256,7 @@ define_Conf! {
     ///
     /// Whether to allow certain wildcard imports (prelude, super in tests).
     (warn_on_all_wildcard_imports: bool = false),
-    /// Lint: DISALLOWED_METHOD.
+    /// Lint: DISALLOWED_METHODS.
     ///
     /// The list of disallowed methods, written as fully qualified paths.
     (disallowed_methods: Vec<crate::utils::conf::DisallowedMethod> = Vec::new()),
