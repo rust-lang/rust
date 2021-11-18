@@ -630,6 +630,32 @@ rustc_queries! {
         desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
     }
 
+    /// Maps from associated items on a trait to the corresponding associated
+    /// item on the impl specified by `impl_id`.
+    ///
+    /// For example, with the following code
+    ///
+    /// ```
+    /// struct Type {}
+    ///                         // DefId
+    /// trait Trait {           // trait_id
+    ///     fn f();             // trait_f
+    ///     fn g() {}           // trait_g
+    /// }
+    ///
+    /// impl Trait for Type {   // impl_id
+    ///     fn f() {}           // impl_f
+    ///     fn g() {}           // impl_g
+    /// }
+    /// ```
+    ///
+    /// The map returned for `tcx.impl_item_implementor_ids(impl_id)` would be
+    ///`{ trait_f: impl_f, trait_g: impl_g }`
+    query impl_item_implementor_ids(impl_id: DefId) -> FxHashMap<DefId, DefId> {
+        desc { |tcx| "comparing impl items against trait for {}", tcx.def_path_str(impl_id) }
+        storage(ArenaCacheSelector<'tcx>)
+    }
+
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
     query impl_trait_ref(impl_id: DefId) -> Option<ty::TraitRef<'tcx>> {

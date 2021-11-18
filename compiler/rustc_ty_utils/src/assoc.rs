@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -8,6 +9,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         associated_item,
         associated_item_def_ids,
         associated_items,
+        impl_item_implementor_ids,
         trait_of_item,
         ..*providers
     };
@@ -30,6 +32,13 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
 fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItems<'_> {
     let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
     ty::AssocItems::new(items)
+}
+
+fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> FxHashMap<DefId, DefId> {
+    tcx.associated_items(impl_id)
+        .in_definition_order()
+        .filter_map(|item| item.trait_item_def_id.map(|trait_item| (trait_item, item.def_id)))
+        .collect()
 }
 
 /// If the given `DefId` describes an item belonging to a trait,
