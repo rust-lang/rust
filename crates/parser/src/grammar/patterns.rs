@@ -74,6 +74,11 @@ fn pattern_single_r(p: &mut Parser, recovery_set: TokenSet) {
         //         Some(0) | None => (),
         //         Some(1..) => ()
         //     }
+        //
+        //     match (10 as u8, 5 as u8) {
+        //         (0, _) => (),
+        //         (1.., _) => ()
+        //     }
         // }
 
         // FIXME: support half_open_range_patterns (`..=2`),
@@ -85,7 +90,7 @@ fn pattern_single_r(p: &mut Parser, recovery_set: TokenSet) {
 
                 // `0 .. =>` or `let 0 .. =` or `Some(0 .. )`
                 //       ^                ^                ^
-                if p.at(T![=]) | p.at(T![')']) {
+                if p.at(T![=]) | p.at(T![')']) | p.at(T![,]) {
                     // test half_open_range_pat
                     // fn f() { let 0 .. = 1u32; }
                 } else {
