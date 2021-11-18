@@ -24,22 +24,13 @@ impl ModDir {
     pub(super) fn root() -> ModDir {
         ModDir { dir_path: DirPath::empty(), root_non_dir_owner: false, depth: 0 }
     }
-    fn child(&self, dir_path: DirPath, root_non_dir_owner: bool) -> Option<ModDir> {
-        let depth = self.depth + 1;
-        if MOD_DEPTH_LIMIT.check(depth as usize).is_err() {
-            tracing::error!("MOD_DEPTH_LIMIT exceeded");
-            cov_mark::hit!(circular_mods);
-            return None;
-        }
-        Some(ModDir { dir_path, root_non_dir_owner, depth })
-    }
 
     pub(super) fn descend_into_definition(
         &self,
         name: &Name,
         attr_path: Option<&SmolStr>,
     ) -> Option<ModDir> {
-        let path = match attr_path.map(|it| it.as_str()) {
+        let path = match attr_path.map(SmolStr::as_str) {
             None => {
                 let mut path = self.dir_path.clone();
                 path.push(&name.to_smol_str());
@@ -54,6 +45,16 @@ impl ModDir {
             }
         };
         self.child(path, false)
+    }
+
+    fn child(&self, dir_path: DirPath, root_non_dir_owner: bool) -> Option<ModDir> {
+        let depth = self.depth + 1;
+        if MOD_DEPTH_LIMIT.check(depth as usize).is_err() {
+            tracing::error!("MOD_DEPTH_LIMIT exceeded");
+            cov_mark::hit!(circular_mods);
+            return None;
+        }
+        Some(ModDir { dir_path, root_non_dir_owner, depth })
     }
 
     pub(super) fn resolve_declaration(
