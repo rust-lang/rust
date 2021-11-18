@@ -1,6 +1,8 @@
 //! Logic for rendering the different hover messages
+use std::fmt::Display;
+
 use either::Either;
-use hir::{AsAssocItem, Const, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
+use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
 use ide_db::{
     base_db::SourceDatabase,
     defs::Definition,
@@ -352,8 +354,8 @@ pub(super) fn definition(
         Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_docs(db, it),
         Definition::Variant(it) => label_and_docs(db, it),
-        Definition::Const(it) => const_label_value_and_docs(db, it),
-        Definition::Static(it) => label_and_docs(db, it),
+        Definition::Const(it) => label_value_and_docs(db, it, |it| it.value(db)),
+        Definition::Static(it) => label_value_and_docs(db, it, |it| it.value(db)),
         Definition::Trait(it) => label_and_docs(db, it),
         Definition::TypeAlias(it) => label_and_docs(db, it),
         Definition::BuiltinType(it) => {
@@ -381,18 +383,22 @@ where
     (label, docs)
 }
 
-fn const_label_value_and_docs(
+fn label_value_and_docs<D, E, V>(
     db: &RootDatabase,
-    konst: Const,
-) -> (String, Option<hir::Documentation>) {
-    let label = if let Some(expr) = konst.value(db) {
-        format!("{} = {}", konst.display(db), expr)
+    def: D,
+    value_extractor: E,
+) -> (String, Option<hir::Documentation>)
+where
+    D: HasAttrs + HirDisplay,
+    E: Fn(&D) -> Option<V>,
+    V: Display,
+{
+    let label = if let Some(value) = (value_extractor)(&def) {
+        format!("{} = {}", def.display(db), value)
     } else {
-        konst.display(db).to_string()
+        def.display(db).to_string()
     };
-
-    let docs = konst.attrs(db).docs();
-
+    let docs = def.attrs(db).docs();
     (label, docs)
 }
 

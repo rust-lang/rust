@@ -1497,6 +1497,10 @@ impl Static {
         db.static_data(self.id).mutable
     }
 
+    pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
+        self.source(db)?.value.body()
+    }
+
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let data = db.static_data(self.id);
         let resolver = self.id.resolver(db.upcast());
