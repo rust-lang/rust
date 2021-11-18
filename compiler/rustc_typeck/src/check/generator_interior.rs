@@ -26,9 +26,6 @@ use rustc_span::Span;
 use smallvec::SmallVec;
 use tracing::debug;
 
-#[cfg(test)]
-mod tests;
-
 mod drop_ranges;
 
 struct InteriorVisitor<'a, 'tcx> {
@@ -255,6 +252,7 @@ pub fn resolve_interior<'a, 'tcx>(
         intravisit::walk_body(&mut drop_range_visitor, body);
 
         drop_range_visitor.drop_ranges.propagate_to_fixpoint();
+        // drop_range_visitor.drop_ranges.save_graph("drop_ranges.dot");
 
         InteriorVisitor {
             fcx,
@@ -877,18 +875,18 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                 reinit = Some(lhs);
             }
             ExprKind::Loop(body, ..) => {
-                let loop_begin = self.expr_count;
+                let loop_begin = self.expr_count + 1;
                 self.visit_block(body);
                 self.drop_ranges.add_control_edge(self.expr_count, loop_begin);
             }
             ExprKind::Match(scrutinee, arms, ..) => {
                 self.visit_expr(scrutinee);
 
-                let fork = self.expr_count - 1;
+                let fork = self.expr_count;
                 let arm_end_ids = arms
                     .iter()
                     .map(|Arm { pat, body, guard, .. }| {
-                        self.drop_ranges.add_control_edge(fork, self.expr_count);
+                        self.drop_ranges.add_control_edge(fork, self.expr_count + 1);
                         self.visit_pat(pat);
                         match guard {
                             Some(Guard::If(expr)) => self.visit_expr(expr),
@@ -914,8 +912,8 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
             _ => intravisit::walk_expr(self, expr),
         }
 
-        self.drop_ranges.add_node_mapping(expr.hir_id, self.expr_count);
         self.expr_count += 1;
+        self.drop_ranges.add_node_mapping(expr.hir_id, self.expr_count);
         self.consume_expr(expr);
         if let Some(expr) = reinit {
             self.reinit_expr(expr);

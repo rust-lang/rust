@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::mem::swap;
 
+use rustc_graphviz as dot;
 use rustc_hir::{HirId, HirIdMap};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
@@ -182,7 +183,9 @@ impl DropRanges {
             changed
         };
 
-        while propagate() {}
+        while propagate() {
+            trace!("drop_state changed, re-running propagation");
+        }
 
         trace!("after fixpoint: {:#?}", self);
     }
@@ -199,6 +202,73 @@ impl DropRanges {
             }
         }
         preds
+    }
+
+    // pub fn save_graph(&self, filename: &str) {
+    //     use std::fs::File;
+    //     dot::render(self, &mut File::create(filename).unwrap()).unwrap();
+    // }
+}
+
+impl<'a> dot::GraphWalk<'a> for DropRanges {
+    type Node = PostOrderId;
+
+    type Edge = (PostOrderId, PostOrderId);
+
+    fn nodes(&'a self) -> dot::Nodes<'a, Self::Node> {
+        self.nodes.iter_enumerated().map(|(i, _)| i).collect()
+    }
+
+    fn edges(&'a self) -> dot::Edges<'a, Self::Edge> {
+        self.nodes
+            .iter_enumerated()
+            .flat_map(|(i, node)| {
+                if node.successors.len() == 0 {
+                    vec![(i, PostOrderId::from_usize(i.index() + 1))]
+                } else {
+                    node.successors.iter().map(move |&s| (i, s)).collect()
+                }
+            })
+            .collect()
+    }
+
+    fn source(&'a self, edge: &Self::Edge) -> Self::Node {
+        edge.0
+    }
+
+    fn target(&'a self, edge: &Self::Edge) -> Self::Node {
+        edge.1
+    }
+}
+
+impl<'a> dot::Labeller<'a> for DropRanges {
+    type Node = PostOrderId;
+
+    type Edge = (PostOrderId, PostOrderId);
+
+    fn graph_id(&'a self) -> dot::Id<'a> {
+        dot::Id::new("drop_ranges").unwrap()
+    }
+
+    fn node_id(&'a self, n: &Self::Node) -> dot::Id<'a> {
+        dot::Id::new(format!("id{}", n.index())).unwrap()
+    }
+
+    fn node_label(&'a self, n: &Self::Node) -> dot::LabelText<'a> {
+        dot::LabelText::LabelStr(
+            format!(
+                "{:?}, local_id: {}",
+                n,
+                self.post_order_map
+                    .iter()
+                    .find(|(_hir_id, &post_order_id)| post_order_id == n.index())
+                    .map_or("<unknown>".into(), |(hir_id, _)| format!(
+                        "{}",
+                        hir_id.local_id.index()
+                    ))
+            )
+            .into(),
+        )
     }
 }
 
