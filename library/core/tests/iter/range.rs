@@ -632,3 +632,90 @@ fn test_ptr_range_zero_sized() {
     assert_eq!(range.advance_back_by(1), Ok(()));
     assert_eq!(range, start..end);
 }
+
+#[test]
+fn test_ptr_range_reversed() {
+    let start = 2222 as *const i32;
+    let end = 1111 as *const i32;
+    let range = start..end;
+    assert!(range.is_empty());
+    assert_eq!(range.size_hint(), (0, Some(0)));
+    assert_eq!(range.clone().next(), None);
+    assert_eq!(range.clone().nth(0), None);
+    assert_eq!(range.clone().nth(1), None);
+    assert_eq!(range.clone().advance_by(0), Ok(())); // Err(0) would be equally fine
+    assert_eq!(range.clone().advance_by(1), Err(0));
+    assert_eq!(range.clone().next_back(), None);
+    assert_eq!(range.clone().nth_back(0), None);
+    assert_eq!(range.clone().nth_back(1), None);
+    assert_eq!(range.clone().advance_back_by(0), Ok(())); // Err(0) would be equally fine
+    assert_eq!(range.clone().advance_back_by(1), Err(0));
+
+    let start = 2222 as *const ();
+    let end = 1111 as *const ();
+    let range = start..end;
+    assert!(range.is_empty());
+    assert_eq!(range.size_hint(), (0, Some(0)));
+    assert_eq!(range.clone().next(), None);
+    assert_eq!(range.clone().nth(0), None);
+    assert_eq!(range.clone().nth(1), None);
+    assert_eq!(range.clone().advance_by(0), Ok(()));
+    assert_eq!(range.clone().advance_by(1), Err(0));
+    assert_eq!(range.clone().next_back(), None);
+    assert_eq!(range.clone().nth_back(0), None);
+    assert_eq!(range.clone().nth_back(1), None);
+    assert_eq!(range.clone().advance_back_by(0), Ok(()));
+    assert_eq!(range.clone().advance_back_by(1), Err(0));
+}
+
+#[test]
+fn test_ptr_range_underflow() {
+    let start = 1 as *const [u8; 100];
+    let end = 2 as *const [u8; 100];
+
+    let mut range = start..end;
+    assert_eq!(range.next_back(), Some(start));
+    assert_eq!(range, start..start);
+
+    let mut range = start..end;
+    assert_eq!(range.nth_back(0), Some(start));
+    assert_eq!(range, start..start);
+
+    let mut range = start..end;
+    assert_eq!(range.nth_back(1), None);
+    assert_eq!(range, start..start);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_back_by(0), Ok(()));
+    assert_eq!(range, start..end);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_back_by(1), Ok(()));
+    assert_eq!(range, start..start);
+}
+
+#[test]
+fn test_ptr_range_overflow() {
+    let start = (usize::MAX - 2) as *const [u8; 100];
+    let end = usize::MAX as *const [u8; 100];
+
+    let mut range = start..end;
+    assert_eq!(range.next(), Some(start));
+    assert_eq!(range, end..end);
+
+    let mut range = start..end;
+    assert_eq!(range.nth(0), Some(start));
+    assert_eq!(range, end..end);
+
+    let mut range = start..end;
+    assert_eq!(range.nth(1), None);
+    assert_eq!(range, end..end);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_by(0), Ok(()));
+    assert_eq!(range, start..end);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_by(1), Ok(()));
+    assert_eq!(range, end..end);
+}
