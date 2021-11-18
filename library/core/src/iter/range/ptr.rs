@@ -58,12 +58,12 @@ macro_rules! impl_iterator_for_ptr_range {
                     None
                 } else {
                     let curr = self.start;
-                    let next = curr.wrapping_add(1);
-                    self.start = if (curr..self.end).contains(&next) {
-                        next
+                    let byte_offset = self.end as usize - curr as usize;
+                    self.start = if byte_offset >= mem::size_of::<T>() {
+                        curr.wrapping_add(1)
                     } else {
-                        // Saturate to self.end if the wrapping_add wrapped or
-                        // landed beyond end.
+                        // Saturate to self.end if the wrapping_add would wrap
+                        // or land beyond end.
                         self.end
                     };
                     Some(curr)
