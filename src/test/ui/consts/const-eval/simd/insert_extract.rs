@@ -7,7 +7,8 @@
 
 #[repr(simd)] struct i8x1(i8);
 #[repr(simd)] struct u16x2(u16, u16);
-// Make one of them an array type to ensure those also work.
+// Make some of them array types to ensure those also work.
+#[repr(simd)] struct i8x1_arr([i8; 1]);
 #[repr(simd)] struct f32x4([f32; 4]);
 
 extern "platform-intrinsic" {
@@ -22,6 +23,14 @@ fn main() {
         const U: i8x1 = i8x1(13);
         const V: i8x1 = unsafe { simd_insert(U, 0_u32, 42_i8) };
         const X0: i8 = V.0;
+        const Y0: i8 = unsafe { simd_extract(V, 0) };
+        assert_eq!(X0, 42);
+        assert_eq!(Y0, 42);
+    }
+    {
+        const U: i8x1_arr = i8x1_arr([13]);
+        const V: i8x1_arr = unsafe { simd_insert(U, 0_u32, 42_i8) };
+        const X0: i8 = V.0[0];
         const Y0: i8 = unsafe { simd_extract(V, 0) };
         assert_eq!(X0, 42);
         assert_eq!(Y0, 42);
