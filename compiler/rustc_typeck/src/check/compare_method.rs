@@ -607,10 +607,7 @@ fn compare_number_of_generics<'tcx>(
                         .params
                         .iter()
                         .filter_map(|p| match p.kind {
-                            GenericParamKind::Type {
-                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                ..
-                            } => Some(p.span),
+                            GenericParamKind::Type { synthetic: true, .. } => Some(p.span),
                             _ => None,
                         })
                         .collect();
@@ -627,10 +624,7 @@ fn compare_number_of_generics<'tcx>(
                 .params
                 .iter()
                 .filter_map(|p| match p.kind {
-                    GenericParamKind::Type {
-                        synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                        ..
-                    } => Some(p.span),
+                    GenericParamKind::Type { synthetic: true, .. } => Some(p.span),
                     _ => None,
                 })
                 .collect();
@@ -823,7 +817,7 @@ fn compare_synthetic_generics<'tcx>(
             match (impl_synthetic, trait_synthetic) {
                 // The case where the impl method uses `impl Trait` but the trait method uses
                 // explicit generics
-                (Some(hir::SyntheticTyParamKind::ImplTrait), None) => {
+                (true, false) => {
                     err.span_label(impl_span, "expected generic parameter, found `impl Trait`");
                     (|| {
                         // try taking the name from the trait impl
@@ -864,7 +858,7 @@ fn compare_synthetic_generics<'tcx>(
                 }
                 // The case where the trait method uses `impl Trait`, but the impl method uses
                 // explicit generics.
-                (None, Some(hir::SyntheticTyParamKind::ImplTrait)) => {
+                (false, true) => {
                     err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
                     (|| {
                         let impl_m = impl_m.def_id.as_local()?;

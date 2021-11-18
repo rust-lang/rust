@@ -1543,7 +1543,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         kind: ty::GenericParamDefKind::Type {
                             has_default: false,
                             object_lifetime_default: rl::Set1::Empty,
-                            synthetic: None,
+                            synthetic: false,
                         },
                     });
 
@@ -1673,7 +1673,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             kind: ty::GenericParamDefKind::Type {
                 has_default: false,
                 object_lifetime_default: rl::Set1::Empty,
-                synthetic: None,
+                synthetic: false,
             },
         }));
     }
@@ -1690,7 +1690,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 kind: ty::GenericParamDefKind::Type {
                     has_default: false,
                     object_lifetime_default: rl::Set1::Empty,
-                    synthetic: None,
+                    synthetic: false,
                 },
             });
         }

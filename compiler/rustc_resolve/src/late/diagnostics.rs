@@ -1810,12 +1810,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     let (span, sugg) = if let Some(param) = generics.params.iter().find(|p| {
                         !matches!(
                             p.kind,
-                            hir::GenericParamKind::Type {
-                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                ..
-                            } | hir::GenericParamKind::Lifetime {
-                                kind: hir::LifetimeParamKind::Elided,
-                            }
+                            hir::GenericParamKind::Type { synthetic: true, .. }
+                                | hir::GenericParamKind::Lifetime {
+                                    kind: hir::LifetimeParamKind::Elided,
+                                }
                         )
                     }) {
                         (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
@@ -2042,12 +2040,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         if let Some(param) = generics.params.iter().find(|p| {
                             !matches!(
                                 p.kind,
-                                hir::GenericParamKind::Type {
-                                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                    ..
-                                } | hir::GenericParamKind::Lifetime {
-                                    kind: hir::LifetimeParamKind::Elided
-                                }
+                                hir::GenericParamKind::Type { synthetic: true, .. }
+                                    | hir::GenericParamKind::Lifetime {
+                                        kind: hir::LifetimeParamKind::Elided
+                                    }
                             )
                         }) {
                             (param.span.shrink_to_lo(), "'a, ".to_string())
