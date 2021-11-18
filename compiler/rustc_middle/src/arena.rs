@@ -1,33 +1,33 @@
-/// This declares a list of types which can be allocated by `Arena`.
+/// This higher-order macro declares a list of types which can be allocated by `Arena`.
 ///
 /// Specifying the `decode` modifier will add decode impls for `&T` and `&[T]` where `T` is the type
 /// listed. These impls will appear in the implement_ty_decoder! macro.
 #[macro_export]
 macro_rules! arena_types {
-    ($macro:path, $tcx:lifetime) => (
+    ($macro:path) => (
         $macro!([
             [] layout: rustc_target::abi::Layout,
-            [] fn_abi: rustc_target::abi::call::FnAbi<$tcx, rustc_middle::ty::Ty<$tcx>>,
+            [] fn_abi: rustc_target::abi::call::FnAbi<'tcx, rustc_middle::ty::Ty<'tcx>>,
             // AdtDef are interned and compared by address
             [] adt_def: rustc_middle::ty::AdtDef,
-            [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<$tcx>>,
-            [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<$tcx>>,
-            [decode] mir: rustc_middle::mir::Body<$tcx>,
+            [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<'tcx>>,
+            [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<'tcx>>,
+            [decode] mir: rustc_middle::mir::Body<'tcx>,
             [] steal_promoted:
                 rustc_data_structures::steal::Steal<
                     rustc_index::vec::IndexVec<
                         rustc_middle::mir::Promoted,
-                        rustc_middle::mir::Body<$tcx>
+                        rustc_middle::mir::Body<'tcx>
                     >
                 >,
             [decode] promoted:
                 rustc_index::vec::IndexVec<
                     rustc_middle::mir::Promoted,
-                    rustc_middle::mir::Body<$tcx>
+                    rustc_middle::mir::Body<'tcx>
                 >,
-            [decode] typeck_results: rustc_middle::ty::TypeckResults<$tcx>,
+            [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
             [decode] borrowck_result:
-                rustc_middle::mir::BorrowCheckResult<$tcx>,
+                rustc_middle::mir::BorrowCheckResult<'tcx>,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
             [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
@@ -78,14 +78,14 @@ macro_rules! arena_types {
             [] foreign_modules: Vec<rustc_session::cstore::ForeignModule>,
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
-            [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<$tcx>,
+            [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<'tcx>,
             [] attribute: rustc_ast::Attribute,
             [] name_set: rustc_data_structures::fx::FxHashSet<rustc_span::symbol::Symbol>,
             [] hir_id_set: rustc_hir::HirIdSet,
 
             // Interned types
-            [] tys: rustc_middle::ty::TyS<$tcx>,
-            [] predicates: rustc_middle::ty::PredicateInner<$tcx>,
+            [] tys: rustc_middle::ty::TyS<'tcx>,
+            [] predicates: rustc_middle::ty::PredicateInner<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena
@@ -97,8 +97,8 @@ macro_rules! arena_types {
             [decode] used_trait_imports: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
 
             [] dep_kind: rustc_middle::dep_graph::DepKindStruct,
-        ], $tcx);
+        ]);
     )
 }
 
-arena_types!(rustc_arena::declare_arena, 'tcx);
+arena_types!(rustc_arena::declare_arena);
