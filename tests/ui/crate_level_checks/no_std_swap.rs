@@ -6,7 +6,6 @@ use core::panic::PanicInfo;
 
 #[warn(clippy::all)]
 fn main() {
-    // TODO: do somethjing with swap
     let mut a = 42;
     let mut b = 1337;
 
