@@ -643,12 +643,12 @@ fn test_ptr_range_reversed() {
     assert_eq!(range.clone().next(), None);
     assert_eq!(range.clone().nth(0), None);
     assert_eq!(range.clone().nth(1), None);
-    assert_eq!(range.clone().advance_by(0), Ok(())); // Err(0) would be equally fine
+    assert_eq!(range.clone().advance_by(0), Ok(()));
     assert_eq!(range.clone().advance_by(1), Err(0));
     assert_eq!(range.clone().next_back(), None);
     assert_eq!(range.clone().nth_back(0), None);
     assert_eq!(range.clone().nth_back(1), None);
-    assert_eq!(range.clone().advance_back_by(0), Ok(())); // Err(0) would be equally fine
+    assert_eq!(range.clone().advance_back_by(0), Ok(()));
     assert_eq!(range.clone().advance_back_by(1), Err(0));
 
     let start = 2222 as *const ();
