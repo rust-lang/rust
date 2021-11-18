@@ -320,7 +320,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 InlineAsmArch::Mips | InlineAsmArch::Mips64 => {}
                 InlineAsmArch::S390x => {}
                 InlineAsmArch::SpirV => {}
-                InlineAsmArch::Wasm32 => {}
+                InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
                 InlineAsmArch::Bpf => {}
             }
         }

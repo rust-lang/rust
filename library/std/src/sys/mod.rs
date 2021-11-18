@@ -40,7 +40,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "wasi")] {
         mod wasi;
         pub use self::wasi::*;
-    } else if #[cfg(target_arch = "wasm32")] {
+    } else if #[cfg(target_family = "wasm")] {
         mod wasm;
         pub use self::wasm::*;
     } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {

@@ -23,11 +23,15 @@ pub fn target() -> Target {
     // For now this target just never has an entry symbol no matter the output
     // type, so unconditionally pass this.
     clang_args.push("-Wl,--no-entry".to_string());
-    options
-        .pre_link_args
-        .get_mut(&LinkerFlavor::Lld(LldFlavor::Wasm))
-        .unwrap()
-        .push("--no-entry".to_string());
+
+    let lld_args = options.pre_link_args.get_mut(&LinkerFlavor::Lld(LldFlavor::Wasm)).unwrap();
+    lld_args.push("--no-entry".to_string());
+    lld_args.push("-mwasm64".to_string());
+
+    // Any engine that implements wasm64 will surely implement the rest of these
+    // features since they were all merged into the official spec by the time
+    // wasm64 was designed.
+    options.features = "+bulk-memory,+mutable-globals,+sign-ext,+nontrapping-fptoint".to_string();
 
     Target {
         llvm_target: "wasm64-unknown-unknown".to_string(),

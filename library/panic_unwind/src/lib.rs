@@ -56,7 +56,7 @@ cfg_if::cfg_if! {
         mod real_imp;
     } else {
         // Targets that don't support unwinding.
-        // - arch=wasm32
+        // - family=wasm
         // - os=none ("bare metal" targets)
         // - os=uefi
         // - os=espidf
