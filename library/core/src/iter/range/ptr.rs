@@ -25,6 +25,13 @@ macro_rules! impl_iterator_for_ptr_range {
         ///
         /// [allocated object]: crate::ptr#allocated-object
         ///
+        /// # Alignment
+        ///
+        /// All the pointers in the range are at offsets of multiples of
+        /// `size_of::<T>()` bytes from the range's start, so if the range's
+        /// start is misaligned, then the pointers in the range are misaligned
+        /// as well. The alignedness of the range's end is not relevant.
+        ///
         /// # Example
         ///
         #[doc = example!($mutability)]
