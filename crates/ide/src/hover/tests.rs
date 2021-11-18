@@ -515,6 +515,28 @@ fn hover_const_static() {
         "#]],
     );
     check(
+        r#"
+const foo$0: u32 = {
+    let x = foo();
+    x + 100
+};"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const foo: u32 = {
+                let x = foo();
+                x + 100
+            }
+            ```
+        "#]],
+    );
+
+    check(
         r#"static foo$0: u32 = 456;"#,
         expect![[r#"
                 *foo*
