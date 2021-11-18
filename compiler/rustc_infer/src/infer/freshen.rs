@@ -229,18 +229,18 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     .inner
                     .borrow_mut()
                     .const_unification_table()
-                    .probe_value(v)
+                    .probe_value(*v)
                     .val
                     .known();
                 return self.freshen_const(
                     opt_ct,
-                    ty::InferConst::Var(v),
+                    ty::InferConst::Var(*v),
                     ty::InferConst::Fresh,
                     ct.ty(),
                 );
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
-                if i >= self.const_freshen_count {
+                if *i >= self.const_freshen_count {
                     bug!(
                         "Encountered a freshend const with id {} \
                             but our counter is only at {}",

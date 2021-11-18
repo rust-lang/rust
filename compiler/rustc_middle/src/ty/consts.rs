@@ -38,8 +38,8 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn val(&self) -> ConstKind<'tcx> {
-        self.val
+    pub fn val(&self) -> &ConstKind<'tcx> {
+        &self.val
     }
 
     /// Literals and const generic parameters are eagerly converted to a constant, everything else

@@ -93,7 +93,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector<'tcx> {
                 return c.ty().visit_with(self);
             }
             ty::ConstKind::Param(data) => {
-                self.parameters.push(Parameter::from(data));
+                self.parameters.push(Parameter::from(*data));
             }
             _ => {}
         }

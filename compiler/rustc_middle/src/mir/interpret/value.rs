@@ -587,12 +587,12 @@ impl<'tcx, Tag: Provenance> ScalarMaybeUninit<Tag> {
 }
 
 /// Gets the bytes of a constant slice value.
-pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> &'tcx [u8] {
+pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: &ConstValue<'tcx>) -> &'tcx [u8] {
     if let ConstValue::Slice { data, start, end } = val {
-        let len = end - start;
+        let len = *end - *start;
         data.get_bytes(
             cx,
-            AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(len) },
+            AllocRange { start: Size::from_bytes(*start), size: Size::from_bytes(len) },
         )
         .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
     } else {

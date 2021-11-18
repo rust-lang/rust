@@ -392,7 +392,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             GenericArgKind::Const(ct) => {
                 if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.val() {
                     let origin =
-                        self.inner.borrow_mut().const_unification_table().probe_value(vid).origin;
+                        self.inner.borrow_mut().const_unification_table().probe_value(*vid).origin;
                     if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
                         origin.kind
                     {

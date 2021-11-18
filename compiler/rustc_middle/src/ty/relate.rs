@@ -565,7 +565,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
     // to structural-match types.
-    let is_match = match (a.val, b.val) {
+    let is_match = match (a.val(), b.val()) {
         (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
             // The caller should handle these cases!
             bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
@@ -614,8 +614,8 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
 
 fn check_const_value_eq<R: TypeRelation<'tcx>>(
     relation: &mut R,
-    a_val: ConstValue<'tcx>,
-    b_val: ConstValue<'tcx>,
+    a_val: &ConstValue<'tcx>,
+    b_val: &ConstValue<'tcx>,
     // FIXME(oli-obk): these arguments should go away with valtrees
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,

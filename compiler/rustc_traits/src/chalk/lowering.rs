@@ -491,7 +491,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Const<RustInterner<'tcx>>> for ty::Const<'t
         let ty = self.ty().lower_into(interner);
         let value = match self.val() {
             ty::ConstKind::Value(val) => {
-                chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: val })
+                chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: *val })
             }
             ty::ConstKind::Bound(db, bound) => chalk_ir::ConstValue::BoundVar(
                 chalk_ir::BoundVar::new(chalk_ir::DebruijnIndex::new(db.as_u32()), bound.index()),

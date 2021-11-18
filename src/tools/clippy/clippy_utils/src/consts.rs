@@ -564,6 +564,7 @@ pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
     use rustc_middle::mir::interpret::ConstValue;
     match result.val() {
         ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int(int))) => {
+            let int = *int;
             match result.ty().kind() {
                 ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
                 ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.assert_bits(int.size()))),
@@ -586,7 +587,7 @@ pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
         ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => match result.ty().kind() {
             ty::Ref(_, tam, _) => match tam.kind() {
                 ty::Str => String::from_utf8(
-                    data.inspect_with_uninit_and_ptr_outside_interpreter(start..end)
+                    data.inspect_with_uninit_and_ptr_outside_interpreter(*start..*end)
                         .to_owned(),
                 )
                 .ok()

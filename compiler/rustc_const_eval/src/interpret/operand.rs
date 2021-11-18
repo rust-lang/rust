@@ -573,13 +573,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         match val {
             mir::ConstantKind::Ty(ct) => self.const_to_op(ct, layout),
-            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, ty, layout),
+            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(val, ty, layout),
         }
     }
 
     crate fn const_val_to_op(
         &self,
-        val_val: ConstValue<'tcx>,
+        val_val: &ConstValue<'tcx>,
         ty: Ty<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
@@ -596,20 +596,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let id = self.tcx.create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
-                let ptr = self.global_base_pointer(Pointer::new(id, offset))?;
+                let ptr = self.global_base_pointer(Pointer::new(id, *offset))?;
                 Operand::Indirect(MemPlace::from_ptr(ptr.into(), layout.align.abi))
             }
-            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x)?.into()),
+            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(*x)?.into()),
             ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
                 let ptr = Pointer::new(
                     self.tcx.create_memory_alloc(data),
-                    Size::from_bytes(start), // offset: `start`
+                    Size::from_bytes(*start), // offset: `start`
                 );
                 Operand::Immediate(Immediate::new_slice(
                     Scalar::from_pointer(self.global_base_pointer(ptr)?, &*self.tcx),
-                    u64::try_from(end.checked_sub(start).unwrap()).unwrap(), // len: `end - start`
+                    u64::try_from(end.checked_sub(*start).unwrap()).unwrap(), // len: `end - start`
                     self,
                 ))
             }

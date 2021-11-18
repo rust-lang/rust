@@ -809,7 +809,7 @@ impl AutoTraitFinder<'tcx> {
                         if let ty::ConstKind::Unevaluated(unevaluated) = c.val() {
                             match select.infcx().const_eval_resolve(
                                 obligation.param_env,
-                                unevaluated,
+                                *unevaluated,
                                 Some(obligation.cause.span),
                             ) {
                                 Ok(val) => Ok(ty::Const::from_value(select.tcx(), val, c.ty())),

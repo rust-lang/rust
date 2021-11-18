@@ -1008,7 +1008,7 @@ where
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
-                let var_value = variable_table.probe_value(vid);
+                let var_value = variable_table.probe_value(*vid);
                 match var_value.val.known() {
                     Some(u) => self.relate(u, u),
                     None => {

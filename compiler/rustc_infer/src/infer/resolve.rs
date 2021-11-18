@@ -241,7 +241,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
             let c = self.infcx.shallow_resolve(c);
             match c.val() {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
-                    self.err = Some(FixupError::UnresolvedConst(vid));
+                    self.err = Some(FixupError::UnresolvedConst(*vid));
                     return self.tcx().const_error(c.ty());
                 }
                 ty::ConstKind::Infer(InferConst::Fresh(_)) => {

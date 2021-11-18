@@ -300,7 +300,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 // If there is a promoted, don't look at the substs - since it will always contain
                 // the generic parameters, instead, traverse the promoted MIR.
                 let promoted = self.tcx.promoted_mir(def.did);
-                self.visit_body(&promoted[p]);
+                self.visit_body(&promoted[*p]);
                 ControlFlow::CONTINUE
             }
             ty::ConstKind::Unevaluated(uv)

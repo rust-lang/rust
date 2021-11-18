@@ -629,14 +629,14 @@ impl TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
             {
                 bug!("Bound vars outside of `self.universe_indices`");
             }
-            ty::ConstKind::Bound(debruijn, bound_const) if debruijn >= self.current_index => {
+            ty::ConstKind::Bound(debruijn, bound_const) if *debruijn >= self.current_index => {
                 let ty = ct.ty();
-                let universe = self.universe_for(debruijn);
+                let universe = self.universe_for(*debruijn);
                 let p = ty::PlaceholderConst {
                     universe,
-                    name: ty::BoundConst { var: bound_const, ty },
+                    name: ty::BoundConst { var: *bound_const, ty },
                 };
-                self.mapped_consts.insert(p, bound_const);
+                self.mapped_consts.insert(p, *bound_const);
                 self.infcx.tcx.mk_const(ty, ty::ConstKind::Placeholder(p))
             }
             _ if ct.has_vars_bound_at_or_above(self.current_index) => ct.super_fold_with(self),

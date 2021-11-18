@@ -33,12 +33,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             ty::ConstKind::Unevaluated(ct) => self
                 .cx
                 .tcx()
-                .const_eval_resolve(ty::ParamEnv::reveal_all(), ct, None)
+                .const_eval_resolve(ty::ParamEnv::reveal_all(), *ct, None)
                 .map_err(|err| {
                     self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
                     err
                 }),
-            ty::ConstKind::Value(value) => Ok(value),
+            ty::ConstKind::Value(value) => Ok(*value),
             err => span_bug!(
                 constant.span,
                 "encountered bad ConstKind after monomorphizing: {:?}",

@@ -149,7 +149,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
                 self.inner
                     .borrow_mut()
                     .const_unification_table()
-                    .unify_var_var(a_vid, b_vid)
+                    .unify_var_var(*a_vid, *b_vid)
                     .map_err(|e| const_unification_error(a_is_expected, e))?;
                 return Ok(a);
             }
@@ -161,11 +161,11 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
             }
 
             (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
-                return self.unify_const_variable(relation.param_env(), vid, b, a_is_expected);
+                return self.unify_const_variable(relation.param_env(), *vid, b, a_is_expected);
             }
 
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
-                return self.unify_const_variable(relation.param_env(), vid, a, !a_is_expected);
+                return self.unify_const_variable(relation.param_env(), *vid, a, !a_is_expected);
             }
             (ty::ConstKind::Unevaluated(..), _) if self.tcx.lazy_normalization() => {
                 // FIXME(#59490): Need to remove the leak check to accommodate
@@ -726,7 +726,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
-                let var_value = variable_table.probe_value(vid);
+                let var_value = variable_table.probe_value(*vid);
                 match var_value.val {
                     ConstVariableValue::Known { value: u } => {
                         drop(inner);
@@ -963,13 +963,13 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     .inner
                     .borrow_mut()
                     .const_unification_table()
-                    .unioned(self.target_vid, vid)
+                    .unioned(self.target_vid, *vid)
                 {
                     return Err(TypeError::CyclicConst(c));
                 }
 
                 let var_value =
-                    self.infcx.inner.borrow_mut().const_unification_table().probe_value(vid);
+                    self.infcx.inner.borrow_mut().const_unification_table().probe_value(*vid);
                 match var_value.val {
                     ConstVariableValue::Known { value: u } => self.consts(u, u),
                     ConstVariableValue::Unknown { universe } => {

@@ -641,7 +641,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             self.infcx
                                 .const_eval_resolve(
                                     obligation.param_env,
-                                    unevaluated,
+                                    *unevaluated,
                                     Some(obligation.cause.span),
                                 )
                                 .map(|val| ty::Const::from_value(self.tcx(), val, c.ty()))
