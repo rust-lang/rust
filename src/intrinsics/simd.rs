@@ -405,27 +405,27 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_reduce_min, (c v) {
-            // FIXME support floats
             validate_simd_type!(fx, intrinsic, span, v.layout().ty);
             simd_reduce(fx, v, None, ret, |fx, layout, a, b| {
-                let lt = fx.bcx.ins().icmp(if layout.ty.is_signed() {
-                    IntCC::SignedLessThan
-                } else {
-                    IntCC::UnsignedLessThan
-                }, a, b);
+                let lt = match layout.ty.kind() {
+                    ty::Int(_) => fx.bcx.ins().icmp(IntCC::SignedLessThan, a, b),
+                    ty::Uint(_) => fx.bcx.ins().icmp(IntCC::UnsignedLessThan, a, b),
+                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::LessThan, a, b),
+                    _ => unreachable!(),
+                };
                 fx.bcx.ins().select(lt, a, b)
             });
         };
 
         simd_reduce_max, (c v) {
-            // FIXME support floats
             validate_simd_type!(fx, intrinsic, span, v.layout().ty);
             simd_reduce(fx, v, None, ret, |fx, layout, a, b| {
-                let gt = fx.bcx.ins().icmp(if layout.ty.is_signed() {
-                    IntCC::SignedGreaterThan
-                } else {
-                    IntCC::UnsignedGreaterThan
-                }, a, b);
+                let gt = match layout.ty.kind() {
+                    ty::Int(_) => fx.bcx.ins().icmp(IntCC::SignedGreaterThan, a, b),
+                    ty::Uint(_) => fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, a, b),
+                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::GreaterThan, a, b),
+                    _ => unreachable!(),
+                };
                 fx.bcx.ins().select(gt, a, b)
             });
         };
