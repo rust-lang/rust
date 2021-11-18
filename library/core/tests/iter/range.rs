@@ -467,3 +467,168 @@ fn test_double_ended_range() {
         panic!("unreachable");
     }
 }
+
+#[test]
+fn test_ptr_range_empty() {
+    let start = 4 as *const [u8; 100];
+    let mut range = start..start;
+    assert_eq!(range.size_hint(), (0, Some(0)));
+    assert_eq!(range.next(), None);
+    assert_eq!(range.nth(0), None);
+    assert_eq!(range.nth(1), None);
+    assert_eq!(range.advance_by(0), Ok(()));
+    assert_eq!(range.advance_by(1), Err(0));
+    assert_eq!(range.next_back(), None);
+    assert_eq!(range.nth_back(0), None);
+    assert_eq!(range.nth_back(1), None);
+    assert_eq!(range.advance_back_by(0), Ok(()));
+    assert_eq!(range.advance_back_by(1), Err(0));
+    assert_eq!(range, start..start);
+}
+
+#[test]
+fn test_ptr_range() {
+    let start = 0_04 as *const [u8; 100];
+    let end = 12_04 as *const [u8; 100];
+    let mut range = start..end;
+    assert_eq!(range.size_hint(), (12, Some(12)));
+    assert_eq!(range.next(), Some(0_04 as _));
+    assert_eq!(range, 1_04 as _..12_04 as _);
+    assert_eq!(range.nth(0), Some(1_04 as _));
+    assert_eq!(range, 2_04 as _..12_04 as _);
+    assert_eq!(range.nth(1), Some(3_04 as _));
+    assert_eq!(range, 4_04 as _..12_04 as _);
+    assert_eq!(range.advance_by(0), Ok(()));
+    assert_eq!(range, 4_04 as _..12_04 as _);
+    assert_eq!(range.advance_by(1), Ok(()));
+    assert_eq!(range, 5_04 as _..12_04 as _);
+    assert_eq!(range.next_back(), Some(11_04 as _));
+    assert_eq!(range, 5_04 as _..11_04 as _);
+    assert_eq!(range.nth_back(0), Some(10_04 as _));
+    assert_eq!(range, 5_04 as _..10_04 as _);
+    assert_eq!(range.nth_back(1), Some(8_04 as _));
+    assert_eq!(range, 5_04 as _..8_04 as _);
+    assert_eq!(range.advance_back_by(0), Ok(()));
+    assert_eq!(range, 5_04 as _..8_04 as _);
+    assert_eq!(range.advance_back_by(1), Ok(()));
+    assert_eq!(range, 5_04 as _..7_04 as _);
+
+    let mut range = start..end;
+    assert_eq!(range.nth(20), None);
+    assert_eq!(range, end..end);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_by(20), Err(12));
+    assert_eq!(range, end..end);
+
+    let mut range = start..end;
+    assert_eq!(range.nth_back(20), None);
+    assert_eq!(range, start..start);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_back_by(20), Err(12));
+    assert_eq!(range, start..start);
+}
+
+#[test]
+fn test_ptr_range_with_remainder() {
+    let start = 0_04 as *const [u8; 100];
+    let end = 12_09 as *const [u8; 100];
+    let mut range = start..end;
+    assert_eq!(range.size_hint(), (13, Some(13)));
+    assert_eq!(range.next(), Some(4 as _));
+    assert_eq!(range, 1_04 as _..12_09 as _);
+    assert_eq!(range.nth(0), Some(1_04 as _));
+    assert_eq!(range, 2_04 as _..12_09 as _);
+    assert_eq!(range.nth(1), Some(3_04 as _));
+    assert_eq!(range, 4_04 as _..12_09 as _);
+    assert_eq!(range.advance_by(0), Ok(()));
+    assert_eq!(range, 4_04 as _..12_09 as _);
+    assert_eq!(range.advance_by(1), Ok(()));
+    assert_eq!(range, 5_04 as _..12_09 as _);
+
+    let mut range = start..end;
+    assert_eq!(range.nth(12), Some(12_04 as _));
+    assert_eq!(range, end..end);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_by(12), Ok(()));
+    assert_eq!(range, 12_04 as _..end);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_by(13), Ok(()));
+    assert_eq!(range, end..end);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_by(14), Err(13));
+    assert_eq!(range, end..end);
+
+    let mut range = start..end;
+    assert_eq!(range.next_back(), Some(12_04 as _));
+    assert_eq!(range, start..12_04 as _);
+
+    let mut range = start..end;
+    assert_eq!(range.nth_back(0), Some(12_04 as _));
+    assert_eq!(range, start..12_04 as _);
+
+    let mut range = start..end;
+    assert_eq!(range.nth_back(1), Some(11_04 as _));
+    assert_eq!(range, start..11_04 as _);
+
+    let mut range = start..end;
+    assert_eq!(range.nth_back(12), Some(start));
+    assert_eq!(range, start..start);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_back_by(0), Ok(()));
+    assert_eq!(range, start..end);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_back_by(1), Ok(()));
+    assert_eq!(range, start..12_04 as _);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_back_by(12), Ok(()));
+    assert_eq!(range, start..1_04 as _);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_back_by(13), Ok(()));
+    assert_eq!(range, start..start);
+
+    let mut range = start..end;
+    assert_eq!(range.advance_back_by(14), Err(13));
+    assert_eq!(range, start..start);
+}
+
+#[test]
+fn test_ptr_range_zero_sized() {
+    let start = 8 as *const ();
+    let mut range = start..start;
+    assert_eq!(range.size_hint(), (0, Some(0)));
+    assert_eq!(range.next(), None);
+    assert_eq!(range.nth(0), None);
+    assert_eq!(range.nth(1), None);
+    assert_eq!(range.advance_by(0), Ok(()));
+    assert_eq!(range.advance_by(1), Err(0));
+    assert_eq!(range.next_back(), None);
+    assert_eq!(range.nth_back(0), None);
+    assert_eq!(range.nth_back(1), None);
+    assert_eq!(range.advance_back_by(0), Ok(()));
+    assert_eq!(range.advance_back_by(1), Err(0));
+    assert_eq!(range, start..start);
+
+    let end = 11 as *const ();
+    let mut range = start..end;
+    assert_eq!(range.size_hint(), (usize::MAX, None));
+    assert_eq!(range.next(), Some(start));
+    assert_eq!(range.nth(0), Some(start));
+    assert_eq!(range.nth(1), Some(start));
+    assert_eq!(range.advance_by(0), Ok(()));
+    assert_eq!(range.advance_by(1), Ok(()));
+    assert_eq!(range.next_back(), Some(start));
+    assert_eq!(range.nth_back(0), Some(start));
+    assert_eq!(range.nth_back(1), Some(start));
+    assert_eq!(range.advance_back_by(0), Ok(()));
+    assert_eq!(range.advance_back_by(1), Ok(()));
+    assert_eq!(range, start..end);
+}

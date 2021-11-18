@@ -1,3 +1,5 @@
+mod ptr;
+
 use crate::char;
 use crate::convert::TryFrom;
 use crate::mem;
