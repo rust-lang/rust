@@ -1805,10 +1805,13 @@ impl<'tcx> TyS<'tcx> {
     pub fn simd_size_and_type(&self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
         match self.kind() {
             Adt(def, substs) => {
+                assert!(def.repr.simd(), "`simd_size_and_type` called on non-SIMD type");
                 let variant = def.non_enum_variant();
                 let f0_ty = variant.fields[0].ty(tcx, substs);
 
                 match f0_ty.kind() {
+                    // If the first field is an array, we assume it is the only field and its
+                    // elements are the SIMD components.
                     Array(f0_elem_ty, f0_len) => {
                         // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
                         // The way we evaluate the `N` in `[T; N]` here only works since we use
@@ -1816,6 +1819,8 @@ impl<'tcx> TyS<'tcx> {
                         // if we use it in generic code. See the `simd-array-trait` ui test.
                         (f0_len.eval_usize(tcx, ParamEnv::empty()) as u64, f0_elem_ty)
                     }
+                    // Otherwise, the fields of this Adt are the SIMD components (and we assume they
+                    // all have the same type).
                     _ => (variant.fields.len() as u64, f0_ty),
                 }
             }
