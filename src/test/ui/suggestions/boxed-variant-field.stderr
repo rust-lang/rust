@@ -10,10 +10,10 @@ help: try dereferencing the `Box`
    |
 LL |         Ty::List(elem) => foo(*elem),
    |                               +
-help: try using a variant of the expected enum
+help: try wrapping the expression in `Ty::List`
    |
 LL |         Ty::List(elem) => foo(Ty::List(elem)),
-   |                               ~~~~~~~~~~~~~~
+   |                               +++++++++    +
 
 error: aborting due to previous error
 
