@@ -314,6 +314,7 @@ fn goto_type_action_for_def(db: &RootDatabase, def: Definition) -> Option<HoverA
             Definition::Local(it) => it.ty(db),
             Definition::GenericParam(hir::GenericParam::ConstParam(it)) => it.ty(db),
             Definition::Field(field) => field.ty(db),
+            Definition::Function(function) => function.ret_type(db),
             _ => return None,
         };
 
