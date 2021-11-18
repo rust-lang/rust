@@ -8,25 +8,25 @@ use super::Utf8Error;
 /// The first byte is special, only want bottom 5 bits for width 2, 4 bits
 /// for width 3, and 3 bits for width 4.
 #[inline]
-fn utf8_first_byte(byte: u8, width: u32) -> u32 {
+const fn utf8_first_byte(byte: u8, width: u32) -> u32 {
     (byte & (0x7F >> width)) as u32
 }
 
 /// Returns the value of `ch` updated with continuation byte `byte`.
 #[inline]
-fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 {
+const fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 {
     (ch << 6) | (byte & CONT_MASK) as u32
 }
 
 /// Checks whether the byte is a UTF-8 continuation byte (i.e., starts with the
 /// bits `10`).
 #[inline]
-pub(super) fn utf8_is_cont_byte(byte: u8) -> bool {
+pub(super) const fn utf8_is_cont_byte(byte: u8) -> bool {
     (byte as i8) < -64
 }
 
 #[inline]
-fn unwrap_or_0(opt: Option<&u8>) -> u8 {
+const fn unwrap_or_0(opt: Option<&u8>) -> u8 {
     match opt {
         Some(&byte) => byte,
         None => 0,
@@ -105,14 +105,15 @@ const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
 
 /// Returns `true` if any byte in the word `x` is nonascii (>= 128).
 #[inline]
-fn contains_nonascii(x: usize) -> bool {
+const fn contains_nonascii(x: usize) -> bool {
     (x & NONASCII_MASK) != 0
 }
 
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
 /// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
 #[inline(always)]
-pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
+#[rustc_const_unstable(feature = "str_internals", issue = "none")]
+pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let mut index = 0;
     let len = v.len();
 
@@ -142,7 +143,7 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
 
         let first = v[index];
         if first >= 128 {
-            let w = UTF8_CHAR_WIDTH[first as usize];
+            let w = utf8_char_width(first);
             // 2-byte encoding is for codepoints  \u{0080} to  \u{07ff}
             //        first  C2 80        last DF BF
             // 3-byte encoding is for codepoints  \u{0800} to  \u{ffff}
@@ -230,7 +231,7 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
 }
 
 // https://tools.ietf.org/html/rfc3629
-static UTF8_CHAR_WIDTH: [u8; 256] = [
+const UTF8_CHAR_WIDTH: &[u8; 256] = &[
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, // 0x1F
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -253,7 +254,7 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 #[unstable(feature = "str_internals", issue = "none")]
 #[must_use]
 #[inline]
-pub fn utf8_char_width(b: u8) -> usize {
+pub const fn utf8_char_width(b: u8) -> usize {
     UTF8_CHAR_WIDTH[b as usize] as usize
 }
 
