@@ -673,6 +673,9 @@ impl f32 {
 
     /// Returns the maximum of the two numbers.
     ///
+    /// Follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs.
+    /// This match’s the behavior of libm’s fmin.
+    ///
     /// ```
     /// let x = 1.0f32;
     /// let y = 2.0f32;
@@ -688,6 +691,9 @@ impl f32 {
     }
 
     /// Returns the minimum of the two numbers.
+    ///
+    /// Follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs.
+    /// This match’s the behavior of libm’s fmin.
     ///
     /// ```
     /// let x = 1.0f32;

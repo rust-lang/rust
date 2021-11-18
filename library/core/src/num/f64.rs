@@ -689,6 +689,9 @@ impl f64 {
 
     /// Returns the maximum of the two numbers.
     ///
+    /// Follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs.
+    /// This match’s the behavior of libm’s fmin.
+    ///
     /// ```
     /// let x = 1.0_f64;
     /// let y = 2.0_f64;
@@ -704,6 +707,9 @@ impl f64 {
     }
 
     /// Returns the minimum of the two numbers.
+    ///
+    /// Follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs.
+    /// This match’s the behavior of libm’s fmin.
     ///
     /// ```
     /// let x = 1.0_f64;
