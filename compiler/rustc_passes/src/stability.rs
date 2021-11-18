@@ -794,19 +794,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
                 }
 
-                if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
-                    for impl_item_ref in items {
-                        let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
-                        let trait_item_def_id = self
-                            .tcx
-                            .associated_items(trait_did)
-                            .filter_by_name_unhygienic(impl_item.ident.name)
-                            .next()
-                            .map(|item| item.def_id);
-                        if let Some(def_id) = trait_item_def_id {
-                            // Pass `None` to skip deprecation warnings.
-                            self.tcx.check_stability(def_id, None, impl_item.span, None);
-                        }
+                for impl_item_ref in items {
+                    let impl_item = self.tcx.associated_item(impl_item_ref.id.def_id);
+
+                    if let Some(def_id) = impl_item.trait_item_def_id {
+                        // Pass `None` to skip deprecation warnings.
+                        self.tcx.check_stability(def_id, None, impl_item_ref.span, None);
                     }
                 }
             }
