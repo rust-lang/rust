@@ -2,10 +2,10 @@ use clippy_utils::{
     diagnostics::span_lint_and_sugg,
     get_async_fn_body, is_async_fn,
     source::{snippet_with_applicability, snippet_with_context, walk_span_to_context},
-    visitors::visit_break_exprs,
+    visitors::expr_visitor_no_bodies,
 };
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::FnKind;
+use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -35,6 +35,7 @@ declare_clippy_lint! {
     ///     return x;
     /// }
     /// ```
+    #[clippy::version = "1.33.0"]
     pub IMPLICIT_RETURN,
     restriction,
     "use a return statement like `return expr` instead of an expression"
@@ -144,20 +145,24 @@ fn lint_implicit_returns(
 
         ExprKind::Loop(block, ..) => {
             let mut add_return = false;
-            visit_break_exprs(block, |break_expr, dest, sub_expr| {
-                if dest.target_id.ok() == Some(expr.hir_id) {
-                    if call_site_span.is_none() && break_expr.span.ctxt() == ctxt {
-                        // At this point sub_expr can be `None` in async functions which either diverge, or return the
-                        // unit type.
-                        if let Some(sub_expr) = sub_expr {
-                            lint_break(cx, break_expr.span, sub_expr.span);
+            expr_visitor_no_bodies(|e| {
+                if let ExprKind::Break(dest, sub_expr) = e.kind {
+                    if dest.target_id.ok() == Some(expr.hir_id) {
+                        if call_site_span.is_none() && e.span.ctxt() == ctxt {
+                            // At this point sub_expr can be `None` in async functions which either diverge, or return
+                            // the unit type.
+                            if let Some(sub_expr) = sub_expr {
+                                lint_break(cx, e.span, sub_expr.span);
+                            }
+                        } else {
+                            // the break expression is from a macro call, add a return to the loop
+                            add_return = true;
                         }
-                    } else {
-                        // the break expression is from a macro call, add a return to the loop
-                        add_return = true;
                     }
                 }
-            });
+                true
+            })
+            .visit_block(block);
             if add_return {
                 #[allow(clippy::option_if_let_else)]
                 if let Some(span) = call_site_span {

@@ -204,11 +204,8 @@ struct MinifyingSugg<'a>(Sugg<'a>);
 
 impl<'a> MinifyingSugg<'a> {
     fn as_str(&self) -> &str {
-        // HACK: Don't sync to Clippy! Required because something with the `or_patterns` feature
-        // changed and this would now require parentheses.
-        match &self.0 {
-            Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) => s.as_ref(),
-        }
+        let (Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s)) = &self.0;
+        s.as_ref()
     }
 
     fn into_sugg(self) -> Sugg<'a> {
@@ -445,7 +442,7 @@ fn get_loop_counters<'a, 'tcx>(
                 let mut initialize_visitor = InitializeVisitor::new(cx, expr, var_id);
                 walk_block(&mut initialize_visitor, block);
 
-                initialize_visitor.get_result().map(|(_, initializer)| Start {
+                initialize_visitor.get_result().map(|(_, _, initializer)| Start {
                     id: var_id,
                     kind: StartKind::Counter { initializer },
                 })

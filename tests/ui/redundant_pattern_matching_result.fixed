@@ -70,8 +70,8 @@ fn issue5504() {
     }
 
     fn try_result_opt() -> Result<i32, i32> {
-        while r#try!(result_opt()).is_some() {}
-        if r#try!(result_opt()).is_some() {}
+        while (r#try!(result_opt())).is_some() {}
+        if (r#try!(result_opt())).is_some() {}
         Ok(42)
     }
 

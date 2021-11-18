@@ -23,6 +23,7 @@ declare_clippy_lint! {
     /// ```rust
     /// std::fs::create_dir_all("foo");
     /// ```
+    #[clippy::version = "1.48.0"]
     pub CREATE_DIR,
     restriction,
     "calling `std::fs::create_dir` instead of `std::fs::create_dir_all`"

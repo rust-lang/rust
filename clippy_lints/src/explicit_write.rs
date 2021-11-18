@@ -23,6 +23,7 @@ declare_clippy_lint! {
     /// // this would be clearer as `eprintln!("foo: {:?}", bar);`
     /// writeln!(&mut std::io::stderr(), "foo: {:?}", bar).unwrap();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EXPLICIT_WRITE,
     complexity,
     "using the `write!()` family of functions instead of the `print!()` family of functions, when using the latter would work"

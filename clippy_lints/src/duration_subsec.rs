@@ -33,6 +33,7 @@ declare_clippy_lint! {
     /// let _micros = dur.subsec_micros();
     /// let _millis = dur.subsec_millis();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DURATION_SUBSEC,
     complexity,
     "checks for calculation of subsecond microseconds or milliseconds"

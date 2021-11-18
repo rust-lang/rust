@@ -15,6 +15,7 @@ declare_clippy_lint! {
     /// ### Example
     /// Implementing `Visitor::visit_string` but not
     /// `Visitor::visit_str`.
+    #[clippy::version = "pre 1.29.0"]
     pub SERDE_API_MISUSE,
     correctness,
     "various things that will negatively affect your serde experience"

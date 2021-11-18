@@ -28,6 +28,7 @@ declare_clippy_lint! {
     /// // Good
     /// let s: String = format!("hello");
     /// ```
+    #[clippy::version = "1.45.0"]
     pub USELESS_CONVERSION,
     complexity,
     "calls to `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` which perform useless conversions to the same type"

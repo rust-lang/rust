@@ -9,128 +9,227 @@
 //!  - or-fun-call
 //!  - option-if-let-else
 
-use crate::is_ctor_or_promotable_const_function;
-use crate::ty::is_type_diagnostic_item;
+use crate::ty::{all_predicates_of, is_copy};
+use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
-
-use rustc_hir::intravisit;
-use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
-
-use rustc_hir::{Block, Expr, ExprKind, Path, QPath};
+use rustc_hir::intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor};
+use rustc_hir::{def_id::DefId, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
-use rustc_span::sym;
+use rustc_middle::ty::{self, PredicateKind};
+use rustc_span::{sym, Symbol};
+use std::cmp;
+use std::ops;
 
-/// Is the expr pure (is it free from side-effects)?
-/// This function is named so to stress that it isn't exhaustive and returns FNs.
-fn identify_some_pure_patterns(expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Lit(..) | ExprKind::ConstBlock(..) | ExprKind::Path(..) | ExprKind::Field(..) => true,
-        ExprKind::AddrOf(_, _, addr_of_expr) => identify_some_pure_patterns(addr_of_expr),
-        ExprKind::Tup(tup_exprs) => tup_exprs.iter().all(identify_some_pure_patterns),
-        ExprKind::Struct(_, fields, expr) => {
-            fields.iter().all(|f| identify_some_pure_patterns(f.expr)) && expr.map_or(true, identify_some_pure_patterns)
-        },
-        ExprKind::Call(
-            &Expr {
-                kind:
-                    ExprKind::Path(QPath::Resolved(
-                        _,
-                        Path {
-                            res: Res::Def(DefKind::Ctor(..) | DefKind::Variant, ..),
-                            ..
-                        },
-                    )),
-                ..
-            },
-            args,
-        ) => args.iter().all(identify_some_pure_patterns),
-        ExprKind::Block(
-            &Block {
-                stmts,
-                expr: Some(expr),
-                ..
-            },
-            _,
-        ) => stmts.is_empty() && identify_some_pure_patterns(expr),
-        ExprKind::Box(..)
-        | ExprKind::Array(..)
-        | ExprKind::Call(..)
-        | ExprKind::MethodCall(..)
-        | ExprKind::Binary(..)
-        | ExprKind::Unary(..)
-        | ExprKind::Let(..)
-        | ExprKind::Cast(..)
-        | ExprKind::Type(..)
-        | ExprKind::DropTemps(..)
-        | ExprKind::Loop(..)
-        | ExprKind::If(..)
-        | ExprKind::Match(..)
-        | ExprKind::Closure(..)
-        | ExprKind::Block(..)
-        | ExprKind::Assign(..)
-        | ExprKind::AssignOp(..)
-        | ExprKind::Index(..)
-        | ExprKind::Break(..)
-        | ExprKind::Continue(..)
-        | ExprKind::Ret(..)
-        | ExprKind::InlineAsm(..)
-        | ExprKind::LlvmInlineAsm(..)
-        | ExprKind::Repeat(..)
-        | ExprKind::Yield(..)
-        | ExprKind::Err => false,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum EagernessSuggestion {
+    // The expression is cheap and should be evaluated eagerly
+    Eager,
+    // The expression may be cheap, so don't suggested lazy evaluation; or the expression may not be safe to switch to
+    // eager evaluation.
+    NoChange,
+    // The expression is likely expensive and should be evaluated lazily.
+    Lazy,
+    // The expression cannot be placed into a closure.
+    ForceNoChange,
+}
+impl ops::BitOr for EagernessSuggestion {
+    type Output = Self;
+    fn bitor(self, rhs: Self) -> Self {
+        cmp::max(self, rhs)
+    }
+}
+impl ops::BitOrAssign for EagernessSuggestion {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
     }
 }
 
-/// Identify some potentially computationally expensive patterns.
-/// This function is named so to stress that its implementation is non-exhaustive.
-/// It returns FNs and FPs.
-fn identify_some_potentially_expensive_patterns<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    // Searches an expression for method calls or function calls that aren't ctors
-    struct FunCallFinder<'a, 'tcx> {
-        cx: &'a LateContext<'tcx>,
-        found: bool,
+/// Determine the eagerness of the given function call.
+fn fn_eagerness(cx: &LateContext<'tcx>, fn_id: DefId, name: Symbol, args: &'tcx [Expr<'_>]) -> EagernessSuggestion {
+    use EagernessSuggestion::{Eager, Lazy, NoChange};
+    let name = &*name.as_str();
+
+    let ty = match cx.tcx.impl_of_method(fn_id) {
+        Some(id) => cx.tcx.type_of(id),
+        None => return Lazy,
+    };
+
+    if (name.starts_with("as_") || name == "len" || name == "is_empty") && args.len() == 1 {
+        if matches!(
+            cx.tcx.crate_name(fn_id.krate),
+            sym::std | sym::core | sym::alloc | sym::proc_macro
+        ) {
+            Eager
+        } else {
+            NoChange
+        }
+    } else if let ty::Adt(def, subs) = ty.kind() {
+        // Types where the only fields are generic types (or references to) with no trait bounds other
+        // than marker traits.
+        // Due to the limited operations on these types functions should be fairly cheap.
+        if def
+            .variants
+            .iter()
+            .flat_map(|v| v.fields.iter())
+            .any(|x| matches!(cx.tcx.type_of(x.did).peel_refs().kind(), ty::Param(_)))
+            && all_predicates_of(cx.tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
+                PredicateKind::Trait(pred) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
+                _ => true,
+            })
+            && subs.types().all(|x| matches!(x.peel_refs().kind(), ty::Param(_)))
+        {
+            // Limit the function to either `(self) -> bool` or `(&self) -> bool`
+            match &**cx.tcx.fn_sig(fn_id).skip_binder().inputs_and_output {
+                [arg, res] if !arg.is_mutable_ptr() && arg.peel_refs() == ty && res.is_bool() => NoChange,
+                _ => Lazy,
+            }
+        } else {
+            Lazy
+        }
+    } else {
+        Lazy
+    }
+}
+
+#[allow(clippy::too_many_lines)]
+fn expr_eagerness(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessSuggestion {
+    struct V<'cx, 'tcx> {
+        cx: &'cx LateContext<'tcx>,
+        eagerness: EagernessSuggestion,
     }
 
-    impl<'a, 'tcx> intravisit::Visitor<'tcx> for FunCallFinder<'a, 'tcx> {
-        type Map = Map<'tcx>;
-
-        fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-            let call_found = match &expr.kind {
-                // ignore enum and struct constructors
-                ExprKind::Call(..) => !is_ctor_or_promotable_const_function(self.cx, expr),
-                ExprKind::Index(obj, _) => {
-                    let ty = self.cx.typeck_results().expr_ty(obj);
-                    is_type_diagnostic_item(self.cx, ty, sym::HashMap)
-                        || is_type_diagnostic_item(self.cx, ty, sym::BTreeMap)
-                },
-                ExprKind::MethodCall(..) => true,
-                _ => false,
-            };
-
-            if call_found {
-                self.found |= true;
-            }
-
-            if !self.found {
-                intravisit::walk_expr(self, expr);
-            }
-        }
-
+    impl<'cx, 'tcx> Visitor<'tcx> for V<'cx, 'tcx> {
+        type Map = ErasedMap<'tcx>;
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
         }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            use EagernessSuggestion::{ForceNoChange, Lazy, NoChange};
+            if self.eagerness == ForceNoChange {
+                return;
+            }
+            match e.kind {
+                ExprKind::Call(
+                    &Expr {
+                        kind: ExprKind::Path(ref path),
+                        hir_id,
+                        ..
+                    },
+                    args,
+                ) => match self.cx.qpath_res(path, hir_id) {
+                    Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_) => (),
+                    Res::Def(_, id) if self.cx.tcx.is_promotable_const_fn(id) => (),
+                    // No need to walk the arguments here, `is_const_evaluatable` already did
+                    Res::Def(..) if is_const_evaluatable(self.cx, e) => {
+                        self.eagerness |= NoChange;
+                        return;
+                    },
+                    Res::Def(_, id) => match path {
+                        QPath::Resolved(_, p) => {
+                            self.eagerness |= fn_eagerness(self.cx, id, p.segments.last().unwrap().ident.name, args);
+                        },
+                        QPath::TypeRelative(_, name) => {
+                            self.eagerness |= fn_eagerness(self.cx, id, name.ident.name, args);
+                        },
+                        QPath::LangItem(..) => self.eagerness = Lazy,
+                    },
+                    _ => self.eagerness = Lazy,
+                },
+                // No need to walk the arguments here, `is_const_evaluatable` already did
+                ExprKind::MethodCall(..) if is_const_evaluatable(self.cx, e) => {
+                    self.eagerness |= NoChange;
+                    return;
+                },
+                ExprKind::MethodCall(name, _, args, _) => {
+                    self.eagerness |= self
+                        .cx
+                        .typeck_results()
+                        .type_dependent_def_id(e.hir_id)
+                        .map_or(Lazy, |id| fn_eagerness(self.cx, id, name.ident.name, args));
+                },
+                ExprKind::Index(_, e) => {
+                    let ty = self.cx.typeck_results().expr_ty_adjusted(e);
+                    if is_copy(self.cx, ty) && !ty.is_ref() {
+                        self.eagerness |= NoChange;
+                    } else {
+                        self.eagerness = Lazy;
+                    }
+                },
+
+                // Dereferences should be cheap, but dereferencing a raw pointer earlier may not be safe.
+                ExprKind::Unary(UnOp::Deref, e) if !self.cx.typeck_results().expr_ty(e).is_unsafe_ptr() => (),
+                ExprKind::Unary(UnOp::Deref, _) => self.eagerness |= NoChange,
+
+                ExprKind::Unary(_, e)
+                    if matches!(
+                        self.cx.typeck_results().expr_ty(e).kind(),
+                        ty::Bool | ty::Int(_) | ty::Uint(_),
+                    ) => {},
+                ExprKind::Binary(_, lhs, rhs)
+                    if self.cx.typeck_results().expr_ty(lhs).is_primitive()
+                        && self.cx.typeck_results().expr_ty(rhs).is_primitive() => {},
+
+                // Can't be moved into a closure
+                ExprKind::Break(..)
+                | ExprKind::Continue(_)
+                | ExprKind::Ret(_)
+                | ExprKind::InlineAsm(_)
+                | ExprKind::LlvmInlineAsm(_)
+                | ExprKind::Yield(..)
+                | ExprKind::Err => {
+                    self.eagerness = ForceNoChange;
+                    return;
+                },
+
+                // Memory allocation, custom operator, loop, or call to an unknown function
+                ExprKind::Box(_)
+                | ExprKind::Unary(..)
+                | ExprKind::Binary(..)
+                | ExprKind::Loop(..)
+                | ExprKind::Call(..) => self.eagerness = Lazy,
+
+                ExprKind::ConstBlock(_)
+                | ExprKind::Array(_)
+                | ExprKind::Tup(_)
+                | ExprKind::Lit(_)
+                | ExprKind::Cast(..)
+                | ExprKind::Type(..)
+                | ExprKind::DropTemps(_)
+                | ExprKind::Let(..)
+                | ExprKind::If(..)
+                | ExprKind::Match(..)
+                | ExprKind::Closure(..)
+                | ExprKind::Field(..)
+                | ExprKind::Path(_)
+                | ExprKind::AddrOf(..)
+                | ExprKind::Struct(..)
+                | ExprKind::Repeat(..)
+                | ExprKind::Block(Block { stmts: [], .. }, _) => (),
+
+                // Assignment might be to a local defined earlier, so don't eagerly evaluate.
+                // Blocks with multiple statements might be expensive, so don't eagerly evaluate.
+                // TODO: Actually check if either of these are true here.
+                ExprKind::Assign(..) | ExprKind::AssignOp(..) | ExprKind::Block(..) => self.eagerness |= NoChange,
+            }
+            walk_expr(self, e);
+        }
     }
 
-    let mut finder = FunCallFinder { cx, found: false };
-    finder.visit_expr(expr);
-    finder.found
+    let mut v = V {
+        cx,
+        eagerness: EagernessSuggestion::Eager,
+    };
+    v.visit_expr(e);
+    v.eagerness
 }
 
-pub fn is_eagerness_candidate<'a, 'tcx>(cx: &'a LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    !identify_some_potentially_expensive_patterns(cx, expr) && identify_some_pure_patterns(expr)
+/// Whether the given expression should be changed to evaluate eagerly
+pub fn switch_to_eager_eval(cx: &'_ LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+    expr_eagerness(cx, expr) == EagernessSuggestion::Eager
 }
 
-pub fn is_lazyness_candidate<'a, 'tcx>(cx: &'a LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    identify_some_potentially_expensive_patterns(cx, expr)
+/// Whether the given expression should be changed to evaluate lazily
+pub fn switch_to_lazy_eval(cx: &'_ LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+    expr_eagerness(cx, expr) == EagernessSuggestion::Lazy
 }

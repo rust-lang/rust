@@ -27,6 +27,7 @@ declare_clippy_lint! {
     ///  const FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
     ///  static FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
     /// ```
+    #[clippy::version = "1.37.0"]
     pub REDUNDANT_STATIC_LIFETIMES,
     style,
     "Using explicit `'static` lifetime for constants or statics when elision rules would allow omitting them."

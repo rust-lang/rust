@@ -41,6 +41,7 @@ declare_clippy_lint! {
     /// # let x = 1;
     /// if (x & 1 == 2) { }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub BAD_BIT_MASK,
     correctness,
     "expressions of the form `_ & mask == select` that will only ever return `true` or `false`"
@@ -73,6 +74,7 @@ declare_clippy_lint! {
     /// # let x = 1;
     /// if (x | 1 > 3) {  }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INEFFECTIVE_BIT_MASK,
     correctness,
     "expressions where a bit mask will be rendered useless by a comparison, e.g., `(x | 1) > 2`"
@@ -95,6 +97,7 @@ declare_clippy_lint! {
     /// # let x = 1;
     /// if x & 0b1111 == 0 { }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub VERBOSE_BIT_MASK,
     pedantic,
     "expressions where a bit mask is less readable than the corresponding method call"

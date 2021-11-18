@@ -23,6 +23,7 @@ declare_clippy_lint! {
     /// // Good
     /// true
     /// ```
+    #[clippy::version = "1.34.0"]
     pub DBG_MACRO,
     restriction,
     "`dbg!` macro is intended as a debugging tool"

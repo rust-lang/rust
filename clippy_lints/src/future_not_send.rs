@@ -41,6 +41,7 @@ declare_clippy_lint! {
     /// ```rust
     /// async fn is_send(bytes: std::sync::Arc<[u8]>) {}
     /// ```
+    #[clippy::version = "1.44.0"]
     pub FUTURE_NOT_SEND,
     nursery,
     "public Futures must be Send"

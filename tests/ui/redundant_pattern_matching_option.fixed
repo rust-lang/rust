@@ -80,3 +80,9 @@ const fn issue6067() {
 
     None::<()>.is_none();
 }
+
+#[allow(clippy::deref_addrof, dead_code)]
+fn issue7921() {
+    if (&None::<()>).is_none() {}
+    if (&None::<()>).is_none() {}
+}

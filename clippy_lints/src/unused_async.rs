@@ -29,6 +29,7 @@ declare_clippy_lint! {
     /// }
     /// let number_future = async { get_random_number_improved() };
     /// ```
+    #[clippy::version = "1.54.0"]
     pub UNUSED_ASYNC,
     pedantic,
     "finds async functions with no await statements"

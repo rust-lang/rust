@@ -31,6 +31,7 @@ declare_clippy_lint! {
     /// x += ", World";
     /// x.push_str(", World");
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub STRING_ADD_ASSIGN,
     pedantic,
     "using `x = x + ..` where x is a `String` instead of `push_str()`"
@@ -58,6 +59,7 @@ declare_clippy_lint! {
     /// let x = "Hello".to_owned();
     /// x + ", World";
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub STRING_ADD,
     restriction,
     "using `x + ..` where x is a `String` instead of `push_str()`"
@@ -102,6 +104,7 @@ declare_clippy_lint! {
     /// // Good
     /// let bs = b"a byte string";
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub STRING_LIT_AS_BYTES,
     nursery,
     "calling `as_bytes` on a string literal instead of using a byte string literal"
@@ -125,6 +128,7 @@ declare_clippy_lint! {
     /// ```rust,should_panic
     /// &"Ölkanne"[1..];
     /// ```
+    #[clippy::version = "1.58.0"]
     pub STRING_SLICE,
     restriction,
     "slicing a string"
@@ -227,6 +231,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let _ = &"Hello World!"[6..11];
     /// ```
+    #[clippy::version = "1.50.0"]
     pub STRING_FROM_UTF8_AS_BYTES,
     complexity,
     "casting string slices to byte slices and back"
@@ -371,6 +376,7 @@ declare_clippy_lint! {
     /// // example code which does not raise clippy warning
     /// let _ = "str".to_owned();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub STR_TO_STRING,
     restriction,
     "using `to_string()` on a `&str`, which should be `to_owned()`"
@@ -420,6 +426,7 @@ declare_clippy_lint! {
     /// let msg = String::from("Hello World");
     /// let _ = msg.clone();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub STRING_TO_STRING,
     restriction,
     "using `to_string()` on a `String`, which should be `clone()`"

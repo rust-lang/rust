@@ -30,6 +30,7 @@ declare_clippy_lint! {
     ///     Err(String::from("error"))
     /// }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub PANIC_IN_RESULT_FN,
     restriction,
     "functions of type `Result<..>` that contain `panic!()`, `todo!()`, `unreachable()`, `unimplemented()` or assertion"

@@ -39,6 +39,7 @@ declare_clippy_lint! {
     ///     a()
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub IF_NOT_ELSE,
     pedantic,
     "`if` branches that could be swapped so no negation operation is necessary on the condition"

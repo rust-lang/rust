@@ -1,5 +1,5 @@
 error: usage of `clippy_utils::ty::match_type()` on a type diagnostic item
-  --> $DIR/match_type_on_diag_item.rs:30:17
+  --> $DIR/match_type_on_diag_item.rs:31:17
    |
 LL |         let _ = match_type(cx, ty, &OPTION);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clippy_utils::ty::is_type_diagnostic_item(cx, ty, sym::Option)`
@@ -12,13 +12,13 @@ LL | #![deny(clippy::internal)]
    = note: `#[deny(clippy::match_type_on_diagnostic_item)]` implied by `#[deny(clippy::internal)]`
 
 error: usage of `clippy_utils::ty::match_type()` on a type diagnostic item
-  --> $DIR/match_type_on_diag_item.rs:31:17
+  --> $DIR/match_type_on_diag_item.rs:32:17
    |
 LL |         let _ = match_type(cx, ty, &["core", "result", "Result"]);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clippy_utils::ty::is_type_diagnostic_item(cx, ty, sym::Result)`
 
 error: usage of `clippy_utils::ty::match_type()` on a type diagnostic item
-  --> $DIR/match_type_on_diag_item.rs:34:17
+  --> $DIR/match_type_on_diag_item.rs:35:17
    |
 LL |         let _ = clippy_utils::ty::match_type(cx, ty, rc_path);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clippy_utils::ty::is_type_diagnostic_item(cx, ty, sym::Rc)`

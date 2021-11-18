@@ -19,6 +19,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let a = [0u32; 1_000_000];
     /// ```
+    #[clippy::version = "1.41.0"]
     pub LARGE_STACK_ARRAYS,
     pedantic,
     "allocating large arrays on stack may cause stack overflow"

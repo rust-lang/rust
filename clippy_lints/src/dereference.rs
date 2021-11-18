@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::peel_mid_ty_refs;
-use clippy_utils::{get_parent_node, in_macro, is_lint_allowed};
+use clippy_utils::{get_parent_node, is_lint_allowed};
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node, UnOp};
@@ -34,6 +34,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let _ = d.unwrap().deref();
     /// ```
+    #[clippy::version = "1.44.0"]
     pub EXPLICIT_DEREF_METHODS,
     pedantic,
     "Explicit use of deref or deref_mut method while not in a method chain."
@@ -84,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
         }
 
         // Stop processing sub expressions when a macro call is seen
-        if in_macro(expr.span) {
+        if expr.span.from_expansion() {
             if let Some((state, data)) = self.state.take() {
                 report(cx, expr, state, data);
             }

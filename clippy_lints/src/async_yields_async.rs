@@ -34,6 +34,7 @@ declare_clippy_lint! {
     ///   };
     /// }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub ASYNC_YIELDS_ASYNC,
     correctness,
     "async blocks that return a type that can be awaited"

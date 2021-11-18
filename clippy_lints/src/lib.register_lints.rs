@@ -16,11 +16,15 @@ store.register_lints(&[
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::INTERNING_DEFINED_SYMBOL,
     #[cfg(feature = "internal-lints")]
+    utils::internal_lints::INVALID_CLIPPY_VERSION_ATTRIBUTE,
+    #[cfg(feature = "internal-lints")]
     utils::internal_lints::INVALID_PATHS,
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::LINT_WITHOUT_LINT_PASS,
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
+    #[cfg(feature = "internal-lints")]
+    utils::internal_lints::MISSING_CLIPPY_VERSION_ATTRIBUTE,
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::OUTER_EXPN_EXPN_DATA,
     #[cfg(feature = "internal-lints")]
@@ -164,6 +168,7 @@ store.register_lints(&[
     implicit_return::IMPLICIT_RETURN,
     implicit_saturating_sub::IMPLICIT_SATURATING_SUB,
     inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR,
+    index_refutable_slice::INDEX_REFUTABLE_SLICE,
     indexing_slicing::INDEXING_SLICING,
     indexing_slicing::OUT_OF_BOUNDS_INDEXING,
     infinite_iter::INFINITE_ITER,
@@ -288,6 +293,7 @@ store.register_lints(&[
     methods::MAP_FLATTEN,
     methods::MAP_IDENTITY,
     methods::MAP_UNWRAP_OR,
+    methods::NEEDLESS_SPLITN,
     methods::NEW_RET_NO_SELF,
     methods::OK_EXPECT,
     methods::OPTION_AS_REF_DEREF,

@@ -56,6 +56,7 @@ declare_clippy_lint! {
     ///     true
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TOPLEVEL_REF_ARG,
     style,
     "an entire binding declared as `ref`, in a function argument or a `let` statement"
@@ -79,6 +80,7 @@ declare_clippy_lint! {
     /// // Good
     /// if x.is_nan() { }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub CMP_NAN,
     correctness,
     "comparisons to `NAN`, which will always return false, probably not intended"
@@ -112,6 +114,7 @@ declare_clippy_lint! {
     /// if (y - 1.23f64).abs() < error_margin { }
     /// if (y - x).abs() > error_margin { }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub FLOAT_CMP,
     pedantic,
     "using `==` or `!=` on float values instead of comparing difference with an epsilon"
@@ -139,6 +142,7 @@ declare_clippy_lint! {
     /// # let y = String::from("foo");
     /// if x == y {}
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub CMP_OWNED,
     perf,
     "creating owned instances for comparing with others, e.g., `x == \"foo\".to_string()`"
@@ -162,6 +166,7 @@ declare_clippy_lint! {
     /// let a = x % 1;
     /// let a = x % -1;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MODULO_ONE,
     correctness,
     "taking a number modulo +/-1, which can either panic/overflow or always returns 0"
@@ -187,6 +192,7 @@ declare_clippy_lint! {
     /// let y = _x + 1; // Here we are using `_x`, even though it has a leading
     ///                 // underscore. We should rename `_x` to `x`
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub USED_UNDERSCORE_BINDING,
     pedantic,
     "using a binding which is prefixed with an underscore"
@@ -207,6 +213,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// f() && g(); // We should write `if f() { g(); }`.
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SHORT_CIRCUIT_STATEMENT,
     complexity,
     "using a short circuit boolean condition as a statement"
@@ -228,6 +235,7 @@ declare_clippy_lint! {
     /// // Good
     /// let a = std::ptr::null::<u32>();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ZERO_PTR,
     style,
     "using `0 as *{const, mut} T`"
@@ -259,6 +267,7 @@ declare_clippy_lint! {
     /// // let error_margin = std::f64::EPSILON;
     /// if (x - ONE).abs() < error_margin { }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub FLOAT_CMP_CONST,
     restriction,
     "using `==` or `!=` on float constants instead of comparing difference with an epsilon"

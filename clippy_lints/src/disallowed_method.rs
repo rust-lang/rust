@@ -47,6 +47,7 @@ declare_clippy_lint! {
     /// let mut xs = Vec::new(); // Vec::new is _not_ disallowed in the config.
     /// xs.push(123); // Vec::push is _not_ disallowed in the config.
     /// ```
+    #[clippy::version = "1.49.0"]
     pub DISALLOWED_METHOD,
     nursery,
     "use of a disallowed method call"

@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
@@ -31,6 +30,7 @@ declare_clippy_lint! {
     /// let a = f(b);
     /// let c = d;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DEREF_ADDROF,
     complexity,
     "use of `*&` or `*&mut` in an expression"
@@ -50,7 +50,7 @@ impl EarlyLintPass for DerefAddrOf {
         if_chain! {
             if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.kind;
             if let ExprKind::AddrOf(_, ref mutability, ref addrof_target) = without_parens(deref_target).kind;
-            if !in_macro(addrof_target.span);
+            if !addrof_target.span.from_expansion();
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = if e.span.from_expansion() {
@@ -125,6 +125,7 @@ declare_clippy_lint! {
     /// # let point = Point(30, 20);
     /// let x = point.0;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub REF_IN_DEREF,
     complexity,
     "Use of reference in auto dereference expression."

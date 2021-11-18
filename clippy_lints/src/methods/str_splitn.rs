@@ -11,7 +11,13 @@ use rustc_span::{symbol::sym, Span, SyntaxContext};
 
 use super::MANUAL_SPLIT_ONCE;
 
-pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, self_arg: &Expr<'_>, pat_arg: &Expr<'_>) {
+pub(super) fn check_manual_split_once(
+    cx: &LateContext<'_>,
+    method_name: &str,
+    expr: &Expr<'_>,
+    self_arg: &Expr<'_>,
+    pat_arg: &Expr<'_>,
+) {
     if !cx.typeck_results().expr_ty_adjusted(self_arg).peel_refs().is_str() {
         return;
     }
@@ -36,7 +42,7 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
             format!("{}.{}({})", self_snip, method_name, pat_snip)
         },
         IterUsageKind::RNextTuple => format!("{}.{}({}).map(|(x, y)| (y, x))", self_snip, method_name, pat_snip),
-        IterUsageKind::Next => {
+        IterUsageKind::Next | IterUsageKind::Second => {
             let self_deref = {
                 let adjust = cx.typeck_results().expr_adjustments(self_arg);
                 if adjust.is_empty() {
@@ -51,25 +57,48 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
                     "*".repeat(adjust.len() - 2)
                 }
             };
-            if usage.unwrap_kind.is_some() {
-                format!(
-                    "{}.{}({}).map_or({}{}, |x| x.0)",
-                    &self_snip, method_name, pat_snip, self_deref, &self_snip
-                )
+            if matches!(usage.kind, IterUsageKind::Next) {
+                match usage.unwrap_kind {
+                    Some(UnwrapKind::Unwrap) => {
+                        if reverse {
+                            format!("{}.{}({}).unwrap().0", self_snip, method_name, pat_snip)
+                        } else {
+                            format!(
+                                "{}.{}({}).map_or({}{}, |x| x.0)",
+                                self_snip, method_name, pat_snip, self_deref, &self_snip
+                            )
+                        }
+                    },
+                    Some(UnwrapKind::QuestionMark) => {
+                        format!(
+                            "{}.{}({}).map_or({}{}, |x| x.0)",
+                            self_snip, method_name, pat_snip, self_deref, &self_snip
+                        )
+                    },
+                    None => {
+                        format!(
+                            "Some({}.{}({}).map_or({}{}, |x| x.0))",
+                            &self_snip, method_name, pat_snip, self_deref, &self_snip
+                        )
+                    },
+                }
             } else {
-                format!(
-                    "Some({}.{}({}).map_or({}{}, |x| x.0))",
-                    &self_snip, method_name, pat_snip, self_deref, &self_snip
-                )
+                match usage.unwrap_kind {
+                    Some(UnwrapKind::Unwrap) => {
+                        if reverse {
+                            // In this case, no better suggestion is offered.
+                            return;
+                        }
+                        format!("{}.{}({}).unwrap().1", self_snip, method_name, pat_snip)
+                    },
+                    Some(UnwrapKind::QuestionMark) => {
+                        format!("{}.{}({})?.1", self_snip, method_name, pat_snip)
+                    },
+                    None => {
+                        format!("{}.{}({}).map(|x| x.1)", self_snip, method_name, pat_snip)
+                    },
+                }
             }
-        },
-        IterUsageKind::Second => {
-            let access_str = match usage.unwrap_kind {
-                Some(UnwrapKind::Unwrap) => ".unwrap().1",
-                Some(UnwrapKind::QuestionMark) => "?.1",
-                None => ".map(|x| x.1)",
-            };
-            format!("{}.{}({}){}", self_snip, method_name, pat_snip, access_str)
         },
     };
 
@@ -208,4 +237,87 @@ fn parse_iter_usage(
         unwrap_kind,
         span,
     })
+}
+
+use super::NEEDLESS_SPLITN;
+
+pub(super) fn check_needless_splitn(
+    cx: &LateContext<'_>,
+    method_name: &str,
+    expr: &Expr<'_>,
+    self_arg: &Expr<'_>,
+    pat_arg: &Expr<'_>,
+    count: u128,
+) {
+    if !cx.typeck_results().expr_ty_adjusted(self_arg).peel_refs().is_str() {
+        return;
+    }
+    let ctxt = expr.span.ctxt();
+    let mut app = Applicability::MachineApplicable;
+    let (reverse, message) = if method_name == "splitn" {
+        (false, "unnecessary use of `splitn`")
+    } else {
+        (true, "unnecessary use of `rsplitn`")
+    };
+    if_chain! {
+        if count >= 2;
+        if check_iter(cx, ctxt, cx.tcx.hir().parent_iter(expr.hir_id), count);
+        then {
+            span_lint_and_sugg(
+                cx,
+                NEEDLESS_SPLITN,
+                expr.span,
+                message,
+                "try this",
+                format!(
+                    "{}.{}({})",
+                    snippet_with_context(cx, self_arg.span, ctxt, "..", &mut app).0,
+                    if reverse {"rsplit"} else {"split"},
+                    snippet_with_context(cx, pat_arg.span, ctxt, "..", &mut app).0
+                ),
+                app,
+            );
+        }
+    }
+}
+
+fn check_iter(
+    cx: &LateContext<'tcx>,
+    ctxt: SyntaxContext,
+    mut iter: impl Iterator<Item = (HirId, Node<'tcx>)>,
+    count: u128,
+) -> bool {
+    match iter.next() {
+        Some((_, Node::Expr(e))) if e.span.ctxt() == ctxt => {
+            let (name, args) = if let ExprKind::MethodCall(name, _, [_, args @ ..], _) = e.kind {
+                (name, args)
+            } else {
+                return false;
+            };
+            if_chain! {
+                if let Some(did) = cx.typeck_results().type_dependent_def_id(e.hir_id);
+                if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
+                then {
+                    match (&*name.ident.as_str(), args) {
+                        ("next", []) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
+                            return true;
+                        },
+                        ("next_tuple", []) if count > 2 => {
+                            return true;
+                        },
+                        ("nth", [idx_expr]) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
+                            if let Some((Constant::Int(idx), _)) = constant(cx, cx.typeck_results(), idx_expr) {
+                                if count > idx + 1 {
+                                    return true;
+                                }
+                            }
+                        },
+                        _ =>  return false,
+                    }
+                }
+            }
+        },
+        _ => return false,
+    };
+    false
 }

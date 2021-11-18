@@ -43,6 +43,7 @@ declare_clippy_lint! {
     ///     values: Vec<Foo>,
     /// }
     /// ```
+    #[clippy::version = "1.57.0"]
     pub BOX_COLLECTION,
     perf,
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
@@ -75,6 +76,7 @@ declare_clippy_lint! {
     ///     values: Vec<i32>,
     /// }
     /// ```
+    #[clippy::version = "1.33.0"]
     pub VEC_BOX,
     complexity,
     "usage of `Vec<Box<T>>` where T: Sized, vector elements are already on the heap"
@@ -113,6 +115,7 @@ declare_clippy_lint! {
     ///     Contents::None
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub OPTION_OPTION,
     pedantic,
     "usage of `Option<Option<T>>`"
@@ -152,6 +155,7 @@ declare_clippy_lint! {
     /// # use std::collections::LinkedList;
     /// let x: LinkedList<usize> = LinkedList::new();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub LINKEDLIST,
     pedantic,
     "usage of LinkedList, usually a vector is faster, or a more specialized data structure like a `VecDeque`"
@@ -176,6 +180,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// fn foo(bar: &T) { ... }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub BORROWED_BOX,
     complexity,
     "a borrow of a boxed type"
@@ -200,6 +205,7 @@ declare_clippy_lint! {
     /// ```rust
     /// fn foo(bar: &usize) {}
     /// ```
+    #[clippy::version = "1.44.0"]
     pub REDUNDANT_ALLOCATION,
     perf,
     "redundant allocation"
@@ -234,6 +240,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// fn foo(interned: Rc<str>) { ... }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub RC_BUFFER,
     restriction,
     "shared ownership of a buffer type"
@@ -255,6 +262,7 @@ declare_clippy_lint! {
     ///     inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>>,
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TYPE_COMPLEXITY,
     complexity,
     "usage of very complex types that might be better factored into `type` definitions"
@@ -287,6 +295,7 @@ declare_clippy_lint! {
     /// use std::cell::RefCell
     /// fn foo(interned: Rc<RefCell<i32>>) { ... }
     /// ```
+    #[clippy::version = "1.55.0"]
     pub RC_MUTEX,
     restriction,
     "usage of `Rc<Mutex<T>>`"

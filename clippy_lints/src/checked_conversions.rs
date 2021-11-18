@@ -36,6 +36,7 @@ declare_clippy_lint! {
     /// i32::try_from(foo).is_ok()
     /// # ;
     /// ```
+    #[clippy::version = "1.37.0"]
     pub CHECKED_CONVERSIONS,
     pedantic,
     "`try_from` could replace manual bounds checking when casting"

@@ -3,7 +3,7 @@ use clippy_utils::higher;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
-    can_move_expr_to_closure, eager_or_lazy, in_constant, in_macro, is_else_clause, is_lang_ctor, peel_hir_expr_while,
+    can_move_expr_to_closure, eager_or_lazy, in_constant, is_else_clause, is_lang_ctor, peel_hir_expr_while,
     CaptureKind,
 };
 use if_chain::if_chain;
@@ -59,6 +59,7 @@ declare_clippy_lint! {
     ///     y*y
     /// }, |foo| foo);
     /// ```
+    #[clippy::version = "1.47.0"]
     pub OPTION_IF_LET_ELSE,
     nursery,
     "reimplementation of Option::map_or"
@@ -110,7 +111,7 @@ fn extract_body_from_expr<'a>(expr: &'a Expr<'a>) -> Option<&'a Expr<'a>> {
 fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: bool, as_mut: bool) -> String {
     format!(
         "{}{}",
-        Sugg::hir(cx, cond_expr, "..").maybe_par(),
+        Sugg::hir_with_macro_callsite(cx, cond_expr, "..").maybe_par(),
         if as_mut {
             ".as_mut()"
         } else if as_ref {
@@ -126,7 +127,7 @@ fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: boo
 /// this construct is found, or None if this construct is not found.
 fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionIfLetElseOccurence> {
     if_chain! {
-        if !in_macro(expr.span); // Don't lint macros, because it behaves weirdly
+        if !expr.span.from_expansion(); // Don't lint macros, because it behaves weirdly
         if !in_constant(cx, expr.hir_id);
         if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: Some(if_else) })
             = higher::IfLet::hir(cx, expr);
@@ -146,11 +147,7 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
             let capture_mut = if bind_annotation == &BindingAnnotation::Mutable { "mut " } else { "" };
             let some_body = extract_body_from_expr(if_then)?;
             let none_body = extract_body_from_expr(if_else)?;
-            let method_sugg = if eager_or_lazy::is_eagerness_candidate(cx, none_body) {
-                "map_or"
-            } else {
-                "map_or_else"
-            };
+            let method_sugg = if eager_or_lazy::switch_to_eager_eval(cx, none_body) { "map_or" } else { "map_or_else" };
             let capture_name = id.name.to_ident_string();
             let (as_ref, as_mut) = match &let_expr.kind {
                 ExprKind::AddrOf(_, Mutability::Not, _) => (true, false),
@@ -183,8 +180,8 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
             Some(OptionIfLetElseOccurence {
                 option: format_option_in_sugg(cx, cond_expr, as_ref, as_mut),
                 method_sugg: method_sugg.to_string(),
-                some_expr: format!("|{}{}| {}", capture_mut, capture_name, Sugg::hir(cx, some_body, "..")),
-                none_expr: format!("{}{}", if method_sugg == "map_or" { "" } else { "|| " }, Sugg::hir(cx, none_body, "..")),
+                some_expr: format!("|{}{}| {}", capture_mut, capture_name, Sugg::hir_with_macro_callsite(cx, some_body, "..")),
+                none_expr: format!("{}{}", if method_sugg == "map_or" { "" } else { "|| " }, Sugg::hir_with_macro_callsite(cx, none_body, "..")),
             })
         } else {
             None

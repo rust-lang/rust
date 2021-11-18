@@ -42,6 +42,7 @@ declare_clippy_lint! {
     /// keywords = ["clippy", "lint", "plugin"]
     /// categories = ["development-tools", "development-tools::cargo-plugins"]
     /// ```
+    #[clippy::version = "1.32.0"]
     pub CARGO_COMMON_METADATA,
     cargo,
     "common metadata is defined in `Cargo.toml`"

@@ -35,6 +35,7 @@ declare_clippy_lint! {
     /// x.push("bar");
     /// assert_eq!(x, PathBuf::from("/foo/bar"));
     /// ```
+    #[clippy::version = "1.36.0"]
     pub PATH_BUF_PUSH_OVERWRITE,
     nursery,
     "calling `push` with file system root on `PathBuf` can overwrite it"

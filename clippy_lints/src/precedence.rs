@@ -42,6 +42,7 @@ declare_clippy_lint! {
     /// ### Example
     /// * `1 << 2 + 3` equals 32, while `(1 << 2) + 3` equals 7
     /// * `-1i32.abs()` equals -1, while `(-1i32).abs()` equals 1
+    #[clippy::version = "pre 1.29.0"]
     pub PRECEDENCE,
     complexity,
     "operations where precedence may be unclear"

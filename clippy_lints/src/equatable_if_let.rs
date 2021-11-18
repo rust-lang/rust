@@ -32,6 +32,7 @@ declare_clippy_lint! {
     ///     do_thing();
     /// }
     /// ```
+    #[clippy::version = "1.57.0"]
     pub EQUATABLE_IF_LET,
     nursery,
     "using pattern matching instead of equality"

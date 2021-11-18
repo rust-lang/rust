@@ -25,6 +25,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SUSPICIOUS_ARITHMETIC_IMPL,
     suspicious,
     "suspicious use of operators in impl of arithmetic trait"
@@ -46,6 +47,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SUSPICIOUS_OP_ASSIGN_IMPL,
     suspicious,
     "suspicious use of operators in impl of OpAssign trait"

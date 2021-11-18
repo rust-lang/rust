@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use clippy_utils::in_macro;
 use rustc_ast::{ptr::P, Crate, Item, ItemKind, MacroDef, ModKind, UseTreeKind, VisibilityKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -28,6 +27,7 @@ declare_clippy_lint! {
     ///     regex::Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
     /// }
     /// ```
+    #[clippy::version = "1.43.0"]
     pub SINGLE_COMPONENT_PATH_IMPORTS,
     style,
     "imports with single component path are redundant"
@@ -110,7 +110,7 @@ fn track_uses(
     single_use_usages: &mut Vec<(Symbol, Span, bool)>,
     macros: &mut Vec<Symbol>,
 ) {
-    if in_macro(item.span) || item.vis.kind.is_pub() {
+    if item.span.from_expansion() || item.vis.kind.is_pub() {
         return;
     }
 
