@@ -306,7 +306,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // SIMD operations
-            "simd_add" => {
+            "simd_add" | "simd_sub" | "simd_mul" | "simd_div" => {
                 let &[ref left, ref right] = check_arg_count(args)?;
                 let (left, left_len) = this.operand_to_simd(left)?;
                 let (right, right_len) = this.operand_to_simd(right)?;
@@ -315,11 +315,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 assert_eq!(dest_len, left_len);
                 assert_eq!(dest_len, right_len);
 
+                let op = match intrinsic_name {
+                    "simd_add" => mir::BinOp::Add,
+                    "simd_sub" => mir::BinOp::Sub,
+                    "simd_mul" => mir::BinOp::Mul,
+                    "simd_div" => mir::BinOp::Div,
+                    _ => unreachable!(),
+                };
+
                 for i in 0..dest_len {
                     let left = this.read_immediate(&this.mplace_index(&left, i)?.into())?;
                     let right = this.read_immediate(&this.mplace_index(&right, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?.into();
-                    this.binop_ignore_overflow(mir::BinOp::Add, &left, &right, &dest)?;
+                    this.binop_ignore_overflow(op, &left, &right, &dest)?;
                 }
             }
 
