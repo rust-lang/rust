@@ -28,6 +28,7 @@ mod handlers {
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod inactive_code;
     pub(crate) mod incorrect_case;
+    pub(crate) mod invalid_derive_target;
     pub(crate) mod macro_error;
     pub(crate) mod mismatched_arg_count;
     pub(crate) mod missing_fields;
@@ -195,6 +196,7 @@ pub fn diagnostics(
             AnyDiagnostic::UnresolvedMacroCall(d) => handlers::unresolved_macro_call::unresolved_macro_call(&ctx, &d),
             AnyDiagnostic::UnresolvedModule(d) => handlers::unresolved_module::unresolved_module(&ctx, &d),
             AnyDiagnostic::UnresolvedProcMacro(d) => handlers::unresolved_proc_macro::unresolved_proc_macro(&ctx, &d),
+            AnyDiagnostic::InvalidDeriveTarget(d) => handlers::invalid_derive_target::invalid_derive_target(&ctx, &d),
 
             AnyDiagnostic::InactiveCode(d) => match handlers::inactive_code::inactive_code(&ctx, &d) {
                 Some(it) => it,

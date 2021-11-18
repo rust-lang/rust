@@ -6,6 +6,7 @@ use la_arena::Idx;
 use syntax::ast;
 
 use crate::{
+    attr::AttrId,
     item_tree::{self, ItemTreeId},
     nameres::LocalModuleId,
     path::ModPath,
@@ -29,6 +30,8 @@ pub enum DefDiagnosticKind {
     MacroError { ast: MacroCallKind, message: String },
 
     UnimplementedBuiltinMacro { ast: AstId<ast::Macro> },
+
+    InvalidDeriveTarget { ast: AstId<ast::Item>, id: u32 },
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -101,5 +104,16 @@ impl DefDiagnostic {
         ast: AstId<ast::Macro>,
     ) -> Self {
         Self { in_module: container, kind: DefDiagnosticKind::UnimplementedBuiltinMacro { ast } }
+    }
+
+    pub(super) fn invalid_derive_target(
+        container: LocalModuleId,
+        ast: AstId<ast::Item>,
+        id: AttrId,
+    ) -> Self {
+        Self {
+            in_module: container,
+            kind: DefDiagnosticKind::InvalidDeriveTarget { ast, id: id.ast_index },
+        }
     }
 }
