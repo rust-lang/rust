@@ -30,7 +30,7 @@ pub(crate) fn prepare() {
     clone_repo(
         "portable-simd",
         "https://github.com/rust-lang/portable-simd",
-        "8cf7a62e5d2552961df51e5200aaa5b7c890a4bf",
+        "b8d6b6844602f80af79cd96401339ec594d472d8",
     );
     apply_patches("portable-simd", Path::new("portable-simd"));
 
