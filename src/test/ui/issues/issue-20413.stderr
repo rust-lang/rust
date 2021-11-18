@@ -21,11 +21,6 @@ LL | impl<T> Foo for T where NoData<T>: Foo {
    |         ^^^     ^
    = note: 127 redundant requirements hidden
    = note: required because of the requirements on the impl of `Foo` for `NoData<T>`
-note: required by a bound in `Foo`
-  --> $DIR/issue-20413.rs:1:1
-   |
-LL | trait Foo {
-   | ^^^^^^^^^ required by this bound in `Foo`
 
 error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Foo`
   --> $DIR/issue-20413.rs:8:36
@@ -41,11 +36,6 @@ LL | impl<T> Foo for T where NoData<T>: Foo {
    |         ^^^     ^
    = note: 127 redundant requirements hidden
    = note: required because of the requirements on the impl of `Foo` for `NoData<T>`
-note: required by a bound in `Foo`
-  --> $DIR/issue-20413.rs:1:1
-   |
-LL | trait Foo {
-   | ^^^^^^^^^ required by this bound in `Foo`
 
 error[E0275]: overflow evaluating the requirement `EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Baz`
   --> $DIR/issue-20413.rs:28:42
@@ -66,11 +56,6 @@ LL | impl<T> Baz for T where AlmostNoData<T>: Bar {
    |         ^^^     ^
    = note: 126 redundant requirements hidden
    = note: required because of the requirements on the impl of `Baz` for `EvenLessData<T>`
-note: required by a bound in `Baz`
-  --> $DIR/issue-20413.rs:20:1
-   |
-LL | trait Baz {
-   | ^^^^^^^^^ required by this bound in `Baz`
 
 error[E0275]: overflow evaluating the requirement `EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Baz`
   --> $DIR/issue-20413.rs:28:42
@@ -91,11 +76,6 @@ LL | impl<T> Baz for T where AlmostNoData<T>: Bar {
    |         ^^^     ^
    = note: 126 redundant requirements hidden
    = note: required because of the requirements on the impl of `Baz` for `EvenLessData<T>`
-note: required by a bound in `Baz`
-  --> $DIR/issue-20413.rs:20:1
-   |
-LL | trait Baz {
-   | ^^^^^^^^^ required by this bound in `Baz`
 
 error[E0275]: overflow evaluating the requirement `AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Bar`
   --> $DIR/issue-20413.rs:36:42
@@ -116,11 +96,6 @@ LL | impl<T> Bar for T where EvenLessData<T>: Baz {
    |         ^^^     ^
    = note: 126 redundant requirements hidden
    = note: required because of the requirements on the impl of `Bar` for `AlmostNoData<T>`
-note: required by a bound in `Bar`
-  --> $DIR/issue-20413.rs:16:1
-   |
-LL | trait Bar {
-   | ^^^^^^^^^ required by this bound in `Bar`
 
 error[E0275]: overflow evaluating the requirement `AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Bar`
   --> $DIR/issue-20413.rs:36:42
@@ -141,11 +116,6 @@ LL | impl<T> Bar for T where EvenLessData<T>: Baz {
    |         ^^^     ^
    = note: 126 redundant requirements hidden
    = note: required because of the requirements on the impl of `Bar` for `AlmostNoData<T>`
-note: required by a bound in `Bar`
-  --> $DIR/issue-20413.rs:16:1
-   |
-LL | trait Bar {
-   | ^^^^^^^^^ required by this bound in `Bar`
 
 error: aborting due to 7 previous errors
 

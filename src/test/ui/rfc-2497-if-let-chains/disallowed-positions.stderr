@@ -544,11 +544,6 @@ LL |     if (let 0 = 0)? {}
    |        ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
    = help: the trait `Try` is not implemented for `bool`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/disallowed-positions.rs:44:19
@@ -566,11 +561,6 @@ LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<_>` is not implemented for `()`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:54:8
@@ -710,11 +700,6 @@ LL |         if let 0 = 0? {}
    |                    ^^ the `?` operator cannot be applied to type `{integer}`
    |
    = help: the trait `Try` is not implemented for `{integer}`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:94:11
@@ -747,11 +732,6 @@ LL |     while (let 0 = 0)? {}
    |           ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
    = help: the trait `Try` is not implemented for `bool`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/disallowed-positions.rs:108:22
@@ -769,11 +749,6 @@ LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<_>` is not implemented for `()`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:118:11
@@ -913,11 +888,6 @@ LL |         while let 0 = 0? {}
    |                       ^^ the `?` operator cannot be applied to type `{integer}`
    |
    = help: the trait `Try` is not implemented for `{integer}`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0614]: type `bool` cannot be dereferenced
   --> $DIR/disallowed-positions.rs:171:5
@@ -938,11 +908,6 @@ LL |     (let 0 = 0)?;
    |     ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
    = help: the trait `Try` is not implemented for `bool`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/disallowed-positions.rs:181:16
@@ -960,11 +925,6 @@ LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<_>` is not implemented for `()`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:196:10
@@ -993,11 +953,6 @@ LL |         let 0 = 0?;
    |                 ^^ the `?` operator cannot be applied to type `{integer}`
    |
    = help: the trait `Try` is not implemented for `{integer}`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 103 previous errors; 1 warning emitted
 

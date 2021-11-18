@@ -5,11 +5,6 @@ LL |     &'a (): Foo,
    |             ^^^ cannot infer type for reference `&'a ()`
    |
    = note: cannot satisfy `&'a (): Foo`
-note: required by a bound in `Foo`
-  --> $DIR/issue-34979.rs:1:1
-   |
-LL | trait Foo {}
-   | ^^^^^^^^^ required by this bound in `Foo`
 
 error: aborting due to previous error
 

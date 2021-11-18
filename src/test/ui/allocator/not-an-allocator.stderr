@@ -6,11 +6,6 @@ LL | #[global_allocator]
 LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
    |
-note: required by `std::alloc::GlobalAlloc::alloc`
-  --> $SRC_DIR/core/src/alloc/global.rs:LL:COL
-   |
-LL |     unsafe fn alloc(&self, layout: Layout) -> *mut u8;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
@@ -21,11 +16,6 @@ LL | #[global_allocator]
 LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
    |
-note: required by `std::alloc::GlobalAlloc::dealloc`
-  --> $SRC_DIR/core/src/alloc/global.rs:LL:COL
-   |
-LL |     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
@@ -36,11 +26,6 @@ LL | #[global_allocator]
 LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
    |
-note: required by `std::alloc::GlobalAlloc::realloc`
-  --> $SRC_DIR/core/src/alloc/global.rs:LL:COL
-   |
-LL |     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
@@ -51,11 +36,6 @@ LL | #[global_allocator]
 LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
    |
-note: required by `std::alloc::GlobalAlloc::alloc_zeroed`
-  --> $SRC_DIR/core/src/alloc/global.rs:LL:COL
-   |
-LL |     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors

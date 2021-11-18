@@ -7,11 +7,6 @@ LL | #[derive(Hash)]
 LL |      Error
    |      ^^^^^ the trait `Hash` is not implemented for `Error`
    |
-note: required by a bound in `std::hash::Hash::hash`
-  --> $SRC_DIR/core/src/hash/mod.rs:LL:COL
-   |
-LL |     fn hash<H: Hasher>(&self, state: &mut H);
-   |             ^ required by this bound in `std::hash::Hash::hash`
    = note: this error originates in the derive macro `Hash` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

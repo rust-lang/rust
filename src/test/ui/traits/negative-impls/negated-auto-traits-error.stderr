@@ -7,11 +7,11 @@ LL |     Outer(TestType);
    |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `dummy::TestType`
-note: required by `Outer`
-  --> $DIR/negated-auto-traits-error.rs:10:1
+note: required by a bound in `Outer`
+  --> $DIR/negated-auto-traits-error.rs:10:17
    |
 LL | struct Outer<T: Send>(T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^ required by this bound in `Outer`
 
 error[E0277]: `dummy::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:23:5

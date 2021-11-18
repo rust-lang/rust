@@ -5,11 +5,6 @@ LL |     format!("{:X}", "3");
    |                     ^^^ the trait `UpperHex` is not implemented for `str`
    |
    = note: required because of the requirements on the impl of `UpperHex` for `&str`
-note: required by `std::fmt::UpperHex::fmt`
-  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-   |
-LL |     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `$crate::__export::format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

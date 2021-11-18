@@ -4,11 +4,6 @@ error[E0277]: the trait bound `Self: Get` is not satisfied
 LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
    |                                        ^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `Self`
    |
-note: required by a bound in `Get`
-  --> $DIR/associated-types-for-unimpl-trait.rs:4:1
-   |
-LL | trait Get {
-   | ^^^^^^^^^ required by this bound in `Get`
 help: consider further restricting `Self`
    |
 LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Get {}
