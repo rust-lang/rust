@@ -1132,6 +1132,7 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[stable(feature = "saturating_div", since = "1.58.0")]
+        #[rustc_const_stable(feature = "saturating_div", since = "1.58.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

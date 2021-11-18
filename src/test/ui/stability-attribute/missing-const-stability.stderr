@@ -1,11 +1,11 @@
 error: function has missing const stability attribute
-  --> $DIR/missing-const-stability.rs:5:1
+  --> $DIR/missing-const-stability.rs:6:1
    |
 LL | pub const fn foo() {}
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error: associated function has missing const stability attribute
-  --> $DIR/missing-const-stability.rs:14:5
+  --> $DIR/missing-const-stability.rs:15:5
    |
 LL |     pub const fn foo() {}
    |     ^^^^^^^^^^^^^^^^^^^^^

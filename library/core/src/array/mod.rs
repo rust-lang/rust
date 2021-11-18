@@ -512,6 +512,7 @@ impl<T, const N: usize> [T; N] {
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
     #[stable(feature = "array_as_slice", since = "1.57.0")]
+    #[rustc_const_stable(feature = "array_as_slice", since = "1.57.0")]
     pub const fn as_slice(&self) -> &[T] {
         self
     }
