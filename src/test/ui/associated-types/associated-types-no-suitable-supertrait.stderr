@@ -4,11 +4,6 @@ error[E0277]: the trait bound `Self: Get` is not satisfied
 LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
    |                                        ^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `Self`
    |
-note: required by a bound in `Get`
-  --> $DIR/associated-types-no-suitable-supertrait.rs:12:1
-   |
-LL | trait Get {
-   | ^^^^^^^^^ required by this bound in `Get`
 help: consider further restricting `Self`
    |
 LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Get {}
@@ -19,12 +14,6 @@ error[E0277]: the trait bound `(T, U): Get` is not satisfied
    |
 LL |     fn uhoh<U:Get>(&self, foo: U, bar: <(T, U) as Get>::Value) {}
    |                                        ^^^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `(T, U)`
-   |
-note: required by a bound in `Get`
-  --> $DIR/associated-types-no-suitable-supertrait.rs:12:1
-   |
-LL | trait Get {
-   | ^^^^^^^^^ required by this bound in `Get`
 
 error: aborting due to 2 previous errors
 

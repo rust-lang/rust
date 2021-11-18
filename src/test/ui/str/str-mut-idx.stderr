@@ -44,6 +44,11 @@ LL |     s.get_mut(1);
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+note: required by a bound in `core::str::<impl str>::get_mut`
+  --> $SRC_DIR/core/src/str/mod.rs:LL:COL
+   |
+LL |     pub fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
+   |                       ^^^^^^^^^^^^^^^ required by this bound in `core::str::<impl str>::get_mut`
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
   --> $DIR/str-mut-idx.rs:11:25
@@ -56,6 +61,11 @@ LL |     s.get_unchecked_mut(1);
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+note: required by a bound in `core::str::<impl str>::get_unchecked_mut`
+  --> $SRC_DIR/core/src/str/mod.rs:LL:COL
+   |
+LL |     pub unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
+   |                                        ^^^^^^^^^^^^^^^ required by this bound in `core::str::<impl str>::get_unchecked_mut`
 
 error[E0277]: the type `str` cannot be indexed by `char`
   --> $DIR/str-mut-idx.rs:13:5

@@ -8,11 +8,6 @@ LL |      x: Error
    |      ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
    |
    = help: the trait `PartialOrd` is not implemented for `Error`
-note: required by `std::cmp::PartialOrd::partial_cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

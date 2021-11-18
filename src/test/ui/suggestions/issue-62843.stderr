@@ -8,6 +8,11 @@ LL |     println!("{:?}", line.find(pattern));
    |
    = note: the trait bound `String: Pattern<'_>` is not satisfied
    = note: required because of the requirements on the impl of `Pattern<'_>` for `String`
+note: required by a bound in `core::str::<impl str>::find`
+  --> $SRC_DIR/core/src/str/mod.rs:LL:COL
+   |
+LL |     pub fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
+   |                        ^^^^^^^^^^^ required by this bound in `core::str::<impl str>::find`
 help: consider borrowing here
    |
 LL |     println!("{:?}", line.find(&pattern));

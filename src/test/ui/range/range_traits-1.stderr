@@ -8,11 +8,6 @@ LL |     a: Range<usize>,
    |     ^^^^^^^^^^^^^^^ no implementation for `std::ops::Range<usize> < std::ops::Range<usize>` and `std::ops::Range<usize> > std::ops::Range<usize>`
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::Range<usize>`
-note: required by `std::cmp::PartialOrd::partial_cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `std::ops::RangeTo<usize>` with `std::ops::RangeTo<usize>`
@@ -25,11 +20,6 @@ LL |     b: RangeTo<usize>,
    |     ^^^^^^^^^^^^^^^^^ no implementation for `std::ops::RangeTo<usize> < std::ops::RangeTo<usize>` and `std::ops::RangeTo<usize> > std::ops::RangeTo<usize>`
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeTo<usize>`
-note: required by `std::cmp::PartialOrd::partial_cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `std::ops::RangeFrom<usize>` with `std::ops::RangeFrom<usize>`
@@ -42,11 +32,6 @@ LL |     c: RangeFrom<usize>,
    |     ^^^^^^^^^^^^^^^^^^^ no implementation for `std::ops::RangeFrom<usize> < std::ops::RangeFrom<usize>` and `std::ops::RangeFrom<usize> > std::ops::RangeFrom<usize>`
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeFrom<usize>`
-note: required by `std::cmp::PartialOrd::partial_cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `std::ops::RangeFull` with `std::ops::RangeFull`
@@ -59,11 +44,6 @@ LL |     d: RangeFull,
    |     ^^^^^^^^^^^^ no implementation for `std::ops::RangeFull < std::ops::RangeFull` and `std::ops::RangeFull > std::ops::RangeFull`
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeFull`
-note: required by `std::cmp::PartialOrd::partial_cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `std::ops::RangeInclusive<usize>` with `std::ops::RangeInclusive<usize>`
@@ -76,11 +56,6 @@ LL |     e: RangeInclusive<usize>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `std::ops::RangeInclusive<usize> < std::ops::RangeInclusive<usize>` and `std::ops::RangeInclusive<usize> > std::ops::RangeInclusive<usize>`
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeInclusive<usize>`
-note: required by `std::cmp::PartialOrd::partial_cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `std::ops::RangeToInclusive<usize>` with `std::ops::RangeToInclusive<usize>`
@@ -93,11 +68,6 @@ LL |     f: RangeToInclusive<usize>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `std::ops::RangeToInclusive<usize> < std::ops::RangeToInclusive<usize>` and `std::ops::RangeToInclusive<usize> > std::ops::RangeToInclusive<usize>`
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeToInclusive<usize>`
-note: required by `std::cmp::PartialOrd::partial_cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::Range<usize>: Ord` is not satisfied
@@ -109,11 +79,6 @@ LL | struct AllTheRanges {
 LL |     a: Range<usize>,
    |     ^^^^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::Range<usize>`
    |
-note: required by `std::cmp::Ord::cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn cmp(&self, other: &Self) -> Ordering;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::RangeTo<usize>: Ord` is not satisfied
@@ -125,11 +90,6 @@ LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 LL |     b: RangeTo<usize>,
    |     ^^^^^^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::RangeTo<usize>`
    |
-note: required by `std::cmp::Ord::cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn cmp(&self, other: &Self) -> Ordering;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::RangeFrom<usize>: Ord` is not satisfied
@@ -141,11 +101,6 @@ LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 LL |     c: RangeFrom<usize>,
    |     ^^^^^^^^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::RangeFrom<usize>`
    |
-note: required by `std::cmp::Ord::cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn cmp(&self, other: &Self) -> Ordering;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::RangeFull: Ord` is not satisfied
@@ -157,11 +112,6 @@ LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 LL |     d: RangeFull,
    |     ^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::RangeFull`
    |
-note: required by `std::cmp::Ord::cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn cmp(&self, other: &Self) -> Ordering;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::RangeInclusive<usize>: Ord` is not satisfied
@@ -173,11 +123,6 @@ LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 LL |     e: RangeInclusive<usize>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::RangeInclusive<usize>`
    |
-note: required by `std::cmp::Ord::cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn cmp(&self, other: &Self) -> Ordering;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::RangeToInclusive<usize>: Ord` is not satisfied
@@ -189,11 +134,6 @@ LL | #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 LL |     f: RangeToInclusive<usize>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::RangeToInclusive<usize>`
    |
-note: required by `std::cmp::Ord::cmp`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-LL |     fn cmp(&self, other: &Self) -> Ordering;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors

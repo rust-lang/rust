@@ -11,11 +11,16 @@ note: the parameter type `T` must be valid for the anonymous lifetime defined he
    |
 LL | fn func<T: Test>(foo: &Foo, t: T) {
    |                        ^^^
-note: ...so that the type `[closure@$DIR/missing-lifetimes-in-signature-2.rs:20:13: 23:6]` will meet its required lifetime bounds
+note: ...so that the type `[closure@$DIR/missing-lifetimes-in-signature-2.rs:20:13: 23:6]` will meet its required lifetime bounds...
   --> $DIR/missing-lifetimes-in-signature-2.rs:20:9
    |
 LL |     foo.bar(move |_| {
    |         ^^^
+note: ...that is required by this bound
+  --> $DIR/missing-lifetimes-in-signature-2.rs:11:12
+   |
+LL |         F: 'a,
+   |            ^^
 
 error: aborting due to previous error
 

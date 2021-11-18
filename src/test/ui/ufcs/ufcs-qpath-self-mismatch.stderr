@@ -5,11 +5,6 @@ LL |     <i32 as Add<u32>>::add(1, 2);
    |     ^^^^^^^^^^^^^^^^^^^^^^ no implementation for `i32 + u32`
    |
    = help: the trait `Add<u32>` is not implemented for `i32`
-note: required by `add`
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/ufcs-qpath-self-mismatch.rs:6:28
