@@ -715,13 +715,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         debug!("walk_captures({:?})", closure_expr);
 
-        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id).to_def_id();
-        let upvars = self.tcx().upvars_mentioned(self.body_owner);
+        let tcx = self.tcx();
+        let closure_def_id = tcx.hir().local_def_id(closure_expr.hir_id).to_def_id();
+        let upvars = tcx.upvars_mentioned(self.body_owner);
 
         // For purposes of this function, generator and closures are equivalent.
         let body_owner_is_closure = matches!(
-            self.tcx().type_of(self.body_owner.to_def_id()).kind(),
-            ty::Closure(..) | ty::Generator(..)
+            tcx.hir().body_owner_kind(tcx.hir().local_def_id_to_hir_id(self.body_owner)),
+            hir::BodyOwnerKind::Closure,
         );
 
         // If we have a nested closure, we want to include the fake reads present in the nested closure.
