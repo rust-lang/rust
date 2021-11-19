@@ -84,7 +84,7 @@ mod item;
 mod pat;
 mod path;
 
-rustc_hir::arena_types!(rustc_arena::declare_arena, 'tcx);
+rustc_hir::arena_types!(rustc_arena::declare_arena);
 
 struct LoweringContext<'a, 'hir: 'a> {
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
