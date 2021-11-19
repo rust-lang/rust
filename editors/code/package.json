@@ -445,6 +445,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.cache.warmup": {
+                    "markdownDescription": "Warm up caches on project load.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.callInfo.full": {
                     "markdownDescription": "Show function name and docs in parameter hints.",
                     "default": true,

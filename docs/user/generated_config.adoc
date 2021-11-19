@@ -23,6 +23,11 @@ Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-i
 --
 Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
 --
+[[rust-analyzer.cache.warmup]]rust-analyzer.cache.warmup (default: `true`)::
++
+--
+Warm up caches on project load.
+--
 [[rust-analyzer.callInfo.full]]rust-analyzer.callInfo.full (default: `true`)::
 +
 --
