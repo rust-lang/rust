@@ -323,6 +323,7 @@ declare_lint! {
     ///
     /// ```rust
     /// #![feature(must_not_suspend)]
+    /// #![warn(must_not_suspend)]
     ///
     /// #[must_not_suspend]
     /// struct SyncThing {}
@@ -349,8 +350,9 @@ declare_lint! {
     /// `MutexGuard`'s)
     ///
     pub MUST_NOT_SUSPEND,
-    Warn,
+    Allow,
     "use of a `#[must_not_suspend]` value across a yield point",
+    @feature_gate = rustc_span::symbol::sym::must_not_suspend;
 }
 
 declare_lint! {
@@ -3052,6 +3054,7 @@ declare_lint_pass! {
         BREAK_WITH_LABEL_AND_LOOP,
         UNUSED_ATTRIBUTES,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
+        TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         DEREF_INTO_DYN_SUPERTRAIT,
     ]
 }

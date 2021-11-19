@@ -1596,7 +1596,7 @@ fn render_impl(
                     error_codes: cx.shared.codes,
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
-                    heading_offset: HeadingOffset::H2
+                    heading_offset: HeadingOffset::H4
                 }
                 .into_string()
             );

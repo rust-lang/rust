@@ -1,4 +1,6 @@
 // edition:2018
+#![feature(must_not_suspend)]
+#![allow(must_not_suspend)]
 
 // This tests the basic example case for the async-await-specific error.
 
