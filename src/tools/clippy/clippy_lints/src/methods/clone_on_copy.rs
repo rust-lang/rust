@@ -85,7 +85,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, 
                     if expr.hir_id == self_arg.hir_id && ty != cx.typeck_results().expr_ty_adjusted(expr) =>
                 {
                     return;
-                }
+                },
                 ExprKind::MethodCall(_, _, [self_arg, ..], _) if expr.hir_id == self_arg.hir_id => true,
                 ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
                 | ExprKind::Field(..)
@@ -100,7 +100,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, 
                 ) =>
             {
                 return;
-            }
+            },
             _ => false,
         };
 

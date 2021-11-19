@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                                 target_mut,
                             },
                         ));
-                    }
+                    },
                     _ => (),
                 }
             },

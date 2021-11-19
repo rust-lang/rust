@@ -26,14 +26,14 @@ declare_clippy_lint! {
     /// let sad_people: Vec<&str> = vec![];
     /// assert!(sad_people.is_empty(), "there are sad people: {:?}", sad_people);
     /// ```
-    pub IF_THEN_PANIC,
-    style,
+    pub MANUAL_ASSERT,
+    pedantic,
     "`panic!` and only a `panic!` in `if`-then statement"
 }
 
-declare_lint_pass!(IfThenPanic => [IF_THEN_PANIC]);
+declare_lint_pass!(ManualAssert => [MANUAL_ASSERT]);
 
-impl LateLintPass<'_> for IfThenPanic {
+impl LateLintPass<'_> for ManualAssert {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if let Expr {
@@ -86,7 +86,7 @@ impl LateLintPass<'_> for IfThenPanic {
 
                 span_lint_and_sugg(
                     cx,
-                    IF_THEN_PANIC,
+                    MANUAL_ASSERT,
                     expr.span,
                     "only a `panic!` in `if`-then statement",
                     "try",

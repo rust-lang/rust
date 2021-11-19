@@ -186,7 +186,7 @@ pub(super) fn check<'tcx>(
                         check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
                     }
                 }
-            }
+            },
             _ => (),
         }
     }

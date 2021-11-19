@@ -106,7 +106,7 @@ impl EarlyLintPass for ModStyle {
                     }
                     process_paths_for_mod_files(path, &mut folder_segments, &mut mod_folders);
                     check_self_named_mod_exists(cx, path, file);
-                }
+                },
                 _ => {},
             }
         }

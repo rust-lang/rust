@@ -89,7 +89,7 @@ impl IntPlusOne {
                     },
                     _ => None,
                 }
-            }
+            },
             // case where `x + 1 <= ...` or `1 + x <= ...`
             (BinOpKind::Le, &ExprKind::Binary(ref lhskind, ref lhslhs, ref lhsrhs), _)
                 if lhskind.node == BinOpKind::Add =>
@@ -104,7 +104,7 @@ impl IntPlusOne {
                     },
                     _ => None,
                 }
-            }
+            },
             // case where `... >= y - 1` or `... >= -1 + y`
             (BinOpKind::Le, _, &ExprKind::Binary(ref rhskind, ref rhslhs, ref rhsrhs)) => {
                 match (rhskind.node, &rhslhs.kind, &rhsrhs.kind) {
