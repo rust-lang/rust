@@ -4,6 +4,7 @@
 
 fn main() {
     let opt = Some(1);
+    let r: Result<i32, i32> = Ok(1);
     let bar = |_| Some(1);
 
     // Check `OPTION_MAP_OR_NONE`.
@@ -21,4 +22,7 @@ fn main() {
         let height = x;
         Some(offset + height)
     });
+
+    // Check `RESULT_MAP_OR_INTO_OPTION`.
+    let _: Option<i32> = r.map_or(None, Some);
 }
