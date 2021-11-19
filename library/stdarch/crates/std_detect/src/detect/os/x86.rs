@@ -249,5 +249,25 @@ pub(crate) fn detect_features() -> cache::Initializer {
         }
     }
 
+    // Unfortunately, some Skylake chips erroneously report support for BMI1 and
+    // BMI2 without actual support. These chips don't support AVX, and it seems
+    // that all Intel chips with non-erroneous support BMI do (I didn't check
+    // other vendors), so we can disable these flags for chips that don't also
+    // report support for AVX.
+    //
+    // It's possible this will pessimize future chips that do support BMI and
+    // not AVX, but this seems minor compared to a hard crash you get when
+    // executing an unsupported instruction (to put it another way, it's safe
+    // for us to under-report CPU features, but not to over-report them). Still,
+    // to limit any impact this may have in the future, we only do this for
+    // Intel chips, as it's a bug only present in their chips.
+    //
+    // This bug is documented as `SKL052` in the errata section of this document:
+    // http://www.intel.com/content/dam/www/public/us/en/documents/specification-updates/desktop-6th-gen-core-family-spec-update.pdf
+    if vendor_id == *b"GenuineIntel" && !value.test(Feature::avx as u32) {
+        value.unset(Feature::bmi1 as u32);
+        value.unset(Feature::bmi2 as u32);
+    }
+
     value
 }
