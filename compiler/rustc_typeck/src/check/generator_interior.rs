@@ -3,12 +3,9 @@
 //! is calculated in `rustc_const_eval::transform::generator` and may be a subset of the
 //! types computed here.
 
-use crate::expr_use_visitor::{self, ExprUseVisitor};
-
-use self::drop_ranges::DropRanges;
-
+use self::drop_ranges::{DropRangeVisitor, DropRanges, ExprUseDelegate};
 use super::FnCtxt;
-use hir::{HirIdMap, Node};
+use crate::expr_use_visitor::ExprUseVisitor;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -17,8 +14,6 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
-use rustc_middle::hir::map::Map;
-use rustc_middle::hir::place::{Place, PlaceBase};
 use rustc_middle::middle::region::{self, YieldData};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -194,11 +189,7 @@ pub fn resolve_interior<'a, 'tcx>(
     let body = fcx.tcx.hir().body(body_id);
 
     let mut visitor = {
-        let mut expr_use_visitor = ExprUseDelegate {
-            hir: fcx.tcx.hir(),
-            consumed_places: <_>::default(),
-            borrowed_places: <_>::default(),
-        };
+        let mut expr_use_visitor = ExprUseDelegate::new(fcx.tcx.hir());
 
         // Run ExprUseVisitor to find where values are consumed.
         ExprUseVisitor::new(
@@ -211,14 +202,14 @@ pub fn resolve_interior<'a, 'tcx>(
         .consume_body(body);
 
         let region_scope_tree = fcx.tcx.region_scope_tree(def_id);
-
-        let mut drop_range_visitor = DropRangeVisitor::from(
+        let mut drop_range_visitor = DropRangeVisitor::from_uses(
             expr_use_visitor,
             region_scope_tree.body_expr_count(body.id()).unwrap_or(0),
         );
         intravisit::walk_body(&mut drop_range_visitor, body);
 
-        drop_range_visitor.drop_ranges.propagate_to_fixpoint();
+        let mut drop_ranges = drop_range_visitor.into_drop_ranges();
+        drop_ranges.propagate_to_fixpoint();
 
         InteriorVisitor {
             fcx,
@@ -230,7 +221,7 @@ pub fn resolve_interior<'a, 'tcx>(
             guard_bindings: <_>::default(),
             guard_bindings_set: <_>::default(),
             linted_values: <_>::default(),
-            drop_ranges: drop_range_visitor.drop_ranges,
+            drop_ranges: drop_ranges,
         }
     };
     intravisit::walk_body(&mut visitor, body);
@@ -377,7 +368,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                             self.expr_count += 1;
 
                             // Record the rest of the call expression normally.
-                            for arg in args.iter() {
+                            for arg in *args {
                                 self.visit_expr(arg);
                             }
                         }
@@ -663,267 +654,4 @@ fn check_must_not_suspend_def(
         }
     }
     false
-}
-
-// The following structs and impls are used for drop range analysis.
-//
-// Drop range analysis finds the portions of the tree where a value is guaranteed to be dropped
-// (i.e. moved, uninitialized, etc.). This is used to exclude the types of those values from the
-// generator type. See `InteriorVisitor::record` for where the results of this analysis are used.
-//
-// There are three phases to this analysis:
-// 1. Use `ExprUseVisitor` to identify the interesting values that are consumed and borrowed.
-// 2. Use `DropRangeVisitor` to find where the interesting values are dropped or reinitialized,
-//    and also build a control flow graph.
-// 3. Use `DropRanges::propagate_to_fixpoint` to flow the dropped/reinitialized information through
-//    the CFG and find the exact points where we know a value is definitely dropped.
-//
-// The end result is a data structure that maps the post-order index of each node in the HIR tree
-// to a set of values that are known to be dropped at that location.
-
-/// Works with ExprUseVisitor to find interesting values for the drop range analysis.
-///
-/// Interesting values are those that are either dropped or borrowed. For dropped values, we also
-/// record the parent expression, which is the point where the drop actually takes place.
-struct ExprUseDelegate<'tcx> {
-    hir: Map<'tcx>,
-    /// Maps a HirId to a set of HirIds that are dropped by that node.
-    consumed_places: HirIdMap<HirIdSet>,
-    borrowed_places: HirIdSet,
-}
-
-impl<'tcx> ExprUseDelegate<'tcx> {
-    fn mark_consumed(&mut self, consumer: HirId, target: HirId) {
-        if !self.consumed_places.contains_key(&consumer) {
-            self.consumed_places.insert(consumer, <_>::default());
-        }
-        self.consumed_places.get_mut(&consumer).map(|places| places.insert(target));
-    }
-}
-
-impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
-    fn consume(
-        &mut self,
-        place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
-        diag_expr_id: hir::HirId,
-    ) {
-        let parent = match self.hir.find_parent_node(place_with_id.hir_id) {
-            Some(parent) => parent,
-            None => place_with_id.hir_id,
-        };
-        debug!(
-            "consume {:?}; diag_expr_id={:?}, using parent {:?}",
-            place_with_id, diag_expr_id, parent
-        );
-        self.mark_consumed(parent, place_with_id.hir_id);
-        place_hir_id(&place_with_id.place).map(|place| self.mark_consumed(parent, place));
-    }
-
-    fn borrow(
-        &mut self,
-        place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
-        _diag_expr_id: hir::HirId,
-        _bk: rustc_middle::ty::BorrowKind,
-    ) {
-        place_hir_id(&place_with_id.place).map(|place| self.borrowed_places.insert(place));
-    }
-
-    fn mutate(
-        &mut self,
-        _assignee_place: &expr_use_visitor::PlaceWithHirId<'tcx>,
-        _diag_expr_id: hir::HirId,
-    ) {
-    }
-
-    fn fake_read(
-        &mut self,
-        _place: expr_use_visitor::Place<'tcx>,
-        _cause: rustc_middle::mir::FakeReadCause,
-        _diag_expr_id: hir::HirId,
-    ) {
-    }
-}
-
-/// Gives the hir_id associated with a place if one exists. This is the hir_id that we want to
-/// track for a value in the drop range analysis.
-fn place_hir_id(place: &Place<'_>) -> Option<HirId> {
-    match place.base {
-        PlaceBase::Rvalue | PlaceBase::StaticItem => None,
-        PlaceBase::Local(hir_id)
-        | PlaceBase::Upvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id }, .. }) => Some(hir_id),
-    }
-}
-
-/// This struct is used to gather the information for `DropRanges` to determine the regions of the
-/// HIR tree for which a value is dropped.
-///
-/// We are interested in points where a variables is dropped or initialized, and the control flow
-/// of the code. We identify locations in code by their post-order traversal index, so it is
-/// important for this traversal to match that in `RegionResolutionVisitor` and `InteriorVisitor`.
-struct DropRangeVisitor<'tcx> {
-    hir: Map<'tcx>,
-    /// Maps a HirId to a set of HirIds that are dropped by that node.
-    consumed_places: HirIdMap<HirIdSet>,
-    borrowed_places: HirIdSet,
-    drop_ranges: DropRanges,
-    expr_count: usize,
-}
-
-impl<'tcx> DropRangeVisitor<'tcx> {
-    fn from(uses: ExprUseDelegate<'tcx>, num_exprs: usize) -> Self {
-        debug!("consumed_places: {:?}", uses.consumed_places);
-        let drop_ranges = DropRanges::new(
-            uses.consumed_places.iter().flat_map(|(_, places)| places.iter().copied()),
-            &uses.hir,
-            num_exprs,
-        );
-        Self {
-            hir: uses.hir,
-            consumed_places: uses.consumed_places,
-            borrowed_places: uses.borrowed_places,
-            drop_ranges,
-            expr_count: 0,
-        }
-    }
-
-    fn record_drop(&mut self, hir_id: HirId) {
-        if self.borrowed_places.contains(&hir_id) {
-            debug!("not marking {:?} as dropped because it is borrowed at some point", hir_id);
-        } else {
-            debug!("marking {:?} as dropped at {}", hir_id, self.expr_count);
-            let count = self.expr_count;
-            self.drop_ranges.drop_at(hir_id, count);
-        }
-    }
-
-    /// ExprUseVisitor's consume callback doesn't go deep enough for our purposes in all
-    /// expressions. This method consumes a little deeper into the expression when needed.
-    fn consume_expr(&mut self, expr: &hir::Expr<'_>) {
-        debug!("consuming expr {:?}, count={}", expr.hir_id, self.expr_count);
-        let places = self
-            .consumed_places
-            .get(&expr.hir_id)
-            .map_or(vec![], |places| places.iter().cloned().collect());
-        for place in places {
-            for_each_consumable(place, self.hir.find(place), |hir_id| self.record_drop(hir_id));
-        }
-    }
-
-    fn reinit_expr(&mut self, expr: &hir::Expr<'_>) {
-        if let ExprKind::Path(hir::QPath::Resolved(
-            _,
-            hir::Path { res: hir::def::Res::Local(hir_id), .. },
-        )) = expr.kind
-        {
-            let location = self.expr_count;
-            debug!("reinitializing {:?} at {}", hir_id, location);
-            self.drop_ranges.reinit_at(*hir_id, location);
-        } else {
-            debug!("reinitializing {:?} is not supported", expr);
-        }
-    }
-}
-
-/// Applies `f` to consumable portion of a HIR node.
-///
-/// The `node` parameter should be the result of calling `Map::find(place)`.
-fn for_each_consumable(place: HirId, node: Option<Node<'_>>, mut f: impl FnMut(HirId)) {
-    f(place);
-    if let Some(Node::Expr(expr)) = node {
-        match expr.kind {
-            hir::ExprKind::Path(hir::QPath::Resolved(
-                _,
-                hir::Path { res: hir::def::Res::Local(hir_id), .. },
-            )) => {
-                f(*hir_id);
-            }
-            _ => (),
-        }
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        let mut reinit = None;
-        match expr.kind {
-            ExprKind::If(test, if_true, if_false) => {
-                self.visit_expr(test);
-
-                let fork = self.expr_count;
-
-                self.drop_ranges.add_control_edge(fork, self.expr_count + 1);
-                self.visit_expr(if_true);
-                let true_end = self.expr_count;
-
-                self.drop_ranges.add_control_edge(fork, self.expr_count + 1);
-                if let Some(if_false) = if_false {
-                    self.visit_expr(if_false);
-                }
-
-                self.drop_ranges.add_control_edge(true_end, self.expr_count + 1);
-            }
-            ExprKind::Assign(lhs, rhs, _) => {
-                self.visit_expr(lhs);
-                self.visit_expr(rhs);
-
-                reinit = Some(lhs);
-            }
-            ExprKind::Loop(body, ..) => {
-                let loop_begin = self.expr_count + 1;
-                self.visit_block(body);
-                self.drop_ranges.add_control_edge(self.expr_count, loop_begin);
-            }
-            ExprKind::Match(scrutinee, arms, ..) => {
-                self.visit_expr(scrutinee);
-
-                let fork = self.expr_count;
-                let arm_end_ids = arms
-                    .iter()
-                    .map(|Arm { pat, body, guard, .. }| {
-                        self.drop_ranges.add_control_edge(fork, self.expr_count + 1);
-                        self.visit_pat(pat);
-                        match guard {
-                            Some(Guard::If(expr)) => self.visit_expr(expr),
-                            Some(Guard::IfLet(pat, expr)) => {
-                                self.visit_pat(pat);
-                                self.visit_expr(expr);
-                            }
-                            None => (),
-                        }
-                        self.visit_expr(body);
-                        self.expr_count
-                    })
-                    .collect::<Vec<_>>();
-                arm_end_ids.into_iter().for_each(|arm_end| {
-                    self.drop_ranges.add_control_edge(arm_end, self.expr_count + 1)
-                });
-            }
-            ExprKind::Break(hir::Destination { target_id: Ok(target), .. }, ..)
-            | ExprKind::Continue(hir::Destination { target_id: Ok(target), .. }, ..) => {
-                self.drop_ranges.add_control_edge_hir_id(self.expr_count, target);
-            }
-
-            _ => intravisit::walk_expr(self, expr),
-        }
-
-        self.expr_count += 1;
-        self.drop_ranges.add_node_mapping(expr.hir_id, self.expr_count);
-        self.consume_expr(expr);
-        if let Some(expr) = reinit {
-            self.reinit_expr(expr);
-        }
-    }
-
-    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
-        intravisit::walk_pat(self, pat);
-
-        // Increment expr_count here to match what InteriorVisitor expects.
-        self.expr_count += 1;
-    }
 }
