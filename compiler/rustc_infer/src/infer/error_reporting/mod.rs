@@ -1879,7 +1879,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .iter()
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
                 .map(|field| (field.ident.name, field.ty(self.tcx, expected_substs)))
-                .find(|(_, ty)| ty::TyS::same_type(ty, exp_found.found))
+                .find(|(_, ty)| same_type_modulo_infer(ty, exp_found.found))
             {
                 if let ObligationCauseCode::Pattern { span: Some(span), .. } = cause.code {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
@@ -1944,7 +1944,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         | (_, ty::Infer(_))
                                         | (ty::Param(_), _)
                                         | (ty::Infer(_), _) => {}
-                                        _ if ty::TyS::same_type(exp_ty, found_ty) => {}
+                                        _ if same_type_modulo_infer(exp_ty, found_ty) => {}
                                         _ => show_suggestion = false,
                                     };
                                 }
