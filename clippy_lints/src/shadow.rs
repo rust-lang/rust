@@ -105,11 +105,16 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
             PatKind::Binding(_, hir_id, ident, _) => (hir_id, ident),
             _ => return,
         };
+
+        if pat.span.desugaring_kind().is_some() {
+            return;
+        }
+
         if ident.span.from_expansion() || ident.span.is_dummy() {
             return;
         }
-        let HirId { owner, local_id } = id;
 
+        let HirId { owner, local_id } = id;
         // get (or insert) the list of items for this owner and symbol
         let data = self.bindings.last_mut().unwrap();
         let items_with_name = data.entry(ident.name).or_default();
