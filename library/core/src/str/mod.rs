@@ -1833,6 +1833,43 @@ impl str {
         self.trim_end_matches(|c: char| c.is_whitespace())
     }
 
+    /// Returns a string slice with any one trailing newline removed.
+    ///
+    /// 'Newline' is precisely a newline character (`0xA`), perhaps
+    /// preceded by a carriage return (`0xD`).  I.e., `'\r\n'` or
+    /// `'\n'`.  (This is the same definition as used by [`str::lines`]
+    /// and [`std::io::BufRead::lines`].)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(trim_newline)]
+    /// use std::fmt::Write as _;
+    ///
+    /// assert_eq!("Text", "Text".trim_newline());
+    /// assert_eq!("Text", "Text\n".trim_newline());
+    /// assert_eq!("Text", "Text\r\n".trim_newline());
+    /// assert_eq!("Text\r", "Text\r".trim_newline());
+    /// assert_eq!("Text\n", "Text\n\n".trim_newline());
+    ///
+    /// let mut s = String::new();
+    /// writeln!(s, " Hi! ").unwrap();
+    /// assert_eq!(" Hi! ", s.trim_newline());
+    /// assert_eq!(" Hi! ", s.trim_newline().trim_newline());
+    /// ```
+    ///
+    /// [`std::io::BufRead::lines`]: ../std/io/trait.BufRead.html#method.lines
+    #[inline]
+    #[must_use = "this returns the trimmed string as a new slice, \
+                  without modifying the original"]
+    #[unstable(feature = "trim_newline", issue = "none")]
+    pub fn trim_newline(&self) -> &str {
+        let s = self;
+        let Some(s) = s.strip_suffix('\n') else { return s };
+        let Some(s) = s.strip_suffix('\r') else { return s };
+        s
+    }
+
     /// Returns a string slice with leading whitespace removed.
     ///
     /// 'Whitespace' is defined according to the terms of the Unicode Derived

@@ -174,6 +174,7 @@
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
+#![feature(let_else)]
 #![feature(link_llvm_intrinsics)]
 #![feature(llvm_asm)]
 #![feature(min_specialization)]
