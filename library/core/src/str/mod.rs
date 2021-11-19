@@ -899,6 +899,19 @@ impl str {
     ///
     /// assert_eq!(None, lines.next());
     /// ```
+    ///
+    /// Handling of a trailing bare CR is, sadly, anomalous:
+    /// (`std::io::BufRead::lines` handles this case correctly.)
+    ///
+    /// ```
+    /// let text = "foo\nbar\r";
+    /// let mut lines = text.lines();
+    ///
+    /// assert_eq!(Some("foo"), lines.next());
+    /// assert_eq!(Some("bar"), lines.next()); // should really return "bar\r"
+    ///
+    /// assert_eq!(None, lines.next());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn lines(&self) -> Lines<'_> {
