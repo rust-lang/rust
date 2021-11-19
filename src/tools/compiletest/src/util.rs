@@ -87,10 +87,10 @@ const ARCH_TABLE: &[(&str, &str)] = &[
 
 pub const ASAN_SUPPORTED_TARGETS: &[&str] = &[
     "aarch64-apple-darwin",
-    "aarch64-fuchsia",
+    "aarch64-unknown-fuchsia",
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
-    "x86_64-fuchsia",
+    "x86_64-unknown-fuchsia",
     "x86_64-unknown-freebsd",
     "x86_64-unknown-linux-gnu",
 ];
