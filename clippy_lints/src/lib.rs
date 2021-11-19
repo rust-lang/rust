@@ -194,9 +194,9 @@ mod default_numeric_fallback;
 mod dereference;
 mod derivable_impls;
 mod derive;
-mod disallowed_method;
+mod disallowed_methods;
 mod disallowed_script_idents;
-mod disallowed_type;
+mod disallowed_types;
 mod doc;
 mod double_comparison;
 mod double_parens;
@@ -806,7 +806,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|| Box::new(async_yields_async::AsyncYieldsAsync));
     let disallowed_methods = conf.disallowed_methods.clone();
-    store.register_late_pass(move || Box::new(disallowed_method::DisallowedMethod::new(disallowed_methods.clone())));
+    store.register_late_pass(move || Box::new(disallowed_methods::DisallowedMethods::new(disallowed_methods.clone())));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86AttSyntax));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax));
     store.register_late_pass(|| Box::new(undropped_manually_drops::UndroppedManuallyDrops));
@@ -825,7 +825,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || Box::new(module_style::ModStyle));
     store.register_late_pass(|| Box::new(unused_async::UnusedAsync));
     let disallowed_types = conf.disallowed_types.clone();
-    store.register_late_pass(move || Box::new(disallowed_type::DisallowedType::new(disallowed_types.clone())));
+    store.register_late_pass(move || Box::new(disallowed_types::DisallowedTypes::new(disallowed_types.clone())));
     let import_renames = conf.enforced_import_renames.clone();
     store.register_late_pass(move || {
         Box::new(missing_enforced_import_rename::ImportRename::new(
@@ -922,6 +922,8 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::zero_width_space", "clippy::invisible_characters");
     ls.register_renamed("clippy::single_char_push_str", "clippy::single_char_add_str");
     ls.register_renamed("clippy::if_let_some_result", "clippy::match_result_ok");
+    ls.register_renamed("clippy::disallowed_type", "clippy::disallowed_types");
+    ls.register_renamed("clippy::disallowed_method", "clippy::disallowed_methods");
 
     // uplifted lints
     ls.register_renamed("clippy::invalid_ref", "invalid_value");

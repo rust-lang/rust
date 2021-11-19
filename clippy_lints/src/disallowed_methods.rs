@@ -48,18 +48,18 @@ declare_clippy_lint! {
     /// xs.push(123); // Vec::push is _not_ disallowed in the config.
     /// ```
     #[clippy::version = "1.49.0"]
-    pub DISALLOWED_METHOD,
+    pub DISALLOWED_METHODS,
     nursery,
     "use of a disallowed method call"
 }
 
 #[derive(Clone, Debug)]
-pub struct DisallowedMethod {
+pub struct DisallowedMethods {
     conf_disallowed: Vec<conf::DisallowedMethod>,
     disallowed: DefIdMap<Option<String>>,
 }
 
-impl DisallowedMethod {
+impl DisallowedMethods {
     pub fn new(conf_disallowed: Vec<conf::DisallowedMethod>) -> Self {
         Self {
             conf_disallowed,
@@ -68,9 +68,9 @@ impl DisallowedMethod {
     }
 }
 
-impl_lint_pass!(DisallowedMethod => [DISALLOWED_METHOD]);
+impl_lint_pass!(DisallowedMethods => [DISALLOWED_METHODS]);
 
-impl<'tcx> LateLintPass<'tcx> for DisallowedMethod {
+impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         for conf in &self.conf_disallowed {
             let (path, reason) = match conf {
@@ -98,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethod {
         };
         let func_path = cx.tcx.def_path_str(def_id);
         let msg = format!("use of a disallowed method `{}`", func_path);
-        span_lint_and_then(cx, DISALLOWED_METHOD, expr.span, &msg, |diag| {
+        span_lint_and_then(cx, DISALLOWED_METHODS, expr.span, &msg, |diag| {
             if let Some(reason) = reason {
                 diag.note(reason);
             }

@@ -70,7 +70,7 @@ Current beta, release 2021-12-02
   [#7560](https://github.com/rust-lang/rust-clippy/pull/7560)
 * [`unnecessary_unwrap`]: Now also checks for `expect`s
   [#7584](https://github.com/rust-lang/rust-clippy/pull/7584)
-* [`disallowed_method`]: Allow adding a reason that will be displayed with the
+* [`disallowed_methods`]: Allow adding a reason that will be displayed with the
   lint message
   [#7621](https://github.com/rust-lang/rust-clippy/pull/7621)
 * [`approx_constant`]: Now checks the MSRV for `LOG10_2` and `LOG2_10`
@@ -174,7 +174,7 @@ Current stable, released 2021-10-21
 
 * [`needless_continue`]: Now also lints in `loop { continue; }` case
   [#7477](https://github.com/rust-lang/rust-clippy/pull/7477)
-* [`disallowed_type`]: Now also primitive types can be disallowed
+* [`disallowed_types`]: Now also primitive types can be disallowed
   [#7488](https://github.com/rust-lang/rust-clippy/pull/7488)
 * [`manual_swap`]: Now also lints on xor swaps
   [#7506](https://github.com/rust-lang/rust-clippy/pull/7506)
@@ -248,7 +248,7 @@ Released 2021-09-09
   [#7403](https://github.com/rust-lang/rust-clippy/pull/7403)
 * [`disallowed_script_idents`]
   [#7400](https://github.com/rust-lang/rust-clippy/pull/7400)
-* [`disallowed_type`]
+* [`disallowed_types`]
   [#7315](https://github.com/rust-lang/rust-clippy/pull/7315)
 * [`missing_enforced_import_renames`]
   [#7300](https://github.com/rust-lang/rust-clippy/pull/7300)
@@ -294,7 +294,7 @@ Released 2021-09-09
   [#7379](https://github.com/rust-lang/rust-clippy/pull/7379)
 * [`redundant_closure`]: Suggests `&mut` for `FnMut`
   [#7437](https://github.com/rust-lang/rust-clippy/pull/7437)
-* [`disallowed_method`], [`disallowed_type`]: The configuration values `disallowed-method` and `disallowed-type`
+* [`disallowed_methods`], [`disallowed_types`]: The configuration values `disallowed-method` and `disallowed-type`
   no longer require fully qualified paths
   [#7345](https://github.com/rust-lang/rust-clippy/pull/7345)
 * [`zst_offset`]: Fixed lint invocation after it was accidentally suppressed
@@ -703,7 +703,7 @@ Released 2021-05-06
 
 ### Enhancements
 
-* [`disallowed_method`]: Now supports functions in addition to methods
+* [`disallowed_methods`]: Now supports functions in addition to methods
   [#6674](https://github.com/rust-lang/rust-clippy/pull/6674)
 * [`upper_case_acronyms`]: Added a new configuration `upper-case-acronyms-aggressive` to
   trigger the lint if there is more than one uppercase character next to each other
@@ -1044,7 +1044,7 @@ Released 2020-12-31
 
 * [`field_reassign_with_default`] [#5911](https://github.com/rust-lang/rust-clippy/pull/5911)
 * [`await_holding_refcell_ref`] [#6029](https://github.com/rust-lang/rust-clippy/pull/6029)
-* [`disallowed_method`] [#6081](https://github.com/rust-lang/rust-clippy/pull/6081)
+* [`disallowed_methods`] [#6081](https://github.com/rust-lang/rust-clippy/pull/6081)
 * [`inline_asm_x86_att_syntax`] [#6092](https://github.com/rust-lang/rust-clippy/pull/6092)
 * [`inline_asm_x86_intel_syntax`] [#6092](https://github.com/rust-lang/rust-clippy/pull/6092)
 * [`from_iter_instead_of_collect`] [#6101](https://github.com/rust-lang/rust-clippy/pull/6101)
@@ -2821,9 +2821,9 @@ Released 2018-09-13
 [`derivable_impls`]: https://rust-lang.github.io/rust-clippy/master/index.html#derivable_impls
 [`derive_hash_xor_eq`]: https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
 [`derive_ord_xor_partial_ord`]: https://rust-lang.github.io/rust-clippy/master/index.html#derive_ord_xor_partial_ord
-[`disallowed_method`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_method
+[`disallowed_methods`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
 [`disallowed_script_idents`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_script_idents
-[`disallowed_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_type
+[`disallowed_types`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 [`diverging_sub_expression`]: https://rust-lang.github.io/rust-clippy/master/index.html#diverging_sub_expression
 [`doc_markdown`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
 [`double_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_comparisons

@@ -1,4 +1,4 @@
-#![warn(clippy::disallowed_method)]
+#![warn(clippy::disallowed_methods)]
 
 extern crate regex;
 use regex::Regex;
