@@ -6,11 +6,14 @@ LL |     let o = Other::new(f);
    |             |
    |             required by a bound introduced by this call
    |
-note: required by `Other::<'a, G>::new`
-  --> $DIR/issue-84973.rs:27:5
+note: required by a bound in `Other::<'a, G>::new`
+  --> $DIR/issue-84973.rs:25:8
    |
+LL |     G: SomeTrait,
+   |        ^^^^^^^^^ required by this bound in `Other::<'a, G>::new`
+LL | {
 LL |     pub fn new(g: G) -> Self {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |            --- required by a bound in this
 help: consider borrowing here
    |
 LL |     let o = Other::new(&f);

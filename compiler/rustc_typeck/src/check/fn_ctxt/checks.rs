@@ -509,10 +509,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.write_user_type_annotation_from_substs(hir_id, did, substs, None);
 
             // Check bounds on type arguments used in the path.
-            let (bounds, _) = self.instantiate_bounds(path_span, did, substs);
-            let cause =
-                traits::ObligationCause::new(path_span, self.body_id, traits::ItemObligation(did));
-            self.add_obligations_for_parameters(cause, bounds);
+            self.add_required_obligations(path_span, did, substs);
 
             Some((variant, ty))
         } else {

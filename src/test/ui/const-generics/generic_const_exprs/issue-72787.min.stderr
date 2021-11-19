@@ -41,11 +41,6 @@ LL |     IsLessOrEqual<I, 8>: True,
    |                          ^^^^ cannot infer type for struct `IsLessOrEqual<I, 8_u32>`
    |
    = note: cannot satisfy `IsLessOrEqual<I, 8_u32>: True`
-note: required by a bound in `True`
-  --> $DIR/issue-72787.rs:8:1
-   |
-LL | pub trait True {}
-   | ^^^^^^^^^^^^^^ required by this bound in `True`
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72787.rs:21:26
@@ -54,11 +49,6 @@ LL |     IsLessOrEqual<I, 8>: True,
    |                          ^^^^ cannot infer type for struct `IsLessOrEqual<I, 8_u32>`
    |
    = note: cannot satisfy `IsLessOrEqual<I, 8_u32>: True`
-note: required by a bound in `True`
-  --> $DIR/issue-72787.rs:8:1
-   |
-LL | pub trait True {}
-   | ^^^^^^^^^^^^^^ required by this bound in `True`
 
 error: aborting due to 6 previous errors
 

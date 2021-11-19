@@ -11,12 +11,6 @@ LL |     _Func::< <() as _A>::AssocT >::func(());
    |     ----------------------------------- ^^ the trait `_Func<_>` is not implemented for `()`
    |     |
    |     required by a bound introduced by this call
-   |
-note: required by `_Func::func`
-  --> $DIR/issue-66353.rs:4:5
-   |
-LL |     fn func(_: Self);
-   |     ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

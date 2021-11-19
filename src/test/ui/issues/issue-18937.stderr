@@ -1,17 +1,13 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/issue-18937.rs:19:5
+  --> $DIR/issue-18937.rs:20:31
    |
 LL | /     fn foo<F>(&mut self, f: F)
 LL | |         where F: fmt::Debug + 'a,
 LL | |               Self: Sized;
    | |__________________________- definition of `foo` from trait
 ...
-LL | /     fn foo<F>(&mut self, f: F)
-LL | |         where F: fmt::Debug + 'static,
-LL | |     {
-LL | |         self.list.push(Box::new(f));
-LL | |     }
-   | |_____^ impl has extra requirement `F: 'static`
+LL |           where F: fmt::Debug + 'static,
+   |                                 ^^^^^^^ impl has extra requirement `F: 'static`
 
 error: aborting due to previous error
 

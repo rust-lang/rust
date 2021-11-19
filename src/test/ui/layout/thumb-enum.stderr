@@ -1,438 +1,438 @@
 error: layout_of(A) = Layout {
-    fields: Arbitrary {
-        offsets: [
-            Size {
-                raw: 0,
-            },
-        ],
-        memory_index: [
-            0,
-        ],
-    },
-    variants: Multiple {
-        tag: Scalar {
-            value: Int(
-                I8,
-                false,
-            ),
-            valid_range: 0..=0,
-        },
-        tag_encoding: Direct,
-        tag_field: 0,
-        variants: [
-            Layout {
-                fields: Arbitrary {
-                    offsets: [],
-                    memory_index: [],
-                },
-                variants: Single {
-                    index: 0,
-                },
-                abi: Aggregate {
-                    sized: true,
-                },
-                largest_niche: None,
-                align: AbiAndPrefAlign {
-                    abi: Align {
-                        pow2: 0,
-                    },
-                    pref: Align {
-                        pow2: 2,
-                    },
-                },
-                size: Size {
-                    raw: 1,
-                },
-            },
-        ],
-    },
-    abi: Scalar(
-        Scalar {
-            value: Int(
-                I8,
-                false,
-            ),
-            valid_range: 0..=0,
-        },
-    ),
-    largest_niche: Some(
-        Niche {
-            offset: Size {
-                raw: 0,
-            },
-            scalar: Scalar {
-                value: Int(
-                    I8,
-                    false,
-                ),
-                valid_range: 0..=0,
-            },
-        },
-    ),
-    align: AbiAndPrefAlign {
-        abi: Align {
-            pow2: 0,
-        },
-        pref: Align {
-            pow2: 2,
-        },
-    },
-    size: Size {
-        raw: 1,
-    },
-}
+           fields: Arbitrary {
+               offsets: [
+                   Size {
+                       raw: 0,
+                   },
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           variants: Multiple {
+               tag: Scalar {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       variants: Single {
+                           index: 0,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align {
+                               pow2: 0,
+                           },
+                           pref: Align {
+                               pow2: 2,
+                           },
+                       },
+                       size: Size {
+                           raw: 1,
+                       },
+                   },
+               ],
+           },
+           abi: Scalar(
+               Scalar {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+           ),
+           largest_niche: Some(
+               Niche {
+                   offset: Size {
+                       raw: 0,
+                   },
+                   scalar: Scalar {
+                       value: Int(
+                           I8,
+                           false,
+                       ),
+                       valid_range: 0..=0,
+                   },
+               },
+           ),
+           align: AbiAndPrefAlign {
+               abi: Align {
+                   pow2: 0,
+               },
+               pref: Align {
+                   pow2: 2,
+               },
+           },
+           size: Size {
+               raw: 1,
+           },
+       }
   --> $DIR/thumb-enum.rs:16:1
    |
 LL | enum A { Apple }
    | ^^^^^^^^^^^^^^^^
 
 error: layout_of(B) = Layout {
-    fields: Arbitrary {
-        offsets: [
-            Size {
-                raw: 0,
-            },
-        ],
-        memory_index: [
-            0,
-        ],
-    },
-    variants: Multiple {
-        tag: Scalar {
-            value: Int(
-                I8,
-                false,
-            ),
-            valid_range: 255..=255,
-        },
-        tag_encoding: Direct,
-        tag_field: 0,
-        variants: [
-            Layout {
-                fields: Arbitrary {
-                    offsets: [],
-                    memory_index: [],
-                },
-                variants: Single {
-                    index: 0,
-                },
-                abi: Aggregate {
-                    sized: true,
-                },
-                largest_niche: None,
-                align: AbiAndPrefAlign {
-                    abi: Align {
-                        pow2: 0,
-                    },
-                    pref: Align {
-                        pow2: 2,
-                    },
-                },
-                size: Size {
-                    raw: 1,
-                },
-            },
-        ],
-    },
-    abi: Scalar(
-        Scalar {
-            value: Int(
-                I8,
-                false,
-            ),
-            valid_range: 255..=255,
-        },
-    ),
-    largest_niche: Some(
-        Niche {
-            offset: Size {
-                raw: 0,
-            },
-            scalar: Scalar {
-                value: Int(
-                    I8,
-                    false,
-                ),
-                valid_range: 255..=255,
-            },
-        },
-    ),
-    align: AbiAndPrefAlign {
-        abi: Align {
-            pow2: 0,
-        },
-        pref: Align {
-            pow2: 2,
-        },
-    },
-    size: Size {
-        raw: 1,
-    },
-}
+           fields: Arbitrary {
+               offsets: [
+                   Size {
+                       raw: 0,
+                   },
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           variants: Multiple {
+               tag: Scalar {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 255..=255,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       variants: Single {
+                           index: 0,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align {
+                               pow2: 0,
+                           },
+                           pref: Align {
+                               pow2: 2,
+                           },
+                       },
+                       size: Size {
+                           raw: 1,
+                       },
+                   },
+               ],
+           },
+           abi: Scalar(
+               Scalar {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 255..=255,
+               },
+           ),
+           largest_niche: Some(
+               Niche {
+                   offset: Size {
+                       raw: 0,
+                   },
+                   scalar: Scalar {
+                       value: Int(
+                           I8,
+                           false,
+                       ),
+                       valid_range: 255..=255,
+                   },
+               },
+           ),
+           align: AbiAndPrefAlign {
+               abi: Align {
+                   pow2: 0,
+               },
+               pref: Align {
+                   pow2: 2,
+               },
+           },
+           size: Size {
+               raw: 1,
+           },
+       }
   --> $DIR/thumb-enum.rs:20:1
    |
 LL | enum B { Banana = 255, }
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(C) = Layout {
-    fields: Arbitrary {
-        offsets: [
-            Size {
-                raw: 0,
-            },
-        ],
-        memory_index: [
-            0,
-        ],
-    },
-    variants: Multiple {
-        tag: Scalar {
-            value: Int(
-                I16,
-                false,
-            ),
-            valid_range: 256..=256,
-        },
-        tag_encoding: Direct,
-        tag_field: 0,
-        variants: [
-            Layout {
-                fields: Arbitrary {
-                    offsets: [],
-                    memory_index: [],
-                },
-                variants: Single {
-                    index: 0,
-                },
-                abi: Aggregate {
-                    sized: true,
-                },
-                largest_niche: None,
-                align: AbiAndPrefAlign {
-                    abi: Align {
-                        pow2: 1,
-                    },
-                    pref: Align {
-                        pow2: 2,
-                    },
-                },
-                size: Size {
-                    raw: 2,
-                },
-            },
-        ],
-    },
-    abi: Scalar(
-        Scalar {
-            value: Int(
-                I16,
-                false,
-            ),
-            valid_range: 256..=256,
-        },
-    ),
-    largest_niche: Some(
-        Niche {
-            offset: Size {
-                raw: 0,
-            },
-            scalar: Scalar {
-                value: Int(
-                    I16,
-                    false,
-                ),
-                valid_range: 256..=256,
-            },
-        },
-    ),
-    align: AbiAndPrefAlign {
-        abi: Align {
-            pow2: 1,
-        },
-        pref: Align {
-            pow2: 2,
-        },
-    },
-    size: Size {
-        raw: 2,
-    },
-}
+           fields: Arbitrary {
+               offsets: [
+                   Size {
+                       raw: 0,
+                   },
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           variants: Multiple {
+               tag: Scalar {
+                   value: Int(
+                       I16,
+                       false,
+                   ),
+                   valid_range: 256..=256,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       variants: Single {
+                           index: 0,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align {
+                               pow2: 1,
+                           },
+                           pref: Align {
+                               pow2: 2,
+                           },
+                       },
+                       size: Size {
+                           raw: 2,
+                       },
+                   },
+               ],
+           },
+           abi: Scalar(
+               Scalar {
+                   value: Int(
+                       I16,
+                       false,
+                   ),
+                   valid_range: 256..=256,
+               },
+           ),
+           largest_niche: Some(
+               Niche {
+                   offset: Size {
+                       raw: 0,
+                   },
+                   scalar: Scalar {
+                       value: Int(
+                           I16,
+                           false,
+                       ),
+                       valid_range: 256..=256,
+                   },
+               },
+           ),
+           align: AbiAndPrefAlign {
+               abi: Align {
+                   pow2: 1,
+               },
+               pref: Align {
+                   pow2: 2,
+               },
+           },
+           size: Size {
+               raw: 2,
+           },
+       }
   --> $DIR/thumb-enum.rs:24:1
    |
 LL | enum C { Chaenomeles = 256, }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(P) = Layout {
-    fields: Arbitrary {
-        offsets: [
-            Size {
-                raw: 0,
-            },
-        ],
-        memory_index: [
-            0,
-        ],
-    },
-    variants: Multiple {
-        tag: Scalar {
-            value: Int(
-                I32,
-                false,
-            ),
-            valid_range: 268435456..=268435456,
-        },
-        tag_encoding: Direct,
-        tag_field: 0,
-        variants: [
-            Layout {
-                fields: Arbitrary {
-                    offsets: [],
-                    memory_index: [],
-                },
-                variants: Single {
-                    index: 0,
-                },
-                abi: Aggregate {
-                    sized: true,
-                },
-                largest_niche: None,
-                align: AbiAndPrefAlign {
-                    abi: Align {
-                        pow2: 2,
-                    },
-                    pref: Align {
-                        pow2: 2,
-                    },
-                },
-                size: Size {
-                    raw: 4,
-                },
-            },
-        ],
-    },
-    abi: Scalar(
-        Scalar {
-            value: Int(
-                I32,
-                false,
-            ),
-            valid_range: 268435456..=268435456,
-        },
-    ),
-    largest_niche: Some(
-        Niche {
-            offset: Size {
-                raw: 0,
-            },
-            scalar: Scalar {
-                value: Int(
-                    I32,
-                    false,
-                ),
-                valid_range: 268435456..=268435456,
-            },
-        },
-    ),
-    align: AbiAndPrefAlign {
-        abi: Align {
-            pow2: 2,
-        },
-        pref: Align {
-            pow2: 2,
-        },
-    },
-    size: Size {
-        raw: 4,
-    },
-}
+           fields: Arbitrary {
+               offsets: [
+                   Size {
+                       raw: 0,
+                   },
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           variants: Multiple {
+               tag: Scalar {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 268435456..=268435456,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       variants: Single {
+                           index: 0,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align {
+                               pow2: 2,
+                           },
+                           pref: Align {
+                               pow2: 2,
+                           },
+                       },
+                       size: Size {
+                           raw: 4,
+                       },
+                   },
+               ],
+           },
+           abi: Scalar(
+               Scalar {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 268435456..=268435456,
+               },
+           ),
+           largest_niche: Some(
+               Niche {
+                   offset: Size {
+                       raw: 0,
+                   },
+                   scalar: Scalar {
+                       value: Int(
+                           I32,
+                           false,
+                       ),
+                       valid_range: 268435456..=268435456,
+                   },
+               },
+           ),
+           align: AbiAndPrefAlign {
+               abi: Align {
+                   pow2: 2,
+               },
+               pref: Align {
+                   pow2: 2,
+               },
+           },
+           size: Size {
+               raw: 4,
+           },
+       }
   --> $DIR/thumb-enum.rs:28:1
    |
 LL | enum P { Peach = 0x1000_0000isize, }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(T) = Layout {
-    fields: Arbitrary {
-        offsets: [
-            Size {
-                raw: 0,
-            },
-        ],
-        memory_index: [
-            0,
-        ],
-    },
-    variants: Multiple {
-        tag: Scalar {
-            value: Int(
-                I32,
-                true,
-            ),
-            valid_range: 2164260864..=2164260864,
-        },
-        tag_encoding: Direct,
-        tag_field: 0,
-        variants: [
-            Layout {
-                fields: Arbitrary {
-                    offsets: [],
-                    memory_index: [],
-                },
-                variants: Single {
-                    index: 0,
-                },
-                abi: Aggregate {
-                    sized: true,
-                },
-                largest_niche: None,
-                align: AbiAndPrefAlign {
-                    abi: Align {
-                        pow2: 2,
-                    },
-                    pref: Align {
-                        pow2: 2,
-                    },
-                },
-                size: Size {
-                    raw: 4,
-                },
-            },
-        ],
-    },
-    abi: Scalar(
-        Scalar {
-            value: Int(
-                I32,
-                true,
-            ),
-            valid_range: 2164260864..=2164260864,
-        },
-    ),
-    largest_niche: Some(
-        Niche {
-            offset: Size {
-                raw: 0,
-            },
-            scalar: Scalar {
-                value: Int(
-                    I32,
-                    true,
-                ),
-                valid_range: 2164260864..=2164260864,
-            },
-        },
-    ),
-    align: AbiAndPrefAlign {
-        abi: Align {
-            pow2: 2,
-        },
-        pref: Align {
-            pow2: 2,
-        },
-    },
-    size: Size {
-        raw: 4,
-    },
-}
+           fields: Arbitrary {
+               offsets: [
+                   Size {
+                       raw: 0,
+                   },
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           variants: Multiple {
+               tag: Scalar {
+                   value: Int(
+                       I32,
+                       true,
+                   ),
+                   valid_range: 2164260864..=2164260864,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       variants: Single {
+                           index: 0,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align {
+                               pow2: 2,
+                           },
+                           pref: Align {
+                               pow2: 2,
+                           },
+                       },
+                       size: Size {
+                           raw: 4,
+                       },
+                   },
+               ],
+           },
+           abi: Scalar(
+               Scalar {
+                   value: Int(
+                       I32,
+                       true,
+                   ),
+                   valid_range: 2164260864..=2164260864,
+               },
+           ),
+           largest_niche: Some(
+               Niche {
+                   offset: Size {
+                       raw: 0,
+                   },
+                   scalar: Scalar {
+                       value: Int(
+                           I32,
+                           true,
+                       ),
+                       valid_range: 2164260864..=2164260864,
+                   },
+               },
+           ),
+           align: AbiAndPrefAlign {
+               abi: Align {
+                   pow2: 2,
+               },
+               pref: Align {
+                   pow2: 2,
+               },
+           },
+           size: Size {
+               raw: 4,
+           },
+       }
   --> $DIR/thumb-enum.rs:34:1
    |
 LL | enum T { Tangerine = TANGERINE as isize }

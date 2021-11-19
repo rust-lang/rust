@@ -29,7 +29,13 @@ LL | fn f<'a, T, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
    |          - help: consider adding an explicit lifetime bound...: `T: 'static`
 LL |     // oh dear!
 LL |     Box::new(B(&*v)) as Box<dyn X>
-   |              ^ ...so that the type `T` will meet its required lifetime bounds
+   |              ^ ...so that the type `T` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/regions-close-object-into-object-5.rs:9:17
+   |
+LL | struct B<'a, T: 'a>(&'a (A<T> + 'a));
+   |                 ^^
 
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-object-into-object-5.rs:17:14

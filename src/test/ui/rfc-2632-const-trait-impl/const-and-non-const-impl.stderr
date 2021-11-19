@@ -31,17 +31,6 @@ note: multiple `impl`s satisfying `i32: Add` found
 LL | impl const std::ops::Add for i32 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: and another `impl` found in the `core` crate: `impl Add for i32;`
-note: required by a bound in `Add`
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL | / pub trait Add<Rhs = Self> {
-LL | |     /// The resulting type after applying the `+` operator.
-LL | |     #[stable(feature = "rust1", since = "1.0.0")]
-LL | |     type Output;
-...  |
-LL | |     fn add(self, rhs: Rhs) -> Self::Output;
-LL | | }
-   | |_^ required by this bound in `Add`
 
 error[E0283]: type annotations needed
   --> $DIR/const-and-non-const-impl.rs:14:6
@@ -57,17 +46,6 @@ LL | impl std::ops::Add for Int {
 ...
 LL | impl const std::ops::Add for Int {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required by a bound in `Add`
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL | / pub trait Add<Rhs = Self> {
-LL | |     /// The resulting type after applying the `+` operator.
-LL | |     #[stable(feature = "rust1", since = "1.0.0")]
-LL | |     type Output;
-...  |
-LL | |     fn add(self, rhs: Rhs) -> Self::Output;
-LL | | }
-   | |_^ required by this bound in `Add`
 
 error[E0283]: type annotations needed
   --> $DIR/const-and-non-const-impl.rs:22:12
@@ -83,17 +61,6 @@ LL | impl std::ops::Add for Int {
 ...
 LL | impl const std::ops::Add for Int {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required by a bound in `Add`
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL | / pub trait Add<Rhs = Self> {
-LL | |     /// The resulting type after applying the `+` operator.
-LL | |     #[stable(feature = "rust1", since = "1.0.0")]
-LL | |     type Output;
-...  |
-LL | |     fn add(self, rhs: Rhs) -> Self::Output;
-LL | | }
-   | |_^ required by this bound in `Add`
 
 error: aborting due to 5 previous errors
 

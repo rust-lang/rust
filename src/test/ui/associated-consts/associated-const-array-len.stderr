@@ -3,12 +3,6 @@ error[E0277]: the trait bound `i32: Foo` is not satisfied
    |
 LL | const X: [i32; <i32 as Foo>::ID] = [0, 1, 2];
    |                ^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
-   |
-note: required by `Foo::ID`
-  --> $DIR/associated-const-array-len.rs:2:5
-   |
-LL |     const ID: usize;
-   |     ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

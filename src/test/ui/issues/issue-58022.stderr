@@ -15,11 +15,6 @@ LL |     fn new(slice: &[u8; Foo::SIZE]) -> Self;
    |
    = note: cannot satisfy `_: Foo`
    = note: associated constants cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
-note: required by `Foo::SIZE`
-  --> $DIR/issue-58022.rs:2:5
-   |
-LL |     const SIZE: usize;
-   |     ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
