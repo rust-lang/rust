@@ -91,7 +91,6 @@ fn verbatim() {
     // Make sure opening a drive will work.
     check("Z:", "Z:");
 
-    // An empty path or a path that contains null are not valid paths.
-    assert!(maybe_verbatim(Path::new("")).is_err());
+    // A path that contains null is not a valid path.
     assert!(maybe_verbatim(Path::new("\0")).is_err());
 }
