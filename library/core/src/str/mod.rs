@@ -1857,6 +1857,7 @@ impl str {
     /// assert_eq!("Text", "Text\r\n".trim_newline());
     /// assert_eq!("Text\r", "Text\r".trim_newline());
     /// assert_eq!("Text\n", "Text\n\n".trim_newline());
+    /// assert_eq!("Text\n\r", "Text\n\r".trim_newline()); // LF CR is not a valid newline
     ///
     /// let mut s = String::new();
     /// writeln!(s, " Hi! ").unwrap();
