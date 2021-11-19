@@ -91,6 +91,21 @@ LL | |     }
 LL | | }
    | |_- not a free function, impl method or static
 
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:137:8
+   |
+LL |   #[repr(C)]
+   |          ^
+LL |
+LL | / mod repr {
+LL | |
+LL | |     mod inner { #![repr(C)] }
+LL | |
+...  |
+LL | |
+LL | | }
+   | |_- not a struct, enum, or union
+
 error: attribute should be applied to an `extern crate` item
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:25:1
    |
@@ -235,7 +250,31 @@ error: attribute should be applied to a free function, impl method or static
 LL |         #[export_name = "2200"] fn bar() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^ ----------- not a free function, impl method or static
 
-error: aborting due to 34 previous errors
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:141:25
+   |
+LL |     mod inner { #![repr(C)] }
+   |     --------------------^---- not a struct, enum, or union
 
-Some errors have detailed explanations: E0518, E0658.
-For more information about an error, try `rustc --explain E0518`.
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:145:12
+   |
+LL |     #[repr(C)] fn f() { }
+   |            ^   ---------- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:151:12
+   |
+LL |     #[repr(C)] type T = S;
+   |            ^   ----------- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:155:12
+   |
+LL |     #[repr(C)] impl S { }
+   |            ^   ---------- not a struct, enum, or union
+
+error: aborting due to 39 previous errors
+
+Some errors have detailed explanations: E0517, E0518, E0658.
+For more information about an error, try `rustc --explain E0517`.
