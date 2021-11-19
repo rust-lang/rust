@@ -428,7 +428,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_alphabetic());
     /// assert!(uppercase_g.is_ascii_alphabetic());
@@ -462,7 +462,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_uppercase());
     /// assert!(uppercase_g.is_ascii_uppercase());
@@ -496,7 +496,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_lowercase());
     /// assert!(!uppercase_g.is_ascii_lowercase());
@@ -533,7 +533,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_alphanumeric());
     /// assert!(uppercase_g.is_ascii_alphanumeric());
@@ -567,7 +567,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_digit());
     /// assert!(!uppercase_g.is_ascii_digit());
@@ -604,7 +604,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_hexdigit());
     /// assert!(!uppercase_g.is_ascii_hexdigit());
@@ -642,7 +642,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_punctuation());
     /// assert!(!uppercase_g.is_ascii_punctuation());
@@ -676,7 +676,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_graphic());
     /// assert!(uppercase_g.is_ascii_graphic());
@@ -727,7 +727,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_whitespace());
     /// assert!(!uppercase_g.is_ascii_whitespace());
@@ -763,7 +763,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_control());
     /// assert!(!uppercase_g.is_ascii_control());
