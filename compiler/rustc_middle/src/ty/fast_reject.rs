@@ -60,15 +60,29 @@ pub enum StripReferences {
     No,
 }
 
-/// Tries to simplify a type by dropping type parameters, deref'ing away any reference types, etc.
-/// The idea is to get something simple that we can use to quickly decide if two types could unify
-/// during method lookup.
+/// Tries to simplify a type by only returning the outermost injective¹ layer, if one exists.
 ///
-/// If `can_simplify_params` is false, then we will fail to simplify type parameters entirely. This
-/// is useful when those type parameters would be instantiated with fresh type variables, since
-/// then we can't say much about whether two types would unify. Put another way,
-/// `can_simplify_params` should be true if type parameters appear free in `ty` and `false` if they
-/// are to be considered bound.
+/// The idea is to get something simple that we can use to quickly decide if two types could unify,
+/// for example during method lookup.
+///
+/// A special case here are parameters and projections. Projections can be normalized to
+/// a different type, meaning that `<T as Trait>::Assoc` and `u8` can be unified, even though
+/// their outermost layer is different while parameters like `T` of impls are later replaced
+/// with an inference variable, which then also allows unification with other types.
+///
+/// When using `SimplifyParams::Yes`, we still return a simplified type for params and projections²,
+/// the reasoning for this can be seen at the places doing this.
+///
+/// For diagnostics we strip references with `StripReferences::Yes`. This is currently the best
+/// way to skip some unhelpful suggestions.
+///
+/// ¹ meaning that if two outermost layers are different, then the whole types are also different.
+/// ² FIXME(@lcnr): this seems like it can actually end up being unsound with the way it's used during
+///   candidate selection. We do not consider non blanket impls for `<_ as Trait>::Assoc` even
+///   though `_` can be inferred to a concrete type later at which point a concrete impl
+///   could actually apply. After experimenting for about an hour I wasn't able to cause any issues
+///   this way so I am not going to change this until we actually find an issue as I am really
+///   interesting in getting an actual test for this.
 pub fn simplify_type(
     tcx: TyCtxt<'_>,
     ty: Ty<'_>,

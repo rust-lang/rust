@@ -1440,6 +1440,14 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Vec<ty::TraitRef<'tcx>> {
+        // We simplify params and strip references here.
+        //
+        // This both removes a lot of unhelpful suggestions, e.g.
+        // when searching for `&Foo: Trait` it doesn't suggestion `impl Trait for &Bar`,
+        // while also suggesting impls for `&Foo` when we're looking for `Foo: Trait`.
+        //
+        // The second thing isn't necessarily always a good thing, but
+        // any other simple setup results in a far worse output, so 🤷
         let simp = fast_reject::simplify_type(
             self.tcx,
             trait_ref.skip_binder().self_ty(),
