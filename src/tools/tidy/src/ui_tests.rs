@@ -7,9 +7,8 @@ use std::path::Path;
 
 const ENTRY_LIMIT: usize = 1000;
 // FIXME: The following limits should be reduced eventually.
-const ROOT_ENTRY_LIMIT: usize = 983;
+const ROOT_ENTRY_LIMIT: usize = 982;
 const ISSUES_ENTRY_LIMIT: usize = 2310;
-const PARSER_LIMIT: usize = 1012;
 
 fn check_entries(path: &Path, bad: &mut bool) {
     let dirs = walkdir::WalkDir::new(&path.join("test/ui"))
@@ -22,13 +21,10 @@ fn check_entries(path: &Path, bad: &mut bool) {
             // Use special values for these dirs.
             let is_root = path.join("test/ui") == dir_path;
             let is_issues_dir = path.join("test/ui/issues") == dir_path;
-            let is_parser = path.join("test/ui/parser") == dir_path;
             let limit = if is_root {
                 ROOT_ENTRY_LIMIT
             } else if is_issues_dir {
                 ISSUES_ENTRY_LIMIT
-            } else if is_parser {
-                PARSER_LIMIT
             } else {
                 ENTRY_LIMIT
             };
