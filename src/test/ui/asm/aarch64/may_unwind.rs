@@ -24,7 +24,7 @@ fn main() {
     let flag = &mut true;
     catch_unwind(AssertUnwindSafe(|| {
         let _foo = Foo(flag);
-        unsafe { asm!("bl _panicky", options(may_unwind)) };
+        unsafe { asm!("bl _panicky", clobber_abi("C"), options(may_unwind)) };
     }))
     .expect_err("expected a panic");
     assert_eq!(*flag, false);
