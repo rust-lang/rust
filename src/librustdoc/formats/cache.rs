@@ -8,6 +8,7 @@ use rustc_span::symbol::sym;
 
 use crate::clean::{self, ItemId, PrimitiveType};
 use crate::config::RenderOptions;
+use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
@@ -136,15 +137,13 @@ impl Cache {
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
     /// in `krate` due to the data being moved into the `Cache`.
-    crate fn populate(
-        &mut self,
-        mut krate: clean::Crate,
-        tcx: TyCtxt<'_>,
-        render_options: &RenderOptions,
-    ) -> clean::Crate {
+    crate fn populate(cx: &mut DocContext<'_>, mut krate: clean::Crate) -> clean::Crate {
+        let tcx = cx.tcx;
+        let render_options = &cx.render_options;
+
         // Crawl the crate to build various caches used for the output
-        debug!(?self.crate_version);
-        self.traits = krate.external_traits.take();
+        debug!(?cx.cache.crate_version);
+        cx.cache.traits = krate.external_traits.take();
         let RenderOptions { extern_html_root_takes_precedence, output: dst, .. } = render_options;
 
         // Cache where all our extern crates are located
@@ -154,28 +153,28 @@ impl Cache {
             let extern_url =
                 render_options.extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
             let location = e.location(extern_url, *extern_html_root_takes_precedence, dst, tcx);
-            self.extern_locations.insert(e.crate_num, location);
-            self.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
+            cx.cache.extern_locations.insert(e.crate_num, location);
+            cx.cache.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
         }
 
         // FIXME: avoid this clone (requires implementing Default manually)
-        self.primitive_locations = PrimitiveType::primitive_locations(tcx).clone();
-        for (prim, &def_id) in &self.primitive_locations {
+        cx.cache.primitive_locations = PrimitiveType::primitive_locations(tcx).clone();
+        for (prim, &def_id) in &cx.cache.primitive_locations {
             let crate_name = tcx.crate_name(def_id.krate);
             // Recall that we only allow primitive modules to be at the root-level of the crate.
             // If that restriction is ever lifted, this will have to include the relative paths instead.
-            self.external_paths.insert(
+            cx.cache.external_paths.insert(
                 def_id,
                 (vec![crate_name.to_string(), prim.as_sym().to_string()], ItemType::Primitive),
             );
         }
 
-        krate = CacheBuilder { tcx, cache: self }.fold_crate(krate);
+        krate = CacheBuilder { tcx, cache: &mut cx.cache }.fold_crate(krate);
 
-        for (trait_did, dids, impl_) in self.orphan_trait_impls.drain(..) {
-            if self.traits.contains_key(&trait_did) {
+        for (trait_did, dids, impl_) in cx.cache.orphan_trait_impls.drain(..) {
+            if cx.cache.traits.contains_key(&trait_did) {
                 for did in dids {
-                    self.impls.entry(did).or_default().push(impl_.clone());
+                    cx.cache.impls.entry(did).or_default().push(impl_.clone());
                 }
             }
         }
