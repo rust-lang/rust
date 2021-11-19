@@ -398,6 +398,7 @@ undocumented item:
 ```rust
 /// This item has documentation
 pub fn foo() {}
+
 pub fn no_documentation() {}
 ```
 
