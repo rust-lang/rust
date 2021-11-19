@@ -232,10 +232,10 @@ source.
   possible (unless on a platform that does not support them, or
   `no-prefer-dynamic` is specified in the aux file). The `-L` flag is used to
   find the extern crates.
-* `aux-crate` is very similar to `aux-build`, however it uses the `--extern`
+* `aux-crate` is very similar to `aux-build`; however, it uses the `--extern`
   flag to link to the extern crate. That allows you to specify the additional
   syntax of the `--extern` flag, such as renaming a dependency. For example,
-  `// aux-crate:foo=bar.rs` will compile `auxiliary/bar.rs` and add make it
+  `// aux-crate:foo=bar.rs` will compile `auxiliary/bar.rs` and make it
   available under then name `foo` within the test. This is similar to how
   Cargo does dependency renaming.
 * `no-prefer-dynamic` will force an auxiliary crate to be built as an rlib
@@ -257,11 +257,16 @@ source.
   `-Zunpretty=expanded` as a final step. It will also try to compile the
   resulting output (without codegen). This is needed because not all code can
   be compiled after being expanded. Pretty tests should specify this if they
-  can. More history about this may be found in [#23616].
+  can. An example where this cannot be used is if the test includes
+  `println!`. That macro expands to reference private internal functions of
+  the standard library that cannot be called directly without the
+  `fmt_internals` feature gate.
+
+  More history about this may be found in [#23616].
 * `pp-exact` is used to ensure a pretty-print test results in specific output.
   If specified without a value, then it means the pretty-print output should
   match the original source. If specified with a value, as in `//
-  pp-exact:foo.pp`, will ensure that that pretty-printed output matches the
+  pp-exact:foo.pp`, it will ensure that the pretty-printed output matches the
   contents of the given file. Otherwise, if `pp-exact` is not specified, then
   the pretty-printed output will be pretty-printed one more time, and the
   output of the two pretty-printing rounds will be compared to ensure that the
