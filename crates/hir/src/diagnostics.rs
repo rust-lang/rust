@@ -32,6 +32,7 @@ diagnostics![
     BreakOutsideOfLoop,
     InactiveCode,
     IncorrectCase,
+    InvalidDeriveTarget,
     MacroError,
     MismatchedArgCount,
     MissingFields,
@@ -95,6 +96,11 @@ pub struct MacroError {
 
 #[derive(Debug)]
 pub struct UnimplementedBuiltinMacro {
+    pub node: InFile<SyntaxNodePtr>,
+}
+
+#[derive(Debug)]
+pub struct InvalidDeriveTarget {
     pub node: InFile<SyntaxNodePtr>,
 }
 

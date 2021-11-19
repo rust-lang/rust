@@ -83,10 +83,10 @@ pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
         AddReferenceHere, AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase,
-        MacroError, MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
-        MissingUnsafe, NoSuchField, RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap,
-        UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
-        UnresolvedModule, UnresolvedProcMacro,
+        InvalidDeriveTarget, MacroError, MismatchedArgCount, MissingFields, MissingMatchArms,
+        MissingOkOrSomeInTailExpr, MissingUnsafe, NoSuchField, RemoveThisSemicolon,
+        ReplaceFilterMapNextWithFindMap, UnimplementedBuiltinMacro, UnresolvedExternCrate,
+        UnresolvedImport, UnresolvedMacroCall, UnresolvedModule, UnresolvedProcMacro,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo},
@@ -653,6 +653,21 @@ impl Module {
                         }
                         .into(),
                     );
+                }
+                DefDiagnosticKind::InvalidDeriveTarget { ast, id } => {
+                    let node = ast.to_node(db.upcast());
+                    let derive = node.attrs().nth(*id as usize);
+                    match derive {
+                        Some(derive) => {
+                            acc.push(
+                                InvalidDeriveTarget {
+                                    node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&derive))),
+                                }
+                                .into(),
+                            );
+                        }
+                        None => stdx::never!("derive diagnostic on item without derive attribute"),
+                    }
                 }
             }
         }

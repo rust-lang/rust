@@ -1055,13 +1055,10 @@ impl DefCollector<'_> {
                         &resolver,
                         &mut |_err| (),
                     );
-                    match call_id {
-                        Ok(Ok(call_id)) => {
-                            resolved.push((directive.module_id, call_id, directive.depth));
-                            res = ReachedFixedPoint::No;
-                            return false;
-                        }
-                        Err(UnresolvedMacro { .. }) | Ok(Err(_)) => {}
+                    if let Ok(Ok(call_id)) = call_id {
+                        resolved.push((directive.module_id, call_id, directive.depth));
+                        res = ReachedFixedPoint::No;
+                        return false;
                     }
                 }
                 MacroDirectiveKind::Derive { ast_id, derive_attr } => {
@@ -1072,19 +1069,16 @@ impl DefCollector<'_> {
                         self.def_map.krate,
                         &resolver,
                     );
-                    match call_id {
-                        Ok(call_id) => {
-                            self.def_map.modules[directive.module_id].scope.add_derive_macro_invoc(
-                                ast_id.ast_id,
-                                call_id,
-                                *derive_attr,
-                            );
+                    if let Ok(call_id) = call_id {
+                        self.def_map.modules[directive.module_id].scope.add_derive_macro_invoc(
+                            ast_id.ast_id,
+                            call_id,
+                            *derive_attr,
+                        );
 
-                            resolved.push((directive.module_id, call_id, directive.depth));
-                            res = ReachedFixedPoint::No;
-                            return false;
-                        }
-                        Err(UnresolvedMacro { .. }) => {}
+                        resolved.push((directive.module_id, call_id, directive.depth));
+                        res = ReachedFixedPoint::No;
+                        return false;
                     }
                 }
                 MacroDirectiveKind::Attr { ast_id, mod_item, attr } => {
@@ -1125,7 +1119,6 @@ impl DefCollector<'_> {
                         if expander.is_derive()
                     ) {
                         // Resolved to `#[derive]`
-                        let file_id = ast_id.ast_id.file_id;
                         let item_tree = self.db.file_item_tree(file_id);
 
                         let ast_id: FileAstId<ast::Item> = match *mod_item {
@@ -1133,8 +1126,12 @@ impl DefCollector<'_> {
                             ModItem::Union(it) => item_tree[it].ast_id.upcast(),
                             ModItem::Enum(it) => item_tree[it].ast_id.upcast(),
                             _ => {
-                                // Cannot use derive on this item.
-                                // FIXME: diagnose
+                                let diag = DefDiagnostic::invalid_derive_target(
+                                    directive.module_id,
+                                    ast_id.ast_id,
+                                    attr.id,
+                                );
+                                self.def_map.diagnostics.push(diag);
                                 res = ReachedFixedPoint::No;
                                 return false;
                             }
@@ -1194,7 +1191,6 @@ impl DefCollector<'_> {
                                         ),
                                     );
 
-                                    let file_id = ast_id.ast_id.file_id;
                                     let item_tree = self.db.file_item_tree(file_id);
                                     return recollect_without(self, &item_tree);
                                 }
