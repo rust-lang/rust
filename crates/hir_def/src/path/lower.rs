@@ -193,7 +193,7 @@ pub(super) fn lower_generic_args(
     if args.is_empty() && bindings.is_empty() {
         return None;
     }
-    Some(GenericArgs { args, has_self_type: false, bindings })
+    Some(GenericArgs { args, has_self_type: false, bindings, desugared_from_fn: false })
 }
 
 /// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)
@@ -229,5 +229,5 @@ fn lower_generic_args_from_fn_path(
             bounds: Vec::new(),
         });
     }
-    Some(GenericArgs { args, has_self_type: false, bindings })
+    Some(GenericArgs { args, has_self_type: false, bindings, desugared_from_fn: true })
 }
