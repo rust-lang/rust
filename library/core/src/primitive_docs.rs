@@ -1108,7 +1108,6 @@ mod prim_usize {}
 ///
 /// [`Deref`]: ops::Deref
 /// [`Borrow`]: borrow::Borrow
-/// [`fmt::Pointer`]: fmt::Pointer
 ///
 /// `&mut T` references get all of the above except `Copy` and `Clone` (to prevent creating
 /// multiple simultaneous mutable borrows), plus the following, regardless of the type of its
@@ -1136,7 +1135,6 @@ mod prim_usize {}
 /// * [`Send`] \(`&T` references also require <code>T: [Sync]</code>)
 ///
 /// [`std::fmt`]: fmt
-/// [`fmt::Pointer`]: fmt::Pointer
 /// [`Hash`]: hash::Hash
 #[doc = concat!("[`ToSocketAddrs`]: ", include_str!("../primitive_docs/net_tosocketaddrs.md"))]
 ///
