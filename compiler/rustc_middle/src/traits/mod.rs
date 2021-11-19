@@ -23,6 +23,7 @@ use smallvec::SmallVec;
 
 use std::borrow::Cow;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
@@ -108,7 +109,7 @@ impl Deref for ObligationCause<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+#[derive(Clone, Debug, PartialEq, Eq, Lift)]
 pub struct ObligationCauseData<'tcx> {
     pub span: Span,
 
@@ -121,6 +122,14 @@ pub struct ObligationCauseData<'tcx> {
     pub body_id: hir::HirId,
 
     pub code: ObligationCauseCode<'tcx>,
+}
+
+impl Hash for ObligationCauseData<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.body_id.hash(state);
+        self.span.hash(state);
+        std::mem::discriminant(&self.code).hash(state);
+    }
 }
 
 impl<'tcx> ObligationCause<'tcx> {
