@@ -7,7 +7,9 @@
 
 #[repr(simd)] struct i8x1(i8);
 #[repr(simd)] struct u16x2(u16, u16);
-#[repr(simd)] struct f32x4(f32, f32, f32, f32);
+// Make some of them array types to ensure those also work.
+#[repr(simd)] struct i8x1_arr([i8; 1]);
+#[repr(simd)] struct f32x4([f32; 4]);
 
 extern "platform-intrinsic" {
     #[rustc_const_stable(feature = "foo", since = "1.3.37")]
@@ -26,6 +28,14 @@ fn main() {
         assert_eq!(Y0, 42);
     }
     {
+        const U: i8x1_arr = i8x1_arr([13]);
+        const V: i8x1_arr = unsafe { simd_insert(U, 0_u32, 42_i8) };
+        const X0: i8 = V.0[0];
+        const Y0: i8 = unsafe { simd_extract(V, 0) };
+        assert_eq!(X0, 42);
+        assert_eq!(Y0, 42);
+    }
+    {
         const U: u16x2 = u16x2(13, 14);
         const V: u16x2 = unsafe { simd_insert(U, 1_u32, 42_u16) };
         const X0: u16 = V.0;
@@ -38,12 +48,12 @@ fn main() {
         assert_eq!(Y1, 42);
     }
     {
-        const U: f32x4 = f32x4(13., 14., 15., 16.);
+        const U: f32x4 = f32x4([13., 14., 15., 16.]);
         const V: f32x4 = unsafe { simd_insert(U, 1_u32, 42_f32) };
-        const X0: f32 = V.0;
-        const X1: f32 = V.1;
-        const X2: f32 = V.2;
-        const X3: f32 = V.3;
+        const X0: f32 = V.0[0];
+        const X1: f32 = V.0[1];
+        const X2: f32 = V.0[2];
+        const X3: f32 = V.0[3];
         const Y0: f32 = unsafe { simd_extract(V, 0) };
         const Y1: f32 = unsafe { simd_extract(V, 1) };
         const Y2: f32 = unsafe { simd_extract(V, 2) };
