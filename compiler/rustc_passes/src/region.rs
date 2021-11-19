@@ -255,6 +255,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             hir::ExprKind::AssignOp(..)
             | hir::ExprKind::Index(..)
             | hir::ExprKind::Unary(..)
+            | hir::ExprKind::Call(..)
             | hir::ExprKind::MethodCall(..) => {
                 // FIXME(https://github.com/rust-lang/rfcs/issues/811) Nested method calls
                 //

@@ -203,11 +203,6 @@ impl DropRanges {
         }
         preds
     }
-
-    // pub fn save_graph(&self, filename: &str) {
-    //     use std::fs::File;
-    //     dot::render(self, &mut File::create(filename).unwrap()).unwrap();
-    // }
 }
 
 impl<'a> dot::GraphWalk<'a> for DropRanges {
