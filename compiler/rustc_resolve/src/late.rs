@@ -537,10 +537,12 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         let rib_kind = match fn_kind {
             // Bail if the function is foreign, and thus cannot validly have
             // a body, or if there's no body for some other reason.
-            FnKind::Fn(FnCtxt::Foreign, _, sig, ..) | FnKind::Fn(_, _, sig, .., None) => {
+            FnKind::Fn(FnCtxt::Foreign, _, sig, _, generics, _)
+            | FnKind::Fn(_, _, sig, _, generics, None) => {
                 // We don't need to deal with patterns in parameters, because
                 // they are not possible for foreign or bodiless functions.
                 self.visit_fn_header(&sig.header);
+                self.visit_generics(generics);
                 visit::walk_fn_decl(self, &sig.decl);
                 return;
             }
@@ -559,6 +561,10 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.with_rib(ValueNS, rib_kind, |this| {
             // Create a label rib for the function.
             this.with_label_rib(rib_kind, |this| {
+                if let FnKind::Fn(_, _, _, _, generics, _) = fn_kind {
+                    this.visit_generics(generics);
+                }
+
                 // Add each argument to the rib.
                 this.resolve_params(&declaration.inputs);
 

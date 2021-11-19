@@ -91,16 +91,18 @@ impl<'a> AstValidator<'a> {
         self.is_impl_trait_banned = old;
     }
 
-    fn with_tilde_const_allowed(&mut self, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.is_tilde_const_allowed, true);
+    fn with_tilde_const(&mut self, allowed: bool, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.is_tilde_const_allowed, allowed);
         f(self);
         self.is_tilde_const_allowed = old;
     }
 
+    fn with_tilde_const_allowed(&mut self, f: impl FnOnce(&mut Self)) {
+        self.with_tilde_const(true, f)
+    }
+
     fn with_banned_tilde_const(&mut self, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.is_tilde_const_allowed, false);
-        f(self);
-        self.is_tilde_const_allowed = old;
+        self.with_tilde_const(false, f)
     }
 
     fn with_let_management(
@@ -1202,12 +1204,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
-                if let Const::Yes(_) = sig.header.constness {
-                    self.with_tilde_const_allowed(|this| this.visit_generics(generics));
-                } else {
-                    self.visit_generics(generics);
-                }
-                let kind = FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, body.as_deref());
+                let kind =
+                    FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, generics, body.as_deref());
                 self.visit_fn(kind, item.span, item.id);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
@@ -1555,13 +1553,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             FnSig { span: sig_span, header: FnHeader { ext: Extern::Implicit, .. }, .. },
             _,
             _,
+            _,
         ) = fk
         {
             self.maybe_lint_missing_abi(*sig_span, id);
         }
 
         // Functions without bodies cannot have patterns.
-        if let FnKind::Fn(ctxt, _, sig, _, None) = fk {
+        if let FnKind::Fn(ctxt, _, sig, _, _, None) = fk {
             Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
                 let (code, msg, label) = match ctxt {
                     FnCtxt::Foreign => (
@@ -1596,7 +1595,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             });
         }
 
-        visit::walk_fn(self, fk, span);
+        let tilde_const_allowed =
+            matches!(fk.header(), Some(FnHeader { constness: Const::Yes(_), .. }))
+                || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
+
+        self.with_tilde_const(tilde_const_allowed, |this| visit::walk_fn(this, fk, span));
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
@@ -1670,9 +1673,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
-                self.with_tilde_const_allowed(|this| this.visit_generics(generics));
-                let kind =
-                    FnKind::Fn(FnCtxt::Assoc(ctxt), item.ident, sig, &item.vis, body.as_deref());
+                let kind = FnKind::Fn(
+                    FnCtxt::Assoc(ctxt),
+                    item.ident,
+                    sig,
+                    &item.vis,
+                    generics,
+                    body.as_deref(),
+                );
                 self.visit_fn(kind, item.span, item.id);
             }
             _ => self
