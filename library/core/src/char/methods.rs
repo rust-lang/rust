@@ -1250,7 +1250,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = '\x1b';
+    /// let esc = '\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_alphabetic());
     /// assert!(uppercase_g.is_ascii_alphabetic());
