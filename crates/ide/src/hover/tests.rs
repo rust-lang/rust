@@ -173,7 +173,7 @@ m!(ab$0c);
             ---
 
             Outer
-            "#]],
+        "#]],
     );
 }
 
@@ -1136,6 +1136,39 @@ fn foo() {
 }
 
 #[test]
+fn test_hover_multiple_actions() {
+    check_actions(
+        r#"
+struct Bar;
+struct Foo { bar: Bar }
+
+fn foo(Foo { b$0ar }: &Foo) {}
+        "#,
+        expect![[r#"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..11,
+                                focus_range: 7..10,
+                                name: "Bar",
+                                kind: Struct,
+                                description: "struct Bar",
+                            },
+                        },
+                    ],
+                ),
+            ]
+        "#]],
+    )
+}
+
+#[test]
 fn test_hover_through_literal_string_in_builtin_macro() {
     check_hover_no_result(
         r#"
@@ -1749,9 +1782,6 @@ fn foo_$0test() {}
                         },
                         cfg: None,
                     },
-                ),
-                GoToType(
-                    [],
                 ),
             ]
         "#]],
@@ -2749,21 +2779,21 @@ fn main() {
 }
 "#,
         expect![[r#"
-                *f*
+            *f*
 
-                ```rust
-                f: &i32
-                ```
-                ---
+            ```rust
+            f: &i32
+            ```
+            ---
 
-                ```rust
-                test::S
-                ```
+            ```rust
+            test::S
+            ```
 
-                ```rust
-                f: i32
-                ```
-            "#]],
+            ```rust
+            f: i32
+            ```
+        "#]],
     );
 }
 
