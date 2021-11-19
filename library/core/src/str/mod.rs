@@ -1838,7 +1838,13 @@ impl str {
     /// 'Newline' is precisely a newline character (`0xA`), perhaps
     /// preceded by a carriage return (`0xD`).  I.e., `'\r\n'` or
     /// `'\n'`.  (This is the same definition as used by [`str::lines`]
-    /// and [`std::io::BufRead::lines`].)
+    /// and `std::io::BufRead::lines`.)
+    //
+    // Unfortunately it doesn't seem to be possible to make the reference to `lines`
+    // a link.  This:
+    //    [`std::io::BufRead::lines`]: ../std/io/trait.BufRead.html#method.lines
+    // works in `core`, but fails with a broken link error in `std`, where
+    // this text is incorporated due to `String`'s `Deref`.
     ///
     /// # Examples
     ///
@@ -1857,8 +1863,6 @@ impl str {
     /// assert_eq!(" Hi! ", s.trim_newline());
     /// assert_eq!(" Hi! ", s.trim_newline().trim_newline());
     /// ```
-    ///
-    /// [`std::io::BufRead::lines`]: ../std/io/trait.BufRead.html#method.lines
     #[inline]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
