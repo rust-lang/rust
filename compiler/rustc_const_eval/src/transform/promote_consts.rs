@@ -93,17 +93,8 @@ impl TempState {
 /// returned value in a promoted MIR, unless it's a subset
 /// of a larger candidate.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum Candidate {
-    /// Borrow of a constant temporary, candidate for lifetime extension.
-    Ref(Location),
-}
-
-impl Candidate {
-    fn source_info(&self, body: &Body<'_>) -> SourceInfo {
-        match self {
-            Candidate::Ref(location) => *body.source_info(*location),
-        }
-    }
+pub struct Candidate {
+    location: Location,
 }
 
 struct Collector<'a, 'tcx> {
@@ -167,7 +158,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
         match *rvalue {
             Rvalue::Ref(..) => {
-                self.candidates.push(Candidate::Ref(location));
+                self.candidates.push(Candidate { location });
             }
             _ => {}
         }
@@ -209,36 +200,33 @@ struct Unpromotable;
 
 impl<'tcx> Validator<'_, 'tcx> {
     fn validate_candidate(&self, candidate: Candidate) -> Result<(), Unpromotable> {
-        match candidate {
-            Candidate::Ref(loc) => {
-                let statement = &self.body[loc.block].statements[loc.statement_index];
-                match &statement.kind {
-                    StatementKind::Assign(box (_, Rvalue::Ref(_, kind, place))) => {
-                        // We can only promote interior borrows of promotable temps (non-temps
-                        // don't get promoted anyway).
-                        self.validate_local(place.local)?;
+        let loc = candidate.location;
+        let statement = &self.body[loc.block].statements[loc.statement_index];
+        match &statement.kind {
+            StatementKind::Assign(box (_, Rvalue::Ref(_, kind, place))) => {
+                // We can only promote interior borrows of promotable temps (non-temps
+                // don't get promoted anyway).
+                self.validate_local(place.local)?;
 
-                        // The reference operation itself must be promotable.
-                        // (Needs to come after `validate_local` to avoid ICEs.)
-                        self.validate_ref(*kind, place)?;
+                // The reference operation itself must be promotable.
+                // (Needs to come after `validate_local` to avoid ICEs.)
+                self.validate_ref(*kind, place)?;
 
-                        // We do not check all the projections (they do not get promoted anyway),
-                        // but we do stay away from promoting anything involving a dereference.
-                        if place.projection.contains(&ProjectionElem::Deref) {
-                            return Err(Unpromotable);
-                        }
-
-                        // We cannot promote things that need dropping, since the promoted value
-                        // would not get dropped.
-                        if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
-                            return Err(Unpromotable);
-                        }
-
-                        Ok(())
-                    }
-                    _ => bug!(),
+                // We do not check all the projections (they do not get promoted anyway),
+                // but we do stay away from promoting anything involving a dereference.
+                if place.projection.contains(&ProjectionElem::Deref) {
+                    return Err(Unpromotable);
                 }
+
+                // We cannot promote things that need dropping, since the promoted value
+                // would not get dropped.
+                if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
+                    return Err(Unpromotable);
+                }
+
+                Ok(())
             }
+            _ => bug!(),
         }
     }
 
@@ -871,58 +859,55 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 }))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
-            match candidate {
-                Candidate::Ref(loc) => {
-                    let statement = &mut blocks[loc.block].statements[loc.statement_index];
-                    match statement.kind {
-                        StatementKind::Assign(box (
-                            _,
-                            Rvalue::Ref(ref mut region, borrow_kind, ref mut place),
-                        )) => {
-                            // Use the underlying local for this (necessarily interior) borrow.
-                            let ty = local_decls.local_decls()[place.local].ty;
-                            let span = statement.source_info.span;
+            let loc = candidate.location;
+            let statement = &mut blocks[loc.block].statements[loc.statement_index];
+            match statement.kind {
+                StatementKind::Assign(box (
+                    _,
+                    Rvalue::Ref(ref mut region, borrow_kind, ref mut place),
+                )) => {
+                    // Use the underlying local for this (necessarily interior) borrow.
+                    let ty = local_decls.local_decls()[place.local].ty;
+                    let span = statement.source_info.span;
 
-                            let ref_ty = tcx.mk_ref(
-                                tcx.lifetimes.re_erased,
-                                ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
-                            );
+                    let ref_ty = tcx.mk_ref(
+                        tcx.lifetimes.re_erased,
+                        ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
+                    );
 
-                            *region = tcx.lifetimes.re_erased;
+                    *region = tcx.lifetimes.re_erased;
 
-                            let mut projection = vec![PlaceElem::Deref];
-                            projection.extend(place.projection);
-                            place.projection = tcx.intern_place_elems(&projection);
+                    let mut projection = vec![PlaceElem::Deref];
+                    projection.extend(place.projection);
+                    place.projection = tcx.intern_place_elems(&projection);
 
-                            // Create a temp to hold the promoted reference.
-                            // This is because `*r` requires `r` to be a local,
-                            // otherwise we would use the `promoted` directly.
-                            let mut promoted_ref = LocalDecl::new(ref_ty, span);
-                            promoted_ref.source_info = statement.source_info;
-                            let promoted_ref = local_decls.push(promoted_ref);
-                            assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
+                    // Create a temp to hold the promoted reference.
+                    // This is because `*r` requires `r` to be a local,
+                    // otherwise we would use the `promoted` directly.
+                    let mut promoted_ref = LocalDecl::new(ref_ty, span);
+                    promoted_ref.source_info = statement.source_info;
+                    let promoted_ref = local_decls.push(promoted_ref);
+                    assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
 
-                            let promoted_ref_statement = Statement {
-                                source_info: statement.source_info,
-                                kind: StatementKind::Assign(Box::new((
-                                    Place::from(promoted_ref),
-                                    Rvalue::Use(promoted_operand(ref_ty, span)),
-                                ))),
-                            };
-                            self.extra_statements.push((loc, promoted_ref_statement));
+                    let promoted_ref_statement = Statement {
+                        source_info: statement.source_info,
+                        kind: StatementKind::Assign(Box::new((
+                            Place::from(promoted_ref),
+                            Rvalue::Use(promoted_operand(ref_ty, span)),
+                        ))),
+                    };
+                    self.extra_statements.push((loc, promoted_ref_statement));
 
-                            Rvalue::Ref(
-                                tcx.lifetimes.re_erased,
-                                borrow_kind,
-                                Place {
-                                    local: mem::replace(&mut place.local, promoted_ref),
-                                    projection: List::empty(),
-                                },
-                            )
-                        }
-                        _ => bug!(),
-                    }
+                    Rvalue::Ref(
+                        tcx.lifetimes.re_erased,
+                        borrow_kind,
+                        Place {
+                            local: mem::replace(&mut place.local, promoted_ref),
+                            projection: List::empty(),
+                        },
+                    )
                 }
+                _ => bug!(),
             }
         };
 
@@ -964,17 +949,13 @@ pub fn promote_candidates<'tcx>(
 
     let mut extra_statements = vec![];
     for candidate in candidates.into_iter().rev() {
-        match candidate {
-            Candidate::Ref(Location { block, statement_index }) => {
-                if let StatementKind::Assign(box (place, _)) =
-                    &body[block].statements[statement_index].kind
-                {
-                    if let Some(local) = place.as_local() {
-                        if temps[local] == TempState::PromotedOut {
-                            // Already promoted.
-                            continue;
-                        }
-                    }
+        let Location { block, statement_index } = candidate.location;
+        if let StatementKind::Assign(box (place, _)) = &body[block].statements[statement_index].kind
+        {
+            if let Some(local) = place.as_local() {
+                if temps[local] == TempState::PromotedOut {
+                    // Already promoted.
+                    continue;
                 }
             }
         }
@@ -982,7 +963,7 @@ pub fn promote_candidates<'tcx>(
         // Declare return place local so that `mir::Body::new` doesn't complain.
         let initial_locals = iter::once(LocalDecl::new(tcx.types.never, body.span)).collect();
 
-        let mut scope = body.source_scopes[candidate.source_info(body).scope].clone();
+        let mut scope = body.source_scopes[body.source_info(candidate.location).scope].clone();
         scope.parent_scope = None;
 
         let promoted = Body::new(
