@@ -900,9 +900,7 @@ impl<'tcx> ResolvedTypeParamEraser<'tcx> {
     /// Replace not yet inferred const params with their def name.
     fn replace_infers(&self, c: &'tcx Const<'tcx>, index: u32, name: Symbol) -> &'tcx Const<'tcx> {
         match c.val {
-            ty::ConstKind::Infer(..) => {
-                self.tcx().mk_const_param(index, name, c.ty)
-            }
+            ty::ConstKind::Infer(..) => self.tcx().mk_const_param(index, name, c.ty),
             _ => c,
         }
     }
