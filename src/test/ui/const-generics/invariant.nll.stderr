@@ -1,0 +1,26 @@
+warning: conflicting implementations of trait `SadBee` for type `for<'a> fn(&'a ())`
+  --> $DIR/invariant.rs:14:1
+   |
+LL | impl SadBee for for<'a> fn(&'a ()) {
+   | ---------------------------------- first implementation here
+...
+LL | impl SadBee for fn(&'static ()) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a> fn(&'a ())`
+   |
+   = note: `#[warn(coherence_leak_check)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56105 <https://github.com/rust-lang/rust/issues/56105>
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+
+error[E0308]: mismatched types
+  --> $DIR/invariant.rs:27:5
+   |
+LL |     v
+   |     ^ one type is more general than the other
+   |
+   = note: expected reference `&Foo<fn(&())>`
+              found reference `&Foo<for<'a> fn(&'a ())>`
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.
