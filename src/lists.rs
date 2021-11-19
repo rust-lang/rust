@@ -444,10 +444,15 @@ where
                 let offset = formatting.shape.indent + overhead;
                 let comment_shape = Shape::legacy(width, offset);
 
-                // Use block-style only for the last item or multiline comments.
-                let block_style = !formatting.ends_with_newline && last
-                    || comment.trim().contains('\n')
-                    || comment.trim().len() > width;
+                let block_style = if !formatting.ends_with_newline && last {
+                    true
+                } else if starts_with_newline(comment) {
+                    false
+                } else if comment.trim().contains('\n') || comment.trim().len() > width {
+                    true
+                } else {
+                    false
+                };
 
                 rewrite_comment(
                     comment.trim_start(),
