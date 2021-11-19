@@ -87,7 +87,7 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
     };
 
     for fragment in docs {
-        if fragment.doc.as_str().lines().count() == 0 {
+        if fragment.doc.as_str().lines().next().is_none() {
             continue;
         }
 
