@@ -103,6 +103,8 @@ extern "unadjusted" {
     fn vpaddq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
     #[link_name = "llvm.aarch64.neon.addp.v4i32"]
     fn vpaddq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+    #[link_name = "llvm.aarch64.neon.addp.v2i64"]
+    fn vpaddq_s64_(a: int64x2_t, b: int64x2_t) -> int64x2_t;
     #[link_name = "llvm.aarch64.neon.addp.v16i8"]
     fn vpaddq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
 
@@ -1132,6 +1134,20 @@ pub unsafe fn vpaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[cfg_attr(test, assert_instr(addp))]
 pub unsafe fn vpaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     transmute(vpaddq_s32_(transmute(a), transmute(b)))
+}
+/// Add pairwise
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(addp))]
+pub unsafe fn vpaddq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    vpaddq_s64_(a, b)
+}
+/// Add pairwise
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(addp))]
+pub unsafe fn vpaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    transmute(vpaddq_s64_(transmute(a), transmute(b)))
 }
 /// Add pairwise
 #[inline]
@@ -3488,6 +3504,14 @@ mod tests {
         assert_eq!(r, e);
     }
     #[simd_test(enable = "neon")]
+    unsafe fn test_vpaddq_s64() {
+        let a = i64x2::new(1, 2);
+        let b = i64x2::new(0, -1);
+        let r: i64x2 = transmute(vpaddq_s64(transmute(a), transmute(b)));
+        let e = i64x2::new(3, -1);
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
     unsafe fn test_vpaddq_s8() {
         let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let b = i8x16::new(
@@ -3513,6 +3537,14 @@ mod tests {
         let b = u32x4::new(17, 18, 19, 20);
         let r: u32x4 = transmute(vpaddq_u32(transmute(a), transmute(b)));
         let e = u32x4::new(1, 5, 35, 39);
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vpaddq_u64() {
+        let a = u64x2::new(0, 1);
+        let b = u64x2::new(17, 18);
+        let r: u64x2 = transmute(vpaddq_u64(transmute(a), transmute(b)));
+        let e = u64x2::new(1, 35);
         assert_eq!(r, e);
     }
     #[simd_test(enable = "neon")]

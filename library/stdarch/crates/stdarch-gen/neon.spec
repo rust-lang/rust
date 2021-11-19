@@ -888,7 +888,17 @@ link-arm = vcls._EXT_
 link-aarch64 = cls._EXT_
 generate int*_t
 
-/// Signed count leading sign bits
+/// Count leading sign bits
+name = vcls
+multi_fn = transmute, {vcls-signed-noext, {transmute, a}}
+a = MIN, MAX, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, MAX
+validate BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1
+
+arm = vcls
+aarch64 = cls
+generate uint*_t
+
+/// Count leading zero bits
 name = vclz
 multi_fn = self-signed-ext, a
 a = MIN, -1, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, MAX
@@ -898,7 +908,7 @@ arm = vclz.
 aarch64 = clz
 generate int*_t
 
-/// Unsigned count leading sign bits
+/// Count leading zero bits
 name = vclz
 multi_fn = transmute, {self-signed-ext, transmute(a)}
 a = MIN, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, MAX
@@ -1089,8 +1099,8 @@ validate 1, 0, 0, 0, 0, 0, 0, 0
 
 aarch64 = nop
 arm = nop
-generate u64:int8x8_t, u64:int16x4_t: u64:int32x2_t, u64:int64x1_t
-generate u64:uint8x8_t, u64:uint16x4_t: u64:uint32x2_t, u64:uint64x1_t
+generate u64:int8x8_t, u64:int16x4_t, u64:int32x2_t, u64:int64x1_t
+generate u64:uint8x8_t, u64:uint16x4_t, u64:uint32x2_t, u64:uint64x1_t
 generate u64:poly8x8_t, u64:poly16x4_t
 target = aes
 generate u64:poly64x1_t
@@ -5933,6 +5943,38 @@ validate 4
 aarch64 = uqshl
 generate u8, u16, u32, u64
 
+/// Signed saturating shift left unsigned
+name = vqshlu
+n-suffix
+constn = N
+multi_fn = static_assert_imm-out_bits_exp_len-N
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+n = 2
+validate 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
+arm-aarch64-separate
+
+aarch64 = sqshlu
+link-aarch64 = sqshlu._EXT_
+const-aarch64 = {dup-in_len-N as ttn}
+arm = vqshlu
+link-arm = vqshiftsu._EXT_
+const-arm = N as ttn
+generate int8x8_t:uint8x8_t, int16x4_t:uint16x4_t, int32x2_t:uint32x2_t, int64x1_t:uint64x1_t
+generate int8x16_t:uint8x16_t, int16x8_t:uint16x8_t, int32x4_t:uint32x4_t, int64x2_t:uint64x2_t
+
+/// Signed saturating shift left unsigned
+name = vqshlu
+n-suffix
+constn = N
+multi_fn = static_assert_imm-out_bits_exp_len-N
+multi_fn = simd_extract, {vqshlu_n-in_ntt-::<N>, {vdup_n-in_ntt-noext, a}}, 0
+a = 1
+n = 2
+validate 4
+
+aarch64 = sqshlu
+generate i8:u8, i16:u16, i32:u32, i64:u64
+
 /// Signed saturating shift right narrow
 name = vqshrn
 noq-n-suffix
@@ -6216,9 +6258,6 @@ a = 0, 1, 2, 3, 4, 5, 6, 7
 validate 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0
 
 aarch64 = nop
-generate poly64x1_t:int32x2_t, poly64x1_t:uint32x2_t
-generate poly64x2_t:int32x4_t, poly64x2_t:uint32x4_t
-
 arm = nop
 generate int16x4_t:int8x8_t, uint16x4_t:int8x8_t, poly16x4_t:int8x8_t, int32x2_t:int16x4_t, uint32x2_t:int16x4_t, int64x1_t:int32x2_t, uint64x1_t:int32x2_t
 generate int16x8_t:int8x16_t, uint16x8_t:int8x16_t, poly16x8_t:int8x16_t, int32x4_t:int16x8_t, uint32x4_t:int16x8_t, int64x2_t:int32x4_t, uint64x2_t:int32x4_t
@@ -6226,6 +6265,10 @@ generate poly16x4_t:uint8x8_t, int16x4_t:uint8x8_t, uint16x4_t:uint8x8_t, int32x
 generate poly16x8_t:uint8x16_t, int16x8_t:uint8x16_t, uint16x8_t:uint8x16_t, int32x4_t:uint16x8_t, uint32x4_t:uint16x8_t, int64x2_t:uint32x4_t, uint64x2_t:uint32x4_t
 generate poly16x4_t:poly8x8_t, int16x4_t:poly8x8_t, uint16x4_t:poly8x8_t, int32x2_t:poly16x4_t, uint32x2_t:poly16x4_t
 generate poly16x8_t:poly8x16_t, int16x8_t:poly8x16_t, uint16x8_t:poly8x16_t, int32x4_t:poly16x8_t, uint32x4_t:poly16x8_t
+target = aes
+generate poly64x1_t:int32x2_t, poly64x1_t:uint32x2_t
+generate poly64x2_t:int32x4_t, poly64x2_t:uint32x4_t
+generate p128:int64x2_t, p128:uint64x2_t, p128:poly64x2_t
 
 /// Vector reinterpret cast operation
 name = vreinterpret
@@ -6235,9 +6278,6 @@ a = 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0
 validate 0, 1, 2, 3, 4, 5, 6, 7
 
 aarch64 = nop
-generate int32x2_t:poly64x1_t, uint32x2_t:poly64x1_t
-generate int32x4_t:poly64x2_t, uint32x4_t:poly64x2_t
-
 arm = nop
 generate poly8x8_t:int16x4_t, int8x8_t:int16x4_t, uint8x8_t:int16x4_t, poly16x4_t:int32x2_t, int16x4_t:int32x2_t, uint16x4_t:int32x2_t, int32x2_t:int64x1_t, uint32x2_t:int64x1_t
 generate poly8x16_t:int16x8_t, int8x16_t:int16x8_t, uint8x16_t:int16x8_t, poly16x8_t:int32x4_t, int16x8_t:int32x4_t, uint16x8_t:int32x4_t, int32x4_t:int64x2_t, uint32x4_t:int64x2_t
@@ -6245,6 +6285,10 @@ generate poly8x8_t:uint16x4_t, int8x8_t:uint16x4_t, uint8x8_t:uint16x4_t, poly16
 generate poly8x16_t:uint16x8_t, int8x16_t:uint16x8_t, uint8x16_t:uint16x8_t, poly16x8_t:uint32x4_t, int16x8_t:uint32x4_t, uint16x8_t:uint32x4_t, int32x4_t:uint64x2_t, uint32x4_t:uint64x2_t
 generate poly8x8_t:poly16x4_t, int8x8_t:poly16x4_t, uint8x8_t:poly16x4_t
 generate poly8x16_t:poly16x8_t, int8x16_t:poly16x8_t, uint8x16_t:poly16x8_t
+target = aes
+generate int32x2_t:poly64x1_t, uint32x2_t:poly64x1_t
+generate int32x4_t:poly64x2_t, uint32x4_t:poly64x2_t
+generate int64x2_t:p128, uint64x2_t:p128, poly64x2_t:p128
 
 /// Vector reinterpret cast operation
 name = vreinterpret
@@ -6254,9 +6298,6 @@ a = 0, 1, 2, 3
 validate 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0
 
 aarch64 = nop
-generate poly64x1_t:int16x4_t, poly64x1_t:uint16x4_t, poly64x1_t:poly16x4_t
-generate poly64x2_t:int16x8_t, poly64x2_t:uint16x8_t, poly64x2_t:poly16x8_t
-
 arm = nop
 generate int32x2_t:int8x8_t, uint32x2_t:int8x8_t, int64x1_t:int16x4_t, uint64x1_t:int16x4_t
 generate int32x4_t:int8x16_t, uint32x4_t:int8x16_t, int64x2_t:int16x8_t, uint64x2_t:int16x8_t
@@ -6264,6 +6305,10 @@ generate int32x2_t:uint8x8_t, uint32x2_t:uint8x8_t, int64x1_t:uint16x4_t, uint64
 generate int32x4_t:uint8x16_t, uint32x4_t:uint8x16_t, int64x2_t:uint16x8_t, uint64x2_t:uint16x8_t
 generate int32x2_t:poly8x8_t, uint32x2_t:poly8x8_t, int64x1_t:poly16x4_t, uint64x1_t:poly16x4_t
 generate int32x4_t:poly8x16_t, uint32x4_t:poly8x16_t, int64x2_t:poly16x8_t, uint64x2_t:poly16x8_t
+target = aes
+generate poly64x1_t:int16x4_t, poly64x1_t:uint16x4_t, poly64x1_t:poly16x4_t
+generate poly64x2_t:int16x8_t, poly64x2_t:uint16x8_t, poly64x2_t:poly16x8_t
+generate p128:int32x4_t, p128:uint32x4_t
 
 /// Vector reinterpret cast operation
 name = vreinterpret
@@ -6273,14 +6318,15 @@ a = 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0
 validate 0, 1, 2, 3
 
 aarch64 = nop
-generate poly16x4_t:poly64x1_t, int16x4_t:poly64x1_t, uint16x4_t:poly64x1_t
-generate poly16x8_t:poly64x2_t, int16x8_t:poly64x2_t, uint16x8_t:poly64x2_t
-
 arm = nop
 generate poly8x8_t:int32x2_t, int8x8_t:int32x2_t, uint8x8_t:int32x2_t, poly16x4_t:int64x1_t, int16x4_t:int64x1_t, uint16x4_t:int64x1_t
 generate poly8x16_t:int32x4_t, int8x16_t:int32x4_t, uint8x16_t:int32x4_t, poly16x8_t:int64x2_t, int16x8_t:int64x2_t, uint16x8_t:int64x2_t
 generate poly8x8_t:uint32x2_t, int8x8_t:uint32x2_t, uint8x8_t:uint32x2_t, poly16x4_t:uint64x1_t, int16x4_t:uint64x1_t, uint16x4_t:uint64x1_t
 generate poly8x16_t:uint32x4_t, int8x16_t:uint32x4_t, uint8x16_t:uint32x4_t, poly16x8_t:uint64x2_t, int16x8_t:uint64x2_t, uint16x8_t:uint64x2_t
+target = aes
+generate poly16x4_t:poly64x1_t, int16x4_t:poly64x1_t, uint16x4_t:poly64x1_t
+generate poly16x8_t:poly64x2_t, int16x8_t:poly64x2_t, uint16x8_t:poly64x2_t
+generate int32x4_t:p128, uint32x4_t:p128
 
 /// Vector reinterpret cast operation
 name = vreinterpret
@@ -6290,12 +6336,13 @@ a = 0, 1
 validate 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0
 
 aarch64 = nop
-generate poly64x1_t:int8x8_t, poly64x1_t:uint8x8_t, poly64x1_t:poly8x8_t
-generate poly64x2_t:int8x16_t, poly64x2_t:uint8x16_t, poly64x2_t:poly8x16_t
-
 arm = nop
 generate int64x1_t:int8x8_t, uint64x1_t:int8x8_t, int64x1_t:uint8x8_t, uint64x1_t:uint8x8_t, int64x1_t:poly8x8_t, uint64x1_t:poly8x8_t
 generate int64x2_t:int8x16_t, uint64x2_t:int8x16_t, int64x2_t:uint8x16_t, uint64x2_t:uint8x16_t, int64x2_t:poly8x16_t, uint64x2_t:poly8x16_t
+target = aes
+generate poly64x1_t:int8x8_t, poly64x1_t:uint8x8_t, poly64x1_t:poly8x8_t
+generate poly64x2_t:int8x16_t, poly64x2_t:uint8x16_t, poly64x2_t:poly8x16_t
+generate p128:int16x8_t, p128:uint16x8_t, p128:poly16x8_t
 
 /// Vector reinterpret cast operation
 name = vreinterpret
@@ -6305,12 +6352,37 @@ a = 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0
 validate 0, 1
 
 aarch64 = nop
-generate poly8x8_t:poly64x1_t, int8x8_t:poly64x1_t, uint8x8_t:poly64x1_t
-generate poly8x16_t:poly64x2_t, int8x16_t:poly64x2_t, uint8x16_t:poly64x2_t
-
 arm = nop
 generate poly8x8_t:int64x1_t, int8x8_t:int64x1_t, uint8x8_t:int64x1_t, poly8x8_t:uint64x1_t, int8x8_t:uint64x1_t, uint8x8_t:uint64x1_t
 generate poly8x16_t:int64x2_t, int8x16_t:int64x2_t, uint8x16_t:int64x2_t, poly8x16_t:uint64x2_t, int8x16_t:uint64x2_t, uint8x16_t:uint64x2_t
+target = aes
+generate poly8x8_t:poly64x1_t, int8x8_t:poly64x1_t, uint8x8_t:poly64x1_t
+generate poly8x16_t:poly64x2_t, int8x16_t:poly64x2_t, uint8x16_t:poly64x2_t
+generate int16x8_t:p128, uint16x8_t:p128, poly16x8_t:p128
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+validate 1
+target = aes
+
+aarch64 = nop
+arm = nop
+generate int8x16_t:p128, uint8x16_t:p128, poly8x16_t:p128
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 1
+validate 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+target = aes
+
+aarch64 = nop
+arm = nop
+generate p128:int8x16_t, p128:uint8x16_t, p128:poly8x16_t
 
 /// Vector reinterpret cast operation
 name = vreinterpret
@@ -6326,6 +6398,7 @@ generate float64x1_t:uint8x8_t, float64x1_t:uint16x4_t, float64x1_t:uint32x2_t, 
 generate float64x2_t:uint8x16_t, float64x2_t:uint16x8_t, float64x2_t:uint32x4_t, float64x2_t:uint64x2_t
 generate float64x1_t:poly8x8_t, float64x1_t:poly16x4_t, float32x2_t:poly64x1_t, float64x1_t:poly64x1_t
 generate float64x2_t:poly8x16_t, float64x2_t:poly16x8_t, float32x4_t:poly64x2_t, float64x2_t:poly64x2_t
+generate float64x2_t:p128
 
 arm = nop
 generate float32x2_t:int8x8_t, float32x2_t:int16x4_t, float32x2_t:int32x2_t, float32x2_t:int64x1_t
@@ -6334,6 +6407,7 @@ generate float32x2_t:uint8x8_t, float32x2_t:uint16x4_t, float32x2_t:uint32x2_t, 
 generate float32x4_t:uint8x16_t, float32x4_t:uint16x8_t, float32x4_t:uint32x4_t, float32x4_t:uint64x2_t
 generate float32x2_t:poly8x8_t, float32x2_t:poly16x4_t
 generate float32x4_t:poly8x16_t, float32x4_t:poly16x8_t
+generate float32x4_t:p128
 
 /// Vector reinterpret cast operation
 name = vreinterpret
@@ -6349,6 +6423,7 @@ generate poly8x8_t:float64x1_t, uint16x4_t:float64x1_t, uint32x2_t:float64x1_t, 
 generate poly8x16_t:float64x2_t, uint16x8_t:float64x2_t, uint32x4_t:float64x2_t, uint64x2_t:float64x2_t
 generate uint8x8_t:float64x1_t, poly16x4_t:float64x1_t, poly64x1_t:float64x1_t, poly64x1_t:float32x2_t
 generate uint8x16_t:float64x2_t, poly16x8_t:float64x2_t, poly64x2_t:float64x2_t, poly64x2_t:float32x4_t
+generate p128:float64x2_t
 
 arm = nop
 generate int8x8_t:float32x2_t, int16x4_t:float32x2_t, int32x2_t:float32x2_t, int64x1_t:float32x2_t
@@ -6357,6 +6432,7 @@ generate uint8x8_t:float32x2_t, uint16x4_t:float32x2_t, uint32x2_t:float32x2_t, 
 generate uint8x16_t:float32x4_t, uint16x8_t:float32x4_t, uint32x4_t:float32x4_t, uint64x2_t:float32x4_t
 generate poly8x8_t:float32x2_t, poly16x4_t:float32x2_t
 generate poly8x16_t:float32x4_t, poly16x8_t:float32x4_t
+generate p128:float32x4_t
 
 /// Vector reinterpret cast operation
 name = vreinterpret
@@ -7447,3 +7523,31 @@ validate 7
 aarch64 = sqabs
 link-aarch64 = sqabs._EXT_
 generate i32:i32, i64:i64
+
+/// Shift left and insert
+name = vsli
+n-suffix
+constn = N
+multi_fn = static_assert-N-0-63
+multi_fn = transmute, {vsli_n-in_ntt-::<N>, transmute(a), transmute(b)}
+a = 333
+b = 2042
+n = 2
+validate 8169
+
+aarch64 = sli
+generate i64, u64
+
+/// Shift right and insert
+name = vsri
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = transmute, {vsri_n-in_ntt-::<N>, transmute(a), transmute(b)}
+a = 333
+b = 2042
+n = 2
+validate 510
+
+aarch64 = sri
+generate i64, u64

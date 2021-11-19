@@ -2022,7 +2022,7 @@ fn gen_arm(
             link_arm, current_fn, arm_ext_inputs, arm_ext_output,
         ));
         let (aarch64_ext_inputs, aarch64_ext_output) = {
-            if const_aarch64.is_some() {
+            if let Some(const_aarch64) = const_aarch64 {
                 if !matches!(fn_type, Fntype::Normal) {
                     let ptr_type = match fn_type {
                         Fntype::Load => "*const i8",
@@ -2047,6 +2047,19 @@ fn gen_arm(
                         format!(" -> {}", out_t)
                     };
                     (inputs, out)
+                } else if const_aarch64.contains("dup-in_len-N as ttn") {
+                    (
+                        match para_num {
+                            1 => format!("a: {}, n: {}", in_t[0], in_t[0]),
+                            2 => format!("a: {}, b: {}, n: {}", in_t[0], in_t[1], in_t[1]),
+                            3 => format!(
+                                "a: {}, b: {}, c: {}, n: {}",
+                                in_t[0], in_t[1], in_t[2], in_t[1]
+                            ),
+                            _ => unimplemented!("unknown para_num"),
+                        },
+                        format!(" -> {}", out_t),
+                    )
                 } else {
                     (
                         match para_num {
@@ -2268,6 +2281,18 @@ fn gen_arm(
                             subs,
                             constn.as_deref().unwrap()
                         )
+                    } else if const_aarch64.contains("dup-in_len-N as ttn") {
+                        let const_aarch64 = format!("N as {}", type_to_native_type(in_t[1]));
+                        let mut cnt = String::from(in_t[1]);
+                        cnt.push_str("(");
+                        for i in 0..type_len(in_t[1]) {
+                            if i != 0 {
+                                cnt.push_str(", ");
+                            }
+                            cnt.push_str(&const_aarch64);
+                        }
+                        cnt.push_str(")");
+                        format!("{}(a, {})", current_fn, cnt)
                     } else {
                         match para_num {
                             1 => format!("{}(a, {})", current_fn, const_aarch64),

@@ -1,59 +1,5 @@
 ## The following neon instructions are currently not implemented in stdarch
 
-### Can be implemented next:
-
-`vcls_u16`
-
-`vcls_u32`
-
-`vcls_u8`
-
-`vclsq_u16`
-
-`vclsq_u32`
-
-`vclsq_u8`
-
-`vcreate_s16`
-
-`vcreate_u16`
-
-`vpaddq_s64`
-
-`vpaddq_u64`
-
-`vreinterpretq_p128_f32`
-
-`vreinterpretq_p128_f64`
-
-`vreinterpretq_p128_p16`
-
-`vreinterpretq_p128_p8`
-
-`vreinterpretq_p128_s16`
-
-`vreinterpretq_p128_s32`
-
-`vreinterpretq_p128_s64`
-
-`vreinterpretq_p128_s8`
-
-`vreinterpretq_p128_u16`
-
-`vreinterpretq_p128_u32`
-
-`vreinterpretq_p128_u64`
-
-`vreinterpretq_p128_u8`
-
-`vslid_n_s64`
-
-`vslid_n_u64`
-
-`vsrid_n_s64`
-
-`vsrid_n_u64`
-
 ### Not implemented on arm:
 
 `vcadd_rot270_f32`
@@ -167,28 +113,4 @@
 `vusdotq_laneq_s32`
 
 `vusdotq_s32v`
-
-`vqshlu_n_s16`
-
-`vqshlu_n_s32`
-
-`vqshlu_n_s64`
-
-`vqshlu_n_s8`
-
-`vqshlub_n_s8`
-
-`vqshlud_n_s64`
-
-`vqshluh_n_s16`
-
-`vqshluq_n_s16`
-
-`vqshluq_n_s32`
-
-`vqshluq_n_s64`
-
-`vqshluq_n_s8`
-
-`vqshlus_n_s32`
 

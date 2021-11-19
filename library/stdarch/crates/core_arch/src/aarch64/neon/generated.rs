@@ -10388,6 +10388,46 @@ pub unsafe fn vqshld_n_u64<const N: i32>(a: u64) -> u64 {
     simd_extract(vqshl_n_u64::<N>(vdup_n_u64(a)), 0)
 }
 
+/// Signed saturating shift left unsigned
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlub_n_s8<const N: i32>(a: i8) -> u8 {
+    static_assert_imm3!(N);
+    simd_extract(vqshlu_n_s8::<N>(vdup_n_s8(a)), 0)
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshluh_n_s16<const N: i32>(a: i16) -> u16 {
+    static_assert_imm4!(N);
+    simd_extract(vqshlu_n_s16::<N>(vdup_n_s16(a)), 0)
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlus_n_s32<const N: i32>(a: i32) -> u32 {
+    static_assert_imm5!(N);
+    simd_extract(vqshlu_n_s32::<N>(vdup_n_s32(a)), 0)
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlud_n_s64<const N: i32>(a: i64) -> u64 {
+    static_assert_imm6!(N);
+    simd_extract(vqshlu_n_s64::<N>(vdup_n_s64(a)), 0)
+}
+
 /// Signed saturating shift right narrow
 #[inline]
 #[target_feature(enable = "neon")]
@@ -10954,262 +10994,6 @@ pub unsafe fn vreinterpretq_p64_u64(a: uint64x2_t) -> poly64x2_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_s32_p64(a: poly64x1_t) -> int32x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_u32_p64(a: poly64x1_t) -> uint32x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_s32_p64(a: poly64x2_t) -> int32x4_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_u32_p64(a: poly64x2_t) -> uint32x4_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_p64_s32(a: int32x2_t) -> poly64x1_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_p64_u32(a: uint32x2_t) -> poly64x1_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_p64_s32(a: int32x4_t) -> poly64x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_p64_u32(a: uint32x4_t) -> poly64x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_s16_p64(a: poly64x1_t) -> int16x4_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_u16_p64(a: poly64x1_t) -> uint16x4_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_p16_p64(a: poly64x1_t) -> poly16x4_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_s16_p64(a: poly64x2_t) -> int16x8_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_u16_p64(a: poly64x2_t) -> uint16x8_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_p16_p64(a: poly64x2_t) -> poly16x8_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_p64_p16(a: poly16x4_t) -> poly64x1_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_p64_s16(a: int16x4_t) -> poly64x1_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_p64_u16(a: uint16x4_t) -> poly64x1_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_p64_p16(a: poly16x8_t) -> poly64x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_p64_s16(a: int16x8_t) -> poly64x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_p64_u16(a: uint16x8_t) -> poly64x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_s8_p64(a: poly64x1_t) -> int8x8_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_u8_p64(a: poly64x1_t) -> uint8x8_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_p8_p64(a: poly64x1_t) -> poly8x8_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_s8_p64(a: poly64x2_t) -> int8x16_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_u8_p64(a: poly64x2_t) -> uint8x16_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_p8_p64(a: poly64x2_t) -> poly8x16_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_p64_p8(a: poly8x8_t) -> poly64x1_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_p64_s8(a: int8x8_t) -> poly64x1_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_p64_u8(a: uint8x8_t) -> poly64x1_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_p64_p8(a: poly8x16_t) -> poly64x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_p64_s8(a: int8x16_t) -> poly64x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_p64_u8(a: uint8x16_t) -> poly64x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_s8_f64(a: float64x1_t) -> int8x8_t {
     transmute(a)
 }
@@ -11402,6 +11186,14 @@ pub unsafe fn vreinterpretq_p64_f64(a: float64x2_t) -> poly64x2_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_f64(a: float64x2_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpret_f64_s8(a: int8x8_t) -> float64x1_t {
     transmute(a)
 }
@@ -11587,6 +11379,14 @@ pub unsafe fn vreinterpretq_f64_p64(a: poly64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vreinterpretq_f32_p64(a: poly64x2_t) -> float32x4_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vreinterpretq_f64_p128(a: p128) -> float64x2_t {
     transmute(a)
 }
 
@@ -13391,6 +13191,46 @@ pub unsafe fn vqabsd_s64(a: i64) -> i64 {
         fn vqabsd_s64_(a: i64) -> i64;
     }
     vqabsd_s64_(a)
+}
+
+/// Shift left and insert
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vslid_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
+    static_assert!(N : i32 where N >= 0 && N <= 63);
+    transmute(vsli_n_s64::<N>(transmute(a), transmute(b)))
+}
+
+/// Shift left and insert
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vslid_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
+    static_assert!(N : i32 where N >= 0 && N <= 63);
+    transmute(vsli_n_u64::<N>(transmute(a), transmute(b)))
+}
+
+/// Shift right and insert
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsrid_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    transmute(vsri_n_s64::<N>(transmute(a), transmute(b)))
+}
+
+/// Shift right and insert
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsrid_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    transmute(vsri_n_u64::<N>(transmute(a), transmute(b)))
 }
 
 #[cfg(test)]
@@ -21743,6 +21583,38 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vqshlub_n_s8() {
+        let a: i8 = 1;
+        let e: u8 = 4;
+        let r: u8 = transmute(vqshlub_n_s8::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqshluh_n_s16() {
+        let a: i16 = 1;
+        let e: u16 = 4;
+        let r: u16 = transmute(vqshluh_n_s16::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqshlus_n_s32() {
+        let a: i32 = 1;
+        let e: u32 = 4;
+        let r: u32 = transmute(vqshlus_n_s32::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqshlud_n_s64() {
+        let a: i64 = 1;
+        let e: u64 = 4;
+        let r: u64 = transmute(vqshlud_n_s64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vqshrnd_n_s64() {
         let a: i64 = 0;
         let e: i32 = 0;
@@ -22180,262 +22052,6 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_s32_p64() {
-        let a: i64x1 = i64x1::new(0);
-        let e: i32x2 = i32x2::new(0, 0);
-        let r: i32x2 = transmute(vreinterpret_s32_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_u32_p64() {
-        let a: i64x1 = i64x1::new(0);
-        let e: u32x2 = u32x2::new(0, 0);
-        let r: u32x2 = transmute(vreinterpret_u32_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_s32_p64() {
-        let a: i64x2 = i64x2::new(0, 1);
-        let e: i32x4 = i32x4::new(0, 0, 1, 0);
-        let r: i32x4 = transmute(vreinterpretq_s32_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_u32_p64() {
-        let a: i64x2 = i64x2::new(0, 1);
-        let e: u32x4 = u32x4::new(0, 0, 1, 0);
-        let r: u32x4 = transmute(vreinterpretq_u32_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_p64_s32() {
-        let a: i32x2 = i32x2::new(0, 0);
-        let e: i64x1 = i64x1::new(0);
-        let r: i64x1 = transmute(vreinterpret_p64_s32(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_p64_u32() {
-        let a: u32x2 = u32x2::new(0, 0);
-        let e: i64x1 = i64x1::new(0);
-        let r: i64x1 = transmute(vreinterpret_p64_u32(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_p64_s32() {
-        let a: i32x4 = i32x4::new(0, 0, 1, 0);
-        let e: i64x2 = i64x2::new(0, 1);
-        let r: i64x2 = transmute(vreinterpretq_p64_s32(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_p64_u32() {
-        let a: u32x4 = u32x4::new(0, 0, 1, 0);
-        let e: i64x2 = i64x2::new(0, 1);
-        let r: i64x2 = transmute(vreinterpretq_p64_u32(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_s16_p64() {
-        let a: i64x1 = i64x1::new(0);
-        let e: i16x4 = i16x4::new(0, 0, 0, 0);
-        let r: i16x4 = transmute(vreinterpret_s16_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_u16_p64() {
-        let a: i64x1 = i64x1::new(0);
-        let e: u16x4 = u16x4::new(0, 0, 0, 0);
-        let r: u16x4 = transmute(vreinterpret_u16_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_p16_p64() {
-        let a: i64x1 = i64x1::new(0);
-        let e: i16x4 = i16x4::new(0, 0, 0, 0);
-        let r: i16x4 = transmute(vreinterpret_p16_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_s16_p64() {
-        let a: i64x2 = i64x2::new(0, 1);
-        let e: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
-        let r: i16x8 = transmute(vreinterpretq_s16_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_u16_p64() {
-        let a: i64x2 = i64x2::new(0, 1);
-        let e: u16x8 = u16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
-        let r: u16x8 = transmute(vreinterpretq_u16_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_p16_p64() {
-        let a: i64x2 = i64x2::new(0, 1);
-        let e: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
-        let r: i16x8 = transmute(vreinterpretq_p16_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_p64_p16() {
-        let a: i16x4 = i16x4::new(0, 0, 0, 0);
-        let e: i64x1 = i64x1::new(0);
-        let r: i64x1 = transmute(vreinterpret_p64_p16(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_p64_s16() {
-        let a: i16x4 = i16x4::new(0, 0, 0, 0);
-        let e: i64x1 = i64x1::new(0);
-        let r: i64x1 = transmute(vreinterpret_p64_s16(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_p64_u16() {
-        let a: u16x4 = u16x4::new(0, 0, 0, 0);
-        let e: i64x1 = i64x1::new(0);
-        let r: i64x1 = transmute(vreinterpret_p64_u16(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_p64_p16() {
-        let a: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
-        let e: i64x2 = i64x2::new(0, 1);
-        let r: i64x2 = transmute(vreinterpretq_p64_p16(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_p64_s16() {
-        let a: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
-        let e: i64x2 = i64x2::new(0, 1);
-        let r: i64x2 = transmute(vreinterpretq_p64_s16(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_p64_u16() {
-        let a: u16x8 = u16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
-        let e: i64x2 = i64x2::new(0, 1);
-        let r: i64x2 = transmute(vreinterpretq_p64_u16(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_s8_p64() {
-        let a: i64x1 = i64x1::new(0);
-        let e: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
-        let r: i8x8 = transmute(vreinterpret_s8_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_u8_p64() {
-        let a: i64x1 = i64x1::new(0);
-        let e: u8x8 = u8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
-        let r: u8x8 = transmute(vreinterpret_u8_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_p8_p64() {
-        let a: i64x1 = i64x1::new(0);
-        let e: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
-        let r: i8x8 = transmute(vreinterpret_p8_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_s8_p64() {
-        let a: i64x2 = i64x2::new(0, 1);
-        let e: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
-        let r: i8x16 = transmute(vreinterpretq_s8_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_u8_p64() {
-        let a: i64x2 = i64x2::new(0, 1);
-        let e: u8x16 = u8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
-        let r: u8x16 = transmute(vreinterpretq_u8_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_p8_p64() {
-        let a: i64x2 = i64x2::new(0, 1);
-        let e: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
-        let r: i8x16 = transmute(vreinterpretq_p8_p64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_p64_p8() {
-        let a: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
-        let e: i64x1 = i64x1::new(0);
-        let r: i64x1 = transmute(vreinterpret_p64_p8(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_p64_s8() {
-        let a: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
-        let e: i64x1 = i64x1::new(0);
-        let r: i64x1 = transmute(vreinterpret_p64_s8(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_p64_u8() {
-        let a: u8x8 = u8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
-        let e: i64x1 = i64x1::new(0);
-        let r: i64x1 = transmute(vreinterpret_p64_u8(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_p64_p8() {
-        let a: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
-        let e: i64x2 = i64x2::new(0, 1);
-        let r: i64x2 = transmute(vreinterpretq_p64_p8(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_p64_s8() {
-        let a: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
-        let e: i64x2 = i64x2::new(0, 1);
-        let r: i64x2 = transmute(vreinterpretq_p64_s8(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_p64_u8() {
-        let a: u8x16 = u8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
-        let e: i64x2 = i64x2::new(0, 1);
-        let r: i64x2 = transmute(vreinterpretq_p64_u8(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
     unsafe fn test_vreinterpret_s8_f64() {
         let a: f64 = 0.;
         let e: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -22628,6 +22244,14 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_f64() {
+        let a: f64x2 = f64x2::new(0., 0.);
+        let e: p128 = 0;
+        let r: p128 = transmute(vreinterpretq_p128_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vreinterpret_f64_s8() {
         let a: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: f64 = 0.;
@@ -22816,6 +22440,14 @@ mod test {
         let a: i64x2 = i64x2::new(0, 0);
         let e: f32x4 = f32x4::new(0., 0., 0., 0.);
         let r: f32x4 = transmute(vreinterpretq_f32_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_f64_p128() {
+        let a: p128 = 0;
+        let e: f64x2 = f64x2::new(0., 0.);
+        let r: f64x2 = transmute(vreinterpretq_f64_p128(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -24608,6 +24240,42 @@ mod test {
         let a: i64 = -7;
         let e: i64 = 7;
         let r: i64 = transmute(vqabsd_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vslid_n_s64() {
+        let a: i64 = 333;
+        let b: i64 = 2042;
+        let e: i64 = 8169;
+        let r: i64 = transmute(vslid_n_s64::<2>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vslid_n_u64() {
+        let a: u64 = 333;
+        let b: u64 = 2042;
+        let e: u64 = 8169;
+        let r: u64 = transmute(vslid_n_u64::<2>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsrid_n_s64() {
+        let a: i64 = 333;
+        let b: i64 = 2042;
+        let e: i64 = 510;
+        let r: i64 = transmute(vsrid_n_s64::<2>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsrid_n_u64() {
+        let a: u64 = 333;
+        let b: u64 = 2042;
+        let e: u64 = 510;
+        let r: u64 = transmute(vsrid_n_u64::<2>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 }

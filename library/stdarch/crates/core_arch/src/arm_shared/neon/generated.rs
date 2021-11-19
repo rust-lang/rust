@@ -1780,7 +1780,67 @@ pub unsafe fn vclsq_s32(a: int32x4_t) -> int32x4_t {
 vclsq_s32_(a)
 }
 
-/// Signed count leading sign bits
+/// Count leading sign bits
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
+pub unsafe fn vcls_u8(a: uint8x8_t) -> uint8x8_t {
+    transmute(vcls_s8(transmute(a)))
+}
+
+/// Count leading sign bits
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
+pub unsafe fn vclsq_u8(a: uint8x16_t) -> uint8x16_t {
+    transmute(vclsq_s8(transmute(a)))
+}
+
+/// Count leading sign bits
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
+pub unsafe fn vcls_u16(a: uint16x4_t) -> uint16x4_t {
+    transmute(vcls_s16(transmute(a)))
+}
+
+/// Count leading sign bits
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
+pub unsafe fn vclsq_u16(a: uint16x8_t) -> uint16x8_t {
+    transmute(vclsq_s16(transmute(a)))
+}
+
+/// Count leading sign bits
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
+pub unsafe fn vcls_u32(a: uint32x2_t) -> uint32x2_t {
+    transmute(vcls_s32(transmute(a)))
+}
+
+/// Count leading sign bits
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
+pub unsafe fn vclsq_u32(a: uint32x4_t) -> uint32x4_t {
+    transmute(vclsq_s32(transmute(a)))
+}
+
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1790,7 +1850,7 @@ pub unsafe fn vclz_s8(a: int8x8_t) -> int8x8_t {
     vclz_s8_(a)
 }
 
-/// Signed count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1800,7 +1860,7 @@ pub unsafe fn vclzq_s8(a: int8x16_t) -> int8x16_t {
     vclzq_s8_(a)
 }
 
-/// Signed count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1810,7 +1870,7 @@ pub unsafe fn vclz_s16(a: int16x4_t) -> int16x4_t {
     vclz_s16_(a)
 }
 
-/// Signed count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1820,7 +1880,7 @@ pub unsafe fn vclzq_s16(a: int16x8_t) -> int16x8_t {
     vclzq_s16_(a)
 }
 
-/// Signed count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1830,7 +1890,7 @@ pub unsafe fn vclz_s32(a: int32x2_t) -> int32x2_t {
     vclz_s32_(a)
 }
 
-/// Signed count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1840,7 +1900,7 @@ pub unsafe fn vclzq_s32(a: int32x4_t) -> int32x4_t {
     vclzq_s32_(a)
 }
 
-/// Unsigned count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1850,7 +1910,7 @@ pub unsafe fn vclz_u8(a: uint8x8_t) -> uint8x8_t {
     transmute(vclz_s8_(transmute(a)))
 }
 
-/// Unsigned count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1860,7 +1920,7 @@ pub unsafe fn vclzq_u8(a: uint8x16_t) -> uint8x16_t {
     transmute(vclzq_s8_(transmute(a)))
 }
 
-/// Unsigned count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1870,7 +1930,7 @@ pub unsafe fn vclz_u16(a: uint16x4_t) -> uint16x4_t {
     transmute(vclz_s16_(transmute(a)))
 }
 
-/// Unsigned count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1880,7 +1940,7 @@ pub unsafe fn vclzq_u16(a: uint16x8_t) -> uint16x8_t {
     transmute(vclzq_s16_(transmute(a)))
 }
 
-/// Unsigned count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1890,7 +1950,7 @@ pub unsafe fn vclz_u32(a: uint32x2_t) -> uint32x2_t {
     transmute(vclz_s32_(transmute(a)))
 }
 
-/// Unsigned count leading sign bits
+/// Count leading zero bits
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2020,6 +2080,16 @@ pub unsafe fn vcreate_s8(a: u64) -> int8x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vcreate_s16(a: u64) -> int16x4_t {
+    transmute(a)
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 pub unsafe fn vcreate_s32(a: u64) -> int32x2_t {
     transmute(a)
 }
@@ -2041,6 +2111,16 @@ pub unsafe fn vcreate_s64(a: u64) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 pub unsafe fn vcreate_u8(a: u64) -> uint8x8_t {
+    transmute(a)
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vcreate_u16(a: u64) -> uint16x4_t {
     transmute(a)
 }
 
@@ -17504,6 +17584,262 @@ pub unsafe fn vqshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     vqshlq_u64(a, vdupq_n_s64(N.try_into().unwrap()))
 }
 
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
+    static_assert_imm3!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v8i8")]
+        fn vqshlu_n_s8_(a: int8x8_t, n: int8x8_t) -> uint8x8_t;
+    }
+vqshlu_n_s8_(a, int8x8_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
+    static_assert_imm3!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v8i8")]
+        fn vqshlu_n_s8_(a: int8x8_t, n: int8x8_t) -> uint8x8_t;
+    }
+vqshlu_n_s8_(a, int8x8_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
+    static_assert_imm4!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v4i16")]
+        fn vqshlu_n_s16_(a: int16x4_t, n: int16x4_t) -> uint16x4_t;
+    }
+vqshlu_n_s16_(a, int16x4_t(N as i16, N as i16, N as i16, N as i16))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
+    static_assert_imm4!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v4i16")]
+        fn vqshlu_n_s16_(a: int16x4_t, n: int16x4_t) -> uint16x4_t;
+    }
+vqshlu_n_s16_(a, int16x4_t(N as i16, N as i16, N as i16, N as i16))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
+    static_assert_imm5!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v2i32")]
+        fn vqshlu_n_s32_(a: int32x2_t, n: int32x2_t) -> uint32x2_t;
+    }
+vqshlu_n_s32_(a, int32x2_t(N as i32, N as i32))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
+    static_assert_imm5!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v2i32")]
+        fn vqshlu_n_s32_(a: int32x2_t, n: int32x2_t) -> uint32x2_t;
+    }
+vqshlu_n_s32_(a, int32x2_t(N as i32, N as i32))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
+    static_assert_imm6!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v1i64")]
+        fn vqshlu_n_s64_(a: int64x1_t, n: int64x1_t) -> uint64x1_t;
+    }
+vqshlu_n_s64_(a, int64x1_t(N as i64))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
+    static_assert_imm6!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v1i64")]
+        fn vqshlu_n_s64_(a: int64x1_t, n: int64x1_t) -> uint64x1_t;
+    }
+vqshlu_n_s64_(a, int64x1_t(N as i64))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
+    static_assert_imm3!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v16i8")]
+        fn vqshluq_n_s8_(a: int8x16_t, n: int8x16_t) -> uint8x16_t;
+    }
+vqshluq_n_s8_(a, int8x16_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
+    static_assert_imm3!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v16i8")]
+        fn vqshluq_n_s8_(a: int8x16_t, n: int8x16_t) -> uint8x16_t;
+    }
+vqshluq_n_s8_(a, int8x16_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
+    static_assert_imm4!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v8i16")]
+        fn vqshluq_n_s16_(a: int16x8_t, n: int16x8_t) -> uint16x8_t;
+    }
+vqshluq_n_s16_(a, int16x8_t(N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
+    static_assert_imm4!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v8i16")]
+        fn vqshluq_n_s16_(a: int16x8_t, n: int16x8_t) -> uint16x8_t;
+    }
+vqshluq_n_s16_(a, int16x8_t(N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
+    static_assert_imm5!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v4i32")]
+        fn vqshluq_n_s32_(a: int32x4_t, n: int32x4_t) -> uint32x4_t;
+    }
+vqshluq_n_s32_(a, int32x4_t(N as i32, N as i32, N as i32, N as i32))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
+    static_assert_imm5!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v4i32")]
+        fn vqshluq_n_s32_(a: int32x4_t, n: int32x4_t) -> uint32x4_t;
+    }
+vqshluq_n_s32_(a, int32x4_t(N as i32, N as i32, N as i32, N as i32))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
+    static_assert_imm6!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v2i64")]
+        fn vqshluq_n_s64_(a: int64x2_t, n: int64x2_t) -> uint64x2_t;
+    }
+vqshluq_n_s64_(a, int64x2_t(N as i64, N as i64))
+}
+
+/// Signed saturating shift left unsigned
+#[inline]
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshlu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
+    static_assert_imm6!(N);
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v2i64")]
+        fn vqshluq_n_s64_(a: int64x2_t, n: int64x2_t) -> uint64x2_t;
+    }
+vqshluq_n_s64_(a, int64x2_t(N as i64, N as i64))
+}
+
 /// Signed saturating shift right narrow
 #[inline]
 #[cfg(target_arch = "arm")]
@@ -18686,6 +19022,76 @@ pub unsafe fn vreinterpretq_p16_u32(a: uint32x4_t) -> poly16x8_t {
 
 /// Vector reinterpret cast operation
 #[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_s32_p64(a: poly64x1_t) -> int32x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_u32_p64(a: poly64x1_t) -> uint32x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_s32_p64(a: poly64x2_t) -> int32x4_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_u32_p64(a: poly64x2_t) -> uint32x4_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_s64_p128(a: p128) -> int64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_u64_p128(a: p128) -> uint64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p64_p128(a: p128) -> poly64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
@@ -19066,6 +19472,76 @@ pub unsafe fn vreinterpretq_p16_u8(a: uint8x16_t) -> poly16x8_t {
 
 /// Vector reinterpret cast operation
 #[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_p64_s32(a: int32x2_t) -> poly64x1_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_p64_u32(a: uint32x2_t) -> poly64x1_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p64_s32(a: int32x4_t) -> poly64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p64_u32(a: uint32x4_t) -> poly64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_s64(a: int64x2_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_u64(a: uint64x2_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_p64(a: poly64x2_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
@@ -19301,6 +19777,86 @@ pub unsafe fn vreinterpretq_p16_s64(a: int64x2_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 pub unsafe fn vreinterpretq_p16_u64(a: uint64x2_t) -> poly16x8_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_s16_p64(a: poly64x1_t) -> int16x4_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_u16_p64(a: poly64x1_t) -> uint16x4_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_p16_p64(a: poly64x1_t) -> poly16x4_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_s16_p64(a: poly64x2_t) -> int16x8_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_u16_p64(a: poly64x2_t) -> uint16x8_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p16_p64(a: poly64x2_t) -> poly16x8_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_s32_p128(a: p128) -> int32x4_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_u32_p128(a: p128) -> uint32x4_t {
     transmute(a)
 }
 
@@ -19546,6 +20102,86 @@ pub unsafe fn vreinterpretq_u64_u16(a: uint16x8_t) -> uint64x2_t {
 
 /// Vector reinterpret cast operation
 #[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_p64_p16(a: poly16x4_t) -> poly64x1_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_p64_s16(a: int16x4_t) -> poly64x1_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_p64_u16(a: uint16x4_t) -> poly64x1_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p64_p16(a: poly16x8_t) -> poly64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p64_s16(a: int16x8_t) -> poly64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p64_u16(a: uint16x8_t) -> poly64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_s32(a: int32x4_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_u32(a: uint32x4_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
@@ -19666,6 +20302,96 @@ pub unsafe fn vreinterpretq_p8_u64(a: uint64x2_t) -> poly8x16_t {
 
 /// Vector reinterpret cast operation
 #[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_s8_p64(a: poly64x1_t) -> int8x8_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_u8_p64(a: poly64x1_t) -> uint8x8_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_p8_p64(a: poly64x1_t) -> poly8x8_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_s8_p64(a: poly64x2_t) -> int8x16_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_u8_p64(a: poly64x2_t) -> uint8x16_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p8_p64(a: poly64x2_t) -> poly8x16_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_s16_p128(a: p128) -> int16x8_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_u16_p128(a: p128) -> uint16x8_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p16_p128(a: p128) -> poly16x8_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
@@ -19781,6 +20507,156 @@ pub unsafe fn vreinterpretq_u64_s8(a: int8x16_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 pub unsafe fn vreinterpretq_u64_u8(a: uint8x16_t) -> uint64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_p64_p8(a: poly8x8_t) -> poly64x1_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_p64_s8(a: int8x8_t) -> poly64x1_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpret_p64_u8(a: uint8x8_t) -> poly64x1_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p64_p8(a: poly8x16_t) -> poly64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p64_s8(a: int8x16_t) -> poly64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p64_u8(a: uint8x16_t) -> poly64x2_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_s16(a: int16x8_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_u16(a: uint16x8_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_p16(a: poly16x8_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_s8(a: int8x16_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_u8(a: uint8x16_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_p8(a: poly8x16_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_s8_p128(a: p128) -> int8x16_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_u8_p128(a: p128) -> uint8x16_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon,aes")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p8_p128(a: p128) -> poly8x16_t {
     transmute(a)
 }
 
@@ -19990,6 +20866,16 @@ pub unsafe fn vreinterpretq_p16_f32(a: float32x4_t) -> poly16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_p128_f32(a: float32x4_t) -> p128 {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 pub unsafe fn vreinterpret_f32_s8(a: int8x8_t) -> float32x2_t {
     transmute(a)
 }
@@ -20181,6 +21067,16 @@ pub unsafe fn vreinterpretq_f32_p8(a: poly8x16_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 pub unsafe fn vreinterpretq_f32_p16(a: poly16x8_t) -> float32x4_t {
+    transmute(a)
+}
+
+/// Vector reinterpret cast operation
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
+pub unsafe fn vreinterpretq_f32_p128(a: p128) -> float32x4_t {
     transmute(a)
 }
 
@@ -24766,6 +25662,54 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vcls_u8() {
+        let a: u8x8 = u8x8::new(0, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+        let e: u8x8 = u8x8::new(7, 7, 7, 7, 7, 7, 7, 7);
+        let r: u8x8 = transmute(vcls_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclsq_u8() {
+        let a: u8x16 = u8x16::new(0, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF);
+        let e: u8x16 = u8x16::new(7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7);
+        let r: u8x16 = transmute(vclsq_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcls_u16() {
+        let a: u16x4 = u16x4::new(0, 0xFF_FF, 0x00, 0x00);
+        let e: u16x4 = u16x4::new(15, 15, 15, 15);
+        let r: u16x4 = transmute(vcls_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclsq_u16() {
+        let a: u16x8 = u16x8::new(0, 0xFF_FF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+        let e: u16x8 = u16x8::new(15, 15, 15, 15, 15, 15, 15, 15);
+        let r: u16x8 = transmute(vclsq_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcls_u32() {
+        let a: u32x2 = u32x2::new(0, 0xFF_FF_FF_FF);
+        let e: u32x2 = u32x2::new(31, 31);
+        let r: u32x2 = transmute(vcls_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclsq_u32() {
+        let a: u32x4 = u32x4::new(0, 0xFF_FF_FF_FF, 0x00, 0x00);
+        let e: u32x4 = u32x4::new(31, 31, 31, 31);
+        let r: u32x4 = transmute(vclsq_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vclz_s8() {
         let a: i8x8 = i8x8::new(-128, -1, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01);
         let e: i8x8 = i8x8::new(0, 0, 8, 7, 7, 7, 7, 7);
@@ -24942,6 +25886,14 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vcreate_s16() {
+        let a: u64 = 1;
+        let e: i16x4 = i16x4::new(1, 0, 0, 0);
+        let r: i16x4 = transmute(vcreate_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vcreate_s32() {
         let a: u64 = 1;
         let e: i32x2 = i32x2::new(1, 0);
@@ -24962,6 +25914,14 @@ mod test {
         let a: u64 = 1;
         let e: u8x8 = u8x8::new(1, 0, 0, 0, 0, 0, 0, 0);
         let r: u8x8 = transmute(vcreate_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcreate_u16() {
+        let a: u64 = 1;
+        let e: u16x4 = u16x4::new(1, 0, 0, 0);
+        let r: u16x4 = transmute(vcreate_u16(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -33994,6 +34954,70 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vqshlu_n_s8() {
+        let a: i8x8 = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let e: u8x8 = u8x8::new(0, 4, 8, 12, 16, 20, 24, 28);
+        let r: u8x8 = transmute(vqshlu_n_s8::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqshlu_n_s16() {
+        let a: i16x4 = i16x4::new(0, 1, 2, 3);
+        let e: u16x4 = u16x4::new(0, 4, 8, 12);
+        let r: u16x4 = transmute(vqshlu_n_s16::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqshlu_n_s32() {
+        let a: i32x2 = i32x2::new(0, 1);
+        let e: u32x2 = u32x2::new(0, 4);
+        let r: u32x2 = transmute(vqshlu_n_s32::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqshlu_n_s64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: u64x1 = u64x1::new(0);
+        let r: u64x1 = transmute(vqshlu_n_s64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqshluq_n_s8() {
+        let a: i8x16 = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: u8x16 = u8x16::new(0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60);
+        let r: u8x16 = transmute(vqshluq_n_s8::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqshluq_n_s16() {
+        let a: i16x8 = i16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let e: u16x8 = u16x8::new(0, 4, 8, 12, 16, 20, 24, 28);
+        let r: u16x8 = transmute(vqshluq_n_s16::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqshluq_n_s32() {
+        let a: i32x4 = i32x4::new(0, 1, 2, 3);
+        let e: u32x4 = u32x4::new(0, 4, 8, 12);
+        let r: u32x4 = transmute(vqshluq_n_s32::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqshluq_n_s64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: u64x2 = u64x2::new(0, 4);
+        let r: u64x2 = transmute(vqshluq_n_s64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vqshrn_n_s16() {
         let a: i16x8 = i16x8::new(0, 4, 8, 12, 16, 20, 24, 28);
         let e: i8x8 = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
@@ -34726,6 +35750,62 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_s32_p64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: i32x2 = i32x2::new(0, 0);
+        let r: i32x2 = transmute(vreinterpret_s32_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_u32_p64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: u32x2 = u32x2::new(0, 0);
+        let r: u32x2 = transmute(vreinterpret_u32_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_s32_p64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: i32x4 = i32x4::new(0, 0, 1, 0);
+        let r: i32x4 = transmute(vreinterpretq_s32_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_u32_p64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: u32x4 = u32x4::new(0, 0, 1, 0);
+        let r: u32x4 = transmute(vreinterpretq_u32_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_s64_p128() {
+        let a: p128 = 0;
+        let e: i64x2 = i64x2::new(0, 0);
+        let r: i64x2 = transmute(vreinterpretq_s64_p128(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_u64_p128() {
+        let a: p128 = 0;
+        let e: u64x2 = u64x2::new(0, 0);
+        let r: u64x2 = transmute(vreinterpretq_u64_p128(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p64_p128() {
+        let a: p128 = 0;
+        let e: i64x2 = i64x2::new(0, 0);
+        let r: i64x2 = transmute(vreinterpretq_p64_p128(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vreinterpret_s16_p8() {
         let a: i8x8 = i8x8::new(0, 0, 1, 0, 2, 0, 3, 0);
         let e: i16x4 = i16x4::new(0, 1, 2, 3);
@@ -35030,6 +36110,62 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_p64_s32() {
+        let a: i32x2 = i32x2::new(0, 0);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vreinterpret_p64_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_p64_u32() {
+        let a: u32x2 = u32x2::new(0, 0);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vreinterpret_p64_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p64_s32() {
+        let a: i32x4 = i32x4::new(0, 0, 1, 0);
+        let e: i64x2 = i64x2::new(0, 1);
+        let r: i64x2 = transmute(vreinterpretq_p64_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p64_u32() {
+        let a: u32x4 = u32x4::new(0, 0, 1, 0);
+        let e: i64x2 = i64x2::new(0, 1);
+        let r: i64x2 = transmute(vreinterpretq_p64_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_s64() {
+        let a: i64x2 = i64x2::new(0, 0);
+        let e: p128 = 0;
+        let r: p128 = transmute(vreinterpretq_p128_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_u64() {
+        let a: u64x2 = u64x2::new(0, 0);
+        let e: p128 = 0;
+        let r: p128 = transmute(vreinterpretq_p128_u64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_p64() {
+        let a: i64x2 = i64x2::new(0, 0);
+        let e: p128 = 0;
+        let r: p128 = transmute(vreinterpretq_p128_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vreinterpret_s8_s32() {
         let a: i32x2 = i32x2::new(0, 1);
         let e: i8x8 = i8x8::new(0, 0, 0, 0, 1, 0, 0, 0);
@@ -35218,6 +36354,70 @@ mod test {
         let a: u64x2 = u64x2::new(0, 1);
         let e: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
         let r: i16x8 = transmute(vreinterpretq_p16_u64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_s16_p64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: i16x4 = i16x4::new(0, 0, 0, 0);
+        let r: i16x4 = transmute(vreinterpret_s16_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_u16_p64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: u16x4 = u16x4::new(0, 0, 0, 0);
+        let r: u16x4 = transmute(vreinterpret_u16_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_p16_p64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: i16x4 = i16x4::new(0, 0, 0, 0);
+        let r: i16x4 = transmute(vreinterpret_p16_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_s16_p64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
+        let r: i16x8 = transmute(vreinterpretq_s16_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_u16_p64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: u16x8 = u16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
+        let r: u16x8 = transmute(vreinterpretq_u16_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p16_p64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
+        let r: i16x8 = transmute(vreinterpretq_p16_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_s32_p128() {
+        let a: p128 = 0;
+        let e: i32x4 = i32x4::new(0, 0, 0, 0);
+        let r: i32x4 = transmute(vreinterpretq_s32_p128(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_u32_p128() {
+        let a: p128 = 0;
+        let e: u32x4 = u32x4::new(0, 0, 0, 0);
+        let r: u32x4 = transmute(vreinterpretq_u32_p128(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -35414,6 +36614,70 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_p64_p16() {
+        let a: i16x4 = i16x4::new(0, 0, 0, 0);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vreinterpret_p64_p16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_p64_s16() {
+        let a: i16x4 = i16x4::new(0, 0, 0, 0);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vreinterpret_p64_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_p64_u16() {
+        let a: u16x4 = u16x4::new(0, 0, 0, 0);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vreinterpret_p64_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p64_p16() {
+        let a: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
+        let e: i64x2 = i64x2::new(0, 1);
+        let r: i64x2 = transmute(vreinterpretq_p64_p16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p64_s16() {
+        let a: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
+        let e: i64x2 = i64x2::new(0, 1);
+        let r: i64x2 = transmute(vreinterpretq_p64_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p64_u16() {
+        let a: u16x8 = u16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
+        let e: i64x2 = i64x2::new(0, 1);
+        let r: i64x2 = transmute(vreinterpretq_p64_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_s32() {
+        let a: i32x4 = i32x4::new(0, 0, 0, 0);
+        let e: p128 = 0;
+        let r: p128 = transmute(vreinterpretq_p128_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_u32() {
+        let a: u32x4 = u32x4::new(0, 0, 0, 0);
+        let e: p128 = 0;
+        let r: p128 = transmute(vreinterpretq_p128_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vreinterpret_s8_s64() {
         let a: i64x1 = i64x1::new(0);
         let e: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -35510,6 +36774,78 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_s8_p64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let r: i8x8 = transmute(vreinterpret_s8_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_u8_p64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: u8x8 = u8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let r: u8x8 = transmute(vreinterpret_u8_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_p8_p64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let r: i8x8 = transmute(vreinterpret_p8_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_s8_p64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
+        let r: i8x16 = transmute(vreinterpretq_s8_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_u8_p64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: u8x16 = u8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
+        let r: u8x16 = transmute(vreinterpretq_u8_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p8_p64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
+        let r: i8x16 = transmute(vreinterpretq_p8_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_s16_p128() {
+        let a: p128 = 0;
+        let e: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let r: i16x8 = transmute(vreinterpretq_s16_p128(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_u16_p128() {
+        let a: p128 = 0;
+        let e: u16x8 = u16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let r: u16x8 = transmute(vreinterpretq_u16_p128(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p16_p128() {
+        let a: p128 = 0;
+        let e: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let r: i16x8 = transmute(vreinterpretq_p16_p128(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vreinterpret_s64_p8() {
         let a: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: i64x1 = i64x1::new(0);
@@ -35602,6 +36938,126 @@ mod test {
         let a: u8x16 = u8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
         let e: u64x2 = u64x2::new(0, 1);
         let r: u64x2 = transmute(vreinterpretq_u64_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_p64_p8() {
+        let a: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vreinterpret_p64_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_p64_s8() {
+        let a: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vreinterpret_p64_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpret_p64_u8() {
+        let a: u8x8 = u8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vreinterpret_p64_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p64_p8() {
+        let a: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
+        let e: i64x2 = i64x2::new(0, 1);
+        let r: i64x2 = transmute(vreinterpretq_p64_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p64_s8() {
+        let a: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
+        let e: i64x2 = i64x2::new(0, 1);
+        let r: i64x2 = transmute(vreinterpretq_p64_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p64_u8() {
+        let a: u8x16 = u8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
+        let e: i64x2 = i64x2::new(0, 1);
+        let r: i64x2 = transmute(vreinterpretq_p64_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_s16() {
+        let a: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let e: p128 = 0;
+        let r: p128 = transmute(vreinterpretq_p128_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_u16() {
+        let a: u16x8 = u16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let e: p128 = 0;
+        let r: p128 = transmute(vreinterpretq_p128_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_p16() {
+        let a: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        let e: p128 = 0;
+        let r: p128 = transmute(vreinterpretq_p128_p16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_s8() {
+        let a: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let e: p128 = 1;
+        let r: p128 = transmute(vreinterpretq_p128_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_u8() {
+        let a: u8x16 = u8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let e: p128 = 1;
+        let r: p128 = transmute(vreinterpretq_p128_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_p8() {
+        let a: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let e: p128 = 1;
+        let r: p128 = transmute(vreinterpretq_p128_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_s8_p128() {
+        let a: p128 = 1;
+        let e: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let r: i8x16 = transmute(vreinterpretq_s8_p128(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_u8_p128() {
+        let a: p128 = 1;
+        let e: u8x16 = u8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let r: u8x16 = transmute(vreinterpretq_u8_p128(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p8_p128() {
+        let a: p128 = 1;
+        let e: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let r: i8x16 = transmute(vreinterpretq_p8_p128(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -35766,6 +37222,14 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_p128_f32() {
+        let a: f32x4 = f32x4::new(0., 0., 0., 0.);
+        let e: p128 = 0;
+        let r: p128 = transmute(vreinterpretq_p128_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vreinterpret_f32_s8() {
         let a: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: f32x2 = f32x2::new(0., 0.);
@@ -35922,6 +37386,14 @@ mod test {
         let a: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: f32x4 = f32x4::new(0., 0., 0., 0.);
         let r: f32x4 = transmute(vreinterpretq_f32_p16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vreinterpretq_f32_p128() {
+        let a: p128 = 0;
+        let e: f32x4 = f32x4::new(0., 0., 0., 0.);
+        let r: f32x4 = transmute(vreinterpretq_f32_p128(transmute(a)));
         assert_eq!(r, e);
     }
 
