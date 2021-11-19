@@ -25,11 +25,6 @@ LL |     [1; ().await];
    |         ^^^^^^^^ `()` is not a future
    |
    = help: the trait `Future` is not implemented for `()`
-note: required by `poll`
-  --> $SRC_DIR/core/src/future/future.rs:LL:COL
-   |
-LL |     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

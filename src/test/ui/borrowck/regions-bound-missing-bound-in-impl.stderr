@@ -64,13 +64,13 @@ LL |     fn wrong_bound2(self, b: Inv, c: Inv, d: Inv) {
    |                    ^ lifetimes do not match method in trait
 
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:49:5
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:49:26
    |
 LL |     fn another_bound<'x: 'a>(self, x: Inv<'x>, y: Inv<'t>);
    |     ------------------------------------------------------- definition of `another_bound` from trait
 ...
 LL |     fn another_bound<'x: 't>(self, x: Inv<'x>, y: Inv<'t>) {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `'x: 't`
+   |                          ^^ impl has extra requirement `'x: 't`
 
 error: aborting due to 6 previous errors
 

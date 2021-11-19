@@ -14,6 +14,11 @@ LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_rece
    |                                                                                       ^^^^^^^ value of type `Vec<(u32, _, _)>` cannot be built from `std::iter::Iterator<Item=()>`
    |
    = help: the trait `FromIterator<()>` is not implemented for `Vec<(u32, _, _)>`
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `collect`
 
 error: aborting due to 2 previous errors
 

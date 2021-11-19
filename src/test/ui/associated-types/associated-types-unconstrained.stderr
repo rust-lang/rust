@@ -5,11 +5,6 @@ LL |     let x: isize = Foo::bar();
    |                    ^^^^^^^^ cannot infer type
    |
    = note: cannot satisfy `_: Foo`
-note: required by `Foo::bar`
-  --> $DIR/associated-types-unconstrained.rs:5:5
-   |
-LL |     fn bar() -> isize;
-   |     ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

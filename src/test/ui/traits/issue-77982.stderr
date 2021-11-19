@@ -10,6 +10,15 @@ LL |     opts.get(opt.as_ref());
            - impl Borrow<str> for String;
            - impl<T> Borrow<T> for T
              where T: ?Sized;
+note: required by a bound in `HashMap::<K, V, S>::get`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+   |
+LL |         K: Borrow<Q>,
+   |            ^^^^^^^^^ required by this bound in `HashMap::<K, V, S>::get`
+help: consider specifying the type argument in the function call
+   |
+LL |     opts.get::<Q>(opt.as_ref());
+   |             +++++
 
 error[E0283]: type annotations needed
   --> $DIR/issue-77982.rs:8:18
@@ -50,11 +59,6 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect(
            - impl From<bool> for u32;
            - impl From<char> for u32;
            and 3 more
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed for `Box<T>`
   --> $DIR/issue-77982.rs:36:16

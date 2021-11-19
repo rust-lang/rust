@@ -12,11 +12,6 @@ LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/try-operator-on-main.rs:10:5
@@ -25,11 +20,6 @@ LL |     ()?;
    |     ^^^ the `?` operator cannot be applied to type `()`
    |
    = help: the trait `Try` is not implemented for `()`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-operator-on-main.rs:10:7
@@ -47,11 +37,6 @@ LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<_>` is not implemented for `()`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `(): Try` is not satisfied
   --> $DIR/try-operator-on-main.rs:14:25
@@ -72,11 +57,6 @@ LL |     ()?;
    |     ^^^ the `?` operator cannot be applied to type `()`
    |
    = help: the trait `Try` is not implemented for `()`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

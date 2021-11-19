@@ -1266,22 +1266,37 @@ impl EmitterWriter {
             }
             self.msg_to_buffer(&mut buffer, msg, max_line_num_len, "note", None);
         } else {
+            let mut label_width = 0;
             // The failure note level itself does not provide any useful diagnostic information
             if *level != Level::FailureNote {
                 buffer.append(0, level.to_str(), Style::Level(*level));
+                label_width += level.to_str().len();
             }
             // only render error codes, not lint codes
             if let Some(DiagnosticId::Error(ref code)) = *code {
                 buffer.append(0, "[", Style::Level(*level));
                 buffer.append(0, &code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
+                label_width += 2 + code.len();
             }
             let header_style = if is_secondary { Style::HeaderMsg } else { Style::MainHeaderMsg };
             if *level != Level::FailureNote {
                 buffer.append(0, ": ", header_style);
+                label_width += 2;
             }
             for &(ref text, _) in msg.iter() {
-                buffer.append(0, &replace_tabs(text), header_style);
+                // Account for newlines to align output to its label.
+                for (line, text) in replace_tabs(text).lines().enumerate() {
+                    buffer.append(
+                        0 + line,
+                        &format!(
+                            "{}{}",
+                            if line == 0 { String::new() } else { " ".repeat(label_width) },
+                            text
+                        ),
+                        header_style,
+                    );
+                }
             }
         }
 

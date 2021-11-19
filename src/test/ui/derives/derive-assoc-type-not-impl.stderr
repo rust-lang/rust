@@ -13,12 +13,16 @@ LL | struct NotClone;
 LL |     Bar::<NotClone> { x: 1 }.clone();
    |                              ^^^^^ method cannot be called on `Bar<NotClone>` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `NotClone: Clone`
-           which is required by `Bar<NotClone>: Clone`
+note: the following trait bounds were not satisfied because of the requirements of the implementation of `Clone` for `_`:
+      `NotClone: Clone`
+  --> $DIR/derive-assoc-type-not-impl.rs:6:10
+   |
+LL | #[derive(Clone)]
+   |          ^^^^^
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `Clone`
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL | #[derive(Clone)]

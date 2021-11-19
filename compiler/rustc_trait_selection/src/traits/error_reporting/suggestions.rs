@@ -1958,15 +1958,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     region, object_ty,
                 ));
             }
-            ObligationCauseCode::ItemObligation(item_def_id) => {
-                let item_name = tcx.def_path_str(item_def_id);
-                let msg = format!("required by `{}`", item_name);
-                let sp = tcx
-                    .hir()
-                    .span_if_local(item_def_id)
-                    .unwrap_or_else(|| tcx.def_span(item_def_id));
-                let sp = tcx.sess.source_map().guess_head_span(sp);
-                err.span_note(sp, &msg);
+            ObligationCauseCode::ItemObligation(_item_def_id) => {
+                // We hold the `DefId` of the item introducing the obligation, but displaying it
+                // doesn't add user usable information. It always point at an associated item.
             }
             ObligationCauseCode::BindingObligation(item_def_id, span) => {
                 let item_name = tcx.def_path_str(item_def_id);

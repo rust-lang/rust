@@ -1,5 +1,4 @@
 error: <unknown>:0:0: in function test i32 (i32, i32, i32, i32, i32): call to non-secure function would require passing arguments on stack
 
-
 error: aborting due to previous error
 

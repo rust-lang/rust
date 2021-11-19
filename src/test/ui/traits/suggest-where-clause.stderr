@@ -49,11 +49,6 @@ error[E0277]: the trait bound `u64: From<T>` is not satisfied
 LL |     <u64 as From<T>>::from;
    |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `From<T>` is not implemented for `u64`
    |
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
    |
 LL | fn check<T: Iterator, U: ?Sized>() where u64: From<T> {
@@ -65,11 +60,6 @@ error[E0277]: the trait bound `u64: From<<T as Iterator>::Item>` is not satisfie
 LL |     <u64 as From<<T as Iterator>::Item>>::from;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<<T as Iterator>::Item>` is not implemented for `u64`
    |
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
    |
 LL | fn check<T: Iterator, U: ?Sized>() where u64: From<<T as Iterator>::Item> {
@@ -80,12 +70,6 @@ error[E0277]: the trait bound `Misc<_>: From<T>` is not satisfied
    |
 LL |     <Misc<_> as From<T>>::from;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<T>` is not implemented for `Misc<_>`
-   |
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `[T]` cannot be known at compilation time
   --> $DIR/suggest-where-clause.rs:28:20

@@ -3,6 +3,12 @@ error[E0277]: the trait bound `X: Foo<X>` is not satisfied
    |
 LL |     1.method::<X>();
    |       ^^^^^^ the trait `Foo<X>` is not implemented for `X`
+   |
+note: required by a bound in `Bar::method`
+  --> $DIR/where-clause-method-substituion.rs:6:34
+   |
+LL |     fn method<B>(&self) where A: Foo<B>;
+   |                                  ^^^^^^ required by this bound in `Bar::method`
 
 error: aborting due to previous error
 
