@@ -8,7 +8,6 @@ pub(crate) fn invalid_derive_target(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::InvalidDeriveTarget,
 ) -> Diagnostic {
-    // Use more accurate position if available.
     let display_range = ctx.sema.diagnostics_display_range(d.node.clone()).range;
 
     Diagnostic::new(
