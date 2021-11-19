@@ -1,12 +1,12 @@
 error: vtable entries for `<std::vec::IntoIter<u8> as A>`: [
-    MetadataDropInPlace,
-    MetadataSize,
-    MetadataAlign,
-    Method(<std::vec::IntoIter<u8> as Iterator>::next),
-    Method(<std::vec::IntoIter<u8> as Iterator>::size_hint),
-    Method(<std::vec::IntoIter<u8> as Iterator>::advance_by),
-    Method(<std::vec::IntoIter<u8> as Iterator>::nth),
-]
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<std::vec::IntoIter<u8> as Iterator>::next),
+           Method(<std::vec::IntoIter<u8> as Iterator>::size_hint),
+           Method(<std::vec::IntoIter<u8> as Iterator>::advance_by),
+           Method(<std::vec::IntoIter<u8> as Iterator>::nth),
+       ]
   --> $DIR/vtable-non-object-safe.rs:8:1
    |
 LL | trait A: Iterator {}

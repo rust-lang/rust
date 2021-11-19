@@ -10,11 +10,6 @@ LL |     <() as Foo<N>>::test()
              <() as Foo<101_u8>>
              <() as Foo<102_u8>>
            and 252 others
-note: required by `Foo::test`
-  --> $DIR/exhaustive-value.rs:2:5
-   |
-LL |     fn test() {}
-   |     ^^^^^^^^^
 
 error: aborting due to previous error
 

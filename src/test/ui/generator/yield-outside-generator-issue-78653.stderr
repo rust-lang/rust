@@ -13,11 +13,6 @@ LL |     yield || for i in 0 { }
    = help: the trait `Iterator` is not implemented for `{integer}`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `{integer}`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

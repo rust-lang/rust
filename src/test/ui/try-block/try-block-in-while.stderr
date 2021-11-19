@@ -5,11 +5,6 @@ LL |     while try { false } {}
    |                 ^^^^^ could not wrap the final value of the block as `bool` doesn't implement `Try`
    |
    = help: the trait `Try` is not implemented for `bool`
-note: required by `from_output`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_output(output: Self::Output) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

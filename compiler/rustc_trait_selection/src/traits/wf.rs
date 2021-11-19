@@ -709,7 +709,12 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         iter::zip(iter::zip(predicates.predicates, predicates.spans), origins.into_iter().rev())
             .map(|((pred, span), origin_def_id)| {
-                let cause = self.cause(traits::BindingObligation(origin_def_id, span));
+                let code = if span.is_dummy() {
+                    traits::MiscObligation
+                } else {
+                    traits::BindingObligation(origin_def_id, span)
+                };
+                let cause = self.cause(code);
                 traits::Obligation::with_depth(cause, self.recursion_depth, self.param_env, pred)
             })
             .filter(|pred| !pred.has_escaping_bound_vars())

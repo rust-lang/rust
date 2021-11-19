@@ -20,6 +20,11 @@ LL |     let _ = s.get(4);
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+note: required by a bound in `core::str::<impl str>::get`
+  --> $SRC_DIR/core/src/str/mod.rs:LL:COL
+   |
+LL |     pub fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
+   |                   ^^^^^^^^^^^^^^^ required by this bound in `core::str::<impl str>::get`
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
   --> $DIR/str-idx.rs:5:29
@@ -32,6 +37,11 @@ LL |     let _ = s.get_unchecked(4);
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+note: required by a bound in `core::str::<impl str>::get_unchecked`
+  --> $SRC_DIR/core/src/str/mod.rs:LL:COL
+   |
+LL |     pub unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
+   |                                    ^^^^^^^^^^^^^^^ required by this bound in `core::str::<impl str>::get_unchecked`
 
 error[E0277]: the type `str` cannot be indexed by `char`
   --> $DIR/str-idx.rs:6:17

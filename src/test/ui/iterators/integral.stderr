@@ -7,11 +7,6 @@ LL |     for _ in 42 {}
    = help: the trait `Iterator` is not implemented for `{integer}`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `{integer}`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `u8` is not an iterator
   --> $DIR/integral.rs:4:14
@@ -22,11 +17,6 @@ LL |     for _ in 42 as u8 {}
    = help: the trait `Iterator` is not implemented for `u8`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `u8`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `i8` is not an iterator
   --> $DIR/integral.rs:6:14
@@ -37,11 +27,6 @@ LL |     for _ in 42 as i8 {}
    = help: the trait `Iterator` is not implemented for `i8`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `i8`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `u16` is not an iterator
   --> $DIR/integral.rs:8:14
@@ -52,11 +37,6 @@ LL |     for _ in 42 as u16 {}
    = help: the trait `Iterator` is not implemented for `u16`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `u16`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `i16` is not an iterator
   --> $DIR/integral.rs:10:14
@@ -67,11 +47,6 @@ LL |     for _ in 42 as i16 {}
    = help: the trait `Iterator` is not implemented for `i16`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `i16`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `u32` is not an iterator
   --> $DIR/integral.rs:12:14
@@ -82,11 +57,6 @@ LL |     for _ in 42 as u32 {}
    = help: the trait `Iterator` is not implemented for `u32`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `u32`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `i32` is not an iterator
   --> $DIR/integral.rs:14:14
@@ -97,11 +67,6 @@ LL |     for _ in 42 as i32 {}
    = help: the trait `Iterator` is not implemented for `i32`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `i32`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `u64` is not an iterator
   --> $DIR/integral.rs:16:14
@@ -112,11 +77,6 @@ LL |     for _ in 42 as u64 {}
    = help: the trait `Iterator` is not implemented for `u64`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `u64`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `i64` is not an iterator
   --> $DIR/integral.rs:18:14
@@ -127,11 +87,6 @@ LL |     for _ in 42 as i64 {}
    = help: the trait `Iterator` is not implemented for `i64`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `i64`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `usize` is not an iterator
   --> $DIR/integral.rs:20:14
@@ -142,11 +97,6 @@ LL |     for _ in 42 as usize {}
    = help: the trait `Iterator` is not implemented for `usize`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `usize`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `isize` is not an iterator
   --> $DIR/integral.rs:22:14
@@ -157,11 +107,6 @@ LL |     for _ in 42 as isize {}
    = help: the trait `Iterator` is not implemented for `isize`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `isize`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `{float}` is not an iterator
   --> $DIR/integral.rs:24:14
@@ -171,11 +116,6 @@ LL |     for _ in 42.0 {}
    |
    = help: the trait `Iterator` is not implemented for `{float}`
    = note: required because of the requirements on the impl of `IntoIterator` for `{float}`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 12 previous errors
 

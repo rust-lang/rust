@@ -10,6 +10,15 @@ LL |         .get(&"key".into())
            - impl Borrow<str> for String;
            - impl<T> Borrow<T> for T
              where T: ?Sized;
+note: required by a bound in `HashMap::<K, V, S>::get`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+   |
+LL |         K: Borrow<Q>,
+   |            ^^^^^^^^^ required by this bound in `HashMap::<K, V, S>::get`
+help: consider specifying the type argument in the function call
+   |
+LL |         .get::<Q>(&"key".into())
+   |             +++++
 
 error: aborting due to previous error
 

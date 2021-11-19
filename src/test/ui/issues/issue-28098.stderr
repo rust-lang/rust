@@ -7,11 +7,6 @@ LL |     let _ = Iterator::next(&mut ());
    |             required by a bound introduced by this call
    |
    = help: the trait `Iterator` is not implemented for `()`
-note: required by `std::iter::Iterator::next`
-  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     fn next(&mut self) -> Option<Self::Item>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `bool` is not an iterator
   --> $DIR/issue-28098.rs:6:14
@@ -21,11 +16,6 @@ LL |     for _ in false {}
    |
    = help: the trait `Iterator` is not implemented for `bool`
    = note: required because of the requirements on the impl of `IntoIterator` for `bool`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `()` is not an iterator
   --> $DIR/issue-28098.rs:9:28
@@ -36,11 +26,6 @@ LL |     let _ = Iterator::next(&mut ());
    |             required by a bound introduced by this call
    |
    = help: the trait `Iterator` is not implemented for `()`
-note: required by `std::iter::Iterator::next`
-  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     fn next(&mut self) -> Option<Self::Item>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `()` is not an iterator
   --> $DIR/issue-28098.rs:2:13
@@ -59,11 +44,6 @@ LL |     let _ = Iterator::next(&mut ());
    |             required by a bound introduced by this call
    |
    = help: the trait `Iterator` is not implemented for `()`
-note: required by `std::iter::Iterator::next`
-  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     fn next(&mut self) -> Option<Self::Item>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `()` is not an iterator
   --> $DIR/issue-28098.rs:22:28
@@ -74,11 +54,6 @@ LL |     let _ = Iterator::next(&mut ());
    |             required by a bound introduced by this call
    |
    = help: the trait `Iterator` is not implemented for `()`
-note: required by `std::iter::Iterator::next`
-  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     fn next(&mut self) -> Option<Self::Item>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `bool` is not an iterator
   --> $DIR/issue-28098.rs:25:14
@@ -88,11 +63,6 @@ LL |     for _ in false {}
    |
    = help: the trait `Iterator` is not implemented for `bool`
    = note: required because of the requirements on the impl of `IntoIterator` for `bool`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `()` is not an iterator
   --> $DIR/issue-28098.rs:18:13

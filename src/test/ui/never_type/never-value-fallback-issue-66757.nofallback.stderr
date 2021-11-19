@@ -6,11 +6,6 @@ LL |     <E as From<_>>::from(never);
    |
    = help: the following implementations were found:
              <E as From<!>>
-note: required by `from`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn from(_: T) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -20,12 +20,6 @@ error[E0277]: the trait bound `dyn CompareToInts: CompareTo<i32>` is not satisfi
    |
 LL |     <dyn CompareToInts>::same_as(c, 22)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `CompareTo<i32>` is not implemented for `dyn CompareToInts`
-   |
-note: required by `CompareTo::same_as`
-  --> $DIR/repeated-supertrait-ambig.rs:9:5
-   |
-LL |     fn same_as(&self, t: T) -> bool;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `C: CompareTo<i32>` is not satisfied
   --> $DIR/repeated-supertrait-ambig.rs:38:5
@@ -33,11 +27,6 @@ error[E0277]: the trait bound `C: CompareTo<i32>` is not satisfied
 LL |     CompareTo::same_as(c, 22)
    |     ^^^^^^^^^^^^^^^^^^ the trait `CompareTo<i32>` is not implemented for `C`
    |
-note: required by `CompareTo::same_as`
-  --> $DIR/repeated-supertrait-ambig.rs:9:5
-   |
-LL |     fn same_as(&self, t: T) -> bool;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn with_ufcs2<C:CompareToInts + CompareTo<i32>>(c: &C) -> bool {

@@ -2,13 +2,18 @@ error[E0271]: type mismatch resolving `<TakeWhile<&mut std::vec::IntoIter<u8>, [
   --> $DIR/issue-31173.rs:10:10
    |
 LL |         .cloned()
-   |          ^^^^^^ expected `u8`, found reference
+   |          ^^^^^^ expected reference, found `u8`
    |
-   = note:   expected type `u8`
-           found reference `&_`
+   = note: expected reference `&_`
+                   found type `u8`
+note: required by a bound in `cloned`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |         Self: Sized + Iterator<Item = &'a T>,
+   |                                ^^^^^^^^^^^^ required by this bound in `cloned`
 
 error[E0599]: the method `collect` exists for struct `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>`, but its trait bounds were not satisfied
-  --> $DIR/issue-31173.rs:14:10
+  --> $DIR/issue-31173.rs:12:10
    |
 LL |         .collect();
    |          ^^^^^^^ method cannot be called on `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>` due to unsatisfied trait bounds
