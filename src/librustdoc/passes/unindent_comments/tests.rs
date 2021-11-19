@@ -5,7 +5,6 @@ use rustc_span::symbol::Symbol;
 
 fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
     vec![DocFragment {
-        line: 0,
         span: DUMMY_SP,
         parent_module: None,
         doc: Symbol::intern(s),
