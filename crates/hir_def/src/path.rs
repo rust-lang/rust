@@ -135,6 +135,9 @@ pub struct GenericArgs {
     pub has_self_type: bool,
     /// Associated type bindings like in `Iterator<Item = T>`.
     pub bindings: Vec<AssociatedTypeBinding>,
+    /// Whether these generic args were desugared from `Trait(Arg) -> Output`
+    /// parenthesis notation typically used for the `Fn` traits.
+    pub desugared_from_fn: bool,
 }
 
 /// An associated type binding like in `Iterator<Item = T>`.
@@ -269,7 +272,12 @@ impl GenericArgs {
     }
 
     pub(crate) fn empty() -> GenericArgs {
-        GenericArgs { args: Vec::new(), has_self_type: false, bindings: Vec::new() }
+        GenericArgs {
+            args: Vec::new(),
+            has_self_type: false,
+            bindings: Vec::new(),
+            desugared_from_fn: false,
+        }
     }
 }
 
