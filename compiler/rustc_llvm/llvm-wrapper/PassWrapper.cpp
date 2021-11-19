@@ -17,6 +17,7 @@
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm/Passes/PassBuilder.h"
+#include "llvm/Passes/PassPlugin.h"
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
@@ -753,7 +754,8 @@ LLVMRustOptimizeWithNewPassManager(
     void* LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
     LLVMRustSelfProfileAfterPassCallback AfterPassCallback,
-    const char *ExtraPasses, size_t ExtraPassesLen) {
+    const char *ExtraPasses, size_t ExtraPassesLen,
+    const char *PassPlugins, size_t PassPluginsLen) {
   Module *TheModule = unwrap(ModuleRef);
   TargetMachine *TM = unwrap(TMRef);
   OptimizationLevel OptLevel = fromRust(OptLevelRust);
@@ -921,6 +923,20 @@ LLVMRustOptimizeWithNewPassManager(
 #endif
         }
       );
+    }
+  }
+
+  if (PassPluginsLen) {
+    auto PluginsStr = StringRef(PassPlugins, PassPluginsLen);
+    SmallVector<StringRef> Plugins;
+    PluginsStr.split(Plugins, ' ', -1, false);
+    for (auto PluginPath: Plugins) {
+      auto Plugin = PassPlugin::Load(PluginPath.str());
+      if (!Plugin) {
+        LLVMRustSetLastError(("Failed to load pass plugin" + PluginPath.str()).c_str());
+        continue;
+      }
+      Plugin->registerPassBuilderCallbacks(PB);
     }
   }
 

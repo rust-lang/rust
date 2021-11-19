@@ -74,6 +74,8 @@ pub enum BitcodeSection {
 pub struct ModuleConfig {
     /// Names of additional optimization passes to run.
     pub passes: Vec<String>,
+    /// Paths of LLVM pass plugins to load.
+    pub pass_plugins: Vec<String>,
     /// Some(level) to optimize at a certain level, or None to run
     /// absolutely no optimizations (used for the metadata module).
     pub opt_level: Option<config::OptLevel>,
@@ -169,6 +171,8 @@ impl ModuleConfig {
 
         ModuleConfig {
             passes: if_regular!(sess.opts.cg.passes.clone(), vec![]),
+
+            pass_plugins: if_regular!(sess.opts.cg.pass_plugins.clone(), vec![]),
 
             opt_level: opt_level_and_size,
             opt_size: opt_level_and_size,
