@@ -1102,25 +1102,28 @@ a.test-arrow:hover{
 	margin-right: 5px;
 }
 
-.sub-variant, .sub-variant > h3 {
-	margin-top: 0px !important;
-	padding-top: 1px;
-}
-
-#main .sub-variant > h3 {
-	font-size: 15px;
-	margin-left: 25px;
-	margin-bottom: 5px;
-}
-
-.sub-variant > div {
-	margin-left: 20px;
+h3.variant {
+	font-weight: 600;
+	font-size: 1.1em;
 	margin-bottom: 10px;
+	border-bottom: none;
 }
 
-.sub-variant > div > span {
-	display: block;
-	position: relative;
+.sub-variant h4 {
+	font-size: 1em;
+	font-weight: 400;
+	border-bottom: none;
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+.sub-variant {
+	margin-left: 24px;
+	margin-bottom: 40px;
+}
+
+.sub-variant > .sub-variant-field {
+	margin-left: 24px;
 }
 
 .toggle-label {
