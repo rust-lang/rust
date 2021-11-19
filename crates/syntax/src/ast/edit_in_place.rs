@@ -1,12 +1,12 @@
 //! Structural editing for ast.
 
-use std::iter::empty;
+use std::iter::{empty, successors};
 
 use parser::{SyntaxKind, T};
 use rowan::SyntaxElement;
 
 use crate::{
-    algo::neighbor,
+    algo::{self, neighbor},
     ast::{self, edit::IndentLevel, make, HasGenericParams},
     ted::{self, Position},
     AstNode, AstToken, Direction,
@@ -281,6 +281,78 @@ impl ast::UseTree {
             }
         }
         ted::remove(self.syntax());
+    }
+
+    pub fn get_or_create_use_tree_list(&self) -> ast::UseTreeList {
+        match self.use_tree_list() {
+            Some(it) => it,
+            None => {
+                let position = Position::last_child_of(self.syntax());
+                let use_tree_list = make::use_tree_list(empty()).clone_for_update();
+                let mut elements = Vec::with_capacity(2);
+                if self.coloncolon_token().is_none() {
+                    elements.push(make::token(T![::]).into());
+                }
+                elements.push(use_tree_list.syntax().clone().into());
+                ted::insert_all_raw(position, elements);
+                use_tree_list
+            }
+        }
+    }
+
+    /// Splits off the given prefix, making it the path component of the use tree,
+    /// appending the rest of the path to all UseTreeList items.
+    pub fn split_prefix(&self, prefix: &ast::Path) {
+        debug_assert_eq!(self.path(), Some(prefix.top_path()));
+        let path = self.path().unwrap();
+        if &path == prefix && self.use_tree_list().is_none() {
+            let self_suffix = make::path_unqualified(make::path_segment_self()).clone_for_update();
+            ted::replace(path.syntax(), self_suffix.syntax());
+        } else if split_path_prefix(prefix).is_none() {
+            return;
+        }
+
+        let subtree = self.clone_subtree().clone_for_update();
+        ted::remove_all_iter(self.syntax().children_with_tokens());
+        ted::insert(Position::first_child_of(self.syntax()), prefix.syntax());
+        self.get_or_create_use_tree_list().add_use_tree(subtree);
+
+        fn split_path_prefix(prefix: &ast::Path) -> Option<()> {
+            let parent = prefix.parent_path()?;
+            let segment = parent.segment()?;
+            if algo::has_errors(segment.syntax()) {
+                return None;
+            }
+            for p in successors(parent.parent_path(), |it| it.parent_path()) {
+                p.segment()?;
+            }
+            prefix.parent_path().and_then(|p| p.coloncolon_token()).map(ted::remove);
+            ted::remove(prefix.syntax());
+            Some(())
+        }
+    }
+}
+
+impl ast::UseTreeList {
+    pub fn add_use_tree(&self, use_tree: ast::UseTree) {
+        let (position, elements) = match self.use_trees().last() {
+            Some(last_tree) => (
+                Position::after(last_tree.syntax()),
+                vec![
+                    make::token(T![,]).into(),
+                    make::tokens::single_space().into(),
+                    use_tree.syntax.into(),
+                ],
+            ),
+            None => {
+                let position = match self.l_curly_token() {
+                    Some(l_curly) => Position::after(l_curly),
+                    None => Position::last_child_of(self.syntax()),
+                };
+                (position, vec![use_tree.syntax.into()])
+            }
+        };
+        ted::insert_all_raw(position, elements);
     }
 }
 

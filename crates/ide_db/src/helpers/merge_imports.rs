@@ -44,10 +44,10 @@ pub fn try_merge_imports(
     }
 
     let lhs = lhs.clone_subtree().clone_for_update();
+    let rhs = rhs.clone_subtree().clone_for_update();
     let lhs_tree = lhs.use_tree()?;
     let rhs_tree = rhs.use_tree()?;
-    let merged = try_merge_trees(&lhs_tree, &rhs_tree, merge_behavior)?;
-    ted::replace(lhs_tree.syntax(), merged.syntax());
+    try_merge_trees_mut(&lhs_tree, &rhs_tree, merge_behavior)?;
     Some(lhs)
 }
 
@@ -56,57 +56,49 @@ pub fn try_merge_trees(
     rhs: &ast::UseTree,
     merge: MergeBehavior,
 ) -> Option<ast::UseTree> {
+    let lhs = lhs.clone_subtree().clone_for_update();
+    let rhs = rhs.clone_subtree().clone_for_update();
+    try_merge_trees_mut(&lhs, &rhs, merge)?;
+    Some(lhs)
+}
+
+fn try_merge_trees_mut(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior) -> Option<()> {
     let lhs_path = lhs.path()?;
     let rhs_path = rhs.path()?;
 
     let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
-    let (lhs, rhs) = if lhs.is_simple_path()
+    if !(lhs.is_simple_path()
         && rhs.is_simple_path()
         && lhs_path == lhs_prefix
-        && rhs_path == rhs_prefix
+        && rhs_path == rhs_prefix)
     {
-        (lhs.clone(), rhs.clone())
-    } else {
-        (lhs.split_prefix(&lhs_prefix), rhs.split_prefix(&rhs_prefix))
-    };
-    recursive_merge(&lhs, &rhs, merge).map(|it| it.clone_for_update())
+        lhs.split_prefix(&lhs_prefix);
+        rhs.split_prefix(&rhs_prefix);
+    }
+    recursive_merge(&lhs, &rhs, merge)
 }
 
-/// Recursively "zips" together lhs and rhs.
-fn recursive_merge(
-    lhs: &ast::UseTree,
-    rhs: &ast::UseTree,
-    merge: MergeBehavior,
-) -> Option<ast::UseTree> {
-    let mut use_trees = lhs
+/// Recursively merges rhs to lhs
+#[must_use]
+fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior) -> Option<()> {
+    let mut use_trees: Vec<ast::UseTree> = lhs
         .use_tree_list()
         .into_iter()
         .flat_map(|list| list.use_trees())
         // We use Option here to early return from this function(this is not the
         // same as a `filter` op).
-        .map(|tree| match merge.is_tree_allowed(&tree) {
-            true => Some(tree),
-            false => None,
-        })
-        .collect::<Option<Vec<_>>>()?;
+        .map(|tree| merge.is_tree_allowed(&tree).then(|| tree))
+        .collect::<Option<_>>()?;
     use_trees.sort_unstable_by(|a, b| path_cmp_for_sort(a.path(), b.path()));
     for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
         if !merge.is_tree_allowed(&rhs_t) {
             return None;
         }
         let rhs_path = rhs_t.path();
-        match use_trees.binary_search_by(|lhs_t| {
-            let (lhs_t, rhs_t) = match lhs_t
-                .path()
-                .zip(rhs_path.clone())
-                .and_then(|(lhs, rhs)| common_prefix(&lhs, &rhs))
-            {
-                Some((lhs_p, rhs_p)) => (lhs_t.split_prefix(&lhs_p), rhs_t.split_prefix(&rhs_p)),
-                None => (lhs_t.clone(), rhs_t.clone()),
-            };
 
-            path_cmp_bin_search(lhs_t.path(), rhs_t.path())
-        }) {
+        match use_trees
+            .binary_search_by(|lhs_t| path_cmp_bin_search(lhs_t.path(), rhs_path.as_ref()))
+        {
             Ok(idx) => {
                 let lhs_t = &mut use_trees[idx];
                 let lhs_path = lhs_t.path()?;
@@ -128,6 +120,7 @@ fn recursive_merge(
                     match (tree_contains_self(lhs_t), tree_contains_self(&rhs_t)) {
                         (true, false) => continue,
                         (false, true) => {
+                            ted::replace(lhs_t.syntax(), rhs_t.syntax());
                             *lhs_t = rhs_t;
                             continue;
                         }
@@ -142,25 +135,27 @@ fn recursive_merge(
                     if lhs_t.star_token().is_some() || rhs_t.star_token().is_some() {
                         if tree_is_self(lhs_t) || tree_is_self(&rhs_t) {
                             cov_mark::hit!(merge_self_glob);
-                            *lhs_t = make::use_tree(
+                            let self_tree = make::use_tree(
                                 make::path_unqualified(make::path_segment_self()),
                                 None,
                                 None,
                                 false,
-                            );
-                            use_trees.insert(idx, make::use_tree_glob());
+                            )
+                            .clone_for_update();
+                            ted::replace(lhs_t.syntax(), self_tree.syntax());
+                            *lhs_t = self_tree;
+                            let glob = make::use_tree_glob().clone_for_update();
+                            use_trees.insert(idx, glob.clone());
+                            lhs.get_or_create_use_tree_list().add_use_tree(glob);
                             continue;
                         }
                     } else if lhs_t.use_tree_list().is_none() && rhs_t.use_tree_list().is_none() {
                         continue;
                     }
                 }
-                let lhs = lhs_t.split_prefix(&lhs_prefix);
-                let rhs = rhs_t.split_prefix(&rhs_prefix);
-                match recursive_merge(&lhs, &rhs, merge) {
-                    Some(use_tree) => use_trees[idx] = use_tree,
-                    None => return None,
-                }
+                lhs_t.split_prefix(&lhs_prefix);
+                rhs_t.split_prefix(&rhs_prefix);
+                recursive_merge(&lhs_t, &rhs_t, merge)?;
             }
             Err(_)
                 if merge == MergeBehavior::Module
@@ -170,16 +165,12 @@ fn recursive_merge(
                 return None
             }
             Err(idx) => {
-                use_trees.insert(idx, rhs_t);
+                use_trees.insert(idx, rhs_t.clone());
+                lhs.get_or_create_use_tree_list().add_use_tree(rhs_t);
             }
         }
     }
-
-    let lhs = lhs.clone_subtree().clone_for_update();
-    if let Some(old) = lhs.use_tree_list() {
-        ted::replace(old.syntax(), make::use_tree_list(use_trees).syntax().clone_for_update());
-    }
-    ast::UseTree::cast(lhs.syntax().clone_subtree())
+    Some(())
 }
 
 /// Traverses both paths until they differ, returning the common prefix of both.
@@ -224,11 +215,9 @@ fn path_cmp_for_sort(a: Option<ast::Path>, b: Option<ast::Path>) -> Ordering {
 }
 
 /// Path comparison func for binary searching for merging.
-fn path_cmp_bin_search(lhs: Option<ast::Path>, rhs: Option<ast::Path>) -> Ordering {
-    match (
-        lhs.as_ref().and_then(ast::Path::first_segment),
-        rhs.as_ref().and_then(ast::Path::first_segment),
-    ) {
+fn path_cmp_bin_search(lhs: Option<ast::Path>, rhs: Option<&ast::Path>) -> Ordering {
+    match (lhs.as_ref().and_then(ast::Path::first_segment), rhs.and_then(ast::Path::first_segment))
+    {
         (None, None) => Ordering::Equal,
         (None, Some(_)) => Ordering::Less,
         (Some(_), None) => Ordering::Greater,

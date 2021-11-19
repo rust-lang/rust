@@ -19,14 +19,20 @@ pub(crate) fn split_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     let use_tree = path.top_path().syntax().ancestors().find_map(ast::UseTree::cast)?;
 
-    let new_tree = use_tree.split_prefix(&path);
-    if new_tree == use_tree {
+    let has_errors = use_tree
+        .syntax()
+        .descendants_with_tokens()
+        .any(|it| it.kind() == syntax::SyntaxKind::ERROR);
+    let last_segment = use_tree.path().and_then(|it| it.segment());
+    if has_errors || last_segment.is_none() {
         return None;
     }
 
     let target = colon_colon.text_range();
     acc.add(AssistId("split_import", AssistKind::RefactorRewrite), "Split import", target, |edit| {
-        edit.replace_ast(use_tree, new_tree);
+        let use_tree = edit.make_mut(use_tree.clone());
+        let path = edit.make_mut(path);
+        use_tree.split_prefix(&path);
     })
 }
 

@@ -4,47 +4,9 @@
 use std::{fmt, iter, ops};
 
 use crate::{
-    algo,
     ast::{self, make, AstNode},
     ted, AstToken, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
 };
-
-impl ast::UseTree {
-    /// Splits off the given prefix, making it the path component of the use tree, appending the rest of the path to all UseTreeList items.
-    #[must_use]
-    pub fn split_prefix(&self, prefix: &ast::Path) -> ast::UseTree {
-        let suffix = if self.path().as_ref() == Some(prefix) && self.use_tree_list().is_none() {
-            make::path_unqualified(make::path_segment_self())
-        } else {
-            match split_path_prefix(prefix) {
-                Some(it) => it,
-                None => return self.clone(),
-            }
-        };
-
-        let use_tree = make::use_tree(
-            suffix,
-            self.use_tree_list(),
-            self.rename(),
-            self.star_token().is_some(),
-        );
-        let nested = make::use_tree_list(iter::once(use_tree));
-        return make::use_tree(prefix.clone(), Some(nested), None, false);
-
-        fn split_path_prefix(prefix: &ast::Path) -> Option<ast::Path> {
-            let parent = prefix.parent_path()?;
-            let segment = parent.segment()?;
-            if algo::has_errors(segment.syntax()) {
-                return None;
-            }
-            let mut res = make::path_unqualified(segment);
-            for p in iter::successors(parent.parent_path(), |it| it.parent_path()) {
-                res = make::path_qualified(res, p.segment()?);
-            }
-            Some(res)
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 pub struct IndentLevel(pub u8);

@@ -463,7 +463,7 @@ fn merge_groups_full() {
 
 #[test]
 fn merge_groups_long_full() {
-    check_crate("std::foo::bar::Baz", r"use std::foo::bar::Qux;", r"use std::foo::bar::{Baz, Qux};")
+    check_crate("std::foo::bar::Baz", r"use std::foo::bar::Qux;", r"use std::foo::bar::{Qux, Baz};")
 }
 
 #[test]
@@ -471,7 +471,7 @@ fn merge_groups_long_last() {
     check_module(
         "std::foo::bar::Baz",
         r"use std::foo::bar::Qux;",
-        r"use std::foo::bar::{Baz, Qux};",
+        r"use std::foo::bar::{Qux, Baz};",
     )
 }
 
@@ -480,7 +480,7 @@ fn merge_groups_long_full_list() {
     check_crate(
         "std::foo::bar::Baz",
         r"use std::foo::bar::{Qux, Quux};",
-        r"use std::foo::bar::{Baz, Quux, Qux};",
+        r"use std::foo::bar::{Qux, Quux, Baz};",
     )
 }
 
@@ -489,7 +489,7 @@ fn merge_groups_long_last_list() {
     check_module(
         "std::foo::bar::Baz",
         r"use std::foo::bar::{Qux, Quux};",
-        r"use std::foo::bar::{Baz, Quux, Qux};",
+        r"use std::foo::bar::{Qux, Quux, Baz};",
     )
 }
 
@@ -498,7 +498,7 @@ fn merge_groups_long_full_nested() {
     check_crate(
         "std::foo::bar::Baz",
         r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
-        r"use std::foo::bar::{Baz, Qux, quux::{Fez, Fizz}};",
+        r"use std::foo::bar::{Qux, quux::{Fez, Fizz}, Baz};",
     )
 }
 
@@ -517,7 +517,7 @@ fn merge_groups_full_nested_deep() {
     check_crate(
         "std::foo::bar::quux::Baz",
         r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
-        r"use std::foo::bar::{Qux, quux::{Baz, Fez, Fizz}};",
+        r"use std::foo::bar::{Qux, quux::{Fez, Fizz, Baz}};",
     )
 }
 
@@ -526,7 +526,7 @@ fn merge_groups_full_nested_long() {
     check_crate(
         "std::foo::bar::Baz",
         r"use std::{foo::bar::Qux};",
-        r"use std::{foo::bar::{Baz, Qux}};",
+        r"use std::{foo::bar::{Qux, Baz}};",
     );
 }
 
@@ -535,7 +535,7 @@ fn merge_groups_last_nested_long() {
     check_crate(
         "std::foo::bar::Baz",
         r"use std::{foo::bar::Qux};",
-        r"use std::{foo::bar::{Baz, Qux}};",
+        r"use std::{foo::bar::{Qux, Baz}};",
     );
 }
 
@@ -600,7 +600,7 @@ fn merge_mod_into_glob() {
     check_with_config(
         "token::TokenKind",
         r"use token::TokenKind::*;",
-        r"use token::TokenKind::{*, self};",
+        r"use token::TokenKind::{self, *};",
         &InsertUseConfig {
             granularity: ImportGranularity::Crate,
             enforce_granularity: true,
@@ -618,7 +618,7 @@ fn merge_self_glob() {
     check_with_config(
         "self",
         r"use self::*;",
-        r"use self::{*, self};",
+        r"use self::{self, *};",
         &InsertUseConfig {
             granularity: ImportGranularity::Crate,
             enforce_granularity: true,
@@ -637,7 +637,7 @@ fn merge_glob() {
         r"
 use syntax::{SyntaxKind::*};",
         r"
-use syntax::{SyntaxKind::{*, self}};",
+use syntax::{SyntaxKind::{self, *}};",
     )
 }
 
