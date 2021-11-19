@@ -407,16 +407,7 @@ impl GlobalState {
                             // the title, or the editor complains. Note that this is a user-facing string.
                             let title = if self.flycheck.len() == 1 {
                                 match self.config.flycheck() {
-                                    Some(flycheck::FlycheckConfig::CargoCommand {
-                                        command,
-                                        ..
-                                    }) => {
-                                        format!("cargo {}", command)
-                                    }
-                                    Some(flycheck::FlycheckConfig::CustomCommand {
-                                        command,
-                                        ..
-                                    }) => command,
+                                    Some(config) => format!("{}", config),
                                     None => "cargo check".to_string(),
                                 }
                             } else {
