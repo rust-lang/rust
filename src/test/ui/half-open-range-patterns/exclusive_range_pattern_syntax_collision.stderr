@@ -8,10 +8,6 @@ LL |         [_, 99.., _] => {},
    |
    = note: expected struct `std::ops::Range<{integer}>`
                 found type `{integer}`
-help: you might have meant to use field `start` whose type is `{integer}`
-   |
-LL |     match [5..4, 99..105, 43..44].start {
-   |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 
