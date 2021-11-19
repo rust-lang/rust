@@ -14,6 +14,11 @@ LL |         self.reference.size()
    |                        ^^^^
    |
    = help: try adding a `where` bound using this expression: `where [(); Self::DIM]:`
+note: required by a bound in `TensorSize::size`
+  --> $DIR/issue-83765.rs:9:31
+   |
+LL |     fn size(&self) -> [usize; Self::DIM];
+   |                               ^^^^^^^^^ required by this bound in `TensorSize::size`
 
 error[E0308]: mismatched types
   --> $DIR/issue-83765.rs:32:9

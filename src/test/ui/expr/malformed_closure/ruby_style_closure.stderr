@@ -20,6 +20,11 @@ LL | |     });
    | |_____^ expected an `FnOnce<({integer},)>` closure, found `Option<_>`
    |
    = help: the trait `FnOnce<({integer},)>` is not implemented for `Option<_>`
+note: required by a bound in `Option::<T>::and_then`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |     pub fn and_then<U, F: FnOnce(T) -> Option<U>>(self, f: F) -> Option<U> {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Option::<T>::and_then`
 
 error: aborting due to 2 previous errors
 

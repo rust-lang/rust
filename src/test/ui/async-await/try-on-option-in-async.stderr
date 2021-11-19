@@ -11,11 +11,6 @@ LL | |     }
    | |_____- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `{integer}`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used in an async closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-in-async.rs:17:10
@@ -30,11 +25,6 @@ LL | |     };
    | |_____- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-in-async.rs:26:6
@@ -49,11 +39,6 @@ LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

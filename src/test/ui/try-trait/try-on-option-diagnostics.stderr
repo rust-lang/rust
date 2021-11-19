@@ -10,11 +10,6 @@ LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used in a closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-diagnostics.rs:14:10
@@ -29,11 +24,6 @@ LL | |     };
    | |_____- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `{integer}`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-diagnostics.rs:26:14
@@ -46,11 +36,6 @@ LL | |         }
    | |_________- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `()`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used in a trait method that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-diagnostics.rs:39:14
@@ -63,11 +48,6 @@ LL | |         }
    | |_________- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `()`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

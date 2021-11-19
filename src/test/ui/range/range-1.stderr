@@ -12,11 +12,6 @@ LL |     for i in false..true {}
    |
    = note: required because of the requirements on the impl of `Iterator` for `std::ops::Range<bool>`
    = note: required because of the requirements on the impl of `IntoIterator` for `std::ops::Range<bool>`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
   --> $DIR/range-1.rs:14:17

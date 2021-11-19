@@ -20,8 +20,12 @@ LL | struct MyStruct;
 LL |     println!("{}", MyStruct.foo_one());
    |                             ^^^^^^^ method cannot be called on `MyStruct` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `MyStruct: Foo`
+note: the following trait bounds were not satisfied because of the requirements of the implementation of `Foo` for `_`:
+      `MyStruct: Foo`
+  --> $DIR/specialization-trait-not-implemented.rs:14:17
+   |
+LL | default impl<T> Foo for T {
+   |                 ^^^     ^
 note: the following trait must be implemented
   --> $DIR/specialization-trait-not-implemented.rs:7:1
    |

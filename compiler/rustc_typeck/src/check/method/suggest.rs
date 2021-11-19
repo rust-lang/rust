@@ -17,7 +17,9 @@ use rustc_span::lev_distance;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{source_map, FileName, MultiSpan, Span, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-use rustc_trait_selection::traits::{FulfillmentError, Obligation};
+use rustc_trait_selection::traits::{
+    FulfillmentError, Obligation, ObligationCause, ObligationCauseCode,
+};
 
 use std::cmp::Ordering;
 use std::iter;
@@ -702,27 +704,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let (ty::Param(_), ty::PredicateKind::Trait(p)) =
                                 (self_ty.kind(), parent_pred.kind().skip_binder())
                             {
-                                if let ty::Adt(def, _) = p.trait_ref.self_ty().kind() {
-                                    let node = def.did.as_local().map(|def_id| {
+                                let node = match p.trait_ref.self_ty().kind() {
+                                    ty::Param(_) => {
+                                        // Account for `fn` items like in `issue-35677.rs` to
+                                        // suggest restricting its type params.
+                                        let did = self.tcx.hir().body_owner_def_id(hir::BodyId {
+                                            hir_id: self.body_id,
+                                        });
+                                        Some(
+                                            self.tcx
+                                                .hir()
+                                                .get(self.tcx.hir().local_def_id_to_hir_id(did)),
+                                        )
+                                    }
+                                    ty::Adt(def, _) => def.did.as_local().map(|def_id| {
                                         self.tcx
                                             .hir()
                                             .get(self.tcx.hir().local_def_id_to_hir_id(def_id))
-                                    });
-                                    if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
-                                        if let Some(g) = kind.generics() {
-                                            let key = match g.where_clause.predicates {
-                                                [.., pred] => (pred.span().shrink_to_hi(), false),
-                                                [] => (
-                                                    g.where_clause
-                                                        .span_for_predicates_or_empty_place(),
-                                                    true,
-                                                ),
-                                            };
-                                            type_params
-                                                .entry(key)
-                                                .or_insert_with(FxHashSet::default)
-                                                .insert(obligation.to_owned());
-                                        }
+                                    }),
+                                    _ => None,
+                                };
+                                if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
+                                    if let Some(g) = kind.generics() {
+                                        let key = match g.where_clause.predicates {
+                                            [.., pred] => (pred.span().shrink_to_hi(), false),
+                                            [] => (
+                                                g.where_clause.span_for_predicates_or_empty_place(),
+                                                true,
+                                            ),
+                                        };
+                                        type_params
+                                            .entry(key)
+                                            .or_insert_with(FxHashSet::default)
+                                            .insert(obligation.to_owned());
                                     }
                                 }
                             }
@@ -791,22 +805,109 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => None,
                         }
                     };
+
+                    // Find all the requirements that come from a local `impl` block.
+                    let mut skip_list: FxHashSet<_> = Default::default();
+                    let mut spanned_predicates: FxHashMap<MultiSpan, _> = Default::default();
+                    for (data, p, parent_p) in unsatisfied_predicates
+                        .iter()
+                        .filter_map(|(p, parent, c)| c.as_ref().map(|c| (p, parent, c)))
+                        .filter_map(|(p, parent, c)| match c.code {
+                            ObligationCauseCode::ImplDerivedObligation(ref data) => {
+                                Some((data, p, parent))
+                            }
+                            _ => None,
+                        })
+                    {
+                        let parent_trait_ref = data.parent_trait_ref;
+                        let parent_def_id = parent_trait_ref.def_id();
+                        let path = parent_trait_ref.print_only_trait_path();
+                        let tr_self_ty = parent_trait_ref.skip_binder().self_ty();
+                        let mut candidates = vec![];
+                        self.tcx.for_each_relevant_impl(
+                            parent_def_id,
+                            parent_trait_ref.self_ty().skip_binder(),
+                            |impl_def_id| match self.tcx.hir().get_if_local(impl_def_id) {
+                                Some(Node::Item(hir::Item {
+                                    kind: hir::ItemKind::Impl(hir::Impl { .. }),
+                                    ..
+                                })) => {
+                                    candidates.push(impl_def_id);
+                                }
+                                _ => {}
+                            },
+                        );
+                        if let [def_id] = &candidates[..] {
+                            match self.tcx.hir().get_if_local(*def_id) {
+                                Some(Node::Item(hir::Item {
+                                    kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
+                                    ..
+                                })) => {
+                                    if let Some(pred) = parent_p {
+                                        // Done to add the "doesn't satisfy" `span_label`.
+                                        let _ = format_pred(*pred);
+                                    }
+                                    skip_list.insert(p);
+                                    let mut spans = Vec::with_capacity(2);
+                                    if let Some(trait_ref) = of_trait {
+                                        spans.push(trait_ref.path.span);
+                                    }
+                                    spans.push(self_ty.span);
+                                    let entry = spanned_predicates.entry(spans.into());
+                                    entry
+                                        .or_insert_with(|| (path, tr_self_ty, Vec::new()))
+                                        .2
+                                        .push(p);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    for (span, (path, self_ty, preds)) in spanned_predicates {
+                        err.span_note(
+                            span,
+                            &format!(
+                                "the following trait bounds were not satisfied because of the \
+                                 requirements of the implementation of `{}` for `{}`:\n{}",
+                                path,
+                                self_ty,
+                                preds
+                                    .into_iter()
+                                    // .map(|pred| format!("{:?}", pred))
+                                    .filter_map(|pred| format_pred(*pred))
+                                    .map(|(p, _)| format!("`{}`", p))
+                                    .collect::<Vec<_>>()
+                                    .join("\n"),
+                            ),
+                        );
+                    }
+
+                    // The requirements that didn't have an `impl` span to show.
                     let mut bound_list = unsatisfied_predicates
                         .iter()
-                        .filter_map(|(pred, parent_pred)| {
-                            format_pred(*pred).map(|(p, self_ty)| match parent_pred {
-                                None => format!("`{}`", &p),
-                                Some(parent_pred) => match format_pred(*parent_pred) {
+                        .filter(|(pred, _, _parent_pred)| !skip_list.contains(&pred))
+                        .filter_map(|(pred, parent_pred, _cause)| {
+                            format_pred(*pred).map(|(p, self_ty)| {
+                                collect_type_param_suggestions(self_ty, pred, &p);
+                                match parent_pred {
                                     None => format!("`{}`", &p),
-                                    Some((parent_p, _)) => {
-                                        collect_type_param_suggestions(self_ty, parent_pred, &p);
-                                        format!("`{}`\nwhich is required by `{}`", p, parent_p)
-                                    }
-                                },
+                                    Some(parent_pred) => match format_pred(*parent_pred) {
+                                        None => format!("`{}`", &p),
+                                        Some((parent_p, _)) => {
+                                            collect_type_param_suggestions(
+                                                self_ty,
+                                                parent_pred,
+                                                &p,
+                                            );
+                                            format!("`{}`\nwhich is required by `{}`", p, parent_p)
+                                        }
+                                    },
+                                }
                             })
                         })
                         .enumerate()
                         .collect::<Vec<(usize, String)>>();
+
                     for ((span, empty_where), obligations) in type_params.into_iter() {
                         restrict_type_params = true;
                         // #74886: Sort here so that the output is always the same.
@@ -836,7 +937,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     for (span, msg) in bound_spans.into_iter() {
                         err.span_label(span, &msg);
                     }
-                    if !bound_list.is_empty() {
+                    if !bound_list.is_empty() || !skip_list.is_empty() {
                         let bound_list = bound_list
                             .into_iter()
                             .map(|(_, path)| path)
@@ -846,9 +947,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.set_primary_message(&format!(
                             "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, but its trait bounds were not satisfied"
                         ));
-                        err.note(&format!(
-                            "the following trait bounds were not satisfied:\n{bound_list}"
-                        ));
+                        if !bound_list.is_empty() {
+                            err.note(&format!(
+                                "the following trait bounds were not satisfied:\n{bound_list}"
+                            ));
+                        }
                         self.suggest_derive(&mut err, &unsatisfied_predicates);
 
                         unsatisfied_bounds = true;
@@ -1062,18 +1165,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_note(spans, &msg);
         }
 
-        let preds: Vec<_> = errors.iter().map(|e| (e.obligation.predicate, None)).collect();
+        let preds: Vec<_> = errors
+            .iter()
+            .map(|e| (e.obligation.predicate, None, Some(e.obligation.cause.clone())))
+            .collect();
         self.suggest_derive(err, &preds);
     }
 
     fn suggest_derive(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        unsatisfied_predicates: &Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
+        unsatisfied_predicates: &Vec<(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+            Option<ObligationCause<'tcx>>,
+        )>,
     ) {
         let mut derives = Vec::<(String, Span, String)>::new();
         let mut traits = Vec::<Span>::new();
-        for (pred, _) in unsatisfied_predicates {
+        for (pred, _, _) in unsatisfied_predicates {
             let trait_pred = match pred.kind().skip_binder() {
                 ty::PredicateKind::Trait(trait_pred) => trait_pred,
                 _ => continue,
@@ -1264,7 +1374,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
         source: SelfSource<'tcx>,
         valid_out_of_scope_traits: Vec<DefId>,
-        unsatisfied_predicates: &[(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)],
+        unsatisfied_predicates: &[(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+            Option<ObligationCause<'tcx>>,
+        )],
         unsatisfied_bounds: bool,
     ) {
         let mut alt_rcvr_sugg = false;
@@ -1380,7 +1494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
-                unsatisfied_predicates.iter().all(|(p, _)| {
+                unsatisfied_predicates.iter().all(|(p, _, _)| {
                     match p.kind().skip_binder() {
                         // Hide traits if they are present in predicates as they can be fixed without
                         // having to implement them.

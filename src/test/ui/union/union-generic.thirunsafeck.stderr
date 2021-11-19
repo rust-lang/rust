@@ -4,11 +4,11 @@ error[E0277]: the trait bound `Rc<u32>: Copy` is not satisfied
 LL |     let u = U { a: Rc::new(0u32) };
    |             ^ the trait `Copy` is not implemented for `Rc<u32>`
    |
-note: required by `U`
-  --> $DIR/union-generic.rs:6:1
+note: required by a bound in `U`
+  --> $DIR/union-generic.rs:6:12
    |
 LL | union U<T: Copy> {
-   | ^^^^^^^^^^^^^^^^
+   |            ^^^^ required by this bound in `U`
 
 error[E0277]: the trait bound `Rc<u32>: Copy` is not satisfied
   --> $DIR/union-generic.rs:13:13
@@ -16,11 +16,11 @@ error[E0277]: the trait bound `Rc<u32>: Copy` is not satisfied
 LL |     let u = U::<Rc<u32>> { a: Default::default() };
    |             ^^^^^^^^^^^^ the trait `Copy` is not implemented for `Rc<u32>`
    |
-note: required by `U`
-  --> $DIR/union-generic.rs:6:1
+note: required by a bound in `U`
+  --> $DIR/union-generic.rs:6:12
    |
 LL | union U<T: Copy> {
-   | ^^^^^^^^^^^^^^^^
+   |            ^^^^ required by this bound in `U`
 
 error: aborting due to 2 previous errors
 
