@@ -111,7 +111,7 @@ impl<T> Default for TypedArena<T> {
             // alloc() will trigger a grow().
             ptr: Cell::new(ptr::null_mut()),
             end: Cell::new(ptr::null_mut()),
-            chunks: RefCell::new(vec![]),
+            chunks: Default::default(),
             _own: PhantomData,
         }
     }
@@ -325,13 +325,17 @@ unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
 
 unsafe impl<T: Send> Send for TypedArena<T> {}
 
+/// An arena that can hold objects of multiple different types that impl `Copy`
+/// and/or satisfy `!mem::needs_drop`.
 pub struct DroplessArena {
     /// A pointer to the start of the free space.
     start: Cell<*mut u8>,
 
     /// A pointer to the end of free space.
     ///
-    /// The allocation proceeds from the end of the chunk towards the start.
+    /// The allocation proceeds downwards from the end of the chunk towards the
+    /// start. (This is slightly simpler and faster than allocating upwards,
+    /// see <https://fitzgeraldnick.com/2019/11/01/always-bump-downwards.html>.)
     /// When this pointer crosses the start pointer, a new chunk is allocated.
     end: Cell<*mut u8>,
 
@@ -516,10 +520,14 @@ impl DroplessArena {
     }
 }
 
+// Declare an `Arena` containing one dropless arena and many typed arenas (the
+// types of the typed arenas are specified by the arguments). The dropless
+// arena will be used for any types that impl `Copy`, and also for any of the
+// specified types that satisfy `!mem::needs_drop`.
 #[rustc_macro_transparency = "semitransparent"]
-pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
+pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     #[derive(Default)]
-    pub struct Arena<$tcx> {
+    pub struct Arena<'tcx> {
         pub dropless: $crate::DroplessArena,
         $($name: $crate::TypedArena<$ty>,)*
     }
@@ -532,6 +540,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
         ) -> &'a mut [Self];
     }
 
+    // Any type that impls `Copy` can be arena-allocated in the `DroplessArena`.
     impl<'tcx, T: Copy> ArenaAllocatable<'tcx, ()> for T {
         #[inline]
         fn allocate_on<'a>(self, arena: &'a Arena<'tcx>) -> &'a mut Self {
@@ -544,12 +553,11 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
         ) -> &'a mut [Self] {
             arena.dropless.alloc_from_iter(iter)
         }
-
     }
     $(
-        impl<$tcx> ArenaAllocatable<$tcx, $ty> for $ty {
+        impl<'tcx> ArenaAllocatable<'tcx, $ty> for $ty {
             #[inline]
-            fn allocate_on<'a>(self, arena: &'a Arena<$tcx>) -> &'a mut Self {
+            fn allocate_on<'a>(self, arena: &'a Arena<'tcx>) -> &'a mut Self {
                 if !::std::mem::needs_drop::<Self>() {
                     arena.dropless.alloc(self)
                 } else {
@@ -559,7 +567,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
 
             #[inline]
             fn allocate_from_iter<'a>(
-                arena: &'a Arena<$tcx>,
+                arena: &'a Arena<'tcx>,
                 iter: impl ::std::iter::IntoIterator<Item = Self>,
             ) -> &'a mut [Self] {
                 if !::std::mem::needs_drop::<Self>() {
@@ -577,6 +585,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) {
             value.allocate_on(self)
         }
 
+        // Any type that impls `Copy` can have slices be arena-allocated in the `DroplessArena`.
         #[inline]
         pub fn alloc_slice<T: ::std::marker::Copy>(&self, value: &[T]) -> &mut [T] {
             if value.is_empty() {

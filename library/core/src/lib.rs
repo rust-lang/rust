@@ -105,6 +105,7 @@
 #![feature(const_bigint_helper_methods)]
 #![feature(const_caller_location)]
 #![feature(const_cell_into_inner)]
+#![feature(const_char_convert)]
 #![feature(const_discriminant)]
 #![feature(const_eval_select)]
 #![feature(const_float_bits_conv)]
