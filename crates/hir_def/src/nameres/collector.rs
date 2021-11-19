@@ -8,7 +8,6 @@ use std::iter;
 use base_db::{CrateId, Edition, FileId, ProcMacroId};
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{
-    ast_id_map::FileAstId,
     builtin_attr_macro::find_builtin_attr,
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
@@ -1081,8 +1080,10 @@ impl DefCollector<'_> {
                         return false;
                     }
                 }
-                MacroDirectiveKind::Attr { ast_id, mod_item, attr } => {
-                    let file_id = ast_id.ast_id.file_id;
+                MacroDirectiveKind::Attr { ast_id: file_ast_id, mod_item, attr } => {
+                    let &AstIdWithPath { ast_id, ref path } = file_ast_id;
+                    let file_id = ast_id.file_id;
+
                     let mut recollect_without = |collector: &mut Self, item_tree| {
                         // Remove the original directive since we resolved it.
                         let mod_dir = collector.mod_dirs[&directive.module_id].clone();
@@ -1100,8 +1101,8 @@ impl DefCollector<'_> {
                         false
                     };
 
-                    if let Some(ident) = ast_id.path.as_ident() {
-                        if let Some(helpers) = self.derive_helpers_in_scope.get(&ast_id.ast_id) {
+                    if let Some(ident) = path.as_ident() {
+                        if let Some(helpers) = self.derive_helpers_in_scope.get(&ast_id) {
                             if helpers.contains(ident) {
                                 cov_mark::hit!(resolved_derive_helper);
                                 // Resolved to derive helper. Collect the item's attributes again,
@@ -1112,7 +1113,7 @@ impl DefCollector<'_> {
                         }
                     }
 
-                    let def = resolver(ast_id.path.clone()).filter(MacroDefId::is_attribute);
+                    let def = resolver(path.clone()).filter(MacroDefId::is_attribute);
                     if matches!(
                         def,
                         Some(MacroDefId {  kind:MacroDefKind::BuiltInAttr(expander, _),.. })
@@ -1121,26 +1122,23 @@ impl DefCollector<'_> {
                         // Resolved to `#[derive]`
                         let item_tree = self.db.file_item_tree(file_id);
 
-                        let ast_id: FileAstId<ast::Item> = match *mod_item {
-                            ModItem::Struct(it) => item_tree[it].ast_id.upcast(),
-                            ModItem::Union(it) => item_tree[it].ast_id.upcast(),
-                            ModItem::Enum(it) => item_tree[it].ast_id.upcast(),
+                        match mod_item {
+                            ModItem::Struct(_) | ModItem::Union(_) | ModItem::Enum(_) => (),
                             _ => {
                                 let diag = DefDiagnostic::invalid_derive_target(
                                     directive.module_id,
-                                    ast_id.ast_id,
+                                    ast_id,
                                     attr.id,
                                 );
                                 self.def_map.diagnostics.push(diag);
-                                res = ReachedFixedPoint::No;
-                                return false;
+                                return recollect_without(self, &item_tree);
                             }
-                        };
+                        }
 
                         match attr.parse_derive() {
                             Some(derive_macros) => {
                                 for path in derive_macros {
-                                    let ast_id = AstIdWithPath::new(file_id, ast_id, path);
+                                    let ast_id = AstIdWithPath::new(file_id, ast_id.value, path);
                                     self.unresolved_macros.push(MacroDirective {
                                         module_id: directive.module_id,
                                         depth: directive.depth + 1,
@@ -1152,8 +1150,12 @@ impl DefCollector<'_> {
                                 }
                             }
                             None => {
-                                // FIXME: diagnose
-                                tracing::debug!("malformed derive: {:?}", attr);
+                                let diag = DefDiagnostic::malformed_derive(
+                                    directive.module_id,
+                                    ast_id,
+                                    attr.id,
+                                );
+                                self.def_map.diagnostics.push(diag);
                             }
                         }
 
@@ -1165,7 +1167,8 @@ impl DefCollector<'_> {
                     }
 
                     // Not resolved to a derive helper or the derive attribute, so try to resolve as a normal attribute.
-                    match attr_macro_as_call_id(ast_id, attr, self.db, self.def_map.krate, def) {
+                    match attr_macro_as_call_id(file_ast_id, attr, self.db, self.def_map.krate, def)
+                    {
                         Ok(call_id) => {
                             let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
 
@@ -1198,7 +1201,7 @@ impl DefCollector<'_> {
 
                             self.def_map.modules[directive.module_id]
                                 .scope
-                                .add_attr_macro_invoc(ast_id.ast_id, call_id);
+                                .add_attr_macro_invoc(ast_id, call_id);
 
                             resolved.push((directive.module_id, call_id, directive.depth));
                             res = ReachedFixedPoint::No;

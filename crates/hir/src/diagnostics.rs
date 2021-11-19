@@ -34,6 +34,7 @@ diagnostics![
     IncorrectCase,
     InvalidDeriveTarget,
     MacroError,
+    MalformedDerive,
     MismatchedArgCount,
     MissingFields,
     MissingMatchArms,
@@ -101,6 +102,11 @@ pub struct UnimplementedBuiltinMacro {
 
 #[derive(Debug)]
 pub struct InvalidDeriveTarget {
+    pub node: InFile<SyntaxNodePtr>,
+}
+
+#[derive(Debug)]
+pub struct MalformedDerive {
     pub node: InFile<SyntaxNodePtr>,
 }
 
