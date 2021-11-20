@@ -28,5 +28,11 @@ error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling 
 LL |     let _: Vec<_> = arr.iter().cloned().collect();
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
 
-error: aborting due to 4 previous errors
+error: called `iter().copied().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
+  --> $DIR/iter_cloned_collect.rs:31:26
+   |
+LL |     let _: Vec<isize> = v.iter().copied().collect();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
+
+error: aborting due to 5 previous errors
 
