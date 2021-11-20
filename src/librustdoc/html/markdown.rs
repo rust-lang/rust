@@ -1200,12 +1200,12 @@ fn markdown_summary_with_limit(
             Event::Start(tag) => match tag {
                 Tag::Emphasis => buf.open_tag("em"),
                 Tag::Strong => buf.open_tag("strong"),
-                Tag::CodeBlock(..) => return ControlFlow::BREAK,
+                Tag::Heading(..) | Tag::CodeBlock(..) => return ControlFlow::BREAK,
                 _ => {}
             },
             Event::End(tag) => match tag {
                 Tag::Emphasis | Tag::Strong => buf.close_tag(),
-                Tag::Paragraph | Tag::Heading(..) => return ControlFlow::BREAK,
+                Tag::Paragraph => return ControlFlow::BREAK,
                 _ => {}
             },
             Event::HardBreak | Event::SoftBreak => buf.push(" ")?,

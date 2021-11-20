@@ -262,9 +262,9 @@ fn test_short_markdown_summary() {
          &amp; &amp; &amp; &amp; &amp; &amp; &amp; &amp; &amp; &amp; &amp; &amp; \
          &amp; &amp; &amp; &amp; &amp; …",
     );
-    t("# top header", "top header");
-    t("# top header\n\nfollowed by a paragraph", "top header");
-    t("## header", "header");
+    t("# top header", "");
+    t("# top header\n\nfollowed by a paragraph", "");
+    t("## header", "");
     t("first paragraph\n\nsecond paragraph", "first paragraph");
     t("```\nfn main() {}\n```", "");
     t("<div>hello</div>", "");
