@@ -11,10 +11,7 @@ fn fmt() {
     }
 
     // Skip this test if nightly rustfmt is unavailable
-    let rustup_output = Command::new("rustup")
-        .args(&["component", "list", "--toolchain", "nightly"])
-        .output()
-        .unwrap();
+    let rustup_output = Command::new("rustup").args(&["component", "list"]).output().unwrap();
     assert!(rustup_output.status.success());
     let component_output = String::from_utf8_lossy(&rustup_output.stdout);
     if !component_output.contains("rustfmt") {
