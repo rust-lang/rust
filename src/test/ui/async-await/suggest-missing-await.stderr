@@ -106,6 +106,42 @@ help: consider `await`ing on the `Future`
 LL |     let _x = match dummy().await {
    |                           ++++++
 
-error: aborting due to 5 previous errors
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:67:9
+   |
+LL |         Ok(_) => {}
+   |         ^^^^^ expected opaque type, found enum `Result`
+   |
+note: while checking the return type of the `async fn`
+  --> $DIR/suggest-missing-await.rs:57:28
+   |
+LL | async fn dummy_result() -> Result<(), ()> {
+   |                            ^^^^^^^^^^^^^^ checked the `Output` of this `async fn`, expected opaque type
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
+                     found enum `Result<_, _>`
+help: consider `await`ing on the `Future`
+   |
+LL |     match dummy_result().await {
+   |                         ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:69:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^ expected opaque type, found enum `Result`
+   |
+note: while checking the return type of the `async fn`
+  --> $DIR/suggest-missing-await.rs:57:28
+   |
+LL | async fn dummy_result() -> Result<(), ()> {
+   |                            ^^^^^^^^^^^^^^ checked the `Output` of this `async fn`, expected opaque type
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
+                     found enum `Result<_, _>`
+help: consider `await`ing on the `Future`
+   |
+LL |     match dummy_result().await {
+   |                         ++++++
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
