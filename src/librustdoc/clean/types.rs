@@ -121,12 +121,11 @@ crate struct Crate {
     crate primitives: ThinVec<(DefId, PrimitiveType)>,
     /// Only here so that they can be filtered through the rustdoc passes.
     crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
-    crate collapsed: bool,
 }
 
 // `Crate` is frequently moved by-value. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Crate, 104);
+rustc_data_structures::static_assert_size!(Crate, 96);
 
 impl Crate {
     crate fn name(&self, tcx: TyCtxt<'_>) -> Symbol {
