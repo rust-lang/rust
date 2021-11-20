@@ -6,7 +6,7 @@ use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
-use crate::clean::{self, ItemId, PrimitiveType};
+use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
 use crate::config::RenderOptions;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
@@ -15,6 +15,7 @@ use crate::formats::Impl;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::cache::{get_index_search_type, ExternalLocation};
 use crate::html::render::IndexItem;
+use crate::visit_lib::LibEmbargoVisitor;
 
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
@@ -139,19 +140,27 @@ impl Cache {
     /// in `krate` due to the data being moved into the `Cache`.
     crate fn populate(cx: &mut DocContext<'_>, mut krate: clean::Crate) -> clean::Crate {
         let tcx = cx.tcx;
-        let render_options = &cx.render_options;
 
         // Crawl the crate to build various caches used for the output
         debug!(?cx.cache.crate_version);
         cx.cache.traits = krate.external_traits.take();
-        let RenderOptions { extern_html_root_takes_precedence, output: dst, .. } = render_options;
+
+        let mut externs = Vec::new();
+        for &cnum in cx.tcx.crates(()) {
+            externs.push(ExternalCrate { crate_num: cnum });
+            // Analyze doc-reachability for extern items
+            LibEmbargoVisitor::new(cx).visit_lib(cnum);
+        }
+
+        let RenderOptions { extern_html_root_takes_precedence, output: dst, .. } =
+            &cx.render_options;
 
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
-        for &e in &krate.externs {
+        for e in externs {
             let name = e.name(tcx);
             let extern_url =
-                render_options.extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
+                cx.render_options.extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
             let location = e.location(extern_url, *extern_html_root_takes_precedence, dst, tcx);
             cx.cache.extern_locations.insert(e.crate_num, location);
             cx.cache.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
