@@ -433,7 +433,9 @@ impl GlobalState {
                 for flycheck in &self.flycheck {
                     flycheck.update();
                 }
-                self.prime_caches_queue.request_op();
+                if self.config.prefill_caches() {
+                    self.prime_caches_queue.request_op();
+                }
             }
 
             if !was_quiescent || state_changed {

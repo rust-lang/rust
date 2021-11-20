@@ -58,6 +58,9 @@ config_data! {
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
         assist_allowMergingIntoGlobImports: bool           = "true",
 
+        /// Warm up caches on project load.
+        cache_warmup: bool = "true",
+
         /// Show function name and docs in parameter hints.
         callInfo_full: bool                                = "true",
 
@@ -543,6 +546,10 @@ impl Config {
             self.caps.workspace.as_ref()?.did_change_watched_files.as_ref()?.dynamic_registration?,
             false
         )
+    }
+
+    pub fn prefill_caches(&self) -> bool {
+        self.data.cache_warmup
     }
 
     pub fn location_link(&self) -> bool {
