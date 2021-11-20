@@ -5,7 +5,7 @@
 use std::future::Future;
 
 type G<'a, T> = impl Future<Output = ()>;
-//~^ ERROR: type mismatch resolving `<impl Future as Future>::Output == ()`
+//~^ ERROR: type mismatch resolving `<impl Future<Output = [async output]> as Future>::Output == ()`
 //~| ERROR: the trait bound `T: Trait` is not satisfied
 
 trait Trait {

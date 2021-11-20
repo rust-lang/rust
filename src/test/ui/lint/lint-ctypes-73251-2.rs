@@ -33,7 +33,7 @@ fn use_of_b() -> AliasB {
 }
 
 extern "C" {
-    pub fn lint_me() -> <AliasB as TraitB>::Assoc; //~ ERROR: uses type `impl TraitA`
+    pub fn lint_me() -> <AliasB as TraitB>::Assoc; //~ ERROR: uses type `impl TraitA<Assoc = u32>`
 }
 
 fn main() {}
