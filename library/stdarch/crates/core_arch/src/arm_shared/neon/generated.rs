@@ -1032,6 +1032,30 @@ pub unsafe fn vtstq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
     simd_ne(c, transmute(d))
 }
 
+/// Signed compare bitwise Test bits nonzero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
+pub unsafe fn vtst_p16(a: poly16x4_t, b: poly16x4_t) -> uint16x4_t {
+    let c: poly16x4_t = simd_and(a, b);
+    let d: i16x4 = i16x4::new(0, 0, 0, 0);
+    simd_ne(c, transmute(d))
+}
+
+/// Signed compare bitwise Test bits nonzero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
+pub unsafe fn vtstq_p16(a: poly16x8_t, b: poly16x8_t) -> uint16x8_t {
+    let c: poly16x8_t = simd_and(a, b);
+    let d: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+    simd_ne(c, transmute(d))
+}
+
 /// Unsigned compare bitwise Test bits nonzero
 #[inline]
 #[target_feature(enable = "neon")]
@@ -25036,6 +25060,24 @@ mod test {
         let b: i8x16 = i8x16::new(-128, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x7F);
         let e: u8x16 = u8x16::new(0xFF, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
         let r: u8x16 = transmute(vtstq_p8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtst_p16() {
+        let a: i16x4 = i16x4::new(-32768, 0x00, 0x01, 0x02);
+        let b: i16x4 = i16x4::new(-32768, 0x00, 0x01, 0x02);
+        let e: u16x4 = u16x4::new(0xFF_FF, 0, 0xFF_FF, 0xFF_FF);
+        let r: u16x4 = transmute(vtst_p16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtstq_p16() {
+        let a: i16x8 = i16x8::new(-32768, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06);
+        let b: i16x8 = i16x8::new(-32768, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06);
+        let e: u16x8 = u16x8::new(0xFF_FF, 0, 0xFF_FF, 0xFF_FF, 0xFF_FF, 0xFF_FF, 0xFF_FF, 0xFF_FF);
+        let r: u16x8 = transmute(vtstq_p16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

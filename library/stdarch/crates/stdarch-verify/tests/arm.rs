@@ -594,6 +594,8 @@ fn verify_all_signatures() {
             "vclsq_u8",
             "vclsq_u16",
             "vclsq_u32",
+            "vtst_p16",
+            "vtstq_p16",
             "__dbg",
         ];
         let arm = match map.get(rust.name) {
