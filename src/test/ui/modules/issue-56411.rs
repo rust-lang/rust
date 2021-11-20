@@ -5,7 +5,7 @@ macro_rules! import {
             mod $name;
             pub use self::$name;
             //~^ ERROR the name `issue_56411_aux` is defined multiple times
-            //~| ERROR `issue_56411_aux` is private, and cannot be re-exported
+            //~| ERROR `issue_56411_aux` is only public within the crate, and cannot be re-exported outside
 
         )*
     }
