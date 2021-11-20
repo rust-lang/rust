@@ -304,12 +304,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Discriminant(place) => {
                 let op = self.eval_place_to_op(place, None)?;
-                if M::enforce_validity(self) {
-                    // This is 'using' the value, so make sure the validity invariant is satisfied.
-                    // (Also see https://github.com/rust-lang/rust/pull/89764.)
-                    self.validate_operand(&op)?;
-                }
-
                 let discr_val = self.read_discriminant(&op)?.0;
                 self.write_scalar(discr_val, &dest)?;
             }
