@@ -1935,6 +1935,7 @@ pub struct Loc {
 #[derive(Debug)]
 pub struct SourceFileAndLine {
     pub sf: Lrc<SourceFile>,
+    /// Index of line, starting from 0.
     pub line: usize,
 }
 #[derive(Debug)]
