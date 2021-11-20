@@ -202,19 +202,16 @@ impl ExprValidator {
         }
 
         let is_method_call = matches!(expr, Expr::MethodCall { .. });
-        let (sig, args) = match expr {
+        let (sig, mut arg_count) = match expr {
             Expr::Call { callee, args } => {
                 let callee = &self.infer.type_of_expr[*callee];
                 let sig = match callee.callable_sig(db) {
                     Some(sig) => sig,
                     None => return,
                 };
-                (sig, args.clone())
+                (sig, args.len())
             }
             Expr::MethodCall { receiver, args, .. } => {
-                let mut args = args.clone();
-                args.insert(0, *receiver);
-
                 let receiver = &self.infer.type_of_expr[*receiver];
                 if receiver.strip_references().is_unknown() {
                     // if the receiver is of unknown type, it's very likely we
@@ -229,7 +226,7 @@ impl ExprValidator {
                 };
                 let sig = db.callable_item_signature(callee.into()).substitute(&Interner, &subst);
 
-                (sig, args)
+                (sig, args.len() + 1)
             }
             _ => return,
         };
@@ -241,7 +238,6 @@ impl ExprValidator {
         let params = sig.params();
 
         let mut param_count = params.len();
-        let mut arg_count = args.len();
 
         if arg_count != param_count {
             if is_method_call {

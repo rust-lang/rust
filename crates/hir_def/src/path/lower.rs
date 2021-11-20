@@ -70,18 +70,13 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
-                        let path = Path::from_src(trait_ref.path()?, ctx)?;
-                        let mod_path = (*path.mod_path).clone();
-                        let num_segments = path.mod_path.segments.len();
+                        let Path { mod_path, generic_args: path_generic_args, .. } =
+                            Path::from_src(trait_ref.path()?, ctx)?;
+                        let num_segments = mod_path.segments.len();
                         kind = mod_path.kind;
 
-                        let mut prefix_segments = mod_path.segments;
-                        prefix_segments.reverse();
-                        segments.extend(prefix_segments);
-
-                        let mut prefix_args = path.generic_args;
-                        prefix_args.reverse();
-                        generic_args.extend(prefix_args);
+                        segments.extend(mod_path.segments.iter().cloned().rev());
+                        generic_args.extend(path_generic_args.iter().cloned().rev());
 
                         // Insert the type reference (T in the above example) as Self parameter for the trait
                         let last_segment =
@@ -139,7 +134,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
     }
 
     let mod_path = Interned::new(ModPath::from_segments(kind, segments));
-    return Some(Path { type_anchor, mod_path, generic_args });
+    return Some(Path { type_anchor, mod_path, generic_args: generic_args.into() });
 
     fn qualifier(path: &ast::Path) -> Option<ast::Path> {
         if let Some(q) = path.qualifier() {

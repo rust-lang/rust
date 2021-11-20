@@ -40,8 +40,8 @@ pub type LabelId = Idx<Label>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Literal {
-    String(String),
-    ByteString(Vec<u8>),
+    String(Box<str>),
+    ByteString(Box<[u8]>),
     Char(char),
     Bool(bool),
     Int(i128, Option<BuiltinInt>),
@@ -61,7 +61,7 @@ pub enum Expr {
     },
     Block {
         id: BlockId,
-        statements: Vec<Statement>,
+        statements: Box<[Statement]>,
         tail: Option<ExprId>,
         label: Option<LabelId>,
     },
@@ -82,17 +82,17 @@ pub enum Expr {
     },
     Call {
         callee: ExprId,
-        args: Vec<ExprId>,
+        args: Box<[ExprId]>,
     },
     MethodCall {
         receiver: ExprId,
         method_name: Name,
-        args: Vec<ExprId>,
+        args: Box<[ExprId]>,
         generic_args: Option<Box<GenericArgs>>,
     },
     Match {
         expr: ExprId,
-        arms: Vec<MatchArm>,
+        arms: Box<[MatchArm]>,
     },
     Continue {
         label: Option<Name>,
@@ -109,7 +109,7 @@ pub enum Expr {
     },
     RecordLit {
         path: Option<Box<Path>>,
-        fields: Vec<RecordLitField>,
+        fields: Box<[RecordLitField]>,
         spread: Option<ExprId>,
     },
     Field {
@@ -162,13 +162,13 @@ pub enum Expr {
         index: ExprId,
     },
     Lambda {
-        args: Vec<PatId>,
-        arg_types: Vec<Option<Interned<TypeRef>>>,
+        args: Box<[PatId]>,
+        arg_types: Box<[Option<Interned<TypeRef>>]>,
         ret_type: Option<Interned<TypeRef>>,
         body: ExprId,
     },
     Tuple {
-        exprs: Vec<ExprId>,
+        exprs: Box<[ExprId]>,
     },
     Unsafe {
         body: ExprId,
@@ -182,7 +182,7 @@ pub enum Expr {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Array {
-    ElementList(Vec<ExprId>),
+    ElementList(Box<[ExprId]>),
     Repeat { initializer: ExprId, repeat: ExprId },
 }
 
@@ -228,23 +228,23 @@ impl Expr {
             Expr::If { condition, then_branch, else_branch } => {
                 f(*condition);
                 f(*then_branch);
-                if let Some(else_branch) = else_branch {
-                    f(*else_branch);
+                if let &Some(else_branch) = else_branch {
+                    f(else_branch);
                 }
             }
             Expr::Block { statements, tail, .. } => {
-                for stmt in statements {
+                for stmt in statements.iter() {
                     match stmt {
                         Statement::Let { initializer, .. } => {
-                            if let Some(expr) = initializer {
-                                f(*expr);
+                            if let &Some(expr) = initializer {
+                                f(expr);
                             }
                         }
                         Statement::Expr { expr: expression, .. } => f(*expression),
                     }
                 }
-                if let Some(expr) = tail {
-                    f(*expr);
+                if let &Some(expr) = tail {
+                    f(expr);
                 }
             }
             Expr::TryBlock { body }
@@ -262,34 +262,28 @@ impl Expr {
             }
             Expr::Call { callee, args } => {
                 f(*callee);
-                for arg in args {
-                    f(*arg);
-                }
+                args.iter().copied().for_each(f);
             }
             Expr::MethodCall { receiver, args, .. } => {
                 f(*receiver);
-                for arg in args {
-                    f(*arg);
-                }
+                args.iter().copied().for_each(f);
             }
             Expr::Match { expr, arms } => {
                 f(*expr);
-                for arm in arms {
-                    f(arm.expr);
-                }
+                arms.iter().map(|arm| arm.expr).for_each(f);
             }
             Expr::Continue { .. } => {}
             Expr::Break { expr, .. } | Expr::Return { expr } | Expr::Yield { expr } => {
-                if let Some(expr) = expr {
-                    f(*expr);
+                if let &Some(expr) = expr {
+                    f(expr);
                 }
             }
             Expr::RecordLit { fields, spread, .. } => {
-                for field in fields {
+                for field in fields.iter() {
                     f(field.expr);
                 }
-                if let Some(expr) = spread {
-                    f(*expr);
+                if let &Some(expr) = spread {
+                    f(expr);
                 }
             }
             Expr::Lambda { body, .. } => {
@@ -300,11 +294,11 @@ impl Expr {
                 f(*rhs);
             }
             Expr::Range { lhs, rhs, .. } => {
-                if let Some(lhs) = rhs {
-                    f(*lhs);
+                if let &Some(lhs) = rhs {
+                    f(lhs);
                 }
-                if let Some(rhs) = lhs {
-                    f(*rhs);
+                if let &Some(rhs) = lhs {
+                    f(rhs);
                 }
             }
             Expr::Index { base, index } => {
@@ -320,17 +314,9 @@ impl Expr {
             | Expr::Box { expr } => {
                 f(*expr);
             }
-            Expr::Tuple { exprs } => {
-                for expr in exprs {
-                    f(*expr);
-                }
-            }
+            Expr::Tuple { exprs } => exprs.iter().copied().for_each(f),
             Expr::Array(a) => match a {
-                Array::ElementList(exprs) => {
-                    for expr in exprs {
-                        f(*expr);
-                    }
-                }
+                Array::ElementList(exprs) => exprs.iter().copied().for_each(f),
                 Array::Repeat { initializer, repeat } => {
                     f(*initializer);
                     f(*repeat)
@@ -386,15 +372,15 @@ pub struct RecordFieldPat {
 pub enum Pat {
     Missing,
     Wild,
-    Tuple { args: Vec<PatId>, ellipsis: Option<usize> },
-    Or(Vec<PatId>),
-    Record { path: Option<Box<Path>>, args: Vec<RecordFieldPat>, ellipsis: bool },
+    Tuple { args: Box<[PatId]>, ellipsis: Option<usize> },
+    Or(Box<[PatId]>),
+    Record { path: Option<Box<Path>>, args: Box<[RecordFieldPat]>, ellipsis: bool },
     Range { start: ExprId, end: ExprId },
-    Slice { prefix: Vec<PatId>, slice: Option<PatId>, suffix: Vec<PatId> },
+    Slice { prefix: Box<[PatId]>, slice: Option<PatId>, suffix: Box<[PatId]> },
     Path(Box<Path>),
     Lit(ExprId),
     Bind { mode: BindingAnnotation, name: Name, subpat: Option<PatId> },
-    TupleStruct { path: Option<Box<Path>>, args: Vec<PatId>, ellipsis: Option<usize> },
+    TupleStruct { path: Option<Box<Path>>, args: Box<[PatId]>, ellipsis: Option<usize> },
     Ref { pat: PatId, mutability: Mutability },
     Box { inner: PatId },
     ConstBlock(ExprId),

@@ -226,8 +226,8 @@ impl<'a> InferenceContext<'a> {
                     _ => self.err_ty(),
                 };
 
-                for pat_id in prefix.iter().chain(suffix) {
-                    self.infer_pat(*pat_id, &elem_ty, default_bm);
+                for &pat_id in prefix.iter().chain(suffix.iter()) {
+                    self.infer_pat(pat_id, &elem_ty, default_bm);
                 }
 
                 let pat_ty = match expected.kind(&Interner) {
@@ -235,8 +235,8 @@ impl<'a> InferenceContext<'a> {
                     _ => TyKind::Slice(elem_ty),
                 }
                 .intern(&Interner);
-                if let Some(slice_pat_id) = slice {
-                    self.infer_pat(*slice_pat_id, &pat_ty, default_bm);
+                if let &Some(slice_pat_id) = slice {
+                    self.infer_pat(slice_pat_id, &pat_ty, default_bm);
                 }
 
                 pat_ty

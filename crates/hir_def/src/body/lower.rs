@@ -130,11 +130,7 @@ impl ExprCollector<'_> {
                 self.body.params.push(param_pat);
             }
 
-            for param in param_list.params() {
-                let pat = match param.pat() {
-                    None => continue,
-                    Some(pat) => pat,
-                };
+            for pat in param_list.params().filter_map(|param| param.pat()) {
                 let param_pat = self.collect_pat(pat);
                 self.body.params.push(param_pat);
             }
@@ -160,7 +156,7 @@ impl ExprCollector<'_> {
         self.make_expr(expr, Err(SyntheticSyntax))
     }
     fn unit(&mut self) -> ExprId {
-        self.alloc_expr_desugared(Expr::Tuple { exprs: Vec::new() })
+        self.alloc_expr_desugared(Expr::Tuple { exprs: Box::default() })
     }
     fn missing_expr(&mut self) -> ExprId {
         self.alloc_expr_desugared(Expr::Missing)
@@ -235,7 +231,8 @@ impl ExprCollector<'_> {
                                     expr: else_branch.unwrap_or_else(|| self.unit()),
                                     guard: None,
                                 },
-                            ];
+                            ]
+                            .into();
                             return Some(
                                 self.alloc_expr(Expr::Match { expr: match_expr, arms }, syntax_ptr),
                             );
@@ -300,7 +297,8 @@ impl ExprCollector<'_> {
                             let arms = vec![
                                 MatchArm { pat, expr: body, guard: None },
                                 MatchArm { pat: placeholder_pat, expr: break_, guard: None },
-                            ];
+                            ]
+                            .into();
                             let match_expr =
                                 self.alloc_expr_desugared(Expr::Match { expr: match_expr, arms });
                             return Some(
@@ -324,7 +322,7 @@ impl ExprCollector<'_> {
                 let args = if let Some(arg_list) = e.arg_list() {
                     arg_list.args().filter_map(|e| self.maybe_collect_expr(e)).collect()
                 } else {
-                    Vec::new()
+                    Box::default()
                 };
                 self.alloc_expr(Expr::Call { callee, args }, syntax_ptr)
             }
@@ -333,7 +331,7 @@ impl ExprCollector<'_> {
                 let args = if let Some(arg_list) = e.arg_list() {
                     arg_list.args().filter_map(|e| self.maybe_collect_expr(e)).collect()
                 } else {
-                    Vec::new()
+                    Box::default()
                 };
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let generic_args = e
@@ -367,7 +365,7 @@ impl ExprCollector<'_> {
                         })
                         .collect()
                 } else {
-                    Vec::new()
+                    Box::default()
                 };
                 self.alloc_expr(Expr::Match { expr, arms }, syntax_ptr)
             }
@@ -429,7 +427,7 @@ impl ExprCollector<'_> {
                     let spread = nfl.spread().map(|s| self.collect_expr(s));
                     Expr::RecordLit { path, fields, spread }
                 } else {
-                    Expr::RecordLit { path, fields: Vec::new(), spread: None }
+                    Expr::RecordLit { path, fields: Box::default(), spread: None }
                 };
 
                 self.alloc_expr(record_lit, syntax_ptr)
@@ -496,7 +494,10 @@ impl ExprCollector<'_> {
                     .and_then(|r| r.ty())
                     .map(|it| Interned::new(TypeRef::from_ast(&self.ctx(), it)));
                 let body = self.collect_expr_opt(e.body());
-                self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr)
+                self.alloc_expr(
+                    Expr::Lambda { args: args.into(), arg_types: arg_types.into(), ret_type, body },
+                    syntax_ptr,
+                )
             }
             ast::Expr::BinExpr(e) => {
                 let lhs = self.collect_expr_opt(e.lhs());
@@ -718,7 +719,7 @@ impl ExprCollector<'_> {
             self.statements_in_scope.pop();
         }
         let tail = tail;
-        let statements = std::mem::replace(&mut self.statements_in_scope, prev_statements);
+        let statements = std::mem::replace(&mut self.statements_in_scope, prev_statements).into();
         let syntax_node_ptr = AstPtr::new(&block.into());
         let expr_id = self.alloc_expr(
             Expr::Block { id: block_id, statements, tail, label: None },
@@ -812,7 +813,7 @@ impl ExprCollector<'_> {
             ast::Pat::RecordPat(p) => {
                 let path =
                     p.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
-                let args: Vec<_> = p
+                let args = p
                     .record_pat_field_list()
                     .expect("every struct should have a field list")
                     .fields()
@@ -902,7 +903,7 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn collect_tuple_pat(&mut self, args: AstChildren<ast::Pat>) -> (Vec<PatId>, Option<usize>) {
+    fn collect_tuple_pat(&mut self, args: AstChildren<ast::Pat>) -> (Box<[PatId]>, Option<usize>) {
         // Find the location of the `..`, if there is one. Note that we do not
         // consider the possibility of there being multiple `..` here.
         let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::RestPat(_)));
@@ -961,7 +962,7 @@ impl From<ast::LiteralKind> for Literal {
                 Literal::Float(Default::default(), ty)
             }
             LiteralKind::ByteString(bs) => {
-                let text = bs.value().map(Vec::from).unwrap_or_else(Default::default);
+                let text = bs.value().map(Box::from).unwrap_or_else(Default::default);
                 Literal::ByteString(text)
             }
             LiteralKind::String(_) => Literal::String(Default::default()),
