@@ -407,7 +407,17 @@ fn inline(
 
     match body.tail_expr() {
         Some(expr) if body.statements().next().is_none() => expr,
-        _ => ast::Expr::BlockExpr(body),
+        _ => match node
+            .syntax()
+            .parent()
+            .and_then(ast::BinExpr::cast)
+            .and_then(|bin_expr| bin_expr.lhs())
+        {
+            Some(lhs) if lhs.syntax() == node.syntax() => {
+                make::expr_paren(ast::Expr::BlockExpr(body)).clone_for_update()
+            }
+            _ => ast::Expr::BlockExpr(body),
+        },
     }
 }
 
@@ -1075,5 +1085,61 @@ fn main() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn inline_callers_wrapped_in_parentheses() {
+        check_assist(
+            inline_into_callers,
+            r#"
+fn foo$0() -> u32 {
+    let x = 0;
+    x
+}
+fn bar() -> u32 {
+    foo() + foo()
+}
+"#,
+            r#"
+
+fn bar() -> u32 {
+    ({
+        let x = 0;
+        x
+    }) + {
+        let x = 0;
+        x
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_call_wrapped_in_parentheses() {
+        check_assist(
+            inline_call,
+            r#"
+fn foo() -> u32 {
+    let x = 0;
+    x
+}
+fn bar() -> u32 {
+    foo$0() + foo()
+}
+"#,
+            r#"
+fn foo() -> u32 {
+    let x = 0;
+    x
+}
+fn bar() -> u32 {
+    ({
+        let x = 0;
+        x
+    }) + foo()
+}
+"#,
+        )
     }
 }
