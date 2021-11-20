@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::default::Default;
 use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
 use std::lazy::SyncOnceCell as OnceCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -945,16 +944,14 @@ fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
     }
 }
 
-impl<'a> FromIterator<&'a DocFragment> for String {
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = &'a DocFragment>,
-    {
-        iter.into_iter().fold(String::new(), |mut acc, frag| {
-            add_doc_fragment(&mut acc, frag);
-            acc
-        })
+/// Collapse a collection of [`DocFragment`]s into one string,
+/// handling indentation and newlines as needed.
+crate fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
+    let mut acc = String::new();
+    for frag in doc_strings {
+        add_doc_fragment(&mut acc, frag);
     }
+    acc
 }
 
 /// A link that has not yet been rendered.
@@ -1083,7 +1080,11 @@ impl Attributes {
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
     crate fn doc_value(&self) -> Option<String> {
-        if self.doc_strings.is_empty() { None } else { Some(self.doc_strings.iter().collect()) }
+        if self.doc_strings.is_empty() {
+            None
+        } else {
+            Some(collapse_doc_fragments(&self.doc_strings))
+        }
     }
 
     crate fn get_doc_aliases(&self) -> Box<[String]> {
