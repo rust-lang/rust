@@ -22,7 +22,12 @@ error: item in documentation is missing backticks
   --> $DIR/unbalanced_ticks.rs:15:32
    |
 LL | /// This paragraph is fine and should_be linted normally.
-   |                                ^^^^^^^^^ help: try: ``should_be``
+   |                                ^^^^^^^^^
+   |
+help: try
+   |
+LL | /// This paragraph is fine and `should_be` linted normally.
+   |                                ~~~~~~~~~~~
 
 error: backticks are unbalanced
   --> $DIR/unbalanced_ticks.rs:17:1
@@ -36,7 +41,12 @@ error: item in documentation is missing backticks
   --> $DIR/unbalanced_ticks.rs:30:8
    |
 LL | /// ## not_fine
-   |        ^^^^^^^^ help: try: ``not_fine``
+   |        ^^^^^^^^
+   |
+help: try
+   |
+LL | /// ## `not_fine`
+   |        ~~~~~~~~~~
 
 error: backticks are unbalanced
   --> $DIR/unbalanced_ticks.rs:32:1
@@ -58,7 +68,12 @@ error: item in documentation is missing backticks
   --> $DIR/unbalanced_ticks.rs:35:23
    |
 LL | /// - This item needs backticks_here
-   |                       ^^^^^^^^^^^^^^ help: try: ``backticks_here``
+   |                       ^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// - This item needs `backticks_here`
+   |                       ~~~~~~~~~~~~~~~~
 
 error: aborting due to 8 previous errors
 
