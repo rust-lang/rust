@@ -2,14 +2,16 @@ error[E0308]: mismatched types
   --> $DIR/suggest-full-enum-variant-for-local-module.rs:9:28
    |
 LL |     let _: option::O<()> = ();
-   |            -------------   ^^
-   |            |               |
-   |            |               expected enum `O`, found `()`
-   |            |               help: try using a variant of the expected enum: `option::O::Some(())`
+   |            -------------   ^^ expected enum `O`, found `()`
+   |            |
    |            expected due to this
    |
    = note:   expected enum `O<()>`
            found unit type `()`
+help: try wrapping the expression in `option::O::Some`
+   |
+LL |     let _: option::O<()> = option::O::Some(());
+   |                            ++++++++++++++++  +
 
 error: aborting due to previous error
 
