@@ -690,7 +690,7 @@ impl f64 {
     /// Returns the maximum of the two numbers.
     ///
     /// Follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs.
-    /// This match’s the behavior of libm’s fmin.
+    /// This matches the behavior of libm’s fmin.
     ///
     /// ```
     /// let x = 1.0_f64;
@@ -709,7 +709,7 @@ impl f64 {
     /// Returns the minimum of the two numbers.
     ///
     /// Follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs.
-    /// This match’s the behavior of libm’s fmin.
+    /// This matches the behavior of libm’s fmin.
     ///
     /// ```
     /// let x = 1.0_f64;
@@ -741,7 +741,7 @@ impl f64 {
     ///
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follow the semantics specified in IEEE 754-2019.
+    /// Note that this follows the semantics specified in IEEE 754-2019.
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub fn maximum(self, other: f64) -> f64 {
@@ -772,7 +772,7 @@ impl f64 {
     ///
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follow the semantics specified in IEEE 754-2019.
+    /// Note that this follows the semantics specified in IEEE 754-2019.
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub fn minimum(self, other: f64) -> f64 {
