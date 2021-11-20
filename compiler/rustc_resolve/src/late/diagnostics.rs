@@ -1735,7 +1735,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         (generics.span, format!("<{}>", ident))
                     };
                     // Do not suggest if this is coming from macro expansion.
-                    if !span.from_expansion() {
+                    if span.can_be_used_for_suggestions() {
                         return Some((
                             span.shrink_to_hi(),
                             msg,
@@ -1825,7 +1825,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         continue;
                     }
                     suggested_spans.push(span);
-                    if !span.from_expansion() {
+                    if span.can_be_used_for_suggestions() {
                         err.span_suggestion(
                             span,
                             &format!("consider introducing lifetime `{}` here", lifetime_ref),

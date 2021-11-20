@@ -177,11 +177,9 @@ crate fn placeholder_type_error(
         sugg.push((arg.span, (*type_name).to_string()));
     } else {
         let last = generics.iter().last().unwrap();
-        sugg.push((
-            // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
-            last.bounds_span().unwrap_or(last.span).shrink_to_hi(),
-            format!(", {}", type_name),
-        ));
+        // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
+        let span = last.bounds_span_for_suggestions().unwrap_or(last.span.shrink_to_hi());
+        sugg.push((span, format!(", {}", type_name)));
     }
 
     let mut err = bad_placeholder_type(tcx, placeholder_types, kind);

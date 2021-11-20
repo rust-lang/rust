@@ -270,7 +270,7 @@ pub fn suggest_constraining_type_param(
         // `where` clause instead of `trait Base<T: Copy = String>: Super<T>`.
         && !matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. })
     {
-        if let Some(bounds_span) = param.bounds_span() {
+        if let Some(span) = param.bounds_span_for_suggestions() {
             // If user has provided some bounds, suggest restricting them:
             //
             //   fn foo<T: Foo>(t: T) { ... }
@@ -284,7 +284,7 @@ pub fn suggest_constraining_type_param(
             //          --
             //          |
             //          replace with: `T: Bar +`
-            suggest_restrict(bounds_span.shrink_to_hi());
+            suggest_restrict(span);
         } else {
             // If user hasn't provided any bounds, suggest adding a new one:
             //

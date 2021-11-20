@@ -262,8 +262,8 @@ fn suggest_restriction(
             match generics
                 .params
                 .iter()
-                .map(|p| p.bounds_span().unwrap_or(p.span))
-                .filter(|&span| generics.span.contains(span) && span.desugaring_kind().is_none())
+                .map(|p| p.bounds_span_for_suggestions().unwrap_or(p.span.shrink_to_hi()))
+                .filter(|&span| generics.span.contains(span) && span.can_be_used_for_suggestions())
                 .max_by_key(|span| span.hi())
             {
                 // `fn foo(t: impl Trait)`
@@ -271,7 +271,7 @@ fn suggest_restriction(
                 None => (generics.span, format!("<{}>", type_param)),
                 // `fn foo<A>(t: impl Trait)`
                 //        ^^^ suggest `<A, T: Trait>` here
-                Some(span) => (span.shrink_to_hi(), format!(", {}", type_param)),
+                Some(span) => (span, format!(", {}", type_param)),
             },
             // `fn foo(t: impl Trait)`
             //                       ^ suggest `where <T as Trait>::A: Bound`
