@@ -25,7 +25,7 @@ use Level::*;
 
 use emitter::{is_case_difference, Emitter, EmitterWriter};
 use registry::Registry;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
@@ -452,7 +452,14 @@ struct HandlerInner {
 
     future_breakage_diagnostics: Vec<Diagnostic>,
 
-    /// Lint [`Diagnostic`]s can be expected as described in [RFC-2383]. An
+    /// Expected [`Diagnostic`]s store a [`LintExpectationId`] as part of
+    /// the lint level. [`LintExpectationId`]s created early during the compilation
+    /// (before `HirId`s have been defined) are not stable and can therefore not be
+    /// stored on disk. This buffer stores these diagnostics until the ID has been
+    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`]s are the
+    /// submitted for storage and added to the list of fulfilled expectations.
+    unstable_expect_diagnostics: Vec<Diagnostic>,
+
     /// expected diagnostic will have the level `Expect` which additionally
     /// carries the [`LintExpectationId`] of the expectation that can be
     /// marked as fulfilled. This is a collection of all [`LintExpectationId`]s
@@ -580,6 +587,7 @@ impl Handler {
                 emitted_diagnostics: Default::default(),
                 stashed_diagnostics: Default::default(),
                 future_breakage_diagnostics: Vec::new(),
+                unstable_expect_diagnostics: Vec::new(),
                 fulfilled_expectations: Default::default(),
             }),
         }
@@ -923,6 +931,28 @@ impl Handler {
         self.inner.borrow_mut().emit_unused_externs(lint_level, unused_externs)
     }
 
+    pub fn update_unstable_expectation_id(
+        &self,
+        unstable_to_stable: &FxHashMap<LintExpectationId, LintExpectationId>,
+    ) {
+        let diags = std::mem::take(&mut self.inner.borrow_mut().unstable_expect_diagnostics);
+        if diags.is_empty() {
+            return;
+        }
+
+        let mut inner = self.inner.borrow_mut();
+        for mut diag in diags.into_iter() {
+            if let Some(unstable_id) = diag.level.get_expectation_id() {
+                if let Some(stable_id) = unstable_to_stable.get(&unstable_id) {
+                    diag.level = Level::Expect(*stable_id);
+                    inner.fulfilled_expectations.insert(*stable_id);
+                }
+            }
+
+            (*TRACK_DIAGNOSTICS)(&diag);
+        }
+    }
+
     /// This methods steals all [`LintExpectationId`]s that are stored inside
     /// [`HandlerInner`] and indicate that the linked expectation has been fulfilled.
     pub fn steal_fulfilled_expectation_ids(&self) -> FxHashSet<LintExpectationId> {
@@ -970,6 +1000,15 @@ impl HandlerInner {
             if diagnostic.has_future_breakage() {
                 (*TRACK_DIAGNOSTICS)(diagnostic);
             }
+            return;
+        }
+
+        // The `LintExpectationId` can be stable or unstable depending on when it was created.
+        // Diagnostics created before the definition of `HirId`s are unstable and can not yet
+        // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
+        // a stable one by the `LintLevelsBuilder`.
+        if let Level::Expect(LintExpectationId::Unstable(_)) = diagnostic.level {
+            self.unstable_expect_diagnostics.push(diagnostic.clone());
             return;
         }
 
@@ -1321,6 +1360,13 @@ impl Level {
 
     pub fn is_failure_note(&self) -> bool {
         matches!(*self, FailureNote)
+    }
+
+    pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
+        match self {
+            Level::Expect(id) => Some(*id),
+            _ => None,
+        }
     }
 }
 

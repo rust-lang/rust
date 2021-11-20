@@ -25,7 +25,7 @@ pub fn check_expectations(tcx: TyCtxt<'_>) {
 }
 
 fn emit_unfulfilled_expectation_lint(tcx: TyCtxt<'_>, expectation: &LintExpectation) {
-    // FIXME  The current implementation doesn't cover cases where the
+    // FIXME: The current implementation doesn't cover cases where the
     // `unfulfilled_lint_expectations` is actually expected by another lint
     // expectation. This can be added here as we have the lint level of this
     // expectation, and we can also mark the lint expectation it would fulfill

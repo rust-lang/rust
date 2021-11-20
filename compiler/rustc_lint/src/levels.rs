@@ -32,17 +32,23 @@ fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
 
     builder.levels.id_to_set.reserve(krate.owners.len() + 1);
 
-    let push = builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), true);
+    let push =
+        builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), true, Some(hir::CRATE_HIR_ID));
+
     builder.levels.register_id(hir::CRATE_HIR_ID);
     tcx.hir().walk_toplevel_module(&mut builder);
     builder.levels.pop(push);
 
+    builder.levels.update_unstable_expectation_ids();
     builder.levels.build_map()
 }
 
 pub struct LintLevelsBuilder<'s> {
     sess: &'s Session,
     lint_expectations: FxHashMap<LintExpectationId, LintExpectation>,
+    /// Each expectation has a stable and an unstable identifier. This map
+    /// is used to map from unstable to stable [`LintExpectationId`]s.
+    expectation_id_map: FxHashMap<LintExpectationId, LintExpectationId>,
     sets: LintLevelSets,
     id_to_set: FxHashMap<HirId, LintStackIndex>,
     cur: LintStackIndex,
@@ -66,6 +72,7 @@ impl<'s> LintLevelsBuilder<'s> {
         let mut builder = LintLevelsBuilder {
             sess,
             lint_expectations: Default::default(),
+            expectation_id_map: Default::default(),
             sets: LintLevelSets::new(),
             cur: COMMAND_LINE,
             id_to_set: Default::default(),
@@ -226,13 +233,26 @@ impl<'s> LintLevelsBuilder<'s> {
     ///   `#[allow]`
     ///
     /// Don't forget to call `pop`!
-    pub(crate) fn push(&mut self, attrs: &[ast::Attribute], is_crate_node: bool) -> BuilderPush {
+    pub(crate) fn push(
+        &mut self,
+        attrs: &[ast::Attribute],
+        is_crate_node: bool,
+        source_hir_id: Option<HirId>,
+    ) -> BuilderPush {
         let mut specs = FxHashMap::default();
         let sess = self.sess;
         let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
-        for attr in attrs {
-            let Some(level) = Level::from_symbol(attr.name_or_empty(), attr.id.as_u32()) else {
-                continue
+        for (attr_index, attr) in attrs.iter().enumerate() {
+            let level = match Level::from_symbol(attr.name_or_empty(), || {
+                LintExpectationId::Unstable(attr.id)
+            }) {
+                None => continue,
+                Some(Level::Expect(unstable_id)) if source_hir_id.is_some() => {
+                    let stable_id =
+                        self.create_stable_id(unstable_id, source_hir_id.unwrap(), attr_index);
+                    Level::Expect(stable_id)
+                }
+                Some(lvl) => lvl,
             };
 
             let Some(mut metas) = attr.meta_item_list() else {
@@ -539,6 +559,19 @@ impl<'s> LintLevelsBuilder<'s> {
         BuilderPush { prev, changed: prev != self.cur }
     }
 
+    fn create_stable_id(
+        &mut self,
+        unstable_id: LintExpectationId,
+        hir_id: HirId,
+        attr_index: usize,
+    ) -> LintExpectationId {
+        let stable_id = LintExpectationId::Stable { hir_id, attr_index };
+
+        self.expectation_id_map.insert(unstable_id, stable_id);
+
+        stable_id
+    }
+
     /// Checks if the lint is gated on a feature that is not enabled.
     fn check_gated_lint(&self, lint_id: LintId, span: Span) {
         if let Some(feature) = lint_id.lint.feature_gate {
@@ -582,6 +615,10 @@ impl<'s> LintLevelsBuilder<'s> {
         self.id_to_set.insert(id, self.cur);
     }
 
+    fn update_unstable_expectation_ids(&self) {
+        self.sess.diagnostic().update_unstable_expectation_id(&self.expectation_id_map);
+    }
+
     pub fn build_map(self) -> LintLevelMap {
         LintLevelMap {
             sets: self.sets,
@@ -603,7 +640,8 @@ impl LintLevelMapBuilder<'_> {
     {
         let is_crate_hir = id == hir::CRATE_HIR_ID;
         let attrs = self.tcx.hir().attrs(id);
-        let push = self.levels.push(attrs, is_crate_hir);
+        let push = self.levels.push(attrs, is_crate_hir, Some(id));
+
         if push.changed {
             self.levels.register_id(id);
         }

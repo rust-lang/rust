@@ -6,10 +6,9 @@ use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::lint::LintExpectationId;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
-    FutureIncompatibilityReason, Level, Lint, LintId,
+    FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId,
 };
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;

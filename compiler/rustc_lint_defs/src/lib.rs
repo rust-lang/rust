@@ -5,7 +5,9 @@ extern crate rustc_macros;
 
 pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
+use rustc_ast::AttrId;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_hir::HirId;
 use rustc_serialize::json::Json;
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
@@ -48,29 +50,70 @@ pub enum Applicability {
     Unspecified,
 }
 
-rustc_index::newtype_index! {
-    /// FIXME: The lint expectation ID is currently a simple copy of the `AttrId`
-    /// that the expectation originated from. In the future it should be generated
-    /// by other means. This is for one to keep the IDs independent of each other
-    /// and also to ensure that it is actually stable between compilation sessions.
-    /// (The `AttrId` for instance, is not stable).
-    ///
-    /// Additionally, it would be nice if this generation could be moved into
-    /// [`Level::from_symbol`] to have it all contained in one module and to
-    /// make it simpler to use.
-    pub struct LintExpectationId {
-        DEBUG_FORMAT = "LintExpectationId({})"
+/// Each lint expectation has a `LintExpectationId` assigned by the
+/// [`LintLevelsBuilder`][`rustc_lint::levels::LintLevelsBuilder`]. Expected
+/// [`Diagnostic`][`rustc_errors::Diagnostic`]s get the lint level `Expect` which
+/// stores the `LintExpectationId` to match it with the actual expectation later on.
+///
+/// The `LintExpectationId` has to be has stable between compilations, as diagnostic
+/// instances might be loaded from cache. Lint messages can be emitted during an
+/// `EarlyLintPass` operating on the AST and during a `LateLintPass` traversing the
+/// HIR tree. The AST doesn't have enough information to create a stable id. The
+/// `LintExpectationId` will instead store the [`AttrId`] defining the expectation.
+/// These `LintExpectationId` will be updated to use the stable [`HirId`] once the
+/// AST has been lowered. The transformation is done by the
+/// [`LintLevelsBuilder`][`rustc_lint::levels::LintLevelsBuilder`]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable)]
+pub enum LintExpectationId {
+    /// Used for lints emitted during the `EarlyLintPass`. This id is not
+    /// has stable and should not be cached.
+    Unstable(AttrId),
+    /// The [`HirId`] that the lint expectation is attached to. This id is
+    /// stable and can be cached. The additional index ensures that nodes with
+    /// several expectations can correctly match diagnostics to the individual
+    /// expectation.
+    Stable { hir_id: HirId, attr_index: usize },
+}
+
+impl LintExpectationId {
+    pub fn is_stable(&self) -> bool {
+        match self {
+            LintExpectationId::Unstable(_) => false,
+            LintExpectationId::Stable { .. } => true,
+        }
     }
 }
 
-rustc_data_structures::impl_stable_hash_via_hash!(LintExpectationId);
+impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+        match self {
+            LintExpectationId::Unstable(_) => {
+                unreachable!(
+                    "HashStable should never be called for an unstable `LintExpectationId`"
+                )
+            }
+            LintExpectationId::Stable { hir_id, attr_index } => {
+                hir_id.hash_stable(hcx, hasher);
+                attr_index.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
 
-impl<HCX> ToStableHashKey<HCX> for LintExpectationId {
-    type KeyType = u32;
+impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
+    type KeyType = (HirId, usize);
 
     #[inline]
     fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
-        self.as_u32()
+        match self {
+            LintExpectationId::Unstable(_) => {
+                unreachable!(
+                    "HashStable should never be called for an unstable `LintExpectationId`"
+                )
+            }
+            LintExpectationId::Stable { hir_id, attr_index } => (*hir_id, *attr_index),
+        }
     }
 }
 
@@ -133,10 +176,13 @@ impl Level {
     }
 
     /// Converts a symbol to a level.
-    pub fn from_symbol(x: Symbol, possible_lint_expect_id: u32) -> Option<Level> {
+    pub fn from_symbol<F>(x: Symbol, create_expectation_id: F) -> Option<Level>
+    where
+        F: FnOnce() -> LintExpectationId,
+    {
         match x {
             sym::allow => Some(Level::Allow),
-            sym::expect => Some(Level::Expect(LintExpectationId::from(possible_lint_expect_id))),
+            sym::expect => Some(Level::Expect(create_expectation_id())),
             sym::warn => Some(Level::Warn),
             sym::deny => Some(Level::Deny),
             sym::forbid => Some(Level::Forbid),
