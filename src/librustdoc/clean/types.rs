@@ -918,6 +918,10 @@ crate struct DocFragment {
     crate indent: usize,
 }
 
+// `DocFragment` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(DocFragment, 32);
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 crate enum DocFragmentKind {
     /// A doc fragment created from a `///` or `//!` doc comment.
