@@ -1,4 +1,4 @@
-//! Provides validators for the item declarations.
+//! Provides validators for names of declarations.
 //!
 //! This includes the following items:
 //!
@@ -12,6 +12,8 @@
 
 mod case_conv;
 
+use std::fmt;
+
 use base_db::CrateId;
 use hir_def::{
     adt::VariantData,
@@ -19,17 +21,19 @@ use hir_def::{
     src::HasSource,
     AdtId, AttrDefId, ConstId, EnumId, FunctionId, Lookup, ModuleDefId, StaticId, StructId,
 };
-use hir_expand::name::{AsName, Name};
+use hir_expand::{
+    name::{AsName, Name},
+    HirFileId,
+};
 use stdx::{always, never};
 use syntax::{
     ast::{self, HasName},
     AstNode, AstPtr,
 };
 
-use crate::{
-    db::HirDatabase,
-    diagnostics::{decl_check::case_conv::*, CaseType, IdentType, IncorrectCase},
-};
+use crate::db::HirDatabase;
+
+use self::case_conv::{to_camel_case, to_lower_snake_case, to_upper_snake_case};
 
 mod allow {
     pub(super) const BAD_STYLE: &str = "bad_style";
@@ -37,6 +41,80 @@ mod allow {
     pub(super) const NON_SNAKE_CASE: &str = "non_snake_case";
     pub(super) const NON_UPPER_CASE_GLOBAL: &str = "non_upper_case_globals";
     pub(super) const NON_CAMEL_CASE_TYPES: &str = "non_camel_case_types";
+}
+
+pub fn incorrect_case(
+    db: &dyn HirDatabase,
+    krate: CrateId,
+    owner: ModuleDefId,
+) -> Vec<IncorrectCase> {
+    let _p = profile::span("validate_module_item");
+    let mut validator = DeclValidator::new(db, krate);
+    validator.validate_item(owner);
+    validator.sink
+}
+
+#[derive(Debug)]
+pub enum CaseType {
+    // `some_var`
+    LowerSnakeCase,
+    // `SOME_CONST`
+    UpperSnakeCase,
+    // `SomeStruct`
+    UpperCamelCase,
+}
+
+impl fmt::Display for CaseType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let repr = match self {
+            CaseType::LowerSnakeCase => "snake_case",
+            CaseType::UpperSnakeCase => "UPPER_SNAKE_CASE",
+            CaseType::UpperCamelCase => "CamelCase",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
+#[derive(Debug)]
+pub enum IdentType {
+    Constant,
+    Enum,
+    Field,
+    Function,
+    Parameter,
+    StaticVariable,
+    Structure,
+    Variable,
+    Variant,
+}
+
+impl fmt::Display for IdentType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let repr = match self {
+            IdentType::Constant => "Constant",
+            IdentType::Enum => "Enum",
+            IdentType::Field => "Field",
+            IdentType::Function => "Function",
+            IdentType::Parameter => "Parameter",
+            IdentType::StaticVariable => "Static variable",
+            IdentType::Structure => "Structure",
+            IdentType::Variable => "Variable",
+            IdentType::Variant => "Variant",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
+#[derive(Debug)]
+pub struct IncorrectCase {
+    pub file: HirFileId,
+    pub ident: AstPtr<ast::Name>,
+    pub expected_case: CaseType,
+    pub ident_type: IdentType,
+    pub ident_text: String,
+    pub suggested_text: String,
 }
 
 pub(super) struct DeclValidator<'a> {
