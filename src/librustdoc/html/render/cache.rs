@@ -70,7 +70,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     // Set up alias indexes.
     for (i, item) in search_index.iter().enumerate() {
         for alias in &item.aliases[..] {
-            aliases.entry(alias.to_lowercase()).or_insert_with(Vec::new).push(i);
+            aliases.entry(alias.as_str().to_lowercase()).or_default().push(i);
         }
     }
 

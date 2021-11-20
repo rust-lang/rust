@@ -1114,7 +1114,7 @@ impl Attributes {
         if self.doc_strings.is_empty() { None } else { Some(self.doc_strings.iter().collect()) }
     }
 
-    crate fn get_doc_aliases(&self) -> Box<[String]> {
+    crate fn get_doc_aliases(&self) -> Box<[Symbol]> {
         let mut aliases = FxHashSet::default();
 
         for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
@@ -1122,16 +1122,16 @@ impl Attributes {
                 for l in values {
                     match l.literal().unwrap().kind {
                         ast::LitKind::Str(s, _) => {
-                            aliases.insert(s.as_str().to_string());
+                            aliases.insert(s);
                         }
                         _ => unreachable!(),
                     }
                 }
             } else {
-                aliases.insert(attr.value_str().map(|s| s.to_string()).unwrap());
+                aliases.insert(attr.value_str().unwrap());
             }
         }
-        aliases.into_iter().collect::<Vec<String>>().into()
+        aliases.into_iter().collect::<Vec<_>>().into()
     }
 }
 
