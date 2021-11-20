@@ -382,9 +382,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // all the arm blocks will rejoin here
         let end_block = self.cfg.start_new_block();
 
-        let end_brace = self.source_info(
-            outer_source_info.span.with_lo(outer_source_info.span.hi() - BytePos::from_usize(1)),
-        );
+        // Don't underflow on dummy spans.
+        let end_brace_span = if outer_source_info.span.hi() > BytePos::from_usize(0) {
+            outer_source_info.span.with_lo(outer_source_info.span.hi() - BytePos::from_usize(1))
+        } else {
+            outer_source_info.span
+        };
+        let end_brace = self.source_info(end_brace_span);
         for arm_block in arm_end_blocks {
             let block = &self.cfg.basic_blocks[arm_block.0];
             let last_location = block.statements.last().map(|s| s.source_info);
