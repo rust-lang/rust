@@ -813,7 +813,7 @@ impl ExprCollector<'_> {
             ast::Pat::RecordPat(p) => {
                 let path =
                     p.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
-                let args: Vec<_> = p
+                let args = p
                     .record_pat_field_list()
                     .expect("every struct should have a field list")
                     .fields()
@@ -903,7 +903,7 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn collect_tuple_pat(&mut self, args: AstChildren<ast::Pat>) -> (Vec<PatId>, Option<usize>) {
+    fn collect_tuple_pat(&mut self, args: AstChildren<ast::Pat>) -> (Box<[PatId]>, Option<usize>) {
         // Find the location of the `..`, if there is one. Note that we do not
         // consider the possibility of there being multiple `..` here.
         let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::RestPat(_)));
@@ -962,7 +962,7 @@ impl From<ast::LiteralKind> for Literal {
                 Literal::Float(Default::default(), ty)
             }
             LiteralKind::ByteString(bs) => {
-                let text = bs.value().map(Vec::from).unwrap_or_else(Default::default);
+                let text = bs.value().map(Box::from).unwrap_or_else(Default::default);
                 Literal::ByteString(text)
             }
             LiteralKind::String(_) => Literal::String(Default::default()),
