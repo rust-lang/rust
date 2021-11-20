@@ -13,8 +13,8 @@ LL | |         thing_two()
 LL | |     }.await
    | |_____- `if` and `else` have incompatible types
    |
-   = note:     expected type `impl Future` (opaque type at <$DIR/opaque-type-error.rs:8:19>)
-           found opaque type `impl Future` (opaque type at <$DIR/opaque-type-error.rs:12:19>)
+   = note:     expected type `impl Future<Output = Result<(), ()>>` (opaque type at <$DIR/opaque-type-error.rs:8:19>)
+           found opaque type `impl Future<Output = Result<(), ()>>` (opaque type at <$DIR/opaque-type-error.rs:12:19>)
    = note: distinct uses of `impl Trait` result in different opaque types
 help: consider `await`ing on both `Future`s
    |

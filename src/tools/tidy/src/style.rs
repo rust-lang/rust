@@ -266,6 +266,8 @@ pub fn check(path: &Path, bad: &mut bool) {
             contains_ignore_directive(can_contain, &contents, "end-whitespace");
         let mut skip_trailing_newlines =
             contains_ignore_directive(can_contain, &contents, "trailing-newlines");
+        let mut skip_leading_newlines =
+            contains_ignore_directive(can_contain, &contents, "leading-newlines");
         let mut skip_copyright = contains_ignore_directive(can_contain, &contents, "copyright");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
@@ -350,7 +352,10 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
         }
         if leading_new_lines {
-            tidy_error!(bad, "{}: leading newline", file.display());
+            let mut err = |_| {
+                tidy_error!(bad, "{}: leading newline", file.display());
+            };
+            suppressible_tidy_err!(err, skip_leading_newlines, "mising leading newline");
         }
         let mut err = |msg: &str| {
             tidy_error!(bad, "{}: {}", file.display(), msg);
@@ -394,6 +399,9 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
         if let Directive::Ignore(false) = skip_trailing_newlines {
             tidy_error!(bad, "{}: ignoring trailing newlines unnecessarily", file.display());
+        }
+        if let Directive::Ignore(false) = skip_leading_newlines {
+            tidy_error!(bad, "{}: ignoring leading newlines unnecessarily", file.display());
         }
         if let Directive::Ignore(false) = skip_copyright {
             tidy_error!(bad, "{}: ignoring copyright unnecessarily", file.display());

@@ -55,7 +55,7 @@ async fn async_different_futures() {
         //~| HELP consider `await`ing on both `Future`s
         false => async_dummy2(), //~ ERROR `match` arms have incompatible types
         //~^ NOTE expected opaque type, found a different opaque type
-        //~| NOTE expected type `impl Future`
+        //~| NOTE expected type `impl Future<Output = ()>`
         //~| NOTE distinct uses of `impl Trait` result in different opaque types
     };
 }

@@ -44,7 +44,7 @@ pre, .rustdoc.source .example-wrap {
 	scrollbar-color: rgb(64, 65, 67) #717171;
 }
 .sidebar {
-	scrollbar-color: rgba(32,34,37,.6) transparent;
+	scrollbar-color: rgba(32,34,37,.6) #5a5a5a;
 }
 
 /* Improve the scrollbar display on webkit-based browsers */

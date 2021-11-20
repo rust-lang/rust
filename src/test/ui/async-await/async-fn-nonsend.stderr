@@ -4,7 +4,7 @@ error: future cannot be sent between threads safely
 LL |     assert_send(local_dropped_before_await());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `local_dropped_before_await` is not `Send`
    |
-   = help: within `impl Future`, the trait `Send` is not implemented for `Rc<()>`
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:24:5
    |
@@ -27,7 +27,7 @@ error: future cannot be sent between threads safely
 LL |     assert_send(non_send_temporary_in_match());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `non_send_temporary_in_match` is not `Send`
    |
-   = help: within `impl Future`, the trait `Send` is not implemented for `Rc<()>`
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:33:20
    |
