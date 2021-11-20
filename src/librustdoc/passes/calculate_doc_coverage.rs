@@ -207,7 +207,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                 let mut tests = Tests { found_tests: 0 };
 
                 find_testable_code(
-                    &i.attrs.collapsed_doc_value().unwrap_or_default(),
+                    &i.attrs.doc_value().unwrap_or_default(),
                     &mut tests,
                     ErrorCodes::No,
                     false,

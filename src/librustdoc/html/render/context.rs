@@ -145,7 +145,7 @@ impl SharedContext<'_> {
     /// Returns the `collapsed_doc_value` of the given item if this is the main crate, otherwise
     /// returns the `doc_value`.
     crate fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<String> {
-        if self.collapsed { item.collapsed_doc_value() } else { item.doc_value() }
+        if self.collapsed { item.doc_value() } else { item.doc_value() }
     }
 
     crate fn edition(&self) -> Edition {

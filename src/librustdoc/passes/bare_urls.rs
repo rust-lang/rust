@@ -66,7 +66,7 @@ impl<'a, 'tcx> DocVisitor for BareUrlsLinter<'a, 'tcx> {
                 return;
             }
         };
-        let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
+        let dox = item.attrs.doc_value().unwrap_or_default();
         if !dox.is_empty() {
             let report_diag = |cx: &DocContext<'_>, msg: &str, url: &str, range: Range<usize>| {
                 let sp = super::source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs)

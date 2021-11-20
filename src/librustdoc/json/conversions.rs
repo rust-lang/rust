@@ -32,7 +32,7 @@ impl JsonRenderer<'_> {
             .flatten()
             .map(|clean::ItemLink { link, did, .. }| (link.clone(), from_item_id((*did).into())))
             .collect();
-        let docs = item.attrs.collapsed_doc_value();
+        let docs = item.attrs.doc_value();
         let attrs = item
             .attrs
             .other_attrs

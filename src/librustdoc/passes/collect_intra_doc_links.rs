@@ -894,7 +894,7 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
-        for (parent_module, doc) in item.attrs.collapsed_doc_value_by_module_level() {
+        for (parent_module, doc) in item.attrs.doc_value_by_module_level() {
             debug!("combined_docs={}", doc);
 
             let (krate, parent_node) = if let Some(id) = parent_module {

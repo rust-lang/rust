@@ -33,7 +33,7 @@ impl IntraLinkCrateLoader {
 
         // FIXME: this probably needs to consider inlining
         let attrs = crate::clean::Attributes::from_ast(attrs, None);
-        for (parent_module, doc) in attrs.collapsed_doc_value_by_module_level() {
+        for (parent_module, doc) in attrs.doc_value_by_module_level() {
             debug!(?doc);
             for link in markdown_links(doc.as_str()) {
                 debug!(?link.link);

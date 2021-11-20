@@ -411,12 +411,6 @@ impl Item {
         crate::passes::span_of_attrs(&self.attrs).unwrap_or_else(|| self.span(tcx).inner())
     }
 
-    /// Finds the `doc` attribute as a NameValue and returns the corresponding
-    /// value found.
-    crate fn doc_value(&self) -> Option<String> {
-        self.attrs.doc_value()
-    }
-
     /// Convenience wrapper around [`Self::from_def_id_and_parts`] which converts
     /// `hir_id` to a [`DefId`]
     pub fn from_hir_id_and_parts(
@@ -468,8 +462,8 @@ impl Item {
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
-    crate fn collapsed_doc_value(&self) -> Option<String> {
-        self.attrs.collapsed_doc_value()
+    crate fn doc_value(&self) -> Option<String> {
+        self.attrs.doc_value()
     }
 
     crate fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
@@ -1074,16 +1068,10 @@ impl Attributes {
         Attributes { doc_strings, other_attrs }
     }
 
-    /// Finds the `doc` attribute as a NameValue and returns the corresponding
-    /// value found.
-    crate fn doc_value(&self) -> Option<String> {
-        self.collapsed_doc_value()
-    }
-
     /// Return the doc-comments on this item, grouped by the module they came from.
     ///
     /// The module can be different if this is a re-export with added documentation.
-    crate fn collapsed_doc_value_by_module_level(&self) -> FxHashMap<Option<DefId>, String> {
+    crate fn doc_value_by_module_level(&self) -> FxHashMap<Option<DefId>, String> {
         let mut ret = FxHashMap::default();
 
         for new_frag in self.doc_strings.iter() {
@@ -1095,7 +1083,7 @@ impl Attributes {
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
-    crate fn collapsed_doc_value(&self) -> Option<String> {
+    crate fn doc_value(&self) -> Option<String> {
         if self.doc_strings.is_empty() { None } else { Some(self.doc_strings.iter().collect()) }
     }
 
