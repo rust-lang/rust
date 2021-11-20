@@ -1597,6 +1597,14 @@ pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -
     syms.iter().map(|x| Symbol::intern(x)).eq(path.iter().copied())
 }
 
+/// Checks if the given `DefId` matches the `libc` item.
+pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: &str) -> bool {
+    let path = cx.get_def_path(did);
+    // libc is meant to be used as a flat list of names, but they're all actually defined in different
+    // modules based on the target platform. Ignore everything but crate name and the item name.
+    path.first().map_or(false, |s| s.as_str() == "libc") && path.last().map_or(false, |s| s.as_str() == name)
+}
+
 pub fn match_panic_call(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Call(func, [arg]) = expr.kind {
         expr_path_res(cx, func)

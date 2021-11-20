@@ -3,6 +3,7 @@
 #![feature(rustc_private)]
 extern crate libc;
 
+use libc::strlen;
 use std::ffi::{CStr, CString};
 
 fn main() {
@@ -13,4 +14,6 @@ fn main() {
     // CStr
     let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
     let len = unsafe { libc::strlen(cstr.as_ptr()) };
+
+    let len = unsafe { strlen(cstr.as_ptr()) };
 }
