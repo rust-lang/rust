@@ -359,7 +359,7 @@ impl ModuleDef {
                 def.diagnostics(db, &mut acc);
             }
             None => {
-                for diag in hir_ty::diagnostics::validate_module_item(db, module.id.krate(), id) {
+                for diag in hir_ty::diagnostics::incorrect_case(db, module.id.krate(), id) {
                     acc.push(diag.into())
                 }
             }
@@ -1282,7 +1282,7 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.into(),
             DefWithBody::Const(it) => it.into(),
         };
-        for diag in hir_ty::diagnostics::validate_module_item(db, krate, def.into()) {
+        for diag in hir_ty::diagnostics::incorrect_case(db, krate, def.into()) {
             acc.push(diag.into())
         }
     }

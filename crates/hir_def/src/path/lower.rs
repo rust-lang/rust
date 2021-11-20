@@ -76,7 +76,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
                         kind = mod_path.kind;
 
                         segments.extend(mod_path.segments.iter().cloned().rev());
-                        generic_args.extend(path_generic_args.iter().cloned().rev());
+                        generic_args.extend(Vec::from(path_generic_args).into_iter().rev());
 
                         // Insert the type reference (T in the above example) as Self parameter for the trait
                         let last_segment =
