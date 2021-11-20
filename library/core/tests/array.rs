@@ -28,11 +28,22 @@ fn array_try_from() {
         ($($N:expr)+) => {
             $({
                 type Array = [u8; $N];
-                let array: Array = [0; $N];
+                let mut array: Array = [0; $N];
                 let slice: &[u8] = &array[..];
 
                 let result = <&Array>::try_from(slice);
                 assert_eq!(&array, result.unwrap());
+
+                let result = <Array>::try_from(slice);
+                assert_eq!(&array, &result.unwrap());
+
+                let mut_slice: &mut [u8] = &mut array[..];
+                let result = <&mut Array>::try_from(mut_slice);
+                assert_eq!(&[0; $N], result.unwrap());
+
+                let mut_slice: &mut [u8] = &mut array[..];
+                let result = <Array>::try_from(mut_slice);
+                assert_eq!(&array, &result.unwrap());
             })+
         }
     }
