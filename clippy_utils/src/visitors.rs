@@ -1,8 +1,10 @@
 use crate::path_to_local_id;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{self, walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, Block, Body, BodyId, Expr, ExprKind, HirId, Stmt, UnOp};
+use rustc_hir::intravisit::{self, walk_block, walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::{
+    Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, Stmt, UnOp, Unsafety,
+};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
@@ -316,4 +318,65 @@ pub fn is_const_evaluatable(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
     let mut v = V { cx, is_const: true };
     v.visit_expr(e);
     v.is_const
+}
+
+/// Checks if the given expression performs an unsafe operation outside of an unsafe block.
+pub fn is_expr_unsafe(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
+    struct V<'a, 'tcx> {
+        cx: &'a LateContext<'tcx>,
+        is_unsafe: bool,
+    }
+    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+        type Map = Map<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+        }
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            if self.is_unsafe {
+                return;
+            }
+            match e.kind {
+                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_unsafe_ptr() => {
+                    self.is_unsafe = true;
+                },
+                ExprKind::MethodCall(..)
+                    if self
+                        .cx
+                        .typeck_results()
+                        .type_dependent_def_id(e.hir_id)
+                        .map_or(false, |id| self.cx.tcx.fn_sig(id).unsafety() == Unsafety::Unsafe) =>
+                {
+                    self.is_unsafe = true;
+                },
+                ExprKind::Call(func, _) => match *self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
+                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
+                    ty::FnPtr(sig) if sig.unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
+                    _ => walk_expr(self, e),
+                },
+                ExprKind::Path(ref p)
+                    if self
+                        .cx
+                        .qpath_res(p, e.hir_id)
+                        .opt_def_id()
+                        .map_or(false, |id| self.cx.tcx.is_mutable_static(id)) =>
+                {
+                    self.is_unsafe = true;
+                },
+                _ => walk_expr(self, e),
+            }
+        }
+        fn visit_block(&mut self, b: &'tcx Block<'_>) {
+            if !matches!(b.rules, BlockCheckMode::UnsafeBlock(_)) {
+                walk_block(self, b);
+            }
+        }
+        fn visit_nested_item(&mut self, id: ItemId) {
+            if let ItemKind::Impl(i) = &self.cx.tcx.hir().item(id).kind {
+                self.is_unsafe = i.unsafety == Unsafety::Unsafe;
+            }
+        }
+    }
+    let mut v = V { cx, is_unsafe: false };
+    v.visit_expr(e);
+    v.is_unsafe
 }

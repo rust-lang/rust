@@ -16,4 +16,16 @@ fn main() {
     let len = unsafe { libc::strlen(cstr.as_ptr()) };
 
     let len = unsafe { strlen(cstr.as_ptr()) };
+
+    let pcstr: *const &CStr = &cstr;
+    let len = unsafe { strlen((*pcstr).as_ptr()) };
+
+    unsafe fn unsafe_identity<T>(x: T) -> T {
+        x
+    }
+    let len = unsafe { strlen(unsafe_identity(cstr).as_ptr()) };
+    let len = unsafe { strlen(unsafe { unsafe_identity(cstr) }.as_ptr()) };
+
+    let f: unsafe fn(_) -> _ = unsafe_identity;
+    let len = unsafe { strlen(f(cstr).as_ptr()) };
 }
