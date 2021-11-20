@@ -156,6 +156,10 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         }
 
         unsafe {
+            // drop_ptr comes from a slice::Iter which only gives us a &[T] but for drop_in_place
+            // a pointer with mutable provenance is necessary. Therefore we must reconstruct
+            // it from the original vec but also avoid creating a &mut to the front since that could
+            // invalidate raw pointers to it which some unsafe code might rely on.
             let vec = vec.as_mut();
             let spare_capacity = vec.spare_capacity_mut();
             let drop_offset = drop_ptr.offset_from(spare_capacity.as_ptr() as *const _) as usize;
