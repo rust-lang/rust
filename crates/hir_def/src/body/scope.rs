@@ -204,7 +204,7 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
         }
         Expr::Match { expr, arms } => {
             compute_expr_scopes(*expr, body, scopes, scope);
-            for arm in arms {
+            for arm in arms.iter() {
                 let mut scope = scopes.new_scope(scope);
                 scopes.add_bindings(body, scope, arm.pat);
                 match arm.guard {

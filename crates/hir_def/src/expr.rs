@@ -61,7 +61,7 @@ pub enum Expr {
     },
     Block {
         id: BlockId,
-        statements: Vec<Statement>,
+        statements: Box<[Statement]>,
         tail: Option<ExprId>,
         label: Option<LabelId>,
     },
@@ -82,17 +82,17 @@ pub enum Expr {
     },
     Call {
         callee: ExprId,
-        args: Vec<ExprId>,
+        args: Box<[ExprId]>,
     },
     MethodCall {
         receiver: ExprId,
         method_name: Name,
-        args: Vec<ExprId>,
+        args: Box<[ExprId]>,
         generic_args: Option<Box<GenericArgs>>,
     },
     Match {
         expr: ExprId,
-        arms: Vec<MatchArm>,
+        arms: Box<[MatchArm]>,
     },
     Continue {
         label: Option<Name>,
@@ -109,7 +109,7 @@ pub enum Expr {
     },
     RecordLit {
         path: Option<Box<Path>>,
-        fields: Vec<RecordLitField>,
+        fields: Box<[RecordLitField]>,
         spread: Option<ExprId>,
     },
     Field {
@@ -162,13 +162,13 @@ pub enum Expr {
         index: ExprId,
     },
     Lambda {
-        args: Vec<PatId>,
-        arg_types: Vec<Option<Interned<TypeRef>>>,
+        args: Box<[PatId]>,
+        arg_types: Box<[Option<Interned<TypeRef>>]>,
         ret_type: Option<Interned<TypeRef>>,
         body: ExprId,
     },
     Tuple {
-        exprs: Vec<ExprId>,
+        exprs: Box<[ExprId]>,
     },
     Unsafe {
         body: ExprId,
@@ -233,7 +233,7 @@ impl Expr {
                 }
             }
             Expr::Block { statements, tail, .. } => {
-                for stmt in statements {
+                for stmt in statements.iter() {
                     match stmt {
                         Statement::Let { initializer, .. } => {
                             if let Some(expr) = initializer {
@@ -262,19 +262,19 @@ impl Expr {
             }
             Expr::Call { callee, args } => {
                 f(*callee);
-                for arg in args {
+                for arg in args.iter() {
                     f(*arg);
                 }
             }
             Expr::MethodCall { receiver, args, .. } => {
                 f(*receiver);
-                for arg in args {
+                for arg in args.iter() {
                     f(*arg);
                 }
             }
             Expr::Match { expr, arms } => {
                 f(*expr);
-                for arm in arms {
+                for arm in arms.iter() {
                     f(arm.expr);
                 }
             }
@@ -285,7 +285,7 @@ impl Expr {
                 }
             }
             Expr::RecordLit { fields, spread, .. } => {
-                for field in fields {
+                for field in fields.iter() {
                     f(field.expr);
                 }
                 if let Some(expr) = spread {
@@ -321,7 +321,7 @@ impl Expr {
                 f(*expr);
             }
             Expr::Tuple { exprs } => {
-                for expr in exprs {
+                for expr in exprs.iter() {
                     f(*expr);
                 }
             }

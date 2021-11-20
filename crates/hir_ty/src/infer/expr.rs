@@ -375,7 +375,7 @@ impl<'a> InferenceContext<'a> {
                 let matchee_diverges = self.diverges;
                 let mut all_arms_diverge = Diverges::Always;
 
-                for arm in arms {
+                for arm in arms.iter() {
                     self.diverges = Diverges::Maybe;
                     let _pat_ty = self.infer_pat(arm.pat, &input_ty, BindingMode::default());
                     match arm.guard {
