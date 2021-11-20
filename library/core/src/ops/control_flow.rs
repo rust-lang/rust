@@ -136,7 +136,7 @@ impl<B, C> ControlFlow<B, C> {
     /// assert!(!ControlFlow::<String, i32>::Continue(3).is_break());
     /// ```
     #[inline]
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    #[stable(feature = "control_flow_enum_is", since = "1.59.0")]
     pub fn is_break(&self) -> bool {
         matches!(*self, ControlFlow::Break(_))
     }
@@ -153,7 +153,7 @@ impl<B, C> ControlFlow<B, C> {
     /// assert!(ControlFlow::<String, i32>::Continue(3).is_continue());
     /// ```
     #[inline]
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    #[stable(feature = "control_flow_enum_is", since = "1.59.0")]
     pub fn is_continue(&self) -> bool {
         matches!(*self, ControlFlow::Continue(_))
     }
