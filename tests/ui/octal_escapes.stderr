@@ -1,0 +1,67 @@
+error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:4:17
+   |
+LL |     let _bad1 = "/033[0m";
+   |                 ^^^^^^^^^
+   |
+   = note: `-D clippy::octal-escapes` implied by `-D warnings`
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape is intended, use
+   |
+LL |     let _bad1 = "/x1b[0m";
+   |                 ~~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad1 = "/x0033[0m";
+   |                 ~~~~~~~~~~~
+
+error: octal-looking escape in byte string literal
+  --> $DIR/octal_escapes.rs:5:17
+   |
+LL |     let _bad2 = b"/033[0m";
+   |                 ^^^^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null byte
+help: if an octal escape is intended, use
+   |
+LL |     let _bad2 = "/x1b[0m";
+   |                 ~~~~~~~~~
+help: if the null byte is intended, disambiguate using
+   |
+LL |     let _bad2 = "/x0033[0m";
+   |                 ~~~~~~~~~~~
+
+error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:6:17
+   |
+LL |     let _bad3 = "//033[0m";
+   |                 ^^^^^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape is intended, use
+   |
+LL |     let _bad3 = "//x1b[0m";
+   |                 ~~~~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad3 = "//x0033[0m";
+   |                 ~~~~~~~~~~~~~
+
+error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:7:17
+   |
+LL |     let _bad4 = "/01234567";
+   |                 ^^^^^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape is intended, use
+   |
+LL |     let _bad4 = "/u{53977}";
+   |                 ~~~~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad4 = "/x001234567";
+   |                 ~~~~~~~~~~~~~
+
+error: aborting due to 4 previous errors
+
