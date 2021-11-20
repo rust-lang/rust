@@ -1,4 +1,4 @@
-error[E0364]: `legacy_macro` is private, and cannot be re-exported
+error[E0364]: `legacy_macro` is only public within the crate, and cannot be re-exported outside
   --> $DIR/macro-rules.rs:11:13
    |
 LL |     pub use legacy_macro as _;

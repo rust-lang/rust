@@ -1180,11 +1180,17 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         let mut reexport_error = None;
         let mut any_successful_reexport = false;
+        let mut crate_private_reexport = false;
         self.r.per_ns(|this, ns| {
             if let Ok(binding) = source_bindings[ns].get() {
                 let vis = import.vis.get();
                 if !binding.vis.is_at_least(vis, &*this) {
                     reexport_error = Some((ns, binding));
+                    if let ty::Visibility::Restricted(binding_def_id) = binding.vis {
+                        if binding_def_id.is_top_level_module() {
+                            crate_private_reexport = true;
+                        }
+                    }
                 } else {
                     any_successful_reexport = true;
                 }
@@ -1207,24 +1213,34 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     import.span,
                     &msg,
                 );
-            } else if ns == TypeNS {
-                struct_span_err!(
-                    self.r.session,
-                    import.span,
-                    E0365,
-                    "`{}` is private, and cannot be re-exported",
-                    ident
-                )
-                .span_label(import.span, format!("re-export of private `{}`", ident))
-                .note(&format!("consider declaring type or module `{}` with `pub`", ident))
-                .emit();
             } else {
-                let msg = format!("`{}` is private, and cannot be re-exported", ident);
-                let note_msg =
-                    format!("consider marking `{}` as `pub` in the imported module", ident,);
-                struct_span_err!(self.r.session, import.span, E0364, "{}", &msg)
-                    .span_note(import.span, &note_msg)
-                    .emit();
+                let error_msg = if crate_private_reexport {
+                    format!(
+                        "`{}` is only public within the crate, and cannot be re-exported outside",
+                        ident
+                    )
+                } else {
+                    format!("`{}` is private, and cannot be re-exported", ident)
+                };
+
+                if ns == TypeNS {
+                    let label_msg = if crate_private_reexport {
+                        format!("re-export of crate public `{}`", ident)
+                    } else {
+                        format!("re-export of private `{}`", ident)
+                    };
+
+                    struct_span_err!(self.r.session, import.span, E0365, "{}", error_msg)
+                        .span_label(import.span, label_msg)
+                        .note(&format!("consider declaring type or module `{}` with `pub`", ident))
+                        .emit();
+                } else {
+                    let note_msg =
+                        format!("consider marking `{}` as `pub` in the imported module", ident);
+                    struct_span_err!(self.r.session, import.span, E0364, "{}", error_msg)
+                        .span_note(import.span, &note_msg)
+                        .emit();
+                }
             }
         }
 
