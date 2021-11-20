@@ -1527,6 +1527,8 @@ impl<A: Allocator> Box<dyn Any, A> {
     ///
     /// The contained value must be of type `T`. Calling this method
     /// with the incorrect type is *undefined behavior*.
+    ///
+    /// [`downcast`]: Self::downcast
     #[inline]
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Box<T, A> {
@@ -1584,6 +1586,8 @@ impl<A: Allocator> Box<dyn Any + Send, A> {
     ///
     /// The contained value must be of type `T`. Calling this method
     /// with the incorrect type is *undefined behavior*.
+    ///
+    /// [`downcast`]: Self::downcast
     #[inline]
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Box<T, A> {
@@ -1641,6 +1645,8 @@ impl<A: Allocator> Box<dyn Any + Send + Sync, A> {
     ///
     /// The contained value must be of type `T`. Calling this method
     /// with the incorrect type is *undefined behavior*.
+    ///
+    /// [`downcast`]: Self::downcast
     #[inline]
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Box<T, A> {

@@ -265,8 +265,6 @@ impl dyn Any {
 
     /// Returns a reference to the inner value as type `dyn T`.
     ///
-    /// For a safe alternative see [`downcast_ref`].
-    ///
     /// # Examples
     ///
     /// ```
@@ -294,8 +292,6 @@ impl dyn Any {
     }
 
     /// Returns a mutable reference to the inner value as type `dyn T`.
-    ///
-    /// For a safe alternative see [`downcast_mut`].
     ///
     /// # Examples
     ///
