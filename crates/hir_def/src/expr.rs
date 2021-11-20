@@ -40,7 +40,7 @@ pub type LabelId = Idx<Label>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Literal {
-    String(String),
+    String(Box<str>),
     ByteString(Box<[u8]>),
     Char(char),
     Bool(bool),
