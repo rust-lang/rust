@@ -817,7 +817,7 @@ impl<'a> Parser<'a> {
             // Ensure the user doesn't receive unhelpful unexpected token errors
             self.bump();
             if self.is_pat_range_end_start(0) {
-                let _ = self.parse_pat_range_end();
+                let _ = self.parse_pat_range_end().map_err(|mut e| e.cancel());
             }
 
             self.error_inclusive_range_with_extra_equals(span_with_eq);
