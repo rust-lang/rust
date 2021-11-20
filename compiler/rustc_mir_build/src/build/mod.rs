@@ -966,59 +966,58 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 DropKind::Value,
             );
 
-            if let Some(arg) = arg_opt {
-                let pat = match tcx.hir().get(arg.pat.hir_id) {
-                    Node::Pat(pat) | Node::Binding(pat) => pat,
-                    node => bug!("pattern became {:?}", node),
-                };
-                let pattern = pat_from_hir(tcx, self.param_env, self.typeck_results, pat);
-                let original_source_scope = self.source_scope;
-                let span = pattern.span;
-                self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
-                match *pattern.kind {
-                    // Don't introduce extra copies for simple bindings
-                    PatKind::Binding {
-                        mutability,
-                        var,
-                        mode: BindingMode::ByValue,
-                        subpattern: None,
-                        ..
-                    } => {
-                        self.local_decls[local].mutability = mutability;
-                        self.local_decls[local].source_info.scope = self.source_scope;
-                        self.local_decls[local].local_info = if let Some(kind) = self_binding {
-                            Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(
-                                BindingForm::ImplicitSelf(*kind),
-                            ))))
-                        } else {
-                            let binding_mode = ty::BindingMode::BindByValue(mutability);
-                            Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
-                                VarBindingForm {
-                                    binding_mode,
-                                    opt_ty_info,
-                                    opt_match_place: Some((Some(place), span)),
-                                    pat_span: span,
-                                },
-                            )))))
-                        };
-                        self.var_indices.insert(var, LocalsForNode::One(local));
-                    }
-                    _ => {
-                        scope = self.declare_bindings(
-                            scope,
-                            expr.span,
-                            &pattern,
-                            matches::ArmHasGuard(false),
-                            Some((Some(&place), span)),
-                        );
-                        let place_builder = PlaceBuilder::from(local);
-                        unpack!(
-                            block = self.place_into_pattern(block, pattern, place_builder, false)
-                        );
-                    }
+            let Some(arg) = arg_opt else {
+                continue;
+            };
+            let pat = match tcx.hir().get(arg.pat.hir_id) {
+                Node::Pat(pat) | Node::Binding(pat) => pat,
+                node => bug!("pattern became {:?}", node),
+            };
+            let pattern = pat_from_hir(tcx, self.param_env, self.typeck_results, pat);
+            let original_source_scope = self.source_scope;
+            let span = pattern.span;
+            self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
+            match *pattern.kind {
+                // Don't introduce extra copies for simple bindings
+                PatKind::Binding {
+                    mutability,
+                    var,
+                    mode: BindingMode::ByValue,
+                    subpattern: None,
+                    ..
+                } => {
+                    self.local_decls[local].mutability = mutability;
+                    self.local_decls[local].source_info.scope = self.source_scope;
+                    self.local_decls[local].local_info = if let Some(kind) = self_binding {
+                        Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(
+                            BindingForm::ImplicitSelf(*kind),
+                        ))))
+                    } else {
+                        let binding_mode = ty::BindingMode::BindByValue(mutability);
+                        Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                            VarBindingForm {
+                                binding_mode,
+                                opt_ty_info,
+                                opt_match_place: Some((Some(place), span)),
+                                pat_span: span,
+                            },
+                        )))))
+                    };
+                    self.var_indices.insert(var, LocalsForNode::One(local));
                 }
-                self.source_scope = original_source_scope;
+                _ => {
+                    scope = self.declare_bindings(
+                        scope,
+                        expr.span,
+                        &pattern,
+                        matches::ArmHasGuard(false),
+                        Some((Some(&place), span)),
+                    );
+                    let place_builder = PlaceBuilder::from(local);
+                    unpack!(block = self.place_into_pattern(block, pattern, place_builder, false));
+                }
             }
+            self.source_scope = original_source_scope;
         }
 
         // Enter the argument pattern bindings source scope, if it exists.
