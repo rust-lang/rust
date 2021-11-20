@@ -2,7 +2,7 @@ error[E0623]: lifetime mismatch
   --> $DIR/issue-63388-1.rs:14:9
    |
 LL |         &'a self, foo: &dyn Foo
-   |         -------- this parameter and the returned future are declared with different lifetimes...
+   |                        -------- this parameter and the returned future are declared with different lifetimes...
 LL |     ) -> &dyn Foo
    |          --------
    |          |

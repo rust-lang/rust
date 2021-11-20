@@ -4,7 +4,7 @@
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::{self, DefIdTree, Region, Ty};
+use rustc_middle::ty::{self, Binder, DefIdTree, Region, Ty, TypeFoldable};
 use rustc_span::Span;
 
 /// Information about the anonymous region we are searching for.
@@ -149,24 +149,39 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     }
 
     // Here, we check for the case where the anonymous region
-    // is in the return type.
+    // is in the return type as written by the user.
     // FIXME(#42703) - Need to handle certain cases here.
     pub(super) fn is_return_type_anon(
         &self,
         scope_def_id: LocalDefId,
         br: ty::BoundRegionKind,
-        decl: &hir::FnDecl<'_>,
+        hir_sig: &hir::FnSig<'_>,
     ) -> Option<Span> {
-        let ret_ty = self.tcx().type_of(scope_def_id);
-        if let ty::FnDef(_, _) = ret_ty.kind() {
-            let sig = ret_ty.fn_sig(self.tcx());
-            let late_bound_regions =
-                self.tcx().collect_referenced_late_bound_regions(&sig.output());
-            if late_bound_regions.iter().any(|r| *r == br) {
-                return Some(decl.output.span());
-            }
+        let fn_ty = self.tcx().type_of(scope_def_id);
+        if let ty::FnDef(_, _) = fn_ty.kind() {
+            let ret_ty = fn_ty.fn_sig(self.tcx()).output();
+            let span = hir_sig.decl.output.span();
+            let future_output = if hir_sig.header.is_async() {
+                ret_ty.map_bound(|ty| self.infcx.get_impl_future_output_ty(ty)).transpose()
+            } else {
+                None
+            };
+            return match future_output {
+                Some(output) if self.includes_region(output, br) => Some(span),
+                None if self.includes_region(ret_ty, br) => Some(span),
+                _ => None,
+            };
         }
         None
+    }
+
+    fn includes_region(
+        &self,
+        ty: Binder<'tcx, impl TypeFoldable<'tcx>>,
+        region: ty::BoundRegionKind,
+    ) -> bool {
+        let late_bound_regions = self.tcx().collect_referenced_late_bound_regions(&ty);
+        late_bound_regions.iter().any(|r| *r == region)
     }
 
     // Here we check for the case where anonymous region
