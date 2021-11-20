@@ -70,11 +70,11 @@ pre, .rustdoc.source .example-wrap {
 
 /* Improve the scrollbar display on firefox */
 * {
-	scrollbar-color: #5c6773 transparent;
+	scrollbar-color: #5c6773 #24292f;
 }
 
 .sidebar {
-	scrollbar-color: #5c6773 transparent;
+	scrollbar-color: #5c6773 #24292f;
 }
 
 /* Improve the scrollbar display on webkit-based browsers */

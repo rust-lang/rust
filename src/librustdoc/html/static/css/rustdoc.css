@@ -303,7 +303,7 @@ nav.sub {
 	left: 0;
 	top: 0;
 	bottom: 0;
-	overflow: auto;
+	overflow-y: scroll;
 }
 
 /* Improve the scrollbar display on firefox */
