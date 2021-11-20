@@ -341,6 +341,48 @@ fn main() { m::f$0oo(); }
 }
 
 #[test]
+fn hover_omits_unnamed_where_preds() {
+    check(
+        r#"
+pub fn foo(bar: impl T) { }
+
+fn main() { fo$0o(); }
+        "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub fn foo(bar: impl T)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+pub fn foo<V: AsRef<str>>(bar: impl T, baz: V) { }
+
+fn main() { fo$0o(); }
+        "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub fn foo<V>(bar: impl T, baz: V)
+            where
+                V: AsRef<str>,
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_shows_fn_signature_with_type_params() {
     check(
         r#"
