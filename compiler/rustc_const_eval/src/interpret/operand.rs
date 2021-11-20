@@ -437,6 +437,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         })
     }
 
+    /// Converts a repr(simd) operand into an operand where `place_index` accesses the SIMD elements.
+    /// Also returns the number of elements.
+    pub fn operand_to_simd(
+        &self,
+        base: &OpTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, u64)> {
+        // Basically we just transmute this place into an array following simd_size_and_type.
+        // This only works in memory, but repr(simd) types should never be immediates anyway.
+        assert!(base.layout.ty.is_simd());
+        self.mplace_to_simd(&base.assert_mem_place())
+    }
+
     /// Read from a local. Will not actually access the local if reading from a ZST.
     /// Will not access memory, instead an indirect `Operand` is returned.
     ///
