@@ -1077,18 +1077,7 @@ impl Attributes {
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     crate fn doc_value(&self) -> Option<String> {
-        let mut iter = self.doc_strings.iter();
-
-        let ori = iter.next()?;
-        let mut out = String::new();
-        add_doc_fragment(&mut out, ori);
-        for new_frag in iter {
-            if new_frag.kind != ori.kind || new_frag.parent_module != ori.parent_module {
-                break;
-            }
-            add_doc_fragment(&mut out, new_frag);
-        }
-        if out.is_empty() { None } else { Some(out) }
+        self.collapsed_doc_value()
     }
 
     /// Return the doc-comments on this item, grouped by the module they came from.
