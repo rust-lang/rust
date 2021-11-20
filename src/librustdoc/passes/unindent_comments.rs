@@ -1,5 +1,7 @@
 use std::cmp;
 
+use rustc_span::symbol::kw;
+
 use crate::clean::{self, DocFragment, DocFragmentKind, Item};
 use crate::core::DocContext;
 use crate::fold::{self, DocFolder};
@@ -87,7 +89,7 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
     };
 
     for fragment in docs {
-        if fragment.doc.as_str().lines().count() == 0 {
+        if fragment.doc == kw::Empty {
             continue;
         }
 

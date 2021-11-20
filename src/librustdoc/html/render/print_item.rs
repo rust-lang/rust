@@ -1080,7 +1080,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.as_ref().unwrap()));
             write!(
                 w,
-                "<div id=\"{id}\" class=\"variant small-section-header\">\
+                "<h3 id=\"{id}\" class=\"variant small-section-header\">\
                     <a href=\"#{id}\" class=\"anchor field\"></a>\
                     <code>{name}",
                 id = id,
@@ -1093,9 +1093,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             }
             w.write_str("</code>");
             render_stability_since(w, variant, it, cx.tcx());
-            w.write_str("</div>");
-            document(w, cx, variant, Some(it), HeadingOffset::H3);
-            document_non_exhaustive(w, variant);
+            w.write_str("</h3>");
 
             use crate::clean::Variant;
             if let Some((extra, fields)) = match *variant.kind {
@@ -1109,12 +1107,8 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                     variant.name.as_ref().unwrap()
                 ));
                 write!(w, "<div class=\"sub-variant\" id=\"{id}\">", id = variant_id);
-                write!(
-                    w,
-                    "<h3>{extra}Fields of <b>{name}</b></h3><div>",
-                    extra = extra,
-                    name = variant.name.as_ref().unwrap(),
-                );
+                write!(w, "<h4>{extra}Fields</h4>", extra = extra,);
+                document_non_exhaustive(w, variant);
                 for field in fields {
                     match *field.kind {
                         clean::StrippedItem(box clean::StructFieldItem(_)) => {}
@@ -1126,7 +1120,8 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                             ));
                             write!(
                                 w,
-                                "<span id=\"{id}\" class=\"variant small-section-header\">\
+                                "<div class=\"sub-variant-field\">\
+                                 <span id=\"{id}\" class=\"variant small-section-header\">\
                                     <a href=\"#{id}\" class=\"anchor field\"></a>\
                                     <code>{f}:&nbsp;{t}</code>\
                                 </span>",
@@ -1134,13 +1129,16 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                                 f = field.name.as_ref().unwrap(),
                                 t = ty.print(cx)
                             );
-                            document(w, cx, field, Some(variant), HeadingOffset::H4);
+                            document(w, cx, field, Some(variant), HeadingOffset::H5);
+                            write!(w, "</div>");
                         }
                         _ => unreachable!(),
                     }
                 }
-                w.write_str("</div></div>");
+                w.write_str("</div>");
             }
+
+            document(w, cx, variant, Some(it), HeadingOffset::H4);
         }
     }
     let def_id = it.def_id.expect_def_id();

@@ -906,7 +906,6 @@ impl<I: Iterator<Item = ast::NestedMetaItem> + IntoIterator<Item = ast::NestedMe
 /// kept separate because of issue #42760.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct DocFragment {
-    crate line: usize,
     crate span: rustc_span::Span,
     /// The module this doc-comment came from.
     ///
@@ -1027,7 +1026,6 @@ impl Attributes {
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
-        let mut doc_line = 0;
 
         fn update_need_backline(doc_strings: &mut Vec<DocFragment>) {
             if let Some(prev) = doc_strings.last_mut() {
@@ -1045,10 +1043,7 @@ impl Attributes {
                     DocFragmentKind::RawDoc
                 };
 
-                let line = doc_line;
-                doc_line += value.as_str().lines().count();
                 let frag = DocFragment {
-                    line,
                     span: attr.span,
                     doc: value,
                     kind,
