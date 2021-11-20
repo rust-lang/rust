@@ -117,7 +117,7 @@ note: while checking the return type of the `async fn`
    |
 LL | async fn dummy_result() -> Result<(), ()> {
    |                            ^^^^^^^^^^^^^^ checked the `Output` of this `async fn`, expected opaque type
-   = note: expected opaque type `impl Future`
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
                      found enum `Result<_, _>`
 help: consider `await`ing on the `Future`
    |
@@ -135,7 +135,7 @@ note: while checking the return type of the `async fn`
    |
 LL | async fn dummy_result() -> Result<(), ()> {
    |                            ^^^^^^^^^^^^^^ checked the `Output` of this `async fn`, expected opaque type
-   = note: expected opaque type `impl Future`
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
                      found enum `Result<_, _>`
 help: consider `await`ing on the `Future`
    |
