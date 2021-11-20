@@ -933,7 +933,7 @@ if any of the first five lines contains `@generated` marker.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: [#5080](https://github.com/rust-lang/rustfmt/issues/5080))
 
 ## `format_macro_matchers`
 
@@ -1064,7 +1064,7 @@ Control the case of the letters in hexadecimal literal values
 
 - **Default value**: `Preserve`
 - **Possible values**: `Upper`, `Lower`
-- **Stable**: No
+- **Stable**: No (tracking issue: [#5081](https://github.com/rust-lang/rustfmt/issues/5081))
 
 ## `hide_parse_errors`
 
@@ -1701,7 +1701,7 @@ How imports should be grouped into `use` statements. Imports will be merged or s
 
 - **Default value**: `Preserve`
 - **Possible values**: `Preserve`, `Crate`, `Module`, `Item`, `One`
-- **Stable**: No
+- **Stable**: No (tracking issue: [#4991](https://github.com/rust-lang/rustfmt/issues/4991))
 
 #### `Preserve` (default):
 
@@ -2063,7 +2063,7 @@ Controls the strategy for how imports are grouped together.
 
 - **Default value**: `Preserve`
 - **Possible values**: `Preserve`, `StdExternalCrate`, `One`
-- **Stable**: No
+- **Stable**: No (tracking issue: [#5083](https://github.com/rust-lang/rustfmt/issues/5083))
 
 #### `Preserve` (default):
 
