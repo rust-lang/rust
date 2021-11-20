@@ -10,7 +10,7 @@ note: while checking the return type of the `async fn`
 LL | async fn make_u32() -> u32 {
    |                        ^^^ checked the `Output` of this `async fn`, found opaque type
    = note:     expected type `u32`
-           found opaque type `impl Future`
+           found opaque type `impl Future<Output = u32>`
 help: consider `await`ing on the `Future`
    |
 LL |     take_u32(x.await)
@@ -28,7 +28,7 @@ note: while checking the return type of the `async fn`
 LL | async fn dummy() {}
    |                  ^ checked the `Output` of this `async fn`, found opaque type
    = note: expected unit type `()`
-            found opaque type `impl Future`
+            found opaque type `impl Future<Output = ()>`
 help: consider `await`ing on the `Future`
    |
 LL |     dummy().await
@@ -53,7 +53,7 @@ LL | |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
-   = note:   expected type `impl Future`
+   = note:   expected type `impl Future<Output = ()>`
            found unit type `()`
 help: consider `await`ing on the `Future`
    |
@@ -66,9 +66,9 @@ error[E0308]: `match` arms have incompatible types
 LL |       let _x = match 0usize {
    |  ______________-
 LL | |         0 => dummy(),
-   | |              ------- this is found to be of type `impl Future`
+   | |              ------- this is found to be of type `impl Future<Output = ()>`
 LL | |         1 => dummy(),
-   | |              ------- this is found to be of type `impl Future`
+   | |              ------- this is found to be of type `impl Future<Output = ()>`
 LL | |         2 => dummy().await,
    | |              ^^^^^^^^^^^^^ expected opaque type, found `()`
 LL | |
@@ -80,7 +80,7 @@ note: while checking the return type of the `async fn`
    |
 LL | async fn dummy() {}
    |                  ^ checked the `Output` of this `async fn`, expected opaque type
-   = note: expected opaque type `impl Future`
+   = note: expected opaque type `impl Future<Output = ()>`
                 found unit type `()`
 help: consider `await`ing on the `Future`
    |
@@ -99,7 +99,7 @@ note: while checking the return type of the `async fn`
    |
 LL | async fn dummy() {}
    |                  ^ checked the `Output` of this `async fn`, expected opaque type
-   = note: expected opaque type `impl Future`
+   = note: expected opaque type `impl Future<Output = ()>`
                 found unit type `()`
 help: consider `await`ing on the `Future`
    |

@@ -20,7 +20,7 @@ note: while checking the return type of the `async fn`
 LL |     pub async fn answer_str(&self, _s: &str) -> Test {
    |                                                 ^^^^ checked the `Output` of this `async fn`, found opaque type
    = note:     expected type `()`
-           found opaque type `impl Future`
+           found opaque type `impl Future<Output = Test>`
 
 error: aborting due to previous error
 
