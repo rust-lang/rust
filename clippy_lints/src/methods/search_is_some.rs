@@ -185,7 +185,7 @@ fn get_closure_suggestion<'tcx>(cx: &LateContext<'_>, search_expr: &'tcx hir::Ex
             closure_arg_is_double_ref,
             next_pos: search_expr.span.lo(),
             suggestion_start: String::new(),
-            applicability: Applicability::MachineApplicable,
+            applicability: Applicability::MaybeIncorrect,
         };
 
         let fn_def_id = cx.tcx.hir().local_def_id(search_expr.hir_id);
@@ -252,10 +252,14 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if let PlaceBase::Local(id) = cmt.place.base {
             let map = self.cx.tcx.hir();
-            let ident_str = map.name(id).to_string();
             let span = map.span(cmt.hir_id);
             let start_span = Span::new(self.next_pos, span.lo(), span.ctxt(), None);
             let mut start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
+
+            // identifier referring to the variable currently triggered (i.e.: `fp`)
+            let ident_str = map.name(id).to_string();
+            // full identifier that includes projection (i.e.: `fp.field`)
+            let ident_str_with_proj = snippet(self.cx, span, "..").to_string();
 
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
@@ -276,7 +280,8 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         // given expression is the self argument and will be handled completely by the compiler
                         // i.e.: `|x| x.is_something()`
                         ExprKind::MethodCall(_, _, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
-                            self.suggestion_start.push_str(&format!("{}{}", start_snip, ident_str));
+                            self.suggestion_start
+                                .push_str(&format!("{}{}", start_snip, ident_str_with_proj));
                             self.next_pos = span.hi();
                             return;
                         },
@@ -291,13 +296,26 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                                 let takes_arg_by_double_ref =
                                     self.func_takes_arg_by_double_ref(parent_expr, cmt.hir_id);
 
+                                // compiler will automatically dereference field projection, so no need
+                                // to suggest ampersand, but full identifier that includes projection is required
+                                let has_field_projection = cmt
+                                    .place
+                                    .projections
+                                    .iter()
+                                    .any(|proj| matches!(proj.kind, ProjectionKind::Field(..)));
+
                                 // no need to bind again if the function doesn't take arg by double ref
                                 // and if the item is already a double ref
                                 let ident_sugg = if !call_args.is_empty()
                                     && !takes_arg_by_double_ref
-                                    && self.closure_arg_is_double_ref
+                                    && (self.closure_arg_is_double_ref || has_field_projection)
                                 {
-                                    format!("{}{}", start_snip, ident_str)
+                                    let ident = if has_field_projection {
+                                        ident_str_with_proj
+                                    } else {
+                                        ident_str
+                                    };
+                                    format!("{}{}", start_snip, ident)
                                 } else {
                                     format!("{}&{}", start_snip, ident_str)
                                 };
@@ -318,17 +336,9 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     match proj.kind {
                         // Field projection like `|v| v.foo`
                         // no adjustment needed here, as field projections are handled by the compiler
-                        ProjectionKind::Field(idx, variant) => match cmt.place.ty_before_projection(i).kind() {
-                            ty::Adt(def, ..) => {
-                                replacement_str = format!(
-                                    "{}.{}",
-                                    replacement_str,
-                                    def.variants[variant].fields[idx as usize].ident.name.as_str()
-                                );
-                                projections_handled = true;
-                            },
-                            ty::Tuple(_) => {
-                                replacement_str = format!("{}.{}", replacement_str, idx);
+                        ProjectionKind::Field(..) => match cmt.place.ty_before_projection(i).kind() {
+                            ty::Adt(..) | ty::Tuple(_) => {
+                                replacement_str = ident_str_with_proj.clone();
                                 projections_handled = true;
                             },
                             _ => (),

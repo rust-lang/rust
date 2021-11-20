@@ -188,4 +188,35 @@ mod issue7392 {
         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|(&x, y)| x == *y).is_none();
         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_none();
     }
+
+    fn test_string_1(s: &String) -> bool {
+        s.is_empty()
+    }
+
+    fn test_u32_1(s: &u32) -> bool {
+        s.is_power_of_two()
+    }
+
+    fn test_u32_2(s: u32) -> bool {
+        s.is_power_of_two()
+    }
+
+    fn projection_in_args_test() {
+        // Index projections
+        let lst = &[String::from("Hello"), String::from("world")];
+        let v: Vec<&[String]> = vec![lst];
+        let _ = v.iter().find(|s| s[0].is_empty()).is_none();
+        let _ = v.iter().find(|s| test_string_1(&s[0])).is_none();
+
+        // Field projections
+        struct FieldProjection<'a> {
+            field: &'a u32,
+        }
+        let field = 123456789;
+        let instance = FieldProjection { field: &field };
+        let v = vec![instance];
+        let _ = v.iter().find(|fp| fp.field.is_power_of_two()).is_none();
+        let _ = v.iter().find(|fp| test_u32_1(fp.field)).is_none();
+        let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_none();
+    }
 }

@@ -251,5 +251,43 @@ error: called `is_none()` after searching an `Iterator` with `find`
 LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y)`
 
-error: aborting due to 38 previous errors
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> $DIR/search_is_some_fixable_none.rs:192:25
+   |
+LL |     fn test_string_1(s: &String) -> bool {
+   |                         ^^^^^^^ help: change this to: `&str`
+   |
+   = note: `-D clippy::ptr-arg` implied by `-D warnings`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:208:17
+   |
+LL |         let _ = v.iter().find(|s| s[0].is_empty()).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|s| s[0].is_empty())`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:209:17
+   |
+LL |         let _ = v.iter().find(|s| test_string_1(&s[0])).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|s| test_string_1(&s[0]))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:218:17
+   |
+LL |         let _ = v.iter().find(|fp| fp.field.is_power_of_two()).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|fp| fp.field.is_power_of_two())`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:219:17
+   |
+LL |         let _ = v.iter().find(|fp| test_u32_1(fp.field)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|fp| test_u32_1(fp.field))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:220:17
+   |
+LL |         let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|fp| test_u32_2(*fp.field))`
+
+error: aborting due to 44 previous errors
 

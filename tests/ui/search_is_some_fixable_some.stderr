@@ -234,5 +234,43 @@ error: called `is_some()` after searching an `Iterator` with `find`
 LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_some();
    |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|(&x, y)| x == *y)`
 
-error: aborting due to 38 previous errors
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> $DIR/search_is_some_fixable_some.rs:191:25
+   |
+LL |     fn test_string_1(s: &String) -> bool {
+   |                         ^^^^^^^ help: change this to: `&str`
+   |
+   = note: `-D clippy::ptr-arg` implied by `-D warnings`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:207:26
+   |
+LL |         let _ = v.iter().find(|s| s[0].is_empty()).is_some();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|s| s[0].is_empty())`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:208:26
+   |
+LL |         let _ = v.iter().find(|s| test_string_1(&s[0])).is_some();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|s| test_string_1(&s[0]))`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:217:26
+   |
+LL |         let _ = v.iter().find(|fp| fp.field.is_power_of_two()).is_some();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|fp| fp.field.is_power_of_two())`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:218:26
+   |
+LL |         let _ = v.iter().find(|fp| test_u32_1(fp.field)).is_some();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|fp| test_u32_1(fp.field))`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:219:26
+   |
+LL |         let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_some();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|fp| test_u32_2(*fp.field))`
+
+error: aborting due to 44 previous errors
 
