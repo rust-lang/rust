@@ -7,6 +7,7 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
+use crate::visit_lib::LibEmbargoVisitor;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
@@ -24,13 +25,9 @@ use std::mem;
 mod tests;
 
 crate fn krate(cx: &mut DocContext<'_>) -> Crate {
-    use crate::visit_lib::LibEmbargoVisitor;
-
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
 
-    let mut externs = Vec::new();
     for &cnum in cx.tcx.crates(()) {
-        externs.push(ExternalCrate { crate_num: cnum });
         // Analyze doc-reachability for extern items
         LibEmbargoVisitor::new(cx).visit_lib(cnum);
     }
@@ -76,13 +73,7 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
         }));
     }
 
-    Crate {
-        module,
-        externs,
-        primitives,
-        external_traits: cx.external_traits.clone(),
-        collapsed: false,
-    }
+    Crate { module, primitives, external_traits: cx.external_traits.clone(), collapsed: false }
 }
 
 fn external_generic_args(

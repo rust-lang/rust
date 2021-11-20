@@ -508,14 +508,12 @@ crate fn run_global_ctxt(
         rustc_errors::FatalError.raise();
     }
 
-    let render_options = ctxt.render_options;
-    let mut cache = ctxt.cache;
-    krate = tcx.sess.time("create_format_cache", || cache.populate(krate, tcx, &render_options));
+    krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
 
     // The main crate doc comments are always collapsed.
     krate.collapsed = true;
 
-    (krate, render_options, cache)
+    (krate, ctxt.render_options, ctxt.cache)
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,
