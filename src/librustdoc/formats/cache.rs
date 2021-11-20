@@ -7,7 +7,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
 use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
-use crate::config::RenderOptions;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
@@ -145,23 +144,20 @@ impl Cache {
         debug!(?cx.cache.crate_version);
         cx.cache.traits = krate.external_traits.take();
 
-        let mut externs = Vec::new();
-        for &cnum in cx.tcx.crates(()) {
-            externs.push(ExternalCrate { crate_num: cnum });
-            // Analyze doc-reachability for extern items
-            LibEmbargoVisitor::new(cx).visit_lib(cnum);
-        }
-
-        let RenderOptions { extern_html_root_takes_precedence, output: dst, .. } =
-            &cx.render_options;
-
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
-        for e in externs {
+        for &crate_num in cx.tcx.crates(()) {
+            let e = ExternalCrate { crate_num };
+            // Analyze doc-reachability for extern items
+            LibEmbargoVisitor::new(cx).visit_lib(e.crate_num);
+
             let name = e.name(tcx);
+            let render_options = &cx.render_options;
             let extern_url =
-                cx.render_options.extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
-            let location = e.location(extern_url, *extern_html_root_takes_precedence, dst, tcx);
+                render_options.extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
+            let extern_url_takes_precedence = render_options.extern_html_root_takes_precedence;
+            let dst = &render_options.output;
+            let location = e.location(extern_url, extern_url_takes_precedence, dst, tcx);
             cx.cache.extern_locations.insert(e.crate_num, location);
             cx.cache.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
         }
