@@ -1,16 +1,16 @@
 error[E0491]: in type `&'a WithAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-assoc-type-in-supertrait-outlives-container.rs:39:12
+  --> $DIR/regions-assoc-type-in-supertrait-outlives-container.rs:44:12
    |
 LL |     let _: &'a WithAssoc<TheType<'b>> = loop { };
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the pointer is valid for the lifetime `'a` as defined here
-  --> $DIR/regions-assoc-type-in-supertrait-outlives-container.rs:33:15
+  --> $DIR/regions-assoc-type-in-supertrait-outlives-container.rs:38:15
    |
 LL | fn with_assoc<'a,'b>() {
    |               ^^
 note: but the referenced data is only valid for the lifetime `'b` as defined here
-  --> $DIR/regions-assoc-type-in-supertrait-outlives-container.rs:33:18
+  --> $DIR/regions-assoc-type-in-supertrait-outlives-container.rs:38:18
    |
 LL | fn with_assoc<'a,'b>() {
    |                  ^^
