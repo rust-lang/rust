@@ -7,6 +7,7 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
+use crate::visit_lib::LibEmbargoVisitor;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
@@ -25,6 +26,11 @@ mod tests;
 
 crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
+
+    for &cnum in cx.tcx.crates(()) {
+        // Analyze doc-reachability for extern items
+        LibEmbargoVisitor::new(cx).visit_lib(cnum);
+    }
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.

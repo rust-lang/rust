@@ -14,7 +14,6 @@ use crate::formats::Impl;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::cache::{get_index_search_type, ExternalLocation};
 use crate::html::render::IndexItem;
-use crate::visit_lib::LibEmbargoVisitor;
 
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
@@ -148,8 +147,6 @@ impl Cache {
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
         for &crate_num in cx.tcx.crates(()) {
             let e = ExternalCrate { crate_num };
-            // Analyze doc-reachability for extern items
-            LibEmbargoVisitor::new(cx).visit_lib(e.crate_num);
 
             let name = e.name(tcx);
             let render_options = &cx.render_options;
