@@ -65,9 +65,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::dep_graph::DepContext;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self,
+    error::TypeError,
     subst::{GenericArgKind, Subst, SubstsRef},
     Binder, Region, Ty, TyCtxt, TypeFoldable,
 };

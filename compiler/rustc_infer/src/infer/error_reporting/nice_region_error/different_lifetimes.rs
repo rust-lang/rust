@@ -171,6 +171,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         self.suggest_adding_lifetime_params(sub, ty_sup, ty_sub, &mut err);
 
+        // TODO: This is only helpful if the lifetime more visible in the impl Future type than in the signature.
         if let Some(t) = future_return_type {
             let snip = self
                 .tcx()
