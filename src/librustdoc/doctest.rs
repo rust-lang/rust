@@ -1137,8 +1137,6 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         }
 
         attrs.unindent_doc_comments();
-        // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
-        // anything else, this will combine them for us.
         if let Some(doc) = attrs.doc_value() {
             // Use the outermost invocation, so that doctest names come from where the docs were written.
             let span = ast_attrs
