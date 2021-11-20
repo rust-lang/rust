@@ -2,9 +2,9 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
   --> $DIR/issue-84841.rs:9:5
    |
 LL |     test()?;
-   |     ^^^^^^^ the `?` operator cannot be applied to type `impl Future`
+   |     ^^^^^^^ the `?` operator cannot be applied to type `impl Future<Output = ()>`
    |
-   = help: the trait `Try` is not implemented for `impl Future`
+   = help: the trait `Try` is not implemented for `impl Future<Output = ()>`
 note: required by `branch`
   --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
    |
