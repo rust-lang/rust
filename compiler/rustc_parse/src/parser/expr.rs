@@ -1032,6 +1032,8 @@ impl<'a> Parser<'a> {
             [IdentLike(_), Punct('+' | '-')] |
             // 1e+2 | 1e-2
             [IdentLike(_), Punct('+' | '-'), IdentLike(_)] |
+            // 1.2e+ | 1.2e-
+            [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-')] |
             // 1.2e+3 | 1.2e-3
             [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-'), IdentLike(_)] => {
                 // See the FIXME about `TokenCursor` above.

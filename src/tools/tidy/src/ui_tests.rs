@@ -9,7 +9,7 @@ const ENTRY_LIMIT: usize = 1000;
 // FIXME: The following limits should be reduced eventually.
 const ROOT_ENTRY_LIMIT: usize = 983;
 const ISSUES_ENTRY_LIMIT: usize = 2310;
-const PARSER_LIMIT: usize = 1010;
+const PARSER_LIMIT: usize = 1012;
 
 fn check_entries(path: &Path, bad: &mut bool) {
     let dirs = walkdir::WalkDir::new(&path.join("test/ui"))
