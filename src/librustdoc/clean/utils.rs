@@ -520,7 +520,7 @@ pub(super) fn display_macro_source(
     name: Symbol,
     def: &ast::MacroDef,
     def_id: DefId,
-    vis: impl Clean<Visibility>,
+    vis: Visibility,
 ) -> String {
     let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
     // Extract the spans of all matchers. They represent the "interface" of the macro.
@@ -529,8 +529,6 @@ pub(super) fn display_macro_source(
     if def.macro_rules {
         format!("macro_rules! {} {{\n{}}}", name, render_macro_arms(matchers, ";"))
     } else {
-        let vis = vis.clean(cx);
-
         if matchers.len() <= 1 {
             format!(
                 "{}macro {}{} {{\n    ...\n}}",

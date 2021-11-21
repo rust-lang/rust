@@ -593,14 +593,9 @@ fn build_macro(
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.sess()) {
         LoadedMacro::MacroDef(item_def, _) => {
             if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
+                let vis = cx.tcx.visibility(import_def_id.unwrap_or(def_id)).clean(cx);
                 clean::MacroItem(clean::Macro {
-                    source: utils::display_macro_source(
-                        cx,
-                        name,
-                        def,
-                        def_id,
-                        cx.tcx.visibility(import_def_id.unwrap_or(def_id)),
-                    ),
+                    source: utils::display_macro_source(cx, name, def, def_id, vis),
                 })
             } else {
                 unreachable!()
