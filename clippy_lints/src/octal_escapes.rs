@@ -9,8 +9,8 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `\0` escapes in string and byte literals that look like octal character
-    /// escapes in C
+    /// Checks for `\0` escapes in string and byte literals that look like octal
+    /// character escapes in C.
     ///
     /// ### Why is this bad?
     /// Rust does not support octal notation for character escapes. `\0` is always a
@@ -57,20 +57,18 @@ impl EarlyLintPass for OctalEscapes {
 
 fn check_lit(cx: &EarlyContext<'tcx>, lit: &Lit, span: Span, is_string: bool) {
     let contents = lit.symbol.as_str();
-    let mut iter = contents.char_indices();
+    let mut iter = contents.char_indices().peekable();
 
     // go through the string, looking for \0[0-7]
     while let Some((from, ch)) = iter.next() {
         if ch == '\\' {
-            if let Some((mut to, '0')) = iter.next() {
-                // collect all further potentially octal digits
-                while let Some((j, '0'..='7')) = iter.next() {
-                    to = j + 1;
-                }
-                // if it's more than just `\0` we have a match
-                if to > from + 2 {
-                    emit(cx, &contents, from, to, span, is_string);
-                    return;
+            if let Some((_, '0')) = iter.next() {
+                // collect up to two further octal digits
+                if let Some((mut to, '0'..='7')) = iter.next() {
+                    if let Some((_, '0'..='7')) = iter.peek() {
+                        to += 1;
+                    }
+                    emit(cx, &contents, from, to + 1, span, is_string);
                 }
             }
         }
@@ -80,19 +78,9 @@ fn check_lit(cx: &EarlyContext<'tcx>, lit: &Lit, span: Span, is_string: bool) {
 fn emit(cx: &EarlyContext<'tcx>, contents: &str, from: usize, to: usize, span: Span, is_string: bool) {
     // construct a replacement escape for that case that octal was intended
     let escape = &contents[from + 1..to];
-    let literal_suggestion = if is_string {
-        u32::from_str_radix(escape, 8).ok().and_then(|n| {
-            if n < 256 {
-                Some(format!("\\x{:02x}", n))
-            } else if n <= std::char::MAX as u32 {
-                Some(format!("\\u{{{:x}}}", n))
-            } else {
-                None
-            }
-        })
-    } else {
-        u8::from_str_radix(escape, 8).ok().map(|n| format!("\\x{:02x}", n))
-    };
+    // the maximum value is \077, or \x3f
+    let literal_suggestion = u8::from_str_radix(escape, 8).ok().map(|n| format!("\\x{:02x}", n));
+    let prefix = if is_string { "" } else { "b" };
 
     span_lint_and_then(
         cx,
@@ -111,8 +99,8 @@ fn emit(cx: &EarlyContext<'tcx>, contents: &str, from: usize, to: usize, span: S
             if let Some(sugg) = literal_suggestion {
                 diag.span_suggestion(
                     span,
-                    "if an octal escape is intended, use",
-                    format!("\"{}{}{}\"", &contents[..from], sugg, &contents[to..]),
+                    "if an octal escape was intended, use the hexadecimal representation instead",
+                    format!("{}\"{}{}{}\"", prefix, &contents[..from], sugg, &contents[to..]),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -123,7 +111,7 @@ fn emit(cx: &EarlyContext<'tcx>, contents: &str, from: usize, to: usize, span: S
                     "if the null {} is intended, disambiguate using",
                     if is_string { "character" } else { "byte" }
                 ),
-                format!("\"{}\\x00{}\"", &contents[..from], &contents[from + 2..]),
+                format!("{}\"{}\\x00{}\"", prefix, &contents[..from], &contents[from + 2..]),
                 Applicability::MaybeIncorrect,
             );
         },
