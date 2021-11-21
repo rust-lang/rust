@@ -25,7 +25,7 @@
                                            // + val: Unevaluated(main, [], Some(promoted[0]))
                                            // mir::Constant
                                            // + span: $DIR/slice_len.rs:5:6: 5:19
-                                           // + literal: Const { ty: &[u32; 3], val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:3 ~ slice_len[6547]::main), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
+                                           // + literal: Const { ty: &[u32; 3], val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:3 ~ slice_len[HASH]::main), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
           _4 = _9;                         // scope 0 at $DIR/slice_len.rs:5:6: 5:19
           _3 = _4;                         // scope 0 at $DIR/slice_len.rs:5:6: 5:19
           StorageLive(_10);                // scope 0 at $DIR/slice_len.rs:5:6: 5:19

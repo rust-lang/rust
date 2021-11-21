@@ -1,71 +1,71 @@
-error: symbol-name(_RMCsno73SFvQKx_1cINtB0_8UnsignedKhb_E)
-  --> $DIR/const-generics-demangling.rs:7:1
+error: symbol-name(_RMCsCRATE_HASH_1cINtB<REF>_8UnsignedKhb_E)
+  --> $DIR/const-generics-demangling.rs:8:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::Unsigned<11u8>>)
-  --> $DIR/const-generics-demangling.rs:7:1
+error: demangling(<c[HASH]::Unsigned<11u8>>)
+  --> $DIR/const-generics-demangling.rs:8:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(<c::Unsigned<11>>)
-  --> $DIR/const-generics-demangling.rs:7:1
+  --> $DIR/const-generics-demangling.rs:8:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs_Csno73SFvQKx_1cINtB2_6SignedKsn98_E)
-  --> $DIR/const-generics-demangling.rs:15:1
+error: symbol-name(_RMs_CsCRATE_HASH_1cINtB<REF>_6SignedKsn98_E)
+  --> $DIR/const-generics-demangling.rs:16:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::Signed<-152i16>>)
-  --> $DIR/const-generics-demangling.rs:15:1
+error: demangling(<c[HASH]::Signed<-152i16>>)
+  --> $DIR/const-generics-demangling.rs:16:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(<c::Signed<-152>>)
-  --> $DIR/const-generics-demangling.rs:15:1
+  --> $DIR/const-generics-demangling.rs:16:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs0_Csno73SFvQKx_1cINtB3_4BoolKb1_E)
-  --> $DIR/const-generics-demangling.rs:23:1
+error: symbol-name(_RMs0_CsCRATE_HASH_1cINtB<REF>_4BoolKb1_E)
+  --> $DIR/const-generics-demangling.rs:24:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::Bool<true>>)
-  --> $DIR/const-generics-demangling.rs:23:1
+error: demangling(<c[HASH]::Bool<true>>)
+  --> $DIR/const-generics-demangling.rs:24:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(<c::Bool<true>>)
-  --> $DIR/const-generics-demangling.rs:23:1
+  --> $DIR/const-generics-demangling.rs:24:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs1_Csno73SFvQKx_1cINtB3_4CharKc2202_E)
-  --> $DIR/const-generics-demangling.rs:31:1
+error: symbol-name(_RMs1_CsCRATE_HASH_1cINtB<REF>_4CharKc2202_E)
+  --> $DIR/const-generics-demangling.rs:32:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::Char<'∂'>>)
-  --> $DIR/const-generics-demangling.rs:31:1
+error: demangling(<c[HASH]::Char<'∂'>>)
+  --> $DIR/const-generics-demangling.rs:32:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(<c::Char<'∂'>>)
-  --> $DIR/const-generics-demangling.rs:31:1
+  --> $DIR/const-generics-demangling.rs:32:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^

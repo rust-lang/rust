@@ -20,7 +20,7 @@
 +                                          // + val: Unevaluated(main, [], Some(promoted[0]))
 +                                          // mir::Constant
 +                                          // + span: $DIR/ref_deref_project.rs:5:6: 5:17
-+                                          // + literal: Const { ty: &(i32, i32), val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:3 ~ ref_deref_project[e8c3]::main), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
++                                          // + literal: Const { ty: &(i32, i32), val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:3 ~ ref_deref_project[HASH]::main), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
 +         _2 = &((*_4).1: i32);            // scope 0 at $DIR/ref_deref_project.rs:5:6: 5:17
           _1 = (*_2);                      // scope 0 at $DIR/ref_deref_project.rs:5:5: 5:17
 -         StorageDead(_3);                 // scope 0 at $DIR/ref_deref_project.rs:5:17: 5:18

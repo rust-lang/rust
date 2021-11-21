@@ -127,7 +127,7 @@ fn array_casts() -> () {
                                          // + val: Unevaluated(array_casts, [], Some(promoted[0]))
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: &usize, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:15 ~ retag[13e7]::array_casts), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
+                                         // + literal: Const { ty: &usize, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:15 ~ retag[HASH]::array_casts), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
         Retag(_35);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _18 = &(*_35);                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_18);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
