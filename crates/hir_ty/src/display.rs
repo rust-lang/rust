@@ -1164,10 +1164,23 @@ impl HirDisplay for Path {
                 // Do we actually format expressions?
                 if generic_args.desugared_from_fn {
                     // First argument will be a tuple, which already includes the parentheses.
-                    generic_args.args[0].hir_fmt(f)?;
+                    // If the tuple only contains 1 item, write it manually to avoid the trailing `,`.
+                    if let hir_def::path::GenericArg::Type(TypeRef::Tuple(v)) =
+                        &generic_args.args[0]
+                    {
+                        if v.len() == 1 {
+                            write!(f, "(")?;
+                            v[0].hir_fmt(f)?;
+                            write!(f, ")")?;
+                        } else {
+                            generic_args.args[0].hir_fmt(f)?;
+                        }
+                    }
                     if let Some(ret) = &generic_args.bindings[0].type_ref {
-                        write!(f, " -> ")?;
-                        ret.hir_fmt(f)?;
+                        if !matches!(ret, TypeRef::Tuple(v) if v.is_empty()) {
+                            write!(f, " -> ")?;
+                            ret.hir_fmt(f)?;
+                        }
                     }
                     return Ok(());
                 }
