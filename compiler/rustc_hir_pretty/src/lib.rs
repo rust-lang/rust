@@ -1433,6 +1433,9 @@ impl<'a> State<'a> {
                 if opts.contains(ast::InlineAsmOptions::RAW) {
                     options.push("raw");
                 }
+                if opts.contains(ast::InlineAsmOptions::MAY_UNWIND) {
+                    options.push("may_unwind");
+                }
                 s.commasep(Inconsistent, &options, |s, &opt| {
                     s.word(opt);
                 });

@@ -5,7 +5,7 @@ use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::ResultsVisitable;
-use rustc_mir_dataflow::{self, fmt::DebugWithContext, GenKill};
+use rustc_mir_dataflow::{self, fmt::DebugWithContext, CallReturnPlaces, GenKill};
 use rustc_mir_dataflow::{Analysis, Direction, Results};
 use std::fmt;
 use std::iter;
@@ -434,9 +434,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         &self,
         _trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
-        _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
-        _dest_place: mir::Place<'tcx>,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
     }
 }

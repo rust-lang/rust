@@ -1,6 +1,8 @@
 use crate::builder::Builder;
+use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm;
+use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -98,6 +100,8 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             ia.alignstack,
             ia.dialect,
             &[span],
+            false,
+            None,
         );
         if r.is_none() {
             return false;
@@ -121,6 +125,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         options: InlineAsmOptions,
         line_spans: &[Span],
         instance: Instance<'_>,
+        dest_catch_funclet: Option<(Self::BasicBlock, Self::BasicBlock, Option<&Self::Funclet>)>,
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
@@ -355,6 +360,8 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             alignstack,
             dialect,
             line_spans,
+            options.contains(InlineAsmOptions::MAY_UNWIND),
+            dest_catch_funclet,
         )
         .unwrap_or_else(|| span_bug!(line_spans[0], "LLVM asm constraint validation failed"));
 
@@ -447,9 +454,16 @@ pub(crate) fn inline_asm_call(
     alignstack: bool,
     dia: LlvmAsmDialect,
     line_spans: &[Span],
+    unwind: bool,
+    dest_catch_funclet: Option<(
+        &'ll llvm::BasicBlock,
+        &'ll llvm::BasicBlock,
+        Option<&Funclet<'ll>>,
+    )>,
 ) -> Option<&'ll Value> {
     let volatile = if volatile { llvm::True } else { llvm::False };
     let alignstack = if alignstack { llvm::True } else { llvm::False };
+    let can_throw = if unwind { llvm::True } else { llvm::False };
 
     let argtys = inputs
         .iter()
@@ -466,6 +480,13 @@ pub(crate) fn inline_asm_call(
         let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr().cast(), cons.len());
         debug!("constraint verification result: {:?}", constraints_ok);
         if constraints_ok {
+            if unwind && llvm_util::get_version() < (13, 0, 0) {
+                bx.cx.sess().span_fatal(
+                    line_spans[0],
+                    "unwinding from inline assembly is only supported on llvm >= 13.",
+                );
+            }
+
             let v = llvm::LLVMRustInlineAsm(
                 fty,
                 asm.as_ptr().cast(),
@@ -475,8 +496,14 @@ pub(crate) fn inline_asm_call(
                 volatile,
                 alignstack,
                 llvm::AsmDialect::from_generic(dia),
+                can_throw,
             );
-            let call = bx.call(fty, v, inputs, None);
+
+            let call = if let Some((dest, catch, funclet)) = dest_catch_funclet {
+                bx.invoke(fty, v, inputs, dest, catch, funclet)
+            } else {
+                bx.call(fty, v, inputs, None)
+            };
 
             // Store mark in a metadata node so we can map LLVM errors
             // back to source locations.  See #17552.
