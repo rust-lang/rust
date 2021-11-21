@@ -37,3 +37,6 @@ impl SupportedLaneCount for LaneCount<16> {
 impl SupportedLaneCount for LaneCount<32> {
     type BitMask = [u8; 4];
 }
+impl SupportedLaneCount for LaneCount<64> {
+    type BitMask = [u8; 8];
+}
