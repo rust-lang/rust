@@ -42,11 +42,11 @@ error[E0277]: the trait bound `NonTrivialDrop: A` is not satisfied
 LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `A` is not implemented for `NonTrivialDrop`
    |
-note: required by `ConstDropImplWithBounds`
-  --> $DIR/const-drop-fail.rs:27:1
+note: required by a bound in `ConstDropImplWithBounds`
+  --> $DIR/const-drop-fail.rs:27:35
    |
 LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                   ^^^^^^^^ required by this bound in `ConstDropImplWithBounds`
 
 error[E0277]: the trait bound `NonTrivialDrop: A` is not satisfied
   --> $DIR/const-drop-fail.rs:49:5

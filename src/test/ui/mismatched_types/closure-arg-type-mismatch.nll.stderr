@@ -5,6 +5,12 @@ LL |     a.iter().map(|_: (u32, u32)| 45);
    |              ^^^ ------------------ found signature of `fn((u32, u32)) -> _`
    |              |
    |              expected signature of `fn(&(u32, u32)) -> _`
+   |
+note: required by a bound in `map`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |         F: FnMut(Self::Item) -> B,
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-arg-type-mismatch.rs:4:14
@@ -13,6 +19,12 @@ LL |     a.iter().map(|_: &(u16, u16)| 45);
    |              ^^^ ------------------- found signature of `for<'r> fn(&'r (u16, u16)) -> _`
    |              |
    |              expected signature of `fn(&(u32, u32)) -> _`
+   |
+note: required by a bound in `map`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |         F: FnMut(Self::Item) -> B,
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-arg-type-mismatch.rs:5:14
@@ -21,6 +33,12 @@ LL |     a.iter().map(|_: (u16, u16)| 45);
    |              ^^^ ------------------ found signature of `fn((u16, u16)) -> _`
    |              |
    |              expected signature of `fn(&(u32, u32)) -> _`
+   |
+note: required by a bound in `map`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |         F: FnMut(Self::Item) -> B,
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
 
 error: aborting due to 3 previous errors
 

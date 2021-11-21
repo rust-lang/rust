@@ -4,7 +4,11 @@ error[E0477]: the type `&'a isize` does not fulfill the required lifetime
 LL |     Foo.some_method::<&'a isize>();
    |         ^^^^^^^^^^^
    |
-   = note: type must satisfy the static lifetime
+note: type must satisfy the static lifetime as required by this binding
+  --> $DIR/regions-bounded-method-type-parameters.rs:8:22
+   |
+LL |     fn some_method<A:'static>(self) { }
+   |                      ^^^^^^^
 
 error: aborting due to previous error
 

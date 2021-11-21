@@ -12,11 +12,6 @@ LL | impl<T> Foo for T where Bar<T>: Foo {}
    |         ^^^     ^
    = note: 127 redundant requirements hidden
    = note: required because of the requirements on the impl of `Foo` for `Bar<T>`
-note: required by a bound in `Foo`
-  --> $DIR/E0275.rs:1:1
-   |
-LL | trait Foo {}
-   | ^^^^^^^^^ required by this bound in `Foo`
 
 error: aborting due to previous error
 

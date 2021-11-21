@@ -7,11 +7,6 @@ LL | struct Struct(
 LL |     Error
    |     ^^^^^ the trait `Default` is not implemented for `Error`
    |
-note: required by `std::default::Default::default`
-  --> $SRC_DIR/core/src/default.rs:LL:COL
-   |
-LL |     fn default() -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

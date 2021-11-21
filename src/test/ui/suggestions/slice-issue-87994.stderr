@@ -6,11 +6,6 @@ LL |   for _ in v[1..] {
    |
    = note: the trait bound `[i32]: IntoIterator` is not satisfied
    = note: required because of the requirements on the impl of `IntoIterator` for `[i32]`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider borrowing here
    |
 LL |   for _ in &v[1..] {
@@ -26,11 +21,6 @@ LL |   for _ in v[1..] {
    |
    = note: the trait bound `[i32]: IntoIterator` is not satisfied
    = note: required because of the requirements on the impl of `IntoIterator` for `[i32]`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider borrowing here
    |
 LL |   for _ in &v[1..] {
@@ -46,11 +36,6 @@ LL |   for i2 in v2[1..] {
    |
    = note: the trait bound `[K]: IntoIterator` is not satisfied
    = note: required because of the requirements on the impl of `IntoIterator` for `[K]`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider borrowing here
    |
 LL |   for i2 in &v2[1..] {
@@ -66,11 +51,6 @@ LL |   for i2 in v2[1..] {
    |
    = note: the trait bound `[K]: IntoIterator` is not satisfied
    = note: required because of the requirements on the impl of `IntoIterator` for `[K]`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider borrowing here
    |
 LL |   for i2 in &v2[1..] {

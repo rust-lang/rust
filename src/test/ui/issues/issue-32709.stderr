@@ -8,11 +8,6 @@ LL |     Err(5)?;
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = note: required because of the requirements on the impl of `FromResidual<Result<Infallible, {integer}>>` for `Result<i32, ()>`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -6,11 +6,6 @@ LL |     for item in *things { *item = 0 }
    |
    = note: the trait bound `dyn Iterator<Item = &'a mut u8>: IntoIterator` is not satisfied
    = note: required because of the requirements on the impl of `IntoIterator` for `dyn Iterator<Item = &'a mut u8>`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider mutably borrowing here
    |
 LL |     for item in &mut *things { *item = 0 }

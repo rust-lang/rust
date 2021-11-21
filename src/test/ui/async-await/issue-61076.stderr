@@ -5,35 +5,25 @@ LL |     foo()?;
    |     ^^^^^^ the `?` operator cannot be applied to type `impl Future<Output = Result<(), ()>>`
    |
    = help: the trait `Try` is not implemented for `impl Future<Output = Result<(), ()>>`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |     foo().await?;
    |          ++++++
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
-  --> $DIR/issue-61076.rs:67:5
+  --> $DIR/issue-61076.rs:65:5
    |
 LL |     t?;
    |     ^^ the `?` operator cannot be applied to type `T`
    |
    = help: the trait `Try` is not implemented for `T`
-note: required by `branch`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |     t.await?;
    |      ++++++
 
 error[E0609]: no field `0` on type `impl Future<Output = Tuple>`
-  --> $DIR/issue-61076.rs:78:26
+  --> $DIR/issue-61076.rs:74:26
    |
 LL |     let _: i32 = tuple().0;
    |                          ^ field not available in `impl Future`, but it is available in its `Output`
@@ -44,7 +34,7 @@ LL |     let _: i32 = tuple().await.0;
    |                         ++++++
 
 error[E0609]: no field `a` on type `impl Future<Output = Struct>`
-  --> $DIR/issue-61076.rs:82:28
+  --> $DIR/issue-61076.rs:78:28
    |
 LL |     let _: i32 = struct_().a;
    |                            ^ field not available in `impl Future`, but it is available in its `Output`
@@ -55,7 +45,7 @@ LL |     let _: i32 = struct_().await.a;
    |                           ++++++
 
 error[E0599]: no method named `method` found for opaque type `impl Future<Output = Struct>` in the current scope
-  --> $DIR/issue-61076.rs:86:15
+  --> $DIR/issue-61076.rs:82:15
    |
 LL |     struct_().method();
    |               ^^^^^^ method not found in `impl Future<Output = Struct>`
@@ -66,13 +56,13 @@ LL |     struct_().await.method();
    |               ++++++
 
 error[E0308]: mismatched types
-  --> $DIR/issue-61076.rs:94:9
+  --> $DIR/issue-61076.rs:90:9
    |
 LL |         Tuple(_) => {}
    |         ^^^^^^^^ expected opaque type, found struct `Tuple`
    |
 note: while checking the return type of the `async fn`
-  --> $DIR/issue-61076.rs:58:21
+  --> $DIR/issue-61076.rs:56:21
    |
 LL | async fn tuple() -> Tuple {
    |                     ^^^^^ checked the `Output` of this `async fn`, expected opaque type

@@ -8,11 +8,6 @@ LL |     <() as MyTrait>::foo(&());
    |
    = help: the following implementations were found:
              <() as MyTrait>
-note: required by `MyTrait::foo`
-  --> $DIR/no-use.rs:5:17
-   |
-LL | trait MyTrait { fn foo(&self); }
-   |                 ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -11,11 +11,6 @@ LL |     Ok(Err(123_i32)?)
              <u8 as From<NonZeroU8>>
              <u8 as From<bool>>
    = note: required because of the requirements on the impl of `FromResidual<Result<Infallible, i32>>` for `Result<u64, u8>`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
   --> $DIR/bad-interconversion.rs:11:12
@@ -29,11 +24,6 @@ LL | | }
    | |_- this function returns a `Result`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<u64, String>`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used on `Result`s in a function that returns `Result`
   --> $DIR/bad-interconversion.rs:17:31
@@ -46,11 +36,6 @@ LL | | }
    | |_- this function returns a `Result`
    |
    = help: the trait `FromResidual<ControlFlow<{integer}, Infallible>>` is not implemented for `Result<u64, String>`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used on `Option`s, not `Result`s, in a function that returns `Option`
   --> $DIR/bad-interconversion.rs:22:22
@@ -63,11 +48,6 @@ LL | | }
    | |_- this function returns an `Option`
    |
    = help: the trait `FromResidual<Result<Infallible, &str>>` is not implemented for `Option<u16>`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used on `Option`s in a function that returns `Option`
   --> $DIR/bad-interconversion.rs:27:33
@@ -80,11 +60,6 @@ LL | | }
    | |_- this function returns an `Option`
    |
    = help: the trait `FromResidual<ControlFlow<{integer}, Infallible>>` is not implemented for `Option<u64>`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
   --> $DIR/bad-interconversion.rs:32:39
@@ -97,11 +72,6 @@ LL | | }
    | |_- this function returns a `ControlFlow`
    |
    = help: the trait `FromResidual<Result<Infallible, &str>>` is not implemented for `ControlFlow<String>`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
   --> $DIR/bad-interconversion.rs:37:12
@@ -115,11 +85,6 @@ LL | | }
    | |_- this function returns a `ControlFlow`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `ControlFlow<u64>`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator in a function that returns `ControlFlow<B, _>` can only be used on other `ControlFlow<B, _>`s (with the same Break type)
   --> $DIR/bad-interconversion.rs:43:29
@@ -134,11 +99,6 @@ LL | | }
    |
    = help: the trait `FromResidual<ControlFlow<u8, Infallible>>` is not implemented for `ControlFlow<i64>`
    = note: unlike `Result`, there's no `From`-conversion performed for `ControlFlow`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors
 

@@ -6,11 +6,6 @@ LL |     ToInt::to_int(&g.get())
    |     |
    |     required by a bound introduced by this call
    |
-note: required by `ToInt::to_int`
-  --> $DIR/associated-types-bound-failure.rs:6:5
-   |
-LL |     fn to_int(&self) -> isize;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider further restricting the associated type
    |
 LL |     where G : GetToInt, <G as GetToInt>::R: ToInt

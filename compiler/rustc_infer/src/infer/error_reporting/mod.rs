@@ -2141,10 +2141,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         None
                     },
                     self.tcx.generics_of(owner.to_def_id()),
+                    hir.span(hir_id),
                 )
             });
+
+        let span = match generics {
+            // This is to get around the trait identity obligation, that has a `DUMMY_SP` as signal
+            // for other diagnostics, so we need to recover it here.
+            Some((_, _, node)) if span.is_dummy() => node,
+            _ => span,
+        };
+
         let type_param_span = match (generics, bound_kind) {
-            (Some((_, ref generics)), GenericKind::Param(ref param)) => {
+            (Some((_, ref generics, _)), GenericKind::Param(ref param)) => {
                 // Account for the case where `param` corresponds to `Self`,
                 // which doesn't have the expected type argument.
                 if !(generics.has_self && param.index == 0) {
@@ -2181,7 +2190,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         let new_lt = generics
             .as_ref()
-            .and_then(|(parent_g, g)| {
+            .and_then(|(parent_g, g, _)| {
                 let mut possible = (b'a'..=b'z').map(|c| format!("'{}", c as char));
                 let mut lts_names = g
                     .params
@@ -2203,7 +2212,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .unwrap_or("'lt".to_string());
         let add_lt_sugg = generics
             .as_ref()
-            .and_then(|(_, g)| g.params.first())
+            .and_then(|(_, g, _)| g.params.first())
             .and_then(|param| param.def_id.as_local())
             .map(|def_id| {
                 (
