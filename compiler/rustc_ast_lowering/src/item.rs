@@ -40,6 +40,11 @@ impl ItemLowerer<'_, '_, '_> {
 }
 
 impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
+    fn visit_attribute(&mut self, _: &'a Attribute) {
+        // We do not want to lower expressions that appear in attributes,
+        // as they are not accessible to the rest of the HIR.
+    }
+
     fn visit_item(&mut self, item: &'a Item) {
         let hir_id = self.lctx.with_hir_id_owner(item.id, |lctx| {
             let node = lctx.without_in_scope_lifetime_defs(|lctx| lctx.lower_item(item));
