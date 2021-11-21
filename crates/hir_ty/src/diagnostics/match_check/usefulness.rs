@@ -1,5 +1,5 @@
-//! Based on rust-lang/rust (last sync 68b76a483 2021-10-01)
-//! <https://github.com/rust-lang/rust/blob/68b76a483/compiler/rustc_mir_build/src/thir/pattern/usefulness.rs>
+//! Based on rust-lang/rust (last sync f31622a50 2021-11-12)
+//! <https://github.com/rust-lang/rust/blob/f31622a50/compiler/rustc_mir_build/src/thir/pattern/usefulness.rs>
 //!
 //! -----
 //!
@@ -402,9 +402,7 @@ impl<'p> Matrix<'p> {
     /// expands it.
     fn push(&mut self, row: PatStack<'p>) {
         if !row.is_empty() && row.head().is_or_pat() {
-            for row in row.expand_or_pat() {
-                self.patterns.push(row);
-            }
+            self.patterns.extend(row.expand_or_pat());
         } else {
             self.patterns.push(row);
         }
@@ -500,15 +498,33 @@ impl<'p> Usefulness<'p> {
                     } else {
                         let mut split_wildcard = SplitWildcard::new(pcx);
                         split_wildcard.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
+
+                        // This lets us know if we skipped any variants because they are marked
+                        // `doc(hidden)` or they are unstable feature gate (only stdlib types).
+                        let mut hide_variant_show_wild = false;
                         // Construct for each missing constructor a "wild" version of this
                         // constructor, that matches everything that can be built with
                         // it. For example, if `ctor` is a `Constructor::Variant` for
                         // `Option::Some`, we get the pattern `Some(_)`.
-                        split_wildcard
+                        let mut new: Vec<DeconstructedPat<'_>> = split_wildcard
                             .iter_missing(pcx)
-                            .cloned()
-                            .map(|missing_ctor| DeconstructedPat::wild_from_ctor(pcx, missing_ctor))
-                            .collect()
+                            .filter_map(|missing_ctor| {
+                                // Check if this variant is marked `doc(hidden)`
+                                if missing_ctor.is_doc_hidden_variant(pcx)
+                                    || missing_ctor.is_unstable_variant(pcx)
+                                {
+                                    hide_variant_show_wild = true;
+                                    return None;
+                                }
+                                Some(DeconstructedPat::wild_from_ctor(pcx, missing_ctor.clone()))
+                            })
+                            .collect();
+
+                        if hide_variant_show_wild {
+                            new.push(DeconstructedPat::wildcard(pcx.ty.clone()))
+                        }
+
+                        new
                     };
 
                     witnesses
@@ -660,7 +676,7 @@ fn is_useful<'p>(
         return ret;
     }
 
-    assert!(rows.iter().all(|r| r.len() == v.len()));
+    debug_assert!(rows.iter().all(|r| r.len() == v.len()));
 
     let ty = v.head().ty();
     let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);

@@ -332,6 +332,14 @@ impl Constructor {
         }
     }
 
+    pub(super) fn is_unstable_variant(&self, _pcx: PatCtxt<'_, '_>) -> bool {
+        false //FIXME: implement this
+    }
+
+    pub(super) fn is_doc_hidden_variant(&self, _pcx: PatCtxt<'_, '_>) -> bool {
+        false //FIXME: implement this
+    }
+
     fn variant_id_for_adt(&self, adt: hir_def::AdtId) -> VariantId {
         match *self {
             Variant(id) => id.into(),
@@ -556,32 +564,33 @@ impl SplitWildcard {
                 // witness.
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
 
+                let is_exhaustive_pat_feature = cx.feature_exhaustive_patterns();
+
                 // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
                 // as though it had an "unknown" constructor to avoid exposing its emptiness. The
                 // exception is if the pattern is at the top level, because we want empty matches to be
                 // considered exhaustive.
                 let is_secretly_empty = enum_data.variants.is_empty()
-                    && !cx.feature_exhaustive_patterns()
+                    && !is_exhaustive_pat_feature
                     && !pcx.is_top_level;
 
-                if is_secretly_empty {
-                    smallvec![NonExhaustive]
-                } else if is_declared_nonexhaustive {
-                    enum_data
-                        .variants
-                        .iter()
-                        .map(|(local_id, ..)| Variant(EnumVariantId { parent: enum_id, local_id }))
-                        .chain(Some(NonExhaustive))
-                        .collect()
-                } else if cx.feature_exhaustive_patterns() {
-                    unimplemented!() // see MatchCheckCtx.feature_exhaustive_patterns()
-                } else {
-                    enum_data
-                        .variants
-                        .iter()
-                        .map(|(local_id, ..)| Variant(EnumVariantId { parent: enum_id, local_id }))
-                        .collect()
+                let mut ctors: SmallVec<[_; 1]> = enum_data
+                    .variants
+                    .iter()
+                    .filter(|&(_, _v)| {
+                        // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                        // uninhabited.
+                        let is_uninhabited = is_exhaustive_pat_feature
+                            && unimplemented!("after MatchCheckCtx.feature_exhaustive_patterns()");
+                        !is_uninhabited
+                    })
+                    .map(|(local_id, _)| Variant(EnumVariantId { parent: enum_id, local_id }))
+                    .collect();
+
+                if is_secretly_empty || is_declared_nonexhaustive {
+                    ctors.push(NonExhaustive);
                 }
+                ctors
             }
             TyKind::Scalar(Scalar::Char) => unhandled(),
             TyKind::Scalar(Scalar::Int(..) | Scalar::Uint(..)) => unhandled(),
@@ -661,9 +670,7 @@ impl SplitWildcard {
                     Missing {
                         nonexhaustive_enum_missing_real_variants: self
                             .iter_missing(pcx)
-                            .filter(|c| !c.is_non_exhaustive())
-                            .next()
-                            .is_some(),
+                            .any(|c| !(c.is_non_exhaustive() || c.is_unstable_variant(pcx))),
                     }
                 } else {
                     Missing { nonexhaustive_enum_missing_real_variants: false }
@@ -820,9 +827,9 @@ impl<'p> Fields<'p> {
 
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form.
-/// This also keeps track of whether the pattern has been foundreachable during analysis. For this
+/// This also keeps track of whether the pattern has been found reachable during analysis. For this
 /// reason we should be careful not to clone patterns for which we care about that. Use
-/// `clone_and_forget_reachability` is you're sure.
+/// `clone_and_forget_reachability` if you're sure.
 pub(crate) struct DeconstructedPat<'p> {
     ctor: Constructor,
     fields: Fields<'p>,
