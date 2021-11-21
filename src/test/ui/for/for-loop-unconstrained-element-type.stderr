@@ -1,8 +1,10 @@
 error[E0282]: type annotations needed
-  --> $DIR/for-loop-unconstrained-element-type.rs:8:14
+  --> $DIR/for-loop-unconstrained-element-type.rs:8:9
    |
 LL |     for i in Vec::new() { }
-   |              ^^^^^^^^^^ the element type for this iterator is not specified
+   |         ^    ---------- the element type for this iterator is not specified
+   |         |
+   |         cannot infer type
 
 error: aborting due to previous error
 

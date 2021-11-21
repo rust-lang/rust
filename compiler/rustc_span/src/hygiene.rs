@@ -1099,16 +1099,9 @@ pub enum DesugaringKind {
     OpaqueTy,
     Async,
     Await,
-    ForLoop(ForLoopLoc),
+    ForLoop,
     LetElse,
     WhileLoop,
-}
-
-/// A location in the desugaring of a `for` loop
-#[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
-pub enum ForLoopLoc {
-    Head,
-    IntoIter,
 }
 
 impl DesugaringKind {
@@ -1121,7 +1114,7 @@ impl DesugaringKind {
             DesugaringKind::QuestionMark => "operator `?`",
             DesugaringKind::TryBlock => "`try` block",
             DesugaringKind::OpaqueTy => "`impl Trait`",
-            DesugaringKind::ForLoop(_) => "`for` loop",
+            DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::LetElse => "`let...else`",
             DesugaringKind::WhileLoop => "`while` loop",
         }

@@ -269,7 +269,6 @@ symbols! {
         __D,
         __H,
         __S,
-        __next,
         __try_var,
         _args,
         _d,

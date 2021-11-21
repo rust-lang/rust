@@ -1,4 +1,4 @@
-use super::{get_span_of_entire_for_loop, IncrementVisitor, InitializeVisitor, MANUAL_MEMCPY};
+use super::{IncrementVisitor, InitializeVisitor, MANUAL_MEMCPY};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
@@ -86,7 +86,7 @@ pub(super) fn check<'tcx>(
                 span_lint_and_sugg(
                     cx,
                     MANUAL_MEMCPY,
-                    get_span_of_entire_for_loop(expr),
+                    expr.span,
                     "it looks like you're manually copying between slices",
                     "try replacing the loop by",
                     big_sugg,

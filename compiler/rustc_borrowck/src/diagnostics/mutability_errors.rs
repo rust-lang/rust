@@ -445,15 +445,23 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 },
                             ))) => {
                                 // check if the RHS is from desugaring
-                                let locations = self.body.find_assignments(local);
-                                let opt_assignment_rhs_span = locations
-                                    .first()
-                                    .map(|&location| self.body.source_info(location).span);
-                                let opt_desugaring_kind =
-                                    opt_assignment_rhs_span.and_then(|span| span.desugaring_kind());
-                                match opt_desugaring_kind {
+                                let opt_assignment_rhs_span =
+                                    self.body.find_assignments(local).first().map(|&location| {
+                                        let stmt = &self.body[location.block].statements
+                                            [location.statement_index];
+                                        match stmt.kind {
+                                            mir::StatementKind::Assign(box (
+                                                _,
+                                                mir::Rvalue::Use(mir::Operand::Copy(place)),
+                                            )) => {
+                                                self.body.local_decls[place.local].source_info.span
+                                            }
+                                            _ => self.body.source_info(location).span,
+                                        }
+                                    });
+                                match opt_assignment_rhs_span.and_then(|s| s.desugaring_kind()) {
                                     // on for loops, RHS points to the iterator part
-                                    Some(DesugaringKind::ForLoop(_)) => {
+                                    Some(DesugaringKind::ForLoop) => {
                                         self.suggest_similar_mut_method_for_for_loop(&mut err);
                                         Some((
                                             false,

@@ -1,8 +1,8 @@
-error[E0282]: type annotations needed for `&(_,)`
+error[E0282]: type annotations needed for `(_,)`
   --> $DIR/issue-20261.rs:4:11
    |
 LL |     for (ref i,) in [].iter() {
-   |                     --------- the element type for this iterator is not specified
+   |                     --------- this method call resolves to `std::slice::Iter<'_, T>`
 LL |         i.clone();
    |           ^^^^^ cannot infer type
    |

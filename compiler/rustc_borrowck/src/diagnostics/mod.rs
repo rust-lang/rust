@@ -13,11 +13,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
-use rustc_span::{
-    hygiene::{DesugaringKind, ForLoopLoc},
-    symbol::sym,
-    Span,
-};
+use rustc_span::{hygiene::DesugaringKind, symbol::sym, Span};
 use rustc_target::abi::VariantIdx;
 
 use super::borrow_set::BorrowData;
@@ -955,10 +951,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let kind = kind.unwrap_or_else(|| {
                 // This isn't a 'special' use of `self`
                 debug!("move_spans: method_did={:?}, fn_call_span={:?}", method_did, fn_call_span);
-                let implicit_into_iter = matches!(
-                    fn_call_span.desugaring_kind(),
-                    Some(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
-                );
+                let implicit_into_iter = Some(method_did) == tcx.lang_items().into_iter_fn()
+                    && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop);
                 let parent_self_ty = parent
                     .filter(|did| tcx.def_kind(*did) == rustc_hir::def::DefKind::Impl)
                     .and_then(|did| match tcx.type_of(did).kind() {

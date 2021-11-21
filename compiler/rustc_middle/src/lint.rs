@@ -395,7 +395,7 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     match expn_data.kind {
         ExpnKind::Inlined
         | ExpnKind::Root
-        | ExpnKind::Desugaring(DesugaringKind::ForLoop(_) | DesugaringKind::WhileLoop) => false,
+        | ExpnKind::Desugaring(DesugaringKind::ForLoop | DesugaringKind::WhileLoop) => false,
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
             // Dummy span for the `def_site` means it's an external macro.

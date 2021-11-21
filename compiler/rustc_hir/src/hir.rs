@@ -1821,8 +1821,6 @@ impl<'hir> QPath<'hir> {
 pub enum LocalSource {
     /// A `match _ { .. }`.
     Normal,
-    /// A desugared `for _ in _ { .. }` loop.
-    ForLoopDesugar,
     /// When lowering async functions, we create locals within the `async move` so that
     /// all parameters are dropped after the future is polled.
     ///

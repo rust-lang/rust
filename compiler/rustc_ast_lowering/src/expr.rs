@@ -13,7 +13,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{hygiene::ForLoopLoc, DUMMY_SP};
+use rustc_span::DUMMY_SP;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -1308,16 +1308,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Desugar `ExprForLoop` from: `[opt_ident]: for <pat> in <head> <body>` into:
     /// ```rust
     /// {
-    ///     let result = match ::std::iter::IntoIterator::into_iter(<head>) {
+    ///     let result = match IntoIterator::into_iter(<head>) {
     ///         mut iter => {
     ///             [opt_ident]: loop {
-    ///                 let mut __next;
-    ///                 match ::std::iter::Iterator::next(&mut iter) {
-    ///                     ::std::option::Option::Some(val) => __next = val,
-    ///                     ::std::option::Option::None => break
+    ///                 match Iterator::next(&mut iter) {
+    ///                     None => break,
+    ///                     Some(<pat>) => <body>,
     ///                 };
-    ///                 let <pat> = __next;
-    ///                 StmtKind::Expr(<body>);
     ///             }
     ///         }
     ///     };
@@ -1332,133 +1329,75 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::Expr<'hir> {
-        // expand <head>
         let head = self.lower_expr_mut(head);
-        let desugared_span =
-            self.mark_span_with_reason(DesugaringKind::ForLoop(ForLoopLoc::Head), head.span, None);
-        let e_span = self.lower_span(e.span);
+        let pat = self.lower_pat(pat);
+        let for_span =
+            self.mark_span_with_reason(DesugaringKind::ForLoop, self.lower_span(e.span), None);
+        let head_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
+        let pat_span = self.mark_span_with_reason(DesugaringKind::ForLoop, pat.span, None);
 
-        let iter = Ident::with_dummy_span(sym::iter);
-
-        let next_ident = Ident::with_dummy_span(sym::__next);
-        let (next_pat, next_pat_hid) = self.pat_ident_binding_mode(
-            desugared_span,
-            next_ident,
-            hir::BindingAnnotation::Mutable,
-        );
-
-        // `::std::option::Option::Some(val) => __next = val`
-        let pat_arm = {
-            let val_ident = Ident::with_dummy_span(sym::val);
-            let pat_span = self.lower_span(pat.span);
-            let (val_pat, val_pat_hid) = self.pat_ident(pat_span, val_ident);
-            let val_expr = self.expr_ident(pat_span, val_ident, val_pat_hid);
-            let next_expr = self.expr_ident(pat_span, next_ident, next_pat_hid);
-            let assign = self.arena.alloc(self.expr(
-                pat_span,
-                hir::ExprKind::Assign(next_expr, val_expr, self.lower_span(pat_span)),
-                ThinVec::new(),
-            ));
-            let some_pat = self.pat_some(pat_span, val_pat);
-            self.arm(some_pat, assign)
-        };
-
-        // `::std::option::Option::None => break`
-        let break_arm = {
+        // `None => break`
+        let none_arm = {
             let break_expr =
-                self.with_loop_scope(e.id, |this| this.expr_break_alloc(e_span, ThinVec::new()));
-            let pat = self.pat_none(e_span);
+                self.with_loop_scope(e.id, |this| this.expr_break_alloc(for_span, ThinVec::new()));
+            let pat = self.pat_none(for_span);
             self.arm(pat, break_expr)
         };
 
-        // `mut iter`
-        let (iter_pat, iter_pat_nid) =
-            self.pat_ident_binding_mode(desugared_span, iter, hir::BindingAnnotation::Mutable);
+        // Some(<pat>) => <body>,
+        let some_arm = {
+            let some_pat = self.pat_some(pat_span, pat);
+            let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
+            let body_expr = self.arena.alloc(self.expr_block(body_block, ThinVec::new()));
+            self.arm(some_pat, body_expr)
+        };
 
-        // `match ::std::iter::Iterator::next(&mut iter) { ... }`
+        // `mut iter`
+        let iter = Ident::with_dummy_span(sym::iter);
+        let (iter_pat, iter_pat_nid) =
+            self.pat_ident_binding_mode(head_span, iter, hir::BindingAnnotation::Mutable);
+
+        // `match Iterator::next(&mut iter) { ... }`
         let match_expr = {
-            let iter = self.expr_ident(desugared_span, iter, iter_pat_nid);
-            let ref_mut_iter = self.expr_mut_addr_of(desugared_span, iter);
+            let iter = self.expr_ident(head_span, iter, iter_pat_nid);
+            let ref_mut_iter = self.expr_mut_addr_of(head_span, iter);
             let next_expr = self.expr_call_lang_item_fn(
-                desugared_span,
+                head_span,
                 hir::LangItem::IteratorNext,
                 arena_vec![self; ref_mut_iter],
             );
-            let arms = arena_vec![self; pat_arm, break_arm];
+            let arms = arena_vec![self; none_arm, some_arm];
 
-            self.expr_match(desugared_span, next_expr, arms, hir::MatchSource::ForLoopDesugar)
+            self.expr_match(head_span, next_expr, arms, hir::MatchSource::ForLoopDesugar)
         };
-        let match_stmt = self.stmt_expr(desugared_span, match_expr);
+        let match_stmt = self.stmt_expr(for_span, match_expr);
 
-        let next_expr = self.expr_ident(desugared_span, next_ident, next_pat_hid);
-
-        // `let mut __next`
-        let next_let = self.stmt_let_pat(
-            None,
-            desugared_span,
-            None,
-            next_pat,
-            hir::LocalSource::ForLoopDesugar,
-        );
-
-        // `let <pat> = __next`
-        let pat = self.lower_pat(pat);
-        let pat_let = self.stmt_let_pat(
-            None,
-            desugared_span,
-            Some(next_expr),
-            pat,
-            hir::LocalSource::ForLoopDesugar,
-        );
-
-        let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
-        let body_expr = self.expr_block(body_block, ThinVec::new());
-        let body_stmt = self.stmt_expr(body_block.span, body_expr);
-
-        let loop_block = self.block_all(
-            e_span,
-            arena_vec![self; next_let, match_stmt, pat_let, body_stmt],
-            None,
-        );
+        let loop_block = self.block_all(for_span, arena_vec![self; match_stmt], None);
 
         // `[opt_ident]: loop { ... }`
         let kind = hir::ExprKind::Loop(
             loop_block,
             self.lower_label(opt_label),
             hir::LoopSource::ForLoop,
-            self.lower_span(e_span.with_hi(head.span.hi())),
+            self.lower_span(for_span.with_hi(head.span.hi())),
         );
-        let loop_expr = self.arena.alloc(hir::Expr {
-            hir_id: self.lower_node_id(e.id),
-            kind,
-            span: self.lower_span(e.span),
-        });
+        let loop_expr =
+            self.arena.alloc(hir::Expr { hir_id: self.lower_node_id(e.id), kind, span: for_span });
 
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);
 
-        let into_iter_span = self.mark_span_with_reason(
-            DesugaringKind::ForLoop(ForLoopLoc::IntoIter),
-            head.span,
-            None,
-        );
-
         // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
         let into_iter_expr = {
             self.expr_call_lang_item_fn(
-                into_iter_span,
+                head_span,
                 hir::LangItem::IntoIterIntoIter,
                 arena_vec![self; head],
             )
         };
 
-        // #82462: to correctly diagnose borrow errors, the block that contains
-        // the iter expr needs to have a span that covers the loop body.
-        let desugared_full_span =
-            self.mark_span_with_reason(DesugaringKind::ForLoop(ForLoopLoc::Head), e_span, None);
-
         let match_expr = self.arena.alloc(self.expr_match(
-            desugared_full_span,
+            for_span,
             into_iter_expr,
             arena_vec![self; iter_arm],
             hir::MatchSource::ForLoopDesugar,
@@ -1472,7 +1411,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // surrounding scope of the `match` since the `match` is not a terminating scope.
         //
         // Also, add the attributes to the outer returned expr node.
-        self.expr_drop_temps_mut(desugared_full_span, match_expr, attrs.into())
+        self.expr_drop_temps_mut(for_span, match_expr, attrs.into())
     }
 
     /// Desugar `ExprKind::Try` from: `<expr>?` into:
