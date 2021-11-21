@@ -688,7 +688,7 @@ pub trait PrettyPrinter<'tcx>:
                                 }
 
                                 p!(
-                                    write("{}", if first { " " } else { "+" }),
+                                    write("{}", if first { " " } else { " + " }),
                                     print(trait_ref.print_only_trait_path())
                                 );
 
@@ -699,7 +699,7 @@ pub trait PrettyPrinter<'tcx>:
                     }
 
                     if is_future {
-                        p!(write("{}Future", if first { " " } else { "+" }));
+                        p!(write("{}Future", if first { " " } else { " + " }));
                         first = false;
 
                         if let Some(future_output_ty) = future_output_ty {
@@ -712,7 +712,7 @@ pub trait PrettyPrinter<'tcx>:
                     }
 
                     if !is_sized {
-                        p!(write("{}?Sized", if first { " " } else { "+" }));
+                        p!(write("{}?Sized", if first { " " } else { " + " }));
                     } else if first {
                         p!(" Sized");
                     }

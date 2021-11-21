@@ -1,4 +1,4 @@
-error[E0606]: casting `*mut impl Debug+?Sized` as `*mut impl Debug+?Sized` is invalid
+error[E0606]: casting `*mut impl Debug + ?Sized` as `*mut impl Debug + ?Sized` is invalid
   --> $DIR/casts-differing-anon.rs:21:13
    |
 LL |     b_raw = f_raw as *mut _;
