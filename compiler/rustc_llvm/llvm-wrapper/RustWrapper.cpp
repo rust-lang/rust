@@ -124,8 +124,18 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
 
 extern "C" LLVMValueRef
 LLVMRustGetOrInsertGlobal(LLVMModuleRef M, const char *Name, size_t NameLen, LLVMTypeRef Ty) {
+  Module *Mod = unwrap(M);
   StringRef NameRef(Name, NameLen);
-  return wrap(unwrap(M)->getOrInsertGlobal(NameRef, unwrap(Ty)));
+
+  // We don't use Module::getOrInsertGlobal because that returns a Constant*,
+  // which may either be the real GlobalVariable*, or a constant bitcast of it
+  // if our type doesn't match the original declaration. We always want the
+  // GlobalVariable* so we can access linkage, visibility, etc.
+  GlobalVariable *GV = Mod->getGlobalVariable(NameRef, true);
+  if (!GV)
+    GV = new GlobalVariable(*Mod, unwrap(Ty), false,
+                            GlobalValue::ExternalLinkage, nullptr, NameRef);
+  return wrap(GV);
 }
 
 extern "C" LLVMValueRef
