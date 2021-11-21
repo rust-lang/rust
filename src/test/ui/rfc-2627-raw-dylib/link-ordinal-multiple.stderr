@@ -7,7 +7,13 @@ LL | #![feature(raw_dylib)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
 
-error: multiple `link_ordinal` attributes on a single definition
+error: multiple `link_ordinal` attributes
+  --> $DIR/link-ordinal-multiple.rs:7:5
+   |
+LL |     #[link_ordinal(1)]
+   |     ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
   --> $DIR/link-ordinal-multiple.rs:8:5
    |
 LL |     #[link_ordinal(2)]
