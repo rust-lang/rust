@@ -265,6 +265,7 @@ fn test_short_markdown_summary() {
     t("# top header", "");
     t("# top header\n\nfollowed by a paragraph", "");
     t("## header", "");
+    t("some *words*\n# Examples\n```let x = 42;```", "some <em>words</em>");
     t("first paragraph\n\nsecond paragraph", "first paragraph");
     t("```\nfn main() {}\n```", "");
     t("<div>hello</div>", "");
@@ -294,6 +295,7 @@ fn test_plain_text_summary() {
     t("# top header", "");
     t("# top header\n\nfollowed by some text", "");
     t("## header", "");
+    t("some *words*\n# Examples\n```let x = 42;```", "some words");
     t("first paragraph\n\nsecond paragraph", "first paragraph");
     t("```\nfn main() {}\n```", "");
     t("<div>hello</div>", "");
