@@ -441,6 +441,13 @@ impl Inliner<'tcx> {
                     }
                 }
                 TerminatorKind::Resume => cost += RESUME_PENALTY,
+                TerminatorKind::InlineAsm { cleanup, .. } => {
+                    cost += INSTR_COST;
+
+                    if cleanup.is_some() {
+                        cost += LANDINGPAD_PENALTY;
+                    }
+                }
                 _ => cost += INSTR_COST,
             }
 
@@ -954,9 +961,13 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             {
                 bug!("False unwinds should have been removed before inlining")
             }
-            TerminatorKind::InlineAsm { ref mut destination, .. } => {
+            TerminatorKind::InlineAsm { ref mut destination, ref mut cleanup, .. } => {
                 if let Some(ref mut tgt) = *destination {
                     *tgt = self.map_block(*tgt);
+                } else if !self.in_cleanup_block {
+                    // Unless this inline asm is in a cleanup block, add an unwind edge to
+                    // the original call's cleanup block
+                    *cleanup = self.cleanup_block;
                 }
             }
         }

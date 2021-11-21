@@ -1,7 +1,7 @@
 pub use super::*;
 
 use crate::storage::AlwaysLiveLocals;
-use crate::{GenKill, Results, ResultsRefCursor};
+use crate::{CallReturnPlaces, GenKill, Results, ResultsRefCursor};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use std::cell::RefCell;
@@ -68,9 +68,7 @@ impl crate::GenKillAnalysis<'tcx> for MaybeStorageLive {
         &self,
         _trans: &mut impl GenKill<Self::Idx>,
         _block: BasicBlock,
-        _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
-        _return_place: mir::Place<'tcx>,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         // Nothing to do when a call returns successfully
     }
@@ -226,13 +224,18 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
         terminator: &mir::Terminator<'tcx>,
         loc: Location,
     ) {
-        match &terminator.kind {
+        match terminator.kind {
             // For call terminators the destination requires storage for the call
             // and after the call returns successfully, but not after a panic.
             // Since `propagate_call_unwind` doesn't exist, we have to kill the
             // destination here, and then gen it again in `call_return_effect`.
             TerminatorKind::Call { destination: Some((place, _)), .. } => {
                 trans.kill(place.local);
+            }
+
+            // The same applies to InlineAsm outputs.
+            TerminatorKind::InlineAsm { ref operands, .. } => {
+                CallReturnPlaces::InlineAsm(operands).for_each(|place| trans.kill(place.local));
             }
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
@@ -247,7 +250,6 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }
-            | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Return
             | TerminatorKind::SwitchInt { .. }
@@ -261,11 +263,9 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
         &self,
         trans: &mut impl GenKill<Self::Idx>,
         _block: BasicBlock,
-        _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
-        return_place: mir::Place<'tcx>,
+        return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        trans.gen(return_place.local);
+        return_places.for_each(|place| trans.gen(place.local));
     }
 
     fn yield_resume_effect(

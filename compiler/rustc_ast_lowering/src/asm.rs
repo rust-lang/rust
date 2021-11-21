@@ -49,6 +49,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 .struct_span_err(sp, "the `att_syntax` option is only supported on x86")
                 .emit();
         }
+        if asm.options.contains(InlineAsmOptions::MAY_UNWIND)
+            && !self.sess.features_untracked().asm_unwind
+        {
+            feature_err(
+                &self.sess.parse_sess,
+                sym::asm_unwind,
+                sp,
+                "the `may_unwind` option is unstable",
+            )
+            .emit();
+        }
 
         let mut clobber_abis = FxHashMap::default();
         if let Some(asm_arch) = asm_arch {

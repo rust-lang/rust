@@ -1022,6 +1022,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // These are just stores, where the storing is not propagatable, but there may be later
             // mutations of the same local via `Store`
             | MutatingUse(MutatingUseContext::Call)
+            | MutatingUse(MutatingUseContext::AsmOutput)
             // Actual store that can possibly even propagate a value
             | MutatingUse(MutatingUseContext::Store) => {
                 if !self.found_assignment.insert(local) {
@@ -1052,7 +1053,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
 
             // These could be propagated with a smarter analysis or just some careful thinking about
             // whether they'd be fine right now.
-            MutatingUse(MutatingUseContext::AsmOutput)
+            MutatingUse(MutatingUseContext::LlvmAsmOutput)
             | MutatingUse(MutatingUseContext::Yield)
             | MutatingUse(MutatingUseContext::Drop)
             | MutatingUse(MutatingUseContext::Retag)

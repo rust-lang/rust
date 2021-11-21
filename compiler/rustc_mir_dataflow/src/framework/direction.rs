@@ -4,7 +4,9 @@ use rustc_middle::ty::TyCtxt;
 use std::ops::RangeInclusive;
 
 use super::visitor::{ResultsVisitable, ResultsVisitor};
-use super::{Analysis, Effect, EffectIndex, GenKillAnalysis, GenKillSet, SwitchIntTarget};
+use super::{
+    Analysis, CallReturnPlaces, Effect, EffectIndex, GenKillAnalysis, GenKillSet, SwitchIntTarget,
+};
 
 pub trait Direction {
     fn is_forward() -> bool;
@@ -235,14 +237,26 @@ impl Direction for Backward {
                 // Apply terminator-specific edge effects.
                 //
                 // FIXME(ecstaticmorse): Avoid cloning the exit state unconditionally.
-                mir::TerminatorKind::Call {
-                    destination: Some((return_place, dest)),
-                    ref func,
-                    ref args,
-                    ..
+                mir::TerminatorKind::Call { destination: Some((return_place, dest)), .. }
+                    if dest == bb =>
+                {
+                    let mut tmp = exit_state.clone();
+                    analysis.apply_call_return_effect(
+                        &mut tmp,
+                        pred,
+                        CallReturnPlaces::Call(return_place),
+                    );
+                    propagate(pred, &tmp);
+                }
+                mir::TerminatorKind::InlineAsm {
+                    destination: Some(dest), ref operands, ..
                 } if dest == bb => {
                     let mut tmp = exit_state.clone();
-                    analysis.apply_call_return_effect(&mut tmp, pred, func, args, return_place);
+                    analysis.apply_call_return_effect(
+                        &mut tmp,
+                        pred,
+                        CallReturnPlaces::InlineAsm(operands),
+                    );
                     propagate(pred, &tmp);
                 }
 
@@ -258,6 +272,7 @@ impl Direction for Backward {
                 | mir::TerminatorKind::Drop { unwind: Some(unwind), .. }
                 | mir::TerminatorKind::DropAndReplace { unwind: Some(unwind), .. }
                 | mir::TerminatorKind::FalseUnwind { unwind: Some(unwind), .. }
+                | mir::TerminatorKind::InlineAsm { cleanup: Some(unwind), .. }
                     if unwind == bb =>
                 {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
@@ -467,7 +482,7 @@ impl Direction for Forward {
                 propagate(target, exit_state);
             }
 
-            Call { cleanup, destination, ref func, ref args, from_hir_call: _, fn_span: _ } => {
+            Call { cleanup, destination, func: _, args: _, from_hir_call: _, fn_span: _ } => {
                 if let Some(unwind) = cleanup {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
                         propagate(unwind, exit_state);
@@ -477,13 +492,37 @@ impl Direction for Forward {
                 if let Some((dest_place, target)) = destination {
                     // N.B.: This must be done *last*, otherwise the unwind path will see the call
                     // return effect.
-                    analysis.apply_call_return_effect(exit_state, bb, func, args, dest_place);
+                    analysis.apply_call_return_effect(
+                        exit_state,
+                        bb,
+                        CallReturnPlaces::Call(dest_place),
+                    );
                     propagate(target, exit_state);
                 }
             }
 
-            InlineAsm { template: _, operands: _, options: _, line_spans: _, destination } => {
+            InlineAsm {
+                template: _,
+                ref operands,
+                options: _,
+                line_spans: _,
+                destination,
+                cleanup,
+            } => {
+                if let Some(unwind) = cleanup {
+                    if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
+                        propagate(unwind, exit_state);
+                    }
+                }
+
                 if let Some(target) = destination {
+                    // N.B.: This must be done *last*, otherwise the unwind path will see the call
+                    // return effect.
+                    analysis.apply_call_return_effect(
+                        exit_state,
+                        bb,
+                        CallReturnPlaces::InlineAsm(operands),
+                    );
                     propagate(target, exit_state);
                 }
             }

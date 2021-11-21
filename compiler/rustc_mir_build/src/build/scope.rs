@@ -1373,7 +1373,8 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::DropAndReplace { unwind, .. }
             | TerminatorKind::FalseUnwind { unwind, .. }
             | TerminatorKind::Call { cleanup: unwind, .. }
-            | TerminatorKind::Assert { cleanup: unwind, .. } => {
+            | TerminatorKind::Assert { cleanup: unwind, .. }
+            | TerminatorKind::InlineAsm { cleanup: unwind, .. } => {
                 *unwind = Some(to);
             }
             TerminatorKind::Goto { .. }
@@ -1384,8 +1385,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::InlineAsm { .. } => {
+            | TerminatorKind::FalseEdge { .. } => {
                 span_bug!(term.source_info.span, "cannot unwind from {:?}", term.kind)
             }
         }

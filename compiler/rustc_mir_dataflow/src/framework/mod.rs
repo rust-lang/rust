@@ -160,9 +160,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         &self,
         state: &mut Self::Domain,
         block: BasicBlock,
-        func: &mir::Operand<'tcx>,
-        args: &[mir::Operand<'tcx>],
-        return_place: mir::Place<'tcx>,
+        return_places: CallReturnPlaces<'_, 'tcx>,
     );
 
     /// Updates the current dataflow state with the effect of resuming from a `Yield` terminator.
@@ -276,9 +274,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
         &self,
         trans: &mut impl GenKill<Self::Idx>,
         block: BasicBlock,
-        func: &mir::Operand<'tcx>,
-        args: &[mir::Operand<'tcx>],
-        return_place: mir::Place<'tcx>,
+        return_places: CallReturnPlaces<'_, 'tcx>,
     );
 
     /// See `Analysis::apply_yield_resume_effect`.
@@ -347,11 +343,9 @@ where
         &self,
         state: &mut A::Domain,
         block: BasicBlock,
-        func: &mir::Operand<'tcx>,
-        args: &[mir::Operand<'tcx>],
-        return_place: mir::Place<'tcx>,
+        return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        self.call_return_effect(state, block, func, args, return_place);
+        self.call_return_effect(state, block, return_places);
     }
 
     fn apply_yield_resume_effect(
@@ -540,6 +534,30 @@ pub trait SwitchIntEdgeEffects<D> {
     /// Calls `apply_edge_effect` for each outgoing edge from a `SwitchInt` terminator and
     /// records the results.
     fn apply(&mut self, apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget));
+}
+
+/// List of places that are written to after a successful (non-unwind) return
+/// from a `Call` or `InlineAsm`.
+pub enum CallReturnPlaces<'a, 'tcx> {
+    Call(mir::Place<'tcx>),
+    InlineAsm(&'a [mir::InlineAsmOperand<'tcx>]),
+}
+
+impl<'tcx> CallReturnPlaces<'_, 'tcx> {
+    pub fn for_each(&self, mut f: impl FnMut(mir::Place<'tcx>)) {
+        match *self {
+            Self::Call(place) => f(place),
+            Self::InlineAsm(operands) => {
+                for op in operands {
+                    match *op {
+                        mir::InlineAsmOperand::Out { place: Some(place), .. }
+                        | mir::InlineAsmOperand::InOut { out_place: Some(place), .. } => f(place),
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]

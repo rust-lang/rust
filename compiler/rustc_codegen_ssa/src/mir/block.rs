@@ -10,6 +10,7 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_ast as ast;
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::AssertKind;
@@ -168,6 +169,45 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
             if let Some((ret_dest, target)) = destination {
                 fx.store_return(bx, ret_dest, &fn_abi.ret, llret);
+                self.funclet_br(fx, bx, target);
+            } else {
+                bx.unreachable();
+            }
+        }
+    }
+
+    /// Generates inline assembly with optional `destination` and `cleanup`.
+    fn do_inlineasm<Bx: BuilderMethods<'a, 'tcx>>(
+        &self,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        bx: &mut Bx,
+        template: &[InlineAsmTemplatePiece],
+        operands: &[InlineAsmOperandRef<'tcx, Bx>],
+        options: InlineAsmOptions,
+        line_spans: &[Span],
+        destination: Option<mir::BasicBlock>,
+        cleanup: Option<mir::BasicBlock>,
+        instance: Instance<'_>,
+    ) {
+        if let Some(cleanup) = cleanup {
+            let ret_llbb = if let Some(target) = destination {
+                fx.llbb(target)
+            } else {
+                fx.unreachable_block()
+            };
+
+            bx.codegen_inline_asm(
+                template,
+                &operands,
+                options,
+                line_spans,
+                instance,
+                Some((ret_llbb, self.llblock(fx, cleanup), self.funclet(fx))),
+            );
+        } else {
+            bx.codegen_inline_asm(template, &operands, options, line_spans, instance, None);
+
+            if let Some(target) = destination {
                 self.funclet_br(fx, bx, target);
             } else {
                 bx.unreachable();
@@ -877,6 +917,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         options: ast::InlineAsmOptions,
         line_spans: &[Span],
         destination: Option<mir::BasicBlock>,
+        cleanup: Option<mir::BasicBlock>,
         instance: Instance<'_>,
     ) {
         let span = terminator.source_info.span;
@@ -931,13 +972,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             })
             .collect();
 
-        bx.codegen_inline_asm(template, &operands, options, line_spans, instance);
-
-        if let Some(target) = destination {
-            helper.funclet_br(self, &mut bx, target);
-        } else {
-            bx.unreachable();
-        }
+        helper.do_inlineasm(
+            self,
+            &mut bx,
+            template,
+            &operands,
+            options,
+            line_spans,
+            destination,
+            cleanup,
+            instance,
+        );
     }
 }
 
@@ -1041,6 +1086,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 options,
                 line_spans,
                 destination,
+                cleanup,
             } => {
                 self.codegen_asm_terminator(
                     helper,
@@ -1051,6 +1097,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     options,
                     line_spans,
                     destination,
+                    cleanup,
                     self.instance,
                 );
             }

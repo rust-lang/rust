@@ -1,6 +1,7 @@
 //! Codegen of a single function
 
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
+use rustc_ast::InlineAsmOptions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
@@ -239,7 +240,8 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
             fx.add_comment(inst, terminator_head);
         }
 
-        fx.set_debug_loc(bb_data.terminator().source_info);
+        let source_info = bb_data.terminator().source_info;
+        fx.set_debug_loc(source_info);
 
         match &bb_data.terminator().kind {
             TerminatorKind::Goto { target } => {
@@ -295,19 +297,19 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                         let len = codegen_operand(fx, len).load_scalar(fx);
                         let index = codegen_operand(fx, index).load_scalar(fx);
                         let location = fx
-                            .get_caller_location(bb_data.terminator().source_info.span)
+                            .get_caller_location(source_info.span)
                             .load_scalar(fx);
 
                         codegen_panic_inner(
                             fx,
                             rustc_hir::LangItem::PanicBoundsCheck,
                             &[index, len, location],
-                            bb_data.terminator().source_info.span,
+                            source_info.span,
                         );
                     }
                     _ => {
                         let msg_str = msg.description();
-                        codegen_panic(fx, msg_str, bb_data.terminator().source_info.span);
+                        codegen_panic(fx, msg_str, source_info.span);
                     }
                 }
             }
@@ -378,10 +380,18 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                 options,
                 destination,
                 line_spans: _,
+                cleanup: _,
             } => {
+                if options.contains(InlineAsmOptions::MAY_UNWIND) {
+                    fx.tcx.sess.span_fatal(
+                        source_info.span,
+                        "cranelift doesn't support unwinding from inline assembly.",
+                    );
+                }
+
                 crate::inline_asm::codegen_inline_asm(
                     fx,
-                    bb_data.terminator().source_info.span,
+                    source_info.span,
                     template,
                     operands,
                     *options,
@@ -415,7 +425,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
             }
             TerminatorKind::Drop { place, target, unwind: _ } => {
                 let drop_place = codegen_place(fx, *place);
-                crate::abi::codegen_drop(fx, bb_data.terminator().source_info.span, drop_place);
+                crate::abi::codegen_drop(fx, source_info.span, drop_place);
 
                 let target_block = fx.get_block(*target);
                 fx.bcx.ins().jump(target_block, &[]);

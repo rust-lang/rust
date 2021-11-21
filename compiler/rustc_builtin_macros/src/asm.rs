@@ -420,6 +420,8 @@ fn parse_options<'a>(
             try_set_option(p, args, sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX);
         } else if p.eat_keyword(kw::Raw) {
             try_set_option(p, args, kw::Raw, ast::InlineAsmOptions::RAW);
+        } else if p.eat_keyword(sym::may_unwind) {
+            try_set_option(p, args, kw::Raw, ast::InlineAsmOptions::MAY_UNWIND);
         } else {
             return p.unexpected();
         }
