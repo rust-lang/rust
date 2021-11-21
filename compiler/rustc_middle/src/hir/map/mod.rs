@@ -204,8 +204,11 @@ impl<'hir> Map<'hir> {
         if hir_id.local_id == ItemLocalId::new(0) {
             Some(hir_id.owner)
         } else {
-            // FIXME(#85914) is this access safe for incr. comp.?
-            self.tcx.untracked_resolutions.definitions.opt_hir_id_to_local_def_id(hir_id)
+            self.tcx
+                .hir_owner_nodes(hir_id.owner)?
+                .local_id_to_def_id
+                .get(&hir_id.local_id)
+                .copied()
         }
     }
 
