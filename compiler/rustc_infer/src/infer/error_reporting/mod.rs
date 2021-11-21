@@ -1695,11 +1695,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             _ => exp_found,
         };
-        debug!("exp_found {:?} terr {:?}", exp_found, terr);
+        debug!("exp_found {:?} terr {:?} cause.code {:?}", exp_found, terr, cause.code);
         if let Some(exp_found) = exp_found {
-            self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
-            self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
-            self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
+            let should_suggest_fixes = if let ObligationCauseCode::Pattern { root_ty, .. } =
+                &cause.code
+            {
+                // Skip if the root_ty of the pattern is not the same as the expected_ty.
+                // If these types aren't equal then we've probably peeled off a layer of arrays.
+                same_type_modulo_infer(self.resolve_vars_if_possible(*root_ty), exp_found.expected)
+            } else {
+                true
+            };
+
+            if should_suggest_fixes {
+                self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
+                self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
+                self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
+            }
         }
 
         // In some (most?) cases cause.body_id points to actual body, but in some cases
@@ -1879,7 +1891,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .iter()
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
                 .map(|field| (field.ident.name, field.ty(self.tcx, expected_substs)))
-                .find(|(_, ty)| ty::TyS::same_type(ty, exp_found.found))
+                .find(|(_, ty)| same_type_modulo_infer(ty, exp_found.found))
             {
                 if let ObligationCauseCode::Pattern { span: Some(span), .. } = cause.code {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
@@ -1944,7 +1956,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         | (_, ty::Infer(_))
                                         | (ty::Param(_), _)
                                         | (ty::Infer(_), _) => {}
-                                        _ if ty::TyS::same_type(exp_ty, found_ty) => {}
+                                        _ if same_type_modulo_infer(exp_ty, found_ty) => {}
                                         _ => show_suggestion = false,
                                     };
                                 }

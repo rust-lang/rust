@@ -287,6 +287,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
 #![feature(fn_traits)]
+#![feature(float_minimum_maximum)]
 #![feature(format_args_nl)]
 #![feature(gen_future)]
 #![feature(generator_trait)]
