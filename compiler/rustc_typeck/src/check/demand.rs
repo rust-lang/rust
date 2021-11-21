@@ -179,31 +179,55 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut primary_span = lhs.span;
                 let mut secondary_span = lhs.span;
                 let mut post_message = "";
-                if let hir::ExprKind::Path(hir::QPath::Resolved(
-                    None,
-                    hir::Path { res: hir::def::Res::Local(hir_id), .. },
-                )) = lhs.kind
-                {
-                    if let Some(hir::Node::Binding(pat)) = self.tcx.hir().find(*hir_id) {
-                        let parent = self.tcx.hir().get_parent_node(pat.hir_id);
-                        primary_span = pat.span;
-                        secondary_span = pat.span;
-                        match self.tcx.hir().find(parent) {
-                            Some(hir::Node::Local(hir::Local { ty: Some(ty), .. })) => {
-                                primary_span = ty.span;
-                                post_message = " type";
-                            }
-                            Some(hir::Node::Local(hir::Local { init: Some(init), .. })) => {
-                                primary_span = init.span;
-                                post_message = " value";
-                            }
-                            Some(hir::Node::Param(hir::Param { ty_span, .. })) => {
-                                primary_span = *ty_span;
-                                post_message = " parameter type";
-                            }
-                            _ => {}
+                match lhs.kind {
+                    hir::ExprKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path {
+                            res:
+                                hir::def::Res::Def(
+                                    hir::def::DefKind::Static | hir::def::DefKind::Const,
+                                    def_id,
+                                ),
+                            ..
+                        },
+                    )) => {
+                        if let Some(hir::Node::Item(hir::Item {
+                            ident,
+                            kind: hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..),
+                            ..
+                        })) = self.tcx.hir().get_if_local(*def_id)
+                        {
+                            primary_span = ty.span;
+                            secondary_span = ident.span;
+                            post_message = " type";
                         }
                     }
+                    hir::ExprKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path { res: hir::def::Res::Local(hir_id), .. },
+                    )) => {
+                        if let Some(hir::Node::Binding(pat)) = self.tcx.hir().find(*hir_id) {
+                            let parent = self.tcx.hir().get_parent_node(pat.hir_id);
+                            primary_span = pat.span;
+                            secondary_span = pat.span;
+                            match self.tcx.hir().find(parent) {
+                                Some(hir::Node::Local(hir::Local { ty: Some(ty), .. })) => {
+                                    primary_span = ty.span;
+                                    post_message = " type";
+                                }
+                                Some(hir::Node::Local(hir::Local { init: Some(init), .. })) => {
+                                    primary_span = init.span;
+                                    post_message = " value";
+                                }
+                                Some(hir::Node::Param(hir::Param { ty_span, .. })) => {
+                                    primary_span = *ty_span;
+                                    post_message = " parameter type";
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    _ => {}
                 }
 
                 if primary_span != secondary_span
