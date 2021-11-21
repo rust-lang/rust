@@ -184,7 +184,7 @@ where
     type Error = TryFromSliceError;
 
     fn try_from(slice: &mut [T]) -> Result<[T; N], TryFromSliceError> {
-        <Self>::try_from(slice.as_ref())
+        <Self>::try_from(&*slice)
     }
 }
 
