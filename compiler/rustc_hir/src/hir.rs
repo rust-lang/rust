@@ -707,6 +707,8 @@ pub struct OwnerNodes<'tcx> {
     pub nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
     /// Content of local bodies.
     pub bodies: SortedMap<ItemLocalId, &'tcx Body<'tcx>>,
+    /// Non-owning definitions contained in this owner.
+    pub local_id_to_def_id: SortedMap<ItemLocalId, LocalDefId>,
 }
 
 /// Full information resulting from lowering an AST node.
