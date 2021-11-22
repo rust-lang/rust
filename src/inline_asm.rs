@@ -402,9 +402,12 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         writeln!(generated_asm, ".section .text.{},\"ax\",@progbits", asm_name).unwrap();
         writeln!(generated_asm, "{}:", asm_name).unwrap();
 
-        generated_asm.push_str(".intel_syntax noprefix\n");
-        generated_asm.push_str("    push rbp\n");
-        generated_asm.push_str("    mov rbp,rdi\n");
+        let is_x86 = matches!(self.arch, InlineAsmArch::X86 | InlineAsmArch::X86_64);
+
+        if is_x86 {
+            generated_asm.push_str(".intel_syntax noprefix\n");
+        }
+        Self::prologue(&mut generated_asm, self.arch);
 
         // Save clobbered registers
         if !self.options.contains(InlineAsmOptions::NORETURN) {
@@ -414,7 +417,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 .zip(self.stack_slots_clobber.iter().copied())
                 .filter_map(|(r, s)| r.zip(s))
             {
-                save_register(&mut generated_asm, self.arch, reg, slot);
+                Self::save_register(&mut generated_asm, self.arch, reg, slot);
             }
         }
 
@@ -425,10 +428,10 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             .zip(self.stack_slots_input.iter().copied())
             .filter_map(|(r, s)| r.zip(s))
         {
-            restore_register(&mut generated_asm, self.arch, reg, slot);
+            Self::restore_register(&mut generated_asm, self.arch, reg, slot);
         }
 
-        if self.options.contains(InlineAsmOptions::ATT_SYNTAX) {
+        if is_x86 && self.options.contains(InlineAsmOptions::ATT_SYNTAX) {
             generated_asm.push_str(".att_syntax\n");
         }
 
@@ -460,7 +463,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 .zip(self.stack_slots_output.iter().copied())
                 .filter_map(|(r, s)| r.zip(s))
             {
-                save_register(&mut generated_asm, self.arch, reg, slot);
+                Self::save_register(&mut generated_asm, self.arch, reg, slot);
             }
 
             // Restore clobbered registers
@@ -470,21 +473,83 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 .zip(self.stack_slots_clobber.iter().copied())
                 .filter_map(|(r, s)| r.zip(s))
             {
-                restore_register(&mut generated_asm, self.arch, reg, slot);
+                Self::restore_register(&mut generated_asm, self.arch, reg, slot);
             }
 
-            generated_asm.push_str("    pop rbp\n");
-            generated_asm.push_str("    ret\n");
+            Self::epilogue(&mut generated_asm, self.arch);
         } else {
-            generated_asm.push_str("    ud2\n");
+            Self::epilogue_noreturn(&mut generated_asm, self.arch);
         }
 
-        generated_asm.push_str(".att_syntax\n");
+        if is_x86 {
+            generated_asm.push_str(".att_syntax\n");
+        }
         writeln!(generated_asm, ".size {name}, .-{name}", name = asm_name).unwrap();
         generated_asm.push_str(".text\n");
         generated_asm.push_str("\n\n");
 
         generated_asm
+    }
+
+    fn prologue(generated_asm: &mut String, arch: InlineAsmArch) {
+        match arch {
+            InlineAsmArch::X86_64 => {
+                generated_asm.push_str("    push rbp\n");
+                generated_asm.push_str("    mov rbp,rdi\n");
+            }
+            _ => unimplemented!("prologue for {:?}", arch),
+        }
+    }
+
+    fn epilogue(generated_asm: &mut String, arch: InlineAsmArch) {
+        match arch {
+            InlineAsmArch::X86_64 => {
+                generated_asm.push_str("    pop rbp\n");
+                generated_asm.push_str("    ret\n");
+            }
+            _ => unimplemented!("epilogue for {:?}", arch),
+        }
+    }
+
+    fn epilogue_noreturn(generated_asm: &mut String, arch: InlineAsmArch) {
+        match arch {
+            InlineAsmArch::X86_64 => {
+                generated_asm.push_str("    ud2\n");
+            }
+            _ => unimplemented!("epilogue_noreturn for {:?}", arch),
+        }
+    }
+
+    fn save_register(
+        generated_asm: &mut String,
+        arch: InlineAsmArch,
+        reg: InlineAsmReg,
+        offset: Size,
+    ) {
+        match arch {
+            InlineAsmArch::X86_64 => {
+                write!(generated_asm, "    mov [rbp+0x{:x}], ", offset.bytes()).unwrap();
+                reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
+                generated_asm.push('\n');
+            }
+            _ => unimplemented!("save_register for {:?}", arch),
+        }
+    }
+
+    fn restore_register(
+        generated_asm: &mut String,
+        arch: InlineAsmArch,
+        reg: InlineAsmReg,
+        offset: Size,
+    ) {
+        match arch {
+            InlineAsmArch::X86_64 => {
+                generated_asm.push_str("    mov ");
+                reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
+                writeln!(generated_asm, ", [rbp+0x{:x}]", offset.bytes()).unwrap();
+            }
+            _ => unimplemented!("restore_register for {:?}", arch),
+        }
     }
 }
 
@@ -531,32 +596,5 @@ fn call_inline_asm<'tcx>(
         let ty = fx.clif_type(place.layout().ty).unwrap();
         let value = fx.bcx.ins().stack_load(ty, stack_slot, i32::try_from(offset.bytes()).unwrap());
         place.write_cvalue(fx, CValue::by_val(value, place.layout()));
-    }
-}
-
-fn save_register(generated_asm: &mut String, arch: InlineAsmArch, reg: InlineAsmReg, offset: Size) {
-    match arch {
-        InlineAsmArch::X86_64 => {
-            write!(generated_asm, "    mov [rbp+0x{:x}], ", offset.bytes()).unwrap();
-            reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
-            generated_asm.push('\n');
-        }
-        _ => unimplemented!("save_register for {:?}", arch),
-    }
-}
-
-fn restore_register(
-    generated_asm: &mut String,
-    arch: InlineAsmArch,
-    reg: InlineAsmReg,
-    offset: Size,
-) {
-    match arch {
-        InlineAsmArch::X86_64 => {
-            generated_asm.push_str("    mov ");
-            reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
-            writeln!(generated_asm, ", [rbp+0x{:x}]", offset.bytes()).unwrap();
-        }
-        _ => unimplemented!("restore_register for {:?}", arch),
     }
 }
