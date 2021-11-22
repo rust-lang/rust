@@ -320,21 +320,44 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             offset
         };
 
+        // Allocate stack slots for saving clobbered registers
+        let abi_clobber =
+            InlineAsmClobberAbi::parse(self.arch, &self.tcx.sess.target, Symbol::intern("C"))
+                .unwrap()
+                .clobbered_regs();
+        for (i, reg) in self.registers.iter().enumerate().filter_map(|(i, r)| r.map(|r| (i, r))) {
+            let mut need_save = true;
+            // If the register overlaps with a register clobbered by function call, then
+            // we don't need to save it.
+            for r in abi_clobber {
+                r.overlapping_regs(|r| {
+                    if r == reg {
+                        need_save = false;
+                    }
+                });
+
+                if !need_save {
+                    break;
+                }
+            }
+
+            if need_save {
+                slots_clobber[i] = Some(new_slot(reg.reg_class()));
+            }
+        }
+
         // FIXME overlap input and output slots to save stack space
         for (i, operand) in self.operands.iter().enumerate() {
             match *operand {
                 InlineAsmOperand::In { reg, .. } => {
-                    slots_clobber[i] = Some(new_slot(reg.reg_class()));
                     slots_input[i] = Some(new_slot(reg.reg_class()));
                 }
                 InlineAsmOperand::Out { reg, place, .. } => {
-                    slots_clobber[i] = Some(new_slot(reg.reg_class()));
                     if place.is_some() {
                         slots_output[i] = Some(new_slot(reg.reg_class()));
                     }
                 }
                 InlineAsmOperand::InOut { reg, out_place, .. } => {
-                    slots_clobber[i] = Some(new_slot(reg.reg_class()));
                     let slot = new_slot(reg.reg_class());
                     slots_input[i] = Some(slot);
                     if out_place.is_some() {
@@ -366,7 +389,6 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
 
         // Save clobbered registers
         if !self.options.contains(InlineAsmOptions::NORETURN) {
-            // FIXME skip registers saved by the calling convention
             for (reg, slot) in self
                 .registers
                 .iter()
