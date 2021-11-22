@@ -108,7 +108,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
 
     let mut asm_gen = InlineAssemblyGenerator {
         tcx: fx.tcx,
-        arch: InlineAsmArch::X86_64,
+        arch: fx.tcx.sess.asm_arch.unwrap(),
         template,
         operands,
         options,
@@ -306,12 +306,8 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let mut slots_output = vec![None; self.operands.len()];
 
         let new_slot_fn = |slot_size: &mut Size, reg_class: InlineAsmRegClass| {
-            let reg_size = reg_class
-                .supported_types(InlineAsmArch::X86_64)
-                .iter()
-                .map(|(ty, _)| ty.size())
-                .max()
-                .unwrap();
+            let reg_size =
+                reg_class.supported_types(self.arch).iter().map(|(ty, _)| ty.size()).max().unwrap();
             let align = rustc_target::abi::Align::from_bytes(reg_size.bytes()).unwrap();
             let offset = slot_size.align_to(align);
             *slot_size = offset + reg_size;
