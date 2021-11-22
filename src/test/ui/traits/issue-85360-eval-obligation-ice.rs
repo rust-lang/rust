@@ -1,10 +1,22 @@
-// revisions:cfail1 cfail2
-//[cfail1] compile-flags: --crate-type=lib --edition=2021 -Zassert-incr-state=not-loaded
-//[cfail2] compile-flags: --crate-type=lib --edition=2021 -Zassert-incr-state=loaded
-// build-pass
+// compile-flags: --edition=2021
+
+#![feature(rustc_attrs)]
 
 use core::any::Any;
 use core::marker::PhantomData;
+
+fn main() {
+    test::<MaskedStorage<GenericComp<Pos>>>(make());
+    //~^ ERROR evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), [])) = Ok(EvaluatedToOk)
+    //~| ERROR evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), [])) = Ok(EvaluatedToOk)
+}
+
+#[rustc_evaluate_where_clauses]
+fn test<T: Sized>(_: T) {}
+
+fn make<T>() -> T {
+    todo!()
+}
 
 struct DerefWrap<T>(T);
 
