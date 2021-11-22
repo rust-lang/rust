@@ -214,16 +214,21 @@ nav.main .separator {
 	border: 1px solid #5c6773;
 }
 a {
+	color: #39AFD7;
+}
+a.srclink,
+a#toggle-all-docs,
+#source-sidebar a,
+pre.rust a,
+.sidebar a,
+.in-band a {
 	color: #c5c5c5;
+}
+.search-results a {
+	color: #0096cf;
 }
 body.source .example-wrap pre.rust a {
 	background: #333;
-}
-
-.docblock:not(.item-decl) a:not(.srclink):not(.test-arrow),
-.docblock-short a:not(.srclink):not(.test-arrow), .item-info a,
-#help a {
-	color: #39AFD7;
 }
 
 details.rustdoc-toggle > summary.hideme > span,
