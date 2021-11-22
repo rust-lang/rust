@@ -42,8 +42,10 @@ pub(crate) fn codegen_inline_asm<'tcx>(
         assert_eq!(operands.len(), 4);
         let (leaf, eax_place) = match operands[1] {
             InlineAsmOperand::InOut { reg, late: true, ref in_value, out_place } => {
-                let reg = expect_reg(reg);
-                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::ax));
+                assert_eq!(
+                    reg,
+                    InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax))
+                );
                 (
                     crate::base::codegen_operand(fx, in_value).load_scalar(fx),
                     crate::base::codegen_place(fx, out_place.unwrap()),
@@ -65,8 +67,10 @@ pub(crate) fn codegen_inline_asm<'tcx>(
         };
         let (sub_leaf, ecx_place) = match operands[2] {
             InlineAsmOperand::InOut { reg, late: true, ref in_value, out_place } => {
-                let reg = expect_reg(reg);
-                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::cx));
+                assert_eq!(
+                    reg,
+                    InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx))
+                );
                 (
                     crate::base::codegen_operand(fx, in_value).load_scalar(fx),
                     crate::base::codegen_place(fx, out_place.unwrap()),
@@ -76,8 +80,10 @@ pub(crate) fn codegen_inline_asm<'tcx>(
         };
         let edx_place = match operands[3] {
             InlineAsmOperand::Out { reg, late: true, place } => {
-                let reg = expect_reg(reg);
-                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::dx));
+                assert_eq!(
+                    reg,
+                    InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx))
+                );
                 crate::base::codegen_place(fx, place.unwrap())
             }
             _ => unreachable!(),
@@ -434,13 +440,6 @@ fn call_inline_asm<'tcx>(
         let ty = fx.clif_type(place.layout().ty).unwrap();
         let value = fx.bcx.ins().stack_load(ty, stack_slot, i32::try_from(offset.bytes()).unwrap());
         place.write_cvalue(fx, CValue::by_val(value, place.layout()));
-    }
-}
-
-fn expect_reg(reg_or_class: InlineAsmRegOrRegClass) -> InlineAsmReg {
-    match reg_or_class {
-        InlineAsmRegOrRegClass::Reg(reg) => reg,
-        InlineAsmRegOrRegClass::RegClass(class) => unimplemented!("{:?}", class),
     }
 }
 
