@@ -607,9 +607,21 @@ fn main() {
                 *zz*
 
                 ```rust
-                let zz: Test<i32, u8>
+                let zz: Test<i32>
                 ```
             "#]],
+    );
+    check_hover_range(
+        r#"
+struct Test<K, T = u8> { k: K, t: T }
+
+fn main() {
+    let $0zz$0 = Test { t: 23u8, k: 33 };
+}"#,
+        expect![[r#"
+            ```rust
+            Test<i32, u8>
+            ```"#]],
     );
 }
 

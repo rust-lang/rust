@@ -639,7 +639,7 @@ impl HirDisplay for Ty {
                 if let Some(sig) = sig {
                     if sig.params().is_empty() {
                         write!(f, "||")?;
-                    } else if f.omit_verbose_types() {
+                    } else if f.should_truncate() {
                         write!(f, "|{}|", TYPE_HINT_TRUNCATION)?;
                     } else {
                         write!(f, "|")?;
