@@ -10,9 +10,10 @@ use tt::Subtree;
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
-    input::CrateName, Change, CrateDisplayName, CrateGraph, CrateId, Dependency, Edition, Env,
-    FileId, FilePosition, FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
-    SourceDatabaseExt, SourceRoot, SourceRootId,
+    input::{CrateName, CrateOrigin},
+    Change, CrateDisplayName, CrateGraph, CrateId, Dependency, Edition, Env, FileId, FilePosition,
+    FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, SourceDatabaseExt,
+    SourceRoot, SourceRootId,
 };
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
@@ -130,7 +131,7 @@ impl ChangeFixture {
                 current_source_root_kind = *kind;
             }
 
-            if let Some(krate) = meta.krate {
+            if let Some((krate, origin)) = meta.krate {
                 let crate_name = CrateName::normalize_dashes(&krate);
                 let crate_id = crate_graph.add_crate_root(
                     file_id,
@@ -141,6 +142,7 @@ impl ChangeFixture {
                     meta.cfg,
                     meta.env,
                     Default::default(),
+                    origin,
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
@@ -173,6 +175,7 @@ impl ChangeFixture {
                 default_cfg.clone(),
                 default_cfg,
                 Env::default(),
+                Default::default(),
                 Default::default(),
             );
         } else {
@@ -209,6 +212,7 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 Env::default(),
                 Vec::new(),
+                CrateOrigin::Lang("core".to_string()),
             );
 
             for krate in all_crates {
@@ -243,6 +247,7 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 Env::default(),
                 proc_macro,
+                CrateOrigin::Lang("proc-macro".to_string()),
             );
 
             for krate in all_crates {
@@ -324,7 +329,7 @@ enum SourceRootKind {
 #[derive(Debug)]
 struct FileMeta {
     path: String,
-    krate: Option<String>,
+    krate: Option<(String, CrateOrigin)>,
     deps: Vec<String>,
     extern_prelude: Vec<String>,
     cfg: CfgOptions,
@@ -333,16 +338,36 @@ struct FileMeta {
     introduce_new_source_root: Option<SourceRootKind>,
 }
 
+fn parse_crate(crate_str: String) -> (String, CrateOrigin) {
+    if let Some((a, b)) = crate_str.split_once("@") {
+        (
+            a.to_owned(),
+            match b.split_once(":") {
+                Some(("CratesIo", data)) => match data.split_once(",") {
+                    Some((version, url)) => CrateOrigin::CratesIo {
+                        name: a.to_owned(),
+                        repo: Some(url.to_owned()),
+                        version: version.to_owned(),
+                    },
+                    _ => panic!("Bad crates.io parameter: {}", data),
+                },
+                _ => panic!("Bad string for crate origin: {}", b),
+            },
+        )
+    } else {
+        (crate_str, CrateOrigin::Unknown)
+    }
+}
+
 impl From<Fixture> for FileMeta {
     fn from(f: Fixture) -> FileMeta {
         let mut cfg = CfgOptions::default();
         f.cfg_atoms.iter().for_each(|it| cfg.insert_atom(it.into()));
         f.cfg_key_values.iter().for_each(|(k, v)| cfg.insert_key_value(k.into(), v.into()));
-
         let deps = f.deps;
         FileMeta {
             path: f.path,
-            krate: f.krate,
+            krate: f.krate.map(parse_crate),
             extern_prelude: f.extern_prelude.unwrap_or_else(|| deps.clone()),
             deps,
             cfg,

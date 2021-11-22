@@ -130,6 +130,8 @@ pub struct PackageData {
     pub version: semver::Version,
     /// Name as given in the `Cargo.toml`
     pub name: String,
+    /// Repository as given in the `Cargo.toml`
+    pub repository: Option<String>,
     /// Path containing the `Cargo.toml`
     pub manifest: ManifestPath,
     /// Targets provided by the crate (lib, bin, example, test, ...)
@@ -146,9 +148,9 @@ pub struct PackageData {
     pub features: FxHashMap<String, Vec<String>>,
     /// List of features enabled on this package
     pub active_features: Vec<String>,
-    // String representation of package id
+    /// String representation of package id
     pub id: String,
-    // The contents of [package.metadata.rust-analyzer]
+    /// The contents of [package.metadata.rust-analyzer]
     pub metadata: RustAnalyzerPackageMetaData,
 }
 
@@ -303,7 +305,14 @@ impl CargoWorkspace {
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
         for meta_pkg in &meta.packages {
             let cargo_metadata::Package {
-                id, edition, name, manifest_path, version, metadata, ..
+                id,
+                edition,
+                name,
+                manifest_path,
+                version,
+                metadata,
+                repository,
+                ..
             } = meta_pkg;
             let meta = from_value::<PackageMetadata>(metadata.clone()).unwrap_or_default();
             let edition = edition.parse::<Edition>().unwrap_or_else(|err| {
@@ -324,6 +333,7 @@ impl CargoWorkspace {
                 is_local,
                 is_member,
                 edition,
+                repository: repository.clone(),
                 dependencies: Vec::new(),
                 features: meta_pkg.features.clone().into_iter().collect(),
                 active_features: Vec::new(),

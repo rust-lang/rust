@@ -41,6 +41,7 @@ mod inlay_hints;
 mod join_lines;
 mod markdown_remove;
 mod matching_brace;
+mod moniker;
 mod move_item;
 mod parent_module;
 mod references;
@@ -83,6 +84,7 @@ pub use crate::{
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     join_lines::JoinLinesConfig,
     markup::Markup,
+    moniker::{MonikerKind, MonikerResult, PackageInformation},
     move_item::Direction,
     navigation_target::NavigationTarget,
     prime_caches::PrimeCachesProgress,
@@ -224,6 +226,7 @@ impl Analysis {
             cfg_options.clone(),
             cfg_options,
             Env::default(),
+            Default::default(),
             Default::default(),
         );
         change.change_file(file_id, Some(Arc::new(text)));
@@ -423,6 +426,14 @@ impl Analysis {
         range: FileRange,
     ) -> Cancellable<Option<RangeInfo<HoverResult>>> {
         self.with_db(|db| hover::hover(db, range, config))
+    }
+
+    /// Returns moniker of symbol at position.
+    pub fn moniker(
+        &self,
+        position: FilePosition,
+    ) -> Cancellable<Option<RangeInfo<Vec<moniker::MonikerResult>>>> {
+        self.with_db(|db| moniker::moniker(db, position))
     }
 
     /// Return URL(s) for the documentation of the symbol under the cursor.

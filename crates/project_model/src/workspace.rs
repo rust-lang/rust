@@ -6,7 +6,8 @@ use std::{collections::VecDeque, fmt, fs, process::Command};
 
 use anyhow::{format_err, Context, Result};
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, Dependency, Edition, Env, FileId, ProcMacro,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
+    FileId, ProcMacro,
 };
 use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
@@ -473,6 +474,15 @@ fn project_json_to_crate_graph(
                     cfg_options,
                     env,
                     proc_macro.unwrap_or_default(),
+                    if let Some(name) = &krate.display_name {
+                        CrateOrigin::CratesIo {
+                            repo: krate.repository.clone(),
+                            name: name.crate_name().to_string(),
+                            version: krate.version.clone().unwrap_or_else(|| "".to_string()),
+                        }
+                    } else {
+                        CrateOrigin::Unknown
+                    },
                 ),
             )
         })
@@ -681,6 +691,7 @@ fn detached_files_to_crate_graph(
             cfg_options.clone(),
             Env::default(),
             Vec::new(),
+            CrateOrigin::Unknown,
         );
 
         public_deps.add(detached_file_crate, &mut crate_graph);
@@ -821,7 +832,7 @@ fn add_target_crate_root(
             .iter()
             .map(|feat| CfgFlag::KeyValue { key: "feature".into(), value: feat.0.into() }),
     );
-
+    let crate_name = display_name.crate_name().to_string();
     crate_graph.add_crate_root(
         file_id,
         edition,
@@ -831,6 +842,11 @@ fn add_target_crate_root(
         potential_cfg_options,
         env,
         proc_macro,
+        CrateOrigin::CratesIo {
+            name: crate_name,
+            repo: pkg.repository.clone(),
+            version: pkg.version.to_string(),
+        },
     )
 }
 
@@ -874,6 +890,7 @@ fn sysroot_to_crate_graph(
                 cfg_options.clone(),
                 env,
                 proc_macro,
+                CrateOrigin::Lang(sysroot[krate].name.clone()),
             );
             Some((krate, crate_id))
         })

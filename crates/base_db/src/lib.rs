@@ -11,9 +11,9 @@ use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
 pub use crate::{
     change::Change,
     input::{
-        CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, Dependency, Edition, Env,
-        ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroId, ProcMacroKind,
-        SourceRoot, SourceRootId,
+        CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
+        Edition, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroId,
+        ProcMacroKind, SourceRoot, SourceRootId,
     },
 };
 pub use salsa::{self, Cancelled};

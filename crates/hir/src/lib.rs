@@ -34,7 +34,7 @@ mod display;
 use std::{iter, ops::ControlFlow, sync::Arc};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, Edition, FileId};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId};
 use either::Either;
 use hir_def::{
     adt::{ReprKind, VariantData},
@@ -144,6 +144,10 @@ pub struct CrateDependency {
 }
 
 impl Crate {
+    pub fn origin(self, db: &dyn HirDatabase) -> CrateOrigin {
+        db.crate_graph()[self.id].origin.clone()
+    }
+
     pub fn dependencies(self, db: &dyn HirDatabase) -> Vec<CrateDependency> {
         db.crate_graph()[self.id]
             .dependencies
