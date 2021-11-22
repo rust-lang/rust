@@ -21,10 +21,20 @@ fn diagnostic_severity(
         DiagnosticLevel::Ice => lsp_types::DiagnosticSeverity::ERROR,
         DiagnosticLevel::Error => lsp_types::DiagnosticSeverity::ERROR,
         DiagnosticLevel::Warning => match &code {
-            Some(code) if config.warnings_as_hint.contains(&code.code) => {
+            // HACK: special case for `warnings` rustc lint.
+            Some(code)
+                if config.warnings_as_hint.iter().any(|lint| {
+                    lint == "warnings" || ide_db::helpers::lint_eq_or_in_group(&code.code, &lint)
+                }) =>
+            {
                 lsp_types::DiagnosticSeverity::HINT
             }
-            Some(code) if config.warnings_as_info.contains(&code.code) => {
+            // HACK: special case for `warnings` rustc lint.
+            Some(code)
+                if config.warnings_as_info.iter().any(|lint| {
+                    lint == "warnings" || ide_db::helpers::lint_eq_or_in_group(&code.code, &lint)
+                }) =>
+            {
                 lsp_types::DiagnosticSeverity::INFORMATION
             }
             _ => lsp_types::DiagnosticSeverity::WARNING,

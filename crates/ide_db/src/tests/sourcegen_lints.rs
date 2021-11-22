@@ -22,6 +22,10 @@ pub struct Lint {
     pub label: &'static str,
     pub description: &'static str,
 }
+pub struct LintGroup {
+    pub lint: Lint,
+    pub children: &'static [&'static str],
+}
 ",
     );
 
@@ -60,17 +64,41 @@ fn generate_lint_descriptor(buf: &mut String) {
     let lints = stdout[start_lints..].lines().skip(1).take_while(|l| !l.is_empty()).map(|line| {
         let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
         let (_default_level, description) = rest.trim().split_once(char::is_whitespace).unwrap();
-        (name.trim(), Cow::Borrowed(description.trim()))
+        (name.trim(), Cow::Borrowed(description.trim()), vec![])
     });
     let lint_groups =
         stdout[start_lint_groups..].lines().skip(1).take_while(|l| !l.is_empty()).map(|line| {
             let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
-            (name.trim(), format!("lint group for: {}", lints.trim()).into())
+            (
+                name.trim(),
+                format!("lint group for: {}", lints.trim()).into(),
+                lints
+                    .split_ascii_whitespace()
+                    .map(|s| s.trim().trim_matches(',').replace("-", "_"))
+                    .collect(),
+            )
         });
 
-    lints.chain(lint_groups).sorted_by(|(ident, _), (ident2, _)| ident.cmp(ident2)).for_each(
-        |(name, description)| push_lint_completion(buf, &name.replace("-", "_"), &description),
-    );
+    let lints = lints
+        .chain(lint_groups)
+        .sorted_by(|(ident, ..), (ident2, ..)| ident.cmp(ident2))
+        .collect::<Vec<_>>();
+    for (name, description, ..) in &lints {
+        push_lint_completion(buf, &name.replace("-", "_"), &description);
+    }
+    buf.push_str("];\n");
+    buf.push_str(r#"pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &["#);
+    for (name, description, children) in &lints {
+        if !children.is_empty() {
+            // HACK: warnings is emitted with a general description, not with its members
+            if name == &"warnings" {
+                push_lint_group(buf, &name, &description, &Vec::new());
+                continue;
+            }
+            push_lint_group(buf, &name.replace("-", "_"), &description, children);
+        }
+    }
+    buf.push('\n');
     buf.push_str("];\n");
 
     // rustdoc
@@ -84,22 +112,40 @@ fn generate_lint_descriptor(buf: &mut String) {
             let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
             let (_default_level, description) =
                 rest.trim().split_once(char::is_whitespace).unwrap();
-            (name.trim(), Cow::Borrowed(description.trim()))
+            (name.trim(), Cow::Borrowed(description.trim()), vec![])
         });
     let lint_groups_rustdoc =
         stdout[start_lint_groups_rustdoc..].lines().skip(2).take_while(|l| !l.is_empty()).map(
             |line| {
                 let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
-                (name.trim(), format!("lint group for: {}", lints.trim()).into())
+                (
+                    name.trim(),
+                    format!("lint group for: {}", lints.trim()).into(),
+                    lints
+                        .split_ascii_whitespace()
+                        .map(|s| s.trim().trim_matches(',').replace("-", "_"))
+                        .collect(),
+                )
             },
         );
 
-    lints_rustdoc
+    let lints_rustdoc = lints_rustdoc
         .chain(lint_groups_rustdoc)
-        .sorted_by(|(ident, _), (ident2, _)| ident.cmp(ident2))
-        .for_each(|(name, description)| {
-            push_lint_completion(buf, &name.replace("-", "_"), &description)
-        });
+        .sorted_by(|(ident, ..), (ident2, ..)| ident.cmp(ident2))
+        .collect::<Vec<_>>();
+
+    for (name, description, ..) in &lints_rustdoc {
+        push_lint_completion(buf, &name.replace("-", "_"), &description)
+    }
+    buf.push_str("];\n");
+
+    buf.push_str(r#"pub const RUSTDOC_LINT_GROUPS: &[LintGroup] = &["#);
+    for (name, description, children) in &lints_rustdoc {
+        if !children.is_empty() {
+            push_lint_group(buf, &name.replace("-", "_"), &description, children);
+        }
+    }
+    buf.push('\n');
     buf.push_str("];\n");
 }
 
@@ -140,6 +186,7 @@ fn unescape(s: &str) -> String {
 fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
     let file_content = std::fs::read_to_string(path).unwrap();
     let mut clippy_lints: Vec<ClippyLint> = Vec::new();
+    let mut clippy_groups: std::collections::BTreeMap<String, Vec<String>> = Default::default();
 
     for line in file_content.lines().map(|line| line.trim()) {
         if let Some(line) = line.strip_prefix(r#""id": ""#) {
@@ -148,6 +195,13 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
                 help: String::new(),
             };
             clippy_lints.push(clippy_lint)
+        } else if let Some(line) = line.strip_prefix(r#""group": ""#) {
+            if let Some(group) = line.strip_suffix("\",") {
+                clippy_groups
+                    .entry(group.to_owned())
+                    .or_default()
+                    .push(clippy_lints.last().unwrap().id.clone());
+            }
         } else if let Some(line) = line.strip_prefix(r#""docs": ""#) {
             let prefix_to_strip = r#" ### What it does"#;
             let line = match line.strip_prefix(prefix_to_strip) {
@@ -176,6 +230,18 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
         push_lint_completion(buf, &lint_ident, &doc);
     }
     buf.push_str("];\n");
+
+    buf.push_str(r#"pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &["#);
+    for (id, children) in clippy_groups {
+        let children = children.iter().map(|id| format!("clippy::{}", id)).collect::<Vec<_>>();
+        if !children.is_empty() {
+            let lint_ident = format!("clippy::{}", id);
+            let description = format!("lint group for: {}", children.iter().join(", "));
+            push_lint_group(buf, &lint_ident, &description, &children);
+        }
+    }
+    buf.push('\n');
+    buf.push_str("];\n");
 }
 
 fn push_lint_completion(buf: &mut String, label: &str, description: &str) {
@@ -183,9 +249,28 @@ fn push_lint_completion(buf: &mut String, label: &str, description: &str) {
         buf,
         r###"    Lint {{
         label: "{}",
-        description: r##"{}"##
+        description: r##"{}"##,
     }},"###,
         label,
-        description
+        description,
+    );
+}
+
+fn push_lint_group<'a>(buf: &mut String, label: &str, description: &str, children: &[String]) {
+    buf.push_str(
+        r###"    LintGroup {
+        lint:
+        "###,
+    );
+
+    push_lint_completion(buf, label, description);
+
+    let children = format!("&[{}]", children.iter().map(|it| format!("\"{}\"", it)).join(", "));
+    format_to!(
+        buf,
+        r###"
+        children: {},
+        }},"###,
+        children,
     );
 }
