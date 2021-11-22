@@ -4,7 +4,7 @@ use clippy_utils::consts::{
 };
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher;
-use clippy_utils::{eq_expr_value, get_parent_expr, numeric_literal, sugg};
+use clippy_utils::{eq_expr_value, get_parent_expr, in_constant, numeric_literal, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -687,6 +687,11 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        // All of these operations are currently not const.
+        if in_constant(cx, expr.hir_id) {
+            return;
+        }
+
         if let ExprKind::MethodCall(path, _, args, _) = &expr.kind {
             let recv_ty = cx.typeck_results().expr_ty(&args[0]);
 
