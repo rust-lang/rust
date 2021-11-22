@@ -2861,14 +2861,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::link_name) {
             codegen_fn_attrs.link_name = attr.value_str();
         } else if attr.has_name(sym::link_ordinal) {
-            if link_ordinal_span.is_some() {
-                tcx.sess
-                    .struct_span_err(
-                        attr.span,
-                        "multiple `link_ordinal` attributes on a single definition",
-                    )
-                    .emit();
-            }
             link_ordinal_span = Some(attr.span);
             if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
                 codegen_fn_attrs.link_ordinal = ordinal;

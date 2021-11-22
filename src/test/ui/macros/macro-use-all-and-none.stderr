@@ -2,13 +2,14 @@ warning: unused attribute
   --> $DIR/macro-use-all-and-none.rs:7:1
    |
 LL | #[macro_use()]
-   | ^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: the lint level is defined here
   --> $DIR/macro-use-all-and-none.rs:4:9
    |
 LL | #![warn(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
+   = note: attribute `macro_use` with an empty list has no effect
 
 warning: 1 warning emitted
 
