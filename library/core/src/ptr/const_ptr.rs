@@ -48,6 +48,54 @@ impl<T: ?Sized> *const T {
         self as _
     }
 
+    /// Casts a pointer to its raw bits.
+    ///
+    /// This is equivalent to `as usize`, but is more specific to enhance readability.
+    /// The inverse method is [`Self::from_bits`].
+    ///
+    /// In particular, `*p as usize` and `p as usize` will both compile for
+    /// pointers to numeric types but do very different things, so using this
+    /// helps emphasize that reading the bits was intentional.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_to_from_bits)]
+    /// let array = [13, 42];
+    /// let p0: *const i32 = &array[0];
+    /// assert_eq!(<*const _>::from_bits(p0.to_bits()), p0);
+    /// let p1: *const i32 = &array[1];
+    /// assert_eq!(p1.to_bits() - p0.to_bits(), 4);
+    /// ```
+    #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
+    pub fn to_bits(self) -> usize
+    where
+        T: Sized,
+    {
+        self as usize
+    }
+
+    /// Creates a pointer from its raw bits.
+    ///
+    /// This is equivalent to `as *const T`, but is more specific to enhance readability.
+    /// The inverse method is [`Self::to_bits`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_to_from_bits)]
+    /// use std::ptr::NonNull;
+    /// let dangling: *const u8 = NonNull::dangling().as_ptr();
+    /// assert_eq!(<*const u8>::from_bits(1), dangling);
+    /// ```
+    #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
+    pub fn from_bits(bits: usize) -> Self
+    where
+        T: Sized,
+    {
+        bits as Self
+    }
+
     /// Decompose a (possibly wide) pointer into its address and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts`].
