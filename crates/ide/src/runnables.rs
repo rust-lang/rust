@@ -19,10 +19,7 @@ use syntax::{
     SmolStr, SyntaxNode,
 };
 
-use crate::{
-    display::{ToNav, TryToNav},
-    references, FileId, NavigationTarget,
-};
+use crate::{references, FileId, NavigationTarget, ToNav, TryToNav};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Runnable {

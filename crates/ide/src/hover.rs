@@ -17,11 +17,10 @@ use itertools::Itertools;
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, T};
 
 use crate::{
-    display::TryToNav,
     doc_links::token_as_doc_comment,
     markup::Markup,
     runnables::{runnable_fn, runnable_mod},
-    FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
+    FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]

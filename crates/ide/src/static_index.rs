@@ -12,10 +12,9 @@ use rustc_hash::FxHashSet;
 use syntax::{AstNode, SyntaxKind::*, T};
 use syntax::{SyntaxToken, TextRange};
 
-use crate::display::TryToNav;
 use crate::hover::hover_for_definition;
 use crate::{
-    Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult, InlayHint, InlayHintsConfig,
+    Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
 };
 
 /// A static representation of fully analyzed source code.

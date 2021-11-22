@@ -23,7 +23,7 @@ use syntax::{
     match_ast, AstNode, SyntaxNode, TextRange, TextSize, T,
 };
 
-use crate::{display::TryToNav, FilePosition, NavigationTarget};
+use crate::{FilePosition, NavigationTarget, TryToNav};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {

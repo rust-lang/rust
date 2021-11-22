@@ -20,7 +20,7 @@ mod fixture;
 
 mod markup;
 mod prime_caches;
-mod display;
+mod navigation_target;
 
 mod annotations;
 mod call_hierarchy;
@@ -68,12 +68,11 @@ use ide_db::{
 };
 use syntax::SourceFile;
 
-use crate::display::ToNav;
+use crate::navigation_target::{ToNav, TryToNav};
 
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind},
     call_hierarchy::CallItem,
-    display::navigation_target::NavigationTarget,
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
@@ -83,6 +82,7 @@ pub use crate::{
     join_lines::JoinLinesConfig,
     markup::Markup,
     move_item::Direction,
+    navigation_target::NavigationTarget,
     prime_caches::PrimeCachesProgress,
     references::ReferenceSearchResult,
     rename::RenameError,

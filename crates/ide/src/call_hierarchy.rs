@@ -9,7 +9,7 @@ use ide_db::{
 };
 use syntax::{ast, AstNode, SyntaxKind::NAME, TextRange};
 
-use crate::{display::TryToNav, goto_definition, FilePosition, NavigationTarget, RangeInfo};
+use crate::{goto_definition, FilePosition, NavigationTarget, RangeInfo, TryToNav};
 
 #[derive(Debug, Clone)]
 pub struct CallItem {

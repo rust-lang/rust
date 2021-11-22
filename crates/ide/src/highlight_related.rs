@@ -14,7 +14,7 @@ use syntax::{
     SyntaxNode, SyntaxToken, TextRange, T,
 };
 
-use crate::{display::TryToNav, references, NavigationTarget};
+use crate::{references, NavigationTarget, TryToNav};
 
 #[derive(PartialEq, Eq, Hash)]
 pub struct HighlightedRange {
