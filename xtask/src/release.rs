@@ -76,7 +76,7 @@ impl flags::Promote {
         cmd!("git add src/tools/rust-analyzer").run()?;
         cmd!("git commit -m':arrow_up: rust-analyzer'").run()?;
         if !self.dry_run {
-            cmd!("git push -u").run()?;
+            cmd!("git push -u origin {branch}").run()?;
             cmd!("xdg-open https://github.com/matklad/rust/pull/new/{branch}?body=r%3F%20%40ghost")
                 .run()?;
         }
