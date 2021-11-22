@@ -4,6 +4,10 @@ pub struct Lint {
     pub label: &'static str,
     pub description: &'static str,
 }
+pub struct LintGroup {
+    pub lint: Lint,
+    pub children: &'static [&'static str],
+}
 pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "absolute_paths_not_starting_with_crate",
@@ -30,6 +34,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"detects pattern bindings with the same name as one of the matched variants"##,
     },
     Lint { label: "box_pointers", description: r##"use of owned (Box type) heap memory"## },
+    Lint {
+        label: "break_with_label_and_loop",
+        description: r##"`break` expression with label and unlabeled loop as value expression"##,
+    },
     Lint {
         label: "cenum_impl_drop_cast",
         description: r##"a C-like enum implementing Drop is cast"##,
@@ -69,10 +77,17 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"detects use of items that will be deprecated in a future version"##,
     },
     Lint {
+        label: "deref_into_dyn_supertrait",
+        description: r##"`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future"##,
+    },
+    Lint {
         label: "deref_nullptr",
         description: r##"detects when an null pointer is dereferenced"##,
     },
-    Lint { label: "drop_bounds", description: r##"bounds of the form `T: Drop` are useless"## },
+    Lint {
+        label: "drop_bounds",
+        description: r##"bounds of the form `T: Drop` are most likely incorrect"##,
+    },
     Lint {
         label: "dyn_drop",
         description: r##"trait objects of the form `dyn Drop` are useless"##,
@@ -84,6 +99,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "ellipsis_inclusive_range_patterns",
         description: r##"`...` range patterns are deprecated"##,
+    },
+    Lint {
+        label: "enum_intrinsics_non_enums",
+        description: r##"detects calls to `core::mem::discriminant` and `core::mem::variant_count` with non-enum types"##,
     },
     Lint {
         label: "explicit_outlives_requirements",
@@ -100,7 +119,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint {
         label: "future_incompatible",
-        description: r##"lint group for: forbidden-lint-groups, illegal-floating-point-literal-pattern, private-in-public, pub-use-of-private-extern-crate, invalid-type-param-default, const-err, unaligned-references, patterns-in-fns-without-body, missing-fragment-specifier, late-bound-lifetime-arguments, order-dependent-trait-objects, coherence-leak-check, unstable-name-collisions, where-clauses-object-safety, proc-macro-derive-resolution-fallback, macro-expanded-macro-exports-accessed-by-absolute-paths, ill-formed-attribute-input, conflicting-repr-hints, ambiguous-associated-items, mutable-borrow-reservation-conflict, indirect-structural-match, pointer-structural-match, nontrivial-structural-match, soft-unstable, cenum-impl-drop-cast, const-evaluatable-unchecked, uninhabited-static, unsupported-naked-functions, invalid-doc-attributes, semicolon-in-expressions-from-macros, legacy-derive-helpers, proc-macro-back-compat, unsupported-calling-conventions"##,
+        description: r##"lint group for: forbidden-lint-groups, illegal-floating-point-literal-pattern, private-in-public, pub-use-of-private-extern-crate, invalid-type-param-default, const-err, unaligned-references, patterns-in-fns-without-body, missing-fragment-specifier, late-bound-lifetime-arguments, order-dependent-trait-objects, coherence-leak-check, unstable-name-collisions, where-clauses-object-safety, proc-macro-derive-resolution-fallback, macro-expanded-macro-exports-accessed-by-absolute-paths, ill-formed-attribute-input, conflicting-repr-hints, ambiguous-associated-items, mutable-borrow-reservation-conflict, indirect-structural-match, pointer-structural-match, nontrivial-structural-match, soft-unstable, cenum-impl-drop-cast, const-evaluatable-unchecked, uninhabited-static, unsupported-naked-functions, invalid-doc-attributes, semicolon-in-expressions-from-macros, legacy-derive-helpers, proc-macro-back-compat, unsupported-calling-conventions, deref-into-dyn-supertrait"##,
     },
     Lint {
         label: "ill_formed_attribute_input",
@@ -134,6 +153,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "inline_no_sanitize",
         description: r##"detects incompatible use of `#[inline(always)]` and `#[no_sanitize(...)]`"##,
+    },
+    Lint {
+        label: "invalid_atomic_ordering",
+        description: r##"usage of invalid atomic ordering in atomic operations and memory fences"##,
     },
     Lint {
         label: "invalid_doc_attributes",
@@ -198,6 +221,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"detects Unicode scripts whose mixed script confusables codepoints are solely used"##,
     },
     Lint {
+        label: "must_not_suspend",
+        description: r##"use of a `#[must_not_suspend]` value across a yield point"##,
+    },
+    Lint {
         label: "mutable_borrow_reservation_conflict",
         description: r##"reservation of a two-phased borrow conflicts with other shared borrows"##,
     },
@@ -205,6 +232,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "mutable_transmutes",
         description: r##"mutating transmuted &mut T from &T may cause undefined behavior"##,
     },
+    Lint { label: "named_asm_labels", description: r##"named labels in inline assembly"## },
     Lint {
         label: "no_mangle_const_items",
         description: r##"const items will not have their symbols exported"##,
@@ -214,6 +242,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "non_camel_case_types",
         description: r##"types, variants, traits and type parameters should have camel case names"##,
+    },
+    Lint {
+        label: "non_exhaustive_omitted_patterns",
+        description: r##"detect when patterns of types marked `non_exhaustive` are missed"##,
     },
     Lint {
         label: "non_fmt_panics",
@@ -332,6 +364,14 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "temporary_cstring_as_ptr",
         description: r##"detects getting the inner pointer of a temporary `CString`"##,
+    },
+    Lint {
+        label: "text_direction_codepoint_in_comment",
+        description: r##"invisible directionality-changing codepoints in comment"##,
+    },
+    Lint {
+        label: "text_direction_codepoint_in_literal",
+        description: r##"detect special Unicode codepoints that affect the visual representation of text on screen, changing the direction in which text flows"##,
     },
     Lint {
         label: "trivial_bounds",
@@ -501,6 +541,133 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"suggest using `loop { }` instead of `while true { }`"##,
     },
 ];
+pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
+    LintGroup {
+        lint: Lint {
+            label: "future_incompatible",
+            description: r##"lint group for: forbidden-lint-groups, illegal-floating-point-literal-pattern, private-in-public, pub-use-of-private-extern-crate, invalid-type-param-default, const-err, unaligned-references, patterns-in-fns-without-body, missing-fragment-specifier, late-bound-lifetime-arguments, order-dependent-trait-objects, coherence-leak-check, unstable-name-collisions, where-clauses-object-safety, proc-macro-derive-resolution-fallback, macro-expanded-macro-exports-accessed-by-absolute-paths, ill-formed-attribute-input, conflicting-repr-hints, ambiguous-associated-items, mutable-borrow-reservation-conflict, indirect-structural-match, pointer-structural-match, nontrivial-structural-match, soft-unstable, cenum-impl-drop-cast, const-evaluatable-unchecked, uninhabited-static, unsupported-naked-functions, invalid-doc-attributes, semicolon-in-expressions-from-macros, legacy-derive-helpers, proc-macro-back-compat, unsupported-calling-conventions, deref-into-dyn-supertrait"##,
+        },
+        children: &[
+            "forbidden_lint_groups",
+            "illegal_floating_point_literal_pattern",
+            "private_in_public",
+            "pub_use_of_private_extern_crate",
+            "invalid_type_param_default",
+            "const_err",
+            "unaligned_references",
+            "patterns_in_fns_without_body",
+            "missing_fragment_specifier",
+            "late_bound_lifetime_arguments",
+            "order_dependent_trait_objects",
+            "coherence_leak_check",
+            "unstable_name_collisions",
+            "where_clauses_object_safety",
+            "proc_macro_derive_resolution_fallback",
+            "macro_expanded_macro_exports_accessed_by_absolute_paths",
+            "ill_formed_attribute_input",
+            "conflicting_repr_hints",
+            "ambiguous_associated_items",
+            "mutable_borrow_reservation_conflict",
+            "indirect_structural_match",
+            "pointer_structural_match",
+            "nontrivial_structural_match",
+            "soft_unstable",
+            "cenum_impl_drop_cast",
+            "const_evaluatable_unchecked",
+            "uninhabited_static",
+            "unsupported_naked_functions",
+            "invalid_doc_attributes",
+            "semicolon_in_expressions_from_macros",
+            "legacy_derive_helpers",
+            "proc_macro_back_compat",
+            "unsupported_calling_conventions",
+            "deref_into_dyn_supertrait",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "nonstandard_style",
+            description: r##"lint group for: non-camel-case-types, non-snake-case, non-upper-case-globals"##,
+        },
+        children: &["non_camel_case_types", "non_snake_case", "non_upper_case_globals"],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "rust_2018_compatibility",
+            description: r##"lint group for: keyword-idents, anonymous-parameters, tyvar-behind-raw-pointer, absolute-paths-not-starting-with-crate"##,
+        },
+        children: &[
+            "keyword_idents",
+            "anonymous_parameters",
+            "tyvar_behind_raw_pointer",
+            "absolute_paths_not_starting_with_crate",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "rust_2018_idioms",
+            description: r##"lint group for: bare-trait-objects, unused-extern-crates, ellipsis-inclusive-range-patterns, elided-lifetimes-in-paths, explicit-outlives-requirements"##,
+        },
+        children: &[
+            "bare_trait_objects",
+            "unused_extern_crates",
+            "ellipsis_inclusive_range_patterns",
+            "elided_lifetimes_in_paths",
+            "explicit_outlives_requirements",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "rust_2021_compatibility",
+            description: r##"lint group for: ellipsis-inclusive-range-patterns, bare-trait-objects, rust-2021-incompatible-closure-captures, rust-2021-incompatible-or-patterns, rust-2021-prelude-collisions, rust-2021-prefixes-incompatible-syntax, array-into-iter, non-fmt-panics"##,
+        },
+        children: &[
+            "ellipsis_inclusive_range_patterns",
+            "bare_trait_objects",
+            "rust_2021_incompatible_closure_captures",
+            "rust_2021_incompatible_or_patterns",
+            "rust_2021_prelude_collisions",
+            "rust_2021_prefixes_incompatible_syntax",
+            "array_into_iter",
+            "non_fmt_panics",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "unused",
+            description: r##"lint group for: unused-imports, unused-variables, unused-assignments, dead-code, unused-mut, unreachable-code, unreachable-patterns, unused-must-use, unused-unsafe, path-statements, unused-attributes, unused-macros, unused-allocation, unused-doc-comments, unused-extern-crates, unused-features, unused-labels, unused-parens, unused-braces, redundant-semicolons"##,
+        },
+        children: &[
+            "unused_imports",
+            "unused_variables",
+            "unused_assignments",
+            "dead_code",
+            "unused_mut",
+            "unreachable_code",
+            "unreachable_patterns",
+            "unused_must_use",
+            "unused_unsafe",
+            "path_statements",
+            "unused_attributes",
+            "unused_macros",
+            "unused_allocation",
+            "unused_doc_comments",
+            "unused_extern_crates",
+            "unused_features",
+            "unused_labels",
+            "unused_parens",
+            "unused_braces",
+            "redundant_semicolons",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "warnings",
+            description: r##"lint group for: all lints that are set to issue warnings"##,
+        },
+        children: &[],
+    },
+];
 
 pub const RUSTDOC_LINTS: &[Lint] = &[
     Lint {
@@ -541,6 +708,23 @@ pub const RUSTDOC_LINTS: &[Lint] = &[
         description: r##"linking from a public item to a private one"##,
     },
 ];
+pub const RUSTDOC_LINT_GROUPS: &[LintGroup] = &[LintGroup {
+    lint: Lint {
+        label: "rustdoc::all",
+        description: r##"lint group for: rustdoc::broken-intra-doc-links, rustdoc::private-intra-doc-links, rustdoc::missing-doc-code-examples, rustdoc::private-doc-tests, rustdoc::invalid-codeblock-attributes, rustdoc::invalid-rust-codeblocks, rustdoc::invalid-html-tags, rustdoc::bare-urls, rustdoc::missing-crate-level-docs"##,
+    },
+    children: &[
+        "rustdoc::broken_intra_doc_links",
+        "rustdoc::private_intra_doc_links",
+        "rustdoc::missing_doc_code_examples",
+        "rustdoc::private_doc_tests",
+        "rustdoc::invalid_codeblock_attributes",
+        "rustdoc::invalid_rust_codeblocks",
+        "rustdoc::invalid_html_tags",
+        "rustdoc::bare_urls",
+        "rustdoc::missing_crate_level_docs",
+    ],
+}];
 
 pub const FEATURES: &[Lint] = &[
     Lint {
@@ -792,6 +976,47 @@ compiler.
 "##,
     },
     Lint {
+        label: "arbitrary_enum_discriminant",
+        description: r##"# `arbitrary_enum_discriminant`
+
+The tracking issue for this feature is: [#60553]
+
+[#60553]: https://github.com/rust-lang/rust/issues/60553
+
+------------------------
+
+The `arbitrary_enum_discriminant` feature permits tuple-like and
+struct-like enum variants with `#[repr(<int-type>)]` to have explicit discriminants.
+
+## Examples
+
+```rust
+#![feature(arbitrary_enum_discriminant)]
+
+#[allow(dead_code)]
+#[repr(u8)]
+enum Enum {
+    Unit = 3,
+    Tuple(u16) = 2,
+    Struct {
+        a: u8,
+        b: u16,
+    } = 1,
+}
+
+impl Enum {
+    fn tag(&self) -> u8 {
+        unsafe { *(self as *const Self as *const u8) }
+    }
+}
+
+assert_eq!(3, Enum::Unit.tag());
+assert_eq!(2, Enum::Tuple(5).tag());
+assert_eq!(1, Enum::Struct{a: 7, b: 11}.tag());
+```
+"##,
+    },
+    Lint {
         label: "asm",
         description: r##"# `asm`
 
@@ -861,7 +1086,7 @@ assert_eq!(x, 5);
 This will write the value `5` into the `u64` variable `x`.
 You can see that the string literal we use to specify instructions is actually a template string.
 It is governed by the same rules as Rust [format strings][format-syntax].
-The arguments that are inserted into the template however look a bit different then you may
+The arguments that are inserted into the template however look a bit different than you may
 be familiar with. First we need to specify if the variable is an input or an output of the
 inline assembly. In this case it is an output. We declared this by writing `out`.
 We also need to specify in what kind of register the assembly expects the variable.
@@ -901,7 +1126,7 @@ code.
 Second, we can see that inputs are declared by writing `in` instead of `out`.
 
 Third, one of our operands has a type we haven't seen yet, `const`.
-This tells the compiler to expand this argument to value directly inside the assembly template.
+This tells the compiler to expand this argument to a value directly inside the assembly template.
 This is only possible for constants and literals.
 
 Fourth, we can see that we can specify an argument number, or name as in any format string.
@@ -1052,7 +1277,7 @@ unsafe {
 }
 
 println!(
-    "L1 Cache: {}",
+    "L0 Cache: {}",
     ((ebx >> 22) + 1) * (((ebx >> 12) & 0x3ff) + 1) * ((ebx & 0xfff) + 1) * (ecx + 1)
 );
 ```
@@ -1114,7 +1339,7 @@ fn call_foo(arg: i32) -> i32 {
 
 Note that the `fn` or `static` item does not need to be public or `#[no_mangle]`: the compiler will automatically insert the appropriate mangled symbol name into the assembly code.
 
-By default, `asm!` assumes that any register not specified as an output will have its contents preserved by the assembly code. The [`clobber_abi`](#abi-clobbers) argument to `asm!` tells the compiler to automatically insert the necessary clobber operands according to the given calling convention ABI: any register which is not fully preserved in that ABI will be treated as clobbered.
+By default, `asm!` assumes that any register not specified as an output will have its contents preserved by the assembly code. The [`clobber_abi`](#abi-clobbers) argument to `asm!` tells the compiler to automatically insert the necessary clobber operands according to the given calling convention ABI: any register which is not fully preserved in that ABI will be treated as clobbered.  Multiple `clobber_abi` arguments may be provided and all clobbers from all specified ABIs will be inserted.
 
 ## Register template modifiers
 
@@ -1248,10 +1473,10 @@ reg_spec := <register class> / "<explicit register>"
 operand_expr := expr / "_" / expr "=>" expr / expr "=>" "_"
 reg_operand := dir_spec "(" reg_spec ")" operand_expr
 operand := reg_operand / "const" const_expr / "sym" path
-clobber_abi := "clobber_abi(" <abi> ")"
+clobber_abi := "clobber_abi(" <abi> *["," <abi>] [","] ")"
 option := "pure" / "nomem" / "readonly" / "preserves_flags" / "noreturn" / "nostack" / "att_syntax" / "raw"
 options := "options(" option *["," option] [","] ")"
-asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) ["," clobber_abi] *("," options) [","] ")"
+asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) *("," clobber_abi) *("," options) [","] ")"
 ```
 
 Inline assembly is currently supported on the following architectures:
@@ -1357,9 +1582,12 @@ Here is the list of currently supported register classes:
 | AArch64 | `vreg` | `v[0-31]` | `w` |
 | AArch64 | `vreg_low16` | `v[0-15]` | `x` |
 | AArch64 | `preg` | `p[0-15]`, `ffr` | Only clobbers |
-| ARM | `reg` | `r[0-12]`, `r14` | `r` |
-| ARM (Thumb) | `reg_thumb` | `r[0-r7]` | `l` |
+| ARM (ARM) | `reg` | `r[0-12]`, `r14` | `r` |
+| ARM (Thumb2) | `reg` | `r[0-12]`, `r14` | `r` |
+| ARM (Thumb1) | `reg` | `r[0-7]` | `r` |
 | ARM (ARM) | `reg_thumb` | `r[0-r12]`, `r14` | `l` |
+| ARM (Thumb2) | `reg_thumb` | `r[0-7]` | `l` |
+| ARM (Thumb1) | `reg_thumb` | `r[0-7]` | `l` |
 | ARM | `sreg` | `s[0-31]` | `t` |
 | ARM | `sreg_low16` | `s[0-15]` | `x` |
 | ARM | `dreg` | `d[0-31]` | `w` |
@@ -1594,6 +1822,8 @@ As stated in the previous section, passing an input value smaller than the regis
 
 The `clobber_abi` keyword can be used to apply a default set of clobbers to an `asm` block. This will automatically insert the necessary clobber constraints as needed for calling a function with a particular calling convention: if the calling convention does not fully preserve the value of a register across a call then a `lateout("reg") _` is implicitly added to the operands list.
 
+`clobber_abi` may be specified any number of times. It will insert a clobber for all unique registers in the union of all specified calling conventions.
+
 Generic register class outputs are disallowed by the compiler when `clobber_abi` is used: all outputs must specify an explicit register. Explicit register outputs have precedence over the implicit clobbers inserted by `clobber_abi`: a clobber will only be inserted for a register if that register is not used as an output.
 The following ABIs can be used with `clobber_abi`:
 
@@ -1680,6 +1910,8 @@ The compiler performs some additional checks on options:
     - You are responsible for switching any target-specific state (e.g. thread-local storage, stack bounds).
     - The set of memory locations that you may access is the intersection of those allowed by the `asm!` blocks you entered and exited.
 - You cannot assume that an `asm!` block will appear exactly once in the output binary. The compiler is allowed to instantiate multiple copies of the `asm!` block, for example when the function containing it is inlined in multiple places.
+- On x86, inline assembly must not end with an instruction prefix (such as `LOCK`) that would apply to instructions generated by the compiler.
+  - The compiler is currently unable to detect this due to the way inline assembly is compiled, but may catch and reject this in the future.
 
 > **Note**: As a general rule, the flags covered by `preserves_flags` are those which are *not* preserved when performing a function call.
 "##,
@@ -2785,57 +3017,6 @@ fn main() {
 "##,
     },
     Lint {
-        label: "format_args_capture",
-        description: r##"# `format_args_capture`
-
-The tracking issue for this feature is: [#67984]
-
-[#67984]: https://github.com/rust-lang/rust/issues/67984
-
-------------------------
-
-Enables `format_args!` (and macros which use `format_args!` in their implementation, such
-as `format!`, `print!` and `panic!`) to capture variables from the surrounding scope.
-This avoids the need to pass named parameters when the binding in question
-already exists in scope.
-
-```rust
-#![feature(format_args_capture)]
-
-let (person, species, name) = ("Charlie Brown", "dog", "Snoopy");
-
-// captures named argument `person`
-print!("Hello {person}");
-
-// captures named arguments `species` and `name`
-format!("The {species}'s name is {name}.");
-```
-
-This also works for formatting parameters such as width and precision:
-
-```rust
-#![feature(format_args_capture)]
-
-let precision = 2;
-let s = format!("{:.precision$}", 1.324223);
-
-assert_eq!(&s, "1.32");
-```
-
-A non-exhaustive list of macros which benefit from this functionality include:
-- `format!`
-- `print!` and `println!`
-- `eprint!` and `eprintln!`
-- `write!` and `writeln!`
-- `panic!`
-- `unreachable!`
-- `unimplemented!`
-- `todo!`
-- `assert!` and similar
-- macros in many thirdparty crates, such as `log`
-"##,
-    },
-    Lint {
         label: "generators",
         description: r##"# `generators`
 
@@ -3164,7 +3345,7 @@ are concatenated into one or assembled separately.
 constants defined in Rust to be used in assembly code:
 
 ```rust,no_run
-#![feature(global_asm)]
+#![feature(global_asm, asm_const)]
 # #[cfg(any(target_arch="x86", target_arch="x86_64"))]
 # mod x86 {
 const C: i32 = 1234;
@@ -3185,7 +3366,7 @@ override this by adding `options(att_syntax)` at the end of the macro
 arguments list:
 
 ```rust,no_run
-#![feature(global_asm)]
+#![feature(global_asm, asm_const)]
 # #[cfg(any(target_arch="x86", target_arch="x86_64"))]
 # mod x86 {
 global_asm!("movl ${}, %ecx", const 5, options(att_syntax));
@@ -4940,6 +5121,43 @@ assert!(result.is_err());
 "##,
     },
     Lint {
+        label: "type_changing_struct_update",
+        description: r##"# `type_changing_struct_update`
+
+The tracking issue for this feature is: [#86555]
+
+[#86555]: https://github.com/rust-lang/rust/issues/86555
+
+------------------------
+
+This implements [RFC2528]. When turned on, you can create instances of the same struct
+that have different generic type or lifetime parameters.
+
+[RFC2528]: https://github.com/rust-lang/rfcs/blob/master/text/2528-type-changing-struct-update-syntax.md
+
+```rust
+#![allow(unused_variables, dead_code)]
+#![feature(type_changing_struct_update)]
+
+fn main () {
+    struct Foo<T, U> {
+        field1: T,
+        field2: U,
+    }
+
+    let base: Foo<String, i32> = Foo {
+        field1: String::from("hello"),
+        field2: 1234,
+    };
+    let updated: Foo<f64, i32> = Foo {
+        field1: 3.14,
+        ..base
+    };
+}
+```
+"##,
+    },
+    Lint {
         label: "unboxed_closures",
         description: r##"# `unboxed_closures`
 
@@ -5574,7 +5792,7 @@ explicitly or vice versa."##,
 explicitly or vice versa."##,
     },
     Lint {
-        label: "clippy::disallowed_method",
+        label: "clippy::disallowed_methods",
         description: r##"Denies the configured methods and functions in clippy.toml"##,
     },
     Lint {
@@ -5593,7 +5811,7 @@ See also: [`non_ascii_idents`].
 [supported_scripts]: https://www.unicode.org/iso15924/iso15924-codes.html"##,
     },
     Lint {
-        label: "clippy::disallowed_type",
+        label: "clippy::disallowed_types",
         description: r##"Denies the configured types in clippy.toml."##,
     },
     Lint {
@@ -5920,10 +6138,6 @@ else branch."##,
 and the *else* part."##,
     },
     Lint {
-        label: "clippy::if_then_panic",
-        description: r##"Detects `if`-then-`panic!` that can be replaced with `assert!`."##,
-    },
-    Lint {
         label: "clippy::if_then_some_else_none",
         description: r##"Checks for if-else that could be written to `bool::then`."##,
     },
@@ -5965,6 +6179,11 @@ grouped inconsistently with underscores."##,
         description: r##"Checks for struct constructors where all fields are shorthand and
 the order of the field init shorthand in the constructor is inconsistent
 with the order in the struct definition."##,
+    },
+    Lint {
+        label: "clippy::index_refutable_slice",
+        description: r##"The lint checks for slice bindings in patterns that are only used to
+access individual slice values."##,
     },
     Lint {
         label: "clippy::indexing_slicing",
@@ -6160,7 +6379,8 @@ where expr has a type that implements `Drop`"##,
     },
     Lint {
         label: "clippy::let_underscore_lock",
-        description: r##"Checks for `let _ = sync_lock`"##,
+        description: r##"Checks for `let _ = sync_lock`.
+This supports `mutex` and `rwlock` in `std::sync` and `parking_lot`."##,
     },
     Lint {
         label: "clippy::let_underscore_must_use",
@@ -6189,6 +6409,10 @@ cannot be represented as the underlying type without loss."##,
     Lint {
         label: "clippy::main_recursion",
         description: r##"Checks for recursion using the entrypoint."##,
+    },
+    Lint {
+        label: "clippy::manual_assert",
+        description: r##"Detects `if`-then-`panic!` that can be replaced with `assert!`."##,
     },
     Lint {
         label: "clippy::manual_async_fn",
@@ -6349,10 +6573,6 @@ and take drastic actions like `panic!`."##,
         description: r##"Checks for iteration that may be infinite."##,
     },
     Lint {
-        label: "clippy::mem_discriminant_non_enum",
-        description: r##"Checks for calls of `mem::discriminant()` on a non-enum type."##,
-    },
-    Lint {
         label: "clippy::mem_forget",
         description: r##"Checks for usage of `std::mem::forget(t)` where `t` is
 `Drop`."##,
@@ -6410,7 +6630,7 @@ return a `Result` type and warns if there is no `# Errors` section."##,
     },
     Lint {
         label: "clippy::missing_inline_in_public_items",
-        description: r##"it lints if an exported function, method, trait method with default impl,
+        description: r##"It lints if an exported function, method, trait method with default impl,
 or trait method impl is not `#[inline]`."##,
     },
     Lint {
@@ -6577,6 +6797,10 @@ collection just to get the values by index."##,
     Lint {
         label: "clippy::needless_return",
         description: r##"Checks for return statements at the end of a block."##,
+    },
+    Lint {
+        label: "clippy::needless_splitn",
+        description: r##"Checks for usages of `str::splitn` (or `str::rsplitn`) where using `str::split` would be the same."##,
     },
     Lint {
         label: "clippy::needless_update",
@@ -6990,6 +7214,12 @@ one from a trait, another not from trait."##,
 `()` but is not followed by a semicolon."##,
     },
     Lint {
+        label: "clippy::separated_literal_suffix",
+        description: r##"Warns if literal suffixes are separated by an underscore.
+To enforce separated literal suffix style,
+see the `unseparated_literal_suffix` lint."##,
+    },
+    Lint {
         label: "clippy::serde_api_misuse",
         description: r##"Checks for mis-uses of the serde API."##,
     },
@@ -7108,6 +7338,10 @@ match."##,
 that contain only ASCII characters."##,
     },
     Lint {
+        label: "clippy::string_slice",
+        description: r##"Checks for slice operations on strings"##,
+    },
+    Lint {
         label: "clippy::string_to_string",
         description: r##"This lint checks for `.to_string()` method calls on values of type `String`."##,
     },
@@ -7207,6 +7441,10 @@ in a macro that does formatting."##,
 `ref`."##,
     },
     Lint {
+        label: "clippy::trailing_empty_array",
+        description: r##"Displays a warning when a struct with a trailing zero-sized array is declared without a `repr` attribute."##,
+    },
+    Lint {
         label: "clippy::trait_duplication_in_bounds",
         description: r##"Checks for cases where generics are being used and multiple
 syntax specifications for trait bounds are used simultaneously."##,
@@ -7231,7 +7469,10 @@ syntax specifications for trait bounds are used simultaneously."##,
         label: "clippy::transmute_int_to_float",
         description: r##"Checks for transmutes from an integer to a float."##,
     },
-    Lint { label: "clippy::transmute_num_to_bytes", description: r##""## },
+    Lint {
+        label: "clippy::transmute_num_to_bytes",
+        description: r##"Checks for transmutes from a number to an array of `u8`"##,
+    },
     Lint {
         label: "clippy::transmute_ptr_to_ptr",
         description: r##"Checks for transmutes from a pointer to a pointer, or
@@ -7310,6 +7551,7 @@ unit literal (`()`)."##,
         description: r##"Checks for comparisons to unit. This includes all binary
 comparisons (like `==` and `<`) and asserts."##,
     },
+    Lint { label: "clippy::unit_hash", description: r##"Detects `().hash(_)`."## },
     Lint {
         label: "clippy::unit_return_expecting_ord",
         description: r##"Checks for functions that expect closures of type
@@ -7418,7 +7660,9 @@ name."##,
     Lint {
         label: "clippy::unseparated_literal_suffix",
         description: r##"Warns if literal suffixes are not separated by an
-underscore."##,
+underscore.
+To enforce unseparated literal suffix style,
+see the `separated_literal_suffix` lint."##,
     },
     Lint {
         label: "clippy::unsound_collection_transmute",
@@ -7460,7 +7704,7 @@ by nibble or byte."##,
     },
     Lint {
         label: "clippy::unwrap_in_result",
-        description: r##"Checks for functions of type Result that contain `expect()` or `unwrap()`"##,
+        description: r##"Checks for functions of type `Result` that contain `expect()` or `unwrap()`"##,
     },
     Lint {
         label: "clippy::unwrap_or_else_default",
@@ -7654,5 +7898,596 @@ architecture."##,
         label: "clippy::zst_offset",
         description: r##"Checks for `offset(_)`, `wrapping_`{`add`, `sub`}, etc. on raw pointers to
 zero-sized types"##,
+    },
+];
+pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
+    LintGroup {
+        lint: Lint {
+            label: "clippy::cargo",
+            description: r##"lint group for: clippy::cargo_common_metadata, clippy::multiple_crate_versions, clippy::negative_feature_names, clippy::redundant_feature_names, clippy::wildcard_dependencies"##,
+        },
+        children: &[
+            "clippy::cargo_common_metadata",
+            "clippy::multiple_crate_versions",
+            "clippy::negative_feature_names",
+            "clippy::redundant_feature_names",
+            "clippy::wildcard_dependencies",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "clippy::complexity",
+            description: r##"lint group for: clippy::bind_instead_of_map, clippy::bool_comparison, clippy::borrowed_box, clippy::char_lit_as_u8, clippy::clone_on_copy, clippy::crosspointer_transmute, clippy::deprecated_cfg_attr, clippy::deref_addrof, clippy::derivable_impls, clippy::diverging_sub_expression, clippy::double_comparisons, clippy::double_parens, clippy::duration_subsec, clippy::explicit_counter_loop, clippy::explicit_write, clippy::extra_unused_lifetimes, clippy::filter_map_identity, clippy::filter_next, clippy::flat_map_identity, clippy::get_last_with_len, clippy::identity_op, clippy::inspect_for_each, clippy::int_plus_one, clippy::iter_count, clippy::manual_filter_map, clippy::manual_find_map, clippy::manual_flatten, clippy::manual_split_once, clippy::manual_strip, clippy::manual_swap, clippy::manual_unwrap_or, clippy::map_identity, clippy::match_as_ref, clippy::match_single_binding, clippy::needless_arbitrary_self_type, clippy::needless_bool, clippy::needless_borrowed_reference, clippy::needless_lifetimes, clippy::needless_option_as_deref, clippy::needless_question_mark, clippy::needless_splitn, clippy::needless_update, clippy::neg_cmp_op_on_partial_ord, clippy::no_effect, clippy::nonminimal_bool, clippy::option_as_ref_deref, clippy::option_filter_map, clippy::option_map_unit_fn, clippy::overflow_check_conditional, clippy::partialeq_ne_impl, clippy::precedence, clippy::ptr_offset_with_cast, clippy::range_zip_with_len, clippy::redundant_closure_call, clippy::redundant_slicing, clippy::ref_in_deref, clippy::repeat_once, clippy::result_map_unit_fn, clippy::search_is_some, clippy::short_circuit_statement, clippy::single_element_loop, clippy::skip_while_next, clippy::string_from_utf8_as_bytes, clippy::strlen_on_c_strings, clippy::temporary_assignment, clippy::too_many_arguments, clippy::transmute_bytes_to_str, clippy::transmute_float_to_int, clippy::transmute_int_to_bool, clippy::transmute_int_to_char, clippy::transmute_int_to_float, clippy::transmute_num_to_bytes, clippy::transmute_ptr_to_ref, clippy::transmutes_expressible_as_ptr_casts, clippy::type_complexity, clippy::unit_arg, clippy::unnecessary_cast, clippy::unnecessary_filter_map, clippy::unnecessary_operation, clippy::unnecessary_sort_by, clippy::unnecessary_unwrap, clippy::unneeded_wildcard_pattern, clippy::useless_asref, clippy::useless_conversion, clippy::useless_format, clippy::vec_box, clippy::while_let_loop, clippy::wildcard_in_or_patterns, clippy::zero_divided_by_zero, clippy::zero_prefixed_literal"##,
+        },
+        children: &[
+            "clippy::bind_instead_of_map",
+            "clippy::bool_comparison",
+            "clippy::borrowed_box",
+            "clippy::char_lit_as_u8",
+            "clippy::clone_on_copy",
+            "clippy::crosspointer_transmute",
+            "clippy::deprecated_cfg_attr",
+            "clippy::deref_addrof",
+            "clippy::derivable_impls",
+            "clippy::diverging_sub_expression",
+            "clippy::double_comparisons",
+            "clippy::double_parens",
+            "clippy::duration_subsec",
+            "clippy::explicit_counter_loop",
+            "clippy::explicit_write",
+            "clippy::extra_unused_lifetimes",
+            "clippy::filter_map_identity",
+            "clippy::filter_next",
+            "clippy::flat_map_identity",
+            "clippy::get_last_with_len",
+            "clippy::identity_op",
+            "clippy::inspect_for_each",
+            "clippy::int_plus_one",
+            "clippy::iter_count",
+            "clippy::manual_filter_map",
+            "clippy::manual_find_map",
+            "clippy::manual_flatten",
+            "clippy::manual_split_once",
+            "clippy::manual_strip",
+            "clippy::manual_swap",
+            "clippy::manual_unwrap_or",
+            "clippy::map_identity",
+            "clippy::match_as_ref",
+            "clippy::match_single_binding",
+            "clippy::needless_arbitrary_self_type",
+            "clippy::needless_bool",
+            "clippy::needless_borrowed_reference",
+            "clippy::needless_lifetimes",
+            "clippy::needless_option_as_deref",
+            "clippy::needless_question_mark",
+            "clippy::needless_splitn",
+            "clippy::needless_update",
+            "clippy::neg_cmp_op_on_partial_ord",
+            "clippy::no_effect",
+            "clippy::nonminimal_bool",
+            "clippy::option_as_ref_deref",
+            "clippy::option_filter_map",
+            "clippy::option_map_unit_fn",
+            "clippy::overflow_check_conditional",
+            "clippy::partialeq_ne_impl",
+            "clippy::precedence",
+            "clippy::ptr_offset_with_cast",
+            "clippy::range_zip_with_len",
+            "clippy::redundant_closure_call",
+            "clippy::redundant_slicing",
+            "clippy::ref_in_deref",
+            "clippy::repeat_once",
+            "clippy::result_map_unit_fn",
+            "clippy::search_is_some",
+            "clippy::short_circuit_statement",
+            "clippy::single_element_loop",
+            "clippy::skip_while_next",
+            "clippy::string_from_utf8_as_bytes",
+            "clippy::strlen_on_c_strings",
+            "clippy::temporary_assignment",
+            "clippy::too_many_arguments",
+            "clippy::transmute_bytes_to_str",
+            "clippy::transmute_float_to_int",
+            "clippy::transmute_int_to_bool",
+            "clippy::transmute_int_to_char",
+            "clippy::transmute_int_to_float",
+            "clippy::transmute_num_to_bytes",
+            "clippy::transmute_ptr_to_ref",
+            "clippy::transmutes_expressible_as_ptr_casts",
+            "clippy::type_complexity",
+            "clippy::unit_arg",
+            "clippy::unnecessary_cast",
+            "clippy::unnecessary_filter_map",
+            "clippy::unnecessary_operation",
+            "clippy::unnecessary_sort_by",
+            "clippy::unnecessary_unwrap",
+            "clippy::unneeded_wildcard_pattern",
+            "clippy::useless_asref",
+            "clippy::useless_conversion",
+            "clippy::useless_format",
+            "clippy::vec_box",
+            "clippy::while_let_loop",
+            "clippy::wildcard_in_or_patterns",
+            "clippy::zero_divided_by_zero",
+            "clippy::zero_prefixed_literal",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "clippy::correctness",
+            description: r##"lint group for: clippy::absurd_extreme_comparisons, clippy::almost_swapped, clippy::approx_constant, clippy::async_yields_async, clippy::bad_bit_mask, clippy::cast_ref_to_mut, clippy::clone_double_ref, clippy::cmp_nan, clippy::deprecated_semver, clippy::derive_hash_xor_eq, clippy::derive_ord_xor_partial_ord, clippy::drop_copy, clippy::drop_ref, clippy::enum_clike_unportable_variant, clippy::eq_op, clippy::erasing_op, clippy::fn_address_comparisons, clippy::forget_copy, clippy::forget_ref, clippy::if_let_mutex, clippy::if_same_then_else, clippy::ifs_same_cond, clippy::ineffective_bit_mask, clippy::infinite_iter, clippy::inherent_to_string_shadow_display, clippy::inline_fn_without_body, clippy::invalid_null_ptr_usage, clippy::invalid_regex, clippy::invisible_characters, clippy::iter_next_loop, clippy::iterator_step_by_zero, clippy::let_underscore_lock, clippy::logic_bug, clippy::match_str_case_mismatch, clippy::mem_replace_with_uninit, clippy::min_max, clippy::mismatched_target_os, clippy::mistyped_literal_suffixes, clippy::modulo_one, clippy::mut_from_ref, clippy::never_loop, clippy::non_octal_unix_permissions, clippy::nonsensical_open_options, clippy::not_unsafe_ptr_arg_deref, clippy::option_env_unwrap, clippy::out_of_bounds_indexing, clippy::panicking_unwrap, clippy::possible_missing_comma, clippy::reversed_empty_ranges, clippy::self_assignment, clippy::serde_api_misuse, clippy::size_of_in_element_count, clippy::suspicious_splitn, clippy::to_string_in_display, clippy::transmuting_null, clippy::undropped_manually_drops, clippy::uninit_assumed_init, clippy::uninit_vec, clippy::unit_cmp, clippy::unit_hash, clippy::unit_return_expecting_ord, clippy::unsound_collection_transmute, clippy::unused_io_amount, clippy::useless_attribute, clippy::vec_resize_to_zero, clippy::vtable_address_comparisons, clippy::while_immutable_condition, clippy::wrong_transmute, clippy::zst_offset"##,
+        },
+        children: &[
+            "clippy::absurd_extreme_comparisons",
+            "clippy::almost_swapped",
+            "clippy::approx_constant",
+            "clippy::async_yields_async",
+            "clippy::bad_bit_mask",
+            "clippy::cast_ref_to_mut",
+            "clippy::clone_double_ref",
+            "clippy::cmp_nan",
+            "clippy::deprecated_semver",
+            "clippy::derive_hash_xor_eq",
+            "clippy::derive_ord_xor_partial_ord",
+            "clippy::drop_copy",
+            "clippy::drop_ref",
+            "clippy::enum_clike_unportable_variant",
+            "clippy::eq_op",
+            "clippy::erasing_op",
+            "clippy::fn_address_comparisons",
+            "clippy::forget_copy",
+            "clippy::forget_ref",
+            "clippy::if_let_mutex",
+            "clippy::if_same_then_else",
+            "clippy::ifs_same_cond",
+            "clippy::ineffective_bit_mask",
+            "clippy::infinite_iter",
+            "clippy::inherent_to_string_shadow_display",
+            "clippy::inline_fn_without_body",
+            "clippy::invalid_null_ptr_usage",
+            "clippy::invalid_regex",
+            "clippy::invisible_characters",
+            "clippy::iter_next_loop",
+            "clippy::iterator_step_by_zero",
+            "clippy::let_underscore_lock",
+            "clippy::logic_bug",
+            "clippy::match_str_case_mismatch",
+            "clippy::mem_replace_with_uninit",
+            "clippy::min_max",
+            "clippy::mismatched_target_os",
+            "clippy::mistyped_literal_suffixes",
+            "clippy::modulo_one",
+            "clippy::mut_from_ref",
+            "clippy::never_loop",
+            "clippy::non_octal_unix_permissions",
+            "clippy::nonsensical_open_options",
+            "clippy::not_unsafe_ptr_arg_deref",
+            "clippy::option_env_unwrap",
+            "clippy::out_of_bounds_indexing",
+            "clippy::panicking_unwrap",
+            "clippy::possible_missing_comma",
+            "clippy::reversed_empty_ranges",
+            "clippy::self_assignment",
+            "clippy::serde_api_misuse",
+            "clippy::size_of_in_element_count",
+            "clippy::suspicious_splitn",
+            "clippy::to_string_in_display",
+            "clippy::transmuting_null",
+            "clippy::undropped_manually_drops",
+            "clippy::uninit_assumed_init",
+            "clippy::uninit_vec",
+            "clippy::unit_cmp",
+            "clippy::unit_hash",
+            "clippy::unit_return_expecting_ord",
+            "clippy::unsound_collection_transmute",
+            "clippy::unused_io_amount",
+            "clippy::useless_attribute",
+            "clippy::vec_resize_to_zero",
+            "clippy::vtable_address_comparisons",
+            "clippy::while_immutable_condition",
+            "clippy::wrong_transmute",
+            "clippy::zst_offset",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "clippy::deprecated",
+            description: r##"lint group for: clippy::assign_ops, clippy::extend_from_slice, clippy::filter_map, clippy::find_map, clippy::if_let_redundant_pattern_matching, clippy::misaligned_transmute, clippy::pub_enum_variant_names, clippy::range_step_by_zero, clippy::regex_macro, clippy::replace_consts, clippy::should_assert_eq, clippy::unsafe_vector_initialization, clippy::unstable_as_mut_slice, clippy::unstable_as_slice, clippy::unused_collect, clippy::wrong_pub_self_convention"##,
+        },
+        children: &[
+            "clippy::assign_ops",
+            "clippy::extend_from_slice",
+            "clippy::filter_map",
+            "clippy::find_map",
+            "clippy::if_let_redundant_pattern_matching",
+            "clippy::misaligned_transmute",
+            "clippy::pub_enum_variant_names",
+            "clippy::range_step_by_zero",
+            "clippy::regex_macro",
+            "clippy::replace_consts",
+            "clippy::should_assert_eq",
+            "clippy::unsafe_vector_initialization",
+            "clippy::unstable_as_mut_slice",
+            "clippy::unstable_as_slice",
+            "clippy::unused_collect",
+            "clippy::wrong_pub_self_convention",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "clippy::nursery",
+            description: r##"lint group for: clippy::branches_sharing_code, clippy::cognitive_complexity, clippy::debug_assert_with_mut_call, clippy::disallowed_methods, clippy::disallowed_types, clippy::empty_line_after_outer_attr, clippy::equatable_if_let, clippy::fallible_impl_from, clippy::future_not_send, clippy::imprecise_flops, clippy::index_refutable_slice, clippy::missing_const_for_fn, clippy::mutex_integer, clippy::nonstandard_macro_braces, clippy::option_if_let_else, clippy::path_buf_push_overwrite, clippy::redundant_pub_crate, clippy::string_lit_as_bytes, clippy::suboptimal_flops, clippy::suspicious_operation_groupings, clippy::trailing_empty_array, clippy::trivial_regex, clippy::use_self, clippy::useless_let_if_seq, clippy::useless_transmute"##,
+        },
+        children: &[
+            "clippy::branches_sharing_code",
+            "clippy::cognitive_complexity",
+            "clippy::debug_assert_with_mut_call",
+            "clippy::disallowed_methods",
+            "clippy::disallowed_types",
+            "clippy::empty_line_after_outer_attr",
+            "clippy::equatable_if_let",
+            "clippy::fallible_impl_from",
+            "clippy::future_not_send",
+            "clippy::imprecise_flops",
+            "clippy::index_refutable_slice",
+            "clippy::missing_const_for_fn",
+            "clippy::mutex_integer",
+            "clippy::nonstandard_macro_braces",
+            "clippy::option_if_let_else",
+            "clippy::path_buf_push_overwrite",
+            "clippy::redundant_pub_crate",
+            "clippy::string_lit_as_bytes",
+            "clippy::suboptimal_flops",
+            "clippy::suspicious_operation_groupings",
+            "clippy::trailing_empty_array",
+            "clippy::trivial_regex",
+            "clippy::use_self",
+            "clippy::useless_let_if_seq",
+            "clippy::useless_transmute",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "clippy::pedantic",
+            description: r##"lint group for: clippy::await_holding_lock, clippy::await_holding_refcell_ref, clippy::case_sensitive_file_extension_comparisons, clippy::cast_lossless, clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_precision_loss, clippy::cast_ptr_alignment, clippy::cast_sign_loss, clippy::checked_conversions, clippy::cloned_instead_of_copied, clippy::copy_iterator, clippy::default_trait_access, clippy::doc_markdown, clippy::empty_enum, clippy::enum_glob_use, clippy::expl_impl_clone_on_copy, clippy::explicit_deref_methods, clippy::explicit_into_iter_loop, clippy::explicit_iter_loop, clippy::filter_map_next, clippy::flat_map_option, clippy::float_cmp, clippy::fn_params_excessive_bools, clippy::from_iter_instead_of_collect, clippy::if_not_else, clippy::implicit_clone, clippy::implicit_hasher, clippy::implicit_saturating_sub, clippy::inconsistent_struct_constructor, clippy::inefficient_to_string, clippy::inline_always, clippy::invalid_upcast_comparisons, clippy::items_after_statements, clippy::iter_not_returning_iterator, clippy::large_digit_groups, clippy::large_stack_arrays, clippy::large_types_passed_by_value, clippy::let_underscore_drop, clippy::let_unit_value, clippy::linkedlist, clippy::macro_use_imports, clippy::manual_assert, clippy::manual_ok_or, clippy::many_single_char_names, clippy::map_flatten, clippy::map_unwrap_or, clippy::match_bool, clippy::match_on_vec_items, clippy::match_same_arms, clippy::match_wild_err_arm, clippy::match_wildcard_for_single_variants, clippy::maybe_infinite_iter, clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::module_name_repetitions, clippy::must_use_candidate, clippy::mut_mut, clippy::naive_bytecount, clippy::needless_bitwise_bool, clippy::needless_continue, clippy::needless_for_each, clippy::needless_pass_by_value, clippy::no_effect_underscore_binding, clippy::option_option, clippy::ptr_as_ptr, clippy::range_minus_one, clippy::range_plus_one, clippy::redundant_closure_for_method_calls, clippy::redundant_else, clippy::ref_binding_to_reference, clippy::ref_option_ref, clippy::same_functions_in_if_condition, clippy::semicolon_if_nothing_returned, clippy::similar_names, clippy::single_match_else, clippy::string_add_assign, clippy::struct_excessive_bools, clippy::too_many_lines, clippy::trait_duplication_in_bounds, clippy::transmute_ptr_to_ptr, clippy::trivially_copy_pass_by_ref, clippy::type_repetition_in_bounds, clippy::unicode_not_nfc, clippy::unnecessary_wraps, clippy::unnested_or_patterns, clippy::unreadable_literal, clippy::unsafe_derive_deserialize, clippy::unused_async, clippy::unused_self, clippy::used_underscore_binding, clippy::verbose_bit_mask, clippy::wildcard_imports, clippy::zero_sized_map_values"##,
+        },
+        children: &[
+            "clippy::await_holding_lock",
+            "clippy::await_holding_refcell_ref",
+            "clippy::case_sensitive_file_extension_comparisons",
+            "clippy::cast_lossless",
+            "clippy::cast_possible_truncation",
+            "clippy::cast_possible_wrap",
+            "clippy::cast_precision_loss",
+            "clippy::cast_ptr_alignment",
+            "clippy::cast_sign_loss",
+            "clippy::checked_conversions",
+            "clippy::cloned_instead_of_copied",
+            "clippy::copy_iterator",
+            "clippy::default_trait_access",
+            "clippy::doc_markdown",
+            "clippy::empty_enum",
+            "clippy::enum_glob_use",
+            "clippy::expl_impl_clone_on_copy",
+            "clippy::explicit_deref_methods",
+            "clippy::explicit_into_iter_loop",
+            "clippy::explicit_iter_loop",
+            "clippy::filter_map_next",
+            "clippy::flat_map_option",
+            "clippy::float_cmp",
+            "clippy::fn_params_excessive_bools",
+            "clippy::from_iter_instead_of_collect",
+            "clippy::if_not_else",
+            "clippy::implicit_clone",
+            "clippy::implicit_hasher",
+            "clippy::implicit_saturating_sub",
+            "clippy::inconsistent_struct_constructor",
+            "clippy::inefficient_to_string",
+            "clippy::inline_always",
+            "clippy::invalid_upcast_comparisons",
+            "clippy::items_after_statements",
+            "clippy::iter_not_returning_iterator",
+            "clippy::large_digit_groups",
+            "clippy::large_stack_arrays",
+            "clippy::large_types_passed_by_value",
+            "clippy::let_underscore_drop",
+            "clippy::let_unit_value",
+            "clippy::linkedlist",
+            "clippy::macro_use_imports",
+            "clippy::manual_assert",
+            "clippy::manual_ok_or",
+            "clippy::many_single_char_names",
+            "clippy::map_flatten",
+            "clippy::map_unwrap_or",
+            "clippy::match_bool",
+            "clippy::match_on_vec_items",
+            "clippy::match_same_arms",
+            "clippy::match_wild_err_arm",
+            "clippy::match_wildcard_for_single_variants",
+            "clippy::maybe_infinite_iter",
+            "clippy::missing_errors_doc",
+            "clippy::missing_panics_doc",
+            "clippy::module_name_repetitions",
+            "clippy::must_use_candidate",
+            "clippy::mut_mut",
+            "clippy::naive_bytecount",
+            "clippy::needless_bitwise_bool",
+            "clippy::needless_continue",
+            "clippy::needless_for_each",
+            "clippy::needless_pass_by_value",
+            "clippy::no_effect_underscore_binding",
+            "clippy::option_option",
+            "clippy::ptr_as_ptr",
+            "clippy::range_minus_one",
+            "clippy::range_plus_one",
+            "clippy::redundant_closure_for_method_calls",
+            "clippy::redundant_else",
+            "clippy::ref_binding_to_reference",
+            "clippy::ref_option_ref",
+            "clippy::same_functions_in_if_condition",
+            "clippy::semicolon_if_nothing_returned",
+            "clippy::similar_names",
+            "clippy::single_match_else",
+            "clippy::string_add_assign",
+            "clippy::struct_excessive_bools",
+            "clippy::too_many_lines",
+            "clippy::trait_duplication_in_bounds",
+            "clippy::transmute_ptr_to_ptr",
+            "clippy::trivially_copy_pass_by_ref",
+            "clippy::type_repetition_in_bounds",
+            "clippy::unicode_not_nfc",
+            "clippy::unnecessary_wraps",
+            "clippy::unnested_or_patterns",
+            "clippy::unreadable_literal",
+            "clippy::unsafe_derive_deserialize",
+            "clippy::unused_async",
+            "clippy::unused_self",
+            "clippy::used_underscore_binding",
+            "clippy::verbose_bit_mask",
+            "clippy::wildcard_imports",
+            "clippy::zero_sized_map_values",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "clippy::perf",
+            description: r##"lint group for: clippy::box_collection, clippy::boxed_local, clippy::cmp_owned, clippy::expect_fun_call, clippy::extend_with_drain, clippy::format_in_format_args, clippy::iter_nth, clippy::large_const_arrays, clippy::large_enum_variant, clippy::manual_memcpy, clippy::manual_str_repeat, clippy::map_entry, clippy::mutex_atomic, clippy::needless_collect, clippy::or_fun_call, clippy::redundant_allocation, clippy::redundant_clone, clippy::single_char_pattern, clippy::slow_vector_initialization, clippy::stable_sort_primitive, clippy::to_string_in_format_args, clippy::useless_vec, clippy::vec_init_then_push"##,
+        },
+        children: &[
+            "clippy::box_collection",
+            "clippy::boxed_local",
+            "clippy::cmp_owned",
+            "clippy::expect_fun_call",
+            "clippy::extend_with_drain",
+            "clippy::format_in_format_args",
+            "clippy::iter_nth",
+            "clippy::large_const_arrays",
+            "clippy::large_enum_variant",
+            "clippy::manual_memcpy",
+            "clippy::manual_str_repeat",
+            "clippy::map_entry",
+            "clippy::mutex_atomic",
+            "clippy::needless_collect",
+            "clippy::or_fun_call",
+            "clippy::redundant_allocation",
+            "clippy::redundant_clone",
+            "clippy::single_char_pattern",
+            "clippy::slow_vector_initialization",
+            "clippy::stable_sort_primitive",
+            "clippy::to_string_in_format_args",
+            "clippy::useless_vec",
+            "clippy::vec_init_then_push",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "clippy::restriction",
+            description: r##"lint group for: clippy::as_conversions, clippy::clone_on_ref_ptr, clippy::create_dir, clippy::dbg_macro, clippy::decimal_literal_representation, clippy::default_numeric_fallback, clippy::disallowed_script_idents, clippy::else_if_without_else, clippy::exhaustive_enums, clippy::exhaustive_structs, clippy::exit, clippy::expect_used, clippy::filetype_is_file, clippy::float_arithmetic, clippy::float_cmp_const, clippy::fn_to_numeric_cast_any, clippy::get_unwrap, clippy::if_then_some_else_none, clippy::implicit_return, clippy::indexing_slicing, clippy::inline_asm_x86_att_syntax, clippy::inline_asm_x86_intel_syntax, clippy::integer_arithmetic, clippy::integer_division, clippy::let_underscore_must_use, clippy::lossy_float_literal, clippy::map_err_ignore, clippy::mem_forget, clippy::missing_docs_in_private_items, clippy::missing_enforced_import_renames, clippy::missing_inline_in_public_items, clippy::mod_module_files, clippy::modulo_arithmetic, clippy::multiple_inherent_impl, clippy::non_ascii_literal, clippy::panic, clippy::panic_in_result_fn, clippy::pattern_type_mismatch, clippy::print_stderr, clippy::print_stdout, clippy::rc_buffer, clippy::rc_mutex, clippy::rest_pat_in_fully_bound_structs, clippy::same_name_method, clippy::self_named_module_files, clippy::separated_literal_suffix, clippy::shadow_reuse, clippy::shadow_same, clippy::shadow_unrelated, clippy::str_to_string, clippy::string_add, clippy::string_slice, clippy::string_to_string, clippy::todo, clippy::undocumented_unsafe_blocks, clippy::unimplemented, clippy::unnecessary_self_imports, clippy::unneeded_field_pattern, clippy::unreachable, clippy::unseparated_literal_suffix, clippy::unwrap_in_result, clippy::unwrap_used, clippy::use_debug, clippy::verbose_file_reads, clippy::wildcard_enum_match_arm"##,
+        },
+        children: &[
+            "clippy::as_conversions",
+            "clippy::clone_on_ref_ptr",
+            "clippy::create_dir",
+            "clippy::dbg_macro",
+            "clippy::decimal_literal_representation",
+            "clippy::default_numeric_fallback",
+            "clippy::disallowed_script_idents",
+            "clippy::else_if_without_else",
+            "clippy::exhaustive_enums",
+            "clippy::exhaustive_structs",
+            "clippy::exit",
+            "clippy::expect_used",
+            "clippy::filetype_is_file",
+            "clippy::float_arithmetic",
+            "clippy::float_cmp_const",
+            "clippy::fn_to_numeric_cast_any",
+            "clippy::get_unwrap",
+            "clippy::if_then_some_else_none",
+            "clippy::implicit_return",
+            "clippy::indexing_slicing",
+            "clippy::inline_asm_x86_att_syntax",
+            "clippy::inline_asm_x86_intel_syntax",
+            "clippy::integer_arithmetic",
+            "clippy::integer_division",
+            "clippy::let_underscore_must_use",
+            "clippy::lossy_float_literal",
+            "clippy::map_err_ignore",
+            "clippy::mem_forget",
+            "clippy::missing_docs_in_private_items",
+            "clippy::missing_enforced_import_renames",
+            "clippy::missing_inline_in_public_items",
+            "clippy::mod_module_files",
+            "clippy::modulo_arithmetic",
+            "clippy::multiple_inherent_impl",
+            "clippy::non_ascii_literal",
+            "clippy::panic",
+            "clippy::panic_in_result_fn",
+            "clippy::pattern_type_mismatch",
+            "clippy::print_stderr",
+            "clippy::print_stdout",
+            "clippy::rc_buffer",
+            "clippy::rc_mutex",
+            "clippy::rest_pat_in_fully_bound_structs",
+            "clippy::same_name_method",
+            "clippy::self_named_module_files",
+            "clippy::separated_literal_suffix",
+            "clippy::shadow_reuse",
+            "clippy::shadow_same",
+            "clippy::shadow_unrelated",
+            "clippy::str_to_string",
+            "clippy::string_add",
+            "clippy::string_slice",
+            "clippy::string_to_string",
+            "clippy::todo",
+            "clippy::undocumented_unsafe_blocks",
+            "clippy::unimplemented",
+            "clippy::unnecessary_self_imports",
+            "clippy::unneeded_field_pattern",
+            "clippy::unreachable",
+            "clippy::unseparated_literal_suffix",
+            "clippy::unwrap_in_result",
+            "clippy::unwrap_used",
+            "clippy::use_debug",
+            "clippy::verbose_file_reads",
+            "clippy::wildcard_enum_match_arm",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "clippy::style",
+            description: r##"lint group for: clippy::assertions_on_constants, clippy::assign_op_pattern, clippy::blacklisted_name, clippy::blocks_in_if_conditions, clippy::bool_assert_comparison, clippy::borrow_interior_mutable_const, clippy::builtin_type_shadow, clippy::bytes_nth, clippy::chars_last_cmp, clippy::chars_next_cmp, clippy::cmp_null, clippy::collapsible_else_if, clippy::collapsible_if, clippy::collapsible_match, clippy::comparison_chain, clippy::comparison_to_empty, clippy::declare_interior_mutable_const, clippy::double_must_use, clippy::double_neg, clippy::duplicate_underscore_argument, clippy::enum_variant_names, clippy::excessive_precision, clippy::field_reassign_with_default, clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation, clippy::for_kv_map, clippy::from_over_into, clippy::from_str_radix_10, clippy::inconsistent_digit_grouping, clippy::infallible_destructuring_match, clippy::inherent_to_string, clippy::into_iter_on_ref, clippy::iter_cloned_collect, clippy::iter_next_slice, clippy::iter_nth_zero, clippy::iter_skip_next, clippy::just_underscores_and_digits, clippy::len_without_is_empty, clippy::len_zero, clippy::let_and_return, clippy::main_recursion, clippy::manual_async_fn, clippy::manual_map, clippy::manual_non_exhaustive, clippy::manual_range_contains, clippy::manual_saturating_arithmetic, clippy::map_clone, clippy::map_collect_result_unit, clippy::match_like_matches_macro, clippy::match_overlapping_arm, clippy::match_ref_pats, clippy::match_result_ok, clippy::mem_replace_option_with_none, clippy::mem_replace_with_default, clippy::missing_safety_doc, clippy::mixed_case_hex_literals, clippy::module_inception, clippy::must_use_unit, clippy::mut_mutex_lock, clippy::needless_borrow, clippy::needless_doctest_main, clippy::needless_range_loop, clippy::needless_return, clippy::neg_multiply, clippy::new_ret_no_self, clippy::new_without_default, clippy::ok_expect, clippy::op_ref, clippy::option_map_or_none, clippy::print_literal, clippy::print_with_newline, clippy::println_empty_string, clippy::ptr_arg, clippy::ptr_eq, clippy::question_mark, clippy::redundant_closure, clippy::redundant_field_names, clippy::redundant_pattern, clippy::redundant_pattern_matching, clippy::redundant_static_lifetimes, clippy::result_map_or_into_option, clippy::result_unit_err, clippy::same_item_push, clippy::self_named_constructors, clippy::should_implement_trait, clippy::single_char_add_str, clippy::single_component_path_imports, clippy::single_match, clippy::string_extend_chars, clippy::tabs_in_doc_comments, clippy::to_digit_is_some, clippy::toplevel_ref_arg, clippy::try_err, clippy::unnecessary_fold, clippy::unnecessary_lazy_evaluations, clippy::unnecessary_mut_passed, clippy::unsafe_removed_from_name, clippy::unused_unit, clippy::unusual_byte_groupings, clippy::unwrap_or_else_default, clippy::upper_case_acronyms, clippy::while_let_on_iterator, clippy::write_literal, clippy::write_with_newline, clippy::writeln_empty_string, clippy::wrong_self_convention, clippy::zero_ptr"##,
+        },
+        children: &[
+            "clippy::assertions_on_constants",
+            "clippy::assign_op_pattern",
+            "clippy::blacklisted_name",
+            "clippy::blocks_in_if_conditions",
+            "clippy::bool_assert_comparison",
+            "clippy::borrow_interior_mutable_const",
+            "clippy::builtin_type_shadow",
+            "clippy::bytes_nth",
+            "clippy::chars_last_cmp",
+            "clippy::chars_next_cmp",
+            "clippy::cmp_null",
+            "clippy::collapsible_else_if",
+            "clippy::collapsible_if",
+            "clippy::collapsible_match",
+            "clippy::comparison_chain",
+            "clippy::comparison_to_empty",
+            "clippy::declare_interior_mutable_const",
+            "clippy::double_must_use",
+            "clippy::double_neg",
+            "clippy::duplicate_underscore_argument",
+            "clippy::enum_variant_names",
+            "clippy::excessive_precision",
+            "clippy::field_reassign_with_default",
+            "clippy::fn_to_numeric_cast",
+            "clippy::fn_to_numeric_cast_with_truncation",
+            "clippy::for_kv_map",
+            "clippy::from_over_into",
+            "clippy::from_str_radix_10",
+            "clippy::inconsistent_digit_grouping",
+            "clippy::infallible_destructuring_match",
+            "clippy::inherent_to_string",
+            "clippy::into_iter_on_ref",
+            "clippy::iter_cloned_collect",
+            "clippy::iter_next_slice",
+            "clippy::iter_nth_zero",
+            "clippy::iter_skip_next",
+            "clippy::just_underscores_and_digits",
+            "clippy::len_without_is_empty",
+            "clippy::len_zero",
+            "clippy::let_and_return",
+            "clippy::main_recursion",
+            "clippy::manual_async_fn",
+            "clippy::manual_map",
+            "clippy::manual_non_exhaustive",
+            "clippy::manual_range_contains",
+            "clippy::manual_saturating_arithmetic",
+            "clippy::map_clone",
+            "clippy::map_collect_result_unit",
+            "clippy::match_like_matches_macro",
+            "clippy::match_overlapping_arm",
+            "clippy::match_ref_pats",
+            "clippy::match_result_ok",
+            "clippy::mem_replace_option_with_none",
+            "clippy::mem_replace_with_default",
+            "clippy::missing_safety_doc",
+            "clippy::mixed_case_hex_literals",
+            "clippy::module_inception",
+            "clippy::must_use_unit",
+            "clippy::mut_mutex_lock",
+            "clippy::needless_borrow",
+            "clippy::needless_doctest_main",
+            "clippy::needless_range_loop",
+            "clippy::needless_return",
+            "clippy::neg_multiply",
+            "clippy::new_ret_no_self",
+            "clippy::new_without_default",
+            "clippy::ok_expect",
+            "clippy::op_ref",
+            "clippy::option_map_or_none",
+            "clippy::print_literal",
+            "clippy::print_with_newline",
+            "clippy::println_empty_string",
+            "clippy::ptr_arg",
+            "clippy::ptr_eq",
+            "clippy::question_mark",
+            "clippy::redundant_closure",
+            "clippy::redundant_field_names",
+            "clippy::redundant_pattern",
+            "clippy::redundant_pattern_matching",
+            "clippy::redundant_static_lifetimes",
+            "clippy::result_map_or_into_option",
+            "clippy::result_unit_err",
+            "clippy::same_item_push",
+            "clippy::self_named_constructors",
+            "clippy::should_implement_trait",
+            "clippy::single_char_add_str",
+            "clippy::single_component_path_imports",
+            "clippy::single_match",
+            "clippy::string_extend_chars",
+            "clippy::tabs_in_doc_comments",
+            "clippy::to_digit_is_some",
+            "clippy::toplevel_ref_arg",
+            "clippy::try_err",
+            "clippy::unnecessary_fold",
+            "clippy::unnecessary_lazy_evaluations",
+            "clippy::unnecessary_mut_passed",
+            "clippy::unsafe_removed_from_name",
+            "clippy::unused_unit",
+            "clippy::unusual_byte_groupings",
+            "clippy::unwrap_or_else_default",
+            "clippy::upper_case_acronyms",
+            "clippy::while_let_on_iterator",
+            "clippy::write_literal",
+            "clippy::write_with_newline",
+            "clippy::writeln_empty_string",
+            "clippy::wrong_self_convention",
+            "clippy::zero_ptr",
+        ],
+    },
+    LintGroup {
+        lint: Lint {
+            label: "clippy::suspicious",
+            description: r##"lint group for: clippy::blanket_clippy_restriction_lints, clippy::empty_loop, clippy::eval_order_dependence, clippy::float_equality_without_abs, clippy::for_loops_over_fallibles, clippy::misrefactored_assign_op, clippy::mut_range_bound, clippy::mutable_key_type, clippy::non_send_fields_in_send_ty, clippy::suspicious_arithmetic_impl, clippy::suspicious_assignment_formatting, clippy::suspicious_else_formatting, clippy::suspicious_map, clippy::suspicious_op_assign_impl, clippy::suspicious_unary_op_formatting"##,
+        },
+        children: &[
+            "clippy::blanket_clippy_restriction_lints",
+            "clippy::empty_loop",
+            "clippy::eval_order_dependence",
+            "clippy::float_equality_without_abs",
+            "clippy::for_loops_over_fallibles",
+            "clippy::misrefactored_assign_op",
+            "clippy::mut_range_bound",
+            "clippy::mutable_key_type",
+            "clippy::non_send_fields_in_send_ty",
+            "clippy::suspicious_arithmetic_impl",
+            "clippy::suspicious_assignment_formatting",
+            "clippy::suspicious_else_formatting",
+            "clippy::suspicious_map",
+            "clippy::suspicious_op_assign_impl",
+            "clippy::suspicious_unary_op_formatting",
+        ],
     },
 ];
