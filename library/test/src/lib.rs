@@ -18,6 +18,8 @@
 #![feature(nll)]
 #![feature(bench_black_box)]
 #![feature(internal_output_capture)]
+#![feature(is_terminal)]
+#![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
 #![feature(process_exitcode_placeholder)]
@@ -292,7 +294,11 @@ where
     fn calc_timeout(timeout_queue: &VecDeque<TimeoutEntry>) -> Option<Duration> {
         timeout_queue.front().map(|&TimeoutEntry { timeout: next_timeout, .. }| {
             let now = Instant::now();
-            if next_timeout >= now { next_timeout - now } else { Duration::new(0, 0) }
+            if next_timeout >= now {
+                next_timeout - now
+            } else {
+                Duration::new(0, 0)
+            }
         })
     }
 

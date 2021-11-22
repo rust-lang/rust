@@ -485,6 +485,12 @@ pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
 }
 
 #[repr(C)]
+pub struct FILE_NAME_INFO {
+    FileNameLength: DWORD,
+    FileName: [WCHAR; 1],
+}
+
+#[repr(C)]
 pub struct MOUNT_POINT_REPARSE_BUFFER {
     pub SubstituteNameOffset: c_ushort,
     pub SubstituteNameLength: c_ushort,

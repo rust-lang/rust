@@ -1018,6 +1018,59 @@ where
     }
 }
 
+/// Trait to determine if stdio stream (Stdin, Stdout, Stderr) is a terminal/tty.
+#[unstable(feature = "is_terminal", issue = "80937")]
+pub trait IsTerminal {
+    /// returns true if stdio stream (Stdin, Stdout, Stderr) is a terminal/tty.
+    fn is_terminal() -> bool;
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(any(unix, windows, hermit))] {
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stdin {
+            fn is_terminal() -> bool {
+               stdio::Stdin::is_terminal()
+            }
+        }
+
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stdout {
+            fn is_terminal() -> bool {
+                stdio::Stdout::is_terminal()
+            }
+        }
+
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stderr {
+            fn is_terminal() -> bool {
+                stdio::Stderr::is_terminal()
+            }
+        }
+    } else {
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stdin {
+            fn is_terminal() -> bool {
+                false
+            }
+        }
+
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stdout {
+            fn is_terminal() -> bool {
+                false
+            }
+        }
+
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stderr {
+            fn is_terminal() -> bool {
+                false
+            }
+        }
+    }
+}
+
 #[unstable(
     feature = "print_internals",
     reason = "implementation detail which may disappear or be replaced at any time",

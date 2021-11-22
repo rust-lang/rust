@@ -118,3 +118,23 @@ pub fn is_ebadf(_err: &io::Error) -> bool {
 pub fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
 }
+
+#[unstable(feature = "is_terminal", issue = "80937")]
+impl io::IsTerminal for sys::stdio::Stdin {
+    fn is_terminal() -> bool {
+        abi::isatty(abi::STDIN_FILENO)
+    }
+}
+
+#[unstable(feature = "is_terminal", issue = "80937")]
+impl io::IsTerminal for sys::stdio::Stdout {
+    fn is_terminal() -> bool {
+        abi::isatty(abi::STDOUT_FILENO)
+    }
+}
+#[unstable(feature = "is_terminal", issue = "80937")]
+impl io::IsTerminal for sys::stdio::Stderr {
+    fn is_terminal() -> bool {
+        abi::isatty(abi::STDERR_FILENO)
+    }
+}

@@ -1,6 +1,7 @@
+use crate::io;
 use crate::marker::PhantomData;
 use crate::slice;
-
+use crate::sys;
 use libc::{c_void, iovec};
 
 #[derive(Copy, Clone)]
@@ -72,5 +73,25 @@ impl<'a> IoSliceMut<'a> {
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         unsafe { slice::from_raw_parts_mut(self.vec.iov_base as *mut u8, self.vec.iov_len) }
+    }
+}
+
+#[unstable(feature = "is_terminal", issue = "80937")]
+impl io::IsTerminal for sys::stdio::Stdin {
+    fn is_terminal() -> bool {
+        unsafe { libc::isatty(libc::STDIN_FILENO) != 0 }
+    }
+}
+
+#[unstable(feature = "is_terminal", issue = "80937")]
+impl io::IsTerminal for sys::stdio::Stdout {
+    fn is_terminal() -> bool {
+        unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+    }
+}
+#[unstable(feature = "is_terminal", issue = "80937")]
+impl io::IsTerminal for sys::stdio::Stderr {
+    fn is_terminal() -> bool {
+        unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
     }
 }

@@ -279,6 +279,8 @@
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(intra_doc_pointers)]
+#![feature(is_terminal)]
+#![feature(iter_zip)]
 #![feature(lang_items)]
 #![feature(linkage)]
 #![feature(log_syntax)]
