@@ -1,13 +1,13 @@
-error[E0600]: cannot apply unary operator `!` to type `!`
+error[E0614]: type `!` cannot be dereferenced
   --> $DIR/expr_unary.rs:8:16
    |
-LL |     let x: ! = ! { return; };
-   |                ^^^^^^^^^^^^^ cannot apply unary operator `!`
+LL |     let x: ! = * { return; };
+   |                ^^^^^^^^^^^^^
 
 error: unreachable expression
   --> $DIR/expr_unary.rs:8:16
    |
-LL |     let x: ! = ! { return; };
+LL |     let x: ! = * { return; };
    |                ^^^^------^^^
    |                |   |
    |                |   any code following this expression is unreachable
@@ -21,4 +21,4 @@ LL | #![deny(unreachable_code)]
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0600`.
+For more information about this error, try `rustc --explain E0614`.
