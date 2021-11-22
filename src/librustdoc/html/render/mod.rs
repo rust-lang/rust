@@ -1613,6 +1613,7 @@ fn render_impl(
             );
             write!(w, "<summary>")
         }
+
         render_impl_summary(
             w,
             cx,
@@ -1691,7 +1692,7 @@ pub(crate) fn render_impl_summary(
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
 ) {
-    let id = cx.derive_id(match i.inner_impl().trait_ {
+    let html_id = cx.derive_id(match i.inner_impl().trait_ {
         Some(ref t) => {
             if is_on_foreign_type {
                 get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t, cx)
@@ -1701,14 +1702,17 @@ pub(crate) fn render_impl_summary(
         }
         None => "impl".to_string(),
     });
+
+    cx.item_to_html_id_map.borrow_mut().insert(i.impl_item.def_id, html_id.clone());
+
     let aliases = if aliases.is_empty() {
         String::new()
     } else {
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
-    write!(w, "<div id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
+    write!(w, "<div id=\"{}\" class=\"impl has-srclink\"{}>", html_id, aliases);
     render_rightside(w, cx, &i.impl_item, containing_item);
-    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", html_id);
     write!(w, "<h3 class=\"code-header in-band\">");
 
     if let Some(use_absolute) = use_absolute {
@@ -2214,20 +2218,12 @@ fn get_id_for_impl_on_foreign_type(
     small_url_encode(format!("impl-{:#}-for-{:#}", trait_.print(cx), for_.print(cx)))
 }
 
-fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
-    match *item.kind {
-        clean::ItemKind::ImplItem(ref i) => {
-            i.trait_.as_ref().map(|trait_| {
-                // Alternative format produces no URLs,
-                // so this parameter does nothing.
-                (
-                    format!("{:#}", i.for_.print(cx)),
-                    get_id_for_impl_on_foreign_type(&i.for_, trait_, cx),
-                )
-            })
-        }
-        _ => None,
-    }
+fn extract_for_impl_name(item: &Impl, cx: &Context<'_>) -> (String, String) {
+    let i = item.inner_impl();
+    let trait_ = i.trait_.as_ref().unwrap();
+    // Alternative format produces no URLs,
+    // so this parameter does nothing.
+    (format!("{:#}", i.for_.print(cx)), get_id_for_impl_on_foreign_type(&i.for_, trait_, cx))
 }
 
 fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
@@ -2236,101 +2232,125 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
     fn print_sidebar_section(
         out: &mut Buffer,
         items: &[clean::Item],
-        before: &str,
+        title: &str,
+        id: &str,
         filter: impl Fn(&clean::Item) -> bool,
         write: impl Fn(&mut Buffer, &str),
-        after: &str,
     ) {
-        let mut items = items
-            .iter()
-            .filter_map(|m| match m.name {
-                Some(ref name) if filter(m) => Some(name.as_str()),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
+        print_sidebar_section_with(
+            out,
+            title,
+            id,
+            items.iter().filter(|i| filter(i)).filter_map(|i| i.name.map(|n| n.as_str())),
+            |buf, s| write(buf, &s),
+        )
+    }
+
+    fn print_sidebar_section_with<T: Ord>(
+        out: &mut Buffer,
+        title: &str,
+        id: &str,
+        iter: impl Iterator<Item = T>,
+        write: impl Fn(&mut Buffer, T),
+    ) {
+        let mut items = iter.collect::<Vec<_>>();
 
         if !items.is_empty() {
             items.sort_unstable();
-            out.push_str(before);
+            write!(
+                out,
+                "<h3 class=\"sidebar-title\"><a href=\"#{}\">\
+                {}</a></h3><div class=\"sidebar-links\">",
+                id, title
+            );
             for item in items.into_iter() {
-                write(out, &item);
+                write(out, item);
             }
-            out.push_str(after);
+            out.push_str("</div>");
         }
     }
 
     print_sidebar_section(
         buf,
         &t.items,
-        "<h3 class=\"sidebar-title\"><a href=\"#associated-types\">\
-            Associated Types</a></h3><div class=\"sidebar-links\">",
+        "Associated Types",
+        "associated-types",
         |m| m.is_associated_type(),
         |out, sym| write!(out, "<a href=\"#associatedtype.{0}\">{0}</a>", sym),
-        "</div>",
     );
 
     print_sidebar_section(
         buf,
         &t.items,
-        "<h3 class=\"sidebar-title\"><a href=\"#associated-const\">\
-            Associated Constants</a></h3><div class=\"sidebar-links\">",
+        "Associated Constants",
+        "associated-const",
         |m| m.is_associated_const(),
         |out, sym| write!(out, "<a href=\"#associatedconstant.{0}\">{0}</a>", sym),
-        "</div>",
     );
 
     print_sidebar_section(
         buf,
         &t.items,
-        "<h3 class=\"sidebar-title\"><a href=\"#required-methods\">\
-            Required Methods</a></h3><div class=\"sidebar-links\">",
+        "Required Methods",
+        "required-methods",
         |m| m.is_ty_method(),
         |out, sym| write!(out, "<a href=\"#tymethod.{0}\">{0}</a>", sym),
-        "</div>",
     );
 
     print_sidebar_section(
         buf,
         &t.items,
-        "<h3 class=\"sidebar-title\"><a href=\"#provided-methods\">\
-            Provided Methods</a></h3><div class=\"sidebar-links\">",
+        "Provided Methods",
+        "provided-methods",
         |m| m.is_method(),
         |out, sym| write!(out, "<a href=\"#method.{0}\">{0}</a>", sym),
-        "</div>",
     );
 
     let cache = cx.cache();
-    if let Some(implementors) = cache.implementors.get(&it.def_id.expect_def_id()) {
-        let mut res = implementors
-            .iter()
-            .filter(|i| {
-                i.inner_impl().for_.def_id(cache).map_or(false, |d| !cache.paths.contains_key(&d))
-            })
-            .filter_map(|i| extract_for_impl_name(&i.impl_item, cx))
-            .collect::<Vec<_>>();
+    let did = it.def_id.expect_def_id();
 
-        if !res.is_empty() {
-            res.sort();
-            buf.push_str(
-                "<h3 class=\"sidebar-title\"><a href=\"#foreign-impls\">\
-                    Implementations on Foreign Types</a></h3>\
-                 <div class=\"sidebar-links\">",
-            );
-            for (name, id) in res.into_iter() {
-                write!(buf, "<a href=\"#{}\">{}</a>", id, Escape(&name));
-            }
-            buf.push_str("</div>");
-        }
-    }
+    let (local_impl, foreign_impls) = cache
+        .implementors
+        .get(&did)
+        .iter()
+        .flat_map(|x| *x)
+        .partition::<Vec<_>, _>(|i| i.is_local(cache));
+
+    print_sidebar_section_with(
+        buf,
+        "Implementations on Foreign Types",
+        "foreign-impls",
+        foreign_impls.iter().map(|i| extract_for_impl_name(i, cx)),
+        |buf, (name, id)| write!(buf, "<a href=\"#{}\">{}</a>", id, Escape(&name)),
+    );
 
     sidebar_assoc_items(cx, buf, it);
 
-    buf.push_str("<h3 class=\"sidebar-title\"><a href=\"#implementors\">Implementors</a></h3>");
+    print_sidebar_section_with(
+        buf,
+        "Implementors",
+        "implementors",
+        local_impl.iter().filter(|i| i.inner_impl().polarity == ty::ImplPolarity::Positive).map(
+            |i| {
+                (
+                    format!("{:#}", i.inner_impl().for_.print(cx)),
+                    cx.item_to_html_id_map
+                        .borrow()
+                        .get(&i.impl_item.def_id)
+                        .unwrap_or_else(|| panic!("Not in index {:#?}", i))
+                        .clone(),
+                )
+            },
+        ),
+        |buf, (name, id)| write!(buf, "<a href=\"#{}\">{}</a>", id, Escape(&name)),
+    );
+
     if t.is_auto {
         buf.push_str(
             "<h3 class=\"sidebar-title\"><a \
                 href=\"#synthetic-implementors\">Auto Implementors</a></h3>",
         );
+        // FIXME: List Auto Implementors
     }
 
     buf.push_str("</div>")

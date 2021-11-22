@@ -40,4 +40,8 @@ impl Impl {
     crate fn trait_did(&self) -> Option<DefId> {
         self.inner_impl().trait_.as_ref().map(|t| t.def_id())
     }
+
+    crate fn is_local(&self, cache: &cache::Cache) -> bool {
+        self.inner_impl().for_.def_id(cache).map_or(true, |d| cache.paths.contains_key(&d))
+    }
 }
