@@ -50,7 +50,7 @@ impl<T: ?Sized> *mut T {
     /// Casts a pointer to its raw bits.
     ///
     /// This is equivalent to `as usize`, but is more specific to enhance readability.
-    /// The inverse method is [`Self::from_bits`].
+    /// The inverse method is [`from_bits`](#method.from_bits-1).
     ///
     /// In particular, `*p as usize` and `p as usize` will both compile for
     /// pointers to numeric types but do very different things, so using this
@@ -78,7 +78,7 @@ impl<T: ?Sized> *mut T {
     /// Creates a pointer from its raw bits.
     ///
     /// This is equivalent to `as *mut T`, but is more specific to enhance readability.
-    /// The inverse method is [`Self::to_bits`].
+    /// The inverse method is [`to_bits`](#method.to_bits-1).
     ///
     /// # Examples
     ///
