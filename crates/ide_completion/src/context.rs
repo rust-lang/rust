@@ -3,8 +3,8 @@
 use base_db::SourceDatabaseExt;
 use hir::{Local, Name, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo};
 use ide_db::{
+    active_parameter::ActiveParameter,
     base_db::{FilePosition, SourceDatabase},
-    call_info::ActiveParameter,
     RootDatabase,
 };
 use syntax::{

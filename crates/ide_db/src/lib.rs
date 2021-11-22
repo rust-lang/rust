@@ -13,12 +13,12 @@ pub mod items_locator;
 pub mod source_change;
 pub mod ty_filter;
 pub mod traits;
-pub mod call_info;
 pub mod helpers;
 pub mod path_transform;
 
 pub mod search;
 pub mod rename;
+pub mod active_parameter;
 
 use std::{fmt, mem::ManuallyDrop, sync::Arc};
 
