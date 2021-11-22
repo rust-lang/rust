@@ -827,6 +827,12 @@ if #[cfg(not(target_vendor = "uwp"))] {
             hFile: HANDLE,
             lpFileInformation: LPBY_HANDLE_FILE_INFORMATION,
         ) -> BOOL;
+        pub fn GetFileInformationByHandleEx(
+            hFile: HANDLE,
+            FileInformationClass: FILE_INFO_BY_HANDLE_CLASS,
+            lpFileInformation: LPVOID,
+            dwBufferSize: DWORD,
+        ) -> BOOL;
         pub fn SetHandleInformation(hObject: HANDLE, dwMask: DWORD, dwFlags: DWORD) -> BOOL;
         pub fn AddVectoredExceptionHandler(
             FirstHandler: ULONG,

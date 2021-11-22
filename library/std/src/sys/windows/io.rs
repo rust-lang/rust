@@ -3,8 +3,8 @@ use crate::marker::PhantomData;
 use crate::slice;
 use crate::sys;
 use crate::sys::c;
+use core;
 use libc;
-use std;
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
@@ -174,8 +174,8 @@ unsafe fn console_on_any(fds: &[c::DWORD]) -> bool {
 }
 #[unstable(feature = "is_terminal", issue = "80937")]
 unsafe fn msys_tty_on(fd: c::DWORD) -> bool {
-    let size = std::mem::size_of::<c::FILE_NAME_INFO>();
-    let mut name_info_bytes = vec![0u8; size + c::MAX_PATH * std::mem::size_of::<c::WCHAR>()];
+    let size = core::mem::size_of::<c::FILE_NAME_INFO>();
+    let mut name_info_bytes = vec![0u8; size + c::MAX_PATH * core::mem::size_of::<c::WCHAR>()];
     let res = c::GetFileInformationByHandleEx(
         c::GetStdHandle(fd),
         c::FileNameInfo,
@@ -186,7 +186,7 @@ unsafe fn msys_tty_on(fd: c::DWORD) -> bool {
         return false;
     }
     let name_info: &c::FILE_NAME_INFO = &*(name_info_bytes.as_ptr() as *const c::FILE_NAME_INFO);
-    let s = std::slice::from_raw_parts(
+    let s = core::slice::from_raw_parts(
         name_info.FileName.as_ptr(),
         name_info.FileNameLength as usize / 2,
     );
