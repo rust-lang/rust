@@ -27,7 +27,7 @@ macro_rules! f {
 f!(struct MyTraitMap2);
 "#,
         expect![[r##"
-// call ids will be shifted by Shift(27)
+// call ids will be shifted by Shift(30)
 // +tokenids
 macro_rules! f {#0
     (#1 struct#2 $#3ident#4:#5ident#6 )#1 =#7>#8 {#9
@@ -39,7 +39,7 @@ macro_rules! f {#0
 
 // // +tokenids
 // f!(struct#1 MyTraitMap2#2);
-struct#10 MyTraitMap2#29 {#13
+struct#10 MyTraitMap2#32 {#13
     map#14:#15 ::std#18::collections#21::HashSet#24<#25(#26)#26>#27,#28
 }#13
 "##]],

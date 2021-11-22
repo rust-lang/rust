@@ -120,12 +120,15 @@ impl Shift {
                             _ => tree_id,
                         }
                     }
-                    tt::TokenTree::Leaf(tt::Leaf::Ident(ident))
-                        if ident.id != tt::TokenId::unspecified() =>
-                    {
-                        Some(ident.id.0)
+                    tt::TokenTree::Leaf(leaf) => {
+                        let id = match leaf {
+                            tt::Leaf::Literal(it) => it.id,
+                            tt::Leaf::Punct(it) => it.id,
+                            tt::Leaf::Ident(it) => it.id,
+                        };
+
+                        (id != tt::TokenId::unspecified()).then(|| id.0)
                     }
-                    _ => None,
                 })
                 .max()
         }

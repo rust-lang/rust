@@ -279,6 +279,13 @@ impl HirFileId {
     pub fn is_macro(self) -> bool {
         matches!(self.0, HirFileIdRepr::MacroFile(_))
     }
+
+    pub fn macro_file(self) -> Option<MacroFile> {
+        match self.0 {
+            HirFileIdRepr::FileId(_) => None,
+            HirFileIdRepr::MacroFile(m) => Some(m),
+        }
+    }
 }
 
 impl MacroDefId {
@@ -377,6 +384,8 @@ pub struct ExpansionInfo {
 
     macro_def: Arc<TokenExpander>,
     macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
+    /// A shift built from `macro_arg`'s subtree, relevant for attributes as the item is the macro arg
+    /// and as such we need to shift tokens if they are part of an attributes input instead of their item.
     macro_arg_shift: mbe::Shift,
     exp_map: Arc<mbe::TokenMap>,
 }
@@ -390,6 +399,20 @@ impl ExpansionInfo {
         Some(self.arg.with_value(self.arg.value.parent()?))
     }
 
+    /// Map a token down from macro input into the macro expansion.
+    ///
+    /// The inner workings of this function differ slightly depending on the type of macro we are dealing with:
+    /// - declarative:
+    ///     For declarative macros, we need to accommodate for the macro definition site(which acts as a second unchanging input)
+    ///     , as tokens can mapped in and out of it.
+    ///     To do this we shift all ids in the expansion by the maximum id of the definition site giving us an easy
+    ///     way to map all the tokens.
+    /// - attribute:
+    ///     Attributes have two different inputs, the input tokentree in the attribute node and the item
+    ///     the attribute is annotating. Similarly as for declarative macros we need to do a shift here
+    ///     as well. Currently this is done by shifting the attribute input by the maximum id of the item.
+    /// - function-like and derives:
+    ///     Both of these only have one simple call site input so no special handling is required here.
     pub fn map_token_down(
         &self,
         db: &dyn db::AstDatabase,
@@ -397,12 +420,10 @@ impl ExpansionInfo {
         token: InFile<&SyntaxToken>,
     ) -> Option<impl Iterator<Item = InFile<SyntaxToken>> + '_> {
         assert_eq!(token.file_id, self.arg.file_id);
-        let token_id = if let Some(item) = item {
+        let token_id_in_attr_input = if let Some(item) = item {
             // check if we are mapping down in an attribute input
-            let call_id = match self.expanded.file_id.0 {
-                HirFileIdRepr::FileId(_) => return None,
-                HirFileIdRepr::MacroFile(macro_file) => macro_file.macro_call_id,
-            };
+            // this is a special case as attributes can have two inputs
+            let call_id = self.expanded.file_id.macro_file()?.macro_call_id;
             let loc = db.lookup_intern_macro_call(call_id);
 
             let token_range = token.value.text_range();
@@ -415,9 +436,12 @@ impl ExpansionInfo {
                         {
                             let attr_input_start =
                                 token_tree.left_delimiter_token()?.text_range().start();
-                            let range = token.value.text_range().checked_sub(attr_input_start)?;
-                            let token_id =
-                                self.macro_arg_shift.shift(attr_args.1.token_by_range(range)?);
+                            let relative_range =
+                                token.value.text_range().checked_sub(attr_input_start)?;
+                            // shift by the item's tree's max id
+                            let token_id = self
+                                .macro_arg_shift
+                                .shift(attr_args.1.token_by_range(relative_range)?);
                             Some(token_id)
                         }
                         _ => None,
@@ -429,12 +453,14 @@ impl ExpansionInfo {
             None
         };
 
-        let token_id = match token_id {
+        let token_id = match token_id_in_attr_input {
             Some(token_id) => token_id,
+            // the token is not inside an attribute's input so do the lookup in the macro_arg as ususal
             None => {
-                let range =
+                let relative_range =
                     token.value.text_range().checked_sub(self.arg.value.text_range().start())?;
-                let token_id = self.macro_arg.1.token_by_range(range)?;
+                let token_id = self.macro_arg.1.token_by_range(relative_range)?;
+                // conditionally shift the id by a declaratives macro definition
                 self.macro_def.map_id_down(token_id)
             }
         };
@@ -447,28 +473,33 @@ impl ExpansionInfo {
         Some(tokens.map(move |token| self.expanded.with_value(token)))
     }
 
+    /// Map a token up out of the expansion it resides in into the arguments of the macro call of the expansion.
     pub fn map_token_up(
         &self,
         db: &dyn db::AstDatabase,
         token: InFile<&SyntaxToken>,
     ) -> Option<(InFile<SyntaxToken>, Origin)> {
+        // Fetch the id through its text range,
         let token_id = self.exp_map.token_by_range(token.value.text_range())?;
+        // conditionally unshifting the id to accommodate for macro-rules def site
         let (mut token_id, origin) = self.macro_def.map_id_up(token_id);
 
-        let call_id = match self.expanded.file_id.0 {
-            HirFileIdRepr::FileId(_) => return None,
-            HirFileIdRepr::MacroFile(macro_file) => macro_file.macro_call_id,
-        };
+        let call_id = self.expanded.file_id.macro_file()?.macro_call_id;
         let loc = db.lookup_intern_macro_call(call_id);
 
+        // Attributes are a bit special for us, they have two inputs, the input tokentree and the annotated item.
         let (token_map, tt) = match &loc.kind {
-            MacroCallKind::Attr { attr_args, .. } => match self.macro_arg_shift.unshift(token_id) {
-                Some(unshifted) => {
-                    token_id = unshifted;
-                    (&attr_args.1, self.attr_input_or_mac_def.clone()?.syntax().cloned())
+            MacroCallKind::Attr { attr_args: (_, arg_token_map), .. } => {
+                // try unshifting the the token id, if unshifting fails, the token resides in the non-item attribute input
+                // note that the `TokenExpander::map_id_up` earlier only unshifts for declarative macros, so we don't double unshift with this
+                match self.macro_arg_shift.unshift(token_id) {
+                    Some(unshifted) => {
+                        token_id = unshifted;
+                        (arg_token_map, self.attr_input_or_mac_def.clone()?.syntax().cloned())
+                    }
+                    None => (&self.macro_arg.1, self.arg.clone()),
                 }
-                None => (&self.macro_arg.1, self.arg.clone()),
-            },
+            }
             _ => match origin {
                 mbe::Origin::Call => (&self.macro_arg.1, self.arg.clone()),
                 mbe::Origin::Def => match (&*self.macro_def, &self.attr_input_or_mac_def) {
