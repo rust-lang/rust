@@ -6,6 +6,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
+use std::fmt::Write;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -13,9 +14,14 @@ declare_clippy_lint! {
     /// character escapes in C.
     ///
     /// ### Why is this bad?
-    /// Rust does not support octal notation for character escapes. `\0` is always a
-    /// null byte/character, and any following digits do not form part of the escape
-    /// sequence.
+    ///
+    /// C and other languages support octal character escapes in strings, where
+    /// a backslash is followed by up to three octal digits. For example, `\033`
+    /// stands for the ASCII character 27 (ESC). Rust does not support this
+    /// notation, but has the escape code `\0` which stands for a null
+    /// byte/character, and any following digits do not form part of the escape
+    /// sequence. Therefore, `\033` is not a compiler error but the result may
+    /// be surprising.
     ///
     /// ### Known problems
     /// The actual meaning can be the intended one. `\x00` can be used in these
@@ -58,8 +64,9 @@ impl EarlyLintPass for OctalEscapes {
 fn check_lit(cx: &EarlyContext<'tcx>, lit: &Lit, span: Span, is_string: bool) {
     let contents = lit.symbol.as_str();
     let mut iter = contents.char_indices().peekable();
+    let mut found = vec![];
 
-    // go through the string, looking for \0[0-7]
+    // go through the string, looking for \0[0-7][0-7]?
     while let Some((from, ch)) = iter.next() {
         if ch == '\\' {
             if let Some((_, '0')) = iter.next() {
@@ -68,19 +75,41 @@ fn check_lit(cx: &EarlyContext<'tcx>, lit: &Lit, span: Span, is_string: bool) {
                     if let Some((_, '0'..='7')) = iter.peek() {
                         to += 1;
                     }
-                    emit(cx, &contents, from, to + 1, span, is_string);
+                    found.push((from, to + 1));
                 }
             }
         }
     }
-}
 
-fn emit(cx: &EarlyContext<'tcx>, contents: &str, from: usize, to: usize, span: Span, is_string: bool) {
-    // construct a replacement escape for that case that octal was intended
-    let escape = &contents[from + 1..to];
-    // the maximum value is \077, or \x3f
-    let literal_suggestion = u8::from_str_radix(escape, 8).ok().map(|n| format!("\\x{:02x}", n));
-    let prefix = if is_string { "" } else { "b" };
+    if found.is_empty() {
+        return;
+    }
+
+    // construct two suggestion strings, one with \x escapes with octal meaning
+    // as in C, and one with \x00 for null bytes.
+    let mut suggest_1 = if is_string { "\"" } else { "b\"" }.to_string();
+    let mut suggest_2 = suggest_1.clone();
+    let mut index = 0;
+    for (from, to) in found {
+        suggest_1.push_str(&contents[index..from]);
+        suggest_2.push_str(&contents[index..from]);
+
+        // construct a replacement escape
+        // the maximum value is \077, or \x3f, so u8 is sufficient here
+        if let Ok(n) = u8::from_str_radix(&contents[from + 1..to], 8) {
+            write!(&mut suggest_1, "\\x{:02x}", n).unwrap();
+        }
+
+        // append the null byte as \x00 and the following digits literally
+        suggest_2.push_str("\\x00");
+        suggest_2.push_str(&contents[from + 2..to]);
+
+        index = to;
+    }
+    suggest_1.push_str(&contents[index..]);
+    suggest_1.push('"');
+    suggest_2.push_str(&contents[index..]);
+    suggest_2.push('"');
 
     span_lint_and_then(
         cx,
@@ -96,14 +125,12 @@ fn emit(cx: &EarlyContext<'tcx>, contents: &str, from: usize, to: usize, span: S
                 if is_string { "character" } else { "byte" }
             ));
             // suggestion 1: equivalent hex escape
-            if let Some(sugg) = literal_suggestion {
-                diag.span_suggestion(
-                    span,
-                    "if an octal escape was intended, use the hexadecimal representation instead",
-                    format!("{}\"{}{}{}\"", prefix, &contents[..from], sugg, &contents[to..]),
-                    Applicability::MaybeIncorrect,
-                );
-            }
+            diag.span_suggestion(
+                span,
+                "if an octal escape was intended, use the hexadecimal representation instead",
+                suggest_1,
+                Applicability::MaybeIncorrect,
+            );
             // suggestion 2: unambiguous null byte
             diag.span_suggestion(
                 span,
@@ -111,7 +138,7 @@ fn emit(cx: &EarlyContext<'tcx>, contents: &str, from: usize, to: usize, span: S
                     "if the null {} is intended, disambiguate using",
                     if is_string { "character" } else { "byte" }
                 ),
-                format!("{}\"{}\\x00{}\"", prefix, &contents[..from], &contents[from + 2..]),
+                suggest_2,
                 Applicability::MaybeIncorrect,
             );
         },

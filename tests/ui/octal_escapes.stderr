@@ -72,28 +72,12 @@ LL |     let _bad6 = "Text-/055/077-MoreText";
    = help: octal escapes are not supported, `/0` is always a null character
 help: if an octal escape was intended, use the hexadecimal representation instead
    |
-LL |     let _bad6 = "Text-/x2d/077-MoreText";
+LL |     let _bad6 = "Text-/x2d/x3f-MoreText";
    |                 ~~~~~~~~~~~~~~~~~~~~~~~~
 help: if the null character is intended, disambiguate using
    |
-LL |     let _bad6 = "Text-/x0055/077-MoreText";
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-error: octal-looking escape in string literal
-  --> $DIR/octal_escapes.rs:10:17
-   |
-LL |     let _bad6 = "Text-/055/077-MoreText";
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: octal escapes are not supported, `/0` is always a null character
-help: if an octal escape was intended, use the hexadecimal representation instead
-   |
-LL |     let _bad6 = "Text-/055/x3f-MoreText";
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~
-help: if the null character is intended, disambiguate using
-   |
-LL |     let _bad6 = "Text-/055/x0077-MoreText";
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let _bad6 = "Text-/x0055/x0077-MoreText";
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: octal-looking escape in string literal
   --> $DIR/octal_escapes.rs:11:17
@@ -104,28 +88,12 @@ LL |     let _bad7 = "EvenMoreText-/01/02-ShortEscapes";
    = help: octal escapes are not supported, `/0` is always a null character
 help: if an octal escape was intended, use the hexadecimal representation instead
    |
-LL |     let _bad7 = "EvenMoreText-/x01/02-ShortEscapes";
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let _bad7 = "EvenMoreText-/x01/x02-ShortEscapes";
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 help: if the null character is intended, disambiguate using
    |
-LL |     let _bad7 = "EvenMoreText-/x001/02-ShortEscapes";
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-error: octal-looking escape in string literal
-  --> $DIR/octal_escapes.rs:11:17
-   |
-LL |     let _bad7 = "EvenMoreText-/01/02-ShortEscapes";
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: octal escapes are not supported, `/0` is always a null character
-help: if an octal escape was intended, use the hexadecimal representation instead
-   |
-LL |     let _bad7 = "EvenMoreText-/01/x02-ShortEscapes";
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: if the null character is intended, disambiguate using
-   |
-LL |     let _bad7 = "EvenMoreText-/01/x002-ShortEscapes";
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let _bad7 = "EvenMoreText-/x001/x002-ShortEscapes";
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: octal-looking escape in string literal
   --> $DIR/octal_escapes.rs:12:17
@@ -159,5 +127,5 @@ help: if the null character is intended, disambiguate using
 LL |     let _bad9 = "锈/x0011锈";
    |                 ~~~~~~~~~~~~
 
-error: aborting due to 10 previous errors
+error: aborting due to 8 previous errors
 
