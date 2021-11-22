@@ -438,6 +438,9 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                     generated_asm.push_str(s);
                 }
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span: _ } => {
+                    if self.options.contains(InlineAsmOptions::ATT_SYNTAX) {
+                        generated_asm.push('%');
+                    }
                     self.registers[*operand_idx]
                         .unwrap()
                         .emit(&mut generated_asm, self.arch, *modifier)
