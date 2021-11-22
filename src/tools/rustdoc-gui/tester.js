@@ -194,7 +194,7 @@ async function main(argv) {
             .then(out => {
                 const [output, nb_failures] = out;
                 results[nb_failures === 0 ? "successful" : "failed"].push({
-                    file_name: file_name,
+                    file_name: testPath,
                     output: output,
                 });
                 if (nb_failures > 0) {
@@ -206,7 +206,7 @@ async function main(argv) {
             })
             .catch(err => {
                 results.errored.push({
-                    file_name: file_name,
+                    file_name: testPath + file_name,
                     output: err,
                 });
                 status_bar.erroneous();
@@ -239,7 +239,7 @@ async function main(argv) {
         console.log("");
         results.failed.sort(by_filename);
         results.failed.forEach(r => {
-            console.log(r.output);
+            console.log(r.file_name, r.output);
         });
     }
     if (results.errored.length > 0) {
@@ -247,7 +247,7 @@ async function main(argv) {
         // print run errors on the bottom so developers see them better
         results.errored.sort(by_filename);
         results.errored.forEach(r => {
-            console.error(r.output);
+            console.error(r.file_name, r.output);
         });
     }
 
