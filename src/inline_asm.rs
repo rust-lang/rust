@@ -103,24 +103,9 @@ pub(crate) fn codegen_inline_asm<'tcx>(
         crate::trap::trap_unimplemented(fx, "Alloca is not supported");
     }
 
-    let mut slot_size = Size::from_bytes(0);
     let mut clobbered_regs = Vec::new();
     let mut inputs = Vec::new();
     let mut outputs = Vec::new();
-
-    let mut new_slot = |reg_class: InlineAsmRegClass| {
-        let reg_size = reg_class
-            .supported_types(InlineAsmArch::X86_64)
-            .iter()
-            .map(|(ty, _)| ty.size())
-            .max()
-            .unwrap();
-        let align = rustc_target::abi::Align::from_bytes(reg_size.bytes()).unwrap();
-        slot_size = slot_size.align_to(align);
-        let offset = slot_size;
-        slot_size += reg_size;
-        offset
-    };
 
     let mut asm_gen = InlineAssemblyGenerator {
         tcx: fx.tcx,
@@ -129,44 +114,49 @@ pub(crate) fn codegen_inline_asm<'tcx>(
         operands,
         options,
         registers: Vec::new(),
+        stack_slots_clobber: Vec::new(),
+        stack_slots_input: Vec::new(),
+        stack_slots_output: Vec::new(),
+        stack_slot_size: Size::from_bytes(0),
     };
     asm_gen.allocate_registers();
+    asm_gen.allocate_stack_slots();
 
     // FIXME overlap input and output slots to save stack space
     for (i, operand) in operands.iter().enumerate() {
         match *operand {
             InlineAsmOperand::In { reg, ref value } => {
                 let reg = asm_gen.registers[i].unwrap();
-                clobbered_regs.push((reg, new_slot(reg.reg_class())));
+                clobbered_regs.push((reg, asm_gen.stack_slots_clobber[i].unwrap()));
                 inputs.push((
                     reg,
-                    new_slot(reg.reg_class()),
+                    asm_gen.stack_slots_input[i].unwrap(),
                     crate::base::codegen_operand(fx, value).load_scalar(fx),
                 ));
             }
             InlineAsmOperand::Out { reg, late: _, place } => {
                 let reg = asm_gen.registers[i].unwrap();
-                clobbered_regs.push((reg, new_slot(reg.reg_class())));
+                clobbered_regs.push((reg, asm_gen.stack_slots_clobber[i].unwrap()));
                 if let Some(place) = place {
                     outputs.push((
                         reg,
-                        new_slot(reg.reg_class()),
+                        asm_gen.stack_slots_output[i].unwrap(),
                         crate::base::codegen_place(fx, place),
                     ));
                 }
             }
             InlineAsmOperand::InOut { reg, late: _, ref in_value, out_place } => {
                 let reg = asm_gen.registers[i].unwrap();
-                clobbered_regs.push((reg, new_slot(reg.reg_class())));
+                clobbered_regs.push((reg, asm_gen.stack_slots_clobber[i].unwrap()));
                 inputs.push((
                     reg,
-                    new_slot(reg.reg_class()),
+                    asm_gen.stack_slots_input[i].unwrap(),
                     crate::base::codegen_operand(fx, in_value).load_scalar(fx),
                 ));
                 if let Some(out_place) = out_place {
                     outputs.push((
                         reg,
-                        new_slot(reg.reg_class()),
+                        asm_gen.stack_slots_output[i].unwrap(),
                         crate::base::codegen_place(fx, out_place),
                     ));
                 }
@@ -184,7 +174,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     let generated_asm = asm_gen.generate_asm_wrapper(&asm_name, clobbered_regs, &inputs, &outputs);
     fx.cx.global_asm.push_str(&generated_asm);
 
-    call_inline_asm(fx, &asm_name, slot_size, inputs, outputs);
+    call_inline_asm(fx, &asm_name, asm_gen.stack_slot_size, inputs, outputs);
 }
 
 struct InlineAssemblyGenerator<'a, 'tcx> {
@@ -194,6 +184,10 @@ struct InlineAssemblyGenerator<'a, 'tcx> {
     operands: &'a [InlineAsmOperand<'tcx>],
     options: InlineAsmOptions,
     registers: Vec<Option<InlineAsmReg>>,
+    stack_slots_clobber: Vec<Option<Size>>,
+    stack_slots_input: Vec<Option<Size>>,
+    stack_slots_output: Vec<Option<Size>>,
+    stack_slot_size: Size,
 }
 
 impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
@@ -315,6 +309,59 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         }
 
         self.registers = regs;
+    }
+
+    fn allocate_stack_slots(&mut self) {
+        let mut slot_size = Size::from_bytes(0);
+        let mut slots_clobber = vec![None; self.operands.len()];
+        let mut slots_input = vec![None; self.operands.len()];
+        let mut slots_output = vec![None; self.operands.len()];
+
+        let mut new_slot = |reg_class: InlineAsmRegClass| {
+            let reg_size = reg_class
+                .supported_types(InlineAsmArch::X86_64)
+                .iter()
+                .map(|(ty, _)| ty.size())
+                .max()
+                .unwrap();
+            let align = rustc_target::abi::Align::from_bytes(reg_size.bytes()).unwrap();
+            slot_size = slot_size.align_to(align);
+            let offset = slot_size;
+            slot_size += reg_size;
+            offset
+        };
+
+        // FIXME overlap input and output slots to save stack space
+        for (i, operand) in self.operands.iter().enumerate() {
+            match *operand {
+                InlineAsmOperand::In { reg, .. } => {
+                    slots_clobber[i] = Some(new_slot(reg.reg_class()));
+                    slots_input[i] = Some(new_slot(reg.reg_class()));
+                }
+                InlineAsmOperand::Out { reg, place, .. } => {
+                    slots_clobber[i] = Some(new_slot(reg.reg_class()));
+                    if place.is_some() {
+                        slots_output[i] = Some(new_slot(reg.reg_class()));
+                    }
+                }
+                InlineAsmOperand::InOut { reg, out_place, .. } => {
+                    slots_clobber[i] = Some(new_slot(reg.reg_class()));
+                    let slot = new_slot(reg.reg_class());
+                    slots_input[i] = Some(slot);
+                    if out_place.is_some() {
+                        slots_output[i] = Some(slot);
+                    }
+                }
+                InlineAsmOperand::Const { value: _ } => (),
+                InlineAsmOperand::SymFn { value: _ } => (),
+                InlineAsmOperand::SymStatic { def_id: _ } => (),
+            }
+        }
+
+        self.stack_slots_clobber = slots_clobber;
+        self.stack_slots_input = slots_input;
+        self.stack_slots_output = slots_output;
+        self.stack_slot_size = slot_size;
     }
 
     fn generate_asm_wrapper(
