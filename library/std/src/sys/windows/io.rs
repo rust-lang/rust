@@ -114,7 +114,7 @@ impl io::IsTerminal for sys::stdio::Stdout {
 
         if unsafe { console_on_any(&[fd]) } {
             // False positives aren't possible. If we got a console then
-            // we definitely have a tty on stdin.
+            // we definitely have a tty on stdout.
             return true;
         }
 
@@ -140,7 +140,7 @@ impl io::IsTerminal for sys::stdio::Stderr {
 
         if unsafe { console_on_any(&[fd]) } {
             // False positives aren't possible. If we got a console then
-            // we definitely have a tty on stdin.
+            // we definitely have a tty on stderr.
             return true;
         }
 
