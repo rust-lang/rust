@@ -24,6 +24,7 @@ mod navigation_target;
 
 mod annotations;
 mod call_hierarchy;
+mod call_info;
 mod doc_links;
 mod highlight_related;
 mod expand_macro;
@@ -73,6 +74,7 @@ use crate::navigation_target::{ToNav, TryToNav};
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind},
     call_hierarchy::CallItem,
+    call_info::CallInfo,
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
@@ -106,7 +108,6 @@ pub use ide_db::{
         Cancelled, Change, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange,
         SourceRoot, SourceRootId,
     },
-    call_info::CallInfo,
     label::Label,
     line_index::{LineCol, LineColUtf16, LineIndex},
     search::{ReferenceCategory, SearchScope},
@@ -434,7 +435,7 @@ impl Analysis {
 
     /// Computes parameter information for the given call expression.
     pub fn call_info(&self, position: FilePosition) -> Cancellable<Option<CallInfo>> {
-        self.with_db(|db| ide_db::call_info::call_info(db, position))
+        self.with_db(|db| call_info::call_info(db, position))
     }
 
     /// Computes call hierarchy candidates for the given file position.

@@ -3,18 +3,18 @@
 
 use std::collections::HashMap;
 
-use hir::Semantics;
-use hir::{db::HirDatabase, Crate, Module};
-use ide_db::base_db::{FileId, FileRange, SourceDatabaseExt};
-use ide_db::defs::Definition;
-use ide_db::RootDatabase;
+use hir::{db::HirDatabase, Crate, Module, Semantics};
+use ide_db::{
+    base_db::{FileId, FileRange, SourceDatabaseExt},
+    defs::Definition,
+    RootDatabase,
+};
 use rustc_hash::FxHashSet;
-use syntax::{AstNode, SyntaxKind::*, T};
-use syntax::{SyntaxToken, TextRange};
+use syntax::{AstNode, SyntaxKind::*, SyntaxToken, TextRange, T};
 
-use crate::hover::hover_for_definition;
 use crate::{
-    Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
+    hover::hover_for_definition, Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult,
+    InlayHint, InlayHintsConfig, TryToNav,
 };
 
 /// A static representation of fully analyzed source code.
