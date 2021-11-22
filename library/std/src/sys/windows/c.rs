@@ -124,6 +124,8 @@ pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
 pub const FIONBIO: c_ulong = 0x8004667e;
 
+pub const MAX_PATH: usize = 260;
+
 #[repr(C)]
 #[derive(Copy)]
 pub struct WIN32_FIND_DATAW {
@@ -486,8 +488,8 @@ pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
 
 #[repr(C)]
 pub struct FILE_NAME_INFO {
-    FileNameLength: DWORD,
-    FileName: [WCHAR; 1],
+    pub FileNameLength: DWORD,
+    pub FileName: [WCHAR; 1],
 }
 
 #[repr(C)]

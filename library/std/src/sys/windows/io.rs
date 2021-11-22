@@ -2,6 +2,9 @@ use crate::io;
 use crate::marker::PhantomData;
 use crate::slice;
 use crate::sys::c;
+use crate::sys;
+use libc;
+use std;
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
@@ -172,11 +175,11 @@ unsafe fn console_on_any(fds: &[c::DWORD]) -> bool {
 #[unstable(feature = "is_terminal", issue = "80937")]
 unsafe fn msys_tty_on(fd: c::DWORD) -> bool {
     let size = std::mem::size_of::<c::FILE_NAME_INFO>();
-    let mut name_info_bytes = vec![0u8; size + c::MAX_PATH * std::mem::size_of::<WCHAR>()];
+    let mut name_info_bytes = vec![0u8; size + c::MAX_PATH * std::mem::size_of::<c::WCHAR>()];
     let res = c::GetFileInformationByHandleEx(
         c::GetStdHandle(fd),
         c::FileNameInfo,
-        &mut *name_info_bytes as *mut _ as *mut c::c_void,
+        &mut *name_info_bytes as *mut _ as *mut libc::c_void,
         name_info_bytes.len() as u32,
     );
     if res == 0 {
