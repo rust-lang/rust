@@ -27,6 +27,11 @@ impl flags::Release {
             .run()?;
 
         let website_root = project_root().join("../rust-analyzer.github.io");
+        {
+            let _dir = pushd(&website_root)?;
+            cmd!("git switch src").run()?;
+            cmd!("git pull").run()?;
+        }
         let changelog_dir = website_root.join("./thisweek/_posts");
 
         let today = date_iso()?;
