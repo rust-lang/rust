@@ -784,6 +784,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             "Implementors",
             "<div class=\"item-list\" id=\"implementors-list\">",
         );
+
+        write!(w, "<!-- {}:{} -->", file!(), line!());
+
         for implementor in concrete {
             render_implementor(cx, implementor, it, w, &implementor_dups, &[]);
         }

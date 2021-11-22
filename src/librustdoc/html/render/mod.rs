@@ -1531,6 +1531,8 @@ fn render_impl(
     let mut impl_items = Buffer::empty_from(w);
     let mut default_impl_items = Buffer::empty_from(w);
 
+    // FFFFXXX
+
     for trait_item in &i.inner_impl().items {
         doc_impl_item(
             &mut default_impl_items,
@@ -1613,6 +1615,8 @@ fn render_impl(
             );
             write!(w, "<summary>")
         }
+
+        write!(w, "{}:{} ", file!(), line!());
         render_impl_summary(
             w,
             cx,
@@ -1624,6 +1628,7 @@ fn render_impl(
             rendering_params.is_on_foreign_type,
             aliases,
         );
+        write!(w, "{}:{} ", file!(), line!());
         if toggled {
             write!(w, "</summary>")
         }
@@ -1691,6 +1696,7 @@ pub(crate) fn render_impl_summary(
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
 ) {
+    // This is where the ID is created
     let id = cx.derive_id(match i.inner_impl().trait_ {
         Some(ref t) => {
             if is_on_foreign_type {
@@ -1701,6 +1707,9 @@ pub(crate) fn render_impl_summary(
         }
         None => "impl".to_string(),
     });
+
+    cx.nixon_hack.borrow_mut().insert(i.impl_item.def_id, id.clone());
+
     let aliases = if aliases.is_empty() {
         String::new()
     } else {
@@ -2215,6 +2224,7 @@ fn get_id_for_impl_on_foreign_type(
 }
 
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
+    //
     match *item.kind {
         clean::ItemKind::ImplItem(ref i) => {
             i.trait_.as_ref().map(|trait_| {
@@ -2306,6 +2316,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
             .filter(|i| {
                 i.inner_impl().for_.def_id(cache).map_or(false, |d| !cache.paths.contains_key(&d))
             })
+            // TODO: Dont do the filter map dance
             .filter_map(|i| extract_for_impl_name(&i.impl_item, cx))
             .collect::<Vec<_>>();
 
@@ -2325,7 +2336,38 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
 
     sidebar_assoc_items(cx, buf, it);
 
-    buf.push_str("<h3 class=\"sidebar-title\"><a href=\"#implementors\">Implementors</a></h3>");
+    if let Some(implementors) = cache.implementors.get(&it.def_id.expect_def_id()) {
+        let mut res = implementors
+            .iter()
+            .filter(|i| {
+                i.inner_impl().for_.def_id(cache).map_or(true, |d| cache.paths.contains_key(&d))
+            })
+            // TODO: Dont do the filter map dance
+            // .filter_map(|i| extract_for_impl_name(&i.impl_item, cx))
+            .map(|i| {
+                (
+                    format!("{:#}", i.inner_impl().for_.print(cx)),
+                    cx.nixon_hack.borrow().get(&i.impl_item.def_id).unwrap().clone(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        if !res.is_empty() {
+            res.sort_unstable();
+
+            buf.push_str(
+                "<h3 class=\"sidebar-title\">\
+                    <a href=\"#implementors\">Implementors</a>\
+                </h3>
+                <div class=\"sidebar-links\">",
+            );
+            for (name, id) in res.into_iter() {
+                write!(buf, "<a href=\"#{}\">{}</a>", id, Escape(&name));
+            }
+            buf.push_str("</div>");
+        }
+    }
+
     if t.is_auto {
         buf.push_str(
             "<h3 class=\"sidebar-title\"><a \
