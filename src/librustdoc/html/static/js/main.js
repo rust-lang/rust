@@ -891,7 +891,7 @@ function hideThemeButtonState() {
             if (e.target.tagName != "SUMMARY") {
                 e.preventDefault();
             }
-        })
+        });
     });
 
     onEachLazy(document.getElementsByClassName("notable-traits"), function(e) {
