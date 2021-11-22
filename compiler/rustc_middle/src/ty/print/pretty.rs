@@ -890,10 +890,20 @@ pub trait PrettyPrinter<'tcx>:
                     if !first {
                         p!(", ");
                     }
-                    p!(
-                        write("{} = ", self.tcx().associated_item(assoc_item_def_id).ident),
-                        print(ty)
-                    );
+                    p!(write("{} = ", self.tcx().associated_item(assoc_item_def_id).ident));
+
+                    // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks
+                    match ty.skip_binder().kind() {
+                        ty::Projection(ty::ProjectionTy { item_def_id, .. })
+                            if Some(*item_def_id) == self.tcx().lang_items().generator_return() =>
+                        {
+                            p!("[async output]")
+                        }
+                        _ => {
+                            p!(print(ty))
+                        }
+                    }
+
                     first = false;
                 }
 
