@@ -169,21 +169,26 @@ nav.main .current {
 nav.main .separator {
 	border: 1px solid #000;
 }
+
 a {
+	color: #3873AD;
+}
+a.srclink,
+a#toggle-all-docs,
+#source-sidebar a,
+pre.rust a,
+.sidebar a,
+.in-band a {
 	color: #000;
+}
+.search-results a {
+	color: initial;
+}
+a.test-arrow {
+	color: #f5f5f5;
 }
 body.source .example-wrap pre.rust a {
 	background: #eee;
-}
-
-.docblock:not(.item-decl) a:not(.srclink):not(.test-arrow),
-.docblock-short a:not(.srclink):not(.test-arrow), .item-info a,
-#help a {
-	color: #3873AD;
-}
-
-a.test-arrow {
-	color: #f5f5f5;
 }
 
 details.rustdoc-toggle > summary.hideme > span,
