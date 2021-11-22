@@ -1,8 +1,6 @@
 use std::convert::TryInto;
 
-use crate::{
-    display::TryToNav, doc_links::token_as_doc_comment, FilePosition, NavigationTarget, RangeInfo,
-};
+use crate::{doc_links::token_as_doc_comment, FilePosition, NavigationTarget, RangeInfo, TryToNav};
 use hir::{AsAssocItem, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},

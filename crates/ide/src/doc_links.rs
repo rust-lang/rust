@@ -531,7 +531,7 @@ mod tests {
     use ide_db::base_db::FileRange;
     use itertools::Itertools;
 
-    use crate::{display::TryToNav, fixture};
+    use crate::{fixture, TryToNav};
 
     use super::*;
 

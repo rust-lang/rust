@@ -7,7 +7,7 @@ use ide_db::{
 use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxKind::*, T};
 
-use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
+use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 
 // Feature: Go to Implementation
 //
