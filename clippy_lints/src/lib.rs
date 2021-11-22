@@ -312,6 +312,7 @@ mod non_expressive_names;
 mod non_octal_unix_permissions;
 mod non_send_fields_in_send_ty;
 mod nonstandard_macro_braces;
+mod octal_escapes;
 mod open_options;
 mod option_env_unwrap;
 mod option_if_let_else;
@@ -849,6 +850,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(match_str_case_mismatch::MatchStrCaseMismatch));
     store.register_late_pass(move || Box::new(format_args::FormatArgs));
     store.register_late_pass(|| Box::new(trailing_empty_array::TrailingEmptyArray));
+    store.register_early_pass(|| Box::new(octal_escapes::OctalEscapes));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

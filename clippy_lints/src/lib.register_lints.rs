@@ -380,6 +380,7 @@ store.register_lints(&[
     non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS,
     non_send_fields_in_send_ty::NON_SEND_FIELDS_IN_SEND_TY,
     nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES,
+    octal_escapes::OCTAL_ESCAPES,
     open_options::NONSENSICAL_OPEN_OPTIONS,
     option_env_unwrap::OPTION_ENV_UNWRAP,
     option_if_let_else::OPTION_IF_LET_ELSE,
