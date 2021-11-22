@@ -11,6 +11,42 @@ use expect_test::expect;
 use crate::macro_expansion_tests::check;
 
 #[test]
+fn token_mapping_smoke_test() {
+    check(
+        r#"
+// +tokenids
+macro_rules! f {
+    ( struct $ident:ident ) => {
+        struct $ident {
+            map: ::std::collections::HashSet<()>,
+        }
+    };
+}
+
+// +tokenids
+f!(struct MyTraitMap2);
+"#,
+        expect![[r##"
+// call ids will be shifted by Shift(27)
+// +tokenids
+macro_rules! f {#0
+    (#1 struct#2 $#3ident#4:#5ident#6 )#1 =#7>#8 {#9
+        struct#10 $#11ident#12 {#13
+            map#14:#15 :#16:#17std#18:#19:#20collections#21:#22:#23HashSet#24<#25(#26)#26>#27,#28
+        }#13
+    }#9;#29
+}#0
+
+// // +tokenids
+// f!(struct#1 MyTraitMap2#2);
+struct#10 MyTraitMap2#29 {#13
+    map#14:#15 ::std#18::collections#21::HashSet#24<#25(#26)#26>#27,#28
+}#13
+"##]],
+    );
+}
+
+#[test]
 fn mbe_smoke_test() {
     check(
         r#"

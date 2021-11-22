@@ -370,8 +370,9 @@ impl MacroCallId {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpansionInfo {
     expanded: InFile<SyntaxNode>,
+    /// The argument TokenTree or item for attributes
     arg: InFile<SyntaxNode>,
-    /// The `macro_rules!` arguments or attribute input.
+    /// The `macro_rules!` or attribute input.
     attr_input_or_mac_def: Option<InFile<ast::TokenTree>>,
 
     macro_def: Arc<TokenExpander>,

@@ -16,16 +16,21 @@ mod proc_macros;
 
 use std::{iter, ops::Range};
 
+use ::mbe::TokenMap;
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::Expect;
-use hir_expand::{db::AstDatabase, InFile, MacroFile};
+use hir_expand::{
+    db::{AstDatabase, TokenExpander},
+    AstId, InFile, MacroDefId, MacroDefKind, MacroFile,
+};
 use stdx::format_to;
 use syntax::{
     ast::{self, edit::IndentLevel},
-    AstNode,
-    SyntaxKind::{COMMENT, EOF, IDENT, LIFETIME_IDENT},
-    SyntaxNode, T,
+    AstNode, SyntaxElement,
+    SyntaxKind::{self, COMMENT, EOF, IDENT, LIFETIME_IDENT},
+    SyntaxNode, TextRange, T,
 };
+use tt::{Subtree, TokenId};
 
 use crate::{
     db::DefDatabase, nameres::ModuleSource, resolver::HasResolver, src::HasSource, test_db::TestDB,
@@ -61,7 +66,47 @@ fn check(ra_fixture: &str, mut expect: Expect) {
     // in the module and assume that, if impls's source is a different
     // `HirFileId`, than it came from macro expansion.
 
+    let mut text_edits = Vec::new();
     let mut expansions = Vec::new();
+
+    for macro_ in source_file.syntax().descendants().filter_map(ast::Macro::cast) {
+        let mut show_token_ids = false;
+        for comment in macro_.syntax().children_with_tokens().filter(|it| it.kind() == COMMENT) {
+            show_token_ids |= comment.to_string().contains("+tokenids");
+        }
+        if !show_token_ids {
+            continue;
+        }
+
+        let call_offset = macro_.syntax().text_range().start().into();
+        let file_ast_id = db.ast_id_map(source.file_id).ast_id(&macro_);
+        let ast_id = AstId::new(source.file_id, file_ast_id.upcast());
+        let kind = MacroDefKind::Declarative(ast_id);
+
+        let macro_def = db.macro_def(MacroDefId { krate, kind, local_inner: false }).unwrap();
+        if let TokenExpander::DeclarativeMacro { mac, def_site_token_map } = &*macro_def {
+            let tt = match &macro_ {
+                ast::Macro::MacroRules(mac) => mac.token_tree().unwrap(),
+                ast::Macro::MacroDef(_) => unimplemented!(""),
+            };
+
+            let tt_start = tt.syntax().text_range().start();
+            tt.syntax().descendants_with_tokens().filter_map(SyntaxElement::into_token).for_each(
+                |token| {
+                    let range = token.text_range().checked_sub(tt_start).unwrap();
+                    if let Some(id) = def_site_token_map.token_by_range(range) {
+                        let offset = (range.end() + tt_start).into();
+                        text_edits.push((offset..offset, format!("#{}", id.0)));
+                    }
+                },
+            );
+            text_edits.push((
+                call_offset..call_offset,
+                format!("// call ids will be shifted by {:?}\n", mac.shift()),
+            ));
+        }
+    }
+
     for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
         let macro_call = InFile::new(source.file_id, &macro_call);
         let mut error = None;
@@ -77,24 +122,24 @@ fn check(ra_fixture: &str, mut expect: Expect) {
         let macro_file = MacroFile { macro_call_id };
         let mut expansion_result = db.parse_macro_expansion(macro_file);
         expansion_result.err = expansion_result.err.or(error);
-        expansions.push((macro_call.value.clone(), expansion_result));
+        expansions.push((macro_call.value.clone(), expansion_result, db.macro_arg(macro_call_id)));
     }
 
-    let mut expanded_text = source_file.to_string();
-
-    for (call, exp) in expansions.into_iter().rev() {
+    for (call, exp, arg) in expansions.into_iter().rev() {
         let mut tree = false;
         let mut expect_errors = false;
+        let mut show_token_ids = false;
         for comment in call.syntax().children_with_tokens().filter(|it| it.kind() == COMMENT) {
             tree |= comment.to_string().contains("+tree");
             expect_errors |= comment.to_string().contains("+errors");
+            show_token_ids |= comment.to_string().contains("+tokenids");
         }
 
         let mut expn_text = String::new();
         if let Some(err) = exp.err {
             format_to!(expn_text, "/* error: {} */", err);
         }
-        if let Some((parse, _token_map)) = exp.value {
+        if let Some((parse, token_map)) = exp.value {
             if expect_errors {
                 assert!(!parse.errors().is_empty(), "no parse errors in expansion");
                 for e in parse.errors() {
@@ -107,7 +152,10 @@ fn check(ra_fixture: &str, mut expect: Expect) {
                     parse.errors()
                 );
             }
-            let pp = pretty_print_macro_expansion(parse.syntax_node());
+            let pp = pretty_print_macro_expansion(
+                parse.syntax_node(),
+                show_token_ids.then(|| &*token_map),
+            );
             let indent = IndentLevel::from_node(call.syntax());
             let pp = reindent(indent, pp);
             format_to!(expn_text, "{}", pp);
@@ -122,14 +170,41 @@ fn check(ra_fixture: &str, mut expect: Expect) {
         }
         let range = call.syntax().text_range();
         let range: Range<usize> = range.into();
-        expanded_text.replace_range(range, &expn_text)
+
+        if show_token_ids {
+            if let Some((tree, map)) = arg.as_deref() {
+                let tt_range = call.token_tree().unwrap().syntax().text_range();
+                let mut ranges = Vec::new();
+                extract_id_ranges(&mut ranges, &map, &tree);
+                for (range, id) in ranges {
+                    let idx = (tt_range.start() + range.end()).into();
+                    text_edits.push((idx..idx, format!("#{}", id.0)));
+                }
+            }
+            text_edits.push((range.start..range.start, "// ".into()));
+            call.to_string().match_indices('\n').for_each(|(offset, _)| {
+                let offset = offset + 1 + range.start;
+                text_edits.push((offset..offset, "// ".into()));
+            });
+            text_edits.push((range.end..range.end, "\n".into()));
+            text_edits.push((range.end..range.end, expn_text));
+        } else {
+            text_edits.push((range, expn_text));
+        }
+    }
+
+    text_edits.sort_by_key(|(range, _)| range.start);
+    text_edits.reverse();
+    let mut expanded_text = source_file.to_string();
+    for (range, text) in text_edits {
+        expanded_text.replace_range(range, &text);
     }
 
     for decl_id in def_map[local_id].scope.declarations() {
         if let ModuleDefId::AdtId(AdtId::StructId(struct_id)) = decl_id {
             let src = struct_id.lookup(&db).source(&db);
             if src.file_id.is_attr_macro(&db) || src.file_id.is_custom_derive(&db) {
-                let pp = pretty_print_macro_expansion(src.value.syntax().clone());
+                let pp = pretty_print_macro_expansion(src.value.syntax().clone(), None);
                 format_to!(expanded_text, "\n{}", pp)
             }
         }
@@ -138,13 +213,27 @@ fn check(ra_fixture: &str, mut expect: Expect) {
     for impl_id in def_map[local_id].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
         if src.file_id.is_builtin_derive(&db).is_some() {
-            let pp = pretty_print_macro_expansion(src.value.syntax().clone());
+            let pp = pretty_print_macro_expansion(src.value.syntax().clone(), None);
             format_to!(expanded_text, "\n{}", pp)
         }
     }
 
     expect.indent(false);
     expect.assert_eq(&expanded_text);
+}
+
+fn extract_id_ranges(ranges: &mut Vec<(TextRange, TokenId)>, map: &TokenMap, tree: &Subtree) {
+    tree.token_trees.iter().for_each(|tree| match tree {
+        tt::TokenTree::Leaf(leaf) => {
+            let id = match leaf {
+                tt::Leaf::Literal(it) => it.id,
+                tt::Leaf::Punct(it) => it.id,
+                tt::Leaf::Ident(it) => it.id,
+            };
+            ranges.extend(map.ranges_by_token(id, SyntaxKind::ERROR).map(|range| (range, id)));
+        }
+        tt::TokenTree::Subtree(tree) => extract_id_ranges(ranges, map, tree),
+    });
 }
 
 fn reindent(indent: IndentLevel, pp: String) -> String {
@@ -163,7 +252,7 @@ fn reindent(indent: IndentLevel, pp: String) -> String {
     res
 }
 
-fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
+fn pretty_print_macro_expansion(expn: SyntaxNode, map: Option<&TokenMap>) -> String {
     let mut res = String::new();
     let mut prev_kind = EOF;
     let mut indent_level = 0;
@@ -206,7 +295,12 @@ fn pretty_print_macro_expansion(expn: SyntaxNode) -> String {
             res.push_str(&"    ".repeat(level));
         }
         prev_kind = curr_kind;
-        format_to!(res, "{}", token)
+        format_to!(res, "{}", token);
+        if let Some(map) = map {
+            if let Some(id) = map.token_by_range(token.text_range()) {
+                format_to!(res, "#{}", id.0);
+            }
+        }
     }
     res
 }

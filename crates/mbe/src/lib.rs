@@ -245,6 +245,10 @@ impl DeclarativeMacro {
             None => (id, Origin::Def),
         }
     }
+
+    pub fn shift(&self) -> Shift {
+        self.shift
+    }
 }
 
 impl Rule {
