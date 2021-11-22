@@ -306,6 +306,32 @@ This crate contains utilities for CPU and memory profiling.
 
 This sections talks about the things which are everywhere and nowhere in particular.
 
+### Stability Guarantees
+
+One of the reasons rust-analyzer moves relatively fast is that we don't introduce new stability guarantees.
+Instead, as much as possible we leverage existing ones.
+
+Examples:
+
+* The `ide` API of rust-analyzer are explicitly unstable, but the LSP interface is stable, and here we just implement a stable API managed by someone else.
+* Rust language and Cargo are stable, and they are the primary inputs to rust-analyzer.
+* The `rowan` library is published to crates.io, but it is deliberately kept under `1.0` and always makes semver-incompatible upgrades
+
+Another important example is that rust-analyzer isn't run on CI, so, unlike `rustc` and `clippy`, it is actually ok for us to change runtime behavior.
+
+At some point we might consider opening up APIs or allowing crates.io libraries to include rust-analyzer specific annotations, but that's going to be a big commitment on our side.
+
+Exceptions:
+
+* `rust-project.json` is a de-facto stable format for non-cargo build systems.
+  It is probably ok enough, but was definitely stabilized implicitly.
+  Lesson for the future: when designing API which could become a stability boundary, don't wait for the first users until you stabilize it.
+  By the time you have first users, it is already de-facto stable.
+  And the users will first use the thing, and *then* inform you that now you have users.
+  The sad thing is that stuff should be stable before someone uses it for the first time, or it should contain explicit opt-in.
+* We ship some LSP extensions, and we try to keep those somewhat stable.
+  Here, we need to work with a finite set of editor maintainers, so not providing rock-solid guarantees works.
+
 ### Code generation
 
 Some components in this repository are generated through automatic processes.
