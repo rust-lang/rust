@@ -6,6 +6,7 @@ use std::fmt::Write;
 
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir::InlineAsmOperand;
+use rustc_span::Symbol;
 use rustc_target::asm::*;
 
 pub(crate) fn codegen_inline_asm<'tcx>(
@@ -115,11 +116,21 @@ pub(crate) fn codegen_inline_asm<'tcx>(
         offset
     };
 
+    let mut asm_gen = InlineAssemblyGenerator {
+        tcx: fx.tcx,
+        arch: InlineAsmArch::X86_64,
+        template,
+        operands,
+        options,
+        registers: Vec::new(),
+    };
+    asm_gen.allocate_registers();
+
     // FIXME overlap input and output slots to save stack space
-    for operand in operands {
+    for (i, operand) in operands.iter().enumerate() {
         match *operand {
             InlineAsmOperand::In { reg, ref value } => {
-                let reg = expect_reg(reg);
+                let reg = asm_gen.registers[i].unwrap();
                 clobbered_regs.push((reg, new_slot(reg.reg_class())));
                 inputs.push((
                     reg,
@@ -128,7 +139,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 ));
             }
             InlineAsmOperand::Out { reg, late: _, place } => {
-                let reg = expect_reg(reg);
+                let reg = asm_gen.registers[i].unwrap();
                 clobbered_regs.push((reg, new_slot(reg.reg_class())));
                 if let Some(place) = place {
                     outputs.push((
@@ -139,7 +150,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 }
             }
             InlineAsmOperand::InOut { reg, late: _, ref in_value, out_place } => {
-                let reg = expect_reg(reg);
+                let reg = asm_gen.registers[i].unwrap();
                 clobbered_regs.push((reg, new_slot(reg.reg_class())));
                 inputs.push((
                     reg,
@@ -164,94 +175,220 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     fx.inline_asm_index += 1;
     let asm_name = format!("{}__inline_asm_{}", fx.symbol_name, inline_asm_index);
 
-    let generated_asm = generate_asm_wrapper(
-        &asm_name,
-        InlineAsmArch::X86_64,
-        options,
-        template,
-        clobbered_regs,
-        &inputs,
-        &outputs,
-    );
+    let generated_asm = asm_gen.generate_asm_wrapper(&asm_name, clobbered_regs, &inputs, &outputs);
     fx.cx.global_asm.push_str(&generated_asm);
 
     call_inline_asm(fx, &asm_name, slot_size, inputs, outputs);
 }
 
-fn generate_asm_wrapper(
-    asm_name: &str,
+struct InlineAssemblyGenerator<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     arch: InlineAsmArch,
+    template: &'a [InlineAsmTemplatePiece],
+    operands: &'a [InlineAsmOperand<'tcx>],
     options: InlineAsmOptions,
-    template: &[InlineAsmTemplatePiece],
-    clobbered_regs: Vec<(InlineAsmReg, Size)>,
-    inputs: &[(InlineAsmReg, Size, Value)],
-    outputs: &[(InlineAsmReg, Size, CPlace<'_>)],
-) -> String {
-    let mut generated_asm = String::new();
-    writeln!(generated_asm, ".globl {}", asm_name).unwrap();
-    writeln!(generated_asm, ".type {},@function", asm_name).unwrap();
-    writeln!(generated_asm, ".section .text.{},\"ax\",@progbits", asm_name).unwrap();
-    writeln!(generated_asm, "{}:", asm_name).unwrap();
+    registers: Vec<Option<InlineAsmReg>>,
+}
 
-    generated_asm.push_str(".intel_syntax noprefix\n");
-    generated_asm.push_str("    push rbp\n");
-    generated_asm.push_str("    mov rbp,rdi\n");
+impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
+    fn allocate_registers(&mut self) {
+        let sess = self.tcx.sess;
+        let map = allocatable_registers(
+            self.arch,
+            |feature| sess.target_features.contains(&Symbol::intern(feature)),
+            &sess.target,
+        );
+        let mut allocated = FxHashMap::<_, (bool, bool)>::default();
+        let mut regs = vec![None; self.operands.len()];
 
-    // Save clobbered registers
-    if !options.contains(InlineAsmOptions::NORETURN) {
-        // FIXME skip registers saved by the calling convention
-        for &(reg, offset) in &clobbered_regs {
-            save_register(&mut generated_asm, arch, reg, offset);
-        }
-    }
-
-    // Write input registers
-    for &(reg, offset, _value) in inputs {
-        restore_register(&mut generated_asm, arch, reg, offset);
-    }
-
-    if options.contains(InlineAsmOptions::ATT_SYNTAX) {
-        generated_asm.push_str(".att_syntax\n");
-    }
-
-    // The actual inline asm
-    for piece in template {
-        match piece {
-            InlineAsmTemplatePiece::String(s) => {
-                generated_asm.push_str(s);
+        // Add explicit registers to the allocated set.
+        for (i, operand) in self.operands.iter().enumerate() {
+            match *operand {
+                InlineAsmOperand::In { reg: InlineAsmRegOrRegClass::Reg(reg), .. } => {
+                    regs[i] = Some(reg);
+                    allocated.entry(reg).or_default().0 = true;
+                }
+                InlineAsmOperand::Out {
+                    reg: InlineAsmRegOrRegClass::Reg(reg), late: true, ..
+                } => {
+                    regs[i] = Some(reg);
+                    allocated.entry(reg).or_default().1 = true;
+                }
+                InlineAsmOperand::Out { reg: InlineAsmRegOrRegClass::Reg(reg), .. }
+                | InlineAsmOperand::InOut { reg: InlineAsmRegOrRegClass::Reg(reg), .. } => {
+                    regs[i] = Some(reg);
+                    allocated.insert(reg, (true, true));
+                }
+                _ => (),
             }
-            InlineAsmTemplatePiece::Placeholder { operand_idx: _, modifier: _, span: _ } => todo!(),
         }
-    }
-    generated_asm.push('\n');
 
-    if options.contains(InlineAsmOptions::ATT_SYNTAX) {
+        // Allocate out/inout/inlateout registers first because they are more constrained.
+        for (i, operand) in self.operands.iter().enumerate() {
+            match *operand {
+                InlineAsmOperand::Out {
+                    reg: InlineAsmRegOrRegClass::RegClass(class),
+                    late: false,
+                    ..
+                }
+                | InlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::RegClass(class), ..
+                } => {
+                    let mut alloc_reg = None;
+                    for &reg in &map[&class] {
+                        let mut used = false;
+                        reg.overlapping_regs(|r| {
+                            if allocated.contains_key(&r) {
+                                used = true;
+                            }
+                        });
+
+                        if !used {
+                            alloc_reg = Some(reg);
+                            break;
+                        }
+                    }
+
+                    let reg = alloc_reg.expect("cannot allocate registers");
+                    regs[i] = Some(reg);
+                    allocated.insert(reg, (true, true));
+                }
+                _ => (),
+            }
+        }
+
+        // Allocate in/lateout.
+        for (i, operand) in self.operands.iter().enumerate() {
+            match *operand {
+                InlineAsmOperand::In { reg: InlineAsmRegOrRegClass::RegClass(class), .. } => {
+                    let mut alloc_reg = None;
+                    for &reg in &map[&class] {
+                        let mut used = false;
+                        reg.overlapping_regs(|r| {
+                            if allocated.get(&r).copied().unwrap_or_default().0 {
+                                used = true;
+                            }
+                        });
+
+                        if !used {
+                            alloc_reg = Some(reg);
+                            break;
+                        }
+                    }
+
+                    let reg = alloc_reg.expect("cannot allocate registers");
+                    regs[i] = Some(reg);
+                    allocated.entry(reg).or_default().0 = true;
+                }
+                InlineAsmOperand::Out {
+                    reg: InlineAsmRegOrRegClass::RegClass(class),
+                    late: true,
+                    ..
+                } => {
+                    let mut alloc_reg = None;
+                    for &reg in &map[&class] {
+                        let mut used = false;
+                        reg.overlapping_regs(|r| {
+                            if allocated.get(&r).copied().unwrap_or_default().1 {
+                                used = true;
+                            }
+                        });
+
+                        if !used {
+                            alloc_reg = Some(reg);
+                            break;
+                        }
+                    }
+
+                    let reg = alloc_reg.expect("cannot allocate registers");
+                    regs[i] = Some(reg);
+                    allocated.entry(reg).or_default().1 = true;
+                }
+                _ => (),
+            }
+        }
+
+        self.registers = regs;
+    }
+
+    fn generate_asm_wrapper(
+        &self,
+        asm_name: &str,
+        clobbered_regs: Vec<(InlineAsmReg, Size)>,
+        inputs: &[(InlineAsmReg, Size, Value)],
+        outputs: &[(InlineAsmReg, Size, CPlace<'_>)],
+    ) -> String {
+        let mut generated_asm = String::new();
+        writeln!(generated_asm, ".globl {}", asm_name).unwrap();
+        writeln!(generated_asm, ".type {},@function", asm_name).unwrap();
+        writeln!(generated_asm, ".section .text.{},\"ax\",@progbits", asm_name).unwrap();
+        writeln!(generated_asm, "{}:", asm_name).unwrap();
+
         generated_asm.push_str(".intel_syntax noprefix\n");
-    }
+        generated_asm.push_str("    push rbp\n");
+        generated_asm.push_str("    mov rbp,rdi\n");
 
-    if !options.contains(InlineAsmOptions::NORETURN) {
-        // Read output registers
-        for &(reg, offset, _place) in outputs {
-            save_register(&mut generated_asm, arch, reg, offset);
+        // Save clobbered registers
+        if !self.options.contains(InlineAsmOptions::NORETURN) {
+            // FIXME skip registers saved by the calling convention
+            for &(reg, offset) in &clobbered_regs {
+                save_register(&mut generated_asm, self.arch, reg, offset);
+            }
         }
 
-        // Restore clobbered registers
-        for &(reg, offset) in clobbered_regs.iter().rev() {
-            restore_register(&mut generated_asm, arch, reg, offset);
+        // Write input registers
+        for &(reg, offset, _value) in inputs {
+            restore_register(&mut generated_asm, self.arch, reg, offset);
         }
 
-        generated_asm.push_str("    pop rbp\n");
-        generated_asm.push_str("    ret\n");
-    } else {
-        generated_asm.push_str("    ud2\n");
+        if self.options.contains(InlineAsmOptions::ATT_SYNTAX) {
+            generated_asm.push_str(".att_syntax\n");
+        }
+
+        // The actual inline asm
+        for piece in self.template {
+            match piece {
+                InlineAsmTemplatePiece::String(s) => {
+                    generated_asm.push_str(s);
+                }
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span: _ } => {
+                    self.registers[*operand_idx]
+                        .unwrap()
+                        .emit(&mut generated_asm, self.arch, *modifier)
+                        .unwrap();
+                }
+            }
+        }
+        generated_asm.push('\n');
+
+        if self.options.contains(InlineAsmOptions::ATT_SYNTAX) {
+            generated_asm.push_str(".intel_syntax noprefix\n");
+        }
+
+        if !self.options.contains(InlineAsmOptions::NORETURN) {
+            // Read output registers
+            for &(reg, offset, _place) in outputs {
+                save_register(&mut generated_asm, self.arch, reg, offset);
+            }
+
+            // Restore clobbered registers
+            for &(reg, offset) in clobbered_regs.iter().rev() {
+                restore_register(&mut generated_asm, self.arch, reg, offset);
+            }
+
+            generated_asm.push_str("    pop rbp\n");
+            generated_asm.push_str("    ret\n");
+        } else {
+            generated_asm.push_str("    ud2\n");
+        }
+
+        generated_asm.push_str(".att_syntax\n");
+        writeln!(generated_asm, ".size {name}, .-{name}", name = asm_name).unwrap();
+        generated_asm.push_str(".text\n");
+        generated_asm.push_str("\n\n");
+
+        generated_asm
     }
-
-    generated_asm.push_str(".att_syntax\n");
-    writeln!(generated_asm, ".size {name}, .-{name}", name = asm_name).unwrap();
-    generated_asm.push_str(".text\n");
-    generated_asm.push_str("\n\n");
-
-    generated_asm
 }
 
 fn call_inline_asm<'tcx>(
