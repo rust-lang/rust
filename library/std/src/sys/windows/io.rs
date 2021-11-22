@@ -1,8 +1,8 @@
 use crate::io;
 use crate::marker::PhantomData;
 use crate::slice;
-use crate::sys::c;
 use crate::sys;
+use crate::sys::c;
 use libc;
 use std;
 
