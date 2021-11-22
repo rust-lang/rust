@@ -80,7 +80,7 @@ use std::fmt$0::{Display, Debug};
 use std::fmt::{Display, Debug};
 ",
             r"
-use std::fmt::{Debug, Display};
+use std::fmt::{Display, Debug};
 ",
         )
     }
@@ -108,7 +108,7 @@ use std::fmt::Debug;
 use std::fmt$0::Display;
 ",
             r"
-use std::fmt::{Debug, Display};
+use std::fmt::{Display, Debug};
 ",
         );
     }
@@ -135,7 +135,7 @@ use std::fmt::{self, Display};
 use std::{fmt, $0fmt::Display};
 ",
             r"
-use std::{fmt::{self, Display}};
+use std::{fmt::{Display, self}};
 ",
         );
     }
@@ -247,7 +247,7 @@ use std::{fmt::{Debug, Display}};
 use std::{fmt::Debug, fmt$0::Display};
 ",
             r"
-use std::{fmt::{Debug, Display}};
+use std::{fmt::{Display, Debug}};
 ",
         );
     }
@@ -341,7 +341,9 @@ use foo::$0{
 };
 ",
             r"
-use foo::{FooBar, bar::baz};
+use foo::{
+    FooBar, bar::baz,
+};
 ",
         )
     }
