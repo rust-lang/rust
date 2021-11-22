@@ -199,7 +199,6 @@ h1, h2, h3, h4, h5, h6,
 div.item-list .out-of-band, span.since,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before,
 div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate, a.srclink,
 /* This selector is for the items listed in the "all items" page. */
@@ -1523,13 +1522,11 @@ details.rustdoc-toggle > summary.hideme {
 	cursor: pointer;
 }
 
-details.rustdoc-toggle > summary, details.undocumented > summary {
+details.rustdoc-toggle > summary {
 	list-style: none;
 }
 details.rustdoc-toggle > summary::-webkit-details-marker,
-details.rustdoc-toggle > summary::marker,
-details.undocumented > summary::-webkit-details-marker,
-details.undocumented > summary::marker {
+details.rustdoc-toggle > summary::marker {
 	display: none;
 }
 
@@ -1591,8 +1588,7 @@ details.rustdoc-toggle > summary:not(.hideme)::before {
 	top: 3px;
 }
 
-.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
-.undocumented > details.rustdoc-toggle > summary:not(.hideme)::before {
+.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -24px;
 }
@@ -1606,7 +1602,7 @@ details.rustdoc-toggle[open] > summary.hideme {
 	position: absolute;
 }
 
-details.rustdoc-toggle, details.undocumented {
+details.rustdoc-toggle {
 	position: relative;
 }
 
@@ -1627,31 +1623,6 @@ details.rustdoc-toggle[open] > summary.hideme::before {
 details.rustdoc-toggle[open] > summary::after,
 details.rustdoc-toggle[open] > summary.hideme::after {
 	content: "Collapse";
-}
-
-details.undocumented > summary::before {
-	padding-left: 17px;
-	height: max(17px, 1.1em);
-	background-repeat: no-repeat;
-	background-position: top left;
-	content: "Show hidden undocumented items";
-	cursor: pointer;
-	font-size: 16px;
-	font-weight: 300;
-	opacity: .5;
-}
-
-details.undocumented > summary:focus::before,
-details.undocumented > summary:hover::before {
-	opacity: 1;
-}
-
-details.undocumented[open] > summary::before {
-	padding-left: 17px;
-	height: max(17px, 1.1em);
-	background-repeat: no-repeat
-	background-position: top left;
-	content: "Hide undocumented items";
 }
 
 /* Media Queries */
