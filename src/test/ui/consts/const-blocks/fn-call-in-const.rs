@@ -1,7 +1,7 @@
 // run-pass
 
 #![feature(inline_const)]
-#![allow(unused, incomplete_features)]
+#![allow(unused)]
 
 // Some type that is not copyable.
 struct Bar;
