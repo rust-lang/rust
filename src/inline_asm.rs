@@ -128,7 +128,6 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     let generated_asm = asm_gen.generate_asm_wrapper(&asm_name);
     fx.cx.global_asm.push_str(&generated_asm);
 
-    // FIXME overlap input and output slots to save stack space
     for (i, operand) in operands.iter().enumerate() {
         match *operand {
             InlineAsmOperand::In { reg: _, ref value } => {
@@ -306,7 +305,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let mut slots_input = vec![None; self.operands.len()];
         let mut slots_output = vec![None; self.operands.len()];
 
-        let mut new_slot = |reg_class: InlineAsmRegClass| {
+        let new_slot_fn = |slot_size: &mut Size, reg_class: InlineAsmRegClass| {
             let reg_size = reg_class
                 .supported_types(InlineAsmArch::X86_64)
                 .iter()
@@ -314,11 +313,11 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 .max()
                 .unwrap();
             let align = rustc_target::abi::Align::from_bytes(reg_size.bytes()).unwrap();
-            slot_size = slot_size.align_to(align);
-            let offset = slot_size;
-            slot_size += reg_size;
+            let offset = slot_size.align_to(align);
+            *slot_size = offset + reg_size;
             offset
         };
+        let mut new_slot = |x| new_slot_fn(&mut slot_size, x);
 
         // Allocate stack slots for saving clobbered registers
         let abi_clobber =
@@ -346,29 +345,49 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             }
         }
 
-        // FIXME overlap input and output slots to save stack space
+        // Allocate stack slots for inout
         for (i, operand) in self.operands.iter().enumerate() {
             match *operand {
-                InlineAsmOperand::In { reg, .. } => {
-                    slots_input[i] = Some(new_slot(reg.reg_class()));
-                }
-                InlineAsmOperand::Out { reg, place, .. } => {
-                    if place.is_some() {
-                        slots_output[i] = Some(new_slot(reg.reg_class()));
-                    }
-                }
-                InlineAsmOperand::InOut { reg, out_place, .. } => {
+                InlineAsmOperand::InOut { reg, out_place: Some(_), .. } => {
                     let slot = new_slot(reg.reg_class());
                     slots_input[i] = Some(slot);
-                    if out_place.is_some() {
-                        slots_output[i] = Some(slot);
-                    }
+                    slots_output[i] = Some(slot);
                 }
-                InlineAsmOperand::Const { value: _ } => (),
-                InlineAsmOperand::SymFn { value: _ } => (),
-                InlineAsmOperand::SymStatic { def_id: _ } => (),
+                _ => (),
             }
         }
+
+        let slot_size_before_input = slot_size;
+        let mut new_slot = |x| new_slot_fn(&mut slot_size, x);
+
+        // Allocate stack slots for input
+        for (i, operand) in self.operands.iter().enumerate() {
+            match *operand {
+                InlineAsmOperand::In { reg, .. }
+                | InlineAsmOperand::InOut { reg, out_place: None, .. } => {
+                    slots_input[i] = Some(new_slot(reg.reg_class()));
+                }
+                _ => (),
+            }
+        }
+
+        // Reset slot size to before input so that input and output operands can overlap
+        // and save some memory.
+        let slot_size_after_input = slot_size;
+        slot_size = slot_size_before_input;
+        let mut new_slot = |x| new_slot_fn(&mut slot_size, x);
+
+        // Allocate stack slots for output
+        for (i, operand) in self.operands.iter().enumerate() {
+            match *operand {
+                InlineAsmOperand::Out { reg, place: Some(_), .. } => {
+                    slots_output[i] = Some(new_slot(reg.reg_class()));
+                }
+                _ => (),
+            }
+        }
+
+        slot_size = slot_size.max(slot_size_after_input);
 
         self.stack_slots_clobber = slots_clobber;
         self.stack_slots_input = slots_input;
