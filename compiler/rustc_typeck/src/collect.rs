@@ -2849,7 +2849,42 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::rustc_std_internal_symbol) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
         } else if attr.has_name(sym::used) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
+            let inner = attr.meta_item_list();
+            match inner.as_deref() {
+                Some([item]) if item.has_name(sym::linker) => {
+                    if !tcx.features().used_with_arg {
+                        feature_err(
+                            &tcx.sess.parse_sess,
+                            sym::used_with_arg,
+                            attr.span,
+                            "`#[used(linker)]` is currently unstable",
+                        )
+                        .emit();
+                    }
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER;
+                }
+                Some([item]) if item.has_name(sym::compiler) => {
+                    if !tcx.features().used_with_arg {
+                        feature_err(
+                            &tcx.sess.parse_sess,
+                            sym::used_with_arg,
+                            attr.span,
+                            "`#[used(compiler)]` is currently unstable",
+                        )
+                        .emit();
+                    }
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
+                }
+                Some(_) => {
+                    tcx.sess
+                        .struct_span_err(
+                            attr.span,
+                            "expected `used`, `used(compiler)` or `used(linker)`",
+                        )
+                        .emit();
+                }
+                None => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED,
+            }
         } else if attr.has_name(sym::cmse_nonsecure_entry) {
             if !matches!(tcx.fn_sig(id).abi(), abi::Abi::C { .. }) {
                 struct_span_err!(

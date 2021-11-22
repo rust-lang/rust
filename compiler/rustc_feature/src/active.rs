@@ -533,6 +533,8 @@ declare_features! (
     ///
     /// NOTE: A limited form of `union U { ... }` was accepted in 1.19.0.
     (active, untagged_unions, "1.13.0", Some(55149), None),
+    /// Allows using the `#[used(retain)]` attribute.
+    (active, used_with_arg, "1.60.0", None, None),
     /// Allows `extern "wasm" fn`
     (active, wasm_abi, "1.53.0", Some(83788), None),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!

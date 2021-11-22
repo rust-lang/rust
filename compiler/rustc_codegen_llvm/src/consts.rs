@@ -522,6 +522,9 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
             }
 
             if attrs.flags.contains(CodegenFnAttrFlags::USED) {
+                // `USED` and `USED_LINKER` can't be used together.
+                assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER));
+
                 // The semantics of #[used] in Rust only require the symbol to make it into the
                 // object file. It is explicitly allowed for the linker to strip the symbol if it
                 // is dead. As such, use llvm.compiler.used instead of llvm.used.
@@ -529,6 +532,12 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 // sections with SHF_GNU_RETAIN flag for llvm.used symbols, which may trigger bugs
                 // in some versions of the gold linker.
                 self.add_compiler_used_global(g);
+            }
+            if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
+                // `USED` and `USED_LINKER` can't be used together.
+                assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED));
+
+                self.add_used_global(g);
             }
         }
     }
