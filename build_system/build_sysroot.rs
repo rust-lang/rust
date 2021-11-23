@@ -193,6 +193,7 @@ fn build_clif_sysroot_for_triple(
         "RUSTC",
         env::current_dir().unwrap().join(target_dir).join("bin").join("cg_clif_build_sysroot"),
     );
+    build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     spawn_and_wait(build_cmd);
 
     // Copy all relevant files to the sysroot
