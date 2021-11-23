@@ -14,6 +14,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
+#![feature(derive_default_enum)]
 #![feature(hash_drain_filter)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
