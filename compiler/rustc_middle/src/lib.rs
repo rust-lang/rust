@@ -30,6 +30,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
+#![feature(derive_default_enum)]
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
 #![feature(if_let_guard)]
