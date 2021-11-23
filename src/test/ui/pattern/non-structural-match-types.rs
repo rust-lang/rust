@@ -2,7 +2,7 @@
 #![allow(incomplete_features)]
 #![allow(unreachable_code)]
 #![feature(const_async_blocks)]
-#![feature(inline_const)]
+#![feature(inline_const_pat)]
 
 fn main() {
     match loop {} {

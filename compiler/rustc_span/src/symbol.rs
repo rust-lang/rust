@@ -732,6 +732,7 @@ symbols! {
         inlateout,
         inline,
         inline_const,
+        inline_const_pat,
         inout,
         instruction_set,
         intel,
