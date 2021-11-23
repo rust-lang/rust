@@ -42,18 +42,19 @@ declare_clippy_lint! {
     /// // A similar type that is allowed by the config
     /// use std::collections::HashMap;
     /// ```
-    pub DISALLOWED_TYPE,
+    #[clippy::version = "1.55.0"]
+    pub DISALLOWED_TYPES,
     nursery,
-    "use of a disallowed type"
+    "use of disallowed types"
 }
 #[derive(Clone, Debug)]
-pub struct DisallowedType {
+pub struct DisallowedTypes {
     conf_disallowed: Vec<conf::DisallowedType>,
     def_ids: FxHashMap<DefId, Option<String>>,
     prim_tys: FxHashMap<PrimTy, Option<String>>,
 }
 
-impl DisallowedType {
+impl DisallowedTypes {
     pub fn new(conf_disallowed: Vec<conf::DisallowedType>) -> Self {
         Self {
             conf_disallowed,
@@ -79,9 +80,9 @@ impl DisallowedType {
     }
 }
 
-impl_lint_pass!(DisallowedType => [DISALLOWED_TYPE]);
+impl_lint_pass!(DisallowedTypes => [DISALLOWED_TYPES]);
 
-impl<'tcx> LateLintPass<'tcx> for DisallowedType {
+impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         for conf in &self.conf_disallowed {
             let (path, reason) = match conf {
@@ -124,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedType {
 fn emit(cx: &LateContext<'_>, name: &str, span: Span, reason: Option<&str>) {
     span_lint_and_then(
         cx,
-        DISALLOWED_TYPE,
+        DISALLOWED_TYPES,
         span,
         &format!("`{}` is not allowed according to config", name),
         |diag| {

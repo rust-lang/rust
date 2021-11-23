@@ -39,6 +39,7 @@ declare_clippy_lint! {
     /// 	WithValue(x) => x.hash(&mut state),
     /// }
     /// ```
+    #[clippy::version = "1.58.0"]
     pub UNIT_HASH,
     correctness,
     "hashing a unit value, which does nothing"

@@ -1,16 +1,10 @@
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:46:19
-   |
-LL |     with_const_fn.unwrap_or(Duration::from_secs(5));
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| Duration::from_secs(5))`
-   |
-   = note: `-D clippy::or-fun-call` implied by `-D warnings`
-
-error: use of `unwrap_or` followed by a function call
   --> $DIR/or_fun_call.rs:49:22
    |
 LL |     with_constructor.unwrap_or(make());
    |                      ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(make)`
+   |
+   = note: `-D clippy::or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a call to `new`
   --> $DIR/or_fun_call.rs:52:5
@@ -72,30 +66,6 @@ error: use of `unwrap_or` followed by a function call
 LL |     without_default.unwrap_or(Foo::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(Foo::new)`
 
-error: use of `or_insert` followed by a function call
-  --> $DIR/or_fun_call.rs:82:19
-   |
-LL |     map.entry(42).or_insert(String::new());
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(String::new)`
-
-error: use of `or_insert` followed by a function call
-  --> $DIR/or_fun_call.rs:85:23
-   |
-LL |     map_vec.entry(42).or_insert(vec![]);
-   |                       ^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(Vec::new)`
-
-error: use of `or_insert` followed by a function call
-  --> $DIR/or_fun_call.rs:88:21
-   |
-LL |     btree.entry(42).or_insert(String::new());
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(String::new)`
-
-error: use of `or_insert` followed by a function call
-  --> $DIR/or_fun_call.rs:91:25
-   |
-LL |     btree_vec.entry(42).or_insert(vec![]);
-   |                         ^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(Vec::new)`
-
 error: use of `unwrap_or` followed by a function call
   --> $DIR/or_fun_call.rs:94:21
    |
@@ -120,29 +90,23 @@ error: use of `or` followed by a function call
 LL |     let _ = Some("a".to_string()).or(Some("b".to_string()));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some("b".to_string()))`
 
-error: use of `or` followed by a function call
-  --> $DIR/or_fun_call.rs:132:10
-   |
-LL |         .or(Some(Bar(b, Duration::from_secs(2))));
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some(Bar(b, Duration::from_secs(2))))`
-
-error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:160:14
-   |
-LL |         None.unwrap_or(s.as_mut_vec());
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| s.as_mut_vec())`
-
-error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:165:14
-   |
-LL |         None.unwrap_or(unsafe { s.as_mut_vec() });
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { s.as_mut_vec() })`
-
 error: use of `unwrap_or` followed by a function call
   --> $DIR/or_fun_call.rs:167:14
    |
-LL |         None.unwrap_or( unsafe { s.as_mut_vec() }    );
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { s.as_mut_vec() })`
+LL |         None.unwrap_or(ptr_to_ref(s));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| ptr_to_ref(s))`
 
-error: aborting due to 24 previous errors
+error: use of `unwrap_or` followed by a function call
+  --> $DIR/or_fun_call.rs:173:14
+   |
+LL |         None.unwrap_or(unsafe { ptr_to_ref(s) });
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
+
+error: use of `unwrap_or` followed by a function call
+  --> $DIR/or_fun_call.rs:175:14
+   |
+LL |         None.unwrap_or( unsafe { ptr_to_ref(s) }    );
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
+
+error: aborting due to 18 previous errors
 

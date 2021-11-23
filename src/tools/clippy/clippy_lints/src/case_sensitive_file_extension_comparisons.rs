@@ -27,6 +27,7 @@ declare_clippy_lint! {
     ///     filename.rsplit('.').next().map(|ext| ext.eq_ignore_ascii_case("rs")) == Some(true)
     /// }
     /// ```
+    #[clippy::version = "1.51.0"]
     pub CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
     pedantic,
     "Checks for calls to ends_with with case-sensitive file extensions"

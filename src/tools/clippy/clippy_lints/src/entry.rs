@@ -54,6 +54,7 @@ declare_clippy_lint! {
     /// # let v = 1;
     /// map.entry(k).or_insert(v);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MAP_ENTRY,
     perf,
     "use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`"

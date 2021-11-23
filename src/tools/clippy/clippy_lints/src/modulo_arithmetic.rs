@@ -24,6 +24,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = -17 % 3;
     /// ```
+    #[clippy::version = "1.42.0"]
     pub MODULO_ARITHMETIC,
     restriction,
     "any modulo arithmetic statement"

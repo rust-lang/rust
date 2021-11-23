@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::usage::UsedAfterExprVisitor;
-use clippy_utils::{get_enclosing_loop_or_closure, higher, path_to_local_id};
+use clippy_utils::usage::local_used_after_expr;
+use clippy_utils::{get_enclosing_loop_or_closure, higher, path_to_local, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -39,6 +39,7 @@ declare_clippy_lint! {
     /// ```
     /// where `foo(_)` is a plain function that takes the exact argument type of
     /// `x`.
+    #[clippy::version = "pre 1.29.0"]
     pub REDUNDANT_CLOSURE,
     style,
     "redundant closures, i.e., `|a| foo(a)` (which can be written as just `foo`)"
@@ -60,6 +61,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// Some('a').map(char::to_uppercase);
     /// ```
+    #[clippy::version = "1.35.0"]
     pub REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
     pedantic,
     "redundant closures for method calls"
@@ -118,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                             if let ty::Closure(_, substs) = callee_ty.peel_refs().kind();
                             if substs.as_closure().kind() == ClosureKind::FnMut;
                             if get_enclosing_loop_or_closure(cx.tcx, expr).is_some()
-                                || UsedAfterExprVisitor::is_found(cx, callee);
+                                || path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, callee));
 
                             then {
                                 // Mutable closure is used after current expr; we cannot consume it.

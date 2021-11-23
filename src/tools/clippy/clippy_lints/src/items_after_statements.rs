@@ -45,6 +45,7 @@ declare_clippy_lint! {
     ///     foo(); // prints "foo"
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ITEMS_AFTER_STATEMENTS,
     pedantic,
     "blocks where an item comes after a statement"

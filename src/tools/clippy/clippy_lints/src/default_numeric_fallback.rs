@@ -46,6 +46,7 @@ declare_clippy_lint! {
     /// let i = 10i32;
     /// let f = 1.23f64;
     /// ```
+    #[clippy::version = "1.52.0"]
     pub DEFAULT_NUMERIC_FALLBACK,
     restriction,
     "usage of unconstrained numeric literals which may cause default numeric fallback."

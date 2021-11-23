@@ -10,7 +10,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, BytePos, ExpnData, ExpnKind, Span, Symbol};
+use rustc_span::{sym, ExpnData, ExpnKind, Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -31,6 +31,7 @@ declare_clippy_lint! {
     /// # use std::panic::Location;
     /// println!("error: something failed at {}", Location::caller());
     /// ```
+    #[clippy::version = "1.58.0"]
     pub FORMAT_IN_FORMAT_ARGS,
     perf,
     "`format!` used in a macro that does formatting"
@@ -56,6 +57,7 @@ declare_clippy_lint! {
     /// # use std::panic::Location;
     /// println!("error: something failed at {}", Location::caller());
     /// ```
+    #[clippy::version = "1.58.0"]
     pub TO_STRING_IN_FORMAT_ARGS,
     perf,
     "`to_string` applied to a type that implements `Display` in format args"
@@ -128,7 +130,7 @@ fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symb
             span_lint_and_then(
                 cx,
                 FORMAT_IN_FORMAT_ARGS,
-                trim_semicolon(cx, call_site),
+                call_site,
                 &format!("`format!` in `{}!` args", name),
                 |diag| {
                     diag.help(&format!(
@@ -190,13 +192,6 @@ fn is_aliased(args: &[FormatArgsArg<'_>], i: usize) -> bool {
     args.iter()
         .enumerate()
         .any(|(j, arg)| i != j && std::ptr::eq(value, arg.value))
-}
-
-fn trim_semicolon(cx: &LateContext<'_>, span: Span) -> Span {
-    snippet_opt(cx, span).map_or(span, |snippet| {
-        let snippet = snippet.trim_end_matches(';');
-        span.with_hi(span.lo() + BytePos(u32::try_from(snippet.len()).unwrap()))
-    })
 }
 
 fn count_needed_derefs<'tcx, I>(mut ty: Ty<'tcx>, mut iter: I) -> (usize, Ty<'tcx>)

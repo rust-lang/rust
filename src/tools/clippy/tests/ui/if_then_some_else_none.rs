@@ -102,3 +102,14 @@ fn into_some<T>(v: T) -> Option<T> {
 fn into_none<T>() -> Option<T> {
     None
 }
+
+// Should not warn
+fn f(b: bool, v: Option<()>) -> Option<()> {
+    if b {
+        v?; // This is a potential early return, is not equivalent with `bool::then`
+
+        Some(())
+    } else {
+        None
+    }
+}

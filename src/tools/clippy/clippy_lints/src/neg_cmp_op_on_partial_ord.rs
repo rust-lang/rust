@@ -36,6 +36,7 @@ declare_clippy_lint! {
     ///     _ => false,
     /// };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEG_CMP_OP_ON_PARTIAL_ORD,
     complexity,
     "The use of negated comparison operators on partially ordered types may produce confusing code."

@@ -30,6 +30,7 @@ declare_clippy_lint! {
     /// // Good
     /// let a = 42
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub REDUNDANT_CLOSURE_CALL,
     complexity,
     "throwaway closures called in the expression they are defined"

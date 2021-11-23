@@ -20,6 +20,7 @@ declare_clippy_lint! {
     /// ```ignore
     /// x * -1
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEG_MULTIPLY,
     style,
     "multiplying integers with `-1`"

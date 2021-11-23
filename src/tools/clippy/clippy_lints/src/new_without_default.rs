@@ -45,6 +45,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEW_WITHOUT_DEFAULT,
     style,
     "`fn new() -> Self` method without `Default` implementation"

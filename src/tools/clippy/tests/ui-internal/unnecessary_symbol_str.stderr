@@ -1,5 +1,5 @@
 error: unnecessary `Symbol` to string conversion
-  --> $DIR/unnecessary_symbol_str.rs:11:5
+  --> $DIR/unnecessary_symbol_str.rs:15:5
    |
 LL |     Symbol::intern("foo").as_str() == "clippy";
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Symbol::intern("foo") == rustc_span::sym::clippy`
@@ -12,25 +12,25 @@ LL | #![deny(clippy::internal)]
    = note: `#[deny(clippy::unnecessary_symbol_str)]` implied by `#[deny(clippy::internal)]`
 
 error: unnecessary `Symbol` to string conversion
-  --> $DIR/unnecessary_symbol_str.rs:12:5
+  --> $DIR/unnecessary_symbol_str.rs:16:5
    |
 LL |     Symbol::intern("foo").to_string() == "self";
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Symbol::intern("foo") == rustc_span::symbol::kw::SelfLower`
 
 error: unnecessary `Symbol` to string conversion
-  --> $DIR/unnecessary_symbol_str.rs:13:5
+  --> $DIR/unnecessary_symbol_str.rs:17:5
    |
 LL |     Symbol::intern("foo").to_ident_string() != "Self";
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Symbol::intern("foo") != rustc_span::symbol::kw::SelfUpper`
 
 error: unnecessary `Symbol` to string conversion
-  --> $DIR/unnecessary_symbol_str.rs:14:5
+  --> $DIR/unnecessary_symbol_str.rs:18:5
    |
 LL |     &*Ident::empty().as_str() == "clippy";
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Ident::empty().name == rustc_span::sym::clippy`
 
 error: unnecessary `Symbol` to string conversion
-  --> $DIR/unnecessary_symbol_str.rs:15:5
+  --> $DIR/unnecessary_symbol_str.rs:19:5
    |
 LL |     "clippy" == Ident::empty().to_string();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::sym::clippy == Ident::empty().name`

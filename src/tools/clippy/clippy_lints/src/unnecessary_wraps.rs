@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::{contains_return, in_macro, is_lang_ctor, return_ty, visitors::find_all_ret_expressions};
+use clippy_utils::{contains_return, is_lang_ctor, return_ty, visitors::find_all_ret_expressions};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -49,6 +49,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.50.0"]
     pub UNNECESSARY_WRAPS,
     pedantic,
     "functions that only return `Ok` or `Some`"
@@ -116,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         let mut suggs = Vec::new();
         let can_sugg = find_all_ret_expressions(cx, &body.value, |ret_expr| {
             if_chain! {
-                if !in_macro(ret_expr.span);
+                if !ret_expr.span.from_expansion();
                 // Check if a function call.
                 if let ExprKind::Call(func, [arg]) = ret_expr.kind;
                 // Check if OPTION_SOME or RESULT_OK, depending on return type.

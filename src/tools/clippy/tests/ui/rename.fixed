@@ -6,6 +6,7 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_static_lifetimes)]
+#![allow(clippy::cognitive_complexity)]
 #![allow(clippy::bind_instead_of_map)]
 #![allow(clippy::box_collection)]
 #![allow(clippy::blocks_in_if_conditions)]
@@ -17,6 +18,8 @@
 #![allow(clippy::invisible_characters)]
 #![allow(clippy::single_char_add_str)]
 #![allow(clippy::match_result_ok)]
+#![allow(clippy::disallowed_types)]
+#![allow(clippy::disallowed_methods)]
 // uplifted lints
 #![allow(invalid_value)]
 #![allow(array_into_iter)]
@@ -49,6 +52,8 @@
 #![warn(clippy::invisible_characters)]
 #![warn(clippy::single_char_add_str)]
 #![warn(clippy::match_result_ok)]
+#![warn(clippy::disallowed_types)]
+#![warn(clippy::disallowed_methods)]
 // uplifted lints
 #![warn(invalid_value)]
 #![warn(array_into_iter)]

@@ -27,6 +27,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let v = vec![0];
     /// ```
+    #[clippy::version = "1.51.0"]
     pub VEC_INIT_THEN_PUSH,
     perf,
     "`push` immediately after `Vec` creation"

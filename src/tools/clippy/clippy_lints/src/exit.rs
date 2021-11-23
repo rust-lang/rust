@@ -18,6 +18,7 @@ declare_clippy_lint! {
     /// ```ignore
     /// std::process::exit(0)
     /// ```
+    #[clippy::version = "1.41.0"]
     pub EXIT,
     restriction,
     "`std::process::exit` is called, terminating the program"

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::ty::{has_drop, is_copy};
-use clippy_utils::{any_parent_is_automatically_derived, contains_name, in_macro, match_def_path, paths};
+use clippy_utils::{any_parent_is_automatically_derived, contains_name, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -29,6 +29,7 @@ declare_clippy_lint! {
     /// // Good
     /// let s = String::default();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DEFAULT_TRAIT_ACCESS,
     pedantic,
     "checks for literal calls to `Default::default()`"
@@ -62,6 +63,7 @@ declare_clippy_lint! {
     ///     .. Default::default()
     /// };
     /// ```
+    #[clippy::version = "1.49.0"]
     pub FIELD_REASSIGN_WITH_DEFAULT,
     style,
     "binding initialized with Default should have its fields set in the initializer"
@@ -78,7 +80,7 @@ impl_lint_pass!(Default => [DEFAULT_TRAIT_ACCESS, FIELD_REASSIGN_WITH_DEFAULT]);
 impl LateLintPass<'_> for Default {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if !in_macro(expr.span);
+            if !expr.span.from_expansion();
             // Avoid cases already linted by `field_reassign_with_default`
             if !self.reassigned_linted.contains(&expr.span);
             if let ExprKind::Call(path, ..) = expr.kind;
@@ -125,7 +127,7 @@ impl LateLintPass<'_> for Default {
                 if let StmtKind::Local(local) = stmt.kind;
                 if let Some(expr) = local.init;
                 if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
-                if !in_macro(expr.span);
+                if !expr.span.from_expansion();
                 // only take bindings to identifiers
                 if let PatKind::Binding(_, binding_id, ident, _) = local.pat.kind;
                 // only when assigning `... = Default::default()`

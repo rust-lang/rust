@@ -1,0 +1,82 @@
+error: casting `bool` to `u8` is more cleanly stated with `u8::from(_)`
+  --> $DIR/cast_lossless_bool.rs:8:13
+   |
+LL |     let _ = true as u8;
+   |             ^^^^^^^^^^ help: try: `u8::from(true)`
+   |
+   = note: `-D clippy::cast-lossless` implied by `-D warnings`
+
+error: casting `bool` to `u16` is more cleanly stated with `u16::from(_)`
+  --> $DIR/cast_lossless_bool.rs:9:13
+   |
+LL |     let _ = true as u16;
+   |             ^^^^^^^^^^^ help: try: `u16::from(true)`
+
+error: casting `bool` to `u32` is more cleanly stated with `u32::from(_)`
+  --> $DIR/cast_lossless_bool.rs:10:13
+   |
+LL |     let _ = true as u32;
+   |             ^^^^^^^^^^^ help: try: `u32::from(true)`
+
+error: casting `bool` to `u64` is more cleanly stated with `u64::from(_)`
+  --> $DIR/cast_lossless_bool.rs:11:13
+   |
+LL |     let _ = true as u64;
+   |             ^^^^^^^^^^^ help: try: `u64::from(true)`
+
+error: casting `bool` to `u128` is more cleanly stated with `u128::from(_)`
+  --> $DIR/cast_lossless_bool.rs:12:13
+   |
+LL |     let _ = true as u128;
+   |             ^^^^^^^^^^^^ help: try: `u128::from(true)`
+
+error: casting `bool` to `usize` is more cleanly stated with `usize::from(_)`
+  --> $DIR/cast_lossless_bool.rs:13:13
+   |
+LL |     let _ = true as usize;
+   |             ^^^^^^^^^^^^^ help: try: `usize::from(true)`
+
+error: casting `bool` to `i8` is more cleanly stated with `i8::from(_)`
+  --> $DIR/cast_lossless_bool.rs:15:13
+   |
+LL |     let _ = true as i8;
+   |             ^^^^^^^^^^ help: try: `i8::from(true)`
+
+error: casting `bool` to `i16` is more cleanly stated with `i16::from(_)`
+  --> $DIR/cast_lossless_bool.rs:16:13
+   |
+LL |     let _ = true as i16;
+   |             ^^^^^^^^^^^ help: try: `i16::from(true)`
+
+error: casting `bool` to `i32` is more cleanly stated with `i32::from(_)`
+  --> $DIR/cast_lossless_bool.rs:17:13
+   |
+LL |     let _ = true as i32;
+   |             ^^^^^^^^^^^ help: try: `i32::from(true)`
+
+error: casting `bool` to `i64` is more cleanly stated with `i64::from(_)`
+  --> $DIR/cast_lossless_bool.rs:18:13
+   |
+LL |     let _ = true as i64;
+   |             ^^^^^^^^^^^ help: try: `i64::from(true)`
+
+error: casting `bool` to `i128` is more cleanly stated with `i128::from(_)`
+  --> $DIR/cast_lossless_bool.rs:19:13
+   |
+LL |     let _ = true as i128;
+   |             ^^^^^^^^^^^^ help: try: `i128::from(true)`
+
+error: casting `bool` to `isize` is more cleanly stated with `isize::from(_)`
+  --> $DIR/cast_lossless_bool.rs:20:13
+   |
+LL |     let _ = true as isize;
+   |             ^^^^^^^^^^^^^ help: try: `isize::from(true)`
+
+error: casting `bool` to `u16` is more cleanly stated with `u16::from(_)`
+  --> $DIR/cast_lossless_bool.rs:23:13
+   |
+LL |     let _ = (true | false) as u16;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `u16::from(true | false)`
+
+error: aborting due to 13 previous errors
+

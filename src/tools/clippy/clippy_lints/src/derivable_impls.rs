@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{in_macro, is_automatically_derived, is_default_equivalent, remove_blocks};
+use clippy_utils::{is_automatically_derived, is_default_equivalent, remove_blocks};
 use rustc_hir::{
     def::{DefKind, Res},
     Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
@@ -46,6 +46,7 @@ declare_clippy_lint! {
     /// has exactly equal bounds, and therefore this lint is disabled for types with
     /// generic parameters.
     ///
+    #[clippy::version = "1.57.0"]
     pub DERIVABLE_IMPLS,
     complexity,
     "manual implementation of the `Default` trait which is equal to a derive"
@@ -72,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             }) = item.kind;
             if let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !is_automatically_derived(attrs);
-            if !in_macro(item.span);
+            if !item.span.from_expansion();
             if let Some(def_id) = trait_ref.trait_def_id();
             if cx.tcx.is_diagnostic_item(sym::Default, def_id);
             if let impl_item_hir = child.id.hir_id();

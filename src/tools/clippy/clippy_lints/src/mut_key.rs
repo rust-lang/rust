@@ -72,6 +72,7 @@ declare_clippy_lint! {
     ///     let _: HashSet<Bad> = HashSet::new();
     /// }
     /// ```
+    #[clippy::version = "1.42.0"]
     pub MUTABLE_KEY_TYPE,
     suspicious,
     "Check for mutable `Map`/`Set` key type"

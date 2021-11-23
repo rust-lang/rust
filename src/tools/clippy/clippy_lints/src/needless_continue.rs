@@ -110,6 +110,7 @@ declare_clippy_lint! {
     ///     # break;
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_CONTINUE,
     pedantic,
     "`continue` statements that can be replaced by a rearrangement of code"

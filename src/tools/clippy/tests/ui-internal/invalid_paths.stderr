@@ -1,5 +1,5 @@
 error: invalid path
-  --> $DIR/invalid_paths.rs:17:5
+  --> $DIR/invalid_paths.rs:18:5
    |
 LL |     pub const BAD_CRATE_PATH: [&str; 2] = ["bad", "path"];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     pub const BAD_CRATE_PATH: [&str; 2] = ["bad", "path"];
    = note: `-D clippy::invalid-paths` implied by `-D warnings`
 
 error: invalid path
-  --> $DIR/invalid_paths.rs:20:5
+  --> $DIR/invalid_paths.rs:21:5
    |
 LL |     pub const BAD_MOD_PATH: [&str; 2] = ["std", "xxx"];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
