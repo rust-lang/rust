@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
@@ -56,6 +55,7 @@ declare_clippy_lint! {
     /// # let y = 2;
     /// Foo { x, y };
     /// ```
+    #[clippy::version = "1.52.0"]
     pub INCONSISTENT_STRUCT_CONSTRUCTOR,
     pedantic,
     "the order of the field init shorthand is inconsistent with the order in the struct definition"
@@ -66,7 +66,7 @@ declare_lint_pass!(InconsistentStructConstructor => [INCONSISTENT_STRUCT_CONSTRU
 impl LateLintPass<'_> for InconsistentStructConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
-            if !in_macro(expr.span);
+            if !expr.span.from_expansion();
             if let ExprKind::Struct(qpath, fields, base) = expr.kind;
             let ty = cx.typeck_results().expr_ty(expr);
             if let Some(adt_def) = ty.ty_adt_def();

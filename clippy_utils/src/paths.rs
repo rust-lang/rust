@@ -28,6 +28,7 @@ pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
 pub(super) const BEGIN_PANIC: [&str; 3] = ["std", "panicking", "begin_panic"];
 /// Preferably use the diagnostic item `sym::Borrow` where possible
 pub const BORROW_TRAIT: [&str; 3] = ["core", "borrow", "Borrow"];
+pub const BORROW_MUT_TRAIT: [&str; 3] = ["core", "borrow", "BorrowMut"];
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
 pub const BTREEMAP_ENTRY: [&str; 6] = ["alloc", "collections", "btree", "map", "entry", "Entry"];
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
@@ -110,6 +111,8 @@ pub(super) const PANICKING_PANIC: [&str; 3] = ["core", "panicking", "panic"];
 pub(super) const PANICKING_PANIC_FMT: [&str; 3] = ["core", "panicking", "panic_fmt"];
 pub(super) const PANICKING_PANIC_STR: [&str; 3] = ["core", "panicking", "panic_str"];
 pub(super) const PANIC_ANY: [&str; 3] = ["std", "panic", "panic_any"];
+pub const PARKING_LOT_RAWMUTEX: [&str; 3] = ["parking_lot", "raw_mutex", "RawMutex"];
+pub const PARKING_LOT_RAWRWLOCK: [&str; 3] = ["parking_lot", "raw_rwlock", "RawRwLock"];
 pub const PARKING_LOT_MUTEX_GUARD: [&str; 2] = ["parking_lot", "MutexGuard"];
 pub const PARKING_LOT_RWLOCK_READ_GUARD: [&str; 2] = ["parking_lot", "RwLockReadGuard"];
 pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 2] = ["parking_lot", "RwLockWriteGuard"];

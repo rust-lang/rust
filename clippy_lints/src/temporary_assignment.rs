@@ -17,6 +17,7 @@ declare_clippy_lint! {
     /// ```rust
     /// (0, 0).0 = 1
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TEMPORARY_ASSIGNMENT,
     complexity,
     "assignments to temporaries"

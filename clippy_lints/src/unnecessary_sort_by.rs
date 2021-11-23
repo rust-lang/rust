@@ -39,6 +39,7 @@ declare_clippy_lint! {
     /// # let mut vec: Vec<A> = Vec::new();
     /// vec.sort_by_key(|a| a.foo());
     /// ```
+    #[clippy::version = "1.46.0"]
     pub UNNECESSARY_SORT_BY,
     complexity,
     "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer"

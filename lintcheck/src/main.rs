@@ -563,7 +563,7 @@ fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
     }
 }
 
-/// Generate a short list of occuring lints-types and their count
+/// Generate a short list of occurring lints-types and their count
 fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, usize>) {
     // count lint type occurrences
     let mut counter: HashMap<&String, usize> = HashMap::new();
@@ -718,7 +718,7 @@ pub fn main() {
             // quarter of the time which might result in a longer wall clock runtime
 
             // This helps when we check many small crates with dep-trees that don't have a lot of branches in
-            // order to achive some kind of parallelism
+            // order to achieve some kind of parallelism
 
             // by default, use a single thread
             let num_cpus = config.max_jobs;

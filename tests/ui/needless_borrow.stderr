@@ -1,5 +1,5 @@
 error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:8:15
+  --> $DIR/needless_borrow.rs:9:15
    |
 LL |     let _ = x(&&a); // warn
    |               ^^^ help: change this to: `&a`
@@ -7,16 +7,58 @@ LL |     let _ = x(&&a); // warn
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
 
 error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:12:13
+  --> $DIR/needless_borrow.rs:13:13
    |
 LL |     mut_ref(&mut &mut b); // warn
    |             ^^^^^^^^^^^ help: change this to: `&mut b`
 
 error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:26:15
+  --> $DIR/needless_borrow.rs:25:13
+   |
+LL |             &&a
+   |             ^^^ help: change this to: `&a`
+
+error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:27:15
    |
 LL |         46 => &&a,
    |               ^^^ help: change this to: `&a`
 
-error: aborting due to 3 previous errors
+error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:33:27
+   |
+LL |                     break &ref_a;
+   |                           ^^^^^^ help: change this to: `ref_a`
+
+error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:40:15
+   |
+LL |     let _ = x(&&&a);
+   |               ^^^^ help: change this to: `&a`
+
+error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:41:15
+   |
+LL |     let _ = x(&mut &&a);
+   |               ^^^^^^^^ help: change this to: `&a`
+
+error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:42:15
+   |
+LL |     let _ = x(&&&mut b);
+   |               ^^^^^^^^ help: change this to: `&mut b`
+
+error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:43:15
+   |
+LL |     let _ = x(&&ref_a);
+   |               ^^^^^^^ help: change this to: `ref_a`
+
+error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:46:11
+   |
+LL |         x(&b);
+   |           ^^ help: change this to: `b`
+
+error: aborting due to 10 previous errors
 

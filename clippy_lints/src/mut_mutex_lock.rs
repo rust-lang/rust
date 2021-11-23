@@ -38,6 +38,7 @@ declare_clippy_lint! {
     /// let value = value_mutex.get_mut().unwrap();
     /// *value += 1;
     /// ```
+    #[clippy::version = "1.49.0"]
     pub MUT_MUTEX_LOCK,
     style,
     "`&mut Mutex::lock` does unnecessary locking"

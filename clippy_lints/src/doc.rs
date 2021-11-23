@@ -1,5 +1,5 @@
 use clippy_utils::attrs::is_doc_hidden;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_then};
 use clippy_utils::source::{first_line_of_span, snippet_with_applicability};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_entrypoint_fn, is_expn_of, match_panic_def_id, method_chain_args, return_ty};
@@ -10,7 +10,7 @@ use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Applicability, Handler};
+use rustc_errors::{Applicability, Handler, SuggestionStyle};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{AnonConst, Expr, ExprKind, QPath};
@@ -67,6 +67,7 @@ declare_clippy_lint! {
     /// /// [SmallVec]: SmallVec
     /// fn main() {}
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DOC_MARKDOWN,
     pedantic,
     "presence of `_`, `::` or camel-case outside backticks in documentation"
@@ -101,6 +102,7 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
+    #[clippy::version = "1.39.0"]
     pub MISSING_SAFETY_DOC,
     style,
     "`pub unsafe fn` without `# Safety` docs"
@@ -129,6 +131,7 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
+    #[clippy::version = "1.41.0"]
     pub MISSING_ERRORS_DOC,
     pedantic,
     "`pub fn` returns `Result` without `# Errors` in doc comment"
@@ -159,6 +162,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.52.0"]
     pub MISSING_PANICS_DOC,
     pedantic,
     "`pub fn` may panic without `# Panics` in doc comment"
@@ -187,6 +191,7 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ``````
+    #[clippy::version = "1.40.0"]
     pub NEEDLESS_DOCTEST_MAIN,
     style,
     "presence of `fn main() {` in code examples"
@@ -639,7 +644,9 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                             | ItemKind::ExternCrate(..)
                             | ItemKind::ForeignMod(..) => return false,
                             // We found a main function ...
-                            ItemKind::Fn(box Fn { sig, body: Some(block), .. }) if item.ident.name == sym::main => {
+                            ItemKind::Fn(box Fn {
+                                sig, body: Some(block), ..
+                            }) if item.ident.name == sym::main => {
                                 let is_async = matches!(sig.header.asyncness, Async::Yes { .. });
                                 let returns_nothing = match &sig.decl.output {
                                     FnRetTy::Default(..) => true,
@@ -763,14 +770,23 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
     if has_underscore(word) || word.contains("::") || is_camel_case(word) {
         let mut applicability = Applicability::MachineApplicable;
 
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             DOC_MARKDOWN,
             span,
             "item in documentation is missing backticks",
-            "try",
-            format!("`{}`", snippet_with_applicability(cx, span, "..", &mut applicability)),
-            applicability,
+            |diag| {
+                let snippet = snippet_with_applicability(cx, span, "..", &mut applicability);
+                diag.span_suggestion_with_style(
+                    span,
+                    "try",
+                    format!("`{}`", snippet),
+                    applicability,
+                    // always show the suggestion in a separate line, since the
+                    // inline presentation adds another pair of backticks
+                    SuggestionStyle::ShowAlways,
+                );
+            },
         );
     }
 }

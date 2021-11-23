@@ -25,6 +25,7 @@ declare_clippy_lint! {
     /// # let a = 0;
     /// a + 1;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INTEGER_ARITHMETIC,
     restriction,
     "any integer arithmetic expression which could overflow or panic"
@@ -43,6 +44,7 @@ declare_clippy_lint! {
     /// # let a = 0.0;
     /// a + 1.0;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub FLOAT_ARITHMETIC,
     restriction,
     "any floating-point arithmetic statement"

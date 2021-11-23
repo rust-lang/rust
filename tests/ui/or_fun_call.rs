@@ -155,16 +155,24 @@ fn f() -> Option<()> {
 }
 
 mod issue6675 {
+    unsafe fn ptr_to_ref<'a, T>(p: *const T) -> &'a T {
+        #[allow(unused)]
+        let x = vec![0; 1000]; // future-proofing, make this function expensive.
+        &*p
+    }
+
     unsafe fn foo() {
-        let mut s = "test".to_owned();
-        None.unwrap_or(s.as_mut_vec());
+        let s = "test".to_owned();
+        let s = &s as *const _;
+        None.unwrap_or(ptr_to_ref(s));
     }
 
     fn bar() {
-        let mut s = "test".to_owned();
-        None.unwrap_or(unsafe { s.as_mut_vec() });
+        let s = "test".to_owned();
+        let s = &s as *const _;
+        None.unwrap_or(unsafe { ptr_to_ref(s) });
         #[rustfmt::skip]
-        None.unwrap_or( unsafe { s.as_mut_vec() }    );
+        None.unwrap_or( unsafe { ptr_to_ref(s) }    );
     }
 }
 

@@ -1,4 +1,5 @@
 #![warn(clippy::suspicious_splitn)]
+#![allow(clippy::needless_splitn)]
 
 fn main() {
     let _ = "a,b,c".splitn(3, ',');

@@ -33,6 +33,7 @@ declare_clippy_lint! {
     ///     fn foo(&self) {}
     /// }
     /// ```
+    #[clippy::version = "1.57.0"]
     pub SAME_NAME_METHOD,
     restriction,
     "two method with same name"

@@ -27,6 +27,7 @@ declare_clippy_lint! {
     /// # use std::fs;
     /// let mut bytes = fs::read("foo.txt").unwrap();
     /// ```
+    #[clippy::version = "1.44.0"]
     pub VERBOSE_FILE_READS,
     restriction,
     "use of `File::read_to_end` or `File::read_to_string`"

@@ -38,6 +38,7 @@ declare_clippy_lint! {
     /// let mut v = Vec::<String>::new();
     /// let _ = v.iter_mut().filter(|a| a.is_empty());
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_BORROWED_REFERENCE,
     complexity,
     "destructuring a reference and borrowing the inner value"

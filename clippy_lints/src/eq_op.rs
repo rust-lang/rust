@@ -1,9 +1,7 @@
 use clippy_utils::diagnostics::{multispan_sugg, span_lint, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{
-    ast_utils::is_useless_with_eq_exprs, eq_expr_value, higher, in_macro, is_expn_of, is_in_test_function,
-};
+use clippy_utils::{ast_utils::is_useless_with_eq_exprs, eq_expr_value, higher, is_expn_of, is_in_test_function};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, StmtKind};
@@ -36,6 +34,7 @@ declare_clippy_lint! {
     /// # let b = 4;
     /// assert_eq!(a, a);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EQ_OP,
     correctness,
     "equal operands on both sides of a comparison or bitwise combination (e.g., `x == x`)"
@@ -61,6 +60,7 @@ declare_clippy_lint! {
     /// // Good
     /// x == *y
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub OP_REF,
     style,
     "taking a reference to satisfy the type constraints on `==`"
@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
             }
             let macro_with_not_op = |expr_kind: &ExprKind<'_>| {
                 if let ExprKind::Unary(_, expr) = *expr_kind {
-                    in_macro(expr.span)
+                    expr.span.from_expansion()
                 } else {
                     false
                 }

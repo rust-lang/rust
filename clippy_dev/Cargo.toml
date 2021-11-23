@@ -12,6 +12,7 @@ opener = "0.5"
 regex = "1.5"
 shell-escape = "0.1"
 walkdir = "2.3"
+cargo_metadata = "0.14"
 
 [features]
 deny-warnings = []

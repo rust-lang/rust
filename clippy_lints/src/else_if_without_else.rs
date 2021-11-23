@@ -40,6 +40,7 @@ declare_clippy_lint! {
     ///     // We don't care about zero.
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ELSE_IF_WITHOUT_ELSE,
     restriction,
     "`if` expression with an `else if`, but without a final `else` branch"

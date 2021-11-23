@@ -1,13 +1,16 @@
 use clippy_utils::ty::{has_iter_method, implements_trait};
 use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_local_id, sugg};
 use if_chain::if_chain;
+use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
-use rustc_hir::HirIdMap;
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Stmt, StmtKind};
+use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, Pat, PatKind, Stmt};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
+use rustc_middle::ty::Ty;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_typeck::hir_ty_to_ty;
 use std::iter::Iterator;
 
 #[derive(Debug, PartialEq)]
@@ -105,10 +108,11 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
 }
 
 enum InitializeVisitorState<'hir> {
-    Initial,          // Not examined yet
-    Declared(Symbol), // Declared but not (yet) initialized
+    Initial,                            // Not examined yet
+    Declared(Symbol, Option<Ty<'hir>>), // Declared but not (yet) initialized
     Initialized {
         name: Symbol,
+        ty: Option<Ty<'hir>>,
         initializer: &'hir Expr<'hir>,
     },
     DontWarn,
@@ -137,9 +141,9 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
         }
     }
 
-    pub(super) fn get_result(&self) -> Option<(Symbol, &'tcx Expr<'tcx>)> {
-        if let InitializeVisitorState::Initialized { name, initializer } = self.state {
-            Some((name, initializer))
+    pub(super) fn get_result(&self) -> Option<(Symbol, Option<Ty<'tcx>>, &'tcx Expr<'tcx>)> {
+        if let InitializeVisitorState::Initialized { name, ty, initializer } = self.state {
+            Some((name, ty, initializer))
         } else {
             None
         }
@@ -149,22 +153,25 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
+    fn visit_local(&mut self, l: &'tcx Local<'_>) {
         // Look for declarations of the variable
         if_chain! {
-            if let StmtKind::Local(local) = stmt.kind;
-            if local.pat.hir_id == self.var_id;
-            if let PatKind::Binding(.., ident, _) = local.pat.kind;
+            if l.pat.hir_id == self.var_id;
+            if let PatKind::Binding(.., ident, _) = l.pat.kind;
             then {
-                self.state = local.init.map_or(InitializeVisitorState::Declared(ident.name), |init| {
+                let ty = l.ty.map(|ty| hir_ty_to_ty(self.cx.tcx, ty));
+
+                self.state = l.init.map_or(InitializeVisitorState::Declared(ident.name, ty), |init| {
                     InitializeVisitorState::Initialized {
                         initializer: init,
+                        ty,
                         name: ident.name,
                     }
                 })
             }
         }
-        walk_stmt(self, stmt);
+
+        walk_local(self, l);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
@@ -194,15 +201,38 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                         self.state = InitializeVisitorState::DontWarn;
                     },
                     ExprKind::Assign(lhs, rhs, _) if lhs.hir_id == expr.hir_id => {
-                        self.state = if_chain! {
-                            if self.depth == 0;
-                            if let InitializeVisitorState::Declared(name)
-                                | InitializeVisitorState::Initialized { name, ..} = self.state;
-                            then {
-                                InitializeVisitorState::Initialized { initializer: rhs, name }
-                            } else {
-                                InitializeVisitorState::DontWarn
+                        self.state = if self.depth == 0 {
+                            match self.state {
+                                InitializeVisitorState::Declared(name, mut ty) => {
+                                    if ty.is_none() {
+                                        if let ExprKind::Lit(Spanned {
+                                            node: LitKind::Int(_, LitIntType::Unsuffixed),
+                                            ..
+                                        }) = rhs.kind
+                                        {
+                                            ty = None;
+                                        } else {
+                                            ty = self.cx.typeck_results().expr_ty_opt(rhs);
+                                        }
+                                    }
+
+                                    InitializeVisitorState::Initialized {
+                                        initializer: rhs,
+                                        ty,
+                                        name,
+                                    }
+                                },
+                                InitializeVisitorState::Initialized { ty, name, .. } => {
+                                    InitializeVisitorState::Initialized {
+                                        initializer: rhs,
+                                        ty,
+                                        name,
+                                    }
+                                },
+                                _ => InitializeVisitorState::DontWarn,
                             }
+                        } else {
+                            InitializeVisitorState::DontWarn
                         }
                     },
                     ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {

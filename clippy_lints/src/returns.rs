@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{fn_def_id, in_macro, path_to_local_id};
+use clippy_utils::{fn_def_id, path_to_local_id};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
@@ -37,6 +37,7 @@ declare_clippy_lint! {
     ///     String::new()
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub LET_AND_RETURN,
     style,
     "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block"
@@ -62,6 +63,7 @@ declare_clippy_lint! {
     ///     x
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_RETURN,
     style,
     "using a return statement like `return expr;` where an expression would suffice"
@@ -90,8 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             if !last_statement_borrows(cx, initexpr);
             if !in_external_macro(cx.sess(), initexpr.span);
             if !in_external_macro(cx.sess(), retexpr.span);
-            if !in_external_macro(cx.sess(), local.span);
-            if !in_macro(local.span);
+            if !local.span.from_expansion();
             then {
                 span_lint_and_then(
                     cx,

@@ -4,7 +4,7 @@ use clippy_utils::consts::{
 };
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher;
-use clippy_utils::{eq_expr_value, get_parent_expr, numeric_literal, sugg};
+use clippy_utils::{eq_expr_value, get_parent_expr, in_constant, numeric_literal, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -43,6 +43,7 @@ declare_clippy_lint! {
     /// let _ = a.ln_1p();
     /// let _ = a.exp_m1();
     /// ```
+    #[clippy::version = "1.43.0"]
     pub IMPRECISE_FLOPS,
     nursery,
     "usage of imprecise floating point operations"
@@ -99,6 +100,7 @@ declare_clippy_lint! {
     /// let _ = a.abs();
     /// let _ = -a.abs();
     /// ```
+    #[clippy::version = "1.43.0"]
     pub SUBOPTIMAL_FLOPS,
     nursery,
     "usage of sub-optimal floating point operations"
@@ -685,6 +687,11 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        // All of these operations are currently not const.
+        if in_constant(cx, expr.hir_id) {
+            return;
+        }
+
         if let ExprKind::MethodCall(path, _, args, _) = &expr.kind {
             let recv_ty = cx.typeck_results().expr_ty(&args[0]);
 

@@ -34,6 +34,7 @@ declare_clippy_lint! {
     ///
     /// struct Test(!);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EMPTY_ENUM,
     pedantic,
     "enum with no variants"
