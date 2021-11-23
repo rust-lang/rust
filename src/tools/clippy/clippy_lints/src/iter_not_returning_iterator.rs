@@ -32,6 +32,7 @@ declare_clippy_lint! {
     ///    }
     /// }
     /// ```
+    #[clippy::version = "1.57.0"]
     pub ITER_NOT_RETURNING_ITERATOR,
     pedantic,
     "methods named `iter` or `iter_mut` that do not return an `Iterator`"

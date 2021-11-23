@@ -25,6 +25,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let null_ref: &u64 = unsafe { std::mem::transmute(0 as *const u64) };
     /// ```
+    #[clippy::version = "1.35.0"]
     pub TRANSMUTING_NULL,
     correctness,
     "transmutes from a null pointer to a reference, which is undefined behavior"

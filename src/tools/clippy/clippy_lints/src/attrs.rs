@@ -1,8 +1,9 @@
 //! checks for attributes
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::match_panic_def_id;
+use clippy_utils::msrvs;
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
+use clippy_utils::{extract_msrv_attr, match_panic_def_id, meets_msrv};
 use if_chain::if_chain;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
@@ -12,7 +13,8 @@ use rustc_hir::{
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, SymbolStr};
@@ -64,6 +66,7 @@ declare_clippy_lint! {
     /// #[inline(always)]
     /// fn not_quite_hot_code(..) { ... }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INLINE_ALWAYS,
     pedantic,
     "use of `#[inline(always)]`"
@@ -98,6 +101,7 @@ declare_clippy_lint! {
     /// #[macro_use]
     /// extern crate baz;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub USELESS_ATTRIBUTE,
     correctness,
     "use of lint attributes on `extern crate` items"
@@ -117,6 +121,7 @@ declare_clippy_lint! {
     /// #[deprecated(since = "forever")]
     /// fn something_else() { /* ... */ }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DEPRECATED_SEMVER,
     correctness,
     "use of `#[deprecated(since = \"x\")]` where x is not semver"
@@ -154,6 +159,7 @@ declare_clippy_lint! {
     /// #[allow(dead_code)]
     /// fn this_is_fine_too() { }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EMPTY_LINE_AFTER_OUTER_ATTR,
     nursery,
     "empty line after outer attribute"
@@ -177,6 +183,7 @@ declare_clippy_lint! {
     /// ```rust
     /// #![deny(clippy::as_conversions)]
     /// ```
+    #[clippy::version = "1.47.0"]
     pub BLANKET_CLIPPY_RESTRICTION_LINTS,
     suspicious,
     "enabling the complete restriction group"
@@ -208,6 +215,7 @@ declare_clippy_lint! {
     /// #[rustfmt::skip]
     /// fn main() { }
     /// ```
+    #[clippy::version = "1.32.0"]
     pub DEPRECATED_CFG_ATTR,
     complexity,
     "usage of `cfg_attr(rustfmt)` instead of tool attributes"
@@ -240,6 +248,7 @@ declare_clippy_lint! {
     /// fn conditional() { }
     /// ```
     /// Check the [Rust Reference](https://doc.rust-lang.org/reference/conditional-compilation.html#target_os) for more details.
+    #[clippy::version = "1.45.0"]
     pub MISMATCHED_TARGET_OS,
     correctness,
     "usage of `cfg(operating_system)` instead of `cfg(target_os = \"operating_system\")`"
@@ -497,7 +506,11 @@ fn is_word(nmi: &NestedMetaItem, expected: Symbol) -> bool {
     }
 }
 
-declare_lint_pass!(EarlyAttributes => [
+pub struct EarlyAttributes {
+    pub msrv: Option<RustcVersion>,
+}
+
+impl_lint_pass!(EarlyAttributes => [
     DEPRECATED_CFG_ATTR,
     MISMATCHED_TARGET_OS,
     EMPTY_LINE_AFTER_OUTER_ATTR,
@@ -509,9 +522,11 @@ impl EarlyLintPass for EarlyAttributes {
     }
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
-        check_deprecated_cfg_attr(cx, attr);
+        check_deprecated_cfg_attr(cx, attr, self.msrv);
         check_mismatched_target_os(cx, attr);
     }
+
+    extract_msrv_attr!(EarlyContext);
 }
 
 fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
@@ -548,8 +563,9 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
     }
 }
 
-fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute) {
+fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: Option<RustcVersion>) {
     if_chain! {
+        if meets_msrv(msrv.as_ref(), &msrvs::TOOL_ATTRIBUTES);
         // check cfg_attr
         if attr.has_name(sym::cfg_attr);
         if let Some(items) = attr.meta_item_list();

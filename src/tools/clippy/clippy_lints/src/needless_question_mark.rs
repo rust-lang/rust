@@ -53,6 +53,7 @@ declare_clippy_lint! {
     ///     tr.and_then(|t| t.magic)
     /// }
     /// ```
+    #[clippy::version = "1.51.0"]
     pub NEEDLESS_QUESTION_MARK,
     complexity,
     "Suggest `value.inner_option` instead of `Some(value.inner_option?)`. The same goes for `Result<T, E>`."

@@ -40,6 +40,7 @@ declare_clippy_lint! {
     ///     println!("{}", elem);
     /// }
     /// ```
+    #[clippy::version = "1.53.0"]
     pub NEEDLESS_FOR_EACH,
     pedantic,
     "using `for_each` where a `for` loop would be simpler"

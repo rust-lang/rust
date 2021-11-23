@@ -31,6 +31,7 @@ declare_clippy_lint! {
     ///     Baz
     /// }
     /// ```
+    #[clippy::version = "1.51.0"]
     pub EXHAUSTIVE_ENUMS,
     restriction,
     "detects exported enums that have not been marked #[non_exhaustive]"
@@ -60,6 +61,7 @@ declare_clippy_lint! {
     ///     baz: String,
     /// }
     /// ```
+    #[clippy::version = "1.51.0"]
     pub EXHAUSTIVE_STRUCTS,
     restriction,
     "detects exported structs that have not been marked #[non_exhaustive]"

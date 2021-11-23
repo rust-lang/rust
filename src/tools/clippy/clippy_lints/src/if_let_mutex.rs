@@ -36,6 +36,7 @@ declare_clippy_lint! {
     ///     use_locked(locked);
     /// }
     /// ```
+    #[clippy::version = "1.45.0"]
     pub IF_LET_MUTEX,
     correctness,
     "locking a `Mutex` in an `if let` block can cause deadlocks"

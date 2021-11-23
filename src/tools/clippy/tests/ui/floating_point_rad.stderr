@@ -1,5 +1,5 @@
 error: conversion to degrees can be done more accurately
-  --> $DIR/floating_point_rad.rs:6:13
+  --> $DIR/floating_point_rad.rs:13:13
    |
 LL |     let _ = x * 180f32 / std::f32::consts::PI;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.to_degrees()`
@@ -7,7 +7,7 @@ LL |     let _ = x * 180f32 / std::f32::consts::PI;
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
 error: conversion to radians can be done more accurately
-  --> $DIR/floating_point_rad.rs:7:13
+  --> $DIR/floating_point_rad.rs:14:13
    |
 LL |     let _ = x * std::f32::consts::PI / 180f32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.to_radians()`

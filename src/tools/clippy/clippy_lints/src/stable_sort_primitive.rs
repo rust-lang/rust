@@ -28,6 +28,7 @@ declare_clippy_lint! {
     /// let mut vec = vec![2, 1, 3];
     /// vec.sort_unstable();
     /// ```
+    #[clippy::version = "1.47.0"]
     pub STABLE_SORT_PRIMITIVE,
     perf,
     "use of sort() when sort_unstable() is equivalent"

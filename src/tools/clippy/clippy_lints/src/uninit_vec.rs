@@ -52,6 +52,7 @@ declare_clippy_lint! {
     ///    // perform initialization with `remaining`
     ///    vec.set_len(...);  // Safe to call `set_len()` on initialized part
     ///    ```
+    #[clippy::version = "1.58.0"]
     pub UNINIT_VEC,
     correctness,
     "Vec with uninitialized data"

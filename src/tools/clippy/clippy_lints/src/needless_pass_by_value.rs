@@ -51,6 +51,7 @@ declare_clippy_lint! {
     ///     assert_eq!(v.len(), 42);
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_PASS_BY_VALUE,
     pedantic,
     "functions taking arguments by value, but not consuming them in its body"

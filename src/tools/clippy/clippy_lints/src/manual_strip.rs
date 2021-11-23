@@ -42,6 +42,7 @@ declare_clippy_lint! {
     ///     assert_eq!(end.to_uppercase(), "WORLD!");
     /// }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub MANUAL_STRIP,
     complexity,
     "suggests using `strip_{prefix,suffix}` over `str::{starts,ends}_with` and slicing"

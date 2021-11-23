@@ -29,6 +29,7 @@ declare_clippy_lint! {
     /// let mut y = [2u8; SIZE];
     /// unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE) };
     /// ```
+    #[clippy::version = "1.50.0"]
     pub SIZE_OF_IN_ELEMENT_COUNT,
     correctness,
     "using `size_of::<T>` or `size_of_val::<T>` where a count of elements of `T` is expected"

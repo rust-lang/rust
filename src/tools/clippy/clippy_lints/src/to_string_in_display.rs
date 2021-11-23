@@ -39,6 +39,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub TO_STRING_IN_DISPLAY,
     correctness,
     "`to_string` method used while implementing `Display` trait"

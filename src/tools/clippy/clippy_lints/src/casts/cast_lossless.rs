@@ -1,16 +1,24 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_constant;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_isize_or_usize;
+use clippy_utils::{in_constant, meets_msrv, msrvs};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_semver::RustcVersion;
 
 use super::{utils, CAST_LOSSLESS};
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_op: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
-    if !should_lint(cx, expr, cast_from, cast_to) {
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    cast_op: &Expr<'_>,
+    cast_from: Ty<'_>,
+    cast_to: Ty<'_>,
+    msrv: &Option<RustcVersion>,
+) {
+    if !should_lint(cx, expr, cast_from, cast_to, msrv) {
         return;
     }
 
@@ -32,21 +40,36 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_op: &Expr<'_>, c
         },
     );
 
+    let message = if cast_from.is_bool() {
+        format!(
+            "casting `{0:}` to `{1:}` is more cleanly stated with `{1:}::from(_)`",
+            cast_from, cast_to
+        )
+    } else {
+        format!(
+            "casting `{}` to `{}` may become silently lossy if you later change the type",
+            cast_from, cast_to
+        )
+    };
+
     span_lint_and_sugg(
         cx,
         CAST_LOSSLESS,
         expr.span,
-        &format!(
-            "casting `{}` to `{}` may become silently lossy if you later change the type",
-            cast_from, cast_to
-        ),
+        &message,
         "try",
         format!("{}::from({})", cast_to, sugg),
         applicability,
     );
 }
 
-fn should_lint(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) -> bool {
+fn should_lint(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    cast_from: Ty<'_>,
+    cast_to: Ty<'_>,
+    msrv: &Option<RustcVersion>,
+) -> bool {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
     if in_constant(cx, expr.hir_id) {
         return false;
@@ -72,7 +95,7 @@ fn should_lint(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to
             };
             from_nbits < to_nbits
         },
-
+        (false, true) if matches!(cast_from.kind(), ty::Bool) && meets_msrv(msrv.as_ref(), &msrvs::FROM_BOOL) => true,
         (_, _) => {
             matches!(cast_from.kind(), ty::Float(FloatTy::F32)) && matches!(cast_to.kind(), ty::Float(FloatTy::F64))
         },

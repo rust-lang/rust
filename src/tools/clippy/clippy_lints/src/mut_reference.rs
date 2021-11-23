@@ -23,6 +23,7 @@ declare_clippy_lint! {
     /// // Good
     /// my_vec.push(&value)
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNNECESSARY_MUT_PASSED,
     style,
     "an argument passed as a mutable reference although the callee only demands an immutable reference"

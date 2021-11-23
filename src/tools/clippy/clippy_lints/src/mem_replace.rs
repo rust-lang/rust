@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_non_aggregate_primitive_type;
-use clippy_utils::{in_macro, is_default_equivalent, is_lang_ctor, match_def_path, meets_msrv, msrvs, paths};
+use clippy_utils::{is_default_equivalent, is_lang_ctor, match_def_path, meets_msrv, msrvs, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
@@ -35,6 +35,7 @@ declare_clippy_lint! {
     /// let mut an_option = Some(0);
     /// let taken = an_option.take();
     /// ```
+    #[clippy::version = "1.31.0"]
     pub MEM_REPLACE_OPTION_WITH_NONE,
     style,
     "replacing an `Option` with `None` instead of `take()`"
@@ -66,6 +67,7 @@ declare_clippy_lint! {
     /// The [take_mut](https://docs.rs/take_mut) crate offers a sound solution,
     /// at the cost of either lazily creating a replacement value or aborting
     /// on panic, to ensure that the uninitialized value cannot be observed.
+    #[clippy::version = "1.39.0"]
     pub MEM_REPLACE_WITH_UNINIT,
     correctness,
     "`mem::replace(&mut _, mem::uninitialized())` or `mem::replace(&mut _, mem::zeroed())`"
@@ -90,6 +92,7 @@ declare_clippy_lint! {
     /// let mut text = String::from("foo");
     /// let taken = std::mem::take(&mut text);
     /// ```
+    #[clippy::version = "1.42.0"]
     pub MEM_REPLACE_WITH_DEFAULT,
     style,
     "replacing a value of type `T` with `T::default()` instead of using `std::mem::take`"
@@ -213,7 +216,7 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
             expr_span,
             "replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`",
             |diag| {
-                if !in_macro(expr_span) {
+                if !expr_span.from_expansion() {
                     let suggestion = format!("std::mem::take({})", snippet(cx, dest.span, ""));
 
                     diag.span_suggestion(

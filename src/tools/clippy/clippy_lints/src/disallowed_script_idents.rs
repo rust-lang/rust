@@ -38,6 +38,7 @@ declare_clippy_lint! {
     /// let zähler = 10; // OK, it's still latin.
     /// let カウンタ = 10; // Will spawn the lint.
     /// ```
+    #[clippy::version = "1.55.0"]
     pub DISALLOWED_SCRIPT_IDENTS,
     restriction,
     "usage of non-allowed Unicode scripts"

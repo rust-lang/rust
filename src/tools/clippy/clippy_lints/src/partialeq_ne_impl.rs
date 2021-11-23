@@ -25,6 +25,7 @@ declare_clippy_lint! {
     ///    fn ne(&self, other: &Foo) -> bool { !(self == other) }
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub PARTIALEQ_NE_IMPL,
     complexity,
     "re-implementing `PartialEq::ne`"

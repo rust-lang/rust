@@ -20,6 +20,7 @@ declare_clippy_lint! {
     /// ```rust
     /// vec!(1, 2, 3, 4, 5).resize(0, 5)
     /// ```
+    #[clippy::version = "1.46.0"]
     pub VEC_RESIZE_TO_ZERO,
     correctness,
     "emptying a vector with `resize(0, an_int)` instead of `clear()` is probably an argument inversion mistake"

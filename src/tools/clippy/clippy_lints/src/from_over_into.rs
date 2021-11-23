@@ -34,6 +34,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.51.0"]
     pub FROM_OVER_INTO,
     style,
     "Warns on implementations of `Into<..>` to use `From<..>`"

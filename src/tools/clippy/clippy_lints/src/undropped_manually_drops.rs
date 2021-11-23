@@ -28,6 +28,7 @@ declare_clippy_lint! {
     ///     std::mem::ManuallyDrop::drop(&mut std::mem::ManuallyDrop::new(S));
     /// }
     /// ```
+    #[clippy::version = "1.49.0"]
     pub UNDROPPED_MANUALLY_DROPS,
     correctness,
     "use of safe `std::mem::drop` function to drop a std::mem::ManuallyDrop, which will not drop the inner value"

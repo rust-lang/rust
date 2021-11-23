@@ -1,9 +1,10 @@
 // run-rustfix
 
 #[warn(clippy::all, clippy::needless_borrow)]
-#[allow(unused_variables)]
+#[allow(unused_variables, clippy::unnecessary_mut_passed)]
 fn main() {
     let a = 5;
+    let ref_a = &a;
     let _ = x(&a); // no warning
     let _ = x(&a); // warn
 
@@ -21,11 +22,29 @@ fn main() {
         44 => &a,
         45 => {
             println!("foo");
-            &&a // FIXME: this should lint, too
+            &a
         },
         46 => &a,
+        47 => {
+            println!("foo");
+            loop {
+                println!("{}", a);
+                if a == 25 {
+                    break ref_a;
+                }
+            }
+        },
         _ => panic!(),
     };
+
+    let _ = x(&a);
+    let _ = x(&a);
+    let _ = x(&mut b);
+    let _ = x(ref_a);
+    {
+        let b = &mut b;
+        x(b);
+    }
 }
 
 #[allow(clippy::needless_borrowed_reference)]

@@ -35,6 +35,7 @@ declare_clippy_lint! {
     /// let input: &str = get_input();
     /// let num: u16 = input.parse()?;
     /// ```
+    #[clippy::version = "1.52.0"]
     pub FROM_STR_RADIX_10,
     style,
     "from_str_radix with radix 10"

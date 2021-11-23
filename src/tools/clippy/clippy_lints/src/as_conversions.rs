@@ -38,6 +38,7 @@ declare_clippy_lint! {
     /// f(a.try_into().expect("Unexpected u16 overflow in f"));
     /// ```
     ///
+    #[clippy::version = "1.41.0"]
     pub AS_CONVERSIONS,
     restriction,
     "using a potentially dangerous silent `as` conversion"

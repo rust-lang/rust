@@ -157,7 +157,7 @@ Manually testing against an example file can be useful if you have added some
 your local modifications, run
 
 ```
-env __CLIPPY_INTERNAL_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs
+cargo dev lint input.rs
 ```
 
 from the working copy root. With tests in place, let's have a look at
@@ -189,6 +189,7 @@ declare_clippy_lint! {
     /// ```rust
     /// // example code
     /// ```
+    #[clippy::version = "1.29.0"]
     pub FOO_FUNCTIONS,
     pedantic,
     "function named `foo`, which is not a descriptive name"
@@ -199,6 +200,10 @@ declare_clippy_lint! {
   section. This is the default documentation style and will be displayed
   [like this][example_lint_page]. To render and open this documentation locally
   in a browser, run `cargo dev serve`.
+* The `#[clippy::version]` attribute will be rendered as part of the lint documentation.
+  The value should be set to the current Rust version that the lint is developed in,
+  it can be retrieved by running `rustc -vV` in the rust-clippy directory. The version
+  is listed under *release*. (Use the version without the `-nightly`) suffix.
 * `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the
   [lint naming guidelines][lint_naming] here when naming your lint.
   In short, the name should state the thing that is being checked for and
@@ -503,6 +508,7 @@ declare_clippy_lint! {
     /// // Good
     /// Insert a short example of improved code that doesn't trigger the lint
     /// ```
+    #[clippy::version = "1.29.0"]
     pub FOO_FUNCTIONS,
     pedantic,
     "function named `foo`, which is not a descriptive name"
@@ -634,7 +640,7 @@ in the following steps:
 Here are some pointers to things you are likely going to need for every lint:
 
 * [Clippy utils][utils] - Various helper functions. Maybe the function you need
-  is already in here (`implements_trait`, `match_def_path`, `snippet`, etc)
+  is already in here ([`is_type_diagnostic_item`], [`implements_trait`], [`snippet`], etc)
 * [Clippy diagnostics][diagnostics]
 * [The `if_chain` macro][if_chain]
 * [`from_expansion`][from_expansion] and [`in_external_macro`][in_external_macro]
@@ -660,7 +666,10 @@ documentation currently. This is unfortunate, but in most cases you can probably
 get away with copying things from existing similar lints. If you are stuck,
 don't hesitate to ask on [Zulip] or in the issue/PR.
 
-[utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/lib.rs
+[utils]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/index.html
+[`is_type_diagnostic_item`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.is_type_diagnostic_item.html
+[`implements_trait`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.implements_trait.html
+[`snippet`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/source/fn.snippet.html
 [if_chain]: https://docs.rs/if_chain/*/if_chain/
 [from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/fn.in_external_macro.html

@@ -14,15 +14,14 @@ pub enum DeprecationStatus {
     None,
 }
 
+#[rustfmt::skip]
 pub const BUILTIN_ATTRIBUTES: &[(&str, DeprecationStatus)] = &[
-    ("author", DeprecationStatus::None),
-    ("cognitive_complexity", DeprecationStatus::None),
-    (
-        "cyclomatic_complexity",
-        DeprecationStatus::Replaced("cognitive_complexity"),
-    ),
-    ("dump", DeprecationStatus::None),
-    ("msrv", DeprecationStatus::None),
+    ("author",                DeprecationStatus::None),
+    ("version",               DeprecationStatus::None),
+    ("cognitive_complexity",  DeprecationStatus::None),
+    ("cyclomatic_complexity", DeprecationStatus::Replaced("cognitive_complexity")),
+    ("dump",                  DeprecationStatus::None),
+    ("msrv",                  DeprecationStatus::None),
 ];
 
 pub struct LimitStack {

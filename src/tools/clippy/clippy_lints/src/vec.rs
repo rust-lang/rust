@@ -36,6 +36,7 @@ declare_clippy_lint! {
     /// // Good
     /// foo(&[1, 2]);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub USELESS_VEC,
     perf,
     "useless `vec!`"

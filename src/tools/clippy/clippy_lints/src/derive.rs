@@ -38,6 +38,7 @@ declare_clippy_lint! {
     ///     ...
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DERIVE_HASH_XOR_EQ,
     correctness,
     "deriving `Hash` but implementing `PartialEq` explicitly"
@@ -88,6 +89,7 @@ declare_clippy_lint! {
     /// #[derive(Ord, PartialOrd, PartialEq, Eq)]
     /// struct Foo;
     /// ```
+    #[clippy::version = "1.47.0"]
     pub DERIVE_ORD_XOR_PARTIAL_ORD,
     correctness,
     "deriving `Ord` but implementing `PartialOrd` explicitly"
@@ -114,6 +116,7 @@ declare_clippy_lint! {
     ///     // ..
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EXPL_IMPL_CLONE_ON_COPY,
     pedantic,
     "implementing `Clone` explicitly on `Copy` types"
@@ -147,6 +150,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.45.0"]
     pub UNSAFE_DERIVE_DESERIALIZE,
     pedantic,
     "deriving `serde::Deserialize` on a type that has methods using `unsafe`"

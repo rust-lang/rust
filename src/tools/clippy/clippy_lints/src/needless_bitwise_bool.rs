@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::in_macro;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -31,6 +30,7 @@ declare_clippy_lint! {
     /// let (x,y) = (true, false);
     /// if x && !y {}
     /// ```
+    #[clippy::version = "1.54.0"]
     pub NEEDLESS_BITWISE_BOOL,
     pedantic,
     "Boolean expressions that use bitwise rather than lazy operators"
@@ -41,7 +41,7 @@ declare_lint_pass!(NeedlessBitwiseBool => [NEEDLESS_BITWISE_BOOL]);
 fn is_bitwise_operation(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
     if_chain! {
-        if !in_macro(expr.span);
+        if !expr.span.from_expansion();
         if let (&ExprKind::Binary(ref op, _, right), &ty::Bool) = (&expr.kind, &ty.kind());
         if op.node == BinOpKind::BitAnd || op.node == BinOpKind::BitOr;
         if let ExprKind::Call(..) | ExprKind::MethodCall(..) | ExprKind::Binary(..) | ExprKind::Unary(..) = right.kind;
