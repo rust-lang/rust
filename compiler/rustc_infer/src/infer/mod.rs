@@ -95,9 +95,10 @@ pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
 /// This is used so that the region values inferred by HIR region solving are
 /// not exposed, and so that we can avoid doing work in HIR typeck that MIR
 /// typeck will also do.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub enum RegionckMode {
     /// The default mode: report region errors, don't erase regions.
+    #[default]
     Solve,
     /// Erase the results of region after solving.
     Erase {
@@ -106,12 +107,6 @@ pub enum RegionckMode {
         /// be set to true.
         suppress_errors: bool,
     },
-}
-
-impl Default for RegionckMode {
-    fn default() -> Self {
-        RegionckMode::Solve
-    }
 }
 
 impl RegionckMode {

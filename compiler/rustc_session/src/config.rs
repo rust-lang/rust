@@ -335,20 +335,15 @@ impl Default for ErrorOutputType {
 }
 
 /// Parameter to control path trimming.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum TrimmedDefPaths {
     /// `try_print_trimmed_def_path` never prints a trimmed path and never calls the expensive query
+    #[default]
     Never,
     /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call `delay_good_path_bug`
     Always,
     /// `try_print_trimmed_def_path` calls the expensive query, the query calls `delay_good_path_bug`
     GoodPath,
-}
-
-impl Default for TrimmedDefPaths {
-    fn default() -> Self {
-        Self::Never
-    }
 }
 
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.

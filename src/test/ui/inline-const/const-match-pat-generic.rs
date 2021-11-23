@@ -1,5 +1,5 @@
 #![allow(incomplete_features)]
-#![feature(inline_const)]
+#![feature(inline_const_pat)]
 
 // rust-lang/rust#82518: ICE with inline-const in match referencing const-generic parameter
 

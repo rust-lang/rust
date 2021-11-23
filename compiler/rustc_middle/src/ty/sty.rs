@@ -2263,10 +2263,11 @@ impl<'tcx> TyS<'tcx> {
 /// a miscompilation or unsoundness.
 ///
 /// When in doubt, use `VarianceDiagInfo::default()`
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VarianceDiagInfo<'tcx> {
     /// No additional information - this is the default.
     /// We will not add any additional information to error messages.
+    #[default]
     None,
     /// We switched our variance because a type occurs inside
     /// the generic argument of a mutable reference or pointer
@@ -2299,11 +2300,5 @@ impl<'tcx> VarianceDiagInfo<'tcx> {
             VarianceDiagInfo::None => other,
             VarianceDiagInfo::Mut { .. } => self,
         }
-    }
-}
-
-impl<'tcx> Default for VarianceDiagInfo<'tcx> {
-    fn default() -> Self {
-        Self::None
     }
 }
