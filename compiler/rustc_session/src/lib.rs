@@ -1,4 +1,5 @@
 #![feature(crate_visibility_modifier)]
+#![feature(derive_default_enum)]
 #![feature(min_specialization)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
