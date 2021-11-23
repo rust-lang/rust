@@ -3,7 +3,7 @@
 
 pub use self::StabilityLevel::*;
 
-use crate::ty::{self, TyCtxt};
+use crate::ty::{self, DefIdTree, TyCtxt};
 use rustc_ast::NodeId;
 use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -90,6 +90,7 @@ pub fn report_unstable(
     feature: Symbol,
     reason: Option<Symbol>,
     issue: Option<NonZeroU32>,
+    suggestion: Option<(Span, String, String, Applicability)>,
     is_soft: bool,
     span: Span,
     soft_handler: impl FnOnce(&'static Lint, Span, &str),
@@ -116,8 +117,12 @@ pub fn report_unstable(
         if is_soft {
             soft_handler(SOFT_UNSTABLE, span, &msg)
         } else {
-            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg)
-                .emit();
+            let mut err =
+                feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg);
+            if let Some((inner_types, ref msg, sugg, applicability)) = suggestion {
+                err.span_suggestion(inner_types, msg, sugg, applicability);
+            }
+            err.emit();
         }
     }
 }
@@ -271,7 +276,13 @@ pub enum EvalResult {
     Allow,
     /// We cannot use the item because it is unstable and we did not provide the
     /// corresponding feature gate.
-    Deny { feature: Symbol, reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
+    Deny {
+        feature: Symbol,
+        reason: Option<Symbol>,
+        issue: Option<NonZeroU32>,
+        suggestion: Option<(Span, String, String, Applicability)>,
+        is_soft: bool,
+    },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
     Unmarked,
 }
@@ -290,6 +301,32 @@ fn skip_stability_check_due_to_privacy(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         // stability markers are irrelevant, if even present.
         ty::Visibility::Restricted(..) | ty::Visibility::Invisible => true,
     }
+}
+
+// See issue #83250.
+fn suggestion_for_allocator_api(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    span: Span,
+    feature: Symbol,
+) -> Option<(Span, String, String, Applicability)> {
+    if feature == sym::allocator_api {
+        if let Some(trait_) = tcx.parent(def_id) {
+            if tcx.is_diagnostic_item(sym::Vec, trait_) {
+                let sm = tcx.sess.parse_sess.source_map();
+                let inner_types = sm.span_extend_to_prev_char(span, '<', true);
+                if let Ok(snippet) = sm.span_to_snippet(inner_types) {
+                    return Some((
+                        inner_types,
+                        "consider wrapping the inner types in tuple".to_string(),
+                        format!("({})", snippet),
+                        Applicability::MaybeIncorrect,
+                    ));
+                }
+            }
+        }
+    }
+    None
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -406,7 +443,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
 
-                EvalResult::Deny { feature, reason, issue, is_soft }
+                let suggestion = suggestion_for_allocator_api(self, def_id, span, feature);
+                EvalResult::Deny { feature, reason, issue, suggestion, is_soft }
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
@@ -457,9 +495,16 @@ impl<'tcx> TyCtxt<'tcx> {
         };
         match self.eval_stability(def_id, id, span, method_span) {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue, is_soft } => {
-                report_unstable(self.sess, feature, reason, issue, is_soft, span, soft_handler)
-            }
+            EvalResult::Deny { feature, reason, issue, suggestion, is_soft } => report_unstable(
+                self.sess,
+                feature,
+                reason,
+                issue,
+                suggestion,
+                is_soft,
+                span,
+                soft_handler,
+            ),
             EvalResult::Unmarked => unmarked(span, def_id),
         }
     }

@@ -1133,6 +1133,7 @@ impl<'a> Resolver<'a> {
                         feature,
                         reason,
                         issue,
+                        None,
                         is_soft,
                         span,
                         soft_handler,
