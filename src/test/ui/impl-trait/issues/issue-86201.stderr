@@ -7,7 +7,7 @@ LL |
 LL | static STATIC_FN: FunType = some_fn;
    |                             ^^^^^^^ expected opaque type, found fn item
    |
-   = note: expected opaque type `impl Fn<()> + FnOnce<()>`
+   = note: expected opaque type `impl Fn<()>`
                   found fn item `fn() {some_fn}`
 
 error: could not find defining uses

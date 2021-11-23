@@ -839,19 +839,25 @@ pub trait PrettyPrinter<'tcx>:
                         p!(print(ty));
                     }
 
-                    p!(") -> ", print(return_ty), write("{}", if paren_needed { ")" } else { "" }));
+                    p!(")");
+                    if !return_ty.skip_binder().is_unit() {
+                        p!("-> ", print(return_ty));
+                    }
+                    p!(write("{}", if paren_needed { ")" } else { "" }));
 
                     first = false;
                 }
                 // If we got here, we can't print as a `impl Fn(A, B) -> C`. Just record the
                 // trait_refs we collected in the OpaqueFnEntry as normal trait refs.
                 _ => {
-                    traits.entry(fn_once_trait_ref).or_default().extend(
-                        // Group the return ty with its def id, if we had one.
-                        entry
-                            .return_ty
-                            .map(|ty| (self.tcx().lang_items().fn_once_output().unwrap(), ty)),
-                    );
+                    if entry.has_fn_once {
+                        traits.entry(fn_once_trait_ref).or_default().extend(
+                            // Group the return ty with its def id, if we had one.
+                            entry
+                                .return_ty
+                                .map(|ty| (self.tcx().lang_items().fn_once_output().unwrap(), ty)),
+                        );
+                    }
                     if let Some(trait_ref) = entry.fn_mut_trait_ref {
                         traits.entry(trait_ref).or_default();
                     }
@@ -943,6 +949,7 @@ pub trait PrettyPrinter<'tcx>:
                 if let Some((_, ty)) = proj_ty {
                     entry.return_ty = Some(ty);
                 }
+                entry.has_fn_once = true;
                 return;
             } else if Some(trait_def_id) == self.tcx().lang_items().fn_mut_trait() {
                 let super_trait_ref = crate::traits::util::supertraits(self.tcx(), trait_ref)
@@ -2695,6 +2702,8 @@ pub fn provide(providers: &mut ty::query::Providers) {
 
 #[derive(Default)]
 pub struct OpaqueFnEntry<'tcx> {
+    // The trait ref is already stored as a key, so just track if we have it as a real predicate
+    has_fn_once: bool,
     fn_mut_trait_ref: Option<ty::PolyTraitRef<'tcx>>,
     fn_trait_ref: Option<ty::PolyTraitRef<'tcx>>,
     return_ty: Option<ty::Binder<'tcx, Ty<'tcx>>>,
