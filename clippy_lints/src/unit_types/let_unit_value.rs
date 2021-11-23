@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::higher;
 use clippy_utils::source::snippet_with_macro_callsite;
 use rustc_errors::Applicability;
 use rustc_hir::{Stmt, StmtKind};
@@ -12,9 +11,6 @@ pub(super) fn check(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if let StmtKind::Local(local) = stmt.kind {
         if cx.typeck_results().pat_ty(local.pat).is_unit() {
             if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
-                return;
-            }
-            if higher::is_from_for_desugar(local) {
                 return;
             }
             span_lint_and_then(

@@ -8,7 +8,6 @@ use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, M
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::Ty;
-use rustc_span::source_map::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_typeck::hir_ty_to_ty;
@@ -327,17 +326,6 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
-    }
-}
-
-// this function assumes the given expression is a `for` loop.
-pub(super) fn get_span_of_entire_for_loop(expr: &Expr<'_>) -> Span {
-    // for some reason this is the only way to get the `Span`
-    // of the entire `for` loop
-    if let ExprKind::Match(_, arms, _) = &expr.kind {
-        arms[0].body.span
-    } else {
-        unreachable!()
     }
 }
 

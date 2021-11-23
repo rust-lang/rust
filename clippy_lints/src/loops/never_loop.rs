@@ -4,35 +4,41 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, HirId, InlineAsmOperand, LoopSource, Node, Pat, Stmt, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, HirId, InlineAsmOperand, Pat, Stmt, StmtKind};
 use rustc_lint::LateContext;
+use rustc_span::Span;
 use std::iter::{once, Iterator};
 
-pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let ExprKind::Loop(block, _, source, _) = expr.kind {
-        match never_loop_block(block, expr.hir_id) {
-            NeverLoopResult::AlwaysBreak => {
-                span_lint_and_then(cx, NEVER_LOOP, expr.span, "this loop never actually loops", |diag| {
-                    if_chain! {
-                        if source == LoopSource::ForLoop;
-                        if let Some((_, Node::Expr(parent_match))) = cx.tcx.hir().parent_iter(expr.hir_id).nth(1);
-                        if let Some(ForLoop { arg: iterator, pat, span: for_span, .. }) = ForLoop::hir(parent_match);
-                        then {
-                            // Suggests using an `if let` instead. This is `Unspecified` because the
-                            // loop may (probably) contain `break` statements which would be invalid
-                            // in an `if let`.
-                            diag.span_suggestion_verbose(
-                                for_span.with_hi(iterator.span.hi()),
-                                "if you need the first element of the iterator, try writing",
-                                for_to_if_let_sugg(cx, iterator, pat),
-                                Applicability::Unspecified,
-                            );
-                        }
-                    };
-                });
-            },
-            NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
-        }
+pub(super) fn check(
+    cx: &LateContext<'tcx>,
+    block: &'tcx Block<'_>,
+    loop_id: HirId,
+    span: Span,
+    for_loop: Option<&ForLoop<'_>>,
+) {
+    match never_loop_block(block, loop_id) {
+        NeverLoopResult::AlwaysBreak => {
+            span_lint_and_then(cx, NEVER_LOOP, span, "this loop never actually loops", |diag| {
+                if let Some(ForLoop {
+                    arg: iterator,
+                    pat,
+                    span: for_span,
+                    ..
+                }) = for_loop
+                {
+                    // Suggests using an `if let` instead. This is `Unspecified` because the
+                    // loop may (probably) contain `break` statements which would be invalid
+                    // in an `if let`.
+                    diag.span_suggestion_verbose(
+                        for_span.with_hi(iterator.span.hi()),
+                        "if you need the first element of the iterator, try writing",
+                        for_to_if_let_sugg(cx, iterator, pat),
+                        Applicability::Unspecified,
+                    );
+                }
+            });
+        },
+        NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
     }
 }
 

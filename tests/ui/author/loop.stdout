@@ -1,6 +1,5 @@
 if_chain! {
-    if let ExprKind::DropTemps(expr1) = expr.kind;
-    if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr1);
+    if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr);
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = pat.kind;
     if name.as_str() == "y";
     if let ExprKind::Struct(qpath, fields, None) = arg.kind;
@@ -26,8 +25,7 @@ if_chain! {
     }
 }
 if_chain! {
-    if let ExprKind::DropTemps(expr1) = expr.kind;
-    if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr1);
+    if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr);
     if let PatKind::Wild = pat.kind;
     if let ExprKind::Struct(qpath, fields, None) = arg.kind;
     if matches!(qpath, QPath::LangItem(LangItem::Range, _));
@@ -49,8 +47,7 @@ if_chain! {
     }
 }
 if_chain! {
-    if let ExprKind::DropTemps(expr1) = expr.kind;
-    if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr1);
+    if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr);
     if let PatKind::Wild = pat.kind;
     if let ExprKind::Struct(qpath, fields, None) = arg.kind;
     if matches!(qpath, QPath::LangItem(LangItem::Range, _));
