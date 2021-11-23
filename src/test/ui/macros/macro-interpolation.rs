@@ -14,8 +14,15 @@ macro_rules! overly_complicated {
 
 }
 
+macro_rules! qpath {
+    (<$type:ty as $trait:path>::$name:ident) => {
+        <$type as $trait>::$name
+    };
+}
+
 pub fn main() {
+    let _: qpath!(<str as ToOwned>::Owned);
+
     assert!(overly_complicated!(f, x, Option<usize>, { return Some(x); },
                                Some(8), Some(y), y) == 8)
-
 }
