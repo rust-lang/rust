@@ -289,6 +289,7 @@ use super::deconstruct_pat::{Constructor, DeconstructedPat, Fields, SplitWildcar
 use rustc_data_structures::captures::Captures;
 
 use rustc_arena::TypedArena;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -808,8 +809,9 @@ fn is_useful<'p, 'tcx>(
         // We try each or-pattern branch in turn.
         let mut matrix = matrix.clone();
         for v in v.expand_or_pat() {
-            let usefulness =
-                is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            let usefulness = ensure_sufficient_stack(|| {
+                is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false)
+            });
             ret.extend(usefulness);
             // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
@@ -840,8 +842,9 @@ fn is_useful<'p, 'tcx>(
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let spec_matrix = start_matrix.specialize_constructor(pcx, &ctor);
             let v = v.pop_head_constructor(cx, &ctor);
-            let usefulness =
-                is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            let usefulness = ensure_sufficient_stack(|| {
+                is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false)
+            });
             let usefulness = usefulness.apply_constructor(pcx, start_matrix, &ctor);
 
             // When all the conditions are met we have a match with a `non_exhaustive` enum
