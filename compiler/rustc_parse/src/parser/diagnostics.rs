@@ -1121,7 +1121,7 @@ impl<'a> Parser<'a> {
         Ok(P(T::recovered(Some(QSelf { ty, path_span, position: 0 }), path)))
     }
 
-    pub(super) fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
+    pub fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
         if self.eat(&token::Semi) {
             let mut err = self.struct_span_err(self.prev_token.span, "expected item, found `;`");
             err.span_suggestion_short(

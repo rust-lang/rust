@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, token};
+use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{ColorConfig, ErrorReported, FatalError};
@@ -537,6 +537,7 @@ crate fn make_test(
             use rustc_errors::emitter::{Emitter, EmitterWriter};
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
+            use rustc_parse::parser::ForceCollect;
             use rustc_session::parse::ParseSess;
             use rustc_span::source_map::FilePathMapping;
 
@@ -572,9 +573,9 @@ crate fn make_test(
                 }
             };
 
-            match parser.parse_mod(&token::Eof) {
-                Ok((_attrs, items, _span)) => {
-                    for item in items {
+            loop {
+                match parser.parse_item(ForceCollect::No) {
+                    Ok(Some(item)) => {
                         if !found_main {
                             if let ast::ItemKind::Fn(..) = item.kind {
                                 if item.ident.name == sym::main {
@@ -606,10 +607,16 @@ crate fn make_test(
                             break;
                         }
                     }
+                    Ok(None) => break,
+                    Err(mut e) => {
+                        e.cancel();
+                        break;
+                    }
                 }
-                Err(mut e) => {
-                    e.cancel();
-                }
+
+                // The supplied slice is only used for diagnostics,
+                // which are swallowed here anyway.
+                parser.maybe_consume_incorrect_semicolon(&[]);
             }
 
             // Reset errors so that they won't be reported as compiler bugs when dropping the
