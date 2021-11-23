@@ -22,6 +22,8 @@ pub struct Foo {
 }
 
 impl Foo {
+    /// Some documentation
+    /// # A Heading
     pub fn a_method(&self) {}
 }
 

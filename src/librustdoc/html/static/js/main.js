@@ -886,6 +886,14 @@ function hideThemeButtonState() {
         }
     });
 
+    onEachLazy(document.querySelectorAll(".rustdoc-toggle > summary:not(.hideme)"), function(el) {
+        el.addEventListener("click", function(e) {
+            if (e.target.tagName != "SUMMARY") {
+                e.preventDefault();
+            }
+        });
+    });
+
     onEachLazy(document.getElementsByClassName("notable-traits"), function(e) {
         e.onclick = function() {
             this.getElementsByClassName('notable-traits-tooltiptext')[0]
