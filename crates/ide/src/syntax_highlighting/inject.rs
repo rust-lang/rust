@@ -10,7 +10,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AstNode, IsString},
-    AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    AstToken, NodeOrToken, SyntaxNode, TextRange, TextSize,
 };
 
 use crate::{
@@ -22,10 +22,10 @@ use crate::{
 pub(super) fn ra_fixture(
     hl: &mut Highlights,
     sema: &Semantics<RootDatabase>,
-    literal: ast::String,
-    expanded: SyntaxToken,
+    literal: &ast::String,
+    expanded: &ast::String,
 ) -> Option<()> {
-    let active_parameter = ActiveParameter::at_token(sema, expanded)?;
+    let active_parameter = ActiveParameter::at_token(sema, expanded.syntax().clone())?;
     if !active_parameter.ident().map_or(false, |name| name.text().starts_with("ra_fixture")) {
         return None;
     }

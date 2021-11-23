@@ -10,9 +10,10 @@ use crate::{syntax_highlighting::highlights::Highlights, HlRange, HlTag};
 pub(super) fn highlight_format_string(
     stack: &mut Highlights,
     string: &ast::String,
+    expanded_string: &ast::String,
     range: TextRange,
 ) {
-    if is_format_string(string).is_none() {
+    if is_format_string(expanded_string).is_none() {
         return;
     }
 

@@ -320,18 +320,35 @@ fn traverse(
             element.clone()
         };
 
-        if let Some(token) = element.into_token().and_then(ast::String::cast) {
-            if token.is_raw() {
-                if let Some(expanded) = element_to_highlight.as_token() {
-                    if inject::ra_fixture(hl, sema, token, expanded.clone()).is_some() {
+        if macro_highlighter.highlight(element_to_highlight.clone()).is_some() {
+            continue;
+        }
+
+        if let (Some(token), Some(token_to_highlight)) =
+            (element.into_token(), element_to_highlight.as_token())
+        {
+            let string = ast::String::cast(token);
+            let string_to_highlight = ast::String::cast(token_to_highlight.clone());
+            if let Some((string, expanded_string)) = string.zip(string_to_highlight) {
+                if string.is_raw() {
+                    if inject::ra_fixture(hl, sema, &string, &expanded_string).is_some() {
                         continue;
                     }
                 }
+                highlight_format_string(hl, &string, &expanded_string, range);
+                // Highlight escape sequences
+                if let Some(char_ranges) = string.char_ranges() {
+                    for (piece_range, _) in char_ranges.iter().filter(|(_, char)| char.is_ok()) {
+                        if string.text()[piece_range.start().into()..].starts_with('\\') {
+                            hl.add(HlRange {
+                                range: piece_range + range.start(),
+                                highlight: HlTag::EscapeSequence.into(),
+                                binding_hash: None,
+                            });
+                        }
+                    }
+                }
             }
-        }
-
-        if macro_highlighter.highlight(element_to_highlight.clone()).is_some() {
-            continue;
         }
 
         if let Some((mut highlight, binding_hash)) = highlight::element(
@@ -346,22 +363,6 @@ fn traverse(
             }
 
             hl.add(HlRange { range, highlight, binding_hash });
-        }
-
-        if let Some(string) = element_to_highlight.into_token().and_then(ast::String::cast) {
-            highlight_format_string(hl, &string, range);
-            // Highlight escape sequences
-            if let Some(char_ranges) = string.char_ranges() {
-                for (piece_range, _) in char_ranges.iter().filter(|(_, char)| char.is_ok()) {
-                    if string.text()[piece_range.start().into()..].starts_with('\\') {
-                        hl.add(HlRange {
-                            range: piece_range + range.start(),
-                            highlight: HlTag::EscapeSequence.into(),
-                            binding_hash: None,
-                        });
-                    }
-                }
-            }
         }
     }
 }
