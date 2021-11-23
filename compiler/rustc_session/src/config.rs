@@ -538,6 +538,7 @@ pub enum PrintRequest {
     TlsModels,
     TargetSpec,
     NativeStaticLibs,
+    StackProtectorStrategies,
 }
 
 #[derive(Copy, Clone)]
@@ -1110,8 +1111,8 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "print",
             "Compiler information to print on stdout",
             "[crate-name|file-names|sysroot|target-libdir|cfg|target-list|\
-             target-cpus|target-features|relocation-models|\
-             code-models|tls-models|target-spec-json|native-static-libs]",
+             target-cpus|target-features|relocation-models|code-models|\
+             tls-models|target-spec-json|native-static-libs|stack-protector-strategies]",
         ),
         opt::flagmulti_s("g", "", "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
@@ -1527,6 +1528,7 @@ fn collect_print_requests(
         "code-models" => PrintRequest::CodeModels,
         "tls-models" => PrintRequest::TlsModels,
         "native-static-libs" => PrintRequest::NativeStaticLibs,
+        "stack-protector-strategies" => PrintRequest::StackProtectorStrategies,
         "target-spec-json" => {
             if dopts.unstable_options {
                 PrintRequest::TargetSpec
@@ -2494,7 +2496,9 @@ crate mod dep_tracking {
     use rustc_span::edition::Edition;
     use rustc_span::RealFileName;
     use rustc_target::spec::{CodeModel, MergeFunctions, PanicStrategy, RelocModel};
-    use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, TargetTriple, TlsModel};
+    use rustc_target::spec::{
+        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+    };
     use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
     use std::hash::Hash;
@@ -2568,6 +2572,7 @@ crate mod dep_tracking {
         Edition,
         LinkerPluginLto,
         SplitDebuginfo,
+        StackProtector,
         SwitchWithOptPath,
         SymbolManglingVersion,
         SourceFileHashAlgorithm,

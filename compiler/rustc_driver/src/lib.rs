@@ -736,7 +736,12 @@ impl RustcDefaultCalls {
                         println!("{}", cfg);
                     }
                 }
-                RelocationModels | CodeModels | TlsModels | TargetCPUs | TargetFeatures => {
+                RelocationModels
+                | CodeModels
+                | TlsModels
+                | TargetCPUs
+                | StackProtectorStrategies
+                | TargetFeatures => {
                     codegen_backend.print(*req, sess);
                 }
                 // Any output here interferes with Cargo's parsing of other printed output

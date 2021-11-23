@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_session::Session;
 use rustc_target::spec::abi::Abi;
-use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType};
+use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
 
 use crate::attributes;
 use crate::llvm::AttributePlace::Function;
@@ -161,6 +161,17 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     }
 }
 
+fn set_stackprotector(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+    let sspattr = match cx.sess().stack_protector() {
+        StackProtector::None => return,
+        StackProtector::All => Attribute::StackProtectReq,
+        StackProtector::Strong => Attribute::StackProtectStrong,
+        StackProtector::Basic => Attribute::StackProtect,
+    };
+
+    sspattr.apply_llfn(Function, llfn)
+}
+
 pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     let target_cpu = SmallCStr::new(llvm_util::target_cpu(cx.tcx.sess));
     llvm::AddFunctionAttrStringValue(
@@ -271,6 +282,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     set_frame_pointer_type(cx, llfn);
     set_instrument_function(cx, llfn);
     set_probestack(cx, llfn);
+    set_stackprotector(cx, llfn);
 
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
         Attribute::Cold.apply_llfn(Function, llfn);
