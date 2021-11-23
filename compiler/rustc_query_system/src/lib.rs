@@ -6,6 +6,7 @@
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(thread_local_const_init)]
+#![feature(extern_types)]
 
 #[macro_use]
 extern crate tracing;
