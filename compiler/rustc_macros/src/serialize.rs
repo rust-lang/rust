@@ -247,13 +247,24 @@ fn encodable_body(
                     })
                     .collect();
 
-                let result = quote! { ::rustc_serialize::Encoder::emit_enum_variant(
-                    __encoder,
-                   #variant_name,
-                   #variant_idx,
-                   #field_idx,
-                   |__encoder| { ::std::result::Result::Ok({ #encode_fields }) }
-                ) };
+                let result = if field_idx != 0 {
+                    quote! {
+                        ::rustc_serialize::Encoder::emit_enum_variant(
+                            __encoder,
+                            #variant_name,
+                            #variant_idx,
+                            #field_idx,
+                            |__encoder| { ::std::result::Result::Ok({ #encode_fields }) }
+                        )
+                    }
+                } else {
+                    quote! {
+                        ::rustc_serialize::Encoder::emit_fieldless_enum_variant::<#variant_idx>(
+                            __encoder,
+                            #variant_name,
+                        )
+                    }
+                };
                 variant_idx += 1;
                 result
             });
