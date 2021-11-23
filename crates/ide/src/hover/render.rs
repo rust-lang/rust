@@ -444,7 +444,7 @@ fn find_std_module(famous_defs: &FamousDefs, name: &str) -> Option<hir::Module> 
 
 fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
     let ty = it.ty(db);
-    let ty = ty.display(db);
+    let ty = ty.display_truncated(db, None);
     let is_mut = if it.is_mut(db) { "mut " } else { "" };
     let desc = match it.source(db).value {
         Either::Left(ident) => {
