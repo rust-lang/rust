@@ -166,14 +166,14 @@ mod sip;
 ///
 /// ## Portability
 ///
-/// Due to differences in endianness and type sizes data fed by `Hash` to a `Hasher`
+/// Due to differences in endianness and type sizes, data fed by `Hash` to a `Hasher`
 /// should not be considered portable across platforms. Additionally the data passed by most
 /// standard library types should not be considered stable between compiler versions.
 ///
 /// This means tests shouldn't probe hard-coded hash values or data fed to a `Hasher` and
 /// instead should check consistency with `Eq`.
 ///
-/// Serialization formats intended to he portable between platforms or compiler versions should
+/// Serialization formats intended to be portable between platforms or compiler versions should
 /// either avoid encoding hashes or only rely on `Hash` and `Hasher` implementations that
 /// provide additional guarantees.
 ///
