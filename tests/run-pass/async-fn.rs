@@ -1,8 +1,6 @@
 #![feature(never_type)]
 
-use std::{future::Future, pin::Pin, task::Poll};
-use std::task::{Wake, Waker, Context};
-use std::sync::Arc;
+use std::future::Future;
 
 // See if we can run a basic `async fn`
 pub async fn foo(x: &u32, y: u32) -> u32 {
@@ -47,7 +45,10 @@ async fn partial_init(x: u32) -> u32 {
     let _x: (String, !) = (String::new(), return async { x + x }.await);
 }
 
-fn run_fut(mut fut: impl Future<Output=u32>, output: u32) {
+fn run_fut<T>(fut: impl Future<Output = T>) -> T {
+    use std::sync::Arc;
+    use std::task::{Context, Poll, Wake, Waker};
+
     struct MyWaker;
     impl Wake for MyWaker {
         fn wake(self: Arc<Self>) {
@@ -57,16 +58,20 @@ fn run_fut(mut fut: impl Future<Output=u32>, output: u32) {
 
     let waker = Waker::from(Arc::new(MyWaker));
     let mut context = Context::from_waker(&waker);
-    assert_eq!(unsafe { Pin::new_unchecked(&mut fut) }.poll(&mut context), Poll::Ready(output));
+
+    let mut pinned = Box::pin(fut);
+    loop {
+        match pinned.as_mut().poll(&mut context) {
+            Poll::Pending => continue,
+            Poll::Ready(v) => return v,
+        }
+    }
 }
 
 fn main() {
     let x = 5;
-    run_fut(foo(&x, 7), 31);
-
-    run_fut(build_aggregate(1, 2, 3, 4), 10);
-
-    run_fut(includes_never(false, 4), 16);
-
-    run_fut(partial_init(4), 8);
+    assert_eq!(run_fut(foo(&x, 7)), 31);
+    assert_eq!(run_fut(build_aggregate(1, 2, 3, 4)), 10);
+    assert_eq!(run_fut(includes_never(false, 4)), 16);
+    assert_eq!(run_fut(partial_init(4)), 8);
 }
