@@ -9,7 +9,7 @@ entry:
 
 define double @test_derivative(double %x) {
 entry:
-  %0 = tail call double (double (double)*, ...) @__enzyme_autodiff(double (double)* nonnull @tester, double %x)
+  %0 = tail call double (double (double)*, ...) @__enzyme_fwddiff(double (double)* nonnull @tester, double %x, double 1.0)
   ret double %0
 }
 
@@ -20,7 +20,7 @@ declare double @llvm.cos.f64(double)
 declare double @llvm.sin.f64(double)
 
 ; Function Attrs: nounwind
-declare double @__enzyme_autodiff(double (double)*, ...)
+declare double @__enzyme_fwddiff(double (double)*, ...)
 
 ; CHECK: define double @test_derivative(double %x)
 ; CHECK-NEXT: entry:

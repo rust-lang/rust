@@ -79,3 +79,12 @@ declare dso_local double @__enzyme_fwddiff(i8*, double*, double*) local_unnamed_
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg", align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
+
+; CHECK: define internal {{(dso_local )?}}void @fwddiffeothermetasubf(double* nocapture %x, double* nocapture %"x'")
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %"x'", i64 1
+; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
+; CHECK-NEXT:   store double 4.000000e+00, double* %arrayidx, align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg", align 8
+; CHECK-NEXT:   ret void
+; CHECK-NEXT: }
