@@ -719,6 +719,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(const_trait_impl, "const trait impls are experimental");
     gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
     gate_all!(inline_const, "inline-const is experimental");
+    gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(
         const_generics_defaults,
         "default values for const generic parameters are experimental"
