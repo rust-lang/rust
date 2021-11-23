@@ -377,8 +377,9 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 }
 
                 let unsafety_flag = match *myitem.kind {
-                    clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
-                        if func.header.unsafety == hir::Unsafety::Unsafe =>
+                    clean::FunctionItem(_) | clean::ForeignFunctionItem(_)
+                        if cx.tcx().fn_sig(myitem.def_id.expect_def_id()).unsafety()
+                            == hir::Unsafety::Unsafe =>
                     {
                         "<a title=\"unsafe function\" href=\"#\"><sup>⚠</sup></a>"
                     }
@@ -465,11 +466,19 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 }
 
 fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
+    let tcx = cx.tcx();
+    let did = it.def_id.expect_def_id();
+    let sig = tcx.fn_sig(did);
+    let it_constness =
+        if tcx.is_const_fn_raw(did) { hir::Constness::Const } else { hir::Constness::NotConst };
+    let it_asyncness = tcx.asyncness(did);
+    let it_unsafety = sig.unsafety();
+
     let vis = it.visibility.print_with_space(it.def_id, cx).to_string();
-    let constness = print_constness_with_space(&f.header.constness, it.const_stability(cx.tcx()));
-    let asyncness = f.header.asyncness.print_with_space();
-    let unsafety = f.header.unsafety.print_with_space();
-    let abi = print_abi_with_space(f.header.abi).to_string();
+    let constness = print_constness_with_space(&it_constness, it.const_stability(tcx));
+    let asyncness = it_asyncness.print_with_space();
+    let unsafety = it_unsafety.print_with_space();
+    let abi = print_abi_with_space(sig.abi()).to_string();
     let name = it.name.as_ref().unwrap();
 
     let generics_len = format!("{:#}", f.generics.print(cx)).len();
@@ -498,7 +507,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
                 name = name,
                 generics = f.generics.print(cx),
                 where_clause = print_where_clause(&f.generics, cx, 0, true),
-                decl = f.decl.full_print(header_len, 0, f.header.asyncness, cx),
+                decl = f.decl.full_print(header_len, 0, it_asyncness, cx),
                 notable_traits = notable_traits_decl(&f.decl, cx),
             );
         });

@@ -873,14 +873,21 @@ fn render_assoc_item(
     fn method(
         w: &mut Buffer,
         meth: &clean::Item,
-        header: hir::FnHeader,
         g: &clean::Generics,
         d: &clean::FnDecl,
         link: AssocItemLink<'_>,
         parent: ItemType,
         cx: &Context<'_>,
     ) {
+        let tcx = cx.tcx();
         let name = meth.name.as_ref().unwrap();
+        let did = meth.def_id.expect_def_id();
+        let sig = tcx.fn_sig(did);
+        let meth_constness =
+            if tcx.is_const_fn_raw(did) { hir::Constness::Const } else { hir::Constness::NotConst };
+        let meth_asyncness = tcx.asyncness(did);
+        let meth_unsafety = sig.unsafety();
+
         let href = match link {
             AssocItemLink::Anchor(Some(ref id)) => Some(format!("#{}", id)),
             AssocItemLink::Anchor(None) => Some(format!("#{}.{}", meth.type_(), name)),
@@ -901,12 +908,11 @@ fn render_assoc_item(
             }
         };
         let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
-        let constness =
-            print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()));
-        let asyncness = header.asyncness.print_with_space();
-        let unsafety = header.unsafety.print_with_space();
+        let constness = print_constness_with_space(&meth_constness, meth.const_stability(tcx));
+        let asyncness = meth_asyncness.print_with_space();
+        let unsafety = meth_unsafety.print_with_space();
         let defaultness = print_default_space(meth.is_default());
-        let abi = print_abi_with_space(header.abi).to_string();
+        let abi = print_abi_with_space(sig.abi()).to_string();
 
         // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
         let generics_len = format!("{:#}", g.print(cx)).len();
@@ -945,19 +951,15 @@ fn render_assoc_item(
             href = href.map(|href| format!("href=\"{}\"", href)).unwrap_or_else(|| "".to_string()),
             name = name,
             generics = g.print(cx),
-            decl = d.full_print(header_len, indent, header.asyncness, cx),
+            decl = d.full_print(header_len, indent, meth_asyncness, cx),
             notable_traits = notable_traits_decl(d, cx),
             where_clause = print_where_clause(g, cx, indent, end_newline),
         )
     }
     match *item.kind {
         clean::StrippedItem(..) => {}
-        clean::TyMethodItem(ref m) => {
-            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx)
-        }
-        clean::MethodItem(ref m, _) => {
-            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx)
-        }
+        clean::TyMethodItem(ref m) => method(w, item, &m.generics, &m.decl, link, parent, cx),
+        clean::MethodItem(ref m, _) => method(w, item, &m.generics, &m.decl, link, parent, cx),
         clean::AssocConstItem(ref ty, ref default) => assoc_const(
             w,
             item,

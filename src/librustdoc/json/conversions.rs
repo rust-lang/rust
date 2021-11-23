@@ -203,12 +203,18 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         StructFieldItem(f) => ItemEnum::StructField(f.into_tcx(tcx)),
         EnumItem(e) => ItemEnum::Enum(e.into_tcx(tcx)),
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
-        FunctionItem(f) => ItemEnum::Function(f.into_tcx(tcx)),
-        ForeignFunctionItem(f) => ItemEnum::Function(f.into_tcx(tcx)),
+        FunctionItem(f) => ItemEnum::Function(from_function(f, item.def_id.expect_def_id(), tcx)),
+        ForeignFunctionItem(f) => {
+            ItemEnum::Function(from_function(f, item.def_id.expect_def_id(), tcx))
+        }
         TraitItem(t) => ItemEnum::Trait(t.into_tcx(tcx)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
-        MethodItem(m, _) => ItemEnum::Method(from_function_method(m, true, tcx)),
-        TyMethodItem(m) => ItemEnum::Method(from_function_method(m, false, tcx)),
+        MethodItem(m, _) => {
+            ItemEnum::Method(from_function_method(m, item.def_id.expect_def_id(), true, tcx))
+        }
+        TyMethodItem(m) => {
+            ItemEnum::Method(from_function_method(m, item.def_id.expect_def_id(), false, tcx))
+        }
         ImplItem(i) => ItemEnum::Impl(i.into_tcx(tcx)),
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
@@ -287,17 +293,38 @@ crate fn from_fn_header(header: &rustc_hir::FnHeader) -> HashSet<Qualifiers> {
     v
 }
 
-impl FromWithTcx<clean::Function> for Function {
-    fn from_tcx(function: clean::Function, tcx: TyCtxt<'_>) -> Self {
-        let clean::Function { decl, generics, header } = function;
-        Function {
-            decl: decl.into_tcx(tcx),
-            generics: generics.into_tcx(tcx),
-            header: from_fn_header(&header),
-            abi: header.abi.to_string(),
-        }
+crate fn from_function(function: clean::Function, did: DefId, tcx: TyCtxt<'_>) -> Function {
+    let clean::Function { decl, generics } = function;
+    let sig = tcx.fn_sig(did);
+    let constness = if tcx.is_const_fn_raw(did) {
+        rustc_hir::Constness::Const
+    } else {
+        rustc_hir::Constness::NotConst
+    };
+    let asyncness = tcx.asyncness(did);
+    let header =
+        rustc_hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness };
+
+    Function {
+        decl: decl.into_tcx(tcx),
+        generics: generics.into_tcx(tcx),
+        header: from_fn_header(&header),
+        abi: header.abi.to_string(),
     }
 }
+
+// impl FromWithTcx<clean::Function> for Function {
+//     fn from_tcx(function: clean::Function, tcx: TyCtxt<'_>) -> Self {
+//         let clean::Function { decl, generics } = function;
+//         let header = hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
+//         Function {
+//             decl: decl.into_tcx(tcx),
+//             generics: generics.into_tcx(tcx),
+//             header: from_fn_header(&header),
+//             abi: header.abi.to_string(),
+//         }
+//     }
+// }
 
 impl FromWithTcx<clean::Generics> for Generics {
     fn from_tcx(generics: clean::Generics, tcx: TyCtxt<'_>) -> Self {
@@ -535,10 +562,21 @@ impl FromWithTcx<clean::Impl> for Impl {
 
 crate fn from_function_method(
     function: clean::Function,
+    did: DefId,
     has_body: bool,
     tcx: TyCtxt<'_>,
 ) -> Method {
-    let clean::Function { header, decl, generics } = function;
+    let clean::Function { decl, generics } = function;
+    let sig = tcx.fn_sig(did);
+    let constness = if tcx.is_const_fn_raw(did) {
+        rustc_hir::Constness::Const
+    } else {
+        rustc_hir::Constness::NotConst
+    };
+    let asyncness = tcx.asyncness(did);
+    let header =
+        rustc_hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness };
+
     Method {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),

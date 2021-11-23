@@ -1303,7 +1303,6 @@ crate struct Generics {
 crate struct Function {
     crate decl: FnDecl,
     crate generics: Generics,
-    crate header: hir::FnHeader,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
