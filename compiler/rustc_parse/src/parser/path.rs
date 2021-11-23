@@ -155,6 +155,16 @@ impl<'a> Parser<'a> {
             path
         });
 
+        if let token::Interpolated(nt) = &self.token.kind {
+            if let token::NtTy(ty) = &**nt {
+                if let ast::TyKind::Path(None, path) = &ty.kind {
+                    let path = path.clone();
+                    self.bump();
+                    return Ok(path);
+                }
+            }
+        }
+
         let lo = self.token.span;
         let mut segments = Vec::new();
         let mod_sep_ctxt = self.token.span.ctxt();
