@@ -576,7 +576,7 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                 return match err.raw_os_error() {
                     // when file offset + max_length > u64::MAX
                     Some(EOVERFLOW) => CopyResult::Fallback(written),
-                    Some(ENOSYS | EXDEV | EINVAL | EPERM | EOPNOTSUPP | EBADF) => {
+                    Some(ENOSYS | EXDEV | EINVAL | EPERM | EOPNOTSUPP | EBADF) if written == 0 => {
                         // Try fallback io::copy if either:
                         // - Kernel version is < 4.5 (ENOSYS¹)
                         // - Files are mounted on different fs (EXDEV)
@@ -584,12 +584,14 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                         // - copy_file_range file is immutable or syscall is blocked by seccomp¹ (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         // - the writer fd was opened with O_APPEND (EBADF²)
+                        // and no bytes were written successfully yet.  (All these errnos should
+                        // not be returned if something was already written, but they happen in
+                        // the wild, see #91152.)
                         //
                         // ¹ these cases should be detected by the initial probe but we handle them here
                         //   anyway in case syscall interception changes during runtime
                         // ² actually invalid file descriptors would cause this too, but in that case
                         //   the fallback code path is expected to encounter the same error again
-                        assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
                     _ => CopyResult::Error(err, written),
