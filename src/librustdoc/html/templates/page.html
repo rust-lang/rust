@@ -12,7 +12,15 @@
     <link rel="stylesheet" type="text/css" {# -#}
           href="{{static_root_path | safe}}rustdoc{{page.resource_suffix}}.css" {# -#}
           id="mainThemeStyle"> {#- -#}
-    {{- style_files | safe -}}
+    {%- for theme in themes -%}
+        <link rel="stylesheet" type="text/css" {# -#}
+        {%- if theme == "light" -%}
+            id="themeStyle"
+        {%- else -%}
+            disabled
+        {%- endif -%}
+            href="{{static_root_path | safe}}{{theme}}{{page.resource_suffix}}.css"> {#- -#}
+    {%- endfor -%}
     <script id="default-settings" {# -#}
       {% for k, v in layout.default_settings %}
         data-{{k}}="{{v}}"

@@ -228,12 +228,12 @@ pub(super) fn write_shared(
     let mut themes: FxHashSet<String> = FxHashSet::default();
 
     for entry in &cx.shared.style_files {
-        let theme = try_none!(try_none!(entry.path.file_stem(), &entry.path).to_str(), &entry.path);
+        let theme = entry.basename()?;
         let extension =
             try_none!(try_none!(entry.path.extension(), &entry.path).to_str(), &entry.path);
 
         // Handle the official themes
-        match theme {
+        match theme.as_str() {
             "light" => write_minify("light.css", static_files::themes::LIGHT, cx, options)?,
             "dark" => write_minify("dark.css", static_files::themes::DARK, cx, options)?,
             "ayu" => write_minify("ayu.css", static_files::themes::AYU, cx, options)?,
