@@ -133,37 +133,35 @@ where
         }
 
         let initial_size = self.obligations.len();
-        let iter = iter.into_iter();
+        let current_capacity = self.obligations.capacity();
         let expected_new = iter.len();
         let combined_size = initial_size + expected_new;
 
-        if combined_size <= 16 || combined_size < initial_size.next_power_of_two() {
+        if combined_size <= 16 || combined_size <= current_capacity {
             // small case/not crossing a power of two. don't bother with dedup
             self.obligations.extend(iter.map(Cow::into_owned));
         } else {
             // crossing power of two threshold. this would incur a vec growth anyway if we didn't do
             // anything. piggyback a dedup on that
-            let obligations = std::mem::take(self.obligations);
+            let mut seen = FxHashMap::with_capacity_and_hasher(initial_size, Default::default());
 
-            let mut seen = FxHashMap::default();
-            seen.reserve(initial_size);
-
-            *self.obligations = obligations
-                .into_iter()
-                .map(Cow::Owned)
-                .chain(iter)
-                .filter_map(|obligation| {
-                    match seen.raw_entry_mut().from_key(obligation.borrow()) {
-                        RawEntryMut::Occupied(..) => {
-                            return None;
-                        }
-                        RawEntryMut::Vacant(vacant) => {
-                            vacant.insert(obligation.clone().into_owned(), ());
-                        }
+            let mut is_duplicate = move |obligation: &Obligation<'tcx, _>| -> bool {
+                return match seen.raw_entry_mut().from_key(obligation) {
+                    RawEntryMut::Occupied(..) => true,
+                    RawEntryMut::Vacant(vacant) => {
+                        vacant.insert(obligation.clone(), ());
+                        false
                     }
-                    Some(obligation.into_owned())
-                })
-                .collect();
+                };
+            };
+
+            self.obligations.retain(|obligation| !is_duplicate(obligation));
+            self.obligations.extend(iter.filter_map(|obligation| {
+                if is_duplicate(obligation.borrow()) {
+                    return None;
+                }
+                Some(obligation.into_owned())
+            }));
         }
     }
 }
