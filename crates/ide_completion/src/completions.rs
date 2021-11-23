@@ -191,9 +191,10 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         strukt: hir::Struct,
+        path: Option<hir::ModPath>,
         local_name: Option<hir::Name>,
     ) {
-        let item = render_struct_literal(RenderContext::new(ctx), strukt, local_name);
+        let item = render_struct_literal(RenderContext::new(ctx), strukt, path, local_name);
         self.add_opt(item);
     }
 
