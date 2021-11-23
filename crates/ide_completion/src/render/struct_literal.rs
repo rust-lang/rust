@@ -56,14 +56,21 @@ fn render_literal(
     kind: StructKind,
     fields: &[hir::Field],
 ) -> Option<String> {
-    let qualified_name = if let Some(path) = path { path.to_string() } else { name.to_string() };
+    let path_string;
+
+    let qualified_name = if let Some(path) = path {
+        path_string = path.to_string();
+        &path_string
+    } else {
+        name
+    };
 
     let mut literal = match kind {
         StructKind::Tuple if ctx.snippet_cap().is_some() => {
-            render_tuple_as_literal(fields, &qualified_name)
+            render_tuple_as_literal(fields, qualified_name)
         }
         StructKind::Record => {
-            render_record_as_literal(ctx.db(), ctx.snippet_cap(), fields, &qualified_name)
+            render_record_as_literal(ctx.db(), ctx.snippet_cap(), fields, qualified_name)
         }
         _ => return None,
     };
