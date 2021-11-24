@@ -115,7 +115,7 @@ fn add_custom_completions(
             for import in imports.into_iter() {
                 builder.add_import(import);
             }
-            builder.detail(snip.description.as_deref().unwrap_or_default());
+            builder.set_detail(snip.description.clone());
             builder.add_to(acc);
         },
     );

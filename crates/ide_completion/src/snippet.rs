@@ -176,6 +176,9 @@ fn validate_snippet(
         imports.push(green);
     }
     let snippet = snippet.iter().join("\n");
-    let description = if description.is_empty() { None } else { Some(description.into()) };
+    let description = (!description.is_empty())
+        .then(|| description.split_once('\n').map_or(description, |(it, _)| it))
+        .map(ToOwned::to_owned)
+        .map(Into::into);
     Some((imports.into_boxed_slice(), snippet, description))
 }

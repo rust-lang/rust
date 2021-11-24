@@ -1,10 +1,10 @@
 //! Renderer for `enum` variants.
 
-use std::iter;
+use std::{iter, mem};
 
 use hir::{HasAttrs, HirDisplay};
 use ide_db::SymbolKind;
-use itertools::Itertools;
+use stdx::format_to;
 
 use crate::{
     item::{CompletionItem, ImportEdit},
@@ -105,18 +105,31 @@ impl<'a> EnumRender<'a> {
             .into_iter()
             .map(|field| (field.name(self.ctx.db()), field.ty(self.ctx.db())));
 
+        let mut b = String::new();
+        let mut first_run = true;
         match self.variant_kind {
-            hir::StructKind::Tuple | hir::StructKind::Unit => format!(
-                "({})",
-                detail_types.map(|(_, t)| t.display(self.ctx.db()).to_string()).format(", ")
-            ),
-            hir::StructKind::Record => format!(
-                "{{ {} }}",
-                detail_types
-                    .map(|(n, t)| format!("{}: {}", n, t.display(self.ctx.db()).to_string()))
-                    .format(", ")
-            ),
+            hir::StructKind::Tuple | hir::StructKind::Unit => {
+                format_to!(b, "(");
+                for (_, t) in detail_types {
+                    if !mem::take(&mut first_run) {
+                        format_to!(b, ", ");
+                    }
+                    format_to!(b, "{}", t.display(self.ctx.db()));
+                }
+                format_to!(b, ")");
+            }
+            hir::StructKind::Record => {
+                format_to!(b, "{{");
+                for (n, t) in detail_types {
+                    if !mem::take(&mut first_run) {
+                        format_to!(b, ", ");
+                    }
+                    format_to!(b, "{}: {}", n, t.display(self.ctx.db()));
+                }
+                format_to!(b, "}}");
+            }
         }
+        b
     }
 }
 

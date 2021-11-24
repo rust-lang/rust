@@ -4,6 +4,7 @@ use either::Either;
 use hir::{AsAssocItem, HasSource, HirDisplay};
 use ide_db::SymbolKind;
 use itertools::Itertools;
+use stdx::format_to;
 use syntax::ast;
 
 use crate::{
@@ -122,14 +123,11 @@ impl<'a> FunctionRender<'a> {
 
     fn detail(&self) -> String {
         let ret_ty = self.func.ret_type(self.ctx.db());
-        let ret = if ret_ty.is_unit() {
-            // Omit the return type if it is the unit type
-            String::new()
-        } else {
-            format!(" {}", self.ty_display())
-        };
-
-        format!("fn({}){}", self.params_display(), ret)
+        let mut detail = format!("fn({})", self.params_display());
+        if !ret_ty.is_unit() {
+            format_to!(detail, " -> {}", ret_ty.display(self.ctx.db()));
+        }
+        detail
     }
 
     fn params_display(&self) -> String {
@@ -151,12 +149,6 @@ impl<'a> FunctionRender<'a> {
                 .join(", ");
             params
         }
-    }
-
-    fn ty_display(&self) -> String {
-        let ret_ty = self.func.ret_type(self.ctx.db());
-
-        format!("-> {}", ret_ty.display(self.ctx.db()))
     }
 
     fn params(&self) -> Params {
