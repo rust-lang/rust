@@ -312,7 +312,7 @@ impl<'s> LintLevelsBuilder<'s> {
             for (lint_index, li) in metas.iter_mut().enumerate() {
                 let level = match level {
                     Level::Expect(mut id) => {
-                        id.set_lint_index(Some(lint_index));
+                        id.set_lint_index(Some(lint_index as u16));
                         Level::Expect(id)
                     }
                     level => level,
@@ -601,7 +601,8 @@ impl<'s> LintLevelsBuilder<'s> {
         hir_id: HirId,
         attr_index: usize,
     ) -> LintExpectationId {
-        let stable_id = LintExpectationId::Stable { hir_id, attr_index, lint_index: None };
+        let stable_id =
+            LintExpectationId::Stable { hir_id, attr_index: attr_index as u16, lint_index: None };
 
         self.expectation_id_map.insert(unstable_id, stable_id);
 

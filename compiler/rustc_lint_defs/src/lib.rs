@@ -64,16 +64,20 @@ pub enum Applicability {
 ///
 /// Each lint inside the `expect` attribute is tracked individually, the `lint_index`
 /// identifies the lint inside the attribute and ensures that the IDs are unique.
+///
+/// The index values have a type of `u16` to reduce the size of the `LintExpectationId`.
+/// It's reasonable to assume that no user will define 2^16 attributes on one node or
+/// have that amount of lints listed. `u16` values should therefore suffice.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable)]
 pub enum LintExpectationId {
     /// Used for lints emitted during the `EarlyLintPass`. This id is not
     /// has stable and should not be cached.
-    Unstable { attr_id: AttrId, lint_index: Option<usize> },
+    Unstable { attr_id: AttrId, lint_index: Option<u16> },
     /// The [`HirId`] that the lint expectation is attached to. This id is
     /// stable and can be cached. The additional index ensures that nodes with
     /// several expectations can correctly match diagnostics to the individual
     /// expectation.
-    Stable { hir_id: HirId, attr_index: usize, lint_index: Option<usize> },
+    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
 }
 
 impl LintExpectationId {
@@ -84,14 +88,14 @@ impl LintExpectationId {
         }
     }
 
-    pub fn get_lint_index(&self) -> Option<usize> {
+    pub fn get_lint_index(&self) -> Option<u16> {
         let (LintExpectationId::Unstable { lint_index, .. }
         | LintExpectationId::Stable { lint_index, .. }) = self;
 
         *lint_index
     }
 
-    pub fn set_lint_index(&mut self, new_lint_index: Option<usize>) {
+    pub fn set_lint_index(&mut self, new_lint_index: Option<u16>) {
         let (LintExpectationId::Unstable { ref mut lint_index, .. }
         | LintExpectationId::Stable { ref mut lint_index, .. }) = self;
 
@@ -116,7 +120,7 @@ impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
 }
 
 impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
-    type KeyType = (HirId, usize, usize);
+    type KeyType = (HirId, u16, u16);
 
     #[inline]
     fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
