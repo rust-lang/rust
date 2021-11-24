@@ -964,8 +964,6 @@ body.blur > :not(#help) {
 	display: table;
 }
 .stab {
-	border-width: 1px;
-	border-style: solid;
 	padding: 3px;
 	margin-bottom: 5px;
 	font-size: 90%;
@@ -976,7 +974,7 @@ body.blur > :not(#help) {
 }
 
 .stab .emoji {
-	font-size: 1.5em;
+	font-size: 1.2em;
 }
 
 /* Black one-pixel outline around emoji shapes */

@@ -682,7 +682,7 @@ fn short_item_info(
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some((StabilityLevel::Unstable { reason, issue, .. }, feature)) = item
+    if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, feature)) = item
         .stability(cx.tcx())
         .as_ref()
         .filter(|stab| stab.feature != sym::rustc_private)
@@ -701,22 +701,6 @@ fn short_item_info(
         }
 
         message.push_str(&format!(" ({})", feature));
-
-        if let Some(unstable_reason) = reason {
-            let mut ids = cx.id_map.borrow_mut();
-            message = format!(
-                "<details><summary>{}</summary>{}</details>",
-                message,
-                MarkdownHtml(
-                    &unstable_reason.as_str(),
-                    &mut ids,
-                    error_codes,
-                    cx.shared.edition(),
-                    &cx.shared.playground,
-                )
-                .into_string()
-            );
-        }
 
         extra_info.push(format!("<div class=\"stab unstable\">{}</div>", message));
     }
