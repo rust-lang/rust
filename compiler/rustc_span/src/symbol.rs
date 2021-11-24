@@ -679,6 +679,7 @@ symbols! {
         gen_future,
         gen_kill,
         generator,
+        generator_return,
         generator_state,
         generators,
         generic_arg_infer,
