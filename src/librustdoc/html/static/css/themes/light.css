@@ -175,6 +175,8 @@ a {
 }
 a.srclink,
 a#toggle-all-docs,
+a.anchor,
+.section-header a,
 #source-sidebar a,
 pre.rust a,
 .sidebar a,
