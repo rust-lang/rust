@@ -48,7 +48,7 @@ impl<T> Spinlock<T> {
         let ticket = self.queue.fetch_add(1, Ordering::SeqCst) + 1;
         let mut counter: u16 = 0;
         while self.dequeue.load(Ordering::SeqCst) != ticket {
-            counter = counter + 1;
+            counter += 1;
             if counter < 100 {
                 hint::spin_loop();
             } else {
