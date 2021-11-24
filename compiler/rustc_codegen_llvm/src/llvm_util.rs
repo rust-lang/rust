@@ -417,7 +417,10 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
     features.extend(sess.opts.cg.target_feature.split(',').flat_map(&filter));
 
     // FIXME: Move outline-atomics to target definition when earliest supported LLVM is 12.
-    if get_version() >= (12, 0, 0) && sess.target.llvm_target.contains("aarch64-unknown-linux") {
+    if get_version() >= (12, 0, 0)
+        && sess.target.llvm_target.contains("aarch64-unknown-linux")
+        && sess.target.llvm_target != "aarch64-unknown-linux-musl"
+    {
         features.push("+outline-atomics".to_string());
     }
 
