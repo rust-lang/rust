@@ -1421,8 +1421,9 @@ crate struct PolyTrait {
 crate enum Type {
     /// A named type, which could be a trait.
     ///
-    /// This is mostly Rustdoc's version of [`hir::Path`]. It has to be different because Rustdoc's [`PathSegment`] can contain cleaned generics.
-    ResolvedPath { path: Path },
+    /// This is mostly Rustdoc's version of [`hir::Path`].
+    /// It has to be different because Rustdoc's [`PathSegment`] can contain cleaned generics.
+    Path { path: Path },
     /// A `dyn Trait` object: `dyn for<'a> Trait<'a> + Send + 'static`
     DynTrait(Vec<PolyTrait>, Option<Lifetime>),
     /// A type parameter.
@@ -1488,7 +1489,7 @@ impl Type {
     /// Checks if this is a `T::Name` path for an associated type.
     crate fn is_assoc_ty(&self) -> bool {
         match self {
-            Type::ResolvedPath { path, .. } => path.is_assoc_ty(),
+            Type::Path { path, .. } => path.is_assoc_ty(),
             _ => false,
         }
     }
@@ -1502,7 +1503,7 @@ impl Type {
 
     crate fn generics(&self) -> Option<Vec<&Type>> {
         match self {
-            Type::ResolvedPath { path, .. } => path.generics(),
+            Type::Path { path, .. } => path.generics(),
             _ => None,
         }
     }
@@ -1525,7 +1526,7 @@ impl Type {
 
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
         let t: PrimitiveType = match *self {
-            Type::ResolvedPath { ref path } => return Some(path.def_id()),
+            Type::Path { ref path } => return Some(path.def_id()),
             DynTrait(ref bounds, _) => return Some(bounds[0].trait_.def_id()),
             Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
