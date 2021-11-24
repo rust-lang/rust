@@ -7,6 +7,7 @@ use core::ops::{Shl, Shr};
 
 mod assign;
 mod deref;
+mod unary;
 
 impl<I, T, const LANES: usize> core::ops::Index<I> for Simd<T, LANES>
 where
@@ -65,25 +66,6 @@ macro_rules! impl_ref_ops {
             fn $fn($self_tok, $rhs_arg: $rhs_arg_ty) -> Self::Output $body
         }
     };
-
-    // unary op
-    {
-        impl<const $lanes:ident: usize> core::ops::$trait:ident for $type:ty
-        where
-            LaneCount<$lanes2:ident>: SupportedLaneCount,
-        {
-            type Output = $output:ty;
-            fn $fn:ident($self_tok:ident) -> Self::Output $body:tt
-        }
-    } => {
-        impl<const $lanes: usize> core::ops::$trait for $type
-        where
-            LaneCount<$lanes2>: SupportedLaneCount,
-        {
-            type Output = $output;
-            fn $fn($self_tok) -> Self::Output $body
-        }
-    }
 }
 
 /// Automatically implements operators over vectors and scalars for a particular vector.
@@ -117,34 +99,6 @@ macro_rules! impl_op {
     };
     { impl BitXor for $scalar:ty } => {
         impl_op! { @binary $scalar, BitXor::bitxor, simd_xor }
-    };
-
-    { impl Not for $scalar:ty } => {
-        impl_ref_ops! {
-            impl<const LANES: usize> core::ops::Not for Simd<$scalar, LANES>
-            where
-                LaneCount<LANES>: SupportedLaneCount,
-            {
-                type Output = Self;
-                fn not(self) -> Self::Output {
-                    self ^ Self::splat(!<$scalar>::default())
-                }
-            }
-        }
-    };
-
-    { impl Neg for $scalar:ty } => {
-        impl_ref_ops! {
-            impl<const LANES: usize> core::ops::Neg for Simd<$scalar, LANES>
-            where
-                LaneCount<LANES>: SupportedLaneCount,
-            {
-                type Output = Self;
-                fn neg(self) -> Self::Output {
-                    unsafe { intrinsics::simd_neg(self) }
-                }
-            }
-        }
     };
 
     // generic binary op with assignment when output is `Self`
@@ -204,7 +158,6 @@ macro_rules! impl_float_ops {
             impl_op! { impl Mul for $scalar }
             impl_op! { impl Div for $scalar }
             impl_op! { impl Rem for $scalar }
-            impl_op! { impl Neg for $scalar }
         )*
     };
 }
@@ -219,7 +172,6 @@ macro_rules! impl_unsigned_int_ops {
             impl_op! { impl BitAnd for $scalar }
             impl_op! { impl BitOr  for $scalar }
             impl_op! { impl BitXor for $scalar }
-            impl_op! { impl Not for $scalar }
 
             // Integers panic on divide by 0
             impl_ref_ops! {
@@ -441,9 +393,6 @@ macro_rules! impl_unsigned_int_ops {
 macro_rules! impl_signed_int_ops {
     { $($scalar:ty),* } => {
         impl_unsigned_int_ops! { $($scalar),* }
-        $( // scalar
-            impl_op! { impl Neg for $scalar }
-        )*
     };
 }
 
