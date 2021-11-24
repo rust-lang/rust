@@ -5,6 +5,7 @@ use core::ops::{BitAnd, BitOr, BitXor};
 use core::ops::{Div, Rem, Sub};
 use core::ops::{Shl, Shr};
 
+mod assign;
 mod deref;
 
 impl<I, T, const LANES: usize> core::ops::Index<I> for Simd<T, LANES>
@@ -65,25 +66,6 @@ macro_rules! impl_ref_ops {
         }
     };
 
-    // binary assignment op
-    {
-        impl<const $lanes:ident: usize> core::ops::$trait:ident<$rhs:ty> for $type:ty
-        where
-            LaneCount<$lanes2:ident>: SupportedLaneCount,
-        {
-            $(#[$attrs:meta])*
-            fn $fn:ident(&mut $self_tok:ident, $rhs_arg:ident: $rhs_arg_ty:ty) $body:tt
-        }
-    } => {
-        impl<const $lanes: usize> core::ops::$trait<$rhs> for $type
-        where
-            LaneCount<$lanes2>: SupportedLaneCount,
-        {
-            $(#[$attrs])*
-            fn $fn(&mut $self_tok, $rhs_arg: $rhs_arg_ty) $body
-        }
-    };
-
     // unary op
     {
         impl<const $lanes:ident: usize> core::ops::$trait:ident for $type:ty
@@ -107,34 +89,34 @@ macro_rules! impl_ref_ops {
 /// Automatically implements operators over vectors and scalars for a particular vector.
 macro_rules! impl_op {
     { impl Add for $scalar:ty } => {
-        impl_op! { @binary $scalar, Add::add, AddAssign::add_assign, simd_add }
+        impl_op! { @binary $scalar, Add::add, simd_add }
     };
     { impl Sub for $scalar:ty } => {
-        impl_op! { @binary $scalar, Sub::sub, SubAssign::sub_assign, simd_sub }
+        impl_op! { @binary $scalar, Sub::sub, simd_sub }
     };
     { impl Mul for $scalar:ty } => {
-        impl_op! { @binary $scalar, Mul::mul, MulAssign::mul_assign, simd_mul }
+        impl_op! { @binary $scalar, Mul::mul, simd_mul }
     };
     { impl Div for $scalar:ty } => {
-        impl_op! { @binary $scalar, Div::div, DivAssign::div_assign, simd_div }
+        impl_op! { @binary $scalar, Div::div, simd_div }
     };
     { impl Rem for $scalar:ty } => {
-        impl_op! { @binary $scalar, Rem::rem, RemAssign::rem_assign, simd_rem }
+        impl_op! { @binary $scalar, Rem::rem, simd_rem }
     };
     { impl Shl for $scalar:ty } => {
-        impl_op! { @binary $scalar, Shl::shl, ShlAssign::shl_assign, simd_shl }
+        impl_op! { @binary $scalar, Shl::shl, simd_shl }
     };
     { impl Shr for $scalar:ty } => {
-        impl_op! { @binary $scalar, Shr::shr, ShrAssign::shr_assign, simd_shr }
+        impl_op! { @binary $scalar, Shr::shr, simd_shr }
     };
     { impl BitAnd for $scalar:ty } => {
-        impl_op! { @binary $scalar, BitAnd::bitand, BitAndAssign::bitand_assign, simd_and }
+        impl_op! { @binary $scalar, BitAnd::bitand, simd_and }
     };
     { impl BitOr for $scalar:ty } => {
-        impl_op! { @binary $scalar, BitOr::bitor, BitOrAssign::bitor_assign, simd_or }
+        impl_op! { @binary $scalar, BitOr::bitor, simd_or }
     };
     { impl BitXor for $scalar:ty } => {
-        impl_op! { @binary $scalar, BitXor::bitxor, BitXorAssign::bitxor_assign, simd_xor }
+        impl_op! { @binary $scalar, BitXor::bitxor, simd_xor }
     };
 
     { impl Not for $scalar:ty } => {
@@ -166,7 +148,7 @@ macro_rules! impl_op {
     };
 
     // generic binary op with assignment when output is `Self`
-    { @binary $scalar:ty, $trait:ident :: $trait_fn:ident, $assign_trait:ident :: $assign_trait_fn:ident, $intrinsic:ident } => {
+    { @binary $scalar:ty, $trait:ident :: $trait_fn:ident, $intrinsic:ident } => {
         impl_ref_ops! {
             impl<const LANES: usize> core::ops::$trait<Self> for Simd<$scalar, LANES>
             where
@@ -207,32 +189,6 @@ macro_rules! impl_op {
                 #[inline]
                 fn $trait_fn(self, rhs: Simd<$scalar, LANES>) -> Self::Output {
                     core::ops::$trait::$trait_fn(Simd::splat(self), rhs)
-                }
-            }
-        }
-
-        impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$assign_trait<Self> for Simd<$scalar, LANES>
-            where
-                LaneCount<LANES>: SupportedLaneCount,
-            {
-                #[inline]
-                fn $assign_trait_fn(&mut self, rhs: Self) {
-                    unsafe {
-                        *self = intrinsics::$intrinsic(*self, rhs);
-                    }
-                }
-            }
-        }
-
-        impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$assign_trait<$scalar> for Simd<$scalar, LANES>
-            where
-                LaneCount<LANES>: SupportedLaneCount,
-            {
-                #[inline]
-                fn $assign_trait_fn(&mut self, rhs: $scalar) {
-                    core::ops::$assign_trait::$assign_trait_fn(self, Self::splat(rhs));
                 }
             }
         }
@@ -331,30 +287,6 @@ macro_rules! impl_unsigned_int_ops {
                 }
             }
 
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::DivAssign<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    #[inline]
-                    fn div_assign(&mut self, rhs: Self) {
-                        *self = *self / rhs;
-                    }
-                }
-            }
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::DivAssign<$scalar> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    #[inline]
-                    fn div_assign(&mut self, rhs: $scalar) {
-                        *self = *self / rhs;
-                    }
-                }
-            }
-
             // remainder panics on zero divisor
             impl_ref_ops! {
                 impl<const LANES: usize> core::ops::Rem<Self> for Simd<$scalar, LANES>
@@ -421,30 +353,6 @@ macro_rules! impl_unsigned_int_ops {
                 }
             }
 
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::RemAssign<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    #[inline]
-                    fn rem_assign(&mut self, rhs: Self) {
-                        *self = *self % rhs;
-                    }
-                }
-            }
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::RemAssign<$scalar> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    #[inline]
-                    fn rem_assign(&mut self, rhs: $scalar) {
-                        *self = *self % rhs;
-                    }
-                }
-            }
-
             // shifts panic on overflow
             impl_ref_ops! {
                 impl<const LANES: usize> core::ops::Shl<Self> for Simd<$scalar, LANES>
@@ -486,31 +394,6 @@ macro_rules! impl_unsigned_int_ops {
                 }
             }
 
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::ShlAssign<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    #[inline]
-                    fn shl_assign(&mut self, rhs: Self) {
-                        *self = *self << rhs;
-                    }
-                }
-            }
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::ShlAssign<$scalar> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    #[inline]
-                    fn shl_assign(&mut self, rhs: $scalar) {
-                        *self = *self << rhs;
-                    }
-                }
-            }
-
             impl_ref_ops! {
                 impl<const LANES: usize> core::ops::Shr<Self> for Simd<$scalar, LANES>
                 where
@@ -547,31 +430,6 @@ macro_rules! impl_unsigned_int_ops {
                         }
                         let rhs = Self::splat(rhs);
                         unsafe { intrinsics::simd_shr(self, rhs) }
-                    }
-                }
-            }
-
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::ShrAssign<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    #[inline]
-                    fn shr_assign(&mut self, rhs: Self) {
-                        *self = *self >> rhs;
-                    }
-                }
-            }
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::ShrAssign<$scalar> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    #[inline]
-                    fn shr_assign(&mut self, rhs: $scalar) {
-                        *self = *self >> rhs;
                     }
                 }
             }
