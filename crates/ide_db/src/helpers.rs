@@ -39,10 +39,9 @@ pub fn get_path_in_derive_attr(
     attr: &ast::Attr,
     cursor: &Ident,
 ) -> Option<ast::Path> {
-    let cursor = cursor.syntax();
     let path = attr.path()?;
     let tt = attr.token_tree()?;
-    if !tt.syntax().text_range().contains_range(cursor.text_range()) {
+    if !tt.syntax().text_range().contains_range(cursor.syntax().text_range()) {
         return None;
     }
     let scope = sema.scope(attr.syntax());
@@ -51,7 +50,12 @@ pub fn get_path_in_derive_attr(
     if PathResolution::Macro(derive) != resolved_attr {
         return None;
     }
+    get_path_at_cursor_in_tt(cursor)
+}
 
+/// Parses the path the identifier is part of inside a token tree.
+pub fn get_path_at_cursor_in_tt(cursor: &Ident) -> Option<ast::Path> {
+    let cursor = cursor.syntax();
     let first = cursor
         .siblings_with_tokens(Direction::Prev)
         .filter_map(SyntaxElement::into_token)
@@ -299,4 +303,22 @@ pub fn lint_eq_or_in_group(lint: &str, lint_is: &str) -> bool {
     } else {
         false
     }
+}
+
+/// Parses the input token tree as comma separated paths.
+pub fn parse_tt_as_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Path>> {
+    let r_paren = input.r_paren_token()?;
+    let tokens = input
+        .syntax()
+        .children_with_tokens()
+        .skip(1)
+        .take_while(|it| it.as_token() != Some(&r_paren));
+    let input_expressions = tokens.into_iter().group_by(|tok| tok.kind() == T![,]);
+    Some(
+        input_expressions
+            .into_iter()
+            .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
+            .filter_map(|mut tokens| ast::Path::parse(&tokens.join("")).ok())
+            .collect::<Vec<ast::Path>>(),
+    )
 }
