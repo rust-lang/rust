@@ -1,7 +1,6 @@
 #![feature(staged_api)]
 #![doc(issue_tracker_base_url = "https://issue_url/")]
-
-#![unstable(feature="test", issue = "32374")]
+#![unstable(feature = "test", issue = "32374")]
 
 // @matches issue_32374/index.html '//*[@class="item-left unstable deprecated module-item"]/span[@class="stab deprecated"]' \
 //      'Deprecated'
@@ -23,12 +22,6 @@ pub struct T;
 //      '👎 Deprecated since 1.0.0: deprecated'
 // @has issue_32374/struct.U.html '//*[@class="stab unstable"]' \
 //      '🔬 This is a nightly-only experimental API. (test #32374)'
-// @has issue_32374/struct.U.html '//details' \
-//      '🔬 This is a nightly-only experimental API. (test #32374)'
-// @has issue_32374/struct.U.html '//summary' \
-//      '🔬 This is a nightly-only experimental API. (test #32374)'
-// @has issue_32374/struct.U.html '//details/p' \
-//      'unstable'
 #[rustc_deprecated(since = "1.0.0", reason = "deprecated")]
 #[unstable(feature = "test", issue = "32374", reason = "unstable")]
 pub struct U;
