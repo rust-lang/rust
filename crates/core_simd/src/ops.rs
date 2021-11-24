@@ -118,34 +118,6 @@ macro_rules! impl_op {
                 }
             }
         }
-
-        impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$trait<$scalar> for Simd<$scalar, LANES>
-            where
-                LaneCount<LANES>: SupportedLaneCount,
-            {
-                type Output = Self;
-
-                #[inline]
-                fn $trait_fn(self, rhs: $scalar) -> Self::Output {
-                    core::ops::$trait::$trait_fn(self, Self::splat(rhs))
-                }
-            }
-        }
-
-        impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$trait<Simd<$scalar, LANES>> for $scalar
-            where
-                LaneCount<LANES>: SupportedLaneCount,
-            {
-                type Output = Simd<$scalar, LANES>;
-
-                #[inline]
-                fn $trait_fn(self, rhs: Simd<$scalar, LANES>) -> Self::Output {
-                    core::ops::$trait::$trait_fn(Simd::splat(self), rhs)
-                }
-            }
-        }
     };
 }
 
@@ -202,43 +174,6 @@ macro_rules! impl_unsigned_int_ops {
                 }
             }
 
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Div<$scalar> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
-
-                    #[inline]
-                    fn div(self, rhs: $scalar) -> Self::Output {
-                        if rhs == 0 {
-                            panic!("attempt to divide by zero");
-                        }
-                        if <$scalar>::MIN != 0 &&
-                            self.as_array().iter().any(|x| *x == <$scalar>::MIN) &&
-                            rhs == -1 as _ {
-                                panic!("attempt to divide with overflow");
-                        }
-                        let rhs = Self::splat(rhs);
-                        unsafe { intrinsics::simd_div(self, rhs) }
-                    }
-                }
-            }
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Div<Simd<$scalar, LANES>> for $scalar
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Simd<$scalar, LANES>;
-
-                    #[inline]
-                    fn div(self, rhs: Simd<$scalar, LANES>) -> Self::Output {
-                        Simd::splat(self) / rhs
-                    }
-                }
-            }
-
             // remainder panics on zero divisor
             impl_ref_ops! {
                 impl<const LANES: usize> core::ops::Rem<Self> for Simd<$scalar, LANES>
@@ -268,43 +203,6 @@ macro_rules! impl_unsigned_int_ops {
                 }
             }
 
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Rem<$scalar> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
-
-                    #[inline]
-                    fn rem(self, rhs: $scalar) -> Self::Output {
-                        if rhs == 0 {
-                            panic!("attempt to calculate the remainder with a divisor of zero");
-                        }
-                        if <$scalar>::MIN != 0 &&
-                            self.as_array().iter().any(|x| *x == <$scalar>::MIN) &&
-                            rhs == -1 as _ {
-                                panic!("attempt to calculate the remainder with overflow");
-                        }
-                        let rhs = Self::splat(rhs);
-                        unsafe { intrinsics::simd_rem(self, rhs) }
-                    }
-                }
-            }
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Rem<Simd<$scalar, LANES>> for $scalar
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Simd<$scalar, LANES>;
-
-                    #[inline]
-                    fn rem(self, rhs: Simd<$scalar, LANES>) -> Self::Output {
-                        Simd::splat(self) % rhs
-                    }
-                }
-            }
-
             // shifts panic on overflow
             impl_ref_ops! {
                 impl<const LANES: usize> core::ops::Shl<Self> for Simd<$scalar, LANES>
@@ -329,24 +227,6 @@ macro_rules! impl_unsigned_int_ops {
             }
 
             impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Shl<$scalar> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
-
-                    #[inline]
-                    fn shl(self, rhs: $scalar) -> Self::Output {
-                        if invalid_shift_rhs(rhs) {
-                            panic!("attempt to shift left with overflow");
-                        }
-                        let rhs = Self::splat(rhs);
-                        unsafe { intrinsics::simd_shl(self, rhs) }
-                    }
-                }
-            }
-
-            impl_ref_ops! {
                 impl<const LANES: usize> core::ops::Shr<Self> for Simd<$scalar, LANES>
                 where
                     LaneCount<LANES>: SupportedLaneCount,
@@ -363,24 +243,6 @@ macro_rules! impl_unsigned_int_ops {
                         {
                             panic!("attempt to shift with overflow");
                         }
-                        unsafe { intrinsics::simd_shr(self, rhs) }
-                    }
-                }
-            }
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Shr<$scalar> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
-
-                    #[inline]
-                    fn shr(self, rhs: $scalar) -> Self::Output {
-                        if invalid_shift_rhs(rhs) {
-                            panic!("attempt to shift with overflow");
-                        }
-                        let rhs = Self::splat(rhs);
                         unsafe { intrinsics::simd_shr(self, rhs) }
                     }
                 }
