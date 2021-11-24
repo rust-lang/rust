@@ -43,11 +43,6 @@ use utils::*;
 
 crate use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
-crate use self::types::FnRetTy::*;
-crate use self::types::ItemKind::*;
-crate use self::types::SelfTy::*;
-crate use self::types::Type::*;
-crate use self::types::Visibility::{Inherited, Public};
 crate use self::types::*;
 
 crate trait Clean<T> {

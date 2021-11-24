@@ -34,7 +34,6 @@ use rustc_target::spec::abi::Abi;
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
 use crate::clean::inline::{self, print_inlined_const};
-use crate::clean::types::Type::{QPath, ResolvedPath};
 use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
 use crate::clean::Clean;
 use crate::core::DocContext;
@@ -43,10 +42,14 @@ use crate::formats::item_type::ItemType;
 use crate::html::render::cache::ExternalLocation;
 use crate::html::render::Context;
 
-use self::FnRetTy::*;
-use self::ItemKind::*;
-use self::SelfTy::*;
-use self::Type::*;
+crate use self::FnRetTy::*;
+crate use self::ItemKind::*;
+crate use self::SelfTy::*;
+crate use self::Type::{
+    Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
+    RawPointer, ResolvedPath, Slice, Tuple,
+};
+crate use self::Visibility::{Inherited, Public};
 
 crate type ItemIdSet = FxHashSet<ItemId>;
 
