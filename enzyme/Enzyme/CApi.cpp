@@ -490,6 +490,11 @@ void EnzymeMoveBefore(LLVMValueRef inst1, LLVMValueRef inst2) {
     I1->moveBefore(I2);
 }
 
+void EnzymeSetMustCache(LLVMValueRef inst1) {
+  Instruction *I1 = cast<Instruction>(unwrap(inst1));
+  I1->setMetadata("enzyme_mustcache", MDNode::get(I1->getContext(), {}));
+}
+
 #if LLVM_VERSION_MAJOR >= 9
 void EnzymeAddAttributorLegacyPass(LLVMPassManagerRef PM) {
   unwrap(PM)->add(createAttributorLegacyPass());
