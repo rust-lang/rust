@@ -149,12 +149,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                             object
                                 .symbols()
                                 .filter_map(|symbol| {
-                                    if symbol.is_undefined()
-                                        || symbol.is_local()
-                                        || symbol.kind() != SymbolKind::Data
-                                            && symbol.kind() != SymbolKind::Text
-                                            && symbol.kind() != SymbolKind::Tls
-                                    {
+                                    if symbol.is_undefined() || symbol.is_local() {
                                         None
                                     } else {
                                         symbol.name().map(|name| name.as_bytes().to_vec()).ok()
