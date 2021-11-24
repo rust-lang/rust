@@ -58,8 +58,8 @@ function resourcePath(basename, extension) {
 (function () {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
-    window.searchJS =  resourcePath("search", "js");
-    window.searchIndexJS = resourcePath("search-index", "js");
+    window.searchJS =  resourcePath("search", ".js");
+    window.searchIndexJS = resourcePath("search-index", ".js");
     var sidebarVars = document.getElementById("sidebar-vars");
     if (sidebarVars) {
         window.sidebarCurrent = {

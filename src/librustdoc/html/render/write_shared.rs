@@ -181,42 +181,34 @@ pub(super) fn write_shared(
         cx.write_shared(SharedResource::InvocationSpecific { basename: p }, content, &options.emit)
     };
 
-    fn add_background_image_to_css(
-        cx: &Context<'_>,
-        css: &mut String,
-        rule: &str,
-        file: &'static str,
-    ) {
-        css.push_str(&format!(
-            "{} {{ background-image: url({}); }}",
-            rule,
-            SharedResource::ToolchainSpecific { basename: file }
+    // Given "foo.svg", return e.g. "url(\"foo1.58.0.svg\")"
+    fn ver_url(cx: &Context<'_>, basename: &'static str) -> String {
+        format!(
+            "url(\"{}\")",
+            SharedResource::ToolchainSpecific { basename }
                 .path(cx)
                 .file_name()
                 .unwrap()
                 .to_str()
                 .unwrap()
-        ))
+        )
     }
 
-    // Add all the static files. These may already exist, but we just
-    // overwrite them anyway to make sure that they're fresh and up-to-date.
-    let mut rustdoc_css = static_files::RUSTDOC_CSS.to_owned();
-    add_background_image_to_css(
+    // We use the AUTOREPLACE mechanism to inject into our static JS and CSS certain
+    // values that are only known at doc build time. Since this mechanism is somewhat
+    // surprising when reading the code, please limit it to rustdoc.css.
+    write_minify(
+        "rustdoc.css",
+        static_files::RUSTDOC_CSS
+            .replace(
+                "/* AUTOREPLACE: */url(\"toggle-minus.svg\")",
+                &ver_url(cx, "toggle-minus.svg"),
+            )
+            .replace("/* AUTOREPLACE: */url(\"toggle-plus.svg\")", &ver_url(cx, "toggle-plus.svg"))
+            .replace("/* AUTOREPLACE: */url(\"down-arrow.svg\")", &ver_url(cx, "down-arrow.svg")),
         cx,
-        &mut rustdoc_css,
-        "details.undocumented[open] > summary::before, \
-         details.rustdoc-toggle[open] > summary::before, \
-         details.rustdoc-toggle[open] > summary.hideme::before",
-        "toggle-minus.svg",
-    );
-    add_background_image_to_css(
-        cx,
-        &mut rustdoc_css,
-        "details.undocumented > summary::before, details.rustdoc-toggle > summary::before",
-        "toggle-plus.svg",
-    );
-    write_minify("rustdoc.css", rustdoc_css, cx, options)?;
+        options,
+    )?;
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.

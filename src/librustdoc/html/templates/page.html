@@ -58,11 +58,6 @@
             href="{{static_root_path | safe}}favicon{{page.resource_suffix}}.svg"> {#- -#}
     {%- endif -%}
     {{- layout.external_html.in_header | safe -}}
-    <style type="text/css"> {#- -#}
-    #crate-search{ {#- -#}
-        background-image:url("{{static_root_path | safe}}down-arrow{{page.resource_suffix}}.svg"); {#- -#}
-    } {#- -#}
-    </style> {#- -#}
 </head> {#- -#}
 <body class="rustdoc {{page.css_class}}"> {#- -#}
     <!--[if lte IE 11]> {#- -#}

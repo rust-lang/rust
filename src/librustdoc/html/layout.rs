@@ -67,11 +67,12 @@ crate fn render<T: Print, S: Print>(
 ) -> String {
     let static_root_path = page.get_static_root_path();
     let krate_with_trailing_slash = ensure_trailing_slash(&layout.krate).to_string();
-    let themes = style_files
+    let mut themes: Vec<String> = style_files
         .iter()
         .map(StylePath::basename)
         .collect::<Result<_, Error>>()
         .unwrap_or_default();
+    themes.sort();
     let rustdoc_version = rustc_interface::util::version_str().unwrap_or("unknown version");
     let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
     let sidebar = Buffer::html().to_display(sidebar);
