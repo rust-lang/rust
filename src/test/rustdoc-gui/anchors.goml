@@ -1,17 +1,29 @@
+// This test is to ensure that the anchors (`§`) have the expected color.
 goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
+
+// This is needed to ensure that the text color is computed.
+show-text: true
 
 // Set the theme to light.
 local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
 // We reload the page so the local storage settings are being used.
 reload:
 
-assert-css: ("#toggle-all-docs", {"color": "rgba(0, 0, 0, 0)"})
-assert-css: (".fqn .in-band a:nth-of-type(1)", {"color": "rgba(0, 0, 0, 0)"})
-assert-css: (".fqn .in-band a:nth-of-type(2)", {"color": "rgba(0, 0, 0, 0)"})
-assert-css: (".srclink", {"color": "rgba(0, 0, 0, 0)"})
-assert-css: (".srclink", {"color": "rgba(0, 0, 0, 0)"})
+assert-css: ("#toggle-all-docs", {"color": "rgb(0, 0, 0)"})
+assert-css: (".fqn .in-band a:nth-of-type(1)", {"color": "rgb(0, 0, 0)"})
+assert-css: (".fqn .in-band a:nth-of-type(2)", {"color": "rgb(173, 68, 142)"})
+assert-css: (".srclink", {"color": "rgb(0, 0, 0)"})
+assert-css: (".srclink", {"color": "rgb(0, 0, 0)"})
 
-assert-css: ("#top-doc-prose-title", {"color": "rgba(0, 0, 0, 0)"})
+assert-css: ("#top-doc-prose-title", {"color": "rgb(0, 0, 0)"})
 
-assert-css: (".sidebar a", {"color": "rgba(0, 0, 0, 0)"})
-assert-css: (".in-band a", {"color": "rgba(0, 0, 0, 0)"})
+assert-css: (".sidebar a", {"color": "rgb(0, 0, 0)"})
+assert-css: (".in-band a", {"color": "rgb(0, 0, 0)"})
+
+// We move the cursor over the "Implementations" title so the anchor is displayed.
+move-cursor-to: "h2#implementations"
+assert-css: ("h2#implementations a.anchor", {"color": "rgb(0, 0, 0)"})
+
+// Same thing with the impl block title.
+move-cursor-to: "#impl"
+assert-css: ("#impl a.anchor", {"color": "rgb(0, 0, 0)"})
