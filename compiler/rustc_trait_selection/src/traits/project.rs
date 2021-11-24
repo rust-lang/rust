@@ -16,6 +16,7 @@ use super::{
     ImplSourceGeneratorData, ImplSourcePointeeData, ImplSourceUserDefinedData,
 };
 use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
+use rustc_infer::infer::TyCtxtInferExt;
 
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
@@ -944,8 +945,8 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 Normalized { value: projected_ty, obligations: projected_obligations }
             };
 
-            let mut canonical =
-                SelectionContext::with_query_mode(selcx.infcx(), TraitQueryMode::Canonical);
+            let tcx = selcx.infcx().tcx;
+
             result.obligations.drain_filter(|projected_obligation| {
                 // If any global obligations always apply, considering regions, then we don't
                 // need to include them. The `is_global` check rules out inference variables,
@@ -957,10 +958,21 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 // the result to `EvaluatedToOkModuloRegions`, while an
                 // `EvaluatedToOk` obligation will never change the result.
                 // See #85360 for more details
-                projected_obligation.is_global(canonical.tcx())
-                    && canonical
+                if !projected_obligation.is_global(tcx) {
+                    return false;
+                }
+
+                // We create a fresh `InferCtxt` for each predicate we speculatively evaluate,
+                // so that we won't create (and cache) any spurious projection cycles in the main
+                // `InferCtxt`
+                tcx.infer_ctxt().enter(|infcx| {
+                    let mut canonical =
+                        SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);
+
+                    canonical
                         .evaluate_root_obligation(projected_obligation)
                         .map_or(false, |res| res.must_apply_considering_regions())
+                })
             });
 
             if use_cache {
