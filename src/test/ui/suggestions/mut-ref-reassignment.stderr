@@ -1,6 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/mut-ref-reassignment.rs:2:11
    |
+LL | fn suggestion(opt: &mut Option<String>) {
+   |                    ------------------- expected due to this parameter type
 LL |     opt = None;
    |           ^^^^ expected mutable reference, found enum `Option`
    |
@@ -14,6 +16,8 @@ LL |     *opt = None;
 error[E0308]: mismatched types
   --> $DIR/mut-ref-reassignment.rs:6:11
    |
+LL | fn no_suggestion(opt: &mut Result<String, ()>) {
+   |                       ----------------------- expected due to this parameter type
 LL |     opt = None
    |           ^^^^ expected mutable reference, found enum `Option`
    |
@@ -23,6 +27,8 @@ LL |     opt = None
 error[E0308]: mismatched types
   --> $DIR/mut-ref-reassignment.rs:10:11
    |
+LL | fn suggestion2(opt: &mut Option<String>) {
+   |                     ------------------- expected due to this parameter type
 LL |     opt = Some(String::new())
    |           ^^^^^^^^^^^^^^^^^^^ expected mutable reference, found enum `Option`
    |
@@ -36,6 +42,8 @@ LL |     *opt = Some(String::new())
 error[E0308]: mismatched types
   --> $DIR/mut-ref-reassignment.rs:14:11
    |
+LL | fn no_suggestion2(opt: &mut Option<String>) {
+   |                        ------------------- expected due to this parameter type
 LL |     opt = Some(42)
    |           ^^^^^^^^ expected mutable reference, found enum `Option`
    |

@@ -6,7 +6,6 @@ fn some_function() {
     SOME_CONST = 14; //~ ERROR E0070
     1 = 3; //~ ERROR E0070
     some_other_func() = 4; //~ ERROR E0070
-                           //~^ ERROR E0308
 }
 
 fn main() {
