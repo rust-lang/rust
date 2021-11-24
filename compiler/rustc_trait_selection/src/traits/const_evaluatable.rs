@@ -231,54 +231,164 @@ impl<'tcx> AbstractConst<'tcx> {
     /// Tries to create a String of an `AbstractConst` while recursively applying substs. This
     /// will fail for `AbstractConst`s that contain `Leaf`s including inference variables or errors,
     /// and any non-Leaf `Node`s other than `BinOp` and `UnOp`.
-    pub(crate) fn try_print_with_replacing_substs(mut self, tcx: TyCtxt<'tcx>) -> Option<String> {
+    pub(crate) fn try_print_with_replacing_substs(self, tcx: TyCtxt<'tcx>) -> Option<String> {
+        self.recursive_try_print_with_replacing_substs(tcx).map(|s| s.to_string())
+    }
+
+    // Recursively applies substs to leaves. Also ensures that the strings corresponding
+    // to nodes in the `AbstractConst` tree are wrapped in curly braces after a substitution
+    // was applied. E.g in `{ 3 * M}` where we have substs `{ N + 2 }` for M, we want to
+    // make sure that the node corresponding to `M` is wrapped in curly braces: `{ 3 * { N +2 }}`
+    #[instrument(skip(tcx), level = "debug")]
+    fn recursive_try_print_with_replacing_substs(
+        mut self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<PrintStyle> {
+        let mut applied_subst = false;
+
         // try to replace substs
         while let abstract_const::Node::Leaf(ct) = self.root(tcx) {
             match AbstractConst::from_const(tcx, ct) {
-                Ok(Some(act)) => self = act,
+                Ok(Some(act)) => {
+                    applied_subst = true;
+                    self = act;
+                }
                 Ok(None) => break,
                 Err(_) => bug!("should be able to create AbstractConst here"),
             }
         }
 
+        debug!("after applying substs: {:#?}", self);
+        debug!("root: {:?}", self.root(tcx));
+        debug!(?applied_subst);
+
+        // How we infer precedence of operations:
+        // We use `PrintStyle::Braces(op_precedence, str)` to indicate that resulting
+        // string of recursive call may need to be wrapped in curly braces. If the
+        // precedence of the op of a node is larger than `op_precedence` of the returned
+        // subnode we need to use curly braces.
+        // If the precedence isn't larger we still send `PrintStyle::Braces` upwards
+        // since the string that includes the node which requires precedence might
+        // still require a higher-level node string to be wrapped in curly braces, e.g
+        // in `{ 3 + {M + K}}` where `M` is substituted by `N + 2` we want the result string
+        // to be `{ M + { N + 2 + K}}`.
         match self.root(tcx) {
             abstract_const::Node::Leaf(ct) => match ct.val {
                 ty::ConstKind::Error(_) | ty::ConstKind::Infer(_) => return None,
-                ty::ConstKind::Param(c) => return Some(format!("{}", c)),
+                ty::ConstKind::Param(c) => {
+                    let s = format!("{}", c);
+
+                    if applied_subst {
+                        return Some(PrintStyle::Braces(None, s));
+                    } else {
+                        return Some(PrintStyle::NoBraces(s));
+                    }
+                }
                 ty::ConstKind::Value(ConstValue::Scalar(scalar)) => match scalar.to_i64() {
-                    Ok(s) => return Some(format!("{}", s)),
+                    Ok(s) => {
+                        let s = format!("{}", s);
+
+                        if applied_subst {
+                            return Some(PrintStyle::Braces(None, s));
+                        } else {
+                            return Some(PrintStyle::NoBraces(s));
+                        }
+                    }
                     Err(_) => return None,
                 },
                 _ => return None,
             },
             abstract_const::Node::Binop(op, l, r) => {
-                let op = match op.try_as_string() {
+                let op_str = match op.try_as_string() {
                     Some(o) => o,
                     None => return None,
                 };
 
-                let left = self.subtree(l).try_print_with_replacing_substs(tcx);
+                // To decide whether we need to propagate PrintStyle::CurlyBraces upwards
+                // due to substitutions in subnodes of Binop
+                let mut use_curly_braces_due_to_subnodes = false;
+
+                let left = self.subtree(l).recursive_try_print_with_replacing_substs(tcx);
                 debug!(?left);
 
-                let right = self.subtree(r).try_print_with_replacing_substs(tcx);
+                let right = self.subtree(r).recursive_try_print_with_replacing_substs(tcx);
                 debug!(?right);
 
-                match (left, right) {
-                    (Some(l), Some(r)) => {
-                        return Some(format!("{} {} {}", l, op, r));
+                let left_str = match left {
+                    Some(PrintStyle::Braces(opt_l_prec, l_str)) => {
+                        use_curly_braces_due_to_subnodes = true;
+
+                        if let Some(l_prec) = opt_l_prec {
+                            if op.get_precedence() > l_prec {
+                                // Already applied curly braces for subnode, no need to
+                                // propagate PrintStyle::CurlyBraces upwards anymore
+                                // for this node
+                                use_curly_braces_due_to_subnodes = false;
+
+                                // Include curly braces for l_str
+                                format!("{{ {} }}", l_str)
+                            } else {
+                                l_str
+                            }
+                        } else {
+                            l_str
+                        }
                     }
-                    _ => return None,
-                }
-            }
-            abstract_const::Node::UnaryOp(op, v) => {
-                match self.subtree(v).try_print_with_replacing_substs(tcx) {
-                    Some(operand) => {
-                        return Some(format!("{}{}", op, operand));
-                    }
+                    Some(PrintStyle::NoBraces(l_str)) => l_str,
                     None => return None,
+                };
+
+                let right_str = match right {
+                    Some(PrintStyle::Braces(opt_r_prec, r_str)) => {
+                        use_curly_braces_due_to_subnodes = true;
+
+                        if let Some(r_prec) = opt_r_prec {
+                            if op.get_precedence() > r_prec {
+                                // Already applied curly braces for subnode, no need to
+                                // propagate PrintStyle::CurlyBraces upwards anymore
+                                // for this node
+                                use_curly_braces_due_to_subnodes = false;
+
+                                // Include curly braces for l_str
+                                format!("{{ {} }}", r_str)
+                            } else {
+                                r_str
+                            }
+                        } else {
+                            r_str
+                        }
+                    }
+                    Some(PrintStyle::NoBraces(r_str)) => r_str,
+                    None => return None,
+                };
+
+                let binop_str = format!("{} {} {}", left_str, op_str, right_str);
+
+                // We propagate the need for curly braces upwards in the following cases:
+                // 1. We applied a substitution for current root
+                // 2. We applied a substitution in a subnode and did not apply curly braces
+                //    to that subnode string
+                let current_op_prec = op.get_precedence();
+                debug!(?current_op_prec);
+                debug!(?applied_subst);
+                debug!(?use_curly_braces_due_to_subnodes);
+
+                if applied_subst || use_curly_braces_due_to_subnodes {
+                    Some(PrintStyle::Braces(Some(current_op_prec), binop_str))
+                } else {
+                    Some(PrintStyle::NoBraces(binop_str))
                 }
             }
-            _ => return None,
+            abstract_const::Node::UnaryOp(_, v) => {
+                match self.subtree(v).recursive_try_print_with_replacing_substs(tcx) {
+                    Some(PrintStyle::Braces(opt_prec, operand_str)) => {
+                        Some(PrintStyle::Braces(opt_prec, operand_str))
+                    }
+                    s @ Some(PrintStyle::NoBraces(_)) => s,
+                    None => None,
+                }
+            }
+            _ => None,
         }
     }
 }
@@ -548,6 +658,27 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 self.error(node.span, "unsupported operation in generic constant")?
             }
         })
+    }
+}
+
+/// Used in diagnostics for creating const mismatch suggestions. Indicates precedence
+/// that needs to be applied to nodes
+#[derive(Debug)]
+enum PrintStyle {
+    /// String needs to possibly be wrapped in curly braces if precedence of operation
+    /// requires it
+    Braces(Option<usize>, String),
+
+    /// String does not need to be wrapped in curly braces
+    NoBraces(String),
+}
+
+impl PrintStyle {
+    pub(crate) fn to_string(self) -> String {
+        match self {
+            Self::Braces(_, s) => s,
+            Self::NoBraces(s) => s,
+        }
     }
 }
 

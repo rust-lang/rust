@@ -2352,6 +2352,30 @@ impl BinOp {
             Offset => None,
         }
     }
+
+    pub fn get_precedence(self) -> usize {
+        use self::BinOp::*;
+
+        match self {
+            Add => 7,
+            Sub => 7,
+            Mul => 8,
+            Div => 8,
+            Rem => 8,
+            BitXor => 2,
+            BitAnd => 3,
+            BitOr => 1,
+            Shl => 6,
+            Shr => 6,
+            Eq => 4,
+            Lt => 5,
+            Le => 5,
+            Ne => 4,
+            Ge => 5,
+            Gt => 5,
+            Offset => 0,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

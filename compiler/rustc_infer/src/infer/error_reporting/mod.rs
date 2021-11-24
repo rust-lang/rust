@@ -856,11 +856,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .regions()
             .map(|lifetime| {
                 let s = lifetime.to_string();
-                if s.is_empty() {
-                    "'_".to_string()
-                } else {
-                    s
-                }
+                if s.is_empty() { "'_".to_string() } else { s }
             })
             .collect::<Vec<_>>()
             .join(", ");
@@ -1179,11 +1175,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                     fn lifetime_display(lifetime: Region<'_>) -> String {
                         let s = lifetime.to_string();
-                        if s.is_empty() {
-                            "'_".to_string()
-                        } else {
-                            s
-                        }
+                        if s.is_empty() { "'_".to_string() } else { s }
                     }
                     // At one point we'd like to elide all lifetimes here, they are irrelevant for
                     // all diagnostics that use this output
