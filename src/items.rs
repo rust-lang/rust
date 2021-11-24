@@ -2236,18 +2236,10 @@ fn rewrite_fn_base(
         result.push_str(&param_indent.to_string_with_newline(context.config));
     }
 
-    // Skip `pub(crate)`.
-    let lo_after_visibility = get_bytepos_after_visibility(fn_sig.visibility, span);
-    // A conservative estimation, the goal is to be over all parens in generics
-    let params_start = fn_sig
-        .generics
-        .params
-        .last()
-        .map_or(lo_after_visibility, |param| param.span().hi());
     let params_end = if fd.inputs.is_empty() {
         context
             .snippet_provider
-            .span_after(mk_sp(params_start, span.hi()), ")")
+            .span_after(mk_sp(fn_sig.generics.span.hi(), span.hi()), ")")
     } else {
         let last_span = mk_sp(fd.inputs[fd.inputs.len() - 1].span().hi(), span.hi());
         context.snippet_provider.span_after(last_span, ")")
@@ -2255,7 +2247,7 @@ fn rewrite_fn_base(
     let params_span = mk_sp(
         context
             .snippet_provider
-            .span_after(mk_sp(params_start, span.hi()), "("),
+            .span_after(mk_sp(fn_sig.generics.span.hi(), span.hi()), "("),
         params_end,
     );
     let param_str = rewrite_params(
