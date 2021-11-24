@@ -888,7 +888,7 @@ function hideThemeButtonState() {
 
     onEachLazy(document.querySelectorAll(".rustdoc-toggle > summary:not(.hideme)"), function(el) {
         el.addEventListener("click", function(e) {
-            if (e.target.tagName != "SUMMARY") {
+            if (e.target.tagName != "SUMMARY" && e.target.tagName != "A") {
                 e.preventDefault();
             }
         });
