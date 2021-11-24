@@ -302,8 +302,12 @@ impl ExpectFile {
         fs::write(self.abs_path(), contents).unwrap()
     }
     fn abs_path(&self) -> PathBuf {
-        let dir = Path::new(self.position).parent().unwrap();
-        WORKSPACE_ROOT.join(dir).join(&self.path)
+        if self.path.is_absolute() {
+            self.path.to_owned()
+        } else {
+            let dir = Path::new(self.position).parent().unwrap();
+            WORKSPACE_ROOT.join(dir).join(&self.path)
+        }
     }
 }
 
@@ -475,7 +479,8 @@ fn format_patch(desired_indent: Option<usize>, patch: &str) -> String {
 }
 
 static WORKSPACE_ROOT: Lazy<PathBuf> = Lazy::new(|| {
-    let my_manifest = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let my_manifest = env::var("CARGO_MANIFEST_DIR")
+        .expect("No CARGO_MANIFEST_DIR available. Consider using absolute path.");
     // Heuristic, see https://github.com/rust-lang/cargo/issues/3946
     Path::new(&my_manifest)
         .ancestors()
