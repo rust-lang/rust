@@ -73,7 +73,7 @@ fn main() {
             println!("{:#?}", parse);
             // Analyze the program and inspect the types of definitions.
             queries.global_ctxt().unwrap().take().enter(|tcx| {
-                for (_, item) in &tcx.hir().krate().items {
+                for item in tcx.hir().items() {
                     match item.kind {
                         rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn(_, _, _) => {
                             let name = item.ident;
