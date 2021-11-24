@@ -243,9 +243,7 @@ impl<'s> LintLevelsBuilder<'s> {
         let sess = self.sess;
         let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
         for (attr_index, attr) in attrs.iter().enumerate() {
-            let level = match Level::from_symbol(attr.name_or_empty(), || {
-                LintExpectationId::Unstable(attr.id)
-            }) {
+            let level = match Level::from_attr(attr) {
                 None => continue,
                 Some(Level::Expect(unstable_id)) if source_hir_id.is_some() => {
                     let stable_id =
@@ -305,9 +303,23 @@ impl<'s> LintLevelsBuilder<'s> {
                 }
             }
 
-            for li in metas {
+            let (unfulfilled_lint_lvl, unfulfilled_lint_src) = self.sets.get_lint_level(
+                builtin::UNFULFILLED_LINT_EXPECTATIONS,
+                self.cur,
+                Some(&specs),
+                &sess,
+            );
+            for (lint_index, li) in metas.iter_mut().enumerate() {
+                let level = match level {
+                    Level::Expect(mut id) => {
+                        id.set_lint_index(Some(lint_index));
+                        Level::Expect(id)
+                    }
+                    level => level,
+                };
+
                 let sp = li.span();
-                let mut meta_item = match li {
+                let meta_item = match li {
                     ast::NestedMetaItem::MetaItem(meta_item) if meta_item.is_word() => meta_item,
                     _ => {
                         let mut err = bad_attr(sp);
@@ -347,6 +359,17 @@ impl<'s> LintLevelsBuilder<'s> {
                             self.check_gated_lint(id, attr.span);
                             self.insert_spec(&mut specs, id, (level, src));
                         }
+                        if let Level::Expect(expect_id) = level {
+                            self.lint_expectations.insert(
+                                expect_id,
+                                LintExpectation::new(
+                                    reason,
+                                    sp,
+                                    unfulfilled_lint_lvl,
+                                    unfulfilled_lint_src,
+                                ),
+                            );
+                        }
                     }
 
                     CheckLintNameResult::Tool(result) => {
@@ -361,6 +384,17 @@ impl<'s> LintLevelsBuilder<'s> {
                                 );
                                 for id in ids {
                                     self.insert_spec(&mut specs, *id, (level, src));
+                                }
+                                if let Level::Expect(expect_id) = level {
+                                    self.lint_expectations.insert(
+                                        expect_id,
+                                        LintExpectation::new(
+                                            reason,
+                                            sp,
+                                            unfulfilled_lint_lvl,
+                                            unfulfilled_lint_src,
+                                        ),
+                                    );
                                 }
                             }
                             Err((Some(ids), ref new_lint_name)) => {
@@ -397,6 +431,17 @@ impl<'s> LintLevelsBuilder<'s> {
                                 );
                                 for id in ids {
                                     self.insert_spec(&mut specs, *id, (level, src));
+                                }
+                                if let Level::Expect(expect_id) = level {
+                                    self.lint_expectations.insert(
+                                        expect_id,
+                                        LintExpectation::new(
+                                            reason,
+                                            sp,
+                                            unfulfilled_lint_lvl,
+                                            unfulfilled_lint_src,
+                                        ),
+                                    );
                                 }
                             }
                             Err((None, _)) => {
@@ -491,28 +536,19 @@ impl<'s> LintLevelsBuilder<'s> {
                             self.check_gated_lint(id, attr.span);
                             self.insert_spec(&mut specs, id, (level, src));
                         }
+                        if let Level::Expect(expect_id) = level {
+                            self.lint_expectations.insert(
+                                expect_id,
+                                LintExpectation::new(
+                                    reason,
+                                    sp,
+                                    unfulfilled_lint_lvl,
+                                    unfulfilled_lint_src,
+                                ),
+                            );
+                        }
                     } else {
                         panic!("renamed lint does not exist: {}", new_name);
-                    }
-                }
-            }
-
-            if !specs.is_empty() {
-                // Only lints that are currently registered in the lint store
-                // have been found and added to `specs`. Creating the expectation
-                // here ensures that it can be fulfilled during this compilation
-                // session.
-                if let Level::Expect(expect_id) = level {
-                    let has_lints = specs
-                        .values()
-                        .any(|(lvl, _src)| matches!(lvl, Level::Expect(check_id) if check_id.eq(&expect_id)));
-
-                    if has_lints {
-                        let lint = builtin::UNFULFILLED_LINT_EXPECTATIONS;
-                        let (lvl, src) =
-                            self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
-                        let expectation = LintExpectation::new(reason, attr.span, lvl, src);
-                        self.lint_expectations.insert(expect_id, expectation);
                     }
                 }
             }
@@ -565,7 +601,7 @@ impl<'s> LintLevelsBuilder<'s> {
         hir_id: HirId,
         attr_index: usize,
     ) -> LintExpectationId {
-        let stable_id = LintExpectationId::Stable { hir_id, attr_index };
+        let stable_id = LintExpectationId::Stable { hir_id, attr_index, lint_index: None };
 
         self.expectation_id_map.insert(unstable_id, stable_id);
 

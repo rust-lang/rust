@@ -49,7 +49,7 @@ use rustc_middle::mir::FakeReadCause;
 use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
-use rustc_session::lint::{Level, Lint, LintExpectationId};
+use rustc_session::lint::{Level, Lint};
 use rustc_session::Limit;
 use rustc_session::Session;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
@@ -2755,13 +2755,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 return bound;
             }
 
-            if hir.attrs(id).iter().enumerate().any(|(attr_index, attr)| {
-                Level::from_symbol(attr.name_or_empty(), || LintExpectationId::Stable {
-                    hir_id: id,
-                    attr_index,
-                })
-                .is_some()
-            }) {
+            if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
                 return id;
             }
             let next = hir.get_parent_node(id);

@@ -942,10 +942,16 @@ impl Handler {
 
         let mut inner = self.inner.borrow_mut();
         for mut diag in diags.into_iter() {
-            if let Some(unstable_id) = diag.level.get_expectation_id() {
-                if let Some(stable_id) = unstable_to_stable.get(&unstable_id) {
-                    diag.level = Level::Expect(*stable_id);
-                    inner.fulfilled_expectations.insert(*stable_id);
+            if let Some(mut unstable_id) = diag.level.get_expectation_id() {
+                let lint_index = unstable_id.get_lint_index();
+
+                // The unstable to stable map only maps the unstable it to a stable id
+                // the lint index is manually transferred here.
+                unstable_id.set_lint_index(None);
+                if let Some(mut stable_id) = unstable_to_stable.get(&unstable_id).map(|id| *id) {
+                    stable_id.set_lint_index(lint_index);
+                    diag.level = Level::Expect(stable_id);
+                    inner.fulfilled_expectations.insert(stable_id);
                 }
             }
 
@@ -1007,7 +1013,7 @@ impl HandlerInner {
         // Diagnostics created before the definition of `HirId`s are unstable and can not yet
         // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
         // a stable one by the `LintLevelsBuilder`.
-        if let Level::Expect(LintExpectationId::Unstable(_)) = diagnostic.level {
+        if let Level::Expect(LintExpectationId::Unstable { .. }) = diagnostic.level {
             self.unstable_expect_diagnostics.push(diagnostic.clone());
             return;
         }

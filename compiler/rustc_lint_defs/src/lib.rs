@@ -5,7 +5,7 @@ extern crate rustc_macros;
 
 pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
-use rustc_ast::AttrId;
+use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_hir::HirId;
 use rustc_serialize::json::Json;
@@ -63,24 +63,41 @@ pub enum Applicability {
 /// These `LintExpectationId` will be updated to use the stable [`HirId`] once the
 /// AST has been lowered. The transformation is done by the
 /// [`LintLevelsBuilder`][`rustc_lint::levels::LintLevelsBuilder`]
+///
+/// Each lint inside the `expect` attribute is tracked individually, the `lint_index`
+/// identifies the lint inside the attribute and ensures that the IDs are unique.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable)]
 pub enum LintExpectationId {
     /// Used for lints emitted during the `EarlyLintPass`. This id is not
     /// has stable and should not be cached.
-    Unstable(AttrId),
+    Unstable { attr_id: AttrId, lint_index: Option<usize> },
     /// The [`HirId`] that the lint expectation is attached to. This id is
     /// stable and can be cached. The additional index ensures that nodes with
     /// several expectations can correctly match diagnostics to the individual
     /// expectation.
-    Stable { hir_id: HirId, attr_index: usize },
+    Stable { hir_id: HirId, attr_index: usize, lint_index: Option<usize> },
 }
 
 impl LintExpectationId {
     pub fn is_stable(&self) -> bool {
         match self {
-            LintExpectationId::Unstable(_) => false,
+            LintExpectationId::Unstable { .. } => false,
             LintExpectationId::Stable { .. } => true,
         }
+    }
+
+    pub fn get_lint_index(&self) -> Option<usize> {
+        let (LintExpectationId::Unstable { lint_index, .. }
+        | LintExpectationId::Stable { lint_index, .. }) = self;
+
+        *lint_index
+    }
+
+    pub fn set_lint_index(&mut self, new_lint_index: Option<usize>) {
+        let (LintExpectationId::Unstable { ref mut lint_index, .. }
+        | LintExpectationId::Stable { ref mut lint_index, .. }) = self;
+
+        *lint_index = new_lint_index
     }
 }
 
@@ -88,31 +105,30 @@ impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         match self {
-            LintExpectationId::Unstable(_) => {
-                unreachable!(
-                    "HashStable should never be called for an unstable `LintExpectationId`"
-                )
-            }
-            LintExpectationId::Stable { hir_id, attr_index } => {
+            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 hir_id.hash_stable(hcx, hasher);
                 attr_index.hash_stable(hcx, hasher);
+                lint_index.hash_stable(hcx, hasher);
+            }
+            _ => {
+                unreachable!("HashStable should only be called for a filled `LintExpectationId`")
             }
         }
     }
 }
 
 impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
-    type KeyType = (HirId, usize);
+    type KeyType = (HirId, usize, usize);
 
     #[inline]
     fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
         match self {
-            LintExpectationId::Unstable(_) => {
-                unreachable!(
-                    "HashStable should never be called for an unstable `LintExpectationId`"
-                )
+            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
+                (*hir_id, *attr_index, *lint_index)
             }
-            LintExpectationId::Stable { hir_id, attr_index } => (*hir_id, *attr_index),
+            _ => {
+                unreachable!("HashStable should only be called for a filled `LintExpectationId`")
+            }
         }
     }
 }
@@ -176,13 +192,13 @@ impl Level {
     }
 
     /// Converts a symbol to a level.
-    pub fn from_symbol<F>(x: Symbol, create_expectation_id: F) -> Option<Level>
-    where
-        F: FnOnce() -> LintExpectationId,
-    {
-        match x {
+    pub fn from_attr(attr: &Attribute) -> Option<Level> {
+        match attr.name_or_empty() {
             sym::allow => Some(Level::Allow),
-            sym::expect => Some(Level::Expect(create_expectation_id())),
+            sym::expect => Some(Level::Expect(LintExpectationId::Unstable {
+                attr_id: attr.id,
+                lint_index: None,
+            })),
             sym::warn => Some(Level::Warn),
             sym::deny => Some(Level::Deny),
             sym::forbid => Some(Level::Forbid),
