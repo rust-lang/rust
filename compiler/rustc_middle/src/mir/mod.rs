@@ -2246,8 +2246,12 @@ pub enum BinOp {
     /// The `*` operator (multiplication)
     Mul,
     /// The `/` operator (division)
+    ///
+    /// Division by zero is UB.
     Div,
     /// The `%` operator (modulus)
+    ///
+    /// Using zero as the modulus (second operand) is UB.
     Rem,
     /// The `^` operator (bitwise xor)
     BitXor,
@@ -2256,8 +2260,12 @@ pub enum BinOp {
     /// The `|` operator (bitwise or)
     BitOr,
     /// The `<<` operator (shift left)
+    ///
+    /// The offset is truncated to the size of the first operand before shifting.
     Shl,
     /// The `>>` operator (shift right)
+    ///
+    /// The offset is truncated to the size of the first operand before shifting.
     Shr,
     /// The `==` operator (equality)
     Eq,
