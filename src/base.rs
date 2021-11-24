@@ -71,8 +71,6 @@ pub(crate) fn codegen_fn<'tcx>(
         clif_comments,
         source_info_set: indexmap::IndexSet::new(),
         next_ssa_var: 0,
-
-        inline_asm_index: 0,
     };
 
     let arg_uninhabited = fx

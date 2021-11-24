@@ -26,6 +26,7 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
+use std::cell::Cell;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
@@ -34,6 +35,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
+use rustc_span::Symbol;
 
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
@@ -123,9 +125,11 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 struct CodegenCx<'tcx> {
     tcx: TyCtxt<'tcx>,
     global_asm: String,
+    inline_asm_index: Cell<usize>,
     cached_context: Context,
     debug_context: Option<DebugContext<'tcx>>,
     unwind_context: UnwindContext,
+    cgu_name: Symbol,
 }
 
 impl<'tcx> CodegenCx<'tcx> {
@@ -134,6 +138,7 @@ impl<'tcx> CodegenCx<'tcx> {
         backend_config: BackendConfig,
         isa: &dyn TargetIsa,
         debug_info: bool,
+        cgu_name: Symbol,
     ) -> Self {
         assert_eq!(pointer_ty(tcx), isa.pointer_type());
 
@@ -143,9 +148,11 @@ impl<'tcx> CodegenCx<'tcx> {
         CodegenCx {
             tcx,
             global_asm: String::new(),
+            inline_asm_index: Cell::new(0),
             cached_context: Context::new(),
             debug_context,
             unwind_context,
+            cgu_name,
         }
     }
 }
