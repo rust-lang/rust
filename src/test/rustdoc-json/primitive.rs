@@ -1,6 +1,6 @@
 // edition:2018
 
-#![feature(doc_primitive)]
+#![feature(rustdoc_internals)]
 
 #[doc(primitive = "usize")]
 mod usize {}

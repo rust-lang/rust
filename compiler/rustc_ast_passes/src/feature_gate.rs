@@ -325,8 +325,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     cfg_hide => doc_cfg_hide
                     masked => doc_masked
                     notable_trait => doc_notable_trait
-                    keyword => doc_keyword
                 );
+
+                if nested_meta.has_name(sym::keyword) {
+                    let msg = "`#[doc(keyword)]` is meant for internal use only";
+                    gate_feature_post!(self, rustdoc_internals, attr.span, msg);
+                }
             }
         }
 
