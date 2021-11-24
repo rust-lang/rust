@@ -2281,6 +2281,26 @@ pub trait BufRead: Read {
     /// assert_eq!(lines_iter.next(), None);
     /// ```
     ///
+    /// Handling of some edge cases:
+    ///
+    /// ```
+    /// use std::io::{BufRead, Cursor};
+    ///
+    /// fn assert_splits_into(input: &str, expected: &[&str]) {
+    ///     let got = Cursor::new(input).lines().collect::<Result<Vec<_>,_>>().unwrap();
+    ///     assert_eq!(got, expected);
+    /// }
+    ///
+    // Note: there is another copy of this set of corner cases, next to `core::str::lines()`.
+    // The two functions should behave the same way; consider editing those other doctests too.
+    /// assert_splits_into("", &[]);
+    /// assert_splits_into("\n", &[""]);
+    /// assert_splits_into("\n2nd", &["", "2nd"]);
+    /// assert_splits_into("\r\n", &[""]);
+    /// assert_splits_into("bare\r", &["bare\r"]);
+    /// assert_splits_into("bare\rcr", &["bare\rcr"]);
+    /// ```
+    ///
     /// # Errors
     ///
     /// Each line of the iterator has the same error semantics as [`BufRead::read_line`].

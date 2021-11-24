@@ -899,6 +899,23 @@ impl str {
     ///
     /// assert_eq!(None, lines.next());
     /// ```
+    ///
+    /// Handling of some edge cases:
+    ///
+    /// ```
+    /// fn assert_splits_into(input: &str, expected: &[&str]) {
+    ///     assert_eq!( input.lines().collect::<Vec<_>>(), expected );
+    /// }
+    ///
+    // Note: there is another copy of this set of corner cases next to `std::io::BufRead::lines()`.
+    // The two functions should behave the same way; consider editing those other doctests too.
+    /// assert_splits_into("", &[]);
+    /// assert_splits_into("\n", &[""]);
+    /// assert_splits_into("\n2nd", &["", "2nd"]);
+    /// assert_splits_into("\r\n", &[""]);
+    /// assert_splits_into("bare\r", &["bare"]); // should be "bare\r"
+    /// assert_splits_into("bare\rcr", &["bare\rcr"]);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn lines(&self) -> Lines<'_> {
