@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-#![feature(doc_keyword)]
+#![feature(rustdoc_internals)]
 
 // @has foo/index.html '//h2[@id="keywords"]' 'Keywords'
 // @has foo/index.html '//a[@href="keyword.match.html"]' 'match'

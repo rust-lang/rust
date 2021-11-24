@@ -1,8 +1,7 @@
 // compile-flags:-Z unstable-options --show-coverage
 // check-pass
 
-#![feature(doc_keyword)]
-#![feature(doc_primitive)]
+#![feature(rustdoc_internals)]
 
 //! the features only used in std also have entries in the table, so make sure those get pulled out
 //! properly as well

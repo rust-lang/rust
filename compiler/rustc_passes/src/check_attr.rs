@@ -982,7 +982,7 @@ impl CheckAttrVisitor<'tcx> {
                         }
 
                         sym::primitive => {
-                            if !self.tcx.features().doc_primitive {
+                            if !self.tcx.features().rustdoc_internals {
                                 self.tcx.struct_span_lint_hir(
                                     INVALID_DOC_ATTRIBUTES,
                                     hir_id,
