@@ -649,7 +649,6 @@ rustc_queries! {
     /// Methods in these implementations don't need to be exported.
     query inherent_impls(key: DefId) -> &'tcx [DefId] {
         desc { |tcx| "collecting inherent impls for `{}`", tcx.def_path_str(key) }
-        eval_always
         separate_provide_extern
     }
 
@@ -810,15 +809,12 @@ rustc_queries! {
     /// Not meant to be used directly outside of coherence.
     query crate_inherent_impls(k: ()) -> CrateInherentImpls {
         storage(ArenaCacheSelector<'tcx>)
-        eval_always
         desc { "all inherent impls defined in crate" }
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls_overlap_check(_: ())
-        -> () {
-        eval_always
+    query crate_inherent_impls_overlap_check(_: ()) -> () {
         desc { "check for overlap between inherent impls defined in this crate" }
     }
 
