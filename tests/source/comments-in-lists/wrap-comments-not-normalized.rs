@@ -1,5 +1,6 @@
 // rustfmt-wrap_comments: true
 
+// https://github.com/rust-lang/rustfmt/issues/4909
 pub enum E {
     // Expand as needed, numbers should be ascending according to the stage
     // through the inclusion pipeline, or according to the descriptions
@@ -105,4 +106,24 @@ fn main() {
         2,
         // Expand as needed, numbers should be ascending according to the stage through the inclusion pipeline, or according to the descriptions
     ];
+
+    // https://github.com/rust-lang/rustfmt/issues/4430
+    match a {
+        // Expand as needed, numbers should be ascending according to the stage
+        // through the inclusion pipeline, or according to the descriptions
+        b => c,
+        // Expand as needed, numbers should be ascending according to the stage
+        // through the inclusion pipeline, or according to the descriptions
+        d => e,
+        // Expand as needed, numbers should be ascending according to the stage
+        // through the inclusion pipeline, or according to the descriptions
+    }
+
+    match a {
+        // Expand as needed, numbers should be ascending according to the stage through the inclusion pipeline, or according to the descriptions
+        b => c,
+        // Expand as needed, numbers should be ascending according to the stage through the inclusion pipeline, or according to the descriptions
+        d => e,
+        // Expand as needed, numbers should be ascending according to the stage through the inclusion pipeline, or according to the descriptions
+    }
 }
