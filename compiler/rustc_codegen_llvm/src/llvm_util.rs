@@ -119,14 +119,20 @@ unsafe fn configure_llvm(sess: &Session) {
 
     llvm::LLVMInitializePasses();
 
-    // Register LLVM plugins by loading them into the compiler process.
-    for plugin in &sess.opts.debugging_opts.llvm_plugins {
-        let lib = Library::new(plugin).unwrap_or_else(|e| bug!("couldn't load plugin: {}", e));
-        debug!("LLVM plugin loaded successfully {:?} ({})", lib, plugin);
+    let use_new_llvm_pm_plugin_register =
+        sess.opts.debugging_opts.new_llvm_pass_manager.unwrap_or(false);
 
-        // Intentionally leak the dynamic library. We can't ever unload it
-        // since the library can make things that will live arbitrarily long.
-        mem::forget(lib);
+    // Use the legacy pm registration if the new_llvm_pass_manager option isn't explicitly enabled
+    if use_new_llvm_pm_plugin_register {
+        // Register LLVM plugins by loading them into the compiler process.
+        for plugin in &sess.opts.debugging_opts.llvm_plugins {
+            let lib = Library::new(plugin).unwrap_or_else(|e| bug!("couldn't load plugin: {}", e));
+            debug!("LLVM plugin loaded successfully {:?} ({})", lib, plugin);
+
+            // Intentionally leak the dynamic library. We can't ever unload it
+            // since the library can make things that will live arbitrarily long.
+            mem::forget(lib);
+        }
     }
 
     rustc_llvm::initialize_available_targets();

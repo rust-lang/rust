@@ -2304,8 +2304,8 @@ extern "C" {
         end_callback: SelfProfileAfterPassCallback,
         ExtraPasses: *const c_char,
         ExtraPassesLen: size_t,
-        PassPlugins: *const c_char,
-        PassPluginsLen: size_t,
+        LLVMPlugins: *const c_char,
+        LLVMPluginsLen: size_t,
     ) -> LLVMRustResult;
     pub fn LLVMRustPrintModule(
         M: &'a Module,

@@ -470,7 +470,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
 
     let extra_passes = config.passes.join(",");
 
-    let pass_plugins = config.pass_plugins.join(" ");
+    let llvm_plugins = config.llvm_plugins.join(",");
 
     // FIXME: NewPM doesn't provide a facility to pass custom InlineParams.
     // We would have to add upstream support for this first, before we can support
@@ -501,8 +501,8 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         selfprofile_after_pass_callback,
         extra_passes.as_ptr().cast(),
         extra_passes.len(),
-        pass_plugins.as_ptr().cast(),
-        pass_plugins.len(),
+        llvm_plugins.as_ptr().cast(),
+        llvm_plugins.len(),
     );
     result.into_result().map_err(|()| llvm_err(diag_handler, "failed to run LLVM passes"))
 }

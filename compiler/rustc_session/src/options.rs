@@ -1033,8 +1033,6 @@ options! {
         "panic strategy to compile crate with"),
     passes: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list of extra LLVM passes to run (space separated)"),
-    pass_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
-        "a list of LLVM pass plugins to load (space separated)"),
     prefer_dynamic: bool = (false, parse_bool, [TRACKED],
         "prefer dynamic linking to static linking (default: no)"),
     profile_generate: SwitchWithOptPath = (SwitchWithOptPath::Disabled,

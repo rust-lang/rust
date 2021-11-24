@@ -587,7 +587,6 @@ fn test_codegen_options_tracking_hash() {
     tracked!(overflow_checks, Some(true));
     tracked!(panic, Some(PanicStrategy::Abort));
     tracked!(passes, vec![String::from("1"), String::from("2")]);
-    tracked!(pass_plugins, vec![String::from("1"), String::from("2")]);
     tracked!(prefer_dynamic, true);
     tracked!(profile_generate, SwitchWithOptPath::Enabled(None));
     tracked!(profile_use, Some(PathBuf::from("abc")));

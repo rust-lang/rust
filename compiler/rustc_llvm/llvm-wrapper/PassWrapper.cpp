@@ -755,7 +755,7 @@ LLVMRustOptimizeWithNewPassManager(
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
     LLVMRustSelfProfileAfterPassCallback AfterPassCallback,
     const char *ExtraPasses, size_t ExtraPassesLen,
-    const char *PassPlugins, size_t PassPluginsLen) {
+    const char *LLVMPlugins, size_t LLVMPluginsLen) {
   Module *TheModule = unwrap(ModuleRef);
   TargetMachine *TM = unwrap(TMRef);
   OptimizationLevel OptLevel = fromRust(OptLevelRust);
@@ -926,10 +926,10 @@ LLVMRustOptimizeWithNewPassManager(
     }
   }
 
-  if (PassPluginsLen) {
-    auto PluginsStr = StringRef(PassPlugins, PassPluginsLen);
+  if (LLVMPluginsLen) {
+    auto PluginsStr = StringRef(LLVMPlugins, LLVMPluginsLen);
     SmallVector<StringRef> Plugins;
-    PluginsStr.split(Plugins, ' ', -1, false);
+    PluginsStr.split(Plugins, ',', -1, false);
     for (auto PluginPath: Plugins) {
       auto Plugin = PassPlugin::Load(PluginPath.str());
       if (!Plugin) {

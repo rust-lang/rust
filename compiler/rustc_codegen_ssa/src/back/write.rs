@@ -74,8 +74,6 @@ pub enum BitcodeSection {
 pub struct ModuleConfig {
     /// Names of additional optimization passes to run.
     pub passes: Vec<String>,
-    /// Paths of LLVM pass plugins to load.
-    pub pass_plugins: Vec<String>,
     /// Some(level) to optimize at a certain level, or None to run
     /// absolutely no optimizations (used for the metadata module).
     pub opt_level: Option<config::OptLevel>,
@@ -115,6 +113,7 @@ pub struct ModuleConfig {
     pub inline_threshold: Option<u32>,
     pub new_llvm_pass_manager: Option<bool>,
     pub emit_lifetime_markers: bool,
+    pub llvm_plugins: Vec<String>,
 }
 
 impl ModuleConfig {
@@ -171,8 +170,6 @@ impl ModuleConfig {
 
         ModuleConfig {
             passes: if_regular!(sess.opts.cg.passes.clone(), vec![]),
-
-            pass_plugins: if_regular!(sess.opts.cg.pass_plugins.clone(), vec![]),
 
             opt_level: opt_level_and_size,
             opt_size: opt_level_and_size,
@@ -264,6 +261,7 @@ impl ModuleConfig {
             inline_threshold: sess.opts.cg.inline_threshold,
             new_llvm_pass_manager: sess.opts.debugging_opts.new_llvm_pass_manager,
             emit_lifetime_markers: sess.emit_lifetime_markers(),
+            llvm_plugins: if_regular!(sess.opts.debugging_opts.llvm_plugins.clone(), vec![]),
         }
     }
 
