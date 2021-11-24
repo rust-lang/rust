@@ -14,12 +14,13 @@
           id="mainThemeStyle"> {#- -#}
     {%- for theme in themes -%}
         <link rel="stylesheet" type="text/css" {# -#}
+            href="{{static_root_path | safe}}{{theme}}{{page.resource_suffix}}.css" {#- -#}
         {%- if theme == "light" -%}
             id="themeStyle"
         {%- else -%}
             disabled
         {%- endif -%}
-            href="{{static_root_path | safe}}{{theme}}{{page.resource_suffix}}.css"> {#- -#}
+        >
     {%- endfor -%}
     <script id="default-settings" {# -#}
       {% for k, v in layout.default_settings %}
@@ -122,8 +123,10 @@
     <div id="rustdoc-vars" {# -#}
          data-root-path="{{page.root_path | safe}}" {# -#}
          data-current-crate="{{layout.krate}}" {# -#}
-         data-search-index-js="{{page.root_path | safe}}search-index{{page.resource_suffix}}.js" {# -#}
-         data-search-js="{{static_root_path | safe}}search{{page.resource_suffix}}.js"> {#- -#}
+         data-themes="{{themes | join(sep=",") }}" {# -#}
+         data-resource-suffix="{{page.resource_suffix}}" {# -#}
+         data-rustdoc-version="{{rustdoc_version}}" {# -#}
+    > {#- -#}
     </div>
 </body> {#- -#}
 </html> {#- -#}

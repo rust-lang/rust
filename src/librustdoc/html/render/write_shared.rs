@@ -265,26 +265,7 @@ pub(super) fn write_shared(
     let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();
 
-    // FIXME: this should probably not be a toolchain file since it depends on `--theme`.
-    // But it seems a shame to copy it over and over when it's almost always the same.
-    // Maybe we can change the representation to move this out of main.js?
-    write_minify(
-        "main.js",
-        static_files::MAIN_JS
-            .replace(
-                "/* INSERT THEMES HERE */",
-                &format!(" = {}", serde_json::to_string(&themes).unwrap()),
-            )
-            .replace(
-                "/* INSERT RUSTDOC_VERSION HERE */",
-                &format!(
-                    "rustdoc {}",
-                    rustc_interface::util::version_str().unwrap_or("unknown version")
-                ),
-            ),
-        cx,
-        options,
-    )?;
+    write_minify("main.js", static_files::MAIN_JS, cx, options)?;
     write_minify("search.js", static_files::SEARCH_JS, cx, options)?;
     write_minify("settings.js", static_files::SETTINGS_JS, cx, options)?;
 
@@ -292,18 +273,7 @@ pub(super) fn write_shared(
         write_minify("source-script.js", static_files::sidebar::SOURCE_SCRIPT, cx, options)?;
     }
 
-    {
-        write_minify(
-            "storage.js",
-            format!(
-                "var resourcesSuffix = \"{}\";{}",
-                cx.shared.resource_suffix,
-                static_files::STORAGE_JS
-            ),
-            cx,
-            options,
-        )?;
-    }
+    write_minify("storage.js", static_files::STORAGE_JS, cx, options)?;
 
     if cx.shared.layout.scrape_examples_extension {
         cx.write_minify(

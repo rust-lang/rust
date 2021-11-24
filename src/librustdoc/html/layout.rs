@@ -54,6 +54,7 @@ struct PageLayout<'a> {
     sidebar: String,
     content: String,
     krate_with_trailing_slash: String,
+    crate rustdoc_version: &'a str,
 }
 
 crate fn render<T: Print, S: Print>(
@@ -71,6 +72,7 @@ crate fn render<T: Print, S: Print>(
         .map(StylePath::basename)
         .collect::<Result<_, Error>>()
         .unwrap_or_default();
+    let rustdoc_version = rustc_interface::util::version_str().unwrap_or("unknown version");
     let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
     let sidebar = Buffer::html().to_display(sidebar);
     let teractx = tera::Context::from_serialize(PageLayout {
@@ -81,6 +83,7 @@ crate fn render<T: Print, S: Print>(
         sidebar,
         content,
         krate_with_trailing_slash,
+        rustdoc_version,
     })
     .unwrap();
     templates.render("page.html", &teractx).unwrap()
