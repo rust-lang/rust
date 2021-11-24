@@ -24,9 +24,18 @@ macro_rules! qpath {
     };
 }
 
+macro_rules! field {
+    ($var:ident . $field:literal) => {
+        $var . $field
+    };
+}
+
 pub fn main() {
     let _: qpath!(path, <str as ToOwned>::Owned);
     let _: qpath!(ty, <str as ToOwned>::Owned);
+
+    let tuple = ('x',);
+    let _ = field!(tuple.0);
 
     assert!(overly_complicated!(f, x, Option<usize>, { return Some(x); },
                                Some(8), Some(y), y) == 8)
