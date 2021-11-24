@@ -284,32 +284,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // structs and enums.
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
 
-                            // For other types, we'll use the builtin rules.
-            let copy_conditions = self.copy_clone_conditions(obligation);
-            self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
-        } else if lang_items.discriminant_kind_trait() == Some(def_id) {
-            // `DiscriminantKind` is automatically implemented for every type.
-            candidates.vec.push(DiscriminantKindCandidate);
-        } else if lang_items.pointee_trait() == Some(def_id) {
-            // `Pointee` is automatically implemented for every type.
-            candidates.vec.push(PointeeCandidate);
-        } else if lang_items.sized_trait() == Some(def_id) {
-            // Sized is never implementable by end-users, it is
-            // always automatically computed.
-            let sized_conditions = self.sized_conditions(obligation);
-            self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
-        } else if lang_items.unsize_trait() == Some(def_id) {
-            self.assemble_candidates_for_unsizing(obligation, &mut candidates);
-        } else if lang_items.drop_trait() == Some(def_id)
-            && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
-        {
-            if self.is_in_const_context {
-                self.assemble_const_drop_candidates(obligation, stack, &mut candidates)?;
-            } else {
-                debug!("passing ~const Drop bound; in non-const context");
-                // `~const Drop` when we are not in a const context has no effect.
-                candidates.vec.push(ConstDropCandidate)
-            }
+                // For other types, we'll use the builtin rules.
+                let copy_conditions = self.copy_clone_conditions(obligation);
+                self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
+            } else if lang_items.discriminant_kind_trait() == Some(def_id) {
+                // `DiscriminantKind` is automatically implemented for every type.
+                candidates.vec.push(DiscriminantKindCandidate);
+            } else if lang_items.pointee_trait() == Some(def_id) {
+                // `Pointee` is automatically implemented for every type.
+                candidates.vec.push(PointeeCandidate);
+            } else if lang_items.sized_trait() == Some(def_id) {
+                // Sized is never implementable by end-users, it is
+                // always automatically computed.
+                let sized_conditions = self.sized_conditions(obligation);
+                self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
+            } else if lang_items.unsize_trait() == Some(def_id) {
+                self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+            } else if lang_items.drop_trait() == Some(def_id)
+                && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
+            {
+                if self.is_in_const_context {
+                    self.assemble_const_drop_candidates(obligation, stack, &mut candidates)?;
+                } else {
+                    debug!("passing ~const Drop bound; in non-const context");
+                    // `~const Drop` when we are not in a const context has no effect.
+                    candidates.vec.push(ConstDropCandidate)
+                }
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -947,6 +947,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         substs: self.tcx().mk_substs_trait(ty, &[]),
                     },
                     constness: ty::BoundConstness::ConstIfConst,
+                    polarity: ty::ImplPolarity::Positive,
                 }));
 
             let const_drop_stack = self.push_stack(obligation_stack.list(), &const_drop_obligation);
