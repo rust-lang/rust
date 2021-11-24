@@ -81,7 +81,7 @@ fn main() {
         compiler.enter(|queries| {
             queries.global_ctxt().unwrap().take().enter(|tcx| {
                 // Run the analysis phase on the local crate to trigger the type error.
-                tcx.analysis(rustc_hir::def_id::LOCAL_CRATE);
+                let _ = tcx.analysis(());
             });
         });
     });
