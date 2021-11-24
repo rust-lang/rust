@@ -8,7 +8,9 @@ on:
 jobs:
   test:
     runs-on: windows-latest
-    name: (${{ matrix.target }}, nightly)
+    name: (${{ matrix.target }}, ${{ matrix.cfg_release_channel }})
+    env:
+      CFG_RELEASE_CHANNEL: ${{ matrix.cfg_release_channel }}
     strategy:
       # https://help.github.com/en/actions/getting-started-with-github-actions/about-github-actions#usage-limits
       # There's a limit of 60 concurrent jobs across all repos in the rust-lang organization.
@@ -23,6 +25,7 @@ jobs:
           x86_64-pc-windows-gnu,
           x86_64-pc-windows-msvc,
         ]
+        cfg_release_channel: [nightly, stable]
 
     steps:
     # The Windows runners have autocrlf enabled by default
