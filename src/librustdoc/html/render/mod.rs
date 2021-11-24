@@ -1227,7 +1227,7 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
             | SelfTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
                 (mutability == Mutability::Mut, false, false)
             }
-            SelfTy::SelfExplicit(clean::ResolvedPath { path }) => {
+            SelfTy::SelfExplicit(clean::Type::ResolvedPath { path }) => {
                 (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
             }
             SelfTy::SelfValue => (false, false, true),

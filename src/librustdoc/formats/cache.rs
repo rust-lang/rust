@@ -401,7 +401,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             clean::ImplItem(ref i) => {
                 self.cache.parent_is_trait_impl = i.trait_.is_some();
                 match i.for_ {
-                    clean::ResolvedPath { ref path } => {
+                    clean::Type::ResolvedPath { ref path } => {
                         self.cache.parent_stack.push(path.def_id());
                         true
                     }
@@ -436,8 +436,10 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             // Note: matching twice to restrict the lifetime of the `i` borrow.
             let mut dids = FxHashSet::default();
             match i.for_ {
-                clean::ResolvedPath { ref path }
-                | clean::BorrowedRef { type_: box clean::ResolvedPath { ref path }, .. } => {
+                clean::Type::ResolvedPath { ref path }
+                | clean::BorrowedRef {
+                    type_: box clean::Type::ResolvedPath { ref path }, ..
+                } => {
                     dids.insert(path.def_id());
                 }
                 clean::DynTrait(ref bounds, _)

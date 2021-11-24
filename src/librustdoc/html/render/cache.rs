@@ -218,7 +218,7 @@ fn get_index_type(clean_type: &clean::Type, generics: Vec<TypeWithKind>) -> Rend
 
 fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<Symbol> {
     match *clean_type {
-        clean::ResolvedPath { ref path, .. } => {
+        clean::Type::ResolvedPath { ref path, .. } => {
             let path_segment = path.segments.last().unwrap();
             Some(path_segment.name)
         }
