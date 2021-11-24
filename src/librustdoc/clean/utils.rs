@@ -394,7 +394,7 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     debug!("register_res({:?})", res);
 
     let (did, kind) = match res {
-        // Each of these have their own page.
+        // These should be added to the cache using `record_extern_fqn`.
         Res::Def(
             kind
             @
