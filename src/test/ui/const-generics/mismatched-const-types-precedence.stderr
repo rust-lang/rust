@@ -1,0 +1,160 @@
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-types-precedence.rs:6:33
+   |
+LL |   let _: [u32; 3 * 2 + N + K] = foo::<{ 2 + N }, K>(a, b);
+   |                                 ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { 3 * { 2 + N + K } }]:`
+note: required by a bound in `foo`
+  --> $DIR/mismatched-const-types-precedence.rs:13:75
+   |
+LL | fn foo<const M: usize, const K: usize>(a: [u32; M], b: [u32; K]) -> [u32; 3 * {M + K}] {}
+   |                                                                           ^^^^^^^^^^^ required by this bound in `foo`
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-types-precedence.rs:6:10
+   |
+LL |   let _: [u32; 3 * 2 + N + K] = foo::<{ 2 + N }, K>(a, b);
+   |          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { 3 * 2 + N + K }]:`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-types-precedence.rs:6:33
+   |
+LL |   let _: [u32; 3 * 2 + N + K] = foo::<{ 2 + N }, K>(a, b);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `3 * 2 + N + K`, found `{ 3 * { 2 + N + K } }`
+   |
+   = note: expected type `3 * 2 + N + K`
+              found type `{ 3 * { 2 + N + K } }`
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-types-precedence.rs:6:33
+   |
+LL |   let _: [u32; 3 * 2 + N + K] = foo::<{ 2 + N }, K>(a, b);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { 3 * { 2 + N + K } }]:`
+note: required by a bound in `foo`
+  --> $DIR/mismatched-const-types-precedence.rs:13:75
+   |
+LL | fn foo<const M: usize, const K: usize>(a: [u32; M], b: [u32; K]) -> [u32; 3 * {M + K}] {}
+   |                                                                           ^^^^^^^^^^^ required by this bound in `foo`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-types-precedence.rs:13:69
+   |
+LL | fn foo<const M: usize, const K: usize>(a: [u32; M], b: [u32; K]) -> [u32; 3 * {M + K}] {}
+   |    ---                                                              ^^^^^^^^^^^^^^^^^^ expected array `[u32; _]`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-types-precedence.rs:18:33
+   |
+LL |   let _: [u32; 3 * 2 + N * K] = foo2::<{ 2 + N }, K>(a, b);
+   |                                 ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { 3 * { 2 + N } * K }]:`
+note: required by a bound in `foo2`
+  --> $DIR/mismatched-const-types-precedence.rs:25:76
+   |
+LL | fn foo2<const M: usize, const K: usize>(a: [u32; M], b: [u32; K]) -> [u32; 3 * M * K] {}
+   |                                                                            ^^^^^^^^^ required by this bound in `foo2`
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-types-precedence.rs:18:10
+   |
+LL |   let _: [u32; 3 * 2 + N * K] = foo2::<{ 2 + N }, K>(a, b);
+   |          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { 3 * 2 + N * K }]:`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-types-precedence.rs:18:33
+   |
+LL |   let _: [u32; 3 * 2 + N * K] = foo2::<{ 2 + N }, K>(a, b);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `3 * 2 + N * K`, found `{ 3 * { 2 + N } * K }`
+   |
+   = note: expected type `3 * 2 + N * K`
+              found type `{ 3 * { 2 + N } * K }`
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-types-precedence.rs:18:33
+   |
+LL |   let _: [u32; 3 * 2 + N * K] = foo2::<{ 2 + N }, K>(a, b);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { 3 * { 2 + N } * K }]:`
+note: required by a bound in `foo2`
+  --> $DIR/mismatched-const-types-precedence.rs:25:76
+   |
+LL | fn foo2<const M: usize, const K: usize>(a: [u32; M], b: [u32; K]) -> [u32; 3 * M * K] {}
+   |                                                                            ^^^^^^^^^ required by this bound in `foo2`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-types-precedence.rs:25:70
+   |
+LL | fn foo2<const M: usize, const K: usize>(a: [u32; M], b: [u32; K]) -> [u32; 3 * M * K] {}
+   |    ----                                                              ^^^^^^^^^^^^^^^^ expected array `[u32; _]`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-types-precedence.rs:30:37
+   |
+LL |   let _: [u32; 3 * 2 + N * K + L] = foo3::<{ 2 + N }, K, L>(a, b);
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { 3 * { 2 + N } * K + L }]:`
+note: required by a bound in `foo3`
+  --> $DIR/mismatched-const-types-precedence.rs:38:12
+   |
+LL | fn foo3<const M: usize, const K: usize, const L: usize>(a: [u32; M], b: [u32; K + L])
+   |    ---- required by a bound in this
+LL |   -> [u32; 3 * M * {K + L}] {}
+   |            ^^^^^^^^^^^^^^^ required by this bound in `foo3`
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-types-precedence.rs:30:10
+   |
+LL |   let _: [u32; 3 * 2 + N * K + L] = foo3::<{ 2 + N }, K, L>(a, b);
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { 3 * 2 + N * K + L }]:`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-types-precedence.rs:30:37
+   |
+LL |   let _: [u32; 3 * 2 + N * K + L] = foo3::<{ 2 + N }, K, L>(a, b);
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `3 * 2 + N * K + L`, found `{ 3 * { 2 + N } * K + L }`
+   |
+   = note: expected type `3 * 2 + N * K + L`
+              found type `{ 3 * { 2 + N } * K + L }`
+
+error: unconstrained generic constant
+  --> $DIR/mismatched-const-types-precedence.rs:30:37
+   |
+LL |   let _: [u32; 3 * 2 + N * K + L] = foo3::<{ 2 + N }, K, L>(a, b);
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { 3 * { 2 + N } * K + L }]:`
+note: required by a bound in `foo3`
+  --> $DIR/mismatched-const-types-precedence.rs:38:12
+   |
+LL | fn foo3<const M: usize, const K: usize, const L: usize>(a: [u32; M], b: [u32; K + L])
+   |    ---- required by a bound in this
+LL |   -> [u32; 3 * M * {K + L}] {}
+   |            ^^^^^^^^^^^^^^^ required by this bound in `foo3`
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-const-types-precedence.rs:38:6
+   |
+LL | fn foo3<const M: usize, const K: usize, const L: usize>(a: [u32; M], b: [u32; K + L])
+   |    ---- implicitly returns `()` as its body has no tail or `return` expression
+LL |   -> [u32; 3 * M * {K + L}] {}
+   |      ^^^^^^^^^^^^^^^^^^^^^^ expected array `[u32; _]`, found `()`
+
+error: aborting due to 15 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
