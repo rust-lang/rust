@@ -138,7 +138,7 @@
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_default_impls)]
-#![feature(duration_consts_2)]
+#![feature(duration_consts_float)]
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
 #![feature(str_internals)]
