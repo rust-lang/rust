@@ -1155,6 +1155,7 @@ symbols! {
         rustc_unsafe_specialization_marker,
         rustc_variance,
         rustdoc,
+        rustdoc_internals,
         rustfmt,
         rvalue_static_promotion,
         s,

@@ -21,7 +21,7 @@
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
 #![feature(div_duration)]
-#![feature(duration_consts_2)]
+#![feature(duration_consts_float)]
 #![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
