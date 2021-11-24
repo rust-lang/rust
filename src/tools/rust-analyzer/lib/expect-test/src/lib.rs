@@ -306,7 +306,12 @@ impl ExpectFile {
             self.path.to_owned()
         } else {
             let dir = Path::new(self.position).parent().unwrap();
-            WORKSPACE_ROOT.join(dir).join(&self.path)
+            let workspace_root = match WORKSPACE_ROOT.as_deref() {
+                Ok(root) => root,
+                Err(_) => panic!("No CARGO_MANIFEST_DIR env var. Consider using absolute path."),
+            };
+
+            workspace_root.join(dir).join(&self.path)
         }
     }
 }
@@ -385,7 +390,12 @@ struct FileRuntime {
 
 impl FileRuntime {
     fn new(expect: &Expect) -> FileRuntime {
-        let path = WORKSPACE_ROOT.join(expect.position.file);
+        let path = match WORKSPACE_ROOT.as_deref() {
+            Ok(root) => root.join(expect.position.file),
+            Err(_) => {
+                panic!("No CARGO_MANIFEST_DIR env var. This feature does not work without it.")
+            }
+        };
         let original_text = fs::read_to_string(&path).unwrap();
         let patchwork = Patchwork::new(original_text.clone());
         FileRuntime { path, original_text, patchwork }
@@ -478,16 +488,18 @@ fn format_patch(desired_indent: Option<usize>, patch: &str) -> String {
     buf
 }
 
-static WORKSPACE_ROOT: Lazy<PathBuf> = Lazy::new(|| {
-    let my_manifest = env::var("CARGO_MANIFEST_DIR")
-        .expect("No CARGO_MANIFEST_DIR available. Consider using absolute path.");
+static WORKSPACE_ROOT: Lazy<Result<PathBuf, env::VarError>> = Lazy::new(|| {
+    let my_manifest = env::var("CARGO_MANIFEST_DIR")?;
+
     // Heuristic, see https://github.com/rust-lang/cargo/issues/3946
-    Path::new(&my_manifest)
+    let workspace_root = Path::new(&my_manifest)
         .ancestors()
         .filter(|it| it.join("Cargo.toml").exists())
         .last()
         .unwrap()
-        .to_path_buf()
+        .to_path_buf();
+
+    Ok(workspace_root)
 });
 
 fn trim_indent(mut text: &str) -> String {
