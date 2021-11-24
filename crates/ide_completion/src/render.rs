@@ -433,7 +433,7 @@ fn main() { Foo::Fo$0 }
                         kind: SymbolKind(
                             Variant,
                         ),
-                        detail: "{ x: i32, y: i32 }",
+                        detail: "{x: i32, y: i32}",
                     },
                 ]
             "#]],

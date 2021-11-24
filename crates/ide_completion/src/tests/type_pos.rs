@@ -199,7 +199,7 @@ impl Enum {
 fn func(_: Enum::$0) {}
 "#,
         expect![[r#"
-            ta AssocType type AssocType = ();
+            ta AssocType type AssocType;
         "#]],
     );
 }
