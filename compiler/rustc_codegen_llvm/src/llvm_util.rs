@@ -123,7 +123,7 @@ unsafe fn configure_llvm(sess: &Session) {
         sess.opts.debugging_opts.new_llvm_pass_manager.unwrap_or(false);
 
     // Use the legacy pm registration if the new_llvm_pass_manager option isn't explicitly enabled
-    if use_new_llvm_pm_plugin_register {
+    if !use_new_llvm_pm_plugin_register {
         // Register LLVM plugins by loading them into the compiler process.
         for plugin in &sess.opts.debugging_opts.llvm_plugins {
             let lib = Library::new(plugin).unwrap_or_else(|e| bug!("couldn't load plugin: {}", e));

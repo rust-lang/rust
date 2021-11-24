@@ -261,7 +261,11 @@ impl ModuleConfig {
             inline_threshold: sess.opts.cg.inline_threshold,
             new_llvm_pass_manager: sess.opts.debugging_opts.new_llvm_pass_manager,
             emit_lifetime_markers: sess.emit_lifetime_markers(),
-            llvm_plugins: if_regular!(sess.opts.debugging_opts.llvm_plugins.clone(), vec![]),
+            llvm_plugins: if sess.opts.debugging_opts.new_llvm_pass_manager.unwrap_or(false) {
+                if_regular!(sess.opts.debugging_opts.llvm_plugins.clone(), vec![])
+            } else {
+                vec![]
+            },
         }
     }
 
