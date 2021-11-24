@@ -395,18 +395,14 @@ fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
 }
 
 pub(crate) fn should_use_new_llvm_pass_manager(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    _cgcx: &CodegenContext<LlvmCodegenBackend>,
     config: &ModuleConfig,
 ) -> bool {
-    // The new pass manager is enabled by default for LLVM >= 13.
-    // This matches Clang, which also enables it since Clang 13.
-
-    // FIXME: There are some perf issues with the new pass manager
-    // when targeting s390x, so it is temporarily disabled for that
-    // arch, see https://github.com/rust-lang/rust/issues/89609
+    // The new pass manager is causing significant performance issues such as #91128, and is
+    // therefore disabled in stable versions of rustc by default.
     config
         .new_llvm_pass_manager
-        .unwrap_or_else(|| cgcx.target_arch != "s390x" && llvm_util::get_version() >= (13, 0, 0))
+        .unwrap_or(false)
 }
 
 pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
