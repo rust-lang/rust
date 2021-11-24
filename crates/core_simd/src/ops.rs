@@ -1,5 +1,11 @@
 use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use core::ops::{Add, Mul};
+use core::ops::{BitAnd, BitOr, BitXor};
+use core::ops::{Div, Rem, Sub};
+use core::ops::{Shl, Shr};
+
+mod deref;
 
 impl<I, T, const LANES: usize> core::ops::Index<I> for Simd<T, LANES>
 where
@@ -57,42 +63,6 @@ macro_rules! impl_ref_ops {
             $(#[$attrs])*
             fn $fn($self_tok, $rhs_arg: $rhs_arg_ty) -> Self::Output $body
         }
-
-        impl<const $lanes: usize> core::ops::$trait<&'_ $rhs> for $type
-        where
-            LaneCount<$lanes2>: SupportedLaneCount,
-        {
-            type Output = <$type as core::ops::$trait<$rhs>>::Output;
-
-            $(#[$attrs])*
-            fn $fn($self_tok, $rhs_arg: &$rhs) -> Self::Output {
-                core::ops::$trait::$fn($self_tok, *$rhs_arg)
-            }
-        }
-
-        impl<const $lanes: usize> core::ops::$trait<$rhs> for &'_ $type
-        where
-            LaneCount<$lanes2>: SupportedLaneCount,
-        {
-            type Output = <$type as core::ops::$trait<$rhs>>::Output;
-
-            $(#[$attrs])*
-            fn $fn($self_tok, $rhs_arg: $rhs) -> Self::Output {
-                core::ops::$trait::$fn(*$self_tok, $rhs_arg)
-            }
-        }
-
-        impl<const $lanes: usize> core::ops::$trait<&'_ $rhs> for &'_ $type
-        where
-            LaneCount<$lanes2>: SupportedLaneCount,
-        {
-            type Output = <$type as core::ops::$trait<$rhs>>::Output;
-
-            $(#[$attrs])*
-            fn $fn($self_tok, $rhs_arg: &$rhs) -> Self::Output {
-                core::ops::$trait::$fn(*$self_tok, *$rhs_arg)
-            }
-        }
     };
 
     // binary assignment op
@@ -112,16 +82,6 @@ macro_rules! impl_ref_ops {
             $(#[$attrs])*
             fn $fn(&mut $self_tok, $rhs_arg: $rhs_arg_ty) $body
         }
-
-        impl<const $lanes: usize> core::ops::$trait<&'_ $rhs> for $type
-        where
-            LaneCount<$lanes2>: SupportedLaneCount,
-        {
-            $(#[$attrs])*
-            fn $fn(&mut $self_tok, $rhs_arg: &$rhs_arg_ty) {
-                core::ops::$trait::$fn($self_tok, *$rhs_arg)
-            }
-        }
     };
 
     // unary op
@@ -140,16 +100,6 @@ macro_rules! impl_ref_ops {
         {
             type Output = $output;
             fn $fn($self_tok) -> Self::Output $body
-        }
-
-        impl<const $lanes: usize> core::ops::$trait for &'_ $type
-        where
-            LaneCount<$lanes2>: SupportedLaneCount,
-        {
-            type Output = <$type as core::ops::$trait>::Output;
-            fn $fn($self_tok) -> Self::Output {
-                core::ops::$trait::$fn(*$self_tok)
-            }
         }
     }
 }
