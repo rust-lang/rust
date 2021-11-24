@@ -1,0 +1,22 @@
+warning: duplicated attribute
+  --> $DIR/duplicated-attributes.rs:12:1
+   |
+LL | #[test]
+   | ^^^^^^^
+   |
+   = note: `#[warn(duplicate_macro_attributes)]` on by default
+
+warning: duplicated attribute
+  --> $DIR/duplicated-attributes.rs:29:1
+   |
+LL | #[bench]
+   | ^^^^^^^^
+
+warning: duplicated attribute
+  --> $DIR/duplicated-attributes.rs:34:1
+   |
+LL | #[cfg_eval]
+   | ^^^^^^^^^^^
+
+warning: 3 warnings emitted
+

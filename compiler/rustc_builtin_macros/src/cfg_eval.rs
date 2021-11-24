@@ -1,4 +1,4 @@
-use crate::util::check_builtin_macro_attribute;
+use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
@@ -25,6 +25,7 @@ crate fn expand(
     annotatable: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::cfg_eval);
+    warn_on_duplicate_attribute(&ecx, &annotatable, sym::cfg_eval);
     vec![cfg_eval(ecx.sess, ecx.ecfg.features, annotatable)]
 }
 
