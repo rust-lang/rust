@@ -452,8 +452,9 @@ impl Token {
     }
 
     // A convenience function for matching on identifiers during parsing.
-    // Turns interpolated identifier (`$i: ident`) or lifetime (`$l: lifetime`) token
-    // into the regular identifier or lifetime token it refers to,
+    // Turns interpolated identifier ($i:ident), lifetime ($l:lifetime), and
+    // integer literal ($l:literal) into the regular identifier or lifetime or
+    // literal token it refers to,
     // otherwise returns the original token.
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
         match &self.kind {
@@ -462,6 +463,11 @@ impl Token {
                     Cow::Owned(Token::new(Ident(ident.name, is_raw), ident.span))
                 }
                 NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
+                NtLiteral(ref literal)
+                    if let ast::ExprKind::Lit(ast::Lit { token, kind: ast::LitKind::Int(..), .. }) = literal.kind =>
+                {
+                    Cow::Owned(Token::new(Literal(token), literal.span))
+                }
                 _ => Cow::Borrowed(self),
             },
             _ => Cow::Borrowed(self),
