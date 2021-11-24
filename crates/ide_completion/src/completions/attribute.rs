@@ -4,7 +4,10 @@
 //! for built-in attributes.
 
 use hir::HasAttrs;
-use ide_db::helpers::generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS};
+use ide_db::helpers::{
+    generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS},
+    parse_tt_as_comma_sep_paths,
+};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
@@ -30,12 +33,14 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
     match (name_ref, attribute.token_tree()) {
         (Some(path), Some(token_tree)) => match path.text().as_str() {
             "repr" => repr::complete_repr(acc, ctx, token_tree),
-            "derive" => derive::complete_derive(acc, ctx, &parse_comma_sep_paths(token_tree)?),
+            "derive" => {
+                derive::complete_derive(acc, ctx, &parse_tt_as_comma_sep_paths(token_tree)?)
+            }
             "feature" => {
-                lint::complete_lint(acc, ctx, &parse_comma_sep_paths(token_tree)?, FEATURES)
+                lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(token_tree)?, FEATURES)
             }
             "allow" | "warn" | "deny" | "forbid" => {
-                let existing_lints = parse_comma_sep_paths(token_tree)?;
+                let existing_lints = parse_tt_as_comma_sep_paths(token_tree)?;
                 lint::complete_lint(acc, ctx, &existing_lints, DEFAULT_LINTS);
                 lint::complete_lint(acc, ctx, &existing_lints, CLIPPY_LINTS);
                 lint::complete_lint(acc, ctx, &existing_lints, RUSTDOC_LINTS);
@@ -306,23 +311,6 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     )
     .prefer_inner(),
 ];
-
-fn parse_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Path>> {
-    let r_paren = input.r_paren_token()?;
-    let tokens = input
-        .syntax()
-        .children_with_tokens()
-        .skip(1)
-        .take_while(|it| it.as_token() != Some(&r_paren));
-    let input_expressions = tokens.into_iter().group_by(|tok| tok.kind() == T![,]);
-    Some(
-        input_expressions
-            .into_iter()
-            .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
-            .filter_map(|mut tokens| ast::Path::parse(&tokens.join("")).ok())
-            .collect::<Vec<ast::Path>>(),
-    )
-}
 
 fn parse_comma_sep_expr(input: ast::TokenTree) -> Option<Vec<ast::Expr>> {
     let r_paren = input.r_paren_token()?;
