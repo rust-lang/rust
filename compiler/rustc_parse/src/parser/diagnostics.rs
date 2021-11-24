@@ -1925,11 +1925,8 @@ impl<'a> Parser<'a> {
             }
         };
         let mut err =
-            self.struct_span_err(param.ident.span, "unexpected `const` parameter declaration");
-        err.span_label(
-            param.ident.span,
-            "expected a `const` expression, not a parameter declaration",
-        );
+            self.struct_span_err(param.span(), "unexpected `const` parameter declaration");
+        err.span_label(param.span(), "expected a `const` expression, not a parameter declaration");
         if let (Some(generics), Ok(snippet)) =
             (ty_generics, self.sess.source_map().span_to_snippet(param.span()))
         {
