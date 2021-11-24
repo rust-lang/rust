@@ -64,9 +64,9 @@ fn main() {
             // Analyze the crate and inspect the types under the cursor.
             queries.global_ctxt().unwrap().take().enter(|tcx| {
                 // Every compilation contains a single crate.
-                let hir_krate = tcx.hir().krate();
+                let hir_krate = tcx.hir();
                 // Iterate over the top-level items in the crate, looking for the main function.
-                for (_, item) in &hir_krate.items {
+                for item in hir_krate.items() {
                     // Use pattern-matching to find a specific node inside the main function.
                     if let rustc_hir::ItemKind::Fn(_, _, body_id) = item.kind {
                         let expr = &tcx.hir().body(body_id).value;
