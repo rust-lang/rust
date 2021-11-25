@@ -478,7 +478,7 @@ fn project_json_to_crate_graph(
                         CrateOrigin::CratesIo {
                             repo: krate.repository.clone(),
                             name: name.crate_name().to_string(),
-                            version: krate.version.clone().unwrap_or_else(|| "".to_string()),
+                            version: krate.version.clone().unwrap_or_default(),
                         }
                     } else {
                         CrateOrigin::Unknown
