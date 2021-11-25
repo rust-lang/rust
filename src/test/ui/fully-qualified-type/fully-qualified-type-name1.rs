@@ -1,10 +1,10 @@
 // Test that we use fully-qualified type names in error messages.
 
 fn main() {
-    let x: Option<usize>;
+    let x: //~ NOTE expected due to the type of this binding
+        Option<usize>; //~ NOTE expected due to this type
     x = 5;
     //~^ ERROR mismatched types
-    //~| expected enum `Option<usize>`
-    //~| found type `{integer}`
-    //~| expected enum `Option`, found integer
+    //~| NOTE expected enum `Option<usize>`
+    //~| NOTE expected enum `Option`, found integer
 }
