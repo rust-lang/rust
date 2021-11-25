@@ -1,0 +1,12 @@
+error[E0596]: cannot borrow `*inner` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-91206.rs:13:5
+   |
+LL |     let inner = client.get_inner_ref();
+   |         ----- help: consider changing this to be a mutable reference: `&mut Vec<usize>`
+LL |
+LL |     inner.clear();
+   |     ^^^^^^^^^^^^^ `inner` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.
