@@ -10,6 +10,7 @@ pub fn target() -> Target {
         LinkerFlavor::Gcc,
         vec!["-m64".to_string(), "-arch".to_string(), "x86_64".to_string()],
     );
+    base.link_env.extend(super::apple_base::macos_link_env("x86_64"));
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
