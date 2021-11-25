@@ -173,6 +173,12 @@ impl<'tcx> CheckConstVisitor<'tcx> {
                 None => return true,
             };
 
+            // If the function belongs to a trait, then it must enable the const_trait_impl
+            // feature to use that trait function (with a const default body).
+            if tcx.trait_of_item(def_id).is_some() {
+                return true;
+            }
+
             // If this crate is not using stability attributes, or this function is not claiming to be a
             // stable `const fn`, that is all that is required.
             if !tcx.features().staged_api || tcx.has_attr(def_id, sym::rustc_const_unstable) {

@@ -1004,11 +1004,12 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                 }
 
                 let mut err_span = self.span;
+                let ty_of_dropped_place = dropped_place.ty(self.body, self.tcx).ty;
 
-                let ty_needs_non_const_drop = qualifs::NeedsNonConstDrop::in_any_value_of_ty(
-                    self.ccx,
-                    dropped_place.ty(self.body, self.tcx).ty,
-                );
+                let ty_needs_non_const_drop =
+                    qualifs::NeedsNonConstDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place);
+
+                debug!(?ty_of_dropped_place, ?ty_needs_non_const_drop);
 
                 if !ty_needs_non_const_drop {
                     return;
