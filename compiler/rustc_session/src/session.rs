@@ -678,11 +678,7 @@ impl Session {
         self.opts.debugging_opts.sanitizer.contains(SanitizerSet::CFI)
     }
     pub fn overflow_checks(&self) -> bool {
-        self.opts
-            .cg
-            .overflow_checks
-            .or(self.opts.debugging_opts.force_overflow_checks)
-            .unwrap_or(self.opts.debug_assertions)
+        self.opts.cg.overflow_checks.unwrap_or(self.opts.debug_assertions)
     }
 
     /// Check whether this compile session and crate type use static crt.

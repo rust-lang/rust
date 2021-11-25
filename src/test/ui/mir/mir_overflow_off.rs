@@ -1,5 +1,5 @@
 // run-pass
-// compile-flags: -Z force-overflow-checks=off
+// compile-flags: -C overflow-checks=off
 
 // Test that with MIR codegen, overflow checks can be
 // turned off, even when they're from core::ops::*.
