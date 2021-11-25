@@ -1,0 +1,71 @@
+name: New lint suggestion
+description: Suggest a new Clippy lint.
+labels: ["A-lint"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for your lint idea!
+  - type: textarea
+    id: what
+    attributes:
+      label: What it does
+      description: What does this lint do?
+    validations:
+      required: true
+  - type: input
+    id: lint-name
+    attributes:
+      label: Lint Name
+      description: Please provide the lint name.
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: >
+        What category should this lint go into? If you're unsure you can select
+        multiple categories. You can find a category description in the
+        `README`.
+      multiple: true
+      options:
+        - correctness
+        - suspicious
+        - style
+        - complexity
+        - perf
+        - pedantic
+        - restriction
+        - cargo
+  - type: textarea
+    id: advantage
+    attributes:
+      label: Advantage
+      description: >
+        What is the advantage of the recommended code over the original code?
+      placeholder: |
+        - Remove bounds check inserted by ...
+        - Remove the need to duplicate/store ...
+        - Remove typo ...
+  - type: textarea
+    id: drawbacks
+    attributes:
+      label: Drawbacks
+      description: What might be possible drawbacks of such a lint?
+  - type: textarea
+    id: example
+    attributes:
+      label: Example
+      description: >
+        Include a short example showing when the lint should trigger together
+        with the improved code.
+      value: |
+        ```rust
+        <code>
+        ```
+
+        Could be written as:
+
+        ```rust
+        <code>
+        ```
+    validations:
+      required: true
