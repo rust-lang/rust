@@ -942,18 +942,22 @@ impl Handler {
 
         let mut inner = self.inner.borrow_mut();
         for mut diag in diags.into_iter() {
-            if let Some(mut unstable_id) = diag.level.get_expectation_id() {
-                let lint_index = unstable_id.get_lint_index();
+            let mut unstable_id = diag
+                .level
+                .get_expectation_id()
+                .expect("all diagnostics inside `unstable_expect_diagnostics` must have a `LintExpectationId`");
 
-                // The unstable to stable map only maps the unstable it to a stable id
-                // the lint index is manually transferred here.
-                unstable_id.set_lint_index(None);
-                if let Some(mut stable_id) = unstable_to_stable.get(&unstable_id).map(|id| *id) {
-                    stable_id.set_lint_index(lint_index);
-                    diag.level = Level::Expect(stable_id);
-                    inner.fulfilled_expectations.insert(stable_id);
-                }
-            }
+            // The unstable to stable map only maps the unstable it to a stable id
+            // the lint index is manually transferred here.
+            let lint_index = unstable_id.get_lint_index();
+            unstable_id.set_lint_index(None);
+            let mut stable_id = *unstable_to_stable
+                .get(&unstable_id)
+                .expect("each unstable `LintExpectationId` must have a matching stable id");
+
+            stable_id.set_lint_index(lint_index);
+            diag.level = Level::Expect(stable_id);
+            inner.fulfilled_expectations.insert(stable_id);
 
             (*TRACK_DIAGNOSTICS)(&diag);
         }

@@ -20,6 +20,8 @@ pub fn check_expectations(tcx: TyCtxt<'_>) {
             // holds stable ids
             if let LintExpectationId::Stable { hir_id, .. } = id {
                 emit_unfulfilled_expectation_lint(tcx, *hir_id, expectation);
+            } else {
+                unreachable!("at this stage all `LintExpectationId`s are stable");
             }
         }
     }
