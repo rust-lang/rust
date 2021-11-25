@@ -21,12 +21,7 @@ where
         // a) no ZSTs as there would be no allocation to reuse and pointer arithmetic would panic
         // b) size match as required by Alloc contract
         // c) alignments match as required by Alloc contract
-        if mem::size_of::<T>() == 0
-            || mem::size_of::<T>()
-                != mem::size_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
-            || mem::align_of::<T>()
-                != mem::align_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
-        {
+        if <I as LayoutMatcher>::MATCHES {
             // fallback to more generic implementations
             return SpecFromIterNested::from_iter(iterator);
         }
@@ -153,4 +148,19 @@ where
         mem::forget(drop_guard);
         len
     }
+}
+
+trait LayoutMatcher {
+    type IN;
+    const MATCHES: bool;
+}
+
+impl<I, OUT> LayoutMatcher for I
+where
+    I: Iterator<Item = OUT> + SourceIter<Source: AsIntoIter>,
+{
+    type IN = <<I as SourceIter>::Source as AsIntoIter>::Item;
+    const MATCHES: bool = mem::size_of::<OUT>() == 0
+        || mem::size_of::<OUT>() != mem::size_of::<Self::IN>()
+        || mem::align_of::<OUT>() != mem::align_of::<Self::IN>();
 }
