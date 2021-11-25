@@ -2149,13 +2149,44 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         F: FnMut(&T) -> bool,
     {
+        self.retain_mut(|elem| f(elem));
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns false.
+    /// This method operates in place, visiting each element exactly once in the
+    /// original order, and preserves the order of the retained elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_retain_mut)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// buf.extend(1..5);
+    /// buf.retain_mut(|x| if *x % 2 == 0 {
+    ///     *x += 1;
+    ///     true
+    /// } else {
+    ///     false
+    /// });
+    /// assert_eq!(buf, [3, 5]);
+    /// ```
+    #[unstable(feature = "vec_retain_mut", issue = "90829")]
+    pub fn retain_mut<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut T) -> bool,
+    {
         let len = self.len();
         let mut idx = 0;
         let mut cur = 0;
 
         // Stage 1: All values are retained.
         while cur < len {
-            if !f(&self[cur]) {
+            if !f(&mut self[cur]) {
                 cur += 1;
                 break;
             }
@@ -2164,7 +2195,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
         // Stage 2: Swap retained value into current idx.
         while cur < len {
-            if !f(&self[cur]) {
+            if !f(&mut self[cur]) {
                 cur += 1;
                 continue;
             }
@@ -2173,7 +2204,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             cur += 1;
             idx += 1;
         }
-        // Stage 3: Trancate all values after idx.
+        // Stage 3: Truncate all values after idx.
         if cur != idx {
             self.truncate(idx);
         }
