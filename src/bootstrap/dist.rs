@@ -2085,6 +2085,13 @@ impl Step for RustDev {
         ] {
             tarball.add_file(src_bindir.join(exe(bin, target)), "bin", 0o755);
         }
+
+        // We don't build LLD on some platforms, so only add it if it exists
+        let lld_path = builder.lld_out(target).join("bin").join(exe("lld", target));
+        if lld_path.exists() {
+            tarball.add_file(lld_path, "bin", 0o755);
+        }
+
         tarball.add_file(&builder.llvm_filecheck(target), "bin", 0o755);
 
         // Copy the include directory as well; needed mostly to build
