@@ -1,5 +1,6 @@
 // This test is to ensure that the anchors (`§`) have the expected color.
 goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
+show-text: true
 
 // This is needed to ensure that the text color is computed.
 show-text: true
