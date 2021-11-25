@@ -20,7 +20,7 @@ This document describes how to enable and use the LLVM instrumentation-based cov
 When `-Z instrument-coverage` is enabled, the Rust compiler enhances rust-based libraries and binaries by:
 
 -   Automatically injecting calls to an LLVM intrinsic ([`llvm.instrprof.increment`]), at functions and branches in compiled code, to increment counters when conditional sections of code are executed.
--   Embedding additional information in the data section of each library and binary (using the [LLVM Code Coverage Mapping Format] _Version 5_, supported _only_ in LLVM 12 and up), to define the code regions (start and end positions in the source code) being counted.
+-   Embedding additional information in the data section of each library and binary (using the [LLVM Code Coverage Mapping Format] _Version 5_, if compiling with LLVM 12, or _Version 6_, if compiling with LLVM 13 or higher), to define the code regions (start and end positions in the source code) being counted.
 
 When running a coverage-instrumented program, the counter values are written to a `profraw` file at program termination. LLVM bundles tools that read the counter results, combine those results with the coverage map (embedded in the program binary), and generate coverage reports in multiple formats.
 
