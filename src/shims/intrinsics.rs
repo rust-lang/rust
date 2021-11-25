@@ -306,7 +306,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // SIMD operations
-            "simd_add" | "simd_sub" | "simd_mul" | "simd_div" | "simd_rem" => {
+            #[rustfmt::skip]
+            | "simd_add"
+            | "simd_sub"
+            | "simd_mul"
+            | "simd_div"
+            | "simd_rem"
+            | "simd_shl"
+            | "simd_shr" => {
                 let &[ref left, ref right] = check_arg_count(args)?;
                 let (left, left_len) = this.operand_to_simd(left)?;
                 let (right, right_len) = this.operand_to_simd(right)?;
@@ -321,14 +328,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "simd_mul" => mir::BinOp::Mul,
                     "simd_div" => mir::BinOp::Div,
                     "simd_rem" => mir::BinOp::Rem,
+                    "simd_shl" => mir::BinOp::Shl,
+                    "simd_shr" => mir::BinOp::Shr,
                     _ => unreachable!(),
                 };
 
                 for i in 0..dest_len {
                     let left = this.read_immediate(&this.mplace_index(&left, i)?.into())?;
                     let right = this.read_immediate(&this.mplace_index(&right, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?.into();
-                    this.binop_ignore_overflow(op, &left, &right, &dest)?;
+                    let dest = this.mplace_index(&dest, i)?;
+                    let (val, overflowed, ty) = this.overflowing_binary_op(op, &left, &right)?;
+                    assert_eq!(ty, dest.layout.ty);
+                    if matches!(op, mir::BinOp::Shl | mir::BinOp::Shr) {
+                        // Shifts have extra UB as SIMD operations that the MIR binop does not have.
+                        // See <https://github.com/rust-lang/rust/issues/91237>.
+                        if overflowed {
+                            let r_val = right.to_scalar()?.to_bits(right.layout.size)?;
+                            throw_ub_format!("overflowing shift by {} in `{}` in SIMD lane {}", r_val, intrinsic_name, i);
+                        }
+                    }
+                    this.write_scalar(val, &dest.into())?;
                 }
             }
 

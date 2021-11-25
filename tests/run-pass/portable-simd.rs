@@ -21,6 +21,8 @@ fn simd_ops_i32() {
     assert_eq!(a / b, i32x4::from_array([10, 5, 3, 2]));
     assert_eq!(a / 2, i32x4::splat(5));
     assert_eq!(a % b, i32x4::from_array([0, 0, 1, 2]));
+    assert_eq!(b << 2, i32x4::from_array([4, 8, 12, 16]));
+    assert_eq!(b >> 1, i32x4::from_array([0, 1, 1, 2]));
 }
 
 fn main() {
