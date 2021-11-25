@@ -62,7 +62,12 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         // Realign src
         let mut src_aligned = (src as usize & !WORD_MASK) as *mut usize;
         // This will read (but won't use) bytes out of bound.
+        // cfg needed because not all targets will have atomic loads that can be lowered
+        // (e.g. BPF, MSP430), or provided by an external library (e.g. RV32I)
+        #[cfg(target_has_atomic_load_store = "ptr")]
         let mut prev_word = core::intrinsics::atomic_load_unordered(src_aligned);
+        #[cfg(not(target_has_atomic_load_store = "ptr"))]
+        let mut prev_word = core::ptr::read_volatile(src_aligned);
 
         while dest_usize < dest_end {
             src_aligned = src_aligned.add(1);
@@ -155,7 +160,12 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         // Realign src_aligned
         let mut src_aligned = (src as usize & !WORD_MASK) as *mut usize;
         // This will read (but won't use) bytes out of bound.
+        // cfg needed because not all targets will have atomic loads that can be lowered
+        // (e.g. BPF, MSP430), or provided by an external library (e.g. RV32I)
+        #[cfg(target_has_atomic_load_store = "ptr")]
         let mut prev_word = core::intrinsics::atomic_load_unordered(src_aligned);
+        #[cfg(not(target_has_atomic_load_store = "ptr"))]
+        let mut prev_word = core::ptr::read_volatile(src_aligned);
 
         while dest_start < dest_usize {
             src_aligned = src_aligned.sub(1);
