@@ -350,7 +350,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         match item.kind {
-            ImplItemKind::Const(ty, _) | ImplItemKind::TyAlias(ty) => self.check_ty(
+            ImplItemKind::Const(ty, _) => self.check_ty(
                 cx,
                 ty,
                 CheckTyContext {
@@ -358,8 +358,10 @@ impl<'tcx> LateLintPass<'tcx> for Types {
                     ..CheckTyContext::default()
                 },
             ),
-            // methods are covered by check_fn
-            ImplItemKind::Fn(..) => (),
+            // Methods are covered by check_fn.
+            // Type aliases are ignored because oftentimes it's impossible to
+            // make type alias declaration in trait simpler, see #1013
+            ImplItemKind::Fn(..) | ImplItemKind::TyAlias(..) => (),
         }
     }
 
