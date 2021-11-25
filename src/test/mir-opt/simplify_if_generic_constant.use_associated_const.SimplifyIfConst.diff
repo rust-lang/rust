@@ -1,0 +1,30 @@
+- // MIR for `use_associated_const` before SimplifyIfConst
++ // MIR for `use_associated_const` after SimplifyIfConst
+  
+  fn use_associated_const() -> u8 {
+      let mut _0: u8;                      // return place in scope 0 at $DIR/simplify_if_generic_constant.rs:8:51: 8:53
+      let mut _1: bool;                    // in scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 9:27
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 9:27
+-         _1 = const <T as HasBoolConst>::B; // scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 9:27
+-         switchInt(move _1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 9:27
++         switchInt(const <T as HasBoolConst>::B) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 9:27
+      }
+  
+      bb1: {
+          _0 = const 13_u8;                // scope 0 at $DIR/simplify_if_generic_constant.rs:10:3: 10:5
+          goto -> bb3;                     // scope 0 at $DIR/simplify_if_generic_constant.rs:9:2: 13:3
+      }
+  
+      bb2: {
+          _0 = const 42_u8;                // scope 0 at $DIR/simplify_if_generic_constant.rs:12:3: 12:5
+          goto -> bb3;                     // scope 0 at $DIR/simplify_if_generic_constant.rs:9:2: 13:3
+      }
+  
+      bb3: {
+          StorageDead(_1);                 // scope 0 at $DIR/simplify_if_generic_constant.rs:13:2: 13:3
+          return;                          // scope 0 at $DIR/simplify_if_generic_constant.rs:14:2: 14:2
+      }
+  }
+  

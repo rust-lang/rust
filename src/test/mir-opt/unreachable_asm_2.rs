@@ -11,7 +11,7 @@ fn main() {
     if let Some(_x) = empty() {
         let mut _y;
 
-        if true {
+        if unknown() {
             // asm instruction stops unreachable propagation to block bb3.
             unsafe { llvm_asm!("NOP"); }
             _y = 21;
@@ -24,3 +24,6 @@ fn main() {
         match _x { }
     }
 }
+
+#[inline(never)]
+fn unknown() -> bool { unimplemented!() }

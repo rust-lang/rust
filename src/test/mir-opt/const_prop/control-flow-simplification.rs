@@ -1,15 +1,15 @@
 // compile-flags: -Zmir-opt-level=1
 
-trait NeedsDrop:Sized{
-    const NEEDS:bool=std::mem::needs_drop::<Self>();
+trait HasSize: Sized {
+    const BYTES:usize = std::mem::size_of::<Self>();
 }
 
-impl<This> NeedsDrop for This{}
+impl<This> HasSize for This{}
 
 // EMIT_MIR control_flow_simplification.hello.ConstProp.diff
 // EMIT_MIR control_flow_simplification.hello.PreCodegen.before.mir
 fn hello<T>(){
-    if <bool>::NEEDS {
+    if <bool>::BYTES > 10 {
         panic!()
     }
 }

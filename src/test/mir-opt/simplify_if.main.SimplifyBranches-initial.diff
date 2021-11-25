@@ -1,0 +1,43 @@
+- // MIR for `main` before SimplifyBranches-initial
++ // MIR for `main` after SimplifyBranches-initial
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_if.rs:7:11: 7:11
+      let mut _1: bool;                    // in scope 0 at $DIR/simplify_if.rs:8:8: 8:13
+      let _2: ();                          // in scope 0 at $DIR/simplify_if.rs:9:9: 9:15
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/simplify_if.rs:8:8: 8:13
+-         switchInt(const false) -> [false: bb3, otherwise: bb1]; // scope 0 at $DIR/simplify_if.rs:8:8: 8:13
++         goto -> bb3;                     // scope 0 at $DIR/simplify_if.rs:8:8: 8:13
+      }
+  
+      bb1: {
+          StorageLive(_2);                 // scope 0 at $DIR/simplify_if.rs:9:9: 9:15
+          _2 = noop() -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/simplify_if.rs:9:9: 9:15
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_if.rs:9:9: 9:13
+                                           // + literal: Const { ty: fn() {noop}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb2: {
+          StorageDead(_2);                 // scope 0 at $DIR/simplify_if.rs:9:15: 9:16
+          _0 = const ();                   // scope 0 at $DIR/simplify_if.rs:8:14: 10:6
+          goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:8:5: 10:6
+      }
+  
+      bb3: {
+          _0 = const ();                   // scope 0 at $DIR/simplify_if.rs:10:6: 10:6
+          goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:8:5: 10:6
+      }
+  
+      bb4: {
+          StorageDead(_1);                 // scope 0 at $DIR/simplify_if.rs:10:5: 10:6
+          return;                          // scope 0 at $DIR/simplify_if.rs:11:2: 11:2
+      }
+  
+      bb5 (cleanup): {
+          resume;                          // scope 0 at $DIR/simplify_if.rs:7:1: 11:2
+      }
+  }
+  

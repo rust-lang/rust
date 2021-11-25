@@ -71,6 +71,7 @@ mod shim;
 mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
+mod simplify_if_const;
 mod simplify_try;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
@@ -456,6 +457,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
 
     let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
         // Remove all things only needed by analysis
+        &simplify_if_const::SimplifyIfConst,
         &simplify_branches::SimplifyBranches::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &cleanup_post_borrowck::CleanupNonCodegenStatements,

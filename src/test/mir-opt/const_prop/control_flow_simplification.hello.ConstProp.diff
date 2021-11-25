@@ -3,15 +3,15 @@
   
   fn hello() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/control-flow-simplification.rs:11:14: 11:14
-      let mut _1: bool;                    // in scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
+      let mut _1: bool;                    // in scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:26
       let mut _2: !;                       // in scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
--         _1 = const <bool as NeedsDrop>::NEEDS; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
--         switchInt(move _1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-+         _1 = const false;                // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-+         switchInt(const false) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
+          StorageLive(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:26
+-         _1 = Gt(const <bool as HasSize>::BYTES, const 10_usize); // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:26
+-         switchInt(move _1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:26
++         _1 = const false;                // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:26
++         switchInt(const false) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:26
       }
   
       bb1: {

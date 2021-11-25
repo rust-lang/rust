@@ -9,7 +9,7 @@ fn main() {
     if let Some(_x) = empty() {
         let mut _y;
 
-        if true {
+        if unknown() {
             _y = 21;
         } else {
             _y = 42;
@@ -18,3 +18,6 @@ fn main() {
         match _x { }
     }
 }
+
+#[inline(never)]
+fn unknown() -> bool { unimplemented!() }

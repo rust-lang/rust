@@ -38,7 +38,7 @@ fn bar(i: i32) -> (bool, bool, bool, bool) {
 
 fn match_nested_if() -> bool {
     let val = match () {
-        () if if if if true { true } else { false } { true } else { false } {
+        () if if if if unknown() { true } else { false } { true } else { false } {
             true
         } else {
             false
@@ -57,3 +57,6 @@ fn main() {
     let _ = bar(0);
     let _ = match_nested_if();
 }
+
+#[inline(never)]
+fn unknown() -> bool { unimplemented!() }

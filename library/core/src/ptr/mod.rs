@@ -430,6 +430,13 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 #[inline]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 pub(crate) const unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
+    trait TypeSizeCheck {
+        const IS_CHUNK_SIZE_OR_LARGER: bool;
+    }
+    impl<T> TypeSizeCheck for T {
+        const IS_CHUNK_SIZE_OR_LARGER: bool = mem::size_of::<T>() >= 32;
+    }
+
     // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
     // reinterpretation of values as (chunkable) byte arrays, and the loop in the
     // block optimization in `swap_nonoverlapping_bytes` is hard to rewrite back
@@ -442,7 +449,7 @@ pub(crate) const unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
     {
         // Only apply the block optimization in `swap_nonoverlapping_bytes` for types
         // at least as large as the block size, to avoid pessimizing codegen.
-        if mem::size_of::<T>() >= 32 {
+        if T::IS_CHUNK_SIZE_OR_LARGER {
             // SAFETY: the caller must uphold the safety contract for `swap_nonoverlapping`.
             unsafe { swap_nonoverlapping(x, y, 1) };
             return;
