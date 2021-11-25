@@ -124,7 +124,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     let inline_asm_index = fx.cx.inline_asm_index.get();
     fx.cx.inline_asm_index.set(inline_asm_index + 1);
     let asm_name =
-        format!("{}__inline_asm_{}", fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"), inline_asm_index);
+        format!("__inline_asm_{}_n{}", fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"), inline_asm_index);
 
     let generated_asm = asm_gen.generate_asm_wrapper(&asm_name);
     fx.cx.global_asm.push_str(&generated_asm);
