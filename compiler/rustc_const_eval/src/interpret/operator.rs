@@ -130,7 +130,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let signed = left_layout.abi.is_signed();
             let size = u128::from(left_layout.size.bits());
             let overflow = r >= size;
-            let r = r % size; // mask to type size
+            // The shift offset is implicitly masked to the type size, to make sure this operation
+            // is always defined. This is the one MIR operator that does *not* directly map to a
+            // single LLVM operation. See
+            // <https://github.com/rust-lang/rust/blob/a3b9405ae7bb6ab4e8103b414e75c44598a10fd2/compiler/rustc_codegen_ssa/src/common.rs#L131-L158>
+            // for the corresponding truncation in our codegen backends.
+            let r = r % size;
             let r = u32::try_from(r).unwrap(); // we masked so this will always fit
             let result = if signed {
                 let l = self.sign_extend(l, left_layout) as i128;
