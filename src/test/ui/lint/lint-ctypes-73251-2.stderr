@@ -1,4 +1,4 @@
-error: `extern` block uses type `impl TraitA`, which is not FFI-safe
+error: `extern` block uses type `impl TraitA<Assoc = u32>`, which is not FFI-safe
   --> $DIR/lint-ctypes-73251-2.rs:36:25
    |
 LL |     pub fn lint_me() -> <AliasB as TraitB>::Assoc;

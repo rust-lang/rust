@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `impl Future: Copy` is not satisfied
+error[E0277]: the trait bound `impl Future<Output = [async output]>: Copy` is not satisfied
   --> $DIR/issue-55872-2.rs:14:20
    |
 LL |     fn foo<T>() -> Self::E {
-   |                    ^^^^^^^ the trait `Copy` is not implemented for `impl Future`
+   |                    ^^^^^^^ the trait `Copy` is not implemented for `impl Future<Output = [async output]>`
 
 error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
   --> $DIR/issue-55872-2.rs:14:28

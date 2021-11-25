@@ -1,5 +1,5 @@
 // build-fail
-// compile-flags: -Zforce-overflow-checks=on
+// compile-flags: -C overflow-checks=on
 
 #![allow(arithmetic_overflow)]
 #![warn(const_err)]

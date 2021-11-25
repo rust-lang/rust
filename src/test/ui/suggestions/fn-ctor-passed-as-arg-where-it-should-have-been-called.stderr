@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `fn() -> impl T {foo}: T` is not satisfied
+error[E0277]: the trait bound `fn() -> impl T<O = ()> {foo}: T` is not satisfied
   --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:17:9
    |
 LL | fn foo() -> impl T<O=()> { S }
    |    --- consider calling this function
 ...
 LL |     bar(foo);
-   |     --- ^^^ the trait `T` is not implemented for `fn() -> impl T {foo}`
+   |     --- ^^^ the trait `T` is not implemented for `fn() -> impl T<O = ()> {foo}`
    |     |
    |     required by a bound introduced by this call
    |

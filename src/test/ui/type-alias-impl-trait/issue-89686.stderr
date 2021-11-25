@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<impl Future as Future>::Output == ()`
+error[E0271]: type mismatch resolving `<impl Future<Output = [async output]> as Future>::Output == ()`
   --> $DIR/issue-89686.rs:7:17
    |
 LL | type G<'a, T> = impl Future<Output = ()>;
@@ -13,8 +13,8 @@ LL | pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
    |                                           ------------------------------- the found opaque type
    |
    = note:    expected unit type `()`
-           found associated type `<impl Future as Future>::Output`
-   = help: consider constraining the associated type `<impl Future as Future>::Output` to `()`
+           found associated type `<impl Future<Output = [async output]> as Future>::Output`
+   = help: consider constraining the associated type `<impl Future<Output = [async output]> as Future>::Output` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0277]: the trait bound `T: Trait` is not satisfied

@@ -431,6 +431,10 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
 impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
+    fn visit_attribute(&mut self, _: &'ast Attribute) {
+        // We do not want to resolve expressions that appear in attributes,
+        // as they do not correspond to actual code.
+    }
     fn visit_item(&mut self, item: &'ast Item) {
         let prev = replace(&mut self.diagnostic_metadata.current_item, Some(item));
         // Always report errors in items we just entered.
