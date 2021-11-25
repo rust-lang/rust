@@ -262,6 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "probe(self_ty={:?}, return_type={}, scope_expr_id={})",
             self_ty, return_type, scope_expr_id
         );
+        self.set_tainted_by_errors();
         let method_names = self
             .probe_op(
                 span,
@@ -1469,7 +1470,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
         let predicate = ty::Binder::dummy(trait_ref).to_poly_trait_predicate();
         let obligation = traits::Obligation::new(cause, self.param_env, predicate);
-        traits::SelectionContext::new(self).select(&obligation)
+        traits::SelectionContext::with_suggestion(self, self.is_suggestion.0).select(&obligation)
     }
 
     fn candidate_source(&self, candidate: &Candidate<'tcx>, self_ty: Ty<'tcx>) -> CandidateSource {
@@ -1521,7 +1522,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             let mut xform_ret_ty = probe.xform_ret_ty;
             debug!(?xform_ret_ty);
 
-            let selcx = &mut traits::SelectionContext::new(self);
+            let selcx = &mut traits::SelectionContext::with_suggestion(self, self.is_suggestion.0);
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
 
             // If so, impls may carry other conditions (e.g., where
