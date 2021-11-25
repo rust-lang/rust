@@ -4,7 +4,7 @@ error: `[closure@$DIR/non-structural-match-types.rs:9:17: 9:22]` cannot be used 
 LL |         const { || {} } => {},
    |         ^^^^^^^^^^^^^^^
 
-error: `impl Future` cannot be used in patterns
+error: `impl Future<Output = [async output]>` cannot be used in patterns
   --> $DIR/non-structural-match-types.rs:12:9
    |
 LL |         const { async {} } => {},
