@@ -730,7 +730,7 @@ impl EmitterWriter {
         }
 
         let source_string = match file.get_line(line.line_index - 1) {
-            Some(s) => replace_tabs(&*s),
+            Some(s) => normalize_whitespace(&*s),
             None => return Vec::new(),
         };
 
@@ -1286,7 +1286,7 @@ impl EmitterWriter {
             }
             for &(ref text, _) in msg.iter() {
                 // Account for newlines to align output to its label.
-                for (line, text) in replace_tabs(text).lines().enumerate() {
+                for (line, text) in normalize_whitespace(text).lines().enumerate() {
                     buffer.append(
                         0 + line,
                         &format!(
@@ -1550,7 +1550,7 @@ impl EmitterWriter {
 
                             self.draw_line(
                                 &mut buffer,
-                                &replace_tabs(&unannotated_line),
+                                &normalize_whitespace(&unannotated_line),
                                 annotated_file.lines[line_idx + 1].line_index - 1,
                                 last_buffer_line_num,
                                 width_offset,
@@ -1672,7 +1672,7 @@ impl EmitterWriter {
                     buffer.puts(
                         row_num - 1,
                         max_line_num_len + 3,
-                        &replace_tabs(
+                        &normalize_whitespace(
                             &*file_lines
                                 .file
                                 .get_line(file_lines.lines[line_pos].line_index)
@@ -1698,7 +1698,7 @@ impl EmitterWriter {
                 }
 
                 // print the suggestion
-                buffer.append(row_num, &replace_tabs(line), Style::NoStyle);
+                buffer.append(row_num, &normalize_whitespace(line), Style::NoStyle);
 
                 // Colorize addition/replacements with green.
                 for &SubstitutionHighlight { start, end } in highlight_parts {
@@ -2081,6 +2081,7 @@ fn num_decimal_digits(num: usize) -> usize {
 // We replace some characters so the CLI output is always consistent and underlines aligned.
 const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\t', "    "),   // We do our own tab replacement
+    ('\u{200D}', ""), // Replace ZWJ with nothing for consistent terminal output of grapheme clusters.
     ('\u{202A}', ""), // The following unicode text flow control characters are inconsistently
     ('\u{202B}', ""), // supported accross CLIs and can cause confusion due to the bytes on disk
     ('\u{202D}', ""), // not corresponding to the visible source code, so we replace them always.
@@ -2092,7 +2093,7 @@ const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\u{2069}', ""),
 ];
 
-fn replace_tabs(str: &str) -> String {
+fn normalize_whitespace(str: &str) -> String {
     let mut s = str.to_string();
     for (c, replacement) in OUTPUT_REPLACEMENTS {
         s = s.replace(*c, replacement);

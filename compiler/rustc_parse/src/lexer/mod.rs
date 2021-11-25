@@ -1,3 +1,4 @@
+use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
@@ -222,6 +223,22 @@ impl<'a> StringReader<'a> {
                 }
                 token::Ident(sym, is_raw_ident)
             }
+            rustc_lexer::TokenKind::InvalidIdent
+                // Do not recover an identifier with emoji if the codepoint is a confusable
+                // with a recoverable substitution token, like `➖`.
+                if UNICODE_ARRAY
+                    .iter()
+                    .find(|&&(c, _, _)| {
+                        let sym = self.str_from(start);
+                        sym.chars().count() == 1 && c == sym.chars().next().unwrap()
+                    })
+                    .is_none() =>
+            {
+                let sym = nfc_normalize(self.str_from(start));
+                let span = self.mk_sp(start, self.pos);
+                self.sess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default().push(span);
+                token::Ident(sym, false)
+            }
             rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                 let suffix_start = start + BytePos(suffix_start as u32);
                 let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
@@ -293,7 +310,7 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
             rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
 
-            rustc_lexer::TokenKind::Unknown => {
+            rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
                 let c = self.str_from(start).chars().next().unwrap();
                 let mut err =
                     self.struct_fatal_span_char(start, self.pos, "unknown start of token", c);

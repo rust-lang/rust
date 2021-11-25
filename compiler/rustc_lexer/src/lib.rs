@@ -64,6 +64,8 @@ pub enum TokenKind {
     /// "ident" or "continue"
     /// At this step keywords are also considered identifiers.
     Ident,
+    /// Like the above, but containing invalid unicode codepoints.
+    InvalidIdent,
     /// "r#ident"
     RawIdent,
     /// An unknown prefix like `foo#`, `foo'`, `foo"`. Note that only the
@@ -411,6 +413,10 @@ impl Cursor<'_> {
                 let kind = Str { terminated };
                 Literal { kind, suffix_start }
             }
+            // Identifier starting with an emoji. Only lexed for graceful error recovery.
+            c if !c.is_ascii() && unic_emoji_char::is_emoji(c) => {
+                self.fake_ident_or_unknown_prefix()
+            }
             _ => Unknown,
         };
         Token::new(token_kind, self.len_consumed())
@@ -492,7 +498,25 @@ impl Cursor<'_> {
         // we see a prefix here, it is definitely an unknown prefix.
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
+            c if !c.is_ascii() && unic_emoji_char::is_emoji(c) => {
+                self.fake_ident_or_unknown_prefix()
+            }
             _ => Ident,
+        }
+    }
+
+    fn fake_ident_or_unknown_prefix(&mut self) -> TokenKind {
+        // Start is already eaten, eat the rest of identifier.
+        self.eat_while(|c| {
+            unicode_xid::UnicodeXID::is_xid_continue(c)
+                || (!c.is_ascii() && unic_emoji_char::is_emoji(c))
+                || c == '\u{200d}'
+        });
+        // Known prefixes must have been handled earlier. So if
+        // we see a prefix here, it is definitely an unknown prefix.
+        match self.first() {
+            '#' | '"' | '\'' => UnknownPrefix,
+            _ => InvalidIdent,
         }
     }
 
