@@ -1227,8 +1227,8 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
             | SelfTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
                 (mutability == Mutability::Mut, false, false)
             }
-            SelfTy::SelfExplicit(clean::ResolvedPath { did, .. }) => {
-                (false, Some(did) == tcx.lang_items().owned_box(), false)
+            SelfTy::SelfExplicit(clean::ResolvedPath { path }) => {
+                (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
             }
             SelfTy::SelfValue => (false, false, true),
             _ => (false, false, false),
@@ -2520,7 +2520,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
         }
 
         match ty {
-            clean::Type::ResolvedPath { did, .. } => process_path(did),
+            clean::Type::ResolvedPath { path } => process_path(path.def_id()),
             clean::Type::Tuple(tys) => {
                 work.extend(tys.into_iter());
             }
