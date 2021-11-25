@@ -93,10 +93,16 @@ impl LateLintPass<'_> for NeedlessQuestionMark {
 }
 
 fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    let inner_expr = if_chain! {
+    if_chain! {
         if let ExprKind::Call(path, [arg]) = &expr.kind;
         if let ExprKind::Path(ref qpath) = &path.kind;
-        if is_lang_ctor(cx, qpath, OptionSome) || is_lang_ctor(cx, qpath, ResultOk);
+        let sugg_remove = if is_lang_ctor(cx, qpath, OptionSome) {
+            "Some()"
+        } else if is_lang_ctor(cx, qpath, ResultOk) {
+            "Ok()"
+        } else {
+            return;
+        };
         if let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar) = &arg.kind;
         if let ExprKind::Call(called, [inner_expr]) = &inner_expr_with_q.kind;
         if let ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, _)) = &called.kind;
@@ -104,15 +110,16 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         let expr_ty = cx.typeck_results().expr_ty(expr);
         let inner_ty = cx.typeck_results().expr_ty(inner_expr);
         if TyS::same_type(expr_ty, inner_ty);
-        then { inner_expr } else { return; }
-    };
-    span_lint_and_sugg(
-        cx,
-        NEEDLESS_QUESTION_MARK,
-        expr.span,
-        "question mark operator is useless here",
-        "try",
-        format!("{}", snippet(cx, inner_expr.span, r#""...""#)),
-        Applicability::MachineApplicable,
-    );
+        then {
+            span_lint_and_sugg(
+                cx,
+                NEEDLESS_QUESTION_MARK,
+                expr.span,
+                "question mark operator is useless here",
+                &format!("try removing question mark and `{}`", sugg_remove),
+                format!("{}", snippet(cx, inner_expr.span, r#""...""#)),
+                Applicability::MachineApplicable,
+            );
+        }
+    }
 }
