@@ -10,6 +10,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::sym;
@@ -27,8 +28,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
+        error: TypeError<'tcx>,
     ) {
-        self.annotate_expected_due_to_let_ty(err, expr);
+        self.annotate_expected_due_to_let_ty(err, expr, error);
         self.suggest_box_deref(err, expr, expected, expr_ty);
         self.suggest_compatible_variants(err, expr, expected, expr_ty);
         self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr);
@@ -145,9 +147,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
-        let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
+        let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e.clone());
 
-        self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr);
+        self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr, e);
 
         (expected, Some(err))
     }
@@ -156,15 +158,104 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
+        error: TypeError<'_>,
     ) {
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
-        if let Some(hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. })) =
-            self.tcx.hir().find(parent)
-        {
-            if init.hir_id == expr.hir_id {
+        match (self.tcx.hir().find(parent), error) {
+            (Some(hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. })), _)
+                if init.hir_id == expr.hir_id =>
+            {
                 // Point at `let` assignment type.
                 err.span_label(ty.span, "expected due to this");
             }
+            (
+                Some(hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Assign(lhs, rhs, _), ..
+                })),
+                TypeError::Sorts(ExpectedFound { expected, .. }),
+            ) if rhs.hir_id == expr.hir_id && !expected.is_closure() => {
+                // We ignore closures explicitly because we already point at them elsewhere.
+                // Point at the assigned-to binding.
+                let mut primary_span = lhs.span;
+                let mut secondary_span = lhs.span;
+                let mut post_message = "";
+                match lhs.kind {
+                    hir::ExprKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path {
+                            res:
+                                hir::def::Res::Def(
+                                    hir::def::DefKind::Static | hir::def::DefKind::Const,
+                                    def_id,
+                                ),
+                            ..
+                        },
+                    )) => {
+                        if let Some(hir::Node::Item(hir::Item {
+                            ident,
+                            kind: hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..),
+                            ..
+                        })) = self.tcx.hir().get_if_local(*def_id)
+                        {
+                            primary_span = ty.span;
+                            secondary_span = ident.span;
+                            post_message = " type";
+                        }
+                    }
+                    hir::ExprKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path { res: hir::def::Res::Local(hir_id), .. },
+                    )) => {
+                        if let Some(hir::Node::Binding(pat)) = self.tcx.hir().find(*hir_id) {
+                            let parent = self.tcx.hir().get_parent_node(pat.hir_id);
+                            primary_span = pat.span;
+                            secondary_span = pat.span;
+                            match self.tcx.hir().find(parent) {
+                                Some(hir::Node::Local(hir::Local { ty: Some(ty), .. })) => {
+                                    primary_span = ty.span;
+                                    post_message = " type";
+                                }
+                                Some(hir::Node::Local(hir::Local { init: Some(init), .. })) => {
+                                    primary_span = init.span;
+                                    post_message = " value";
+                                }
+                                Some(hir::Node::Param(hir::Param { ty_span, .. })) => {
+                                    primary_span = *ty_span;
+                                    post_message = " parameter type";
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+
+                if primary_span != secondary_span
+                    && self
+                        .tcx
+                        .sess
+                        .source_map()
+                        .is_multiline(secondary_span.shrink_to_hi().until(primary_span))
+                {
+                    // We are pointing at the binding's type or initializer value, but it's pattern
+                    // is in a different line, so we point at both.
+                    err.span_label(secondary_span, "expected due to the type of this binding");
+                    err.span_label(primary_span, &format!("expected due to this{}", post_message));
+                } else if post_message == "" {
+                    // We are pointing at either the assignment lhs or the binding def pattern.
+                    err.span_label(primary_span, "expected due to the type of this binding");
+                } else {
+                    // We are pointing at the binding's type or initializer value.
+                    err.span_label(primary_span, &format!("expected due to this{}", post_message));
+                }
+
+                if !lhs.is_syntactic_place_expr() {
+                    // We already emitted E0070 "invalid left-hand side of assignment", so we
+                    // silence this.
+                    err.delay_as_bug();
+                }
+            }
+            _ => {}
         }
     }
 
