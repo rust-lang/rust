@@ -904,9 +904,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                         // should ensure that, unless this happens within a snapshot that's
                         // rolled back, fulfillment or evaluation will notice the cycle.
 
-                        if use_cache {
-                            infcx.inner.borrow_mut().projection_cache().recur(cache_key);
-                        }
+                        infcx.inner.borrow_mut().projection_cache().recur(cache_key);
                         Err(InProgress)
                     }
                     ProjectionCacheEntry::Recur => {
