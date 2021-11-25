@@ -69,6 +69,7 @@ use syntax::ast;
 use crate::{
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
+    item_tree::TreeId,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
@@ -214,7 +215,11 @@ impl DefMap {
         let edition = crate_graph[krate].edition;
         let origin = ModuleOrigin::CrateRoot { definition: crate_graph[krate].root_file_id };
         let def_map = DefMap::empty(krate, edition, origin);
-        let def_map = collector::collect_defs(db, def_map, None);
+        let def_map = collector::collect_defs(
+            db,
+            def_map,
+            TreeId::new(crate_graph[krate].root_file_id.into(), None),
+        );
 
         Arc::new(def_map)
     }
@@ -225,8 +230,9 @@ impl DefMap {
     ) -> Option<Arc<DefMap>> {
         let block: BlockLoc = db.lookup_intern_block(block_id);
 
-        let item_tree = db.file_item_tree(block.ast_id.file_id);
-        if item_tree.inner_items_of_block(block.ast_id.value).is_empty() {
+        let tree_id = TreeId::new(block.ast_id.file_id, Some(block_id));
+        let item_tree = tree_id.item_tree(db);
+        if item_tree.top_level_items().is_empty() {
             return None;
         }
 
@@ -240,7 +246,7 @@ impl DefMap {
         );
         def_map.block = Some(block_info);
 
-        let def_map = collector::collect_defs(db, def_map, Some(block.ast_id));
+        let def_map = collector::collect_defs(db, def_map, tree_id);
         Some(Arc::new(def_map))
     }
 
