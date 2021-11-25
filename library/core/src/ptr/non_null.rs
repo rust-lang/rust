@@ -634,6 +634,42 @@ impl<T> NonNull<[T]> {
     }
 }
 
+impl NonNull<str> {
+    /// Creates a non-null raw string slice from a thin pointer and a length.
+    ///
+    /// The `len` argument is the number of **bytes**, not the number of characters.
+    ///
+    /// This function is safe, but dereferencing the return value is unsafe.
+    /// See the documentation of [`slice::from_raw_parts`] for slice safety
+    /// requirements and [`str::from_utf8`] for string safety requirements.
+    ///
+    /// [`str::from_utf8`]: crate::str::from_utf8
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(nonnull_str_from_raw_parts)]
+    ///
+    /// use std::ptr::NonNull;
+    ///
+    /// // create a string slice pointer when starting out with a pointer to the first byte
+    /// let mut x = [b'a', b'b', b'c'];
+    /// let nonnull_pointer = NonNull::new(x.as_mut_ptr()).unwrap();
+    /// let str = NonNull::str_from_raw_parts(nonnull_pointer, 3);
+    /// assert_eq!(unsafe { str.as_ref() }, "abc");
+    /// ```
+    ///
+    /// (Note that this example artificially demonstrates a use of this method,
+    /// but `let str = NonNull::from(str::from_utf8_unchecked(&x[..]));` would be a better way to write code like this.)
+    #[unstable(feature = "nonnull_str_from_raw_parts", issue = "none")]
+    #[rustc_const_unstable(feature = "const_nonnull_str_from_raw_parts", issue = "none")]
+    #[inline]
+    pub const fn str_from_raw_parts(data: NonNull<u8>, len: usize) -> Self {
+        // SAFETY: `data` is a `NonNull` pointer which is necessarily non-null
+        unsafe { Self::new_unchecked(super::str_from_raw_parts_mut(data.as_ptr(), len)) }
+    }
+}
+
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Clone for NonNull<T> {
     #[inline]
