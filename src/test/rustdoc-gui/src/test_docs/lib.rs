@@ -47,6 +47,8 @@ impl AsRef<str> for Foo {
 }
 
 /// Just a normal enum.
+///
+/// # title!
 #[doc(alias = "ThisIsAnAlias")]
 pub enum WhoLetTheDogOut {
     /// Woof!
