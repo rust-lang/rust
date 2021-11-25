@@ -31,7 +31,7 @@ LL | |
 LL | | }
    | |_^ expected `u8`, found `()`
 
-error[E0271]: type mismatch resolving `<impl Future as Future>::Output == ()`
+error[E0271]: type mismatch resolving `<impl Future<Output = [async output]> as Future>::Output == ()`
   --> $DIR/async-block-control-flow-static-semantics.rs:26:39
    |
 LL |     let _: &dyn Future<Output = ()> = &block;
@@ -47,7 +47,7 @@ LL | fn return_targets_async_block_not_fn() -> u8 {
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 
-error[E0271]: type mismatch resolving `<impl Future as Future>::Output == ()`
+error[E0271]: type mismatch resolving `<impl Future<Output = [async output]> as Future>::Output == ()`
   --> $DIR/async-block-control-flow-static-semantics.rs:17:39
    |
 LL |     let _: &dyn Future<Output = ()> = &block;

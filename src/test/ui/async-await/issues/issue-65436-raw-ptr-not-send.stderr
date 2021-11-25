@@ -4,7 +4,7 @@ error: future cannot be sent between threads safely
 LL |     assert_send(async {
    |     ^^^^^^^^^^^ future created by async block is not `Send`
    |
-   = help: within `impl Future`, the trait `Send` is not implemented for `*const u8`
+   = help: within `impl Future<Output = [async output]>`, the trait `Send` is not implemented for `*const u8`
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-65436-raw-ptr-not-send.rs:14:9
    |

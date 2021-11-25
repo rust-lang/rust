@@ -5,8 +5,8 @@
       debug _baz => _1;                    // in scope 0 at $DIR/issue-78442.rs:9:5: 9:9
       let mut _0: ();                      // return place in scope 0 at $DIR/issue-78442.rs:10:3: 10:3
       let _2: ();                          // in scope 0 at $DIR/issue-78442.rs:11:5: 11:17
--     let mut _3: &impl std::ops::Fn<()>;  // in scope 0 at $DIR/issue-78442.rs:11:5: 11:15
--     let _4: impl std::ops::Fn<()>;       // in scope 0 at $DIR/issue-78442.rs:11:5: 11:15
+-     let mut _3: &impl Fn();              // in scope 0 at $DIR/issue-78442.rs:11:5: 11:15
+-     let _4: impl Fn();                   // in scope 0 at $DIR/issue-78442.rs:11:5: 11:15
 +     let mut _3: &fn() {foo};             // in scope 0 at $DIR/issue-78442.rs:11:5: 11:15
 +     let _4: fn() {foo};                  // in scope 0 at $DIR/issue-78442.rs:11:5: 11:15
       let mut _5: ();                      // in scope 0 at $DIR/issue-78442.rs:11:5: 11:17
@@ -18,17 +18,17 @@
           _4 = hide_foo() -> [return: bb1, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:11:5: 11:15
                                            // mir::Constant
                                            // + span: $DIR/issue-78442.rs:11:5: 11:13
-                                           // + literal: Const { ty: fn() -> impl std::ops::Fn<()> {hide_foo}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() -> impl Fn() {hide_foo}, val: Value(Scalar(<ZST>)) }
       }
   
       bb1: {
           _3 = &_4;                        // scope 0 at $DIR/issue-78442.rs:11:5: 11:15
           StorageLive(_5);                 // scope 0 at $DIR/issue-78442.rs:11:5: 11:17
           nop;                             // scope 0 at $DIR/issue-78442.rs:11:5: 11:17
-          _2 = <impl Fn<()> as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:11:5: 11:17
+          _2 = <impl Fn() as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:11:5: 11:17
                                            // mir::Constant
                                            // + span: $DIR/issue-78442.rs:11:5: 11:15
-                                           // + literal: Const { ty: for<'r> extern "rust-call" fn(&'r impl std::ops::Fn<()>, ()) -> <impl std::ops::Fn<()> as std::ops::FnOnce<()>>::Output {<impl std::ops::Fn<()> as std::ops::Fn<()>>::call}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: for<'r> extern "rust-call" fn(&'r impl Fn(), ()) -> <impl Fn() as std::ops::FnOnce<()>>::Output {<impl Fn() as std::ops::Fn<()>>::call}, val: Value(Scalar(<ZST>)) }
       }
   
       bb2: {

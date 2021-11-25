@@ -21,7 +21,7 @@ LL |     type MainFn = impl Fn();
 LL |     pub const BAR: MainFn = bar;
    |                             ^^^ expected opaque type, found fn item
    |
-   = note: expected opaque type `impl Fn<()>`
+   = note: expected opaque type `impl Fn()`
                   found fn item `fn() {bar}`
 
 error: could not find defining uses
