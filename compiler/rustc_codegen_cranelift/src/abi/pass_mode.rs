@@ -71,7 +71,7 @@ fn cast_target_to_abi_params(cast: CastTarget) -> SmallVec<[AbiParam; 2]> {
         .prefix
         .iter()
         .flatten()
-        .map(|&kind| reg_to_abi_param(Reg { kind, size: cast.prefix_chunk_size }))
+        .map(|&reg| reg_to_abi_param(reg))
         .chain((0..rest_count).map(|_| reg_to_abi_param(cast.rest.unit)))
         .collect::<SmallVec<_>>();
 
