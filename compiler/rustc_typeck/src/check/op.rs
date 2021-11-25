@@ -42,7 +42,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return_ty
             };
 
-        self.check_lhs_assignable(lhs, "E0067", &op.span);
+        self.check_lhs_assignable(lhs, "E0067", op.span);
 
         ty
     }

@@ -915,14 +915,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
             );
         }
         if !self.sess.features_untracked().destructuring_assignment {
-            feature_err(
+            let mut err = feature_err(
                 &self.sess.parse_sess,
                 sym::destructuring_assignment,
                 eq_sign_span,
                 "destructuring assignments are unstable",
-            )
-            .span_label(lhs.span, "cannot assign to this expression")
-            .emit();
+            );
+            err.span_label(lhs.span, "cannot assign to this expression");
+            if self.is_in_loop_condition {
+                err.span_suggestion_verbose(
+                    lhs.span.shrink_to_lo(),
+                    "you might have meant to use pattern destructuring",
+                    "let ".to_string(),
+                    rustc_errors::Applicability::MachineApplicable,
+                );
+            }
+            err.emit();
         }
 
         let mut assignments = vec![];
