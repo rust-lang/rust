@@ -6,9 +6,11 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Lit, LitKind, TokenKind};
 use rustc_ast::util::parser::AssocOp;
-use rustc_ast::{AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec};
-use rustc_ast::{BinOpKind, BindingMode, Block, BlockCheckMode, Expr, ExprKind, GenericArg, Item};
-use rustc_ast::{ItemKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QSelf, Ty, TyKind};
+use rustc_ast::{
+    AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
+    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Mutability, Param, Pat,
+    PatKind, Path, PathSegment, QSelf, Ty, TyKind,
+};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err};
@@ -662,7 +664,7 @@ impl<'a> Parser<'a> {
             let snapshot = self.clone();
             self.bump();
             let lo = self.token.span;
-            match self.parse_angle_args() {
+            match self.parse_angle_args(None) {
                 Ok(args) => {
                     let span = lo.to(self.prev_token.span);
                     // Detect trailing `>` like in `x.collect::Vec<_>>()`.
@@ -719,7 +721,7 @@ impl<'a> Parser<'a> {
                     let x = self.parse_seq_to_before_end(
                         &token::Gt,
                         SeqSep::trailing_allowed(token::Comma),
-                        |p| p.parse_generic_arg(),
+                        |p| p.parse_generic_arg(None),
                     );
                     match x {
                         Ok((_, _, false)) => {
@@ -1103,7 +1105,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::ModSep)?;
 
         let mut path = ast::Path { segments: Vec::new(), span: DUMMY_SP, tokens: None };
-        self.parse_path_segments(&mut path.segments, T::PATH_STYLE)?;
+        self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
         path.span = ty_span.to(self.prev_token.span);
 
         let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));
@@ -1907,6 +1909,71 @@ impl<'a> Parser<'a> {
             .emit();
         }
         Ok(expr)
+    }
+
+    fn recover_const_param_decl(
+        &mut self,
+        ty_generics: Option<&Generics>,
+    ) -> PResult<'a, Option<GenericArg>> {
+        let snapshot = self.clone();
+        let param = match self.parse_const_param(vec![]) {
+            Ok(param) => param,
+            Err(mut err) => {
+                err.cancel();
+                *self = snapshot;
+                return Err(err);
+            }
+        };
+        let mut err =
+            self.struct_span_err(param.span(), "unexpected `const` parameter declaration");
+        err.span_label(param.span(), "expected a `const` expression, not a parameter declaration");
+        if let (Some(generics), Ok(snippet)) =
+            (ty_generics, self.sess.source_map().span_to_snippet(param.span()))
+        {
+            let (span, sugg) = match &generics.params[..] {
+                [] => (generics.span, format!("<{}>", snippet)),
+                [.., generic] => (generic.span().shrink_to_hi(), format!(", {}", snippet)),
+            };
+            err.multipart_suggestion(
+                "`const` parameters must be declared for the `impl`",
+                vec![(span, sugg), (param.span(), param.ident.to_string())],
+                Applicability::MachineApplicable,
+            );
+        }
+        let value = self.mk_expr_err(param.span());
+        err.emit();
+        return Ok(Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })));
+    }
+
+    pub fn recover_const_param_declaration(
+        &mut self,
+        ty_generics: Option<&Generics>,
+    ) -> PResult<'a, Option<GenericArg>> {
+        // We have to check for a few different cases.
+        if let Ok(arg) = self.recover_const_param_decl(ty_generics) {
+            return Ok(arg);
+        }
+
+        // We haven't consumed `const` yet.
+        let start = self.token.span;
+        self.bump(); // `const`
+
+        // Detect and recover from the old, pre-RFC2000 syntax for const generics.
+        let mut err = self
+            .struct_span_err(start, "expected lifetime, type, or constant, found keyword `const`");
+        if self.check_const_arg() {
+            err.span_suggestion_verbose(
+                start.until(self.token.span),
+                "the `const` keyword is only needed in the definition of the type",
+                String::new(),
+                Applicability::MaybeIncorrect,
+            );
+            err.emit();
+            Ok(Some(GenericArg::Const(self.parse_const_arg()?)))
+        } else {
+            let after_kw_const = self.token.span;
+            self.recover_const_arg(after_kw_const, err).map(Some)
+        }
     }
 
     /// Try to recover from possible generic const argument without `{` and `}`.

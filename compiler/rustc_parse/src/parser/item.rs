@@ -514,7 +514,7 @@ impl<'a> Parser<'a> {
                 tokens: None,
             })
         } else {
-            self.parse_ty()?
+            self.parse_ty_with_generics_recovery(&generics)?
         };
 
         // If `for` is missing we try to recover.

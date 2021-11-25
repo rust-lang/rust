@@ -1150,7 +1150,7 @@ impl<'a> Parser<'a> {
         }
 
         let fn_span_lo = self.token.span;
-        let mut segment = self.parse_path_segment(PathStyle::Expr)?;
+        let mut segment = self.parse_path_segment(PathStyle::Expr, None)?;
         self.check_trailing_angle_brackets(&segment, &[&token::OpenDelim(token::Paren)]);
         self.check_turbofish_missing_angle_brackets(&mut segment);
 
