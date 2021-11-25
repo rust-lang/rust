@@ -17,10 +17,10 @@ LL | fn foo() -> impl Fn() {
    |             ^^^^^^^^^ recursive opaque type
 ...
 LL |     wrap(wrap(wrap(wrap(wrap(wrap(wrap(foo())))))))
-   |     ----------------------------------------------- returning here with type `impl Fn<()>`
+   |     ----------------------------------------------- returning here with type `impl Fn()`
 ...
 LL | fn wrap(f: impl Fn()) -> impl Fn() {
-   |                          --------- returning this opaque type `impl Fn<()>`
+   |                          --------- returning this opaque type `impl Fn()`
 
 error: aborting due to previous error; 1 warning emitted
 

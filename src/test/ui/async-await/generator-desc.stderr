@@ -46,8 +46,8 @@ LL | pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
    |                                           the expected opaque type
    |                                           the found opaque type
    |
-   = note: expected opaque type `impl Future` (`async` closure body)
-              found opaque type `impl Future` (`async` closure body)
+   = note: expected opaque type `impl Future<Output = [async output]>` (`async` closure body)
+              found opaque type `impl Future<Output = [async output]>` (`async` closure body)
 
 error: aborting due to 3 previous errors
 

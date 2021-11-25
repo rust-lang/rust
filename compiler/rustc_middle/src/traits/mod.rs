@@ -7,6 +7,7 @@ pub mod query;
 pub mod select;
 pub mod specialization_graph;
 mod structural_impls;
+pub mod util;
 
 use crate::infer::canonical::Canonical;
 use crate::thir::abstract_const::NotConstEvaluatable;
