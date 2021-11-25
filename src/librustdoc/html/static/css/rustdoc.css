@@ -1129,13 +1129,15 @@ h3.variant {
 	margin-top: 3px;
 }
 
-.docblock > .section-header:first-child {
+.top-doc .docblock > .section-header:first-child {
 	margin-left: 15px;
-	margin-top: 0;
+}
+.top-doc .docblock > .section-header:first-child:hover > a:before {
+	left: -10px;
 }
 
-.docblock > .section-header:first-child:hover > a:before {
-	left: -10px;
+.docblock > .section-header:first-child {
+	margin-top: 0;
 }
 
 :target > code, :target > .code-header {
