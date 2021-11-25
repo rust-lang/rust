@@ -1,10 +1,9 @@
 use crate::builtin;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::lint::struct_lint_level;
+use rustc_hir::HirId;
 use rustc_middle::{lint::LintExpectation, ty::TyCtxt};
 use rustc_session::lint::LintExpectationId;
 use rustc_span::symbol::sym;
-use rustc_span::MultiSpan;
 
 pub fn check_expectations(tcx: TyCtxt<'_>) {
     if !tcx.sess.features_untracked().enabled(sym::lint_reasons) {
@@ -17,24 +16,28 @@ pub fn check_expectations(tcx: TyCtxt<'_>) {
 
     for (id, expectation) in lint_expectations {
         if !fulfilled_expectations.contains(id) {
-            emit_unfulfilled_expectation_lint(tcx, expectation);
+            // This check will always be true, since `lint_expectations` only
+            // holds stable ids
+            if let LintExpectationId::Stable { hir_id, .. } = id {
+                emit_unfulfilled_expectation_lint(tcx, *hir_id, expectation);
+            }
         }
     }
 }
 
-fn emit_unfulfilled_expectation_lint(tcx: TyCtxt<'_>, expectation: &LintExpectation) {
+fn emit_unfulfilled_expectation_lint(
+    tcx: TyCtxt<'_>,
+    hir_id: HirId,
+    expectation: &LintExpectation,
+) {
     // FIXME: The current implementation doesn't cover cases where the
     // `unfulfilled_lint_expectations` is actually expected by another lint
-    // expectation. This can be added here as we have the lint level of this
-    // expectation, and we can also mark the lint expectation it would fulfill
-    // as such. This is currently not implemented to get some early feedback
-    // before diving deeper into this.
-    struct_lint_level(
-        tcx.sess,
+    // expectation. This can be added here by checking the lint level and
+    // retrieving the `LintExpectationId` if it was expected.
+    tcx.struct_span_lint_hir(
         builtin::UNFULFILLED_LINT_EXPECTATIONS,
-        expectation.emission_level,
-        expectation.emission_level_source,
-        Some(MultiSpan::from_span(expectation.emission_span)),
+        hir_id,
+        expectation.emission_span,
         |diag| {
             let mut diag = diag.build("this lint expectation is unfulfilled");
             if let Some(rationale) = expectation.reason {

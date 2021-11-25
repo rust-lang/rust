@@ -204,20 +204,11 @@ pub struct LintExpectation {
     pub reason: Option<Symbol>,
     /// The [`Span`] of the attribute that this expectation originated from.
     pub emission_span: Span,
-    /// The [`Level`] that this lint diagnostic should be emitted if unfulfilled.
-    pub emission_level: Level,
-    /// The [`LintLevelSource`] information needed for [`struct_lint_level`].
-    pub emission_level_source: LintLevelSource,
 }
 
 impl LintExpectation {
-    pub fn new(
-        reason: Option<Symbol>,
-        attr_span: Span,
-        emission_level: Level,
-        emission_level_source: LintLevelSource,
-    ) -> Self {
-        Self { reason, emission_span: attr_span, emission_level, emission_level_source }
+    pub fn new(reason: Option<Symbol>, attr_span: Span) -> Self {
+        Self { reason, emission_span: attr_span }
     }
 }
 
