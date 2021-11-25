@@ -286,9 +286,8 @@ impl CargoWorkspace {
         // unclear whether cargo itself supports it.
         progress("metadata".to_string());
 
-        let meta = meta.exec().with_context(|| {
-            format!("Failed to run `cargo metadata --manifest-path {}`", cargo_toml.display(),)
-        })?;
+        let meta =
+            meta.exec().with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))?;
 
         Ok(meta)
     }
