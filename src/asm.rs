@@ -577,6 +577,7 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low4) => unimplemented!(),
             InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg)
             | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg) => unimplemented!(),
+            InlineAsmRegClass::Avr(_) => unimplemented!(),
             InlineAsmRegClass::Bpf(_) => unimplemented!(),
             InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => unimplemented!(),
             InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => unimplemented!(),
@@ -639,6 +640,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low4) => {
             unimplemented!()
         }
+        InlineAsmRegClass::Avr(_) => unimplemented!(),
         InlineAsmRegClass::Bpf(_) => unimplemented!(),
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
@@ -747,6 +749,7 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low4) => {
             unimplemented!()
         }
+        InlineAsmRegClass::Avr(_) => unimplemented!(),
         InlineAsmRegClass::Bpf(_) => unimplemented!(),
         InlineAsmRegClass::Hexagon(_) => unimplemented!(),
         InlineAsmRegClass::Mips(_) => unimplemented!(),
