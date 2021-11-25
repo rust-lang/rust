@@ -34,7 +34,11 @@ fn main() {
     }
 
     // These targets have hardware unaligned access support.
-    if target.contains("x86_64") || target.contains("i686") || target.contains("aarch64") {
+    if target.contains("x86_64")
+        || target.contains("i686")
+        || target.contains("aarch64")
+        || target.contains("bpf")
+    {
         println!("cargo:rustc-cfg=feature=\"mem-unaligned\"");
     }
 
