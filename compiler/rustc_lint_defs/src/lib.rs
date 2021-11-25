@@ -50,10 +50,9 @@ pub enum Applicability {
     Unspecified,
 }
 
-/// Each lint expectation has a `LintExpectationId` assigned by the
-/// [`LintLevelsBuilder`][`rustc_lint::levels::LintLevelsBuilder`]. Expected
-/// [`Diagnostic`][`rustc_errors::Diagnostic`]s get the lint level `Expect` which
-/// stores the `LintExpectationId` to match it with the actual expectation later on.
+/// Each lint expectation has a `LintExpectationId` assigned by the `LintLevelsBuilder`.
+/// Expected `Diagnostic`s get the lint level `Expect` which stores the `LintExpectationId`
+/// to match it with the actual expectation later on.
 ///
 /// The `LintExpectationId` has to be has stable between compilations, as diagnostic
 /// instances might be loaded from cache. Lint messages can be emitted during an
@@ -61,8 +60,7 @@ pub enum Applicability {
 /// HIR tree. The AST doesn't have enough information to create a stable id. The
 /// `LintExpectationId` will instead store the [`AttrId`] defining the expectation.
 /// These `LintExpectationId` will be updated to use the stable [`HirId`] once the
-/// AST has been lowered. The transformation is done by the
-/// [`LintLevelsBuilder`][`rustc_lint::levels::LintLevelsBuilder`]
+/// AST has been lowered. The transformation is done by the `LintLevelsBuilder`
 ///
 /// Each lint inside the `expect` attribute is tracked individually, the `lint_index`
 /// identifies the lint inside the attribute and ensures that the IDs are unique.
@@ -135,7 +133,7 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
 
 /// Setting for how to handle a lint.
 ///
-/// See: https://doc.rust-lang.org/rustc/lints/levels.html
+/// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Level {
     /// The `allow` level will not issue any message.

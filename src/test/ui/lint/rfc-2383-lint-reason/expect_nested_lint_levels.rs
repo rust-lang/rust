@@ -1,4 +1,3 @@
-// check-pass
 // ignore-tidy-linelength
 
 #![feature(lint_reasons)]
@@ -37,7 +36,18 @@ mod oof {
         let mut v = 0;
         //~^ WARNING variable does not need to be mutable [unused_mut]
         //~| NOTE this overrides the previous `expect` lint level and warns about the `unused_mut` lint here
+        //~| HELP remove this `mut`
     }
+}
+
+#[expect(unused_variables)]
+//~^ WARNING this lint expectation is unfulfilled
+#[forbid(unused_variables)]
+//~^ NOTE the lint level is defined here
+fn check_expect_then_forbid() {
+    let this_is_my_function = 3;
+    //~^ ERROR unused variable: `this_is_my_function` [unused_variables]
+    //~| HELP if this is intentional, prefix it with an underscore
 }
 
 fn main() {}
