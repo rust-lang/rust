@@ -685,11 +685,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             ItemKind::ExternCrate(orig_name) => {
                 self.build_reduced_graph_for_extern_crate(
                     orig_name,
-                    ident,
                     item,
                     local_def_id,
-                    sp,
-                    expansion,
                     vis,
                     parent,
                 );
@@ -833,14 +830,16 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn build_reduced_graph_for_extern_crate(
         &mut self,
         orig_name: Option<Symbol>,
-        ident: Ident,
         item: &Item,
         local_def_id: LocalDefId,
-        sp: Span,
-        expansion: LocalExpnId,
         vis: ty::Visibility,
         parent: Module<'a>,
     ) {
+        let ident = item.ident;
+        let sp = item.span;
+        let parent_scope = self.parent_scope;
+        let expansion = parent_scope.expansion;
+
         let module = if orig_name.is_none() && ident.name == kw::SelfLower {
             self.r
                 .session
@@ -856,10 +855,32 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         } else if orig_name == Some(kw::SelfLower) {
             self.r.graph_root
         } else {
-            let crate_id =
-                self.r.crate_loader.process_extern_crate(item, &self.r.definitions, local_def_id);
-            self.r.extern_crate_map.insert(local_def_id, crate_id);
-            self.r.expect_module(crate_id.as_def_id())
+            match self.r.crate_loader.process_extern_crate(item, &self.r.definitions, local_def_id)
+            {
+                Some(crate_id) => {
+                    self.r.extern_crate_map.insert(local_def_id, crate_id);
+                    self.r.expect_module(crate_id.as_def_id())
+                }
+                _ => {
+                    let dummy_import = self.r.arenas.alloc_import(Import {
+                        kind: ImportKind::ExternCrate { source: orig_name, target: ident },
+                        root_id: item.id,
+                        id: item.id,
+                        parent_scope: self.parent_scope,
+                        imported_module: Cell::new(None),
+                        has_attributes: !item.attrs.is_empty(),
+                        use_span_with_attributes: item.span_with_attributes(),
+                        use_span: item.span,
+                        root_span: item.span,
+                        span: item.span,
+                        module_path: Vec::new(),
+                        vis: Cell::new(vis),
+                        used: Cell::new(true),
+                    });
+                    self.r.import_dummy_binding(dummy_import);
+                    return;
+                }
+            }
         };
         let used = self.process_macro_use_imports(item, module);
         let binding =

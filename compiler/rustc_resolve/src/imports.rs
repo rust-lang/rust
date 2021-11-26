@@ -600,8 +600,10 @@ impl<'a> Resolver<'a> {
 
     // Define a "dummy" resolution containing a Res::Err as a placeholder for a
     // failed resolution
-    fn import_dummy_binding(&mut self, import: &'a Import<'a>) {
-        if let ImportKind::Single { target, .. } = import.kind {
+    crate fn import_dummy_binding(&mut self, import: &'a Import<'a>) {
+        if let ImportKind::Single { target, .. } | ImportKind::ExternCrate { target, .. } =
+            import.kind
+        {
             let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, import);
             self.per_ns(|this, ns| {
