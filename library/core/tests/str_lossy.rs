@@ -55,12 +55,8 @@ fn chunks() {
 
     // surrogates
     let mut iter = Utf8Lossy::from_bytes(b"\xED\xA0\x80foo\xED\xBF\xBFbar").chunks();
-    assert_eq!(Some(Utf8LossyChunk { valid: "", broken: b"\xED" }), iter.next());
-    assert_eq!(Some(Utf8LossyChunk { valid: "", broken: b"\xA0" }), iter.next());
-    assert_eq!(Some(Utf8LossyChunk { valid: "", broken: b"\x80" }), iter.next());
-    assert_eq!(Some(Utf8LossyChunk { valid: "foo", broken: b"\xED" }), iter.next());
-    assert_eq!(Some(Utf8LossyChunk { valid: "", broken: b"\xBF" }), iter.next());
-    assert_eq!(Some(Utf8LossyChunk { valid: "", broken: b"\xBF" }), iter.next());
+    assert_eq!(Some(Utf8LossyChunk { valid: "", broken: b"\xED\xA0\x80" }), iter.next());
+    assert_eq!(Some(Utf8LossyChunk { valid: "foo", broken: b"\xED\xBF\xBF" }), iter.next());
     assert_eq!(Some(Utf8LossyChunk { valid: "bar", broken: b"" }), iter.next());
     assert_eq!(None, iter.next());
 }

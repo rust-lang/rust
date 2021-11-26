@@ -85,11 +85,10 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
                         i += 1;
                     }
                     3 => {
-                        match (byte, safe_get(self.source, i)) {
+                        let second = safe_get(self.source, i);
+                        match (byte, second) {
                             (0xE0, 0xA0..=0xBF) => (),
-                            (0xE1..=0xEC, 0x80..=0xBF) => (),
-                            (0xED, 0x80..=0x9F) => (),
-                            (0xEE..=0xEF, 0x80..=0xBF) => (),
+                            (0xE1..=0xEF, 0x80..=0xBF) => (),
                             _ => break,
                         }
                         i += 1;
@@ -97,6 +96,9 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
                             break;
                         }
                         i += 1;
+                        if let (0xED, 0xA0..=0xBF) = (byte, second) {
+                            break;
+                        }
                     }
                     4 => {
                         match (byte, safe_get(self.source, i)) {
