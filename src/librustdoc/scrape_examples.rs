@@ -142,16 +142,21 @@ where
             hir::ExprKind::Call(f, _) => {
                 let types = tcx.typeck(ex.hir_id.owner);
 
-                match types.node_type_opt(f.hir_id) {
-                    Some(ty) => (ty, ex.span),
-                    None => {
-                        return;
-                    }
+                if let Some(ty) = types.node_type_opt(f.hir_id) {
+                    (ty, ex.span)
+                } else {
+                    trace!("node_type_opt({}) = None", f.hir_id);
+                    return;
                 }
             }
             hir::ExprKind::MethodCall(_, _, _, span) => {
                 let types = tcx.typeck(ex.hir_id.owner);
-                let def_id = types.type_dependent_def_id(ex.hir_id).unwrap();
+                let def_id = if let Some(def_id) = types.type_dependent_def_id(ex.hir_id) {
+                    def_id
+                } else {
+                    trace!("type_dependent_def_id({}) = None", ex.hir_id);
+                    return;
+                };
                 (tcx.type_of(def_id), span)
             }
             _ => {
