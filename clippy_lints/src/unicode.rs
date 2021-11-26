@@ -28,7 +28,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for non-ASCII characters in string literals.
+    /// Checks for non-ASCII characters in string and char literals.
     ///
     /// ### Why is this bad?
     /// Yeah, we know, the 90's called and wanted their charset
@@ -75,7 +75,7 @@ declare_lint_pass!(Unicode => [INVISIBLE_CHARACTERS, NON_ASCII_LITERAL, UNICODE_
 impl LateLintPass<'_> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Lit(ref lit) = expr.kind {
-            if let LitKind::Str(_, _) = lit.node {
+            if let LitKind::Str(_, _) | LitKind::Char(_) = lit.node {
                 check_str(cx, lit.span, expr.hir_id);
             }
         }
