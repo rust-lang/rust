@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, rustdoc_internals)]
 #![no_core]
 #![crate_type="rlib"]
 

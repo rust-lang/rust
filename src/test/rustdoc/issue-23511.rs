@@ -1,4 +1,5 @@
 #![feature(lang_items)]
+#![feature(rustdoc_internals)]
 #![no_std]
 
 pub mod str {

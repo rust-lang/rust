@@ -3,7 +3,7 @@
 // ignore-cross-compile
 // only-linux
 
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 #![feature(no_core, lang_items)]
 #![no_core]
 #![crate_type = "rlib"]

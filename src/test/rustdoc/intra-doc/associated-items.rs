@@ -1,4 +1,4 @@
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 /// [`std::collections::BTreeMap::into_iter`]
 /// [`String::from`] is ambiguous as to which `From` impl

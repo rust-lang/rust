@@ -1,3 +1,5 @@
+#![feature(rustdoc_internals)]
+
 #![crate_name = "foo"]
 
 include!("primitive/primitive-generic-impl.rs");

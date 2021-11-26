@@ -1,6 +1,6 @@
 // Regression test for issue #86120.
 
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 #![crate_name = "foo"]
 
 pub struct Foo;

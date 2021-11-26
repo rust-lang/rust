@@ -1,4 +1,4 @@
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 /// Link to [S::assoc_fn()]
 /// Link to [Default::default()]

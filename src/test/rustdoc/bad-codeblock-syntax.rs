@@ -1,3 +1,5 @@
+#![allow(rustdoc::invalid_rust_codeblocks)]
+
 // @has bad_codeblock_syntax/fn.foo.html
 // @has - '//*[@class="docblock"]' '\_'
 /// ```
