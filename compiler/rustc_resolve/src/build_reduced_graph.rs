@@ -840,57 +840,41 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let parent_scope = self.parent_scope;
         let expansion = parent_scope.expansion;
 
-        let module = if orig_name.is_none() && ident.name == kw::SelfLower {
+        let (used, module, binding) = if orig_name.is_none() && ident.name == kw::SelfLower {
             self.r
                 .session
                 .struct_span_err(item.span, "`extern crate self;` requires renaming")
                 .span_suggestion(
                     item.span,
-                    "try",
+                    "rename the `self` crate to be able to import it",
                     "extern crate self as name;".into(),
                     Applicability::HasPlaceholders,
                 )
                 .emit();
             return;
         } else if orig_name == Some(kw::SelfLower) {
-            self.r.graph_root
+            Some(self.r.graph_root)
         } else {
-            match self.r.crate_loader.process_extern_crate(item, &self.r.definitions, local_def_id)
-            {
-                Some(crate_id) => {
+            self.r.crate_loader.process_extern_crate(item, &self.r.definitions, local_def_id).map(
+                |crate_id| {
                     self.r.extern_crate_map.insert(local_def_id, crate_id);
                     self.r.expect_module(crate_id.as_def_id())
-                }
-                _ => {
-                    let dummy_import = self.r.arenas.alloc_import(Import {
-                        kind: ImportKind::ExternCrate { source: orig_name, target: ident },
-                        root_id: item.id,
-                        id: item.id,
-                        parent_scope: self.parent_scope,
-                        imported_module: Cell::new(None),
-                        has_attributes: !item.attrs.is_empty(),
-                        use_span_with_attributes: item.span_with_attributes(),
-                        use_span: item.span,
-                        root_span: item.span,
-                        span: item.span,
-                        module_path: Vec::new(),
-                        vis: Cell::new(vis),
-                        used: Cell::new(true),
-                    });
-                    self.r.import_dummy_binding(dummy_import);
-                    return;
-                }
-            }
-        };
-        let used = self.process_macro_use_imports(item, module);
-        let binding =
-            (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.r.arenas);
+                },
+            )
+        }
+        .map(|module| {
+            let used = self.process_macro_use_imports(item, module);
+            let binding =
+                (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.r.arenas);
+            (used, Some(ModuleOrUniformRoot::Module(module)), binding)
+        })
+        .unwrap_or((true, None, self.r.dummy_binding));
         let import = self.r.arenas.alloc_import(Import {
             kind: ImportKind::ExternCrate { source: orig_name, target: ident },
             root_id: item.id,
             id: item.id,
             parent_scope: self.parent_scope,
-            imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
+            imported_module: Cell::new(module),
             has_attributes: !item.attrs.is_empty(),
             use_span_with_attributes: item.span_with_attributes(),
             use_span: item.span,

@@ -9,7 +9,6 @@ use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::FatalError;
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
@@ -508,15 +507,6 @@ impl<'a> CrateLoader<'a> {
         }))
     }
 
-    fn resolve_crate_or_abort<'b>(
-        &'b mut self,
-        name: Symbol,
-        span: Span,
-        dep_kind: CrateDepKind,
-    ) -> CrateNum {
-        self.resolve_crate(name, span, dep_kind).unwrap_or_else(|| FatalError.raise())
-    }
-
     fn resolve_crate<'b>(
         &'b mut self,
         name: Symbol,
@@ -524,15 +514,15 @@ impl<'a> CrateLoader<'a> {
         dep_kind: CrateDepKind,
     ) -> Option<CrateNum> {
         self.used_extern_options.insert(name);
-        self.maybe_resolve_crate(name, dep_kind, None).map_or_else(
-            |err| {
+        match self.maybe_resolve_crate(name, dep_kind, None) {
+            Ok(cnum) => Some(cnum),
+            Err(err) => {
                 let missing_core =
                     self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
                 err.report(&self.sess, span, missing_core);
                 None
-            },
-            |cnum| Some(cnum),
-        )
+            }
+        }
     }
 
     fn maybe_resolve_crate<'b>(
@@ -765,7 +755,7 @@ impl<'a> CrateLoader<'a> {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let cnum = self.resolve_crate_or_abort(name, DUMMY_SP, CrateDepKind::Implicit);
+        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else { return; };
         let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
@@ -805,7 +795,7 @@ impl<'a> CrateLoader<'a> {
             );
         }
 
-        let cnum = self.resolve_crate_or_abort(name, DUMMY_SP, CrateDepKind::Implicit);
+        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else { return; };
         let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a profiler runtime
@@ -1043,8 +1033,8 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> CrateNum {
-        let cnum = self.resolve_crate_or_abort(name, span, CrateDepKind::Explicit);
+    pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
+        let cnum = self.resolve_crate(name, span, CrateDepKind::Explicit)?;
 
         self.update_extern_crate(
             cnum,
@@ -1057,7 +1047,7 @@ impl<'a> CrateLoader<'a> {
             },
         );
 
-        cnum
+        Some(cnum)
     }
 
     pub fn maybe_process_path_extern(&mut self, name: Symbol) -> Option<CrateNum> {
