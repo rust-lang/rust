@@ -391,7 +391,6 @@ fn typeck_with_fallback<'tcx>(
             let mut wf_tys = FxHashSet::default();
             // Compute the fty from point of view of inside the fn.
             let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
-            wf_tys.extend(fn_sig.inputs_and_output.iter());
             let fn_sig = inh.normalize_associated_types_in(
                 body.value.span,
                 body_id.hir_id,
