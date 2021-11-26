@@ -536,7 +536,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // This helps us avoid overflow: see issue #72839
         // Since compilation is already guaranteed to fail, this is just
         // to try to show the 'nicest' possible errors to the user.
-        if obligation.references_error() {
+        // We don't check for errors in the `ParamEnv` - in practice,
+        // it seems to cause us to be overly aggressive in deciding
+        // to give up searching for candidates, leading to spurious errors.
+        if obligation.predicate.references_error() {
             return;
         }
 
