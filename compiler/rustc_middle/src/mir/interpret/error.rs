@@ -493,7 +493,7 @@ impl dyn MachineStopType {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(InterpError<'_>, 64);
+static_assert_size!(InterpError<'_>, 88);
 
 pub enum InterpError<'tcx> {
     /// The program caused undefined behavior.

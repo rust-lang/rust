@@ -1658,6 +1658,20 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value }
     }
 
+    /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
+    query try_normalize_generic_arg_after_erasing_regions(
+        goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
+    ) -> Result<GenericArg<'tcx>, NoSolution> {
+        desc { "trying to normalize `{}`", goal.value }
+    }
+
+    /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
+    query try_normalize_mir_const_after_erasing_regions(
+        goal: ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
+    ) -> Result<mir::ConstantKind<'tcx>, NoSolution> {
+        desc { "trying to normalize `{}`", goal.value }
+    }
+
     query implied_outlives_bounds(
         goal: CanonicalTyGoal<'tcx>
     ) -> Result<
