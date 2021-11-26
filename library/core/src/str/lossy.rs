@@ -122,8 +122,14 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
             valid_up_to = i;
         }
 
-        // SAFETY: `i <= self.source.len()` because it only ever increments by 1
-        // and the loop is terminated as soon as that goes beyond bounds.
+        // SAFETY: `i <= self.source.len()` because it is only ever incremented
+        // via `i += 1` and in between every single one of those increments, `i`
+        // is compared against `self.source.len()`. That happens either
+        // literally by `i < self.source.len()` in the while-loop's condition,
+        // or indirectly by `safe_get(self.source, i) & 192 != TAG_CONT_U8`. The
+        // loop is terminated as soon as the latest `i += 1` has made `i` no
+        // longer less than `self.source.len()`, which means it'll be at most
+        // equal to `self.source.len()`.
         let (inspected, remaining) = unsafe { self.source.split_at_unchecked(i) };
         self.source = remaining;
 
