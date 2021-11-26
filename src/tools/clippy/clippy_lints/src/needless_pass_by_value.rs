@@ -92,6 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             },
             FnKind::Method(..) => (),
             FnKind::Closure => return,
+            FnKind::ForeignFn(_) => return,
         }
 
         // Exclude non-inherent impls

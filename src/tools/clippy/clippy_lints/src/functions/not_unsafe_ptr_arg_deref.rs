@@ -20,6 +20,7 @@ pub(super) fn check_fn(
         intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _) => unsafety,
         intravisit::FnKind::Method(_, sig, _) => sig.header.unsafety,
         intravisit::FnKind::Closure => return,
+        intravisit::FnKind::ForeignFn(_) => return,
     };
 
     check_raw_ptr(cx, unsafety, decl, body, cx.tcx.hir().local_def_id(hir_id));
