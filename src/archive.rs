@@ -9,7 +9,7 @@ use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_session::Session;
 
 use object::read::archive::ArchiveFile;
-use object::{Object, ObjectSymbol, ReadCache, SymbolKind};
+use object::{Object, ObjectSymbol, ReadCache};
 
 #[derive(Debug)]
 enum ArchiveEntry {
