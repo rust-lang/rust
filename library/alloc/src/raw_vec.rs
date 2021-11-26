@@ -455,25 +455,7 @@ where
     let cap = cmp::max(current_cap * 2, required_cap);
     let cap = cmp::max(min_non_zero_cap, cap);
 
-    let array_size = elem_layout.size().checked_mul(cap).ok_or(CapacityOverflow)?;
-    alloc_guard(array_size)?;
-
-    let new_layout = unsafe { Layout::from_size_align_unchecked(array_size, elem_layout.align()) };
-
-    let new_ptr = if let Some((old_ptr, old_layout)) = current_memory {
-        debug_assert_eq!(old_layout.align(), new_layout.align());
-        unsafe {
-            // The allocator checks for alignment equality
-            intrinsics::assume(old_layout.align() == new_layout.align());
-            alloc.grow(old_ptr, old_layout, new_layout)
-        }
-    } else {
-        alloc.allocate(new_layout)
-    }
-    .map_err(|_| TryReserveError::from(AllocError { layout: new_layout, non_exhaustive: () }))?;
-
-    let new_cap = new_ptr.len() / elem_layout.size();
-    Ok((new_ptr, new_cap))
+    finish_grow(elem_layout, cap, current_memory, alloc)
 }
 
 // This function is outside `RawVec` to minimize compile times. See the comment
@@ -499,6 +481,18 @@ where
     // succeeded, this early return will occur.)
     let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
 
+    finish_grow(elem_layout, cap, current_memory, alloc)
+}
+
+fn finish_grow<A>(
+    elem_layout: Layout,
+    cap: usize,
+    current_memory: Option<(NonNull<u8>, Layout)>,
+    alloc: &mut A,
+) -> Result<(NonNull<[u8]>, usize), TryReserveError>
+where
+    A: Allocator,
+{
     let array_size = elem_layout.size().checked_mul(cap).ok_or(CapacityOverflow)?;
     alloc_guard(array_size)?;
 
