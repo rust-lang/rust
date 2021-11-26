@@ -405,9 +405,17 @@ impl Layout {
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutError> {
-        let (layout, offset) = Layout::new::<T>().repeat(n)?;
-        debug_assert_eq!(offset, mem::size_of::<T>());
-        Ok(layout.pad_to_align())
+        let array_size = mem::size_of::<T>().checked_mul(n).ok_or(LayoutError)?;
+
+        // SAFETY:
+        // - Size: `array_size` cannot be too big because `size_of::<T>()` must
+        //   be a multiple of `align_of::<T>()`. Therefore, `array_size`
+        //   rounded up to the nearest multiple of `align_of::<T>()` is just
+        //   `array_size`. And `array_size` cannot be too big because it was
+        //   just checked by the `checked_mul()`.
+        // - Alignment: `align_of::<T>()` will always give an acceptable
+        //   (non-zero, power of two) alignment.
+        Ok(unsafe { Layout::from_size_align_unchecked(array_size, mem::align_of::<T>()) })
     }
 }
 
