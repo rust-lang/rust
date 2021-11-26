@@ -1,6 +1,6 @@
 [package]
 name = "expect-test"
-version = "1.2.0-pre.1"
+version = "1.2.1"
 description = "Minimalistic snapshot testing library"
 keywords = ["snapshot", "testing", "expect"]
 categories = ["development-tools::testing"]
