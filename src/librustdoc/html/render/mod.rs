@@ -2314,7 +2314,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
             .filter(|i| {
                 i.inner_impl().for_.def_id(cache).map_or(false, |d| !cache.paths.contains_key(&d))
             })
-            // TODO: Dont do the filter map dance
+            // FIXME: Dont do the filter map dance
             .filter_map(|i| extract_for_impl_name(&i.impl_item, cx))
             .collect::<Vec<_>>();
 
@@ -2343,7 +2343,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
                 i.inner_impl().for_.def_id(cache).map_or(true, |d| cache.paths.contains_key(&d))
                     && i.inner_impl().polarity == ty::ImplPolarity::Positive
             })
-            // TODO: Dont do the filter map dance
+            // FIXME: Dont do the filter map dance
             // .filter_map(|i| extract_for_impl_name(&i.impl_item, cx))
             .map(|i| {
                 (
