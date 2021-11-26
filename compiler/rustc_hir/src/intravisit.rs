@@ -107,6 +107,9 @@ pub enum FnKind<'a> {
 
     /// `|x, y| {}`
     Closure,
+
+    /// `extern "C" { pub fn foo(); }`
+    ForeignFn(Ident),
 }
 
 impl<'a> FnKind<'a> {
@@ -115,6 +118,7 @@ impl<'a> FnKind<'a> {
             FnKind::ItemFn(_, _, ref header, _) => Some(header),
             FnKind::Method(_, ref sig, _) => Some(&sig.header),
             FnKind::Closure => None,
+            FnKind::ForeignFn(_) => None,
         }
     }
 
@@ -979,7 +983,7 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
         FnKind::ItemFn(_, generics, ..) => {
             visitor.visit_generics(generics);
         }
-        FnKind::Method(..) | FnKind::Closure => {}
+        FnKind::Method(..) | FnKind::Closure | FnKind::ForeignFn(_) => {}
     }
 }
 

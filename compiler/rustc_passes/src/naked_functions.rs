@@ -47,9 +47,9 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
         let fn_header;
 
         match fk {
-            FnKind::Closure => {
-                // Closures with a naked attribute are rejected during attribute
-                // check. Don't validate them any further.
+            FnKind::Closure | FnKind::ForeignFn(_) => {
+                // Closures and Foreign Functions with a naked attribute are
+                // rejected during attribute check. Don't validate them any further.
                 return;
             }
             FnKind::ItemFn(ident, _, ref header, ..) => {

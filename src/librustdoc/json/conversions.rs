@@ -313,19 +313,6 @@ crate fn from_function(function: clean::Function, did: DefId, tcx: TyCtxt<'_>) -
     }
 }
 
-// impl FromWithTcx<clean::Function> for Function {
-//     fn from_tcx(function: clean::Function, tcx: TyCtxt<'_>) -> Self {
-//         let clean::Function { decl, generics } = function;
-//         let header = hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
-//         Function {
-//             decl: decl.into_tcx(tcx),
-//             generics: generics.into_tcx(tcx),
-//             header: from_fn_header(&header),
-//             abi: header.abi.to_string(),
-//         }
-//     }
-// }
-
 impl FromWithTcx<clean::Generics> for Generics {
     fn from_tcx(generics: clean::Generics, tcx: TyCtxt<'_>) -> Self {
         Generics {

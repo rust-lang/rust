@@ -3273,9 +3273,7 @@ impl<'hir> Node<'hir> {
                 _ => None,
             },
             Node::TraitItem(ti) => match ti.kind {
-                TraitItemKind::Fn(ref sig, TraitFn::Provided(_)) => {
-                    Some(FnKind::Method(ti.ident, sig, None))
-                }
+                TraitItemKind::Fn(ref sig, _) => Some(FnKind::Method(ti.ident, sig, None)),
                 _ => None,
             },
             Node::ImplItem(ii) => match ii.kind {
@@ -3284,6 +3282,10 @@ impl<'hir> Node<'hir> {
             },
             Node::Expr(e) => match e.kind {
                 ExprKind::Closure(..) => Some(FnKind::Closure),
+                _ => None,
+            },
+            Node::ForeignItem(fi) => match fi.kind {
+                ForeignItemKind::Fn(..) => Some(FnKind::ForeignFn(fi.ident)),
                 _ => None,
             },
             _ => None,

@@ -692,15 +692,16 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             intravisit::FnKind::ItemFn(id, _, _, _) => id.as_str(),
             intravisit::FnKind::Method(id, _, _) => id.as_str(),
             intravisit::FnKind::Closure => Symbol::intern("closure").as_str(),
+            intravisit::FnKind::ForeignFn(id) => id.as_str(),
         };
         let name: &str = &name;
         let span = span!(Level::DEBUG, "visit_fn", name);
         let _enter = span.enter();
         match fk {
             // Any `Binders` are handled elsewhere
-            intravisit::FnKind::ItemFn(..) | intravisit::FnKind::Method(..) => {
-                intravisit::walk_fn(self, fk, fd, b, s, hir_id)
-            }
+            intravisit::FnKind::ItemFn(..)
+            | intravisit::FnKind::Method(..)
+            | intravisit::FnKind::ForeignFn(..) => intravisit::walk_fn(self, fk, fd, b, s, hir_id),
             intravisit::FnKind::Closure => {
                 self.map.late_bound_vars.insert(hir_id, vec![]);
                 let scope = Scope::Binder {

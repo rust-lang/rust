@@ -413,7 +413,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                 }
                 self.check_snake_case(cx, "function", ident);
             }
-            FnKind::Closure => (),
+            FnKind::Closure | FnKind::ForeignFn(_) => (),
         }
     }
 
