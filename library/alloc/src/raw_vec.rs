@@ -102,19 +102,6 @@ impl<T> RawVec<T, Global> {
 }
 
 impl<T, A: Allocator> RawVec<T, A> {
-    // Tiny Vecs are dumb. Skip to:
-    // - 8 if the element size is 1, because any heap allocators is likely
-    //   to round up a request of less than 8 bytes to at least 8 bytes.
-    // - 4 if elements are moderate-sized (<= 1 KiB).
-    // - 1 otherwise, to avoid wasting too much space for very short Vecs.
-    const MIN_NON_ZERO_CAP: usize = if mem::size_of::<T>() == 1 {
-        8
-    } else if mem::size_of::<T>() <= 1024 {
-        4
-    } else {
-        1
-    };
-
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
     #[rustc_allow_const_fn_unstable(const_fn)]
@@ -381,22 +368,16 @@ impl<T, A: Allocator> RawVec<T, A> {
     // of the code that doesn't depend on `T` as possible is in functions that
     // are non-generic over `T`.
     fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        // This is ensured by the calling contexts.
-        debug_assert!(additional > 0);
-
-        // Nothing we can really do about these checks, sadly. (If this method
-        // is called for a zero-sized `T` after `needs_to_grow()` has
-        // succeeded, this early return will occur.)
-        let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-
-        // This guarantees exponential growth. The doubling cannot overflow
-        // because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        let cap = cmp::max(self.cap * 2, required_cap);
-        let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
-
-        // `finish_grow` is non-generic over `T`.
+        // `finish_grow_amortized` is non-generic over `T`.
         let elem_layout = Layout::new::<T>();
-        let ptr = finish_grow(cap, elem_layout, self.current_memory(), &mut self.alloc)?;
+        let ptr = finish_grow_amortized(
+            len,
+            additional,
+            elem_layout,
+            self.cap,
+            self.current_memory(),
+            &mut self.alloc,
+        )?;
         self.set_ptr(ptr);
         Ok(())
     }
@@ -409,14 +390,15 @@ impl<T, A: Allocator> RawVec<T, A> {
     // `grow_amortized`, but this method is usually instantiated less often so
     // it's less critical.
     fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        // Nothing we can really do about these checks, sadly. (If this method
-        // is called for a zero-sized `T` after `needs_to_grow()` has
-        // succeeded, this early return will occur.)
-        let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-
-        // `finish_grow` is non-generic over `T`.
+        // `finish_grow_exact` is non-generic over `T`.
         let elem_layout = Layout::new::<T>();
-        let ptr = finish_grow(cap, elem_layout, self.current_memory(), &mut self.alloc)?;
+        let ptr = finish_grow_exact(
+            len,
+            additional,
+            elem_layout,
+            self.current_memory(),
+            &mut self.alloc,
+        )?;
         self.set_ptr(ptr);
         Ok(())
     }
@@ -443,8 +425,70 @@ impl<T, A: Allocator> RawVec<T, A> {
 // significant, because the number of different `A` types seen in practice is
 // much smaller than the number of `T` types.)
 #[inline(never)]
-fn finish_grow<A>(
-    cap: usize,
+fn finish_grow_amortized<A>(
+    len: usize,
+    additional: usize,
+    elem_layout: Layout,
+    current_cap: usize,
+    current_memory: Option<(NonNull<u8>, Layout)>,
+    alloc: &mut A,
+) -> Result<NonNull<[u8]>, TryReserveError>
+where
+    A: Allocator,
+{
+    // This is ensured by the calling contexts.
+    debug_assert!(additional > 0);
+
+    // Tiny Vecs are dumb. Skip to:
+    // - 8 if the element size is 1, because any heap allocators is likely
+    //   to round up a request of less than 8 bytes to at least 8 bytes.
+    // - 4 if elements are moderate-sized (<= 1 KiB).
+    // - 1 otherwise, to avoid wasting too much space for very short Vecs.
+    let min_non_zero_cap: usize = if elem_layout.size() == 1 {
+        8
+    } else if elem_layout.size() <= 1024 {
+        4
+    } else {
+        1
+    };
+
+    // Nothing we can really do about these checks, sadly. (If this method
+    // is called for a zero-sized `T` after `needs_to_grow()` has
+    // succeeded, this early return will occur.)
+    let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
+
+    // This guarantees exponential growth. The doubling cannot overflow
+    // because `cap <= isize::MAX` and the type of `cap` is `usize`.
+    let cap = cmp::max(current_cap * 2, required_cap);
+    let cap = cmp::max(min_non_zero_cap, cap);
+
+    let array_size = elem_layout.size().checked_mul(cap).ok_or(CapacityOverflow)?;
+    alloc_guard(array_size)?;
+
+    let new_layout = unsafe { Layout::from_size_align_unchecked(array_size, elem_layout.align()) };
+
+    let memory = if let Some((ptr, old_layout)) = current_memory {
+        debug_assert_eq!(old_layout.align(), new_layout.align());
+        unsafe {
+            // The allocator checks for alignment equality
+            intrinsics::assume(old_layout.align() == new_layout.align());
+            alloc.grow(ptr, old_layout, new_layout)
+        }
+    } else {
+        alloc.allocate(new_layout)
+    };
+
+    memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
+}
+
+// This function is outside `RawVec` to minimize compile times. See the comment
+// above `RawVec::grow_exact` for details. (The `A` parameter isn't
+// significant, because the number of different `A` types seen in practice is
+// much smaller than the number of `T` types.)
+#[inline(never)]
+fn finish_grow_exact<A>(
+    len: usize,
+    additional: usize,
     elem_layout: Layout,
     current_memory: Option<(NonNull<u8>, Layout)>,
     alloc: &mut A,
@@ -452,6 +496,14 @@ fn finish_grow<A>(
 where
     A: Allocator,
 {
+    // This is ensured by the calling contexts.
+    debug_assert!(additional > 0);
+
+    // Nothing we can really do about these checks, sadly. (If this method
+    // is called for a zero-sized `T` after `needs_to_grow()` has
+    // succeeded, this early return will occur.)
+    let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
+
     let array_size = elem_layout.size().checked_mul(cap).ok_or(CapacityOverflow)?;
     alloc_guard(array_size)?;
 
