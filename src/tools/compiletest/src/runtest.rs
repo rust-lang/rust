@@ -1452,6 +1452,8 @@ impl<'test> TestCx<'test> {
             .arg(aux_dir)
             .arg("-o")
             .arg(out_dir)
+            .arg("--deny")
+            .arg("warnings")
             .arg(&self.testpaths.file)
             .args(&self.props.compile_flags);
 
