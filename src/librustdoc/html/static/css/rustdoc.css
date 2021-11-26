@@ -305,6 +305,10 @@ nav.sub {
 	overflow-y: scroll;
 }
 
+.rustdoc.source .sidebar {
+	overflow-y: auto;
+}
+
 /* Improve the scrollbar display on firefox */
 * {
 	scrollbar-width: initial;

@@ -447,16 +447,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 // check if the RHS is from desugaring
                                 let opt_assignment_rhs_span =
                                     self.body.find_assignments(local).first().map(|&location| {
-                                        let stmt = &self.body[location.block].statements
-                                            [location.statement_index];
-                                        match stmt.kind {
-                                            mir::StatementKind::Assign(box (
-                                                _,
-                                                mir::Rvalue::Use(mir::Operand::Copy(place)),
-                                            )) => {
-                                                self.body.local_decls[place.local].source_info.span
-                                            }
-                                            _ => self.body.source_info(location).span,
+                                        if let Some(mir::Statement {
+                                            source_info: _,
+                                            kind:
+                                                mir::StatementKind::Assign(box (
+                                                    _,
+                                                    mir::Rvalue::Use(mir::Operand::Copy(place)),
+                                                )),
+                                        }) = self.body[location.block]
+                                            .statements
+                                            .get(location.statement_index)
+                                        {
+                                            self.body.local_decls[place.local].source_info.span
+                                        } else {
+                                            self.body.source_info(location).span
                                         }
                                     });
                                 match opt_assignment_rhs_span.and_then(|s| s.desugaring_kind()) {
