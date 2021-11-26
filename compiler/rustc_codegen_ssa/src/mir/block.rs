@@ -956,6 +956,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.codegen_terminator(bx, bb, data.terminator());
     }
 
+    pub fn codegen_block_as_unreachable(&mut self, bb: mir::BasicBlock) {
+        let mut bx = self.build_block(bb);
+        debug!("codegen_block_as_unreachable({:?})", bb);
+        bx.unreachable();
+    }
+
     fn codegen_terminator(
         &mut self,
         mut bx: Bx,

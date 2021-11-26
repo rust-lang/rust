@@ -3,27 +3,27 @@
   
   fn use_associated_const() -> u8 {
       let mut _0: u8;                      // return place in scope 0 at $DIR/simplify_if_generic_constant.rs:8:51: 8:53
-      let mut _1: bool;                    // in scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 9:27
+      let mut _1: bool;                    // in scope 0 at $DIR/simplify_if_generic_constant.rs:9:8: 9:30
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 9:27
--         _1 = const <T as HasBoolConst>::B; // scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 9:27
--         switchInt(move _1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 9:27
-+         switchInt(const <T as HasBoolConst>::B) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 9:27
+          StorageLive(_1);                 // scope 0 at $DIR/simplify_if_generic_constant.rs:9:8: 9:30
+-         _1 = const <T as HasBoolConst>::B; // scope 0 at $DIR/simplify_if_generic_constant.rs:9:8: 9:30
+-         switchInt(move _1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_if_generic_constant.rs:9:8: 9:30
++         switchInt(const <T as HasBoolConst>::B) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_if_generic_constant.rs:9:8: 9:30
       }
   
       bb1: {
-          _0 = const 13_u8;                // scope 0 at $DIR/simplify_if_generic_constant.rs:10:3: 10:5
-          goto -> bb3;                     // scope 0 at $DIR/simplify_if_generic_constant.rs:9:2: 13:3
+          _0 = const 13_u8;                // scope 0 at $DIR/simplify_if_generic_constant.rs:10:9: 10:11
+          goto -> bb3;                     // scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 13:6
       }
   
       bb2: {
-          _0 = const 42_u8;                // scope 0 at $DIR/simplify_if_generic_constant.rs:12:3: 12:5
-          goto -> bb3;                     // scope 0 at $DIR/simplify_if_generic_constant.rs:9:2: 13:3
+          _0 = const 42_u8;                // scope 0 at $DIR/simplify_if_generic_constant.rs:12:9: 12:11
+          goto -> bb3;                     // scope 0 at $DIR/simplify_if_generic_constant.rs:9:5: 13:6
       }
   
       bb3: {
-          StorageDead(_1);                 // scope 0 at $DIR/simplify_if_generic_constant.rs:13:2: 13:3
+          StorageDead(_1);                 // scope 0 at $DIR/simplify_if_generic_constant.rs:13:5: 13:6
           return;                          // scope 0 at $DIR/simplify_if_generic_constant.rs:14:2: 14:2
       }
   }

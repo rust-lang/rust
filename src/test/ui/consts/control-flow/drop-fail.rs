@@ -8,12 +8,17 @@ const _: Option<Vec<i32>> = {
     let x = Some(Vec::new());
     //[stock,precise]~^ ERROR destructors cannot be evaluated at compile-time
 
-    if true {
+    if unknown() {
         x
     } else {
         y
     }
 };
+
+#[inline(never)]
+const fn unknown() -> bool {
+    true
+}
 
 // We only clear `NeedsDrop` if a local is moved from in entirely. This is a shortcoming of the
 // existing analysis.

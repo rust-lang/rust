@@ -240,10 +240,19 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // Apply debuginfo to the newly allocated locals.
     fx.debug_introduce_locals(&mut bx);
 
+    let reachable_blocks = mir.reachable_blocks_in_mono(cx.tcx(), instance);
+
     // Codegen the body of each block using reverse postorder
     // FIXME(eddyb) reuse RPO iterator between `analysis` and this.
     for (bb, _) in traversal::reverse_postorder(&mir) {
-        fx.codegen_block(bb);
+        if reachable_blocks.contains(bb) {
+            fx.codegen_block(bb);
+        } else {
+            // This may have references to things we didn't monomorphize, so we
+            // don't actually codegen the body.  We still create the block so
+            // terminators in other blocks can reference it without worry.
+            fx.codegen_block_as_unreachable(bb);
+        }
     }
 
     // For backends that support CFI using type membership (i.e., testing whether a given  pointer

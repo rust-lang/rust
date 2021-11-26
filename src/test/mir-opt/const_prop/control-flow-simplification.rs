@@ -1,7 +1,7 @@
 // compile-flags: -Zmir-opt-level=1
 
 trait HasSize: Sized {
-    const BYTES:usize = std::mem::size_of::<Self>();
+    const BYTES: usize = std::mem::size_of::<Self>();
 }
 
 impl<This> HasSize for This{}

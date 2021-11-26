@@ -8,7 +8,7 @@ LL | };
    | - value is dropped here
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/drop-fail.rs:21:9
+  --> $DIR/drop-fail.rs:26:9
    |
 LL |     let vec_tuple = (Vec::new(),);
    |         ^^^^^^^^^ constants cannot evaluate destructors
@@ -17,7 +17,7 @@ LL | };
    | - value is dropped here
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/drop-fail.rs:29:9
+  --> $DIR/drop-fail.rs:34:9
    |
 LL |     let x: Result<_, Vec<i32>> = Ok(Vec::new());
    |         ^ constants cannot evaluate destructors
@@ -26,7 +26,7 @@ LL | };
    | - value is dropped here
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/drop-fail.rs:39:9
+  --> $DIR/drop-fail.rs:44:9
    |
 LL |     let mut tmp = None;
    |         ^^^^^^^ constants cannot evaluate destructors

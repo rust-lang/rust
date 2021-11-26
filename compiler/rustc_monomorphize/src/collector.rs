@@ -623,92 +623,14 @@ impl<'a, 'tcx> MirNeighborCollector<'a, 'tcx> {
             value,
         )
     }
-
-    fn find_reachable_blocks(&mut self, bb: mir::BasicBlock) {
-        if !self.reachable_blocks.insert(bb) {
-            return;
-        }
-
-        use mir::TerminatorKind::*;
-        let data = &self.body.basic_blocks()[bb];
-        match data.terminator().kind {
-            Goto { target } => self.find_reachable_blocks(target),
-            Resume | Abort | Return | Unreachable | GeneratorDrop => (),
-            Drop { place: _, target, unwind }
-            | DropAndReplace { place: _, value: _, target, unwind }
-            | Assert { cond: _, expected: _, msg: _, target, cleanup: unwind }
-            | Yield { value: _, resume: target, resume_arg: _, drop: unwind } => {
-                self.find_reachable_blocks(target);
-                unwind.map(|b| self.find_reachable_blocks(b));
-            }
-            Call { func: _, args: _, destination, cleanup, from_hir_call: _, fn_span: _} => {
-                destination.map(|(_, b)| self.find_reachable_blocks(b));
-                cleanup.map(|b| self.find_reachable_blocks(b));
-            }
-            FalseEdge { .. } | FalseUnwind { .. } => {
-                bug!("Expected false edges to already be gone when collecting neighbours for {:?}", self.instance);
-            }
-            InlineAsm { template: _, operands: _, options: _, line_spans: _, destination} => {
-                destination.map(|b| self.find_reachable_blocks(b));
-            }
-            SwitchInt { ref discr, switch_ty, ref targets } => {
-                if let mir::Operand::Constant(constant) = discr {
-                    if let Some(raw_value) = self.try_eval_constant_to_bits(constant, switch_ty) {
-                        // We know what this is going to be,
-                        // so we can ignore all the other blocks.
-                        for (test_value, target) in targets.iter() {
-                            if test_value == raw_value {
-                                return self.find_reachable_blocks(target);
-                            }
-                        }
-
-                        return self.find_reachable_blocks(targets.otherwise());
-                    }
-                }
-
-                // If it's not a constant or we can't evaluate it,
-                // then we have to consider them all as reachable.
-                for &b in targets.all_targets() {
-                    self.find_reachable_blocks(b)
-                }
-            }
-        }
-    }
-
-    fn try_eval_constant_to_bits(&self, constant: &mir::Constant<'tcx>, ty: Ty<'tcx>) -> Option<u128> {
-        let env = ty::ParamEnv::reveal_all();
-        let ct = self.monomorphize(constant.literal);
-        let value = match ct {
-            mir::ConstantKind::Val(value, _) => value,
-            mir::ConstantKind::Ty(ct) => {
-                match ct.val {
-                    ty::ConstKind::Unevaluated(ct) => self
-                        .tcx
-                        .const_eval_resolve(env, ct, None).ok()?,
-                    ty::ConstKind::Value(value) => value,
-                    other => span_bug!(
-                        constant.span,
-                        "encountered bad ConstKind after monomorphizing: {:?}",
-                        other
-                    ),
-                }
-            }
-        };
-        value.try_to_bits_for_ty(self.tcx, env, ty)
-    }
 }
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
-    fn visit_body(&mut self, body: &mir::Body<'tcx>) {
-        self.find_reachable_blocks(mir::START_BLOCK);
-        self.super_body(body);
-    }
-
     fn visit_basic_block_data(&mut self, block: mir::BasicBlock, data: &mir::BasicBlockData<'tcx>) {
         if self.reachable_blocks.contains(block) {
             self.super_basic_block_data(block, data);
         } else {
-            debug!("skipping basic block {:?}", block);
+            debug!("skipping mono-unreachable basic block {:?}", block);
         }
     }
 
@@ -1482,15 +1404,9 @@ fn collect_neighbours<'tcx>(
     debug!("collect_neighbours: {:?}", instance.def_id());
     let body = tcx.instance_mir(instance.def);
 
-    let reachable_blocks =
-        if instance.substs.is_noop() {
-            // If it's non-generic, then it's already filtered out
-            // any blocks that are unreachable, so don't re-do the work.
-            BitSet::new_filled(body.basic_blocks().len())
-        } else {
-            BitSet::new_empty(body.basic_blocks().len())
-        };
-    let mut collector = MirNeighborCollector { tcx, body: &body, output, instance, reachable_blocks };
+    let reachable_blocks = body.reachable_blocks_in_mono(tcx, instance);
+    let mut collector =
+        MirNeighborCollector { tcx, body: &body, output, instance, reachable_blocks };
     collector.visit_body(&body);
 }
 

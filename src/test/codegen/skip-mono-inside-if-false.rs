@@ -7,19 +7,21 @@ pub fn demo_for_i32() {
     generic_impl::<i32>();
 }
 
+// Two important things here:
+// - We replace the "then" block with `unreachable` to avoid linking problems
+// - We neither declare nor define the `big_impl` that said block "calls".
+
 // CHECK-LABEL: ; skip_mono_inside_if_false::generic_impl
 // CHECK: start:
 // CHECK-NEXT: br i1 false, label %[[THEN_BRANCH:bb[0-9]+]], label %[[ELSE_BRANCH:bb[0-9]+]]
 // CHECK: [[ELSE_BRANCH]]:
 // CHECK-NEXT: call skip_mono_inside_if_false::small_impl
 // CHECK: [[THEN_BRANCH]]:
-// CHECK-NEXT: call skip_mono_inside_if_false::big_impl
+// CHECK-NEXT: unreachable
 
-// Then despite there being calls to both of them, only the ones that's used has a definition.
-// The other is only forward-declared, and its use will disappear with LLVM's simplifycfg.
-
+// CHECK-NOT: @_ZN25skip_mono_inside_if_false8big_impl
 // CHECK: define internal void @_ZN25skip_mono_inside_if_false10small_impl
-// CHECK: declare hidden void @_ZN25skip_mono_inside_if_false8big_impl
+// CHECK-NOT: @_ZN25skip_mono_inside_if_false8big_impl
 
 fn generic_impl<T>() {
     trait MagicTrait {

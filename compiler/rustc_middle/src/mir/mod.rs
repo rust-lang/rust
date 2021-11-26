@@ -11,7 +11,7 @@ use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
-use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
+use crate::ty::{AdtDef, Instance, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
@@ -23,7 +23,7 @@ pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
-use rustc_index::bit_set::BitMatrix;
+use rustc_index::bit_set::{BitMatrix, BitSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
@@ -516,6 +516,73 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn generator_kind(&self) -> Option<GeneratorKind> {
         self.generator.as_ref().map(|generator| generator.generator_kind)
+    }
+
+    /// Finds which basic blocks are actually reachable for a specific
+    /// monomorphization of this body.
+    ///
+    /// This is allowed to have false positives; just because this says a block
+    /// is reachable doesn't mean that's necessarily true.  It's thus always
+    /// legal for this to return a filled set.
+    ///
+    /// Regardless, the [`BitSet::domain_size`] of the returned set will always
+    /// exactly match the number of blocks in the body so that `contains`
+    /// checks can be done without worrying about panicking.
+    ///
+    /// The main case this supports is filtering out `if <T as Trait>::CONST`
+    /// bodies that can't be removed in generic MIR, but *can* be removed once
+    /// the specific `T` is known.
+    ///
+    /// This is used in the monomorphization collector as well as in codegen.
+    pub fn reachable_blocks_in_mono(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+    ) -> BitSet<BasicBlock> {
+        if instance.substs.is_noop() {
+            // If it's non-generic, then mir-opt const prop has already run, meaning it's
+            // probably not worth doing any further filtering.  So call everything reachable.
+            return BitSet::new_filled(self.basic_blocks().len());
+        }
+
+        let mut set = BitSet::new_empty(self.basic_blocks().len());
+        self.reachable_blocks_in_mono_from(tcx, instance, &mut set, START_BLOCK);
+        set
+    }
+
+    fn reachable_blocks_in_mono_from(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+        set: &mut BitSet<BasicBlock>,
+        bb: BasicBlock,
+    ) {
+        if !set.insert(bb) {
+            return;
+        }
+
+        let data = &self.basic_blocks()[bb];
+
+        if let TerminatorKind::SwitchInt {
+            discr: Operand::Constant(constant),
+            switch_ty,
+            targets,
+        } = &data.terminator().kind
+        {
+            let env = ty::ParamEnv::reveal_all();
+            let mono_literal =
+                instance.subst_mir_and_normalize_erasing_regions(tcx, env, constant.literal);
+            if let Some(bits) = mono_literal.try_eval_bits(tcx, env, switch_ty) {
+                let target = targets.target_for_value(bits);
+                return self.reachable_blocks_in_mono_from(tcx, instance, set, target);
+            } else {
+                bug!("Couldn't evaluate constant {:?} in mono {:?}", constant, instance);
+            }
+        }
+
+        for &target in data.terminator().successors() {
+            self.reachable_blocks_in_mono_from(tcx, instance, set, target);
+        }
     }
 }
 
