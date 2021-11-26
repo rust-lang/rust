@@ -178,7 +178,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
             Self {
                 ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
-                cap: Self::capacity_from_bytes(ptr.len()),
+                cap: ptr.len() / mem::size_of::<T>(),
                 alloc,
             }
         }
@@ -346,16 +346,6 @@ impl<T, A: Allocator> RawVec<T, A> {
         additional > self.capacity().wrapping_sub(len)
     }
 
-    fn capacity_from_bytes(excess: usize) -> usize {
-        debug_assert_ne!(mem::size_of::<T>(), 0);
-        excess / mem::size_of::<T>()
-    }
-
-    fn set_ptr(&mut self, ptr: NonNull<[u8]>) {
-        self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
-        self.cap = Self::capacity_from_bytes(ptr.len());
-    }
-
     // This method must only be called after `needs_to_grow(len, additional)`
     // succeeds. Otherwise, if `T` is zero-sized it will cause a divide by
     // zero.
@@ -370,7 +360,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
         // `finish_grow_amortized` is non-generic over `T`.
         let elem_layout = Layout::new::<T>();
-        let ptr = finish_grow_amortized(
+        let (ptr, cap) = finish_grow_amortized(
             len,
             additional,
             elem_layout,
@@ -378,7 +368,8 @@ impl<T, A: Allocator> RawVec<T, A> {
             self.current_memory(),
             &mut self.alloc,
         )?;
-        self.set_ptr(ptr);
+        self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
+        self.cap = cap;
         Ok(())
     }
 
@@ -392,14 +383,15 @@ impl<T, A: Allocator> RawVec<T, A> {
     fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
         // `finish_grow_exact` is non-generic over `T`.
         let elem_layout = Layout::new::<T>();
-        let ptr = finish_grow_exact(
+        let (ptr, cap) = finish_grow_exact(
             len,
             additional,
             elem_layout,
             self.current_memory(),
             &mut self.alloc,
         )?;
-        self.set_ptr(ptr);
+        self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
+        self.cap = cap;
         Ok(())
     }
 
@@ -415,7 +407,8 @@ impl<T, A: Allocator> RawVec<T, A> {
                 .shrink(ptr, layout, new_layout)
                 .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
         };
-        self.set_ptr(ptr);
+        self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
+        self.cap = ptr.len() / mem::size_of::<T>();
         Ok(())
     }
 }
@@ -432,7 +425,7 @@ fn finish_grow_amortized<A>(
     current_cap: usize,
     current_memory: Option<(NonNull<u8>, Layout)>,
     alloc: &mut A,
-) -> Result<NonNull<[u8]>, TryReserveError>
+) -> Result<(NonNull<[u8]>, usize), TryReserveError>
 where
     A: Allocator,
 {
@@ -467,18 +460,20 @@ where
 
     let new_layout = unsafe { Layout::from_size_align_unchecked(array_size, elem_layout.align()) };
 
-    let memory = if let Some((ptr, old_layout)) = current_memory {
+    let new_ptr = if let Some((old_ptr, old_layout)) = current_memory {
         debug_assert_eq!(old_layout.align(), new_layout.align());
         unsafe {
             // The allocator checks for alignment equality
             intrinsics::assume(old_layout.align() == new_layout.align());
-            alloc.grow(ptr, old_layout, new_layout)
+            alloc.grow(old_ptr, old_layout, new_layout)
         }
     } else {
         alloc.allocate(new_layout)
-    };
+    }
+    .map_err(|_| TryReserveError::from(AllocError { layout: new_layout, non_exhaustive: () }))?;
 
-    memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
+    let new_cap = new_ptr.len() / elem_layout.size();
+    Ok((new_ptr, new_cap))
 }
 
 // This function is outside `RawVec` to minimize compile times. See the comment
@@ -492,7 +487,7 @@ fn finish_grow_exact<A>(
     elem_layout: Layout,
     current_memory: Option<(NonNull<u8>, Layout)>,
     alloc: &mut A,
-) -> Result<NonNull<[u8]>, TryReserveError>
+) -> Result<(NonNull<[u8]>, usize), TryReserveError>
 where
     A: Allocator,
 {
@@ -509,18 +504,20 @@ where
 
     let new_layout = unsafe { Layout::from_size_align_unchecked(array_size, elem_layout.align()) };
 
-    let memory = if let Some((ptr, old_layout)) = current_memory {
+    let new_ptr = if let Some((old_ptr, old_layout)) = current_memory {
         debug_assert_eq!(old_layout.align(), new_layout.align());
         unsafe {
             // The allocator checks for alignment equality
             intrinsics::assume(old_layout.align() == new_layout.align());
-            alloc.grow(ptr, old_layout, new_layout)
+            alloc.grow(old_ptr, old_layout, new_layout)
         }
     } else {
         alloc.allocate(new_layout)
-    };
+    }
+    .map_err(|_| TryReserveError::from(AllocError { layout: new_layout, non_exhaustive: () }))?;
 
-    memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
+    let new_cap = new_ptr.len() / elem_layout.size();
+    Ok((new_ptr, new_cap))
 }
 
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
