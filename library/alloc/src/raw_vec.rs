@@ -1,6 +1,5 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
-use core::alloc::LayoutError;
 use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
@@ -395,10 +394,9 @@ impl<T, A: Allocator> RawVec<T, A> {
         let cap = cmp::max(self.cap * 2, required_cap);
         let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
 
-        let new_layout = Layout::array::<T>(cap);
-
         // `finish_grow` is non-generic over `T`.
-        let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
+        let elem_layout = Layout::new::<T>();
+        let ptr = finish_grow(cap, elem_layout, self.current_memory(), &mut self.alloc)?;
         self.set_ptr(ptr);
         Ok(())
     }
@@ -415,10 +413,10 @@ impl<T, A: Allocator> RawVec<T, A> {
         // is called for a zero-sized `T` after `needs_to_grow()` has
         // succeeded, this early return will occur.)
         let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-        let new_layout = Layout::array::<T>(cap);
 
         // `finish_grow` is non-generic over `T`.
-        let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
+        let elem_layout = Layout::new::<T>();
+        let ptr = finish_grow(cap, elem_layout, self.current_memory(), &mut self.alloc)?;
         self.set_ptr(ptr);
         Ok(())
     }
@@ -446,17 +444,18 @@ impl<T, A: Allocator> RawVec<T, A> {
 // much smaller than the number of `T` types.)
 #[inline(never)]
 fn finish_grow<A>(
-    new_layout: Result<Layout, LayoutError>,
+    cap: usize,
+    elem_layout: Layout,
     current_memory: Option<(NonNull<u8>, Layout)>,
     alloc: &mut A,
 ) -> Result<NonNull<[u8]>, TryReserveError>
 where
     A: Allocator,
 {
-    // Check for the error here to minimize the size of `RawVec::grow_*`.
-    let new_layout = new_layout.map_err(|_| CapacityOverflow)?;
+    let array_size = elem_layout.size().checked_mul(cap).ok_or(CapacityOverflow)?;
+    alloc_guard(array_size)?;
 
-    alloc_guard(new_layout.size())?;
+    let new_layout = unsafe { Layout::from_size_align_unchecked(array_size, elem_layout.align()) };
 
     let memory = if let Some((ptr, old_layout)) = current_memory {
         debug_assert_eq!(old_layout.align(), new_layout.align());
