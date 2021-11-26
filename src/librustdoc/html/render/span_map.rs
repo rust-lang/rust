@@ -8,7 +8,8 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{ExprKind, HirId, Mod, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
+use rustc_span::hygiene::MacroKind;
+use rustc_span::{BytePos, ExpnKind, Span};
 
 use std::path::{Path, PathBuf};
 
@@ -63,32 +64,59 @@ struct SpanMapVisitor<'tcx> {
 
 impl<'tcx> SpanMapVisitor<'tcx> {
     /// This function is where we handle `hir::Path` elements and add them into the "span map".
-    fn handle_path(&mut self, path: &rustc_hir::Path<'_>, path_span: Option<Span>) {
+    fn handle_path(&mut self, path: &rustc_hir::Path<'_>) {
         let info = match path.res {
-            // FIXME: For now, we only handle `DefKind` if it's not `DefKind::TyParam` or
-            // `DefKind::Macro`. Would be nice to support them too alongside the other `DefKind`
+            // FIXME: For now, we handle `DefKind` if it's not a `DefKind::TyParam`.
+            // Would be nice to support them too alongside the other `DefKind`
             // (such as primitive types!).
-            Res::Def(kind, def_id) if kind != DefKind::TyParam => {
-                if matches!(kind, DefKind::Macro(_)) {
-                    return;
-                }
-                Some(def_id)
-            }
+            Res::Def(kind, def_id) if kind != DefKind::TyParam => Some(def_id),
             Res::Local(_) => None,
             Res::PrimTy(p) => {
                 // FIXME: Doesn't handle "path-like" primitives like arrays or tuples.
-                let span = path_span.unwrap_or(path.span);
-                self.matches.insert(span, LinkFromSrc::Primitive(PrimitiveType::from(p)));
+                self.matches.insert(path.span, LinkFromSrc::Primitive(PrimitiveType::from(p)));
                 return;
             }
             Res::Err => return,
             _ => return,
         };
         if let Some(span) = self.tcx.hir().res_span(path.res) {
-            self.matches
-                .insert(path_span.unwrap_or(path.span), LinkFromSrc::Local(clean::Span::new(span)));
+            self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
         } else if let Some(def_id) = info {
-            self.matches.insert(path_span.unwrap_or(path.span), LinkFromSrc::External(def_id));
+            self.matches.insert(path.span, LinkFromSrc::External(def_id));
+        }
+    }
+
+    /// Adds the macro call into the span map. Returns `true` if the `span` was inside a macro
+    /// expansion, whether or not it was added to the span map.
+    fn handle_macro(&mut self, span: Span) -> bool {
+        if span.from_expansion() {
+            let mut data = span.ctxt().outer_expn_data();
+            let mut call_site = data.call_site;
+            while call_site.from_expansion() {
+                data = call_site.ctxt().outer_expn_data();
+                call_site = data.call_site;
+            }
+
+            if let ExpnKind::Macro(MacroKind::Bang, macro_name) = data.kind {
+                let link_from_src = if let Some(macro_def_id) = data.macro_def_id {
+                    if macro_def_id.is_local() {
+                        LinkFromSrc::Local(clean::Span::new(data.def_site))
+                    } else {
+                        LinkFromSrc::External(macro_def_id)
+                    }
+                } else {
+                    return true;
+                };
+                let new_span = data.call_site;
+                let macro_name = macro_name.as_str();
+                // The "call_site" includes the whole macro with its "arguments". We only want
+                // the macro name.
+                let new_span = new_span.with_hi(new_span.lo() + BytePos(macro_name.len() as u32));
+                self.matches.insert(new_span, link_from_src);
+            }
+            true
+        } else {
+            false
         }
     }
 }
@@ -101,7 +129,10 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     }
 
     fn visit_path(&mut self, path: &'tcx rustc_hir::Path<'tcx>, _id: HirId) {
-        self.handle_path(path, None);
+        if self.handle_macro(path.span) {
+            return;
+        }
+        self.handle_path(path);
         intravisit::walk_path(self, path);
     }
 
@@ -143,12 +174,18 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                     );
                 }
             }
+        } else if self.handle_macro(expr.span) {
+            // We don't want to deeper into the macro.
+            return;
         }
         intravisit::walk_expr(self, expr);
     }
 
     fn visit_use(&mut self, path: &'tcx rustc_hir::Path<'tcx>, id: HirId) {
-        self.handle_path(path, None);
+        if self.handle_macro(path.span) {
+            return;
+        }
+        self.handle_path(path);
         intravisit::walk_use(self, path, id);
     }
 }
