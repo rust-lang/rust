@@ -20,8 +20,16 @@ fn uni() {
     print!("\u{DC}ben!"); // this is ok
 }
 
+// issue 8013
+#[warn(clippy::non_ascii_literal)]
+fn single_quote() {
+    const _EMPTY_BLOCK: char = '▱';
+    const _FULL_BLOCK: char = '▰';
+}
+
 fn main() {
     zero();
     uni();
     canon();
+    single_quote();
 }
