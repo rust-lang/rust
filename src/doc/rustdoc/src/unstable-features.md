@@ -257,22 +257,6 @@ all these files are linked from every page, changing where they are can be cumbe
 specially cache them. This flag will rename all these files in the output to include the suffix in
 the filename. For example, `light.css` would become `light-suf.css` with the above command.
 
-### `--display-doctest-warnings`: display warnings when documenting or running documentation tests
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --display-doctest-warnings
-$ rustdoc --test src/lib.rs -Z unstable-options --display-doctest-warnings
-```
-
-The intent behind this flag is to allow the user to see warnings that occur within their library or
-their documentation tests, which are usually suppressed. However, [due to a
-bug][issue-display-warnings], this flag doesn't 100% work as intended. See the linked issue for
-details.
-
-[issue-display-warnings]: https://github.com/rust-lang/rust/issues/41574
-
 ### `--extern-html-root-url`: control how rustdoc links to non-local crates
 
 Using this flag looks like this:
