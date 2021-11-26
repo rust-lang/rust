@@ -34,7 +34,6 @@ use rustc_target::spec::abi::Abi;
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
 use crate::clean::inline::{self, print_inlined_const};
-use crate::clean::types::Type::{QPath, ResolvedPath};
 use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
 use crate::clean::Clean;
 use crate::core::DocContext;
@@ -43,10 +42,14 @@ use crate::formats::item_type::ItemType;
 use crate::html::render::cache::ExternalLocation;
 use crate::html::render::Context;
 
-use self::FnRetTy::*;
-use self::ItemKind::*;
-use self::SelfTy::*;
-use self::Type::*;
+crate use self::FnRetTy::*;
+crate use self::ItemKind::*;
+crate use self::SelfTy::*;
+crate use self::Type::{
+    Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
+    RawPointer, Slice, Tuple,
+};
+crate use self::Visibility::{Inherited, Public};
 
 crate type ItemIdSet = FxHashSet<ItemId>;
 
@@ -1418,8 +1421,9 @@ crate struct PolyTrait {
 crate enum Type {
     /// A named type, which could be a trait.
     ///
-    /// This is mostly Rustdoc's version of [`hir::Path`]. It has to be different because Rustdoc's [`PathSegment`] can contain cleaned generics.
-    ResolvedPath { path: Path },
+    /// This is mostly Rustdoc's version of [`hir::Path`].
+    /// It has to be different because Rustdoc's [`PathSegment`] can contain cleaned generics.
+    Path { path: Path },
     /// A `dyn Trait` object: `dyn for<'a> Trait<'a> + Send + 'static`
     DynTrait(Vec<PolyTrait>, Option<Lifetime>),
     /// A type parameter.
@@ -1485,7 +1489,7 @@ impl Type {
     /// Checks if this is a `T::Name` path for an associated type.
     crate fn is_assoc_ty(&self) -> bool {
         match self {
-            ResolvedPath { path, .. } => path.is_assoc_ty(),
+            Type::Path { path, .. } => path.is_assoc_ty(),
             _ => false,
         }
     }
@@ -1499,7 +1503,7 @@ impl Type {
 
     crate fn generics(&self) -> Option<Vec<&Type>> {
         match self {
-            ResolvedPath { path, .. } => path.generics(),
+            Type::Path { path, .. } => path.generics(),
             _ => None,
         }
     }
@@ -1522,7 +1526,7 @@ impl Type {
 
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
         let t: PrimitiveType = match *self {
-            ResolvedPath { ref path } => return Some(path.def_id()),
+            Type::Path { ref path } => return Some(path.def_id()),
             DynTrait(ref bounds, _) => return Some(bounds[0].trait_.def_id()),
             Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,

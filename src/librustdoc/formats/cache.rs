@@ -27,7 +27,7 @@ use crate::html::render::IndexItem;
 #[derive(Default)]
 crate struct Cache {
     /// Maps a type ID to all known implementations for that type. This is only
-    /// recognized for intra-crate `ResolvedPath` types, and is used to print
+    /// recognized for intra-crate [`clean::Type::Path`]s, and is used to print
     /// out extra documentation on the page of an enum/struct.
     ///
     /// The values of the map are a list of implementations and documentation
@@ -401,7 +401,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             clean::ImplItem(ref i) => {
                 self.cache.parent_is_trait_impl = i.trait_.is_some();
                 match i.for_ {
-                    clean::ResolvedPath { ref path } => {
+                    clean::Type::Path { ref path } => {
                         self.cache.parent_stack.push(path.def_id());
                         true
                     }
@@ -436,8 +436,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             // Note: matching twice to restrict the lifetime of the `i` borrow.
             let mut dids = FxHashSet::default();
             match i.for_ {
-                clean::ResolvedPath { ref path }
-                | clean::BorrowedRef { type_: box clean::ResolvedPath { ref path }, .. } => {
+                clean::Type::Path { ref path }
+                | clean::BorrowedRef { type_: box clean::Type::Path { ref path }, .. } => {
                     dids.insert(path.def_id());
                 }
                 clean::DynTrait(ref bounds, _)
