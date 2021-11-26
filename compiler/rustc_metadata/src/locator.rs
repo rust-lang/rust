@@ -220,7 +220,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
-use rustc_errors::{struct_span_err, DiagnosticBuilder, FatalError};
+use rustc_errors::{struct_span_err, FatalError};
 use rustc_session::config::{self, CrateType};
 use rustc_session::cstore::{CrateSource, MetadataLoader};
 use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
@@ -931,8 +931,8 @@ impl fmt::Display for MetadataError<'_> {
 }
 
 impl CrateError {
-    fn build_diag(self, sess: &Session, span: Span, missing_core: bool) -> DiagnosticBuilder<'_> {
-        match self {
+    crate fn report(self, sess: &Session, span: Span, missing_core: bool) {
+        let mut diag = match self {
             CrateError::NonAsciiName(crate_name) => sess.struct_span_err(
                 span,
                 &format!("cannot load a crate with a non-ascii name `{}`", crate_name),
@@ -1208,10 +1208,8 @@ impl CrateError {
                 "plugin `{}` only found in rlib format, but must be available in dylib format",
                 crate_name,
             ),
-        }
-    }
+        };
 
-    crate fn report(self, sess: &Session, span: Span, missing_core: bool) {
-        self.build_diag(sess, span, missing_core).emit();
+        diag.emit();
     }
 }

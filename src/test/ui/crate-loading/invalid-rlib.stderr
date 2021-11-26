@@ -6,6 +6,14 @@ LL | use ::foo;
    |
    = note: failed to mmap file 'auxiliary/libfoo.rlib'
 
-error: aborting due to previous error
+error[E0786]: found invalid metadata files for crate `foo`
+  --> $DIR/invalid-rlib.rs:7:7
+   |
+LL | use ::foo;
+   |       ^^^
+   |
+   = note: failed to mmap file 'auxiliary/libfoo.rlib'
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0786`.
