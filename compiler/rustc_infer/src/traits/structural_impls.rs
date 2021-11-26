@@ -70,6 +70,7 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.predicate.visit_with(visitor)
+        self.predicate.visit_with(visitor)?;
+        self.param_env.visit_with(visitor)
     }
 }
