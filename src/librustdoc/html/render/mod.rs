@@ -1531,8 +1531,6 @@ fn render_impl(
     let mut impl_items = Buffer::empty_from(w);
     let mut default_impl_items = Buffer::empty_from(w);
 
-    // FFFFXXX
-
     for trait_item in &i.inner_impl().items {
         doc_impl_item(
             &mut default_impl_items,
@@ -2336,18 +2334,25 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
 
     sidebar_assoc_items(cx, buf, it);
 
-    if let Some(implementors) = cache.implementors.get(&it.def_id.expect_def_id()) {
+    let did = it.def_id.expect_def_id();
+
+    if let Some(implementors) = cache.implementors.get(&did) {
         let mut res = implementors
             .iter()
             .filter(|i| {
                 i.inner_impl().for_.def_id(cache).map_or(true, |d| cache.paths.contains_key(&d))
+                    && i.inner_impl().polarity == ty::ImplPolarity::Positive
             })
             // TODO: Dont do the filter map dance
             // .filter_map(|i| extract_for_impl_name(&i.impl_item, cx))
             .map(|i| {
                 (
                     format!("{:#}", i.inner_impl().for_.print(cx)),
-                    cx.nixon_hack.borrow().get(&i.impl_item.def_id).unwrap().clone(),
+                    cx.nixon_hack
+                        .borrow()
+                        .get(&i.impl_item.def_id)
+                        .unwrap_or_else(|| panic!("Not in index {:#?}", i))
+                        .clone(),
                 )
             })
             .collect::<Vec<_>>();
