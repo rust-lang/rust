@@ -219,7 +219,7 @@ struct MacroDirective {
 enum MacroDirectiveKind {
     FnLike { ast_id: AstIdWithPath<ast::MacroCall>, expand_to: ExpandTo },
     Derive { ast_id: AstIdWithPath<ast::Item>, derive_attr: AttrId },
-    Attr { ast_id: AstIdWithPath<ast::Item>, attr: Attr, mod_item: ModItem },
+    Attr { ast_id: AstIdWithPath<ast::Item>, attr: Attr, mod_item: ModItem, tree: TreeId },
 }
 
 /// Walks the tree of module recursively
@@ -420,17 +420,16 @@ impl DefCollector<'_> {
 
         let mut unresolved_macros = std::mem::take(&mut self.unresolved_macros);
         let pos = unresolved_macros.iter().position(|directive| {
-            if let MacroDirectiveKind::Attr { ast_id, mod_item, attr } = &directive.kind {
+            if let MacroDirectiveKind::Attr { ast_id, mod_item, attr, tree } = &directive.kind {
                 self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), attr.id);
 
-                let file_id = ast_id.ast_id.file_id;
-                let item_tree = self.db.file_item_tree(file_id);
+                let item_tree = tree.item_tree(self.db);
                 let mod_dir = self.mod_dirs[&directive.module_id].clone();
                 ModCollector {
                     def_collector: self,
                     macro_depth: directive.depth,
                     module_id: directive.module_id,
-                    tree_id: TreeId::new(file_id, None),
+                    tree_id: *tree,
                     item_tree: &item_tree,
                     mod_dir,
                 }
@@ -1076,20 +1075,22 @@ impl DefCollector<'_> {
                         return false;
                     }
                 }
-                MacroDirectiveKind::Attr { ast_id: file_ast_id, mod_item, attr } => {
+                MacroDirectiveKind::Attr { ast_id: file_ast_id, mod_item, attr, tree } => {
                     let &AstIdWithPath { ast_id, ref path } = file_ast_id;
                     let file_id = ast_id.file_id;
 
-                    let mut recollect_without = |collector: &mut Self, item_tree| {
+                    let mut recollect_without = |collector: &mut Self| {
                         // Remove the original directive since we resolved it.
                         let mod_dir = collector.mod_dirs[&directive.module_id].clone();
                         collector.skip_attrs.insert(InFile::new(file_id, *mod_item), attr.id);
+
+                        let item_tree = tree.item_tree(self.db);
                         ModCollector {
                             def_collector: collector,
                             macro_depth: directive.depth,
                             module_id: directive.module_id,
-                            tree_id: TreeId::new(file_id, None),
-                            item_tree,
+                            tree_id: *tree,
+                            item_tree: &item_tree,
                             mod_dir,
                         }
                         .collect(&[*mod_item]);
@@ -1103,8 +1104,7 @@ impl DefCollector<'_> {
                                 cov_mark::hit!(resolved_derive_helper);
                                 // Resolved to derive helper. Collect the item's attributes again,
                                 // starting after the derive helper.
-                                let item_tree = self.db.file_item_tree(file_id);
-                                return recollect_without(self, &item_tree);
+                                return recollect_without(self);
                             }
                         }
                     }
@@ -1116,7 +1116,6 @@ impl DefCollector<'_> {
                         if expander.is_derive()
                     ) {
                         // Resolved to `#[derive]`
-                        let item_tree = self.db.file_item_tree(file_id);
 
                         match mod_item {
                             ModItem::Struct(_) | ModItem::Union(_) | ModItem::Enum(_) => (),
@@ -1127,7 +1126,7 @@ impl DefCollector<'_> {
                                     attr.id,
                                 );
                                 self.def_map.diagnostics.push(diag);
-                                return recollect_without(self, &item_tree);
+                                return recollect_without(self);
                             }
                         }
 
@@ -1155,7 +1154,7 @@ impl DefCollector<'_> {
                             }
                         }
 
-                        return recollect_without(self, &item_tree);
+                        return recollect_without(self);
                     }
 
                     if !self.db.enable_proc_attr_macros() {
@@ -1175,8 +1174,7 @@ impl DefCollector<'_> {
                                 MacroDefKind::BuiltInAttr(expander, _)
                                 if expander.is_test() || expander.is_bench()
                             ) {
-                                let item_tree = self.db.file_item_tree(file_id);
-                                return recollect_without(self, &item_tree);
+                                return recollect_without(self);
                             }
 
                             if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
@@ -1190,8 +1188,7 @@ impl DefCollector<'_> {
                                         ),
                                     );
 
-                                    let item_tree = self.db.file_item_tree(file_id);
-                                    return recollect_without(self, &item_tree);
+                                    return recollect_without(self);
                                 }
                             }
 
@@ -1771,7 +1768,12 @@ impl ModCollector<'_, '_> {
             self.def_collector.unresolved_macros.push(MacroDirective {
                 module_id: self.module_id,
                 depth: self.macro_depth + 1,
-                kind: MacroDirectiveKind::Attr { ast_id, attr: attr.clone(), mod_item },
+                kind: MacroDirectiveKind::Attr {
+                    ast_id,
+                    attr: attr.clone(),
+                    mod_item,
+                    tree: self.tree_id,
+                },
             });
 
             return Err(());
