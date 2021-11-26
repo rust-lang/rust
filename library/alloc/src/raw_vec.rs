@@ -370,6 +370,10 @@ impl<T, A: Allocator> RawVec<T, A> {
         self.cap = Self::capacity_from_bytes(ptr.len());
     }
 
+    // This method must only be called after `needs_to_grow(len, additional)`
+    // succeeds. Otherwise, if `T` is zero-sized it will cause a divide by
+    // zero.
+    //
     // This method is usually instantiated many times. So we want it to be as
     // small as possible, to improve compile times. But we also want as much of
     // its contents to be statically computable as possible, to make the
@@ -381,13 +385,9 @@ impl<T, A: Allocator> RawVec<T, A> {
         // This is ensured by the calling contexts.
         debug_assert!(additional > 0);
 
-        if mem::size_of::<T>() == 0 {
-            // Since we return a capacity of `usize::MAX` when `elem_size` is
-            // 0, getting to here necessarily means the `RawVec` is overfull.
-            return Err(CapacityOverflow.into());
-        }
-
-        // Nothing we can really do about these checks, sadly.
+        // Nothing we can really do about these checks, sadly. (If this method
+        // is called for a zero-sized `T` after `needs_to_grow()` has
+        // succeeded, this early return will occur.)
         let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
 
         // This guarantees exponential growth. The doubling cannot overflow
@@ -403,16 +403,17 @@ impl<T, A: Allocator> RawVec<T, A> {
         Ok(())
     }
 
+    // This method must only be called after `needs_to_grow(len, additional)`
+    // succeeds. Otherwise, if `T` is zero-sized it will cause a divide by
+    // zero.
+    //
     // The constraints on this method are much the same as those on
     // `grow_amortized`, but this method is usually instantiated less often so
     // it's less critical.
     fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        if mem::size_of::<T>() == 0 {
-            // Since we return a capacity of `usize::MAX` when the type size is
-            // 0, getting to here necessarily means the `RawVec` is overfull.
-            return Err(CapacityOverflow.into());
-        }
-
+        // Nothing we can really do about these checks, sadly. (If this method
+        // is called for a zero-sized `T` after `needs_to_grow()` has
+        // succeeded, this early return will occur.)
         let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
         let new_layout = Layout::array::<T>(cap);
 
