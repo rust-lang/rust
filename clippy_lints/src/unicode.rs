@@ -28,7 +28,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for non-ASCII characters in string literals.
+    /// Checks for non-ASCII characters in string literals or char.
     ///
     /// ### Why is this bad?
     /// Yeah, we know, the 90's called and wanted their charset
