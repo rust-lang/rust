@@ -14,6 +14,10 @@ struct SomeStruct<'x, 'y, 'z: 'x> {
     f: &'y dyn for<'a, 'b> Fn(&'a Foo<'b>) -> &'a Foo<'b>,
 }
 
+// Without this, the wf-check will fail early so we'll never see the
+// error in SOME_STRUCT's body.
+unsafe impl<'x, 'y, 'z: 'x> Sync for SomeStruct<'x, 'y, 'z> {}
+
 fn id<T>(t: T) -> T {
     t
 }

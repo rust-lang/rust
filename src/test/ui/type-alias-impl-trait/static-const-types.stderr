@@ -1,9 +1,9 @@
 error[E0308]: mismatched types
-  --> $DIR/static-const-types.rs:11:20
+  --> $DIR/static-const-types.rs:10:20
    |
 LL | type Foo = impl Debug;
    |            ---------- the expected opaque type
-...
+LL | 
 LL | static FOO1: Foo = 22_u32;
    |                    ^^^^^^ expected opaque type, found `u32`
    |
@@ -11,7 +11,7 @@ LL | static FOO1: Foo = 22_u32;
                      found type `u32`
 
 error[E0308]: mismatched types
-  --> $DIR/static-const-types.rs:13:19
+  --> $DIR/static-const-types.rs:11:19
    |
 LL | type Foo = impl Debug;
    |            ---------- the expected opaque type

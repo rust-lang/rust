@@ -1,26 +1,5 @@
-error[E0277]: `dyn for<'a, 'b> Fn(&'a Foo<'b>) -> &'a Foo<'b>` cannot be shared between threads safely
-  --> $DIR/rfc1623.rs:21:1
-   |
-LL | / static SOME_STRUCT: &SomeStruct = &SomeStruct {
-LL | |     foo: &Foo { bools: &[false, true] },
-LL | |     bar: &Bar { bools: &[true, true] },
-LL | |     f: &id,
-LL | |
-LL | | };
-   | |__^ `dyn for<'a, 'b> Fn(&'a Foo<'b>) -> &'a Foo<'b>` cannot be shared between threads safely
-   |
-   = help: within `&SomeStruct`, the trait `Sync` is not implemented for `dyn for<'a, 'b> Fn(&'a Foo<'b>) -> &'a Foo<'b>`
-   = note: required because it appears within the type `&dyn for<'a, 'b> Fn(&'a Foo<'b>) -> &'a Foo<'b>`
-note: required because it appears within the type `SomeStruct`
-  --> $DIR/rfc1623.rs:11:8
-   |
-LL | struct SomeStruct<'x, 'y, 'z: 'x> {
-   |        ^^^^^^^^^^
-   = note: required because it appears within the type `&SomeStruct`
-   = note: shared static variables must have a type that implements `Sync`
-
 error[E0308]: mismatched types
-  --> $DIR/rfc1623.rs:21:35
+  --> $DIR/rfc1623.rs:25:35
    |
 LL |   static SOME_STRUCT: &SomeStruct = &SomeStruct {
    |  ___________________________________^
@@ -35,7 +14,7 @@ LL | | };
               found type `Fn<(&Foo<'_>,)>`
 
 error[E0308]: mismatched types
-  --> $DIR/rfc1623.rs:21:35
+  --> $DIR/rfc1623.rs:25:35
    |
 LL |   static SOME_STRUCT: &SomeStruct = &SomeStruct {
    |  ___________________________________^
@@ -50,7 +29,7 @@ LL | | };
               found type `Fn<(&Foo<'_>,)>`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/rfc1623.rs:21:35
+  --> $DIR/rfc1623.rs:25:35
    |
 LL |   static SOME_STRUCT: &SomeStruct = &SomeStruct {
    |  ___________________________________^
@@ -65,7 +44,7 @@ LL | | };
    = note: ...but it actually implements `FnOnce<(&'2 Foo<'_>,)>`, for some specific lifetime `'2`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/rfc1623.rs:21:35
+  --> $DIR/rfc1623.rs:25:35
    |
 LL |   static SOME_STRUCT: &SomeStruct = &SomeStruct {
    |  ___________________________________^
@@ -79,7 +58,6 @@ LL | | };
    = note: `fn(&Foo<'2>) -> &Foo<'2> {id::<&Foo<'2>>}` must implement `FnOnce<(&'a Foo<'1>,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&Foo<'2>,)>`, for some specific lifetime `'2`
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0277, E0308.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0308`.
