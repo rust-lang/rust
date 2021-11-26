@@ -53,11 +53,7 @@ static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
 static EXPANSION_DEPTH_LIMIT: Limit = Limit::new(128);
 static FIXED_POINT_LIMIT: Limit = Limit::new(8192);
 
-pub(super) fn collect_defs(
-    db: &dyn DefDatabase,
-    mut def_map: DefMap,
-    block: Option<AstId<ast::BlockExpr>>,
-) -> DefMap {
+pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: TreeId) -> DefMap {
     let crate_graph = db.crate_graph();
 
     let mut deps = FxHashMap::default();
@@ -69,7 +65,7 @@ pub(super) fn collect_defs(
 
         deps.insert(dep.as_name(), dep_root.into());
 
-        if dep.is_prelude() && block.is_none() {
+        if dep.is_prelude() && !tree_id.is_block() {
             def_map.extern_prelude.insert(dep.as_name(), dep_root.into());
         }
     }
@@ -104,9 +100,10 @@ pub(super) fn collect_defs(
         registered_attrs: Default::default(),
         registered_tools: Default::default(),
     };
-    match block {
-        Some(block) => collector.seed_with_inner(block),
-        None => collector.seed_with_top_level(),
+    if tree_id.is_block() {
+        collector.seed_with_inner(tree_id);
+    } else {
+        collector.seed_with_top_level();
     }
     collector.collect();
     let mut def_map = collector.finish();
@@ -313,8 +310,8 @@ impl DefCollector<'_> {
         }
     }
 
-    fn seed_with_inner(&mut self, block: AstId<ast::BlockExpr>) {
-        let item_tree = self.db.file_item_tree(block.file_id);
+    fn seed_with_inner(&mut self, tree_id: TreeId) {
+        let item_tree = tree_id.item_tree(self.db);
         let module_id = self.def_map.root;
 
         let is_cfg_enabled = item_tree
@@ -326,12 +323,11 @@ impl DefCollector<'_> {
                 def_collector: self,
                 macro_depth: 0,
                 module_id,
-                // FIXME: populate block once we have per-block ItemTrees
-                tree_id: TreeId::new(block.file_id, None),
+                tree_id,
                 item_tree: &item_tree,
                 mod_dir: ModDir::root(),
             }
-            .collect(item_tree.inner_items_of_block(block.value));
+            .collect(item_tree.top_level_items());
         }
     }
 

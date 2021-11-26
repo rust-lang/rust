@@ -132,21 +132,6 @@ impl ItemTree {
                     // items.
                     ctx.lower_macro_stmts(stmts)
                 },
-                ast::Pat(_pat) => {
-                    // FIXME: This occurs because macros in pattern position are treated as inner
-                    // items and expanded during block DefMap computation
-                    return Default::default();
-                },
-                ast::Type(ty) => {
-                    // Types can contain inner items. We return an empty item tree in this case, but
-                    // still need to collect inner items.
-                    ctx.lower_inner_items(ty.syntax())
-                },
-                ast::Expr(e) => {
-                    // Macros can expand to expressions. We return an empty item tree in this case, but
-                    // still need to collect inner items.
-                    ctx.lower_inner_items(e.syntax())
-                },
                 _ => {
                     panic!("cannot create item tree from {:?} {}", syntax, syntax);
                 },
@@ -158,6 +143,14 @@ impl ItemTree {
         }
         item_tree.shrink_to_fit();
         Arc::new(item_tree)
+    }
+
+    fn block_item_tree(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
+        let loc = db.lookup_intern_block(block);
+        let block = loc.ast_id.to_node(db.upcast());
+        let hygiene = Hygiene::new(db.upcast(), loc.ast_id.file_id);
+        let ctx = lower::Ctx::new(db, hygiene.clone(), loc.ast_id.file_id);
+        Arc::new(ctx.lower_block(&block))
     }
 
     fn shrink_to_fit(&mut self) {
@@ -183,7 +176,6 @@ impl ItemTree {
                 macro_rules,
                 macro_defs,
                 vis,
-                inner_items,
             } = &mut **data;
 
             imports.shrink_to_fit();
@@ -207,8 +199,6 @@ impl ItemTree {
             macro_defs.shrink_to_fit();
 
             vis.arena.shrink_to_fit();
-
-            inner_items.shrink_to_fit();
         }
     }
 
@@ -229,13 +219,6 @@ impl ItemTree {
 
     pub fn attrs(&self, db: &dyn DefDatabase, krate: CrateId, of: AttrOwner) -> Attrs {
         self.raw_attrs(of).clone().filter(db, krate)
-    }
-
-    pub fn inner_items_of_block(&self, block: FileAstId<ast::BlockExpr>) -> &[ModItem] {
-        match &self.data {
-            Some(data) => data.inner_items.get(&block).map(|it| &**it).unwrap_or(&[]),
-            None => &[],
-        }
     }
 
     pub fn pretty_print(&self) -> String {
@@ -297,8 +280,6 @@ struct ItemTreeData {
     macro_defs: Arena<MacroDef>,
 
     vis: ItemVisibilities,
-
-    inner_items: FxHashMap<FileAstId<ast::BlockExpr>, SmallVec<[ModItem; 1]>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -388,13 +369,17 @@ impl TreeId {
 
     pub(crate) fn item_tree(&self, db: &dyn DefDatabase) -> Arc<ItemTree> {
         match self.block {
-            Some(_) => unreachable!("per-block ItemTrees are not yet implemented"),
+            Some(block) => ItemTree::block_item_tree(db, block),
             None => db.file_item_tree(self.file),
         }
     }
 
     pub(crate) fn file_id(self) -> HirFileId {
         self.file
+    }
+
+    pub(crate) fn is_block(self) -> bool {
+        self.block.is_some()
     }
 }
 

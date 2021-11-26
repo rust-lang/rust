@@ -148,13 +148,11 @@ fn f() {
 }
     "#,
         expect![[r#"
-            BlockId(1) in ModuleId { krate: CrateId(0), block: Some(BlockId(0)), local_id: Idx::<ModuleData>(0) }
+            BlockId(1) in ModuleId { krate: CrateId(0), block: Some(BlockId(0)), local_id: Idx::<ModuleData>(1) }
             BlockId(0) in ModuleId { krate: CrateId(0), block: None, local_id: Idx::<ModuleData>(0) }
             crate scope
         "#]],
     );
-    // FIXME: The module nesting here is wrong!
-    // The first block map should be located in module #1 (`mod module`), not #0 (BlockId(0) root module)
 }
 
 #[test]
@@ -352,24 +350,17 @@ fn is_visible_from_same_def_map() {
     check_at(
         r#"
 fn outer() {
-    mod command {
-        use crate::name;
-    }
-
     mod tests {
         use super::*;
     }
+    use crate::name;
     $0
 }
         "#,
         expect![[r#"
             block scope
-            command: t
             name: _
             tests: t
-
-            block scope::command
-            name: _
 
             block scope::tests
             name: _
@@ -379,6 +370,4 @@ fn outer() {
             outer: v
         "#]],
     );
-    // FIXME: `name` should not be visible in the block scope. This happens because ItemTrees store
-    // inner items incorrectly.
 }
