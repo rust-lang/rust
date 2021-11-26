@@ -6,6 +6,7 @@ use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::DUMMY_SP;
 
@@ -95,10 +96,22 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 self.add_outlives(r1_vid, r2_vid);
             }
 
-            GenericArgKind::Type(t1) => {
+            GenericArgKind::Type(mut t1) => {
                 // we don't actually use this for anything, but
                 // the `TypeOutlives` code needs an origin.
                 let origin = infer::RelateParamBound(DUMMY_SP, t1, None);
+
+                // Placeholder regions need to be converted now because it may
+                // create new region variables, which can't be done later when
+                // verifying these bounds.
+                if t1.has_placeholders() {
+                    t1 = tcx.fold_regions(&t1, &mut false, |r, _| match *r {
+                        ty::RegionKind::RePlaceholder(placeholder) => {
+                            self.constraints.placeholder_region(self.infcx, placeholder)
+                        }
+                        _ => r,
+                    });
+                }
 
                 TypeOutlives::new(
                     &mut *self,
