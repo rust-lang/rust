@@ -1,6 +1,11 @@
 error[E0308]: mismatched types
-  --> $DIR/integral-variable-unification-error.rs:3:9
+  --> $DIR/integral-variable-unification-error.rs:5:9
    |
+LL |     let mut x
+   |         ----- expected due to the type of this binding
+LL |         =
+LL |         2;
+   |         - expected due to this value
 LL |     x = 5.0;
    |         ^^^ expected integer, found floating-point number
 
