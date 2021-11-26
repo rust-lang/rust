@@ -923,7 +923,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     }
                 });
                 match lifetime.name {
-                    LifetimeName::Implicit | hir::LifetimeName::ImplicitMissing => {
+                    LifetimeName::Implicit(_) => {
                         // For types like `dyn Foo`, we should
                         // generate a special form of elided.
                         span_bug!(ty.span, "object-lifetime-default expected, not implicit",);
@@ -3283,8 +3283,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 .emit();
                         }
                         hir::LifetimeName::Param(_)
-                        | hir::LifetimeName::Implicit
-                        | hir::LifetimeName::ImplicitMissing => {
+                        | hir::LifetimeName::Implicit(_) => {
                             self.resolve_lifetime_ref(lt);
                         }
                         hir::LifetimeName::ImplicitObjectLifetimeDefault => {

@@ -1951,7 +1951,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
 
     crate fn report_elided_lifetime_in_ty(&self, lifetime_refs: &[&hir::Lifetime]) {
         let Some(missing_lifetime) = lifetime_refs.iter().find(|lt| {
-            lt.name == hir::LifetimeName::ImplicitMissing
+            lt.name == hir::LifetimeName::Implicit(true)
         }) else { return };
 
         let mut spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
@@ -2407,8 +2407,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         );
         let is_allowed_lifetime = matches!(
             lifetime_ref.name,
-            hir::LifetimeName::Implicit
-                | hir::LifetimeName::ImplicitMissing
+            hir::LifetimeName::Implicit(_)
                 | hir::LifetimeName::Static
                 | hir::LifetimeName::Underscore
         );
