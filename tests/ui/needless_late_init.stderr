@@ -9,13 +9,13 @@ help: declare `a` here
    |
 LL |     let a = match n {
    |     +++++++
-help: remove the assignments from the match arms
+help: remove the assignments from the `match` arms
    |
 LL ~         1 => "one",
 LL |         _ => {
 LL ~             "two"
    |
-help: add a semicolon after the match expression
+help: add a semicolon after the `match` expression
    |
 LL |     };
    |      +
@@ -36,7 +36,7 @@ LL ~         "four"
 LL |     } else {
 LL ~         "five"
    |
-help: add a semicolon after the if expression
+help: add a semicolon after the `if` expression
    |
 LL |     };
    |      +
@@ -57,7 +57,7 @@ LL ~         n
 LL |     } else {
 LL ~         -50
    |
-help: add a semicolon after the if expression
+help: add a semicolon after the `if` expression
    |
 LL |     };
    |      +
@@ -78,7 +78,7 @@ LL ~         temp
 LL |     } else {
 LL ~         15
    |
-help: add a semicolon after the if expression
+help: add a semicolon after the `if` expression
    |
 LL |     };
    |      +
@@ -99,10 +99,52 @@ LL ~         format!("{} {}", a, b)
 LL |     } else {
 LL ~         format!("{}", c)
    |
-help: add a semicolon after the if expression
+help: add a semicolon after the `if` expression
    |
 LL |     };
    |      +
 
-error: aborting due to 5 previous errors
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:50:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+help: declare `a` here
+   |
+LL |     let a = match n {
+   |     +++++++
+help: remove the assignments from the `match` arms
+   |
+LL ~         1 => f().await,
+LL |         _ => {
+LL ~             "two"
+   |
+help: add a semicolon after the `match` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:67:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+help: declare `a` here
+   |
+LL |     let a = match n {
+   |     +++++++
+help: remove the assignments from the `match` arms
+   |
+LL ~         1 => f(),
+LL |         _ => {
+LL ~             "two"
+   |
+help: add a semicolon after the `match` expression
+   |
+LL |     };
+   |      +
+
+error: aborting due to 7 previous errors
 

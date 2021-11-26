@@ -11,11 +11,11 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for late initializations that can be replaced by a let statement
+    /// Checks for late initializations that can be replaced by a `let` statement
     /// with an initializer.
     ///
     /// ### Why is this bad?
-    /// Assigning in the let statement is less repetitive.
+    /// Assigning in the `let` statement is less repetitive.
     ///
     /// ### Example
     /// ```rust
@@ -55,7 +55,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.58.0"]
     pub NEEDLESS_LATE_INIT,
     style,
-    "late initializations that can be replaced by a let statement with an initializer"
+    "late initializations that can be replaced by a `let` statement with an initializer"
 }
 declare_lint_pass!(NeedlessLateInit => [NEEDLESS_LATE_INIT]);
 
@@ -275,7 +275,7 @@ fn check<'tcx>(
                     if usage.needs_semi {
                         diag.span_suggestion(
                             usage.stmt.span.shrink_to_hi(),
-                            "add a semicolon after the if expression",
+                            "add a semicolon after the `if` expression",
                             ";".to_string(),
                             applicability,
                         );
@@ -301,12 +301,16 @@ fn check<'tcx>(
                         applicability,
                     );
 
-                    diag.multipart_suggestion("remove the assignments from the match arms", suggestions, applicability);
+                    diag.multipart_suggestion(
+                        "remove the assignments from the `match` arms",
+                        suggestions,
+                        applicability,
+                    );
 
                     if usage.needs_semi {
                         diag.span_suggestion(
                             usage.stmt.span.shrink_to_hi(),
-                            "add a semicolon after the match expression",
+                            "add a semicolon after the `match` expression",
                             ";".to_string(),
                             applicability,
                         );

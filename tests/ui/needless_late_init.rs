@@ -42,6 +42,40 @@ fn main() {
     println!("{}", a);
 }
 
+async fn in_async() -> &'static str {
+    async fn f() -> &'static str {
+        "one"
+    }
+
+    let a;
+    let n = 1;
+    match n {
+        1 => a = f().await,
+        _ => {
+            a = "two";
+        },
+    }
+
+    a
+}
+
+const fn in_const() -> &'static str {
+    const fn f() -> &'static str {
+        "one"
+    }
+
+    let a;
+    let n = 1;
+    match n {
+        1 => a = f(),
+        _ => {
+            a = "two";
+        },
+    }
+
+    a
+}
+
 fn does_not_lint() {
     let z;
     if false {

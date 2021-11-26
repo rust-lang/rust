@@ -64,7 +64,7 @@ help: declare `f` here
    |
 LL |     let f = match 1 {
    |     +++++++
-help: remove the assignments from the match arms
+help: remove the assignments from the `match` arms
    |
 LL |         1 => "three",
    |              ~~~~~~~
@@ -83,7 +83,7 @@ help: remove the assignments from the branches
    |
 LL |         5
    |
-help: add a semicolon after the if expression
+help: add a semicolon after the `if` expression
    |
 LL |     };
    |      +
