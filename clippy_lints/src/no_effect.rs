@@ -164,12 +164,13 @@ fn check_unnecessary_operation(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if !&reduced.iter().any(|e| e.span.from_expansion());
         then {
             if let ExprKind::Index(..) = &expr.kind {
-                let snippet;
-                if let (Some(arr), Some(func)) = (snippet_opt(cx, reduced[0].span), snippet_opt(cx, reduced[1].span)) {
-                    snippet = format!("assert!({}.len() > {});", &arr, &func);
+                let snippet = if let (Some(arr), Some(func)) =
+                    (snippet_opt(cx, reduced[0].span), snippet_opt(cx, reduced[1].span))
+                {
+                    format!("assert!({}.len() > {});", &arr, &func)
                 } else {
                     return;
-                }
+                };
                 span_lint_hir_and_then(
                     cx,
                     UNNECESSARY_OPERATION,

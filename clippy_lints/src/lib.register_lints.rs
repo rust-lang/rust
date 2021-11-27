@@ -362,6 +362,7 @@ store.register_lints(&[
     needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
     needless_continue::NEEDLESS_CONTINUE,
     needless_for_each::NEEDLESS_FOR_EACH,
+    needless_late_init::NEEDLESS_LATE_INIT,
     needless_option_as_deref::NEEDLESS_OPTION_AS_DEREF,
     needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
     needless_question_mark::NEEDLESS_QUESTION_MARK,

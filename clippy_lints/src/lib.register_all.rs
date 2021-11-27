@@ -206,6 +206,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(needless_bool::BOOL_COMPARISON),
     LintId::of(needless_bool::NEEDLESS_BOOL),
     LintId::of(needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),
+    LintId::of(needless_late_init::NEEDLESS_LATE_INIT),
     LintId::of(needless_option_as_deref::NEEDLESS_OPTION_AS_DEREF),
     LintId::of(needless_question_mark::NEEDLESS_QUESTION_MARK),
     LintId::of(needless_update::NEEDLESS_UPDATE),

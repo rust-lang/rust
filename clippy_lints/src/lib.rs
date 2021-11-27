@@ -299,6 +299,7 @@ mod needless_bool;
 mod needless_borrowed_ref;
 mod needless_continue;
 mod needless_for_each;
+mod needless_late_init;
 mod needless_option_as_deref;
 mod needless_pass_by_value;
 mod needless_question_mark;
@@ -851,6 +852,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(format_args::FormatArgs));
     store.register_late_pass(|| Box::new(trailing_empty_array::TrailingEmptyArray));
     store.register_early_pass(|| Box::new(octal_escapes::OctalEscapes));
+    store.register_late_pass(|| Box::new(needless_late_init::NeedlessLateInit));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
