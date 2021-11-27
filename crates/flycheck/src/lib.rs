@@ -333,7 +333,7 @@ impl CargoActor {
                     output.status
                 )))
             }
-            Err(e) => Err(e),
+            Err(e) => Err(io::Error::new(e.kind(), format!("{:?}: {}", e, error))),
         }
     }
 }
