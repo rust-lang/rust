@@ -529,6 +529,7 @@ dependencies = [
  "la-arena",
  "limit",
  "mbe",
+ "once_cell",
  "profile",
  "rustc-hash",
  "syntax",

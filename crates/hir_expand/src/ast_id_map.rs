@@ -61,12 +61,28 @@ impl<N: AstNode> FileAstId<N> {
 type ErasedFileAstId = Idx<SyntaxNodePtr>;
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Default)]
 pub struct AstIdMap {
     arena: Arena<SyntaxNodePtr>,
-    map: FxHashMap<SyntaxNodePtr, ErasedFileAstId>,
+    /// Reversed mapping lazily derived from [`self.arena`].
+    ///
+    /// FIXE: Do not store `SyntaxNodePtr` twice.
+    map: once_cell::sync::OnceCell<FxHashMap<SyntaxNodePtr, ErasedFileAstId>>,
     _c: Count<Self>,
 }
+
+impl fmt::Debug for AstIdMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AstIdMap").field("arena", &self.arena).finish()
+    }
+}
+
+impl PartialEq for AstIdMap {
+    fn eq(&self, other: &Self) -> bool {
+        self.arena == other.arena
+    }
+}
+impl Eq for AstIdMap {}
 
 impl AstIdMap {
     pub(crate) fn from_source(node: &SyntaxNode) -> AstIdMap {
@@ -91,8 +107,10 @@ impl AstIdMap {
                 }
             }
         });
-        res.map.extend(res.arena.iter().map(|(idx, ptr)| (ptr.clone(), idx)));
         res
+    }
+    fn map(&self) -> &FxHashMap<SyntaxNodePtr, ErasedFileAstId> {
+        self.map.get_or_init(|| self.arena.iter().map(|(idx, ptr)| (ptr.clone(), idx)).collect())
     }
 
     pub fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
@@ -102,7 +120,7 @@ impl AstIdMap {
 
     fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {
         let ptr = SyntaxNodePtr::new(item);
-        *self.map.get(&ptr).unwrap_or_else(|| {
+        *self.map().get(&ptr).unwrap_or_else(|| {
             panic!(
                 "Can't find {:?} in AstIdMap:\n{:?}",
                 item,
