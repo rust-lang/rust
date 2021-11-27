@@ -143,6 +143,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.parse(file_id)
     }
 
+    pub fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode> {
+        self.imp.parse_or_expand(file_id)
+    }
+
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         self.imp.expand(macro_call)
     }
@@ -414,6 +418,12 @@ impl<'db> SemanticsImpl<'db> {
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
+    }
+
+    fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode> {
+        let node = self.db.parse_or_expand(file_id)?;
+        self.cache(node.clone(), file_id);
+        Some(node)
     }
 
     fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
