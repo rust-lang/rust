@@ -1,11 +1,10 @@
 use either::Either;
 use hir::{known, Callable, HasVisibility, HirDisplay, Semantics, TypeInfo};
-use ide_db::RootDatabase;
-use ide_db::{base_db::FileRange, helpers::FamousDefs};
+use ide_db::{base_db::FileRange, helpers::FamousDefs, RootDatabase};
 use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
-    ast::{self, AstNode, HasArgList, HasName},
+    ast::{self, AstNode, HasArgList, HasName, UnaryOp},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
 };
 
@@ -419,6 +418,10 @@ fn should_hide_param_name_hint(
     let param_name = param_name.trim_start_matches('_');
     if param_name.is_empty() {
         return true;
+    }
+
+    if matches!(argument, ast::Expr::PrefixExpr(prefix) if prefix.op_kind() == Some(UnaryOp::Not)) {
+        return false;
     }
 
     let fn_name = match callable.kind() {
@@ -868,7 +871,8 @@ fn non_ident_pat((a, b): (u32, u32)) {}
 fn main() {
     const PARAM: u32 = 0;
     foo(PARAM);
-
+    foo(!PARAM);
+     // ^^^^^^ param
     check("");
 
     map(0);
