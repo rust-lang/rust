@@ -53,7 +53,7 @@ use smallvec::{smallvec, SmallVec};
 use stdx::never;
 use syntax::SmolStr;
 
-use crate::{AdtId, Interner, Scalar, Ty, TyExt, TyKind};
+use crate::{infer::normalize, AdtId, Interner, Scalar, Ty, TyExt, TyKind};
 
 use super::{
     usefulness::{helper::Captures, MatchCheckCtx, PatCtxt},
@@ -753,8 +753,8 @@ impl<'p> Fields<'p> {
         let fields_len = variant.variant_data(cx.db.upcast()).fields().len() as u32;
 
         (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).filter_map(move |fid| {
-            // TODO check ty has been normalized
             let ty = field_ty[fid].clone().substitute(Interner, substs);
+            let ty = normalize(cx.db, cx.body, ty);
             let is_visible = matches!(adt, hir_def::AdtId::EnumId(..))
                 || visibility[fid].is_visible_from(cx.db.upcast(), cx.module);
             let is_uninhabited = cx.is_uninhabited(&ty);

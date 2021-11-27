@@ -285,6 +285,7 @@ impl ExprValidator {
         let pattern_arena = Arena::new();
         let cx = MatchCheckCtx {
             module: self.owner.module(db.upcast()),
+            body: self.owner,
             db,
             pattern_arena: &pattern_arena,
         };

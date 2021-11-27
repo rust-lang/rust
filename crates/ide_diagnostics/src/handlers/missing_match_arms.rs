@@ -863,6 +863,30 @@ fn main() {
         );
     }
 
+    #[test]
+    fn normalize_field_ty() {
+        check_diagnostics_no_bails(
+            r"
+trait Trait { type Projection; }
+enum E {Foo, Bar}
+struct A;
+impl Trait for A { type Projection = E; }
+struct Next<T: Trait>(T::Projection);
+static __: () = {
+    let n: Next<A> = Next(E::Foo);
+    match n { Next(E::Foo) => {} }
+    //    ^ error: missing match arm
+    match n { Next(E::Foo | E::Bar) => {} }
+    match n { Next(E::Foo | _     ) => {} }
+    match n { Next(_      | E::Bar) => {} }
+    match n {      _ | Next(E::Bar) => {} }
+    match &n { Next(E::Foo | E::Bar) => {} }
+    match &n {      _ | Next(E::Bar) => {} }
+};",
+
+        );
+    }
+
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This
