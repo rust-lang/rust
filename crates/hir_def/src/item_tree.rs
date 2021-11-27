@@ -105,15 +105,14 @@ pub struct ItemTree {
 impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
         let _p = profile::span("item_tree_query").detail(|| format!("{:?}", file_id));
-        let syntax = if let Some(node) = db.parse_or_expand(file_id) {
-            if node.kind() == SyntaxKind::ERROR {
-                // FIXME: not 100% sure why these crop up, but return an empty tree to avoid a panic
-                return Default::default();
-            }
-            node
-        } else {
-            return Default::default();
+        let syntax = match db.parse_or_expand(file_id) {
+            Some(node) => node,
+            None => return Default::default(),
         };
+        if syntax.kind() == SyntaxKind::ERROR {
+            // FIXME: not 100% sure why these crop up, but return an empty tree to avoid a panic
+            return Default::default();
+        }
 
         let hygiene = Hygiene::new(db.upcast(), file_id);
         let ctx = lower::Ctx::new(db, hygiene.clone(), file_id);
