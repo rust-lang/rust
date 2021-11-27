@@ -9,6 +9,8 @@ import * as zlib from "zlib";
 import * as util from "util";
 import * as path from "path";
 import { log, assert } from "./util";
+import * as url from "url";
+import * as https from "https";
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -16,10 +18,19 @@ const GITHUB_API_ENDPOINT_URL = "https://api.github.com";
 const OWNER = "rust-analyzer";
 const REPO = "rust-analyzer";
 
+function makeHttpAgent(proxy: string | null | undefined, options?: https.AgentOptions) {
+    if (proxy) {
+        return new HttpsProxyAgent(proxy, { ...options, ...url.parse(proxy) });
+    } else {
+        return new https.Agent(options);
+    }
+}
+
 export async function fetchRelease(
     releaseTag: string,
     githubToken: string | null | undefined,
     httpProxy: string | null | undefined,
+    proxyStrictSSL: boolean,
 ): Promise<GithubRelease> {
 
     const apiEndpointPath = `/repos/${OWNER}/${REPO}/releases/tags/${releaseTag}`;
@@ -36,10 +47,13 @@ export async function fetchRelease(
     const response = await (() => {
         if (httpProxy) {
             log.debug(`Fetching release metadata via proxy: ${httpProxy}`);
-            return fetch(requestUrl, { headers: headers, agent: new HttpsProxyAgent(httpProxy) });
         }
-
-        return fetch(requestUrl, { headers: headers });
+        let options: any = {};
+        if (proxyStrictSSL) {
+            options["rejectUnauthorized"] = false;
+        }
+        const agent = makeHttpAgent(httpProxy, options);
+        return fetch(requestUrl, { headers: headers, agent: agent });
     })();
 
     if (!response.ok) {
@@ -84,6 +98,7 @@ interface DownloadOpts {
     mode?: number;
     gunzip?: boolean;
     httpProxy?: string;
+    proxyStrictSSL: boolean;
 }
 
 export async function download(opts: DownloadOpts) {
@@ -103,7 +118,7 @@ export async function download(opts: DownloadOpts) {
         },
         async (progress, _cancellationToken) => {
             let lastPercentage = 0;
-            await downloadFile(opts.url, tempFilePath, opts.mode, !!opts.gunzip, opts.httpProxy, (readBytes, totalBytes) => {
+            await downloadFile(opts.url, tempFilePath, opts.mode, !!opts.gunzip, opts.httpProxy, opts.proxyStrictSSL, (readBytes, totalBytes) => {
                 const newPercentage = Math.round((readBytes / totalBytes) * 100);
                 if (newPercentage !== lastPercentage) {
                     progress.report({
@@ -168,6 +183,7 @@ async function downloadFile(
     mode: number | undefined,
     gunzip: boolean,
     httpProxy: string | null | undefined,
+    proxyStrictSSL: boolean,
     onProgress: (readBytes: number, totalBytes: number) => void
 ): Promise<void> {
     const urlString = url.toString();
@@ -175,10 +191,13 @@ async function downloadFile(
     const res = await (() => {
         if (httpProxy) {
             log.debug(`Downloading ${urlString} via proxy: ${httpProxy}`);
-            return fetch(urlString, { agent: new HttpsProxyAgent(httpProxy) });
         }
-
-        return fetch(urlString);
+        let options: any = {};
+        if (proxyStrictSSL) {
+            options["rejectUnauthorized"] = false;
+        }
+        const agent = makeHttpAgent(httpProxy, options);
+        return fetch(urlString, { agent: agent });
     })();
 
     if (!res.ok) {

@@ -107,6 +107,9 @@ export class Config {
 
         return httpProxy || process.env["https_proxy"] || process.env["HTTPS_PROXY"];
     }
+    get proxyStrictSSL(): boolean {
+        return vscode.workspace.getConfiguration("http").get("proxyStrictSSL") || true;
+    }
 
     get inlayHints() {
         return {
