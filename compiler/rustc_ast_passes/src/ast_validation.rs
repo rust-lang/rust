@@ -23,7 +23,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use std::mem;
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 
 const MORE_EXTERN: &str =
     "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
@@ -1711,6 +1711,53 @@ fn deny_equality_constraints(
                     }
                 }
                 _ => {}
+            }
+        }
+    }
+    // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
+    if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
+        if let [potential_param, potential_assoc] = &full_path.segments[..] {
+            for param in &generics.params {
+                if param.ident == potential_param.ident {
+                    for bound in &param.bounds {
+                        if let ast::GenericBound::Trait(trait_ref, TraitBoundModifier::None) = bound
+                        {
+                            if let [trait_segment] = &trait_ref.trait_ref.path.segments[..] {
+                                let assoc = pprust::path_to_string(&ast::Path::from_ident(
+                                    potential_assoc.ident,
+                                ));
+                                let ty = pprust::ty_to_string(&predicate.rhs_ty);
+                                let (args, span) = match &trait_segment.args {
+                                    Some(args) => match args.deref() {
+                                        ast::GenericArgs::AngleBracketed(args) => {
+                                            let Some(arg) = args.args.last() else {
+                                                continue;
+                                            };
+                                            (
+                                                format!(", {} = {}", assoc, ty),
+                                                arg.span().shrink_to_hi(),
+                                            )
+                                        }
+                                        _ => continue,
+                                    },
+                                    None => (
+                                        format!("<{} = {}>", assoc, ty),
+                                        trait_segment.span().shrink_to_hi(),
+                                    ),
+                                };
+                                err.multipart_suggestion(
+                                    &format!(
+                                        "if `{}::{}` is an associated type you're trying to set, \
+                                        use the associated type binding syntax",
+                                        trait_segment.ident, potential_assoc.ident,
+                                    ),
+                                    vec![(span, args), (predicate.span, String::new())],
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
+                    }
+                }
             }
         }
     }

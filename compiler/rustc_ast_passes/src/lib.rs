@@ -6,6 +6,7 @@
 
 #![feature(iter_is_partitioned)]
 #![feature(box_patterns)]
+#![feature(let_else)]
 #![recursion_limit = "256"]
 
 pub mod ast_validation;
