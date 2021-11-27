@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxHashMap;
 
+use crate::error::Error;
 use crate::externalfiles::ExternalHtml;
-use crate::html::escape::Escape;
 use crate::html::format::{Buffer, Print};
 use crate::html::render::{ensure_trailing_slash, StylePath};
 
@@ -50,10 +50,11 @@ struct PageLayout<'a> {
     static_root_path: &'a str,
     page: &'a Page<'a>,
     layout: &'a Layout,
-    style_files: String,
+    themes: Vec<String>,
     sidebar: String,
     content: String,
     krate_with_trailing_slash: String,
+    crate rustdoc_version: &'a str,
 }
 
 crate fn render<T: Print, S: Print>(
@@ -66,29 +67,24 @@ crate fn render<T: Print, S: Print>(
 ) -> String {
     let static_root_path = page.get_static_root_path();
     let krate_with_trailing_slash = ensure_trailing_slash(&layout.krate).to_string();
-    let style_files = style_files
+    let mut themes: Vec<String> = style_files
         .iter()
-        .filter_map(|t| t.path.file_stem().map(|stem| (stem, t.disabled)))
-        .filter_map(|t| t.0.to_str().map(|path| (path, t.1)))
-        .map(|t| {
-            format!(
-                r#"<link rel="stylesheet" type="text/css" href="{}.css" {} {}>"#,
-                Escape(&format!("{}{}{}", static_root_path, t.0, page.resource_suffix)),
-                if t.1 { "disabled" } else { "" },
-                if t.0 == "light" { "id=\"themeStyle\"" } else { "" }
-            )
-        })
-        .collect::<String>();
+        .map(StylePath::basename)
+        .collect::<Result<_, Error>>()
+        .unwrap_or_default();
+    themes.sort();
+    let rustdoc_version = rustc_interface::util::version_str().unwrap_or("unknown version");
     let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
     let sidebar = Buffer::html().to_display(sidebar);
     let teractx = tera::Context::from_serialize(PageLayout {
         static_root_path,
         page,
         layout,
-        style_files,
+        themes,
         sidebar,
         content,
         krate_with_trailing_slash,
+        rustdoc_version,
     })
     .unwrap();
     templates.render("page.html", &teractx).unwrap()

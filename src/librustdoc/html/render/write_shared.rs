@@ -181,42 +181,34 @@ pub(super) fn write_shared(
         cx.write_shared(SharedResource::InvocationSpecific { basename: p }, content, &options.emit)
     };
 
-    fn add_background_image_to_css(
-        cx: &Context<'_>,
-        css: &mut String,
-        rule: &str,
-        file: &'static str,
-    ) {
-        css.push_str(&format!(
-            "{} {{ background-image: url({}); }}",
-            rule,
-            SharedResource::ToolchainSpecific { basename: file }
+    // Given "foo.svg", return e.g. "url(\"foo1.58.0.svg\")"
+    fn ver_url(cx: &Context<'_>, basename: &'static str) -> String {
+        format!(
+            "url(\"{}\")",
+            SharedResource::ToolchainSpecific { basename }
                 .path(cx)
                 .file_name()
                 .unwrap()
                 .to_str()
                 .unwrap()
-        ))
+        )
     }
 
-    // Add all the static files. These may already exist, but we just
-    // overwrite them anyway to make sure that they're fresh and up-to-date.
-    let mut rustdoc_css = static_files::RUSTDOC_CSS.to_owned();
-    add_background_image_to_css(
+    // We use the AUTOREPLACE mechanism to inject into our static JS and CSS certain
+    // values that are only known at doc build time. Since this mechanism is somewhat
+    // surprising when reading the code, please limit it to rustdoc.css.
+    write_minify(
+        "rustdoc.css",
+        static_files::RUSTDOC_CSS
+            .replace(
+                "/* AUTOREPLACE: */url(\"toggle-minus.svg\")",
+                &ver_url(cx, "toggle-minus.svg"),
+            )
+            .replace("/* AUTOREPLACE: */url(\"toggle-plus.svg\")", &ver_url(cx, "toggle-plus.svg"))
+            .replace("/* AUTOREPLACE: */url(\"down-arrow.svg\")", &ver_url(cx, "down-arrow.svg")),
         cx,
-        &mut rustdoc_css,
-        "details.undocumented[open] > summary::before, \
-         details.rustdoc-toggle[open] > summary::before, \
-         details.rustdoc-toggle[open] > summary.hideme::before",
-        "toggle-minus.svg",
-    );
-    add_background_image_to_css(
-        cx,
-        &mut rustdoc_css,
-        "details.undocumented > summary::before, details.rustdoc-toggle > summary::before",
-        "toggle-plus.svg",
-    );
-    write_minify("rustdoc.css", rustdoc_css, cx, options)?;
+        options,
+    )?;
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
@@ -228,12 +220,12 @@ pub(super) fn write_shared(
     let mut themes: FxHashSet<String> = FxHashSet::default();
 
     for entry in &cx.shared.style_files {
-        let theme = try_none!(try_none!(entry.path.file_stem(), &entry.path).to_str(), &entry.path);
+        let theme = entry.basename()?;
         let extension =
             try_none!(try_none!(entry.path.extension(), &entry.path).to_str(), &entry.path);
 
         // Handle the official themes
-        match theme {
+        match theme.as_str() {
             "light" => write_minify("light.css", static_files::themes::LIGHT, cx, options)?,
             "dark" => write_minify("dark.css", static_files::themes::DARK, cx, options)?,
             "ayu" => write_minify("ayu.css", static_files::themes::AYU, cx, options)?,
@@ -265,26 +257,7 @@ pub(super) fn write_shared(
     let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();
 
-    // FIXME: this should probably not be a toolchain file since it depends on `--theme`.
-    // But it seems a shame to copy it over and over when it's almost always the same.
-    // Maybe we can change the representation to move this out of main.js?
-    write_minify(
-        "main.js",
-        static_files::MAIN_JS
-            .replace(
-                "/* INSERT THEMES HERE */",
-                &format!(" = {}", serde_json::to_string(&themes).unwrap()),
-            )
-            .replace(
-                "/* INSERT RUSTDOC_VERSION HERE */",
-                &format!(
-                    "rustdoc {}",
-                    rustc_interface::util::version_str().unwrap_or("unknown version")
-                ),
-            ),
-        cx,
-        options,
-    )?;
+    write_minify("main.js", static_files::MAIN_JS, cx, options)?;
     write_minify("search.js", static_files::SEARCH_JS, cx, options)?;
     write_minify("settings.js", static_files::SETTINGS_JS, cx, options)?;
 
@@ -292,18 +265,7 @@ pub(super) fn write_shared(
         write_minify("source-script.js", static_files::sidebar::SOURCE_SCRIPT, cx, options)?;
     }
 
-    {
-        write_minify(
-            "storage.js",
-            format!(
-                "var resourcesSuffix = \"{}\";{}",
-                cx.shared.resource_suffix,
-                static_files::STORAGE_JS
-            ),
-            cx,
-            options,
-        )?;
-    }
+    write_minify("storage.js", static_files::STORAGE_JS, cx, options)?;
 
     if cx.shared.layout.scrape_examples_extension {
         cx.write_minify(
