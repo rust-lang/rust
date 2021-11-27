@@ -365,7 +365,7 @@ impl FromWithTcx<clean::GenericBound> for GenericBound {
         match bound {
             TraitBound(clean::PolyTrait { trait_, generic_params }, modifier) => {
                 // FIXME: should `trait_` be a clean::Path equivalent in JSON?
-                let trait_ = clean::ResolvedPath { path: trait_ }.into_tcx(tcx);
+                let trait_ = clean::Type::Path { path: trait_ }.into_tcx(tcx);
                 GenericBound::TraitBound {
                     trait_,
                     generic_params: generic_params.into_iter().map(|x| x.into_tcx(tcx)).collect(),
@@ -388,9 +388,13 @@ crate fn from_trait_bound_modifier(modifier: rustc_hir::TraitBoundModifier) -> T
 
 impl FromWithTcx<clean::Type> for Type {
     fn from_tcx(ty: clean::Type, tcx: TyCtxt<'_>) -> Self {
-        use clean::Type::*;
+        use clean::Type::{
+            Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive,
+            QPath, RawPointer, Slice, Tuple,
+        };
+
         match ty {
-            ResolvedPath { path } => Type::ResolvedPath {
+            clean::Type::Path { path } => Type::ResolvedPath {
                 name: path.whole_name(),
                 id: from_item_id(path.def_id().into()),
                 args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),
@@ -435,7 +439,7 @@ impl FromWithTcx<clean::Type> for Type {
             },
             QPath { name, self_type, trait_, .. } => {
                 // FIXME: should `trait_` be a clean::Path equivalent in JSON?
-                let trait_ = ResolvedPath { path: trait_ }.into_tcx(tcx);
+                let trait_ = clean::Type::Path { path: trait_ }.into_tcx(tcx);
                 Type::QualifiedPath {
                     name: name.to_string(),
                     self_type: Box::new((*self_type).into_tcx(tcx)),
@@ -501,7 +505,7 @@ impl FromWithTcx<clean::Impl> for Impl {
         let provided_trait_methods = impl_.provided_trait_methods(tcx);
         let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = impl_;
         // FIXME: should `trait_` be a clean::Path equivalent in JSON?
-        let trait_ = trait_.map(|path| clean::ResolvedPath { path }.into_tcx(tcx));
+        let trait_ = trait_.map(|path| clean::Type::Path { path }.into_tcx(tcx));
         // FIXME: use something like ImplKind in JSON?
         let (synthetic, blanket_impl) = match kind {
             clean::ImplKind::Normal => (false, None),

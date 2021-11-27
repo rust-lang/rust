@@ -493,7 +493,7 @@ impl Build {
 
         // NOTE: The check for the empty directory is here because when running x.py the first time,
         // the submodule won't be checked out. Check it out now so we can build it.
-        if !channel::GitInfo::new(false, relative_path).is_git() && !dir_is_empty(&absolute_path) {
+        if !channel::GitInfo::new(false, &absolute_path).is_git() && !dir_is_empty(&absolute_path) {
             return;
         }
 

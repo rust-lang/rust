@@ -607,8 +607,7 @@ crate fn href_relative_parts<'a>(fqp: &'a [String], relative_to_fqp: &'a [String
     }
 }
 
-/// Used when rendering a `ResolvedPath` structure. This invokes the `path`
-/// rendering function with the necessary arguments for linking to a local path.
+/// Used to render a [`clean::Path`].
 fn resolved_path<'cx>(
     w: &mut fmt::Formatter<'_>,
     did: DefId,
@@ -762,7 +761,7 @@ fn fmt_type<'cx>(
 
     match *t {
         clean::Generic(name) => write!(f, "{}", name),
-        clean::ResolvedPath { ref path } => {
+        clean::Type::Path { ref path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             let did = path.def_id();
             resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx)

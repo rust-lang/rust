@@ -218,7 +218,7 @@ fn get_index_type(clean_type: &clean::Type, generics: Vec<TypeWithKind>) -> Rend
 
 fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<Symbol> {
     match *clean_type {
-        clean::ResolvedPath { ref path, .. } => {
+        clean::Type::Path { ref path, .. } => {
             let path_segment = path.segments.last().unwrap();
             Some(path_segment.name)
         }
@@ -371,7 +371,7 @@ crate fn get_real_types<'tcx>(
             let mut ty_generics = Vec::new();
             for bound in bound.get_bounds().unwrap_or(&[]) {
                 if let Some(path) = bound.get_trait_path() {
-                    let ty = Type::ResolvedPath { path };
+                    let ty = Type::Path { path };
                     get_real_types(generics, &ty, tcx, recurse + 1, &mut ty_generics, cache);
                 }
             }

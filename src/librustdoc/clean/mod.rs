@@ -41,14 +41,8 @@ use crate::visit_ast::Module as DocModule;
 
 use utils::*;
 
-crate use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
-
-crate use self::types::FnRetTy::*;
-crate use self::types::ItemKind::*;
-crate use self::types::SelfTy::*;
-crate use self::types::Type::*;
-crate use self::types::Visibility::{Inherited, Public};
 crate use self::types::*;
+crate use self::utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
 crate trait Clean<T> {
     fn clean(&self, cx: &mut DocContext<'_>) -> T;
@@ -1411,12 +1405,12 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 };
                 inline::record_extern_fqn(cx, did, kind);
                 let path = external_path(cx, did, false, vec![], substs);
-                ResolvedPath { path }
+                Type::Path { path }
             }
             ty::Foreign(did) => {
                 inline::record_extern_fqn(cx, did, ItemType::ForeignType);
                 let path = external_path(cx, did, false, vec![], InternalSubsts::empty());
-                ResolvedPath { path }
+                Type::Path { path }
             }
             ty::Dynamic(obj, ref reg) => {
                 // HACK: pick the first `did` as the `did` of the trait object. Someone

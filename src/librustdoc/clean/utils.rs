@@ -2,8 +2,7 @@ use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
     inline, Clean, Crate, ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item,
-    ItemKind, Lifetime, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type,
-    TypeBinding, Visibility,
+    ItemKind, Lifetime, Path, PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -187,7 +186,7 @@ crate fn build_deref_target_impls(cx: &mut DocContext<'_>, items: &[Item], ret: 
             for &did in prim.impls(tcx).iter().filter(|did| !did.is_local()) {
                 inline::build_impl(cx, None, did, None, ret);
             }
-        } else if let ResolvedPath { path } = target {
+        } else if let Type::Path { path } = target {
             let did = path.def_id();
             if !did.is_local() {
                 inline::build_impls(cx, None, did, None, ret);
@@ -362,7 +361,7 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => Generic(path.segments[0].name),
         _ => {
             let _ = register_res(cx, path.res);
-            ResolvedPath { path }
+            Type::Path { path }
         }
     }
 }
