@@ -215,21 +215,22 @@ where
     }
 
     #[inline]
+    #[rustc_inherit_overflow_checks]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        let inner_len = self.iter.len();
-        let len = self.n;
-        let remainder = len.saturating_sub(n);
-        let to_advance = inner_len - remainder;
-        match self.iter.advance_back_by(to_advance) {
-            Ok(_) => {
-                self.n = remainder;
-                if n > len {
-                    return Err(len);
-                }
-                return Ok(());
-            }
-            _ => panic!("ExactSizeIterator contract violation"),
-        }
+        // The amount by which the inner iterator needs to be shortened for it to be
+        // at most as long as the take() amount.
+        let trim_inner = self.iter.len().saturating_sub(self.n);
+        // The amount we need to advance inner to fulfill the caller's request.
+        // take(), advance_by() and len() all can be at most usize, so we don't have to worry
+        // about having to advance more than usize::MAX here.
+        let advance_by = trim_inner.saturating_add(n);
+
+        let advanced = match self.iter.advance_back_by(advance_by) {
+            Ok(_) => advance_by - trim_inner,
+            Err(advanced) => advanced - trim_inner,
+        };
+        self.n -= advanced;
+        return if advanced < n { Err(advanced) } else { Ok(()) };
     }
 }
 
