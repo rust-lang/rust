@@ -176,6 +176,10 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
                 res.push_str(token.text());
                 res.push(' ');
             }
+            AS_KW => {
+                res.push_str(token.text());
+                res.push(' ');
+            }
             T![;] => {
                 res.push_str(";\n");
                 res.extend(iter::repeat(" ").take(2 * indent));
@@ -208,6 +212,23 @@ mod tests {
         let expansion = analysis.expand_macro(pos).unwrap().unwrap();
         let actual = format!("{}\n{}", expansion.name, expansion.expansion);
         expect.assert_eq(&actual);
+    }
+
+    #[test]
+    fn macro_expand_as_keyword() {
+        check(
+            r#"
+macro_rules! bar {
+    ($i:tt) => { $i as _ }
+}
+fn main() {
+    let x: u64 = ba$0r!(5i64);
+}
+"#,
+            expect![[r#"
+                bar
+                5i64 as _"#]],
+        );
     }
 
     #[test]
