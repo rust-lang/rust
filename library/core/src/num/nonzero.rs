@@ -915,15 +915,13 @@ macro_rules! nonzero_unsigned_is_power_of_two {
                 /// Basic usage:
                 ///
                 /// ```
-                /// #![feature(nonzero_is_power_of_two)]
-                ///
                 #[doc = concat!("let eight = std::num::", stringify!($Ty), "::new(8).unwrap();")]
                 /// assert!(eight.is_power_of_two());
                 #[doc = concat!("let ten = std::num::", stringify!($Ty), "::new(10).unwrap();")]
                 /// assert!(!ten.is_power_of_two());
                 /// ```
                 #[must_use]
-                #[unstable(feature = "nonzero_is_power_of_two", issue = "81106")]
+                #[stable(feature = "nonzero_is_power_of_two", since = "1.59.0")]
                 #[inline]
                 pub const fn is_power_of_two(self) -> bool {
                     // LLVM 11 normalizes `unchecked_sub(x, 1) & x == 0` to the implementation seen here.
