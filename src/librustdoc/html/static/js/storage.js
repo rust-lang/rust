@@ -1,5 +1,3 @@
-// From rust:
-/* global resourcesSuffix */
 var darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
 window.mainTheme = document.getElementById("mainThemeStyle");
@@ -107,9 +105,8 @@ function getCurrentValue(name) {
 }
 
 function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
-    var fullBasicCss = "rustdoc" + resourcesSuffix + ".css";
-    var fullNewTheme = newTheme + resourcesSuffix + ".css";
-    var newHref = mainStyleElem.href.replace(fullBasicCss, fullNewTheme);
+    var newHref = mainStyleElem.href.replace(
+        /\/rustdoc([^/]*)\.css/, "/" + newTheme + "$1" + ".css");
 
     // If this new value comes from a system setting or from the previously
     // saved theme, no need to save it.

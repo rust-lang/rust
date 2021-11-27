@@ -1460,9 +1460,12 @@ fn _assert_sync_and_send() {
 /// The purpose of this API is to provide an easy and portable way to query
 /// the default amount of parallelism the program should use. Among other things it
 /// does not expose information on NUMA regions, does not account for
-/// differences in (co)processor capabilities, and will not modify the program's
-/// global state in order to more accurately query the amount of available
-/// parallelism.
+/// differences in (co)processor capabilities or current system load,
+/// and will not modify the program's global state in order to more accurately
+/// query the amount of available parallelism.
+///
+/// Where both fixed steady-state and burst limits are available the steady-state
+/// capacity will be used to ensure more predictable latencies.
 ///
 /// Resource limits can be changed during the runtime of a program, therefore the value is
 /// not cached and instead recomputed every time this function is called. It should not be

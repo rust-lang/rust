@@ -828,6 +828,7 @@ h2.small-section-header > .anchor {
 	background-color: transparent;
 	background-size: 20px;
 	background-position: calc(100% - 1px) 56%;
+	background-image: /* AUTOREPLACE: */url("down-arrow.svg");
 }
 .search-container > .top-button {
 	position: absolute;
@@ -1608,6 +1609,16 @@ details.rustdoc-toggle {
 
 details.rustdoc-toggle[open] > summary.hideme > span {
 	display: none;
+}
+
+details.undocumented[open] > summary::before,
+details.rustdoc-toggle[open] > summary::before,
+details.rustdoc-toggle[open] > summary.hideme::before {
+	background-image: /* AUTOREPLACE: */url("toggle-minus.svg");
+}
+
+details.undocumented > summary::before, details.rustdoc-toggle > summary::before {
+	background-image: /* AUTOREPLACE: */url("toggle-plus.svg");
 }
 
 details.rustdoc-toggle[open] > summary::before,

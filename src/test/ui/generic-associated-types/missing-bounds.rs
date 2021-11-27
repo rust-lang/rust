@@ -34,11 +34,12 @@ impl<B> Add for D<B> {
 
 struct E<B>(B);
 
-impl<B: Add> Add for E<B> where B: Add<Output = B> {
+impl<B: Add> Add for E<B> where <B as Add>::Output = B {
+    //~^ ERROR equality constraints are not yet supported in `where` clauses
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        Self(self.0 + rhs.0)
+        Self(self.0 + rhs.0) //~ ERROR mismatched types
     }
 }
 

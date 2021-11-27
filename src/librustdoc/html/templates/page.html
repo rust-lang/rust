@@ -12,7 +12,16 @@
     <link rel="stylesheet" type="text/css" {# -#}
           href="{{static_root_path | safe}}rustdoc{{page.resource_suffix}}.css" {# -#}
           id="mainThemeStyle"> {#- -#}
-    {{- style_files | safe -}}
+    {%- for theme in themes -%}
+        <link rel="stylesheet" type="text/css" {# -#}
+            href="{{static_root_path | safe}}{{theme}}{{page.resource_suffix}}.css" {#- -#}
+        {%- if theme == "light" -%}
+            id="themeStyle"
+        {%- else -%}
+            disabled
+        {%- endif -%}
+        >
+    {%- endfor -%}
     <script id="default-settings" {# -#}
       {% for k, v in layout.default_settings %}
         data-{{k}}="{{v}}"
@@ -49,11 +58,6 @@
             href="{{static_root_path | safe}}favicon{{page.resource_suffix}}.svg"> {#- -#}
     {%- endif -%}
     {{- layout.external_html.in_header | safe -}}
-    <style type="text/css"> {#- -#}
-    #crate-search{ {#- -#}
-        background-image:url("{{static_root_path | safe}}down-arrow{{page.resource_suffix}}.svg"); {#- -#}
-    } {#- -#}
-    </style> {#- -#}
 </head> {#- -#}
 <body class="rustdoc {{page.css_class}}"> {#- -#}
     <!--[if lte IE 11]> {#- -#}
@@ -114,8 +118,10 @@
     <div id="rustdoc-vars" {# -#}
          data-root-path="{{page.root_path | safe}}" {# -#}
          data-current-crate="{{layout.krate}}" {# -#}
-         data-search-index-js="{{page.root_path | safe}}search-index{{page.resource_suffix}}.js" {# -#}
-         data-search-js="{{static_root_path | safe}}search{{page.resource_suffix}}.js"> {#- -#}
+         data-themes="{{themes | join(sep=",") }}" {# -#}
+         data-resource-suffix="{{page.resource_suffix}}" {# -#}
+         data-rustdoc-version="{{rustdoc_version}}" {# -#}
+    > {#- -#}
     </div>
 </body> {#- -#}
 </html> {#- -#}
