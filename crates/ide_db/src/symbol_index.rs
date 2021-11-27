@@ -96,7 +96,7 @@ impl Query {
 
 #[salsa::query_group(SymbolsDatabaseStorage)]
 pub trait SymbolsDatabase: hir::db::HirDatabase + SourceDatabaseExt {
-    fn file_symbols(&self, file_id: FileId) -> Arc<SymbolIndex>;
+    fn module_symbols(&self, module_id: ModuleId) -> Arc<SymbolIndex>;
     fn library_symbols(&self) -> Arc<FxHashMap<SourceRootId, SymbolIndex>>;
     /// The set of "local" (that is, from the current workspace) roots.
     /// Files in local roots are assumed to change frequently.
@@ -129,13 +129,13 @@ fn library_symbols(db: &dyn SymbolsDatabase) -> Arc<FxHashMap<SourceRootId, Symb
     Arc::new(res)
 }
 
-fn file_symbols(db: &dyn SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> {
+fn module_symbols(db: &dyn SymbolsDatabase, module_id: ModuleId) -> Arc<SymbolIndex> {
     db.unwind_if_cancelled();
-    let parse = db.parse(file_id);
 
-    let symbols = source_file_to_file_symbols(&parse.tree(), file_id);
+    let def_map = module_id.def_map(db.upcast());
+    let module_data = &def_map[module_id.local_id];
 
-    // FIXME: add macros here
+    let symbols = module_data_to_file_symbols(db.upcast(), module_data);
 
     Arc::new(SymbolIndex::new(symbols))
 }
@@ -183,16 +183,19 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
         tmp1 = db.library_symbols();
         tmp1.values().collect()
     } else {
-        let mut files = Vec::new();
+        let mut module_ids = Vec::new();
+
         for &root in db.local_roots().iter() {
-            let sr = db.source_root(root);
-            files.extend(sr.iter())
+            let crates = db.source_root_crates(root);
+            for &krate in crates.iter() {
+                module_ids.extend(module_ids_for_crate(db, krate));
+            }
         }
 
         let snap = Snap(db.snapshot());
-        tmp2 = files
+        tmp2 = module_ids
             .par_iter()
-            .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
+            .map_with(snap, |snap, &module_id| snap.0.module_symbols(module_id))
             .collect::<Vec<_>>();
         tmp2.iter().map(|it| &**it).collect()
     };
@@ -201,35 +204,28 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 
 pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<FileSymbol> {
     let _p = profile::span("crate_symbols").detail(|| format!("{:?}", query));
-    // FIXME(#4842): This now depends on DefMap, why not build the entire symbol index from
-    // that instead?
 
-    let def_map = db.crate_def_map(krate);
-    // let mut files = Vec::new();
-    // let mut modules = vec![def_map.root()];
-    // while let Some(module) = modules.pop() {
-    //     let data = &def_map[module];
-    //     files.extend(data.origin.file_id());
-    //     modules.extend(data.children.values());
-    // }
-
-    // let snap = Snap(db.snapshot());
-
-    // let buf = files
-    //     .par_iter()
-    //     .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
-    //     .collect::<Vec<_>>();
-
-    // todo: make this fast!!!
-    // how do i salsa this?
-
-    let buf: Vec<_> = def_map
-        .modules()
-        .map(|(_, module_data)| SymbolIndex::new(module_data_to_file_symbols(db, module_data)))
+    let module_ids = module_ids_for_crate(db, krate);
+    let snap = Snap(db.snapshot());
+    let buf: Vec<_> = module_ids
+        .par_iter()
+        .map_with(snap, |snap, &module_id| snap.0.module_symbols(module_id))
         .collect();
-    let buf = buf.iter().collect::<Vec<_>>();
-
+    let buf = buf.iter().map(|it| &**it).collect::<Vec<_>>();
     query.search(&buf)
+}
+
+fn module_ids_for_crate(db: &RootDatabase, krate: CrateId) -> Vec<ModuleId> {
+    let def_map = db.crate_def_map(krate);
+    let mut module_ids = Vec::new();
+    let mut modules = vec![def_map.root()];
+    while let Some(module) = modules.pop() {
+        let data = &def_map[module];
+        module_ids.push(def_map.module_id(module));
+        modules.extend(data.children.values());
+    }
+
+    module_ids
 }
 
 pub fn index_resolve(db: &RootDatabase, name: &str) -> Vec<FileSymbol> {
@@ -572,10 +568,7 @@ fn collect_symbols_from_item_scope(
         let def_map = module_id.def_map(db);
         let module_data = &def_map[module_id.local_id];
         let declaration = module_data.origin.declaration()?;
-        let file_id = match module_data.origin.file_id() {
-            Some(file_id) => file_id.into(),
-            None => declaration.file_id,
-        };
+        let file_id = declaration.file_id;
 
         let module = declaration.to_node(db.upcast());
         let name = module.name()?;

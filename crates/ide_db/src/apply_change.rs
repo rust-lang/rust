@@ -137,7 +137,7 @@ impl RootDatabase {
             hir::db::InternTypeParamIdQuery
 
             // SymbolsDatabase
-            crate::symbol_index::FileSymbolsQuery
+            crate::symbol_index::ModuleSymbolsQuery
             crate::symbol_index::LibrarySymbolsQuery
             crate::symbol_index::LocalRootsQuery
             crate::symbol_index::LibraryRootsQuery
