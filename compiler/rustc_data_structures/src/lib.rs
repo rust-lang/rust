@@ -25,6 +25,7 @@
 #![feature(once_cell)]
 #![feature(test)]
 #![feature(thread_id_value)]
+#![feature(unwrap_infallible)]
 #![allow(rustc::default_hash_types)]
 #![deny(unaligned_references)]
 
