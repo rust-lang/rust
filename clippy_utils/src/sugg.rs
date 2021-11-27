@@ -737,9 +737,9 @@ pub struct DerefClosure {
 /// such as explicit deref and borrowing cases.
 /// Returns `None` if no such use cases have been triggered in closure body
 ///
-/// note: this only works on single line immutable closures
-pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, search_expr: &'tcx hir::Expr<'_>) -> Option<DerefClosure> {
-    if let hir::ExprKind::Closure(_, fn_decl, body_id, ..) = search_expr.kind {
+/// note: this only works on single line immutable closures with one exactly one input parameter.
+pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'_>) -> Option<DerefClosure> {
+    if let hir::ExprKind::Closure(_, fn_decl, body_id, ..) = closure.kind {
         let closure_body = cx.tcx.hir().body(body_id);
         // is closure arg a double reference (i.e.: `|x: &&i32| ...`)
         let closure_arg_is_double_ref = if let TyKind::Rptr(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind {
@@ -750,14 +750,14 @@ pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, search_expr: &'tcx hir::Ex
 
         let mut visitor = DerefDelegate {
             cx,
-            closure_span: search_expr.span,
+            closure_span: closure.span,
             closure_arg_is_double_ref,
-            next_pos: search_expr.span.lo(),
+            next_pos: closure.span.lo(),
             suggestion_start: String::new(),
             applicability: Applicability::MaybeIncorrect,
         };
 
-        let fn_def_id = cx.tcx.hir().local_def_id(search_expr.hir_id);
+        let fn_def_id = cx.tcx.hir().local_def_id(closure.hir_id);
         cx.tcx.infer_ctxt().enter(|infcx| {
             ExprUseVisitor::new(&mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results())
                 .consume_body(closure_body);
@@ -847,7 +847,6 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
                 // i.e.: suggest `&x` instead of `x`
-                self.closure_arg_is_double_ref = false;
                 self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
             } else {
                 // cases where a parent `Call` or `MethodCall` is using the item
@@ -879,21 +878,20 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                                 let takes_arg_by_double_ref =
                                     self.func_takes_arg_by_double_ref(parent_expr, cmt.hir_id);
 
-                                // compiler will automatically dereference field projection, so no need
+                                // compiler will automatically dereference field or index projection, so no need
                                 // to suggest ampersand, but full identifier that includes projection is required
-                                let has_field_projection = cmt
-                                    .place
-                                    .projections
-                                    .iter()
-                                    .any(|proj| matches!(proj.kind, ProjectionKind::Field(..)));
+                                let has_field_or_index_projection =
+                                    cmt.place.projections.iter().any(|proj| {
+                                        matches!(proj.kind, ProjectionKind::Field(..) | ProjectionKind::Index)
+                                    });
 
                                 // no need to bind again if the function doesn't take arg by double ref
                                 // and if the item is already a double ref
                                 let ident_sugg = if !call_args.is_empty()
                                     && !takes_arg_by_double_ref
-                                    && (self.closure_arg_is_double_ref || has_field_projection)
+                                    && (self.closure_arg_is_double_ref || has_field_or_index_projection)
                                 {
-                                    let ident = if has_field_projection {
+                                    let ident = if has_field_or_index_projection {
                                         ident_str_with_proj
                                     } else {
                                         ident_str
@@ -953,9 +951,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
                 // handle `ProjectionKind::Deref` by removing one explicit deref
                 // if no special case was detected (i.e.: suggest `*x` instead of `**x`)
-                if projections_handled {
-                    self.closure_arg_is_double_ref = false;
-                } else {
+                if !projections_handled {
                     let last_deref = cmt
                         .place
                         .projections
