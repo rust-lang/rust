@@ -34,8 +34,8 @@ use base_db::{
 };
 use fst::{self, Streamer};
 use hir::{
-    db::DefDatabase, AdtId, AssocItemLoc, DefHasSource, HirFileId, ItemLoc, ItemScope,
-    ItemTreeNode, Lookup, ModuleData, ModuleDefId, ModuleId,
+    db::DefDatabase, AdtId, AssocContainerId, AssocItemLoc, DefHasSource, HirFileId, ItemLoc,
+    ItemScope, ItemTreeNode, Lookup, ModuleData, ModuleDefId, ModuleId,
 };
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -516,12 +516,28 @@ fn collect_symbols_from_item_scope(
         let name = name.text().into();
         let ptr = SyntaxNodePtr::new(source.value.syntax());
 
+        let container_name = match loc.container {
+            AssocContainerId::ModuleId(module_id) => {
+                let def_map = module_id.def_map(db);
+                let module_data = &def_map[module_id.local_id];
+                module_data
+                    .origin
+                    .declaration()
+                    .and_then(|s| s.to_node(db.upcast()).name().map(|n| n.text().into()))
+            }
+            AssocContainerId::TraitId(trait_id) => {
+                let loc = trait_id.lookup(db);
+                let source = loc.source(db);
+                source.value.name().map(|n| n.text().into())
+            }
+            AssocContainerId::ImplId(_) => None,
+        };
+
         Some(FileSymbol {
             name,
             kind,
             range: source.value.syntax().text_range(),
-            // todo: fill out based on loc.container.
-            container_name: None,
+            container_name,
             file_id,
             name_range: Some(name_range),
             ptr,

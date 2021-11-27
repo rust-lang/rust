@@ -44,9 +44,9 @@ use hir_def::{
     nameres,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
-    AssocContainerId, AssocItemId, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
-    FunctionId, GenericDefId, HasModule, ImplId, LifetimeParamId, LocalEnumVariantId, LocalFieldId,
-    StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
+    AssocItemId, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId, FunctionId, GenericDefId,
+    HasModule, ImplId, LifetimeParamId, LocalEnumVariantId, LocalFieldId, StaticId, StructId,
+    TraitId, TypeAliasId, TypeParamId, UnionId,
 };
 use hir_expand::{name::name, MacroCallKind, MacroDefId, MacroDefKind};
 use hir_ty::{
@@ -114,6 +114,7 @@ pub use {
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
         AdtId,
+        AssocContainerId,
         AssocItemLoc,
         ItemLoc,
         Lookup,
