@@ -123,6 +123,11 @@ impl<B, C> ops::FromResidual for ControlFlow<B, C> {
     }
 }
 
+#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+impl<B, C> ops::Residual<C> for ControlFlow<B, convert::Infallible> {
+    type TryType = ControlFlow<B, C>;
+}
+
 impl<B, C> ControlFlow<B, C> {
     /// Returns `true` if this is a `Break` variant.
     ///

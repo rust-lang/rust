@@ -1,5 +1,5 @@
 use crate::cmp::{self, Ordering};
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::TrustedRandomAccessNoCoerce;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
@@ -2418,6 +2418,10 @@ pub trait Iterator {
     /// Applies function to the elements of iterator and returns
     /// the first true result or the first error.
     ///
+    /// The return type of this method depends on the return type of the closure.
+    /// If you return `Result<bool, E>` from the closure, you'll get a `Result<Option<Self::Item>; E>`.
+    /// If you return `Option<bool>` from the closure, you'll get an `Option<Option<Self::Item>>`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -2435,32 +2439,48 @@ pub trait Iterator {
     /// let result = a.iter().try_find(|&&s| is_my_num(s, 5));
     /// assert!(result.is_err());
     /// ```
+    ///
+    /// This also supports other types which implement `Try`, not just `Result`.
+    /// ```
+    /// #![feature(try_find)]
+    ///
+    /// use std::num::NonZeroU32;
+    /// let a = [3, 5, 7, 4, 9, 0, 11];
+    /// let result = a.iter().try_find(|&&x| NonZeroU32::new(x).map(|y| y.is_power_of_two()));
+    /// assert_eq!(result, Some(Some(&4)));
+    /// let result = a.iter().take(3).try_find(|&&x| NonZeroU32::new(x).map(|y| y.is_power_of_two()));
+    /// assert_eq!(result, Some(None));
+    /// let result = a.iter().rev().try_find(|&&x| NonZeroU32::new(x).map(|y| y.is_power_of_two()));
+    /// assert_eq!(result, None);
+    /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
-    fn try_find<F, R, E>(&mut self, f: F) -> Result<Option<Self::Item>, E>
+    fn try_find<F, R>(&mut self, f: F) -> ChangeOutputType<R, Option<Self::Item>>
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
         R: Try<Output = bool>,
-        // FIXME: This bound is rather strange, but means minimal breakage on nightly.
-        // See #85115 for the issue tracking a holistic solution for this and try_map.
-        R: Try<Residual = Result<crate::convert::Infallible, E>>,
+        R::Residual: Residual<Option<Self::Item>>,
     {
         #[inline]
-        fn check<F, T, R, E>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, E>>
+        fn check<I, V, R>(
+            mut f: impl FnMut(&I) -> V,
+        ) -> impl FnMut((), I) -> ControlFlow<R::TryType>
         where
-            F: FnMut(&T) -> R,
-            R: Try<Output = bool>,
-            R: Try<Residual = Result<crate::convert::Infallible, E>>,
+            V: Try<Output = bool, Residual = R>,
+            R: Residual<Option<I>>,
         {
             move |(), x| match f(&x).branch() {
                 ControlFlow::Continue(false) => ControlFlow::CONTINUE,
-                ControlFlow::Continue(true) => ControlFlow::Break(Ok(x)),
-                ControlFlow::Break(Err(x)) => ControlFlow::Break(Err(x)),
+                ControlFlow::Continue(true) => ControlFlow::Break(Try::from_output(Some(x))),
+                ControlFlow::Break(r) => ControlFlow::Break(FromResidual::from_residual(r)),
             }
         }
 
-        self.try_fold((), check(f)).break_value().transpose()
+        match self.try_fold((), check(f)) {
+            ControlFlow::Break(x) => x,
+            ControlFlow::Continue(()) => Try::from_output(None),
+        }
     }
 
     /// Searches for an element in an iterator, returning its index.

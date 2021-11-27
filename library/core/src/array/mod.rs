@@ -11,7 +11,9 @@ use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::iter::TrustedLen;
 use crate::mem::{self, MaybeUninit};
-use crate::ops::{Index, IndexMut};
+use crate::ops::{
+    ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
+};
 use crate::slice::{Iter, IterMut};
 
 mod equality;
@@ -49,8 +51,12 @@ where
 }
 
 /// Creates an array `[T; N]` where each fallible array element `T` is returned by the `cb` call.
-/// Unlike `core::array::from_fn`, where the element creation can't fail, this version will return an error
+/// Unlike [`from_fn`], where the element creation can't fail, this version will return an error
 /// if any element creation was unsuccessful.
+///
+/// The return type of this function depends on the return type of the closure.
+/// If you return `Result<T, E>` from the closure, you'll get a `Result<[T; N]; E>`.
+/// If you return `Option<T>` from the closure, you'll get an `Option<[T; N]>`.
 ///
 /// # Arguments
 ///
@@ -60,27 +66,32 @@ where
 ///
 /// ```rust
 /// #![feature(array_from_fn)]
+/// # // Apparently these doc tests are still on edition2018
+/// # use std::convert::TryInto;
 ///
-/// #[derive(Debug, PartialEq)]
-/// enum SomeError {
-///     Foo,
-/// }
-///
-/// let array = core::array::try_from_fn(|i| Ok::<_, SomeError>(i));
+/// let array: Result<[u8; 5], _> = std::array::try_from_fn(|i| i.try_into());
 /// assert_eq!(array, Ok([0, 1, 2, 3, 4]));
 ///
-/// let another_array = core::array::try_from_fn::<SomeError, _, (), 2>(|_| Err(SomeError::Foo));
-/// assert_eq!(another_array, Err(SomeError::Foo));
+/// let array: Result<[i8; 200], _> = std::array::try_from_fn(|i| i.try_into());
+/// assert!(array.is_err());
+///
+/// let array: Option<[_; 4]> = std::array::try_from_fn(|i| i.checked_add(100));
+/// assert_eq!(array, Some([100, 101, 102, 103]));
+///
+/// let array: Option<[_; 4]> = std::array::try_from_fn(|i| i.checked_sub(100));
+/// assert_eq!(array, None);
 /// ```
 #[inline]
 #[unstable(feature = "array_from_fn", issue = "89379")]
-pub fn try_from_fn<E, F, T, const N: usize>(cb: F) -> Result<[T; N], E>
+pub fn try_from_fn<F, R, const N: usize>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
 where
-    F: FnMut(usize) -> Result<T, E>,
+    F: FnMut(usize) -> R,
+    R: Try,
+    R::Residual: Residual<[R::Output; N]>,
 {
     // SAFETY: we know for certain that this iterator will yield exactly `N`
     // items.
-    unsafe { collect_into_array_rslt_unchecked(&mut (0..N).map(cb)) }
+    unsafe { try_collect_into_array_unchecked(&mut (0..N).map(cb)) }
 }
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
@@ -444,6 +455,45 @@ impl<T, const N: usize> [T; N] {
         unsafe { collect_into_array_unchecked(&mut IntoIterator::into_iter(self).map(f)) }
     }
 
+    /// A fallible function `f` applied to each element on array `self` in order to
+    /// return an array the same size as `self` or the first error encountered.
+    ///
+    /// The return type of this function depends on the return type of the closure.
+    /// If you return `Result<T, E>` from the closure, you'll get a `Result<[T; N]; E>`.
+    /// If you return `Option<T>` from the closure, you'll get an `Option<[T; N]>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_try_map)]
+    /// let a = ["1", "2", "3"];
+    /// let b = a.try_map(|v| v.parse::<u32>()).unwrap().map(|v| v + 1);
+    /// assert_eq!(b, [2, 3, 4]);
+    ///
+    /// let a = ["1", "2a", "3"];
+    /// let b = a.try_map(|v| v.parse::<u32>());
+    /// assert!(b.is_err());
+    ///
+    /// use std::num::NonZeroU32;
+    /// let z = [1, 2, 0, 3, 4];
+    /// assert_eq!(z.try_map(NonZeroU32::new), None);
+    /// let a = [1, 2, 3];
+    /// let b = a.try_map(NonZeroU32::new);
+    /// let c = b.map(|x| x.map(NonZeroU32::get));
+    /// assert_eq!(c, Some(a));
+    /// ```
+    #[unstable(feature = "array_try_map", issue = "79711")]
+    pub fn try_map<F, R>(self, f: F) -> ChangeOutputType<R, [R::Output; N]>
+    where
+        F: FnMut(T) -> R,
+        R: Try,
+        R::Residual: Residual<[R::Output; N]>,
+    {
+        // SAFETY: we know for certain that this iterator will yield exactly `N`
+        // items.
+        unsafe { try_collect_into_array_unchecked(&mut IntoIterator::into_iter(self).map(f)) }
+    }
+
     /// 'Zips up' two arrays into a single array of pairs.
     ///
     /// `zip()` returns a new array where every element is a tuple where the
@@ -621,42 +671,42 @@ impl<T, const N: usize> [T; N] {
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
 /// yields fewer than `N` items, this function exhibits undefined behavior.
 ///
-/// See [`collect_into_array`] for more information.
+/// See [`try_collect_into_array`] for more information.
 ///
 ///
 /// # Safety
 ///
 /// It is up to the caller to guarantee that `iter` yields at least `N` items.
 /// Violating this condition causes undefined behavior.
-unsafe fn collect_into_array_rslt_unchecked<E, I, T, const N: usize>(
-    iter: &mut I,
-) -> Result<[T; N], E>
+unsafe fn try_collect_into_array_unchecked<I, T, R, const N: usize>(iter: &mut I) -> R::TryType
 where
     // Note: `TrustedLen` here is somewhat of an experiment. This is just an
     // internal function, so feel free to remove if this bound turns out to be a
     // bad idea. In that case, remember to also remove the lower bound
     // `debug_assert!` below!
-    I: Iterator<Item = Result<T, E>> + TrustedLen,
+    I: Iterator + TrustedLen,
+    I::Item: Try<Output = T, Residual = R>,
+    R: Residual<[T; N]>,
 {
     debug_assert!(N <= iter.size_hint().1.unwrap_or(usize::MAX));
     debug_assert!(N <= iter.size_hint().0);
 
     // SAFETY: covered by the function contract.
-    unsafe { collect_into_array(iter).unwrap_unchecked() }
+    unsafe { try_collect_into_array(iter).unwrap_unchecked() }
 }
 
-// Infallible version of `collect_into_array_rslt_unchecked`.
+// Infallible version of `try_collect_into_array_unchecked`.
 unsafe fn collect_into_array_unchecked<I, const N: usize>(iter: &mut I) -> [I::Item; N]
 where
     I: Iterator + TrustedLen,
 {
-    let mut map = iter.map(Ok::<_, Infallible>);
+    let mut map = iter.map(NeverShortCircuit);
 
     // SAFETY: The same safety considerations w.r.t. the iterator length
-    // apply for `collect_into_array_rslt_unchecked` as for
+    // apply for `try_collect_into_array_unchecked` as for
     // `collect_into_array_unchecked`
-    match unsafe { collect_into_array_rslt_unchecked(&mut map) } {
-        Ok(array) => array,
+    match unsafe { try_collect_into_array_unchecked(&mut map) } {
+        NeverShortCircuit(array) => array,
     }
 }
 
@@ -670,13 +720,15 @@ where
 ///
 /// If `iter.next()` panicks, all items already yielded by the iterator are
 /// dropped.
-fn collect_into_array<E, I, T, const N: usize>(iter: &mut I) -> Option<Result<[T; N], E>>
+fn try_collect_into_array<I, T, R, const N: usize>(iter: &mut I) -> Option<R::TryType>
 where
-    I: Iterator<Item = Result<T, E>>,
+    I: Iterator,
+    I::Item: Try<Output = T, Residual = R>,
+    R: Residual<[T; N]>,
 {
     if N == 0 {
         // SAFETY: An empty array is always inhabited and has no validity invariants.
-        return unsafe { Some(Ok(mem::zeroed())) };
+        return unsafe { Some(Try::from_output(mem::zeroed())) };
     }
 
     struct Guard<'a, T, const N: usize> {
@@ -701,11 +753,11 @@ where
     let mut guard = Guard { array_mut: &mut array, initialized: 0 };
 
     while let Some(item_rslt) = iter.next() {
-        let item = match item_rslt {
-            Err(err) => {
-                return Some(Err(err));
+        let item = match item_rslt.branch() {
+            ControlFlow::Break(r) => {
+                return Some(FromResidual::from_residual(r));
             }
-            Ok(elem) => elem,
+            ControlFlow::Continue(elem) => elem,
         };
 
         // SAFETY: `guard.initialized` starts at 0, is increased by one in the
@@ -723,7 +775,7 @@ where
             // SAFETY: the condition above asserts that all elements are
             // initialized.
             let out = unsafe { MaybeUninit::array_assume_init(array) };
-            return Some(Ok(out));
+            return Some(Try::from_output(out));
         }
     }
 
