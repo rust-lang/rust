@@ -277,7 +277,7 @@ fn main() {
     };
 
     // RISC-V requires libatomic for sub-word atomic operations
-    if target.starts_with("riscv") {
+    if !target.contains("freebsd") && target.starts_with("riscv") {
         println!("cargo:rustc-link-lib=atomic");
     }
 

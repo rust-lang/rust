@@ -249,7 +249,7 @@ impl Step for Llvm {
             }
         }
 
-        if target.starts_with("riscv") {
+        if !target.contains("freebsd") && target.starts_with("riscv") {
             // In RISC-V, using C++ atomics require linking to `libatomic` but the LLVM build
             // system check cannot detect this. Therefore it is set manually here.
             if !builder.config.llvm_tools_enabled {
