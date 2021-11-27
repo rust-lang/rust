@@ -1,0 +1,17 @@
+error[E0367]: `Drop` impl requires `T: 'static` but the struct it is implemented for does not
+  --> $DIR/relate_lt_in_type_outlives_bound.rs:7:8
+   |
+LL |     T: 'static,
+   |        ^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/relate_lt_in_type_outlives_bound.rs:1:1
+   |
+LL | / struct Wrapper<'a, T>(&'a T)
+LL | | where
+LL | |     T: 'a;
+   | |__________^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0367`.
