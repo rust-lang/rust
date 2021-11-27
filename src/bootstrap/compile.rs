@@ -1166,7 +1166,7 @@ impl Step for Assemble {
                     PathBuf::from(llvm_bin_dir.trim())
                 } else {
                     // if cross-compiling don't copy from the llvm directory for the target instead
-                    PathBuf::from(format!("build/{}/llvm/build/bin", target_compiler.host))
+                    builder.llvm_out(target_compiler.host).join("build/bin")
                 };
 
                 builder.copy(&llvm_bin_dir.join(&src_exe), &libdir_bin.join(&dst_exe));
