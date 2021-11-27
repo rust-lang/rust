@@ -1,6 +1,5 @@
 use rustc_index::vec::{Idx, IndexVec};
 use std::mem;
-use std::ptr;
 
 pub trait IdFunctor: Sized {
     type Inner;
@@ -29,12 +28,12 @@ impl<T> IdFunctor for Box<T> {
         let raw = Box::into_raw(self);
         Ok(unsafe {
             // SAFETY: The raw pointer points to a valid value of type `T`.
-            let value = ptr::read(raw);
+            let value = raw.read();
             // SAFETY: Converts `Box<T>` to `Box<MaybeUninit<T>>` which is the
             // inverse of `Box::assume_init()` and should be safe.
             let mut raw: Box<mem::MaybeUninit<T>> = Box::from_raw(raw.cast());
             // SAFETY: Write the mapped value back into the `Box`.
-            ptr::write(raw.as_mut_ptr(), f(value)?);
+            raw.write(f(value)?);
             // SAFETY: We just initialized `raw`.
             raw.assume_init()
         })
@@ -57,14 +56,13 @@ impl<T> IdFunctor for Vec<T> {
             let start = self.as_mut_ptr();
             for i in 0..len {
                 let p = start.add(i);
-                match f(ptr::read(p)) {
-                    Ok(value) => ptr::write(p, value),
+                match f(p.read()) {
+                    Ok(val) => p.write(val),
                     Err(err) => {
                         // drop all other elements in self
                         // (current element was "moved" into the call to f)
                         for j in (0..i).chain(i + 1..len) {
-                            let p = start.add(j);
-                            ptr::drop_in_place(p);
+                            start.add(j).drop_in_place();
                         }
 
                         // returning will drop self, releasing the allocation
