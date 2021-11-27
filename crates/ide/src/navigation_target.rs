@@ -4,8 +4,8 @@ use std::fmt;
 
 use either::Either;
 use hir::{
-    db::AstDatabase, AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay,
-    InFile, ModuleSource, Semantics,
+    AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay, InFile, ModuleSource,
+    Semantics,
 };
 use ide_db::{
     base_db::{FileId, FileRange},
@@ -517,7 +517,7 @@ impl TryToNav for hir::ConstParam {
 /// e.g. `struct Name`, `enum Name`, `fn Name`
 pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
     let sema = Semantics::new(db);
-    let syntax = sema.db.parse_or_expand(symbol.file_id)?;
+    let syntax = sema.parse_or_expand(symbol.file_id)?;
     let node = symbol.ptr.to_node(&syntax);
 
     match_ast! {
