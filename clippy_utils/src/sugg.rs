@@ -937,10 +937,11 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         // note: unable to trigger `Subslice` kind in tests
                         ProjectionKind::Subslice => (),
                         ProjectionKind::Deref => {
-                            // explicit deref for arrays should be avoided in the suggestion
-                            // i.e.: `|sub| *sub[1..4].len() == 3` is not expected
+                            // Explicit derefs are typically handled later on, but
+                            // some items do not need explicit deref, such as array accesses,
+                            // so we mark them as already processed
+                            // i.e.: don't suggest `*sub[1..4].len()` for `|sub| sub[1..4].len() == 3`
                             if let ty::Ref(_, inner, _) = cmt.place.ty_before_projection(i).kind() {
-                                // dereferencing an array (i.e.: `|sub| sub[1..4].len() == 3`)
                                 if matches!(inner.kind(), ty::Ref(_, innermost, _) if innermost.is_array()) {
                                     projections_handled = true;
                                 }
