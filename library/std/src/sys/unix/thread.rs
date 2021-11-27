@@ -7,7 +7,9 @@ use crate::ptr;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
 
-#[cfg(any(target_os = "linux", target_os = "solaris", target_os = "illumos"))]
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+use crate::sys::weak::dlsym;
+#[cfg(any(target_os = "solaris", target_os = "illumos"))]
 use crate::sys::weak::weak;
 #[cfg(not(any(target_os = "l4re", target_os = "vxworks", target_os = "espidf")))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
@@ -627,10 +629,12 @@ pub mod guard {
 // We need that information to avoid blowing up when a small stack
 // is created in an application with big thread-local storage requirements.
 // See #6233 for rationale and details.
-#[cfg(target_os = "linux")]
-#[allow(deprecated)]
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
 fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
-    weak!(fn __pthread_get_minstack(*const libc::pthread_attr_t) -> libc::size_t);
+    // We use dlsym to avoid an ELF version dependency on GLIBC_PRIVATE. (#23628)
+    // We shouldn't really be using such an internal symbol, but there's currently
+    // no other way to account for the TLS size.
+    dlsym!(fn __pthread_get_minstack(*const libc::pthread_attr_t) -> libc::size_t);
 
     match __pthread_get_minstack.get() {
         None => libc::PTHREAD_STACK_MIN,
@@ -638,9 +642,8 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     }
 }
 
-// No point in looking up __pthread_get_minstack() on non-glibc
-// platforms.
-#[cfg(all(not(target_os = "linux"), not(target_os = "netbsd")))]
+// No point in looking up __pthread_get_minstack() on non-glibc platforms.
+#[cfg(all(not(all(target_os = "linux", target_env = "gnu")), not(target_os = "netbsd")))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     libc::PTHREAD_STACK_MIN
 }

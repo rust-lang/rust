@@ -501,7 +501,7 @@ impl FromRawFd for Socket {
 // res_init unconditionally, we call it only when we detect we're linking
 // against glibc version < 2.26. (That is, when we both know its needed and
 // believe it's thread-safe).
-#[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
 fn on_resolver_failure() {
     use crate::sys;
 
@@ -513,5 +513,5 @@ fn on_resolver_failure() {
     }
 }
 
-#[cfg(any(not(target_env = "gnu"), target_os = "vxworks"))]
+#[cfg(not(all(target_os = "linux", target_env = "gnu")))]
 fn on_resolver_failure() {}
