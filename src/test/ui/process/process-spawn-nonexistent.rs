@@ -6,9 +6,10 @@ use std::io::ErrorKind;
 use std::process::Command;
 
 fn main() {
-    assert_eq!(Command::new("nonexistent")
-                   .spawn()
-                   .unwrap_err()
-                   .kind(),
-               ErrorKind::NotFound);
+    let err = Command::new("nonexistent")
+        .spawn()
+        .unwrap_err()
+        .kind();
+
+    assert!(err == ErrorKind::NotFound || err == ErrorKind::PermissionDenied);
 }
