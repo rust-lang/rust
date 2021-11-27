@@ -228,18 +228,22 @@ impl MemoryExtra {
     ) -> InterpResult<'tcx> {
         match this.tcx.sess.target.os.as_str() {
             "linux" => {
-                // "__cxa_thread_atexit_impl"
-                // This should be all-zero, pointer-sized.
-                let layout = this.machine.layouts.usize;
-                let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
-                this.write_scalar(Scalar::from_machine_usize(0, this), &place.into())?;
-                Self::add_extern_static(this, "__cxa_thread_atexit_impl", place.ptr);
                 // "environ"
                 Self::add_extern_static(
                     this,
                     "environ",
                     this.machine.env_vars.environ.unwrap().ptr,
                 );
+                // A couple zero-initialized pointer-sized extern statics.
+                // Most of them are for weak symbols, which we all set to null (indicating that the
+                // symbol is not supported, and triggering fallback code which ends up calling a
+                // syscall that we do support).
+                for name in &["__cxa_thread_atexit_impl", "getrandom", "statx"] {
+                    let layout = this.machine.layouts.usize;
+                    let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
+                    this.write_scalar(Scalar::from_machine_usize(0, this), &place.into())?;
+                    Self::add_extern_static(this, name, place.ptr);
+                }
             }
             "windows" => {
                 // "_tls_used"
