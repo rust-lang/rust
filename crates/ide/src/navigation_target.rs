@@ -170,7 +170,7 @@ impl NavigationTarget {
 impl ToNav for FileSymbol {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         NavigationTarget {
-            file_id: self.file_id.original_file(db),
+            file_id: self.original_file_id,
             name: self.name.clone(),
             kind: Some(match self.kind {
                 FileSymbolKind::Function => SymbolKind::Function,
@@ -517,7 +517,7 @@ impl TryToNav for hir::ConstParam {
 /// e.g. `struct Name`, `enum Name`, `fn Name`
 pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
     let sema = Semantics::new(db);
-    let syntax = sema.parse_or_expand(symbol.file_id)?;
+    let syntax = sema.parse_or_expand(symbol.hir_file_id)?;
     let node = symbol.ptr.to_node(&syntax);
 
     match_ast! {

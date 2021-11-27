@@ -371,7 +371,8 @@ impl Query {
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileSymbol {
-    pub file_id: HirFileId,
+    pub hir_file_id: HirFileId,
+    pub original_file_id: FileId,
     pub name: SmolStr,
     pub kind: FileSymbolKind,
     pub range: TextRange,
@@ -478,7 +479,8 @@ fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
         },
         range: node.text_range(),
         ptr,
-        file_id: file_id.into(),
+        hir_file_id: file_id.into(),
+        original_file_id: file_id,
         name_range: Some(name_range),
         container_name: None,
     })
@@ -505,10 +507,11 @@ fn collect_symbols_from_item_scope(
     {
         let loc = id.lookup(db);
         let source = loc.source(db);
-        let name = source.value.name()?;
-        let file_id = loc.id.file_id();
 
-        let name_range = name.syntax().text_range();
+        let name = source.value.name()?;
+        let name_range = source.with_value(name.syntax()).original_file_range(db.upcast());
+        let hir_file_id = loc.id.file_id();
+
         let name = name.text().into();
         let ptr = SyntaxNodePtr::new(source.value.syntax());
 
@@ -532,10 +535,11 @@ fn collect_symbols_from_item_scope(
         Some(FileSymbol {
             name,
             kind,
-            range: source.value.syntax().text_range(),
+            range: source.with_value(source.value.syntax()).original_file_range(db.upcast()).range,
             container_name,
-            file_id,
-            name_range: Some(name_range),
+            hir_file_id,
+            original_file_id: name_range.file_id,
+            name_range: Some(name_range.range),
             ptr,
         })
     }
@@ -548,18 +552,19 @@ fn collect_symbols_from_item_scope(
         let loc = id.lookup(db);
         let source = loc.source(db);
         let name = source.value.name()?;
-        let file_id = loc.id.file_id();
-        let name_range = name.syntax().text_range();
+        let name_range = source.with_value(name.syntax()).original_file_range(db.upcast());
+        let hir_file_id = loc.id.file_id();
         let name = name.text().into();
         let ptr = SyntaxNodePtr::new(source.value.syntax());
 
         Some(FileSymbol {
             name,
             kind,
-            range: source.value.syntax().text_range(),
+            range: source.with_value(source.value.syntax()).original_file_range(db.upcast()).range,
             container_name: None,
-            file_id,
-            name_range: Some(name_range),
+            hir_file_id,
+            original_file_id: name_range.file_id,
+            name_range: Some(name_range.range),
             ptr,
         })
     }
@@ -568,21 +573,22 @@ fn collect_symbols_from_item_scope(
         let def_map = module_id.def_map(db);
         let module_data = &def_map[module_id.local_id];
         let declaration = module_data.origin.declaration()?;
-        let file_id = declaration.file_id;
+        let hir_file_id = declaration.file_id;
 
         let module = declaration.to_node(db.upcast());
         let name = module.name()?;
-        let name_range = name.syntax().text_range();
+        let name_range = declaration.with_value(name.syntax()).original_file_range(db.upcast());
         let name = name.text().into();
         let ptr = SyntaxNodePtr::new(module.syntax());
 
         Some(FileSymbol {
             name,
             kind: FileSymbolKind::Module,
-            range: module.syntax().text_range(),
+            range: declaration.with_value(module.syntax()).original_file_range(db.upcast()).range,
             container_name: None,
-            file_id,
-            name_range: Some(name_range),
+            hir_file_id,
+            original_file_id: name_range.file_id,
+            name_range: Some(name_range.range),
             ptr,
         })
     }

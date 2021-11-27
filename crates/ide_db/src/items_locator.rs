@@ -133,7 +133,7 @@ fn get_name_definition(
     import_candidate: &FileSymbol,
 ) -> Option<Definition> {
     let _p = profile::span("get_name_definition");
-    let file_id = import_candidate.file_id;
+    let file_id = import_candidate.hir_file_id;
 
     let candidate_node = import_candidate.ptr.to_node(&sema.parse_or_expand(file_id)?);
     let candidate_name_node = if candidate_node.kind() != NAME {
