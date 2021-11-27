@@ -513,10 +513,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         &mut self,
         c: &'tcx ty::Const<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
-        if !c.potentially_needs_subst() {
-            return Ok(c);
-        }
-
         if let ty::ConstKind::Param(p) = c.val {
             Ok(self.const_for_param(p, c))
         } else {
