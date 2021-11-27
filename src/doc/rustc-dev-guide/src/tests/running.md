@@ -200,8 +200,10 @@ however compare-modes must be manually run individually via the `--compare-mode`
 
 ## Running tests manually
 
-Sometimes it's easier and faster to just run the test by hand. Most tests are
-just `rs` files, so you can do something like
+Sometimes it's easier and faster to just run the test by hand.
+Most tests are just `rs` files, so after
+[creating a rustup toolchain](/building/how-to-build-and-run.html#creating-a-rustup-toolchain),
+you can do something like:
 
 ```bash
 rustc +stage1 src/test/ui/issue-1234.rs
