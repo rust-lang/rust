@@ -4,6 +4,7 @@
 //! are located in different caches, with different APIs.
 use either::Either;
 use hir::{
+    db::AstDatabase,
     import_map::{self, ImportKind},
     AsAssocItem, Crate, ItemInNs, Semantics,
 };
@@ -135,7 +136,7 @@ fn get_name_definition(
     let _p = profile::span("get_name_definition");
     let file_id = import_candidate.file_id;
 
-    let candidate_node = import_candidate.ptr.to_node(sema.parse(file_id).syntax());
+    let candidate_node = import_candidate.ptr.to_node(&sema.db.parse_or_expand(file_id)?);
     let candidate_name_node = if candidate_node.kind() != NAME {
         candidate_node.children().find(|it| it.kind() == NAME)?
     } else {

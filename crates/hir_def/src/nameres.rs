@@ -148,7 +148,7 @@ pub enum ModuleOrigin {
 }
 
 impl ModuleOrigin {
-    fn declaration(&self) -> Option<AstId<ast::Module>> {
+    pub fn declaration(&self) -> Option<AstId<ast::Module>> {
         match self {
             ModuleOrigin::File { declaration: module, .. }
             | ModuleOrigin::Inline { definition: module, .. } => Some(*module),

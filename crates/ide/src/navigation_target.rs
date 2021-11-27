@@ -4,8 +4,8 @@ use std::fmt;
 
 use either::Either;
 use hir::{
-    AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay, InFile, ModuleSource,
-    Semantics,
+    db::AstDatabase, AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay,
+    InFile, ModuleSource, Semantics,
 };
 use ide_db::{
     base_db::{FileId, FileRange},
@@ -170,7 +170,7 @@ impl NavigationTarget {
 impl ToNav for FileSymbol {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         NavigationTarget {
-            file_id: self.file_id,
+            file_id: self.file_id.original_file(db),
             name: self.name.clone(),
             kind: Some(match self.kind {
                 FileSymbolKind::Function => SymbolKind::Function,
@@ -517,8 +517,8 @@ impl TryToNav for hir::ConstParam {
 /// e.g. `struct Name`, `enum Name`, `fn Name`
 pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
     let sema = Semantics::new(db);
-    let parse = sema.parse(symbol.file_id);
-    let node = symbol.ptr.to_node(parse.syntax());
+    let syntax = sema.db.parse_or_expand(symbol.file_id)?;
+    let node = symbol.ptr.to_node(&syntax);
 
     match_ast! {
         match node {

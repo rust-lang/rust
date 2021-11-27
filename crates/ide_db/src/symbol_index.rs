@@ -33,7 +33,10 @@ use base_db::{
     CrateId, FileId, SourceDatabaseExt, SourceRootId,
 };
 use fst::{self, Streamer};
-use hir::db::DefDatabase;
+use hir::{
+    db::DefDatabase, AdtId, AssocItemLoc, DefHasSource, HirFileId, ItemLoc, ItemScope,
+    ItemTreeNode, Lookup, ModuleData, ModuleDefId, ModuleId,
+};
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
@@ -202,21 +205,29 @@ pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<Fil
     // that instead?
 
     let def_map = db.crate_def_map(krate);
-    let mut files = Vec::new();
-    let mut modules = vec![def_map.root()];
-    while let Some(module) = modules.pop() {
-        let data = &def_map[module];
-        files.extend(data.origin.file_id());
-        modules.extend(data.children.values());
-    }
+    // let mut files = Vec::new();
+    // let mut modules = vec![def_map.root()];
+    // while let Some(module) = modules.pop() {
+    //     let data = &def_map[module];
+    //     files.extend(data.origin.file_id());
+    //     modules.extend(data.children.values());
+    // }
 
-    let snap = Snap(db.snapshot());
+    // let snap = Snap(db.snapshot());
 
-    let buf = files
-        .par_iter()
-        .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
-        .collect::<Vec<_>>();
-    let buf = buf.iter().map(|it| &**it).collect::<Vec<_>>();
+    // let buf = files
+    //     .par_iter()
+    //     .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
+    //     .collect::<Vec<_>>();
+
+    // todo: make this fast!!!
+    // how do i salsa this?
+
+    let buf: Vec<_> = def_map
+        .modules()
+        .map(|(_, module_data)| SymbolIndex::new(module_data_to_file_symbols(db, module_data)))
+        .collect();
+    let buf = buf.iter().collect::<Vec<_>>();
 
     query.search(&buf)
 }
@@ -364,7 +375,7 @@ impl Query {
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileSymbol {
-    pub file_id: FileId,
+    pub file_id: HirFileId,
     pub name: SmolStr,
     pub kind: FileSymbolKind,
     pub range: TextRange,
@@ -456,23 +467,134 @@ fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
     to_symbol(node).map(move |(name, ptr, name_range)| FileSymbol {
         name,
         kind: match node.kind() {
-            FN => FileSymbolKind::Function,
-            STRUCT => FileSymbolKind::Struct,
-            ENUM => FileSymbolKind::Enum,
-            TRAIT => FileSymbolKind::Trait,
-            MODULE => FileSymbolKind::Module,
-            TYPE_ALIAS => FileSymbolKind::TypeAlias,
-            CONST => FileSymbolKind::Const,
-            STATIC => FileSymbolKind::Static,
-            MACRO_RULES => FileSymbolKind::Macro,
-            MACRO_DEF => FileSymbolKind::Macro,
-            UNION => FileSymbolKind::Union,
+            FN => FileSymbolKind::Function,          // FunctionId
+            STRUCT => FileSymbolKind::Struct,        // AdtId::StructId
+            ENUM => FileSymbolKind::Enum,            // AdtId::EnumId
+            TRAIT => FileSymbolKind::Trait,          // TraitId
+            MODULE => FileSymbolKind::Module,        // ModuleId
+            TYPE_ALIAS => FileSymbolKind::TypeAlias, // TypeAliasId
+            CONST => FileSymbolKind::Const,          // ConstId
+            STATIC => FileSymbolKind::Static,        // StaticId
+            MACRO_RULES => FileSymbolKind::Macro,    // via ItemScope::macros
+            MACRO_DEF => FileSymbolKind::Macro,      // via ItemScope::macros
+            UNION => FileSymbolKind::Union,          // AdtId::UnionId
             kind => unreachable!("{:?}", kind),
         },
         range: node.text_range(),
         ptr,
-        file_id,
+        file_id: file_id.into(),
         name_range: Some(name_range),
         container_name: None,
     })
+}
+
+fn module_data_to_file_symbols(db: &dyn DefDatabase, module_data: &ModuleData) -> Vec<FileSymbol> {
+    let mut symbols = Vec::new();
+    collect_symbols_from_item_scope(db, &mut symbols, &module_data.scope);
+    // todo: collect macros from scope.macros().
+    symbols
+}
+
+fn collect_symbols_from_item_scope(
+    db: &dyn DefDatabase,
+    symbols: &mut Vec<FileSymbol>,
+    scope: &ItemScope,
+) {
+    // todo: dedupe code.
+    fn decl_assoc<L, T>(db: &dyn DefDatabase, id: L, kind: FileSymbolKind) -> Option<FileSymbol>
+    where
+        L: Lookup<Data = AssocItemLoc<T>>,
+        T: ItemTreeNode,
+        <T as ItemTreeNode>::Source: HasName,
+    {
+        let loc = id.lookup(db);
+        let source = loc.source(db);
+        let name = source.value.name()?;
+        let file_id = loc.id.file_id();
+
+        let name_range = name.syntax().text_range();
+        let name = name.text().into();
+        let ptr = SyntaxNodePtr::new(source.value.syntax());
+
+        Some(FileSymbol {
+            name,
+            kind,
+            range: source.value.syntax().text_range(),
+            // todo: fill out based on loc.container.
+            container_name: None,
+            file_id,
+            name_range: Some(name_range),
+            ptr,
+        })
+    }
+    fn decl<L, T>(db: &dyn DefDatabase, id: L, kind: FileSymbolKind) -> Option<FileSymbol>
+    where
+        L: Lookup<Data = ItemLoc<T>>,
+        T: ItemTreeNode,
+        <T as ItemTreeNode>::Source: HasName,
+    {
+        let loc = id.lookup(db);
+        let source = loc.source(db);
+        let name = source.value.name()?;
+        let file_id = loc.id.file_id();
+        let name_range = name.syntax().text_range();
+        let name = name.text().into();
+        let ptr = SyntaxNodePtr::new(source.value.syntax());
+
+        Some(FileSymbol {
+            name,
+            kind,
+            range: source.value.syntax().text_range(),
+            container_name: None,
+            file_id,
+            name_range: Some(name_range),
+            ptr,
+        })
+    }
+
+    fn decl_module(db: &dyn DefDatabase, module_id: ModuleId) -> Option<FileSymbol> {
+        let def_map = module_id.def_map(db);
+        let module_data = &def_map[module_id.local_id];
+        let declaration = module_data.origin.declaration()?;
+        let file_id = match module_data.origin.file_id() {
+            Some(file_id) => file_id.into(),
+            None => declaration.file_id,
+        };
+
+        let module = declaration.to_node(db.upcast());
+        let name = module.name()?;
+        let name_range = name.syntax().text_range();
+        let name = name.text().into();
+        let ptr = SyntaxNodePtr::new(module.syntax());
+
+        Some(FileSymbol {
+            name,
+            kind: FileSymbolKind::Module,
+            range: module.syntax().text_range(),
+            container_name: None,
+            file_id,
+            name_range: Some(name_range),
+            ptr,
+        })
+    }
+
+    let symbols_iter = scope.declarations().filter_map(|module_def_id| match module_def_id {
+        ModuleDefId::ModuleId(module_id) => decl_module(db, module_id),
+        ModuleDefId::FunctionId(function_id) => {
+            decl_assoc(db, function_id, FileSymbolKind::Function)
+        }
+        ModuleDefId::AdtId(AdtId::StructId(struct_id)) => {
+            decl(db, struct_id, FileSymbolKind::Struct)
+        }
+        ModuleDefId::AdtId(AdtId::EnumId(enum_id)) => decl(db, enum_id, FileSymbolKind::Enum),
+        ModuleDefId::AdtId(AdtId::UnionId(union_id)) => decl(db, union_id, FileSymbolKind::Union),
+        ModuleDefId::EnumVariantId(_) => None,
+        ModuleDefId::ConstId(const_id) => decl_assoc(db, const_id, FileSymbolKind::Const),
+        ModuleDefId::StaticId(static_id) => decl(db, static_id, FileSymbolKind::Static),
+        ModuleDefId::TraitId(trait_id) => decl(db, trait_id, FileSymbolKind::Trait),
+        ModuleDefId::TypeAliasId(alias_id) => decl_assoc(db, alias_id, FileSymbolKind::TypeAlias),
+        ModuleDefId::BuiltinType(_) => None,
+    });
+
+    symbols.extend(symbols_iter);
 }
