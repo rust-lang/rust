@@ -504,9 +504,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // by the browser as the theme stylesheet. The theme system (hackily) works by
         // changing the href to this stylesheet. All other themes are disabled to
         // prevent rule conflicts
-        scx.style_files.push(StylePath { path: PathBuf::from("light.css"), disabled: false });
-        scx.style_files.push(StylePath { path: PathBuf::from("dark.css"), disabled: true });
-        scx.style_files.push(StylePath { path: PathBuf::from("ayu.css"), disabled: true });
+        scx.style_files.push(StylePath { path: PathBuf::from("light.css") });
+        scx.style_files.push(StylePath { path: PathBuf::from("dark.css") });
+        scx.style_files.push(StylePath { path: PathBuf::from("ayu.css") });
 
         let dst = output;
         scx.ensure_dir(&dst)?;
@@ -596,9 +596,13 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         page.description = "Settings of Rustdoc";
         page.root_path = "./";
 
-        let mut style_files = self.shared.style_files.clone();
         let sidebar = "<h2 class=\"location\">Settings</h2><div class=\"sidebar-elems\"></div>";
-        style_files.push(StylePath { path: PathBuf::from("settings.css"), disabled: false });
+        let theme_names: Vec<String> = self
+            .shared
+            .style_files
+            .iter()
+            .map(StylePath::basename)
+            .collect::<Result<_, Error>>()?;
         let v = layout::render(
             &self.shared.templates,
             &self.shared.layout,
@@ -607,9 +611,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             settings(
                 self.shared.static_root_path.as_deref().unwrap_or("./"),
                 &self.shared.resource_suffix,
-                &self.shared.style_files,
+                theme_names,
             )?,
-            &style_files,
+            &self.shared.style_files,
         );
         self.shared.fs.write(settings_file, v)?;
         if let Some(ref redirections) = self.shared.redirections {
