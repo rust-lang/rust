@@ -14,6 +14,7 @@ use std::{
 
 use la_arena::{Arena, Idx};
 use profile::Count;
+use rustc_hash::FxHashMap;
 use syntax::{ast, match_ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
@@ -63,6 +64,7 @@ type ErasedFileAstId = Idx<SyntaxNodePtr>;
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct AstIdMap {
     arena: Arena<SyntaxNodePtr>,
+    map: FxHashMap<SyntaxNodePtr, ErasedFileAstId>,
     _c: Count<Self>,
 }
 
@@ -89,6 +91,7 @@ impl AstIdMap {
                 }
             }
         });
+        res.map.extend(res.arena.iter().map(|(idx, ptr)| (ptr.clone(), idx)));
         res
     }
 
@@ -96,16 +99,16 @@ impl AstIdMap {
         let raw = self.erased_ast_id(item.syntax());
         FileAstId { raw, _ty: PhantomData }
     }
+
     fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {
         let ptr = SyntaxNodePtr::new(item);
-        match self.arena.iter().find(|(_id, i)| **i == ptr) {
-            Some((it, _)) => it,
-            None => panic!(
+        *self.map.get(&ptr).unwrap_or_else(|| {
+            panic!(
                 "Can't find {:?} in AstIdMap:\n{:?}",
                 item,
                 self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
-            ),
-        }
+            )
+        })
     }
 
     pub fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
