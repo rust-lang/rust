@@ -87,7 +87,6 @@ impl<T> IdFunctor for Vec<T> {
         // FIXME: We don't really care about panics here and leak
         // far more than we should, but that should be fine for now.
         let len = self.len();
-        let mut error = Ok(());
         unsafe {
             self.set_len(0);
             let start = self.as_mut_ptr();
@@ -96,8 +95,16 @@ impl<T> IdFunctor for Vec<T> {
                 match f(ptr::read(p)) {
                     Ok(value) => ptr::write(p, value),
                     Err(err) => {
-                        error = Err(err);
-                        break;
+                        // drop all other elements in self
+                        // (current element was "moved" into the call to f)
+                        for j in (0..i).chain(i + 1..len) {
+                            let p = start.add(j);
+                            ptr::drop_in_place(p);
+                        }
+
+                        // returning will drop self, releasing the allocation
+                        // (len is 0 so elements will not be re-dropped)
+                        return Err(err);
                     }
                 }
             }
@@ -105,7 +112,7 @@ impl<T> IdFunctor for Vec<T> {
             // so we don't leak memory.
             self.set_len(len);
         }
-        error.map(|()| self)
+        Ok(self)
     }
 }
 
