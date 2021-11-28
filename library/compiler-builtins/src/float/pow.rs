@@ -5,7 +5,7 @@ use int::Int;
 fn pow<F: Float>(a: F, b: i32) -> F {
     let mut a = a;
     let recip = b < 0;
-    let mut pow = i32::abs_diff(b, 0);
+    let mut pow = Int::abs_diff(b, 0);
     let mut mul = F::ONE;
     loop {
         if (pow & 1) != 0 {
