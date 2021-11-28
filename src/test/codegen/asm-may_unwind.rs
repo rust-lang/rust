@@ -16,9 +16,9 @@ impl Drop for Foo {
 }
 
 // CHECK-LABEL: @may_unwind
-// CHECK: invoke void asm sideeffect alignstack unwind
 #[no_mangle]
 pub unsafe fn may_unwind() {
     let _m = Foo;
+    // CHECK: invoke void asm sideeffect alignstack inteldialect unwind ""
     asm!("", options(may_unwind));
 }
