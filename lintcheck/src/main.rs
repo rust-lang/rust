@@ -771,6 +771,7 @@ pub fn main() {
         .for_each(|(cratename, msg)| text.push_str(&format!("{}: '{}'", cratename, msg)));
 
     println!("Writing logs to {}", config.lintcheck_results_path.display());
+    std::fs::create_dir_all(config.lintcheck_results_path.parent().unwrap()).unwrap();
     write(&config.lintcheck_results_path, text).unwrap();
 
     print_stats(old_stats, new_stats);
