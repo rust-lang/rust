@@ -3,7 +3,7 @@
 // run-pass
 // needs-asm-support
 
-#![feature(asm, asm_unwind)]
+#![feature(asm, asm_sym, asm_unwind)]
 
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
@@ -15,7 +15,6 @@ impl Drop for Foo<'_> {
     }
 }
 
-#[no_mangle]
 extern "C" fn panicky() {
     resume_unwind(Box::new(()));
 }
@@ -24,7 +23,14 @@ fn main() {
     let flag = &mut true;
     catch_unwind(AssertUnwindSafe(|| {
         let _foo = Foo(flag);
-        unsafe { asm!("call panicky", clobber_abi("C"), options(may_unwind)) };
+        unsafe {
+            asm!(
+                "call {}",
+                sym panicky,
+                clobber_abi("C"),
+                options(may_unwind)
+            );
+        }
     }))
     .expect_err("expected a panic");
     assert_eq!(*flag, false);
