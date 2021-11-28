@@ -565,16 +565,16 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     /// that makes sense for the matrix pre-specialization. This new usefulness can then be merged
     /// with the results of specializing with the other constructors.
     fn apply_constructor(
-        self,
+        &mut self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
         matrix: &Matrix<'p, 'tcx>, // used to compute missing ctors
         ctor: &Constructor<'tcx>,
-    ) -> Self {
+    ) {
         match self {
-            NoWitnesses { .. } => self,
-            WithWitnesses(ref witnesses) if witnesses.is_empty() => self,
+            NoWitnesses { .. } => {}
+            WithWitnesses(witnesses) if witnesses.is_empty() => {}
             WithWitnesses(witnesses) => {
-                let new_witnesses = if let Constructor::Missing { .. } = ctor {
+                if let Constructor::Missing { .. } = ctor {
                     // We got the special `Missing` constructor, so each of the missing constructors
                     // gives a new pattern that is not caught by the match. We list those patterns.
                     let new_patterns = if pcx.is_non_exhaustive {
@@ -613,7 +613,8 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                         new
                     };
 
-                    witnesses
+                    let old_witnesses = std::mem::replace(witnesses, Vec::new());
+                    *witnesses = old_witnesses
                         .into_iter()
                         .flat_map(|witness| {
                             new_patterns.iter().map(move |pat| {
@@ -627,14 +628,12 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                                 )
                             })
                         })
-                        .collect()
+                        .collect();
                 } else {
-                    witnesses
-                        .into_iter()
-                        .map(|witness| witness.apply_constructor(pcx, &ctor))
-                        .collect()
-                };
-                WithWitnesses(new_witnesses)
+                    for witness in witnesses {
+                        witness.apply_constructor(pcx, &ctor);
+                    }
+                }
             }
         }
     }
@@ -702,7 +701,7 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
     ///
     /// left_ty: struct X { a: (bool, &'static str), b: usize}
     /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-    fn apply_constructor(mut self, pcx: PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
+    fn apply_constructor(&mut self, pcx: PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) {
         let pat = {
             let len = self.0.len();
             let arity = ctor.arity(pcx);
@@ -712,8 +711,6 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
         };
 
         self.0.push(pat);
-
-        self
     }
 }
 
@@ -843,9 +840,18 @@ fn is_useful<'p, 'tcx>(
             let spec_matrix = start_matrix.specialize_constructor(pcx, &ctor);
             let v = v.pop_head_constructor(cx, &ctor);
             let usefulness = ensure_sufficient_stack(|| {
-                is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false)
+                let mut usefulness = is_useful(
+                    cx,
+                    &spec_matrix,
+                    &v,
+                    witness_preference,
+                    hir_id,
+                    is_under_guard,
+                    false,
+                );
+                usefulness.apply_constructor(pcx, start_matrix, &ctor);
+                usefulness
             });
-            let usefulness = usefulness.apply_constructor(pcx, start_matrix, &ctor);
 
             // When all the conditions are met we have a match with a `non_exhaustive` enum
             // that has the potential to trigger the `non_exhaustive_omitted_patterns` lint.
