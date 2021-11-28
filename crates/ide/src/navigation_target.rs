@@ -167,10 +167,14 @@ impl NavigationTarget {
     }
 }
 
-impl ToNav for FileSymbol {
-    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
-        NavigationTarget {
-            file_id: self.original_file_id,
+impl TryToNav for FileSymbol {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        let semantics = Semantics::new(db);
+        let full_range = self.loc.original_range(&semantics)?;
+        let name_range = self.loc.original_name_range(&semantics)?;
+
+        Some(NavigationTarget {
+            file_id: full_range.file_id,
             name: self.name.clone(),
             kind: Some(match self.kind {
                 FileSymbolKind::Function => SymbolKind::Function,
@@ -184,12 +188,12 @@ impl ToNav for FileSymbol {
                 FileSymbolKind::Macro => SymbolKind::Macro,
                 FileSymbolKind::Union => SymbolKind::Union,
             }),
-            full_range: self.range,
-            focus_range: self.name_range,
+            full_range: full_range.range,
+            focus_range: Some(name_range.range),
             container_name: self.container_name.clone(),
             description: description_from_symbol(db, self),
             docs: None,
-        }
+        })
     }
 }
 
@@ -517,8 +521,7 @@ impl TryToNav for hir::ConstParam {
 /// e.g. `struct Name`, `enum Name`, `fn Name`
 pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
     let sema = Semantics::new(db);
-    let syntax = sema.parse_or_expand(symbol.hir_file_id)?;
-    let node = symbol.ptr.to_node(&syntax);
+    let node = symbol.loc.syntax(&sema)?;
 
     match_ast! {
         match node {

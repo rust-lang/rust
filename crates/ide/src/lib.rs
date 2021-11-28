@@ -364,8 +364,8 @@ impl Analysis {
     pub fn symbol_search(&self, query: Query) -> Cancellable<Vec<NavigationTarget>> {
         self.with_db(|db| {
             symbol_index::world_symbols(db, query)
-                .into_iter()
-                .map(|s| s.to_nav(db))
+                .into_iter() // xx: should we make this a par iter?
+                .filter_map(|s| s.try_to_nav(db))
                 .collect::<Vec<_>>()
         })
     }

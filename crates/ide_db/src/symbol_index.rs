@@ -30,20 +30,18 @@ use std::{
 
 use base_db::{
     salsa::{self, ParallelDatabase},
-    CrateId, FileId, SourceDatabaseExt, SourceRootId,
+    CrateId, FileId, FileRange, SourceDatabaseExt, SourceRootId, Upcast,
 };
 use fst::{self, Streamer};
 use hir::{
-    db::DefDatabase, AdtId, AssocContainerId, AssocItemLoc, DefHasSource, HirFileId, ItemLoc,
-    ItemScope, ItemTreeNode, Lookup, ModuleData, ModuleDefId, ModuleId,
+    db::DefDatabase, AdtId, AssocContainerId, AssocItemLoc, DefHasSource, HirFileId, InFile,
+    ItemLoc, ItemScope, ItemTreeNode, Lookup, ModuleData, ModuleDefId, ModuleId, Semantics,
 };
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, HasName},
-    match_ast, AstNode, Parse, SmolStr, SourceFile,
-    SyntaxKind::*,
-    SyntaxNode, SyntaxNodePtr, TextRange, WalkEvent,
+    AstNode, Parse, SmolStr, SourceFile, SyntaxNode, SyntaxNodePtr,
 };
 
 use crate::RootDatabase;
@@ -371,14 +369,50 @@ impl Query {
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileSymbol {
-    pub hir_file_id: HirFileId,
-    pub original_file_id: FileId,
     pub name: SmolStr,
+    pub loc: DeclarationLocation,
     pub kind: FileSymbolKind,
-    pub range: TextRange,
-    pub ptr: SyntaxNodePtr,
-    pub name_range: Option<TextRange>,
     pub container_name: Option<SmolStr>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DeclarationLocation {
+    /// The file id for both the `ptr` and `name_ptr`.
+    pub hir_file_id: HirFileId,
+    /// This points to the whole syntax node of the declaration.
+    pub ptr: SyntaxNodePtr,
+    /// This points to the [`syntax::ast::Name`] identifier of the declaration.
+    pub name_ptr: SyntaxNodePtr,
+}
+
+impl DeclarationLocation {
+    pub fn syntax(&self, semantics: &Semantics<'_, RootDatabase>) -> Option<SyntaxNode> {
+        let root = semantics.parse_or_expand(self.hir_file_id)?;
+        Some(self.ptr.to_node(&root))
+    }
+
+    pub fn original_range(&self, semantics: &Semantics<'_, RootDatabase>) -> Option<FileRange> {
+        find_original_file_range(semantics, self.hir_file_id, &self.ptr)
+    }
+
+    pub fn original_name_range(
+        &self,
+        semantics: &Semantics<'_, RootDatabase>,
+    ) -> Option<FileRange> {
+        find_original_file_range(semantics, self.hir_file_id, &self.name_ptr)
+    }
+}
+
+fn find_original_file_range(
+    semantics: &Semantics<'_, RootDatabase>,
+    file_id: HirFileId,
+    ptr: &SyntaxNodePtr,
+) -> Option<FileRange> {
+    let root = semantics.parse_or_expand(file_id)?;
+    let node = ptr.to_node(&root);
+    let node = InFile::new(file_id, &node);
+
+    Some(node.original_file_range(semantics.db.upcast()))
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
@@ -408,82 +442,9 @@ impl FileSymbolKind {
     }
 }
 
-fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec<FileSymbol> {
-    let mut symbols = Vec::new();
-    let mut stack = Vec::new();
-
-    for event in source_file.syntax().preorder() {
-        match event {
-            WalkEvent::Enter(node) => {
-                if let Some(mut symbol) = to_file_symbol(&node, file_id) {
-                    symbol.container_name = stack.last().cloned();
-
-                    stack.push(symbol.name.clone());
-                    symbols.push(symbol);
-                }
-            }
-
-            WalkEvent::Leave(node) => {
-                if to_symbol(&node).is_some() {
-                    stack.pop();
-                }
-            }
-        }
-    }
-
-    symbols
-}
-
-fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
-    fn decl<N: HasName>(node: N) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
-        let name = node.name()?;
-        let name_range = name.syntax().text_range();
-        let name = name.text().into();
-        let ptr = SyntaxNodePtr::new(node.syntax());
-
-        Some((name, ptr, name_range))
-    }
-    match_ast! {
-        match node {
-            ast::Fn(it) => decl(it),
-            ast::Struct(it) => decl(it),
-            ast::Enum(it) => decl(it),
-            ast::Trait(it) => decl(it),
-            ast::Module(it) => decl(it),
-            ast::TypeAlias(it) => decl(it),
-            ast::Const(it) => decl(it),
-            ast::Static(it) => decl(it),
-            ast::Macro(it) => decl(it),
-            ast::Union(it) => decl(it),
-            _ => None,
-        }
-    }
-}
-
-fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
-    to_symbol(node).map(move |(name, ptr, name_range)| FileSymbol {
-        name,
-        kind: match node.kind() {
-            FN => FileSymbolKind::Function,          // FunctionId
-            STRUCT => FileSymbolKind::Struct,        // AdtId::StructId
-            ENUM => FileSymbolKind::Enum,            // AdtId::EnumId
-            TRAIT => FileSymbolKind::Trait,          // TraitId
-            MODULE => FileSymbolKind::Module,        // ModuleId
-            TYPE_ALIAS => FileSymbolKind::TypeAlias, // TypeAliasId
-            CONST => FileSymbolKind::Const,          // ConstId
-            STATIC => FileSymbolKind::Static,        // StaticId
-            MACRO_RULES => FileSymbolKind::Macro,    // via ItemScope::macros
-            MACRO_DEF => FileSymbolKind::Macro,      // via ItemScope::macros
-            UNION => FileSymbolKind::Union,          // AdtId::UnionId
-            kind => unreachable!("{:?}", kind),
-        },
-        range: node.text_range(),
-        ptr,
-        hir_file_id: file_id.into(),
-        original_file_id: file_id,
-        name_range: Some(name_range),
-        container_name: None,
-    })
+fn source_file_to_file_symbols(_source_file: &SourceFile, _file_id: FileId) -> Vec<FileSymbol> {
+    // todo: delete this.
+    vec![]
 }
 
 fn module_data_to_file_symbols(db: &dyn DefDatabase, module_data: &ModuleData) -> Vec<FileSymbol> {
@@ -498,24 +459,8 @@ fn collect_symbols_from_item_scope(
     symbols: &mut Vec<FileSymbol>,
     scope: &ItemScope,
 ) {
-    // todo: dedupe code.
-    fn decl_assoc<L, T>(db: &dyn DefDatabase, id: L, kind: FileSymbolKind) -> Option<FileSymbol>
-    where
-        L: Lookup<Data = AssocItemLoc<T>>,
-        T: ItemTreeNode,
-        <T as ItemTreeNode>::Source: HasName,
-    {
-        let loc = id.lookup(db);
-        let source = loc.source(db);
-
-        let name = source.value.name()?;
-        let name_range = source.with_value(name.syntax()).original_file_range(db.upcast());
-        let hir_file_id = loc.id.file_id();
-
-        let name = name.text().into();
-        let ptr = SyntaxNodePtr::new(source.value.syntax());
-
-        let container_name = match loc.container {
+    fn container_name(db: &dyn DefDatabase, container: AssocContainerId) -> Option<SmolStr> {
+        match container {
             AssocContainerId::ModuleId(module_id) => {
                 let def_map = module_id.def_map(db);
                 let module_data = &def_map[module_id.local_id];
@@ -530,19 +475,32 @@ fn collect_symbols_from_item_scope(
                 source.value.name().map(|n| n.text().into())
             }
             AssocContainerId::ImplId(_) => None,
-        };
+        }
+    }
+
+    fn decl_assoc<L, T>(db: &dyn DefDatabase, id: L, kind: FileSymbolKind) -> Option<FileSymbol>
+    where
+        L: Lookup<Data = AssocItemLoc<T>>,
+        T: ItemTreeNode,
+        <T as ItemTreeNode>::Source: HasName,
+    {
+        let loc = id.lookup(db);
+        let source = loc.source(db);
+        let name_node = source.value.name()?;
+        let container_name = container_name(db, loc.container);
 
         Some(FileSymbol {
-            name,
+            name: name_node.text().into(),
             kind,
-            range: source.with_value(source.value.syntax()).original_file_range(db.upcast()).range,
             container_name,
-            hir_file_id,
-            original_file_id: name_range.file_id,
-            name_range: Some(name_range.range),
-            ptr,
+            loc: DeclarationLocation {
+                hir_file_id: source.file_id,
+                ptr: SyntaxNodePtr::new(source.value.syntax()),
+                name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+            },
         })
     }
+
     fn decl<L, T>(db: &dyn DefDatabase, id: L, kind: FileSymbolKind) -> Option<FileSymbol>
     where
         L: Lookup<Data = ItemLoc<T>>,
@@ -551,21 +509,17 @@ fn collect_symbols_from_item_scope(
     {
         let loc = id.lookup(db);
         let source = loc.source(db);
-        let name = source.value.name()?;
-        let name_range = source.with_value(name.syntax()).original_file_range(db.upcast());
-        let hir_file_id = loc.id.file_id();
-        let name = name.text().into();
-        let ptr = SyntaxNodePtr::new(source.value.syntax());
+        let name_node = source.value.name()?;
 
         Some(FileSymbol {
-            name,
+            name: name_node.text().into(),
             kind,
-            range: source.with_value(source.value.syntax()).original_file_range(db.upcast()).range,
             container_name: None,
-            hir_file_id,
-            original_file_id: name_range.file_id,
-            name_range: Some(name_range.range),
-            ptr,
+            loc: DeclarationLocation {
+                hir_file_id: source.file_id,
+                ptr: SyntaxNodePtr::new(source.value.syntax()),
+                name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+            },
         })
     }
 
@@ -573,23 +527,18 @@ fn collect_symbols_from_item_scope(
         let def_map = module_id.def_map(db);
         let module_data = &def_map[module_id.local_id];
         let declaration = module_data.origin.declaration()?;
-        let hir_file_id = declaration.file_id;
-
         let module = declaration.to_node(db.upcast());
-        let name = module.name()?;
-        let name_range = declaration.with_value(name.syntax()).original_file_range(db.upcast());
-        let name = name.text().into();
-        let ptr = SyntaxNodePtr::new(module.syntax());
+        let name_node = module.name()?;
 
         Some(FileSymbol {
-            name,
+            name: name_node.text().into(),
             kind: FileSymbolKind::Module,
-            range: declaration.with_value(module.syntax()).original_file_range(db.upcast()).range,
             container_name: None,
-            hir_file_id,
-            original_file_id: name_range.file_id,
-            name_range: Some(name_range.range),
-            ptr,
+            loc: DeclarationLocation {
+                hir_file_id: declaration.file_id,
+                ptr: SyntaxNodePtr::new(module.syntax()),
+                name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+            },
         })
     }
 
