@@ -2068,8 +2068,8 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     #[cfg(debug_assertions)]
     const fn compiletime_check<T>(_src: *const T, _dst: *mut T, _count: usize) {}
     #[cfg(debug_assertions)]
-    // SAFETY: runtime debug-assertions are a best-effort basis; it's fine to
-    // not do them during compile time
+    // SAFETY: As per our safety precondition, we may assume that the `abort` above is never reached.
+    // Therefore, compiletime_check and runtime_check are observably equivalent.
     unsafe {
         const_eval_select((src, dst, count), compiletime_check, runtime_check);
     }
@@ -2159,8 +2159,8 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     #[cfg(debug_assertions)]
     const fn compiletime_check<T>(_src: *const T, _dst: *mut T) {}
     #[cfg(debug_assertions)]
-    // SAFETY: runtime debug-assertions are a best-effort basis; it's fine to
-    // not do them during compile time
+    // SAFETY: As per our safety precondition, we may assume that the `abort` above is never reached.
+    // Therefore, compiletime_check and runtime_check are observably equivalent.
     unsafe {
         const_eval_select((src, dst), compiletime_check, runtime_check);
     }
