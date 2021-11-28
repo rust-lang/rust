@@ -737,12 +737,14 @@ pub struct DerefClosure {
 /// such as explicit deref and borrowing cases.
 /// Returns `None` if no such use cases have been triggered in closure body
 ///
-/// note: this only works on single line immutable closures with one exactly one input parameter.
+/// note: this only works on single line immutable closures with exactly one input parameter.
 pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'_>) -> Option<DerefClosure> {
     if let hir::ExprKind::Closure(_, fn_decl, body_id, ..) = closure.kind {
         let closure_body = cx.tcx.hir().body(body_id);
-        // is closure arg a double reference (i.e.: `|x: &&i32| ...`)
-        let closure_arg_is_double_ref = if let TyKind::Rptr(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind {
+        // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
+        // a type annotation is present if param `kind` is different from `TyKind::Infer`
+        let closure_arg_is_type_annotated_double_ref = if let TyKind::Rptr(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind
+        {
             matches!(ty.kind, TyKind::Rptr(_, MutTy { .. }))
         } else {
             false
@@ -751,7 +753,7 @@ pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'
         let mut visitor = DerefDelegate {
             cx,
             closure_span: closure.span,
-            closure_arg_is_double_ref,
+            closure_arg_is_type_annotated_double_ref,
             next_pos: closure.span.lo(),
             suggestion_start: String::new(),
             applicability: Applicability::MaybeIncorrect,
@@ -780,8 +782,8 @@ struct DerefDelegate<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     /// The span of the input closure to adapt
     closure_span: Span,
-    /// Indicates if the arg of the closure is a double reference
-    closure_arg_is_double_ref: bool,
+    /// Indicates if the arg of the closure is a type annotated double reference
+    closure_arg_is_type_annotated_double_ref: bool,
     /// last position of the span to gradually build the suggestion
     next_pos: BytePos,
     /// starting part of the gradually built suggestion
@@ -799,7 +801,7 @@ impl DerefDelegate<'_, 'tcx> {
         let end_span = Span::new(self.next_pos, self.closure_span.hi(), self.closure_span.ctxt(), None);
         let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
         let sugg = format!("{}{}", self.suggestion_start, end_snip);
-        if self.closure_arg_is_double_ref {
+        if self.closure_arg_is_type_annotated_double_ref {
             sugg.replacen('&', "", 1)
         } else {
             sugg
@@ -889,7 +891,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                                 // and if the item is already a double ref
                                 let ident_sugg = if !call_args.is_empty()
                                     && !takes_arg_by_double_ref
-                                    && (self.closure_arg_is_double_ref || has_field_or_index_projection)
+                                    && (self.closure_arg_is_type_annotated_double_ref || has_field_or_index_projection)
                                 {
                                     let ident = if has_field_or_index_projection {
                                         ident_str_with_proj
