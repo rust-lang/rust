@@ -2438,7 +2438,7 @@ fn predicates_from_bound<'tcx>(
     bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     let mut bounds = Bounds::default();
-    astconv.add_bounds(param_ty, std::array::IntoIter::new([bound]), &mut bounds, bound_vars);
+    astconv.add_bounds(param_ty, [bound].into_iter(), &mut bounds, bound_vars);
     bounds.predicates(astconv.tcx(), param_ty)
 }
 
