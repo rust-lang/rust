@@ -8,7 +8,6 @@ pub struct Condition<const CONDITION: bool>;
 pub trait True {}
 
 impl<const LHS: u32, const RHS: u32> True for IsLessOrEqual<LHS, RHS> where
-//[min]~^ ERROR type annotations needed
     Condition<{ LHS <= RHS }>: True
 //[min]~^ Error generic parameters may not be used in const operations
 //[min]~| Error generic parameters may not be used in const operations
