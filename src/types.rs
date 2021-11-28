@@ -10,6 +10,7 @@ use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
 use crate::expr::{
     format_expr, rewrite_assign_rhs, rewrite_call, rewrite_tuple, rewrite_unary_prefix, ExprType,
+    RhsAssignKind,
 };
 use crate::lists::{
     definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
@@ -430,7 +431,7 @@ impl Rewrite for ast::WherePredicate {
                     format!("{}{}", type_str, colon)
                 };
 
-                rewrite_assign_rhs(context, lhs, bounds, shape)?
+                rewrite_assign_rhs(context, lhs, bounds, &RhsAssignKind::Bounds, shape)?
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 ref lifetime,
@@ -443,7 +444,7 @@ impl Rewrite for ast::WherePredicate {
                 ..
             }) => {
                 let lhs_ty_str = lhs_ty.rewrite(context, shape).map(|lhs| lhs + " =")?;
-                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, shape)?
+                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)?
             }
         };
 

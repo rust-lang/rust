@@ -18,7 +18,7 @@ use crate::config::lists::*;
 use crate::config::{BraceStyle, Config, IndentStyle, Version};
 use crate::expr::{
     is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
-    rewrite_assign_rhs_with_comments, RhsTactics,
+    rewrite_assign_rhs_with_comments, RhsAssignKind, RhsTactics,
 };
 use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use crate::macros::{rewrite_macro, MacroPosition};
@@ -116,7 +116,13 @@ impl Rewrite for ast::Local {
             // 1 = trailing semicolon;
             let nested_shape = shape.sub_width(1)?;
 
-            result = rewrite_assign_rhs(context, result, init, nested_shape)?;
+            result = rewrite_assign_rhs(
+                context,
+                result,
+                init,
+                &RhsAssignKind::Expr(&init.kind, init.span),
+                nested_shape,
+            )?;
             // todo else
         }
 
@@ -564,11 +570,13 @@ impl<'a> FmtVisitor<'a> {
 
         let variant_body = if let Some(ref expr) = field.disr_expr {
             let lhs = format!("{:1$} =", variant_body, pad_discrim_ident_to);
+            let ex = &*expr.value;
             rewrite_assign_rhs_with(
                 &context,
                 lhs,
-                &*expr.value,
+                ex,
                 shape,
+                &RhsAssignKind::Expr(&ex.kind, ex.span),
                 RhsTactics::AllowOverflow,
             )?
         } else {
@@ -1033,6 +1041,7 @@ pub(crate) fn format_trait(
                 result + ":",
                 bounds,
                 shape,
+                &RhsAssignKind::Bounds,
                 RhsTactics::ForceNextLineWithoutIndent,
             )?;
         }
@@ -1213,7 +1222,14 @@ pub(crate) fn format_trait_alias(
         generic_bounds,
         generics,
     };
-    rewrite_assign_rhs(context, lhs, &trait_alias_bounds, shape.sub_width(1)?).map(|s| s + ";")
+    rewrite_assign_rhs(
+        context,
+        lhs,
+        &trait_alias_bounds,
+        &RhsAssignKind::Bounds,
+        shape.sub_width(1)?,
+    )
+    .map(|s| s + ";")
 }
 
 fn format_unit_struct(
@@ -1630,7 +1646,7 @@ fn rewrite_ty<R: Rewrite>(
 
         // 1 = `;`
         let shape = Shape::indented(indent, context.config).sub_width(1)?;
-        rewrite_assign_rhs(context, lhs, &*ty, shape).map(|s| s + ";")
+        rewrite_assign_rhs(context, lhs, &*ty, &RhsAssignKind::Ty, shape).map(|s| s + ";")
     } else {
         Some(format!("{};", result))
     }
@@ -1720,7 +1736,7 @@ pub(crate) fn rewrite_struct_field(
 
     let is_prefix_empty = prefix.is_empty();
     // We must use multiline. We are going to put attributes and a field on different lines.
-    let field_str = rewrite_assign_rhs(context, prefix, &*field.ty, shape)?;
+    let field_str = rewrite_assign_rhs(context, prefix, &*field.ty, &RhsAssignKind::Ty, shape)?;
     // Remove a leading white-space from `rewrite_assign_rhs()` when rewriting a tuple struct.
     let field_str = if is_prefix_empty {
         field_str.trim_start()
@@ -1850,6 +1866,7 @@ fn rewrite_static(
             &lhs,
             &**expr,
             Shape::legacy(remaining_width, offset.block_only()),
+            &RhsAssignKind::Expr(&expr.kind, expr.span),
             RhsTactics::Default,
             comments_span,
             true,
@@ -3147,7 +3164,14 @@ impl Rewrite for ast::ForeignItem {
                     rewrite_ident(context, self.ident)
                 );
                 // 1 = ;
-                rewrite_assign_rhs(context, prefix, &**ty, shape.sub_width(1)?).map(|s| s + ";")
+                rewrite_assign_rhs(
+                    context,
+                    prefix,
+                    &**ty,
+                    &RhsAssignKind::Ty,
+                    shape.sub_width(1)?,
+                )
+                .map(|s| s + ";")
             }
             ast::ForeignItemKind::TyAlias(ref ty_alias) => {
                 let (kind, span) = (&ItemVisitorKind::ForeignItem(&self), self.span);
