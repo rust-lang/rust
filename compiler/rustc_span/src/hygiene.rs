@@ -1240,6 +1240,7 @@ pub fn register_expn_id(
     data: ExpnData,
     hash: ExpnHash,
 ) -> ExpnId {
+    debug_assert!(data.parent == ExpnId::root() || krate == data.parent.krate);
     let expn_id = ExpnId { krate, local_id };
     HygieneData::with(|hygiene_data| {
         let _old_data = hygiene_data.foreign_expn_data.insert(expn_id, data);
