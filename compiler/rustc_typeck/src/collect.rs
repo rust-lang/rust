@@ -666,7 +666,7 @@ impl ItemCtxt<'tcx> {
                 Some(assoc_name) => self.bound_defines_assoc_item(b, assoc_name),
                 None => true,
             })
-            .flat_map(|b| predicates_from_bound(self, ty, b));
+            .flat_map(|b| predicates_from_bound(self, ty, b, ty::List::empty()));
 
         let param_def_id = self.tcx.hir().local_def_id(param_id).to_def_id();
         let from_where_clauses = ast_generics
@@ -685,15 +685,17 @@ impl ItemCtxt<'tcx> {
                 } else {
                     None
                 };
+                let bvars = self.tcx.late_bound_vars(bp.bounded_ty.hir_id);
+
                 bp.bounds
                     .iter()
                     .filter(|b| match assoc_name {
                         Some(assoc_name) => self.bound_defines_assoc_item(b, assoc_name),
                         None => true,
                     })
-                    .filter_map(move |b| bt.map(|bt| (bt, b)))
+                    .filter_map(move |b| bt.map(|bt| (bt, b, bvars)))
             })
-            .flat_map(|(bt, b)| predicates_from_bound(self, bt, b));
+            .flat_map(|(bt, b, bvars)| predicates_from_bound(self, bt, b, bvars));
 
         from_ty_params.chain(from_where_clauses).collect()
     }
@@ -2433,14 +2435,10 @@ fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx>,
     param_ty: Ty<'tcx>,
     bound: &'tcx hir::GenericBound<'tcx>,
+    bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     let mut bounds = Bounds::default();
-    astconv.add_bounds(
-        param_ty,
-        std::array::IntoIter::new([bound]),
-        &mut bounds,
-        ty::List::empty(),
-    );
+    astconv.add_bounds(param_ty, [bound].into_iter(), &mut bounds, bound_vars);
     bounds.predicates(astconv.tcx(), param_ty)
 }
 

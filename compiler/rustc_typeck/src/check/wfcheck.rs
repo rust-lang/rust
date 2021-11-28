@@ -1060,6 +1060,20 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
             );
         }
 
+        // Ensure that the end result is `Sync` in a non-thread local `static`.
+        let should_check_for_sync = tcx.static_mutability(item_id.to_def_id())
+            == Some(hir::Mutability::Not)
+            && !tcx.is_foreign_item(item_id.to_def_id())
+            && !tcx.is_thread_local_static(item_id.to_def_id());
+
+        if should_check_for_sync {
+            fcx.register_bound(
+                item_ty,
+                tcx.require_lang_item(LangItem::Sync, Some(ty_span)),
+                traits::ObligationCause::new(ty_span, fcx.body_id, traits::SharedStatic),
+            );
+        }
+
         // No implied bounds in a const, etc.
         FxHashSet::default()
     });

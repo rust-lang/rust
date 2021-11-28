@@ -1,0 +1,19 @@
+error[E0311]: the parameter type `Self` may not live long enough
+  --> $DIR/issue-88586-hr-self-outlives-in-trait-def.rs:6:1
+   |
+LL | / trait A where for<'a> Self: 'a
+LL | |
+LL | | {
+LL | | }
+   | |_^
+   |
+   = help: consider adding an explicit lifetime bound `Self: 'a`...
+   = note: ...so that the type `Self` will meet its required lifetime bounds...
+note: ...that is required by this bound
+  --> $DIR/issue-88586-hr-self-outlives-in-trait-def.rs:6:29
+   |
+LL | trait A where for<'a> Self: 'a
+   |                             ^^
+
+error: aborting due to previous error
+
