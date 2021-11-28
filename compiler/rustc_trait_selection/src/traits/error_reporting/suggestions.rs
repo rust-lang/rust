@@ -176,6 +176,14 @@ pub trait InferCtxtExt<'tcx> {
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         span: Span,
     );
+
+    fn maybe_suggest_convert_to_slice(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        candidate_impls: &[ty::TraitRef<'tcx>],
+        span: Span,
+    );
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
@@ -2496,6 +2504,72 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /// If the type that failed selection is an array or a reference to an array,
+    /// but the trait is implemented for slices, suggest that the user converts
+    /// the array into a slice.
+    fn maybe_suggest_convert_to_slice(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        candidate_impls: &[ty::TraitRef<'tcx>],
+        span: Span,
+    ) {
+        // Three cases where we can make a suggestion:
+        // 1. `[T; _]` (array of T)
+        // 2. `&[T; _]` (reference to array of T)
+        // 3. `&mut [T; _]` (mutable reference to array of T)
+        let (element_ty, mut mutability) = match *trait_ref.skip_binder().self_ty().kind() {
+            ty::Array(element_ty, _) => (element_ty, None),
+
+            ty::Ref(_, pointee_ty, mutability) => match *pointee_ty.kind() {
+                ty::Array(element_ty, _) => (element_ty, Some(mutability)),
+                _ => return,
+            },
+
+            _ => return,
+        };
+
+        // Go through all the candidate impls to see if any of them is for
+        // slices of `element_ty` with `mutability`.
+        let mut is_slice = |candidate: Ty<'tcx>| match *candidate.kind() {
+            ty::RawPtr(ty::TypeAndMut { ty: t, mutbl: m }) | ty::Ref(_, t, m) => {
+                if matches!(*t.kind(), ty::Slice(e) if e == element_ty)
+                    && m == mutability.unwrap_or(m)
+                {
+                    // Use the candidate's mutability going forward.
+                    mutability = Some(m);
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
+
+        // Grab the first candidate that matches, if any, and make a suggestion.
+        if let Some(slice_ty) = candidate_impls
+            .iter()
+            .map(|trait_ref| trait_ref.self_ty())
+            .filter(|t| is_slice(*t))
+            .next()
+        {
+            let msg = &format!("convert the array to a `{}` slice instead", slice_ty);
+
+            if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                let suggestion = if snippet.starts_with('&') {
+                    format!("{}[..]", snippet)
+                } else if let Some(hir::Mutability::Mut) = mutability {
+                    format!("&mut {}[..]", snippet)
+                } else {
+                    format!("&{}[..]", snippet)
+                };
+                err.span_suggestion(span, msg, suggestion, Applicability::MaybeIncorrect);
+            } else {
+                err.span_help(span, msg);
             }
         }
     }
