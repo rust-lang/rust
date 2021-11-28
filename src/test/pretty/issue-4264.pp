@@ -41,16 +41,7 @@ pub fn bar() ({
                                                                                                                                                               [&str; 1])
                                                                                                                                                             as
                                                                                                                                                             &[&str; 1]),
-                                                                                                                                                        (&(match (()
-                                                                                                                                                                     as
-                                                                                                                                                                     ())
-                                                                                                                                                               {
-                                                                                                                                                               _args
-                                                                                                                                                               =>
-                                                                                                                                                               ([]
-                                                                                                                                                                   as
-                                                                                                                                                                   [ArgumentV1; 0]),
-                                                                                                                                                           }
+                                                                                                                                                        (&([]
                                                                                                                                                               as
                                                                                                                                                               [ArgumentV1; 0])
                                                                                                                                                             as
