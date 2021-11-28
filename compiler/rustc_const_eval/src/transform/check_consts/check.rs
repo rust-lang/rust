@@ -1,8 +1,8 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
 use rustc_errors::{Applicability, Diagnostic, ErrorReported};
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
@@ -14,8 +14,7 @@ use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty,
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
-use rustc_trait_selection::traits::{self, SelectionContext, TraitEngine};
+use rustc_trait_selection::traits::SelectionContext;
 
 use std::mem;
 use std::ops::Deref;
@@ -253,16 +252,6 @@ impl Checker<'mir, 'tcx> {
 
         if !tcx.has_attr(def_id.to_def_id(), sym::rustc_do_not_const_check) {
             self.visit_body(&body);
-        }
-
-        // Ensure that the end result is `Sync` in a non-thread local `static`.
-        let should_check_for_sync = self.const_kind()
-            == hir::ConstContext::Static(hir::Mutability::Not)
-            && !tcx.is_thread_local_static(def_id.to_def_id());
-
-        if should_check_for_sync {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-            check_return_ty_is_sync(tcx, &body, hir_id);
         }
 
         // If we got through const-checking without emitting any "primary" errors, emit any
@@ -1052,20 +1041,6 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
             | TerminatorKind::Unreachable => {}
         }
     }
-}
-
-fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, hir_id: HirId) {
-    let ty = body.return_ty();
-    tcx.infer_ctxt().enter(|infcx| {
-        let cause = traits::ObligationCause::new(body.span, hir_id, traits::SharedStatic);
-        let mut fulfillment_cx = traits::FulfillmentContext::new();
-        let sync_def_id = tcx.require_lang_item(LangItem::Sync, Some(body.span));
-        fulfillment_cx.register_bound(&infcx, ty::ParamEnv::empty(), ty, sync_def_id, cause);
-        let errors = fulfillment_cx.select_all_or_error(&infcx);
-        if !errors.is_empty() {
-            infcx.report_fulfillment_errors(&errors, None, false);
-        }
-    });
 }
 
 fn place_as_reborrow(

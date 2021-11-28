@@ -1,27 +1,26 @@
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-16538.rs:14:27
+  --> $DIR/issue-16538.rs:15:23
    |
-LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0277]: `*const usize` cannot be shared between threads safely
-  --> $DIR/issue-16538.rs:14:1
-   |
-LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `*const usize` cannot be shared between threads safely
-   |
-   = help: the trait `Sync` is not implemented for `*const usize`
-   = note: shared static variables must have a type that implements `Sync`
+LL | static foo: &Y::X = &*Y::foo(Y::x as *const Y::X);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0133]: use of extern static is unsafe and requires unsafe function or block
-  --> $DIR/issue-16538.rs:14:34
+  --> $DIR/issue-16538.rs:15:30
    |
-LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
-   |                                  ^^^^ use of extern static
+LL | static foo: &Y::X = &*Y::foo(Y::x as *const Y::X);
+   |                              ^^^^ use of extern static
    |
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
+error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
+  --> $DIR/issue-16538.rs:15:21
+   |
+LL | static foo: &Y::X = &*Y::foo(Y::x as *const Y::X);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0015, E0133, E0277.
+Some errors have detailed explanations: E0015, E0133.
 For more information about an error, try `rustc --explain E0015`.

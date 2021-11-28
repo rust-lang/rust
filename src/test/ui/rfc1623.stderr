@@ -1,5 +1,5 @@
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/rfc1623.rs:24:8
+  --> $DIR/rfc1623.rs:28:8
    |
 LL |     f: &id,
    |        ^^^ implementation of `FnOnce` is not general enough
