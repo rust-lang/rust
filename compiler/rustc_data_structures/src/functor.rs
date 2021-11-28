@@ -4,14 +4,6 @@ use std::mem;
 pub trait IdFunctor: Sized {
     type Inner;
 
-    #[inline]
-    fn map_id<F>(self, mut f: F) -> Self
-    where
-        F: FnMut(Self::Inner) -> Self::Inner,
-    {
-        self.try_map_id::<_, !>(|value| Ok(f(value))).into_ok()
-    }
-
     fn try_map_id<F, E>(self, f: F) -> Result<Self, E>
     where
         F: FnMut(Self::Inner) -> Result<Self::Inner, E>;
