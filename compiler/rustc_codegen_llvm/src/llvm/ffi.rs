@@ -675,8 +675,12 @@ pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct Linker<'a>(InvariantOpaque<'a>);
 
-pub type DiagnosticHandler = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
-pub type InlineAsmDiagHandler = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
+extern "C" {
+    pub type DiagnosticHandler;
+}
+
+pub type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
+pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
 
 pub mod coverageinfo {
     use super::coverage_map;
@@ -2289,12 +2293,6 @@ extern "C" {
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
-    pub fn LLVMContextSetDiagnosticHandler(
-        C: &Context,
-        Handler: DiagnosticHandler,
-        DiagnosticContext: *mut c_void,
-    );
-
     #[allow(improper_ctypes)]
     pub fn LLVMRustUnpackOptimizationDiagnostic(
         DI: &'a DiagnosticInfo,
@@ -2324,7 +2322,7 @@ extern "C" {
 
     pub fn LLVMRustSetInlineAsmDiagnosticHandler(
         C: &Context,
-        H: InlineAsmDiagHandler,
+        H: InlineAsmDiagHandlerTy,
         CX: *mut c_void,
     );
 
@@ -2439,4 +2437,19 @@ extern "C" {
         mod_id: *const c_char,
         data: &ThinLTOData,
     );
+
+    pub fn LLVMRustContextGetDiagnosticHandler(Context: &Context) -> Option<&DiagnosticHandler>;
+    pub fn LLVMRustContextSetDiagnosticHandler(
+        context: &Context,
+        diagnostic_handler: Option<&DiagnosticHandler>,
+    );
+    pub fn LLVMRustContextConfigureDiagnosticHandler(
+        context: &Context,
+        diagnostic_handler_callback: DiagnosticHandlerTy,
+        diagnostic_handler_context: *mut c_void,
+        remark_all_passes: bool,
+        remark_passes: *const *const c_char,
+        remark_passes_len: usize,
+    );
+
 }
