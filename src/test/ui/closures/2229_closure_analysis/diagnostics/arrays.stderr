@@ -81,6 +81,8 @@ LL |     println!("{}", arr[3]);
 ...
 LL |     c();
    |     - mutable borrow later used here
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0502]: cannot borrow `arr` as immutable because it is also borrowed as mutable
   --> $DIR/arrays.rs:73:24

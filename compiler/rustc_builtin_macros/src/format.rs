@@ -769,7 +769,10 @@ impl<'a, 'b> Context<'a, 'b> {
             for arg_ty in self.arg_unique_types[i].iter() {
                 args.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, i));
             }
-            heads.push(self.ecx.expr_addr_of(e.span, e));
+            // use the arg span for `&arg` so that borrowck errors
+            // point to the specific expression passed to the macro
+            // (the span is otherwise unavailable in MIR)
+            heads.push(self.ecx.expr_addr_of(e.span.with_ctxt(self.macsp.ctxt()), e));
         }
         for pos in self.count_args {
             let index = match pos {
