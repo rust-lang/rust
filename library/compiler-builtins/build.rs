@@ -95,6 +95,8 @@ mod c {
 
     use std::collections::{BTreeMap, HashSet};
     use std::env;
+    use std::fs::File;
+    use std::io::Write;
     use std::path::{Path, PathBuf};
 
     struct Sources {
@@ -523,20 +525,13 @@ mod c {
         cfg.compile("libcompiler-rt.a");
     }
 
-    fn build_aarch64_out_of_line_atomics_libraries(builtins_dir: &Path, cfg: &cc::Build) {
-        // NOTE: because we're recompiling the same source file in N different ways, building
-        // serially is necessary. If we want to lift this restriction, we can either:
-        // - create symlinks to lse.S and build those_(though we'd still need to pass special
-        //   #define-like flags to each of these), or
-        // - synthesizing tiny .S files in out/ with the proper #defines, which ultimately #include
-        //   lse.S.
-        // That said, it's unclear how useful this added complexity will be, so just do the simple
-        // thing for now.
+    fn build_aarch64_out_of_line_atomics_libraries(builtins_dir: &Path, cfg: &mut cc::Build) {
+        let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
         let outlined_atomics_file = builtins_dir.join("aarch64/lse.S");
         println!("cargo:rerun-if-changed={}", outlined_atomics_file.display());
 
-        // Ideally, this would be a Vec of object files, but cc doesn't make it *entirely*
-        // trivial to build an individual object.
+        cfg.include(&builtins_dir);
+
         for instruction_type in &["cas", "swp", "ldadd", "ldclr", "ldeor", "ldset"] {
             for size in &[1, 2, 4, 8, 16] {
                 if *size == 16 && *instruction_type != "cas" {
@@ -546,20 +541,30 @@ mod c {
                 for (model_number, model_name) in
                     &[(1, "relax"), (2, "acq"), (3, "rel"), (4, "acq_rel")]
                 {
-                    let library_name = format!(
-                        "liboutline_atomic_helper_{}{}_{}.a",
-                        instruction_type, size, model_name
+                    // The original compiler-rt build system compiles the same
+                    // source file multiple times with different compiler
+                    // options. Here we do something slightly different: we
+                    // create multiple .S files with the proper #defines and
+                    // then include the original file.
+                    //
+                    // This is needed because the cc crate doesn't allow us to
+                    // override the name of object files and libtool requires
+                    // all objects in an archive to have unique names.
+                    let path =
+                        out_dir.join(format!("lse_{}{}_{}.S", instruction_type, size, model_name));
+                    let mut file = File::create(&path).unwrap();
+                    writeln!(file, "#define L_{}", instruction_type).unwrap();
+                    writeln!(file, "#define SIZE {}", size).unwrap();
+                    writeln!(file, "#define MODEL {}", model_number).unwrap();
+                    writeln!(
+                        file,
+                        "#include \"{}\"",
+                        outlined_atomics_file.canonicalize().unwrap().display()
                     );
+                    drop(file);
+                    cfg.file(path);
+
                     let sym = format!("__aarch64_{}{}_{}", instruction_type, size, model_name);
-                    let mut cfg = cfg.clone();
-
-                    cfg.include(&builtins_dir)
-                        .define(&format!("L_{}", instruction_type), None)
-                        .define("SIZE", size.to_string().as_str())
-                        .define("MODEL", model_number.to_string().as_str())
-                        .file(&outlined_atomics_file);
-                    cfg.compile(&library_name);
-
                     println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
                 }
             }
