@@ -198,7 +198,7 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     }
 
     const latestNightlyRelease = await downloadWithRetryDialog(state, async () => {
-        return await fetchRelease("nightly", state.githubToken, config.httpProxy, config.proxyStrictSSL);
+        return await fetchRelease("nightly", state.githubToken, config.proxySettings);
     }).catch(async (e) => {
         log.error(e);
         if (isInitialNightlyDownload) {
@@ -230,8 +230,7 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
             url: artifact.browser_download_url,
             dest,
             progressTitle: "Downloading rust-analyzer extension",
-            httpProxy: config.httpProxy,
-            proxyStrictSSL: config.proxyStrictSSL,
+            proxySettings: config.proxySettings,
         });
     });
 
@@ -362,7 +361,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
 
     const releaseTag = config.package.releaseTag;
     const release = await downloadWithRetryDialog(state, async () => {
-        return await fetchRelease(releaseTag, state.githubToken, config.httpProxy, config.proxyStrictSSL);
+        return await fetchRelease(releaseTag, state.githubToken, config.proxySettings);
     });
     const artifact = release.assets.find(artifact => artifact.name === `rust-analyzer-${platform}.gz`);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
@@ -374,8 +373,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
             progressTitle: "Downloading rust-analyzer server",
             gunzip: true,
             mode: 0o755,
-            httpProxy: config.httpProxy,
-            proxyStrictSSL: config.proxyStrictSSL,
+            proxySettings: config.proxySettings,
         });
     });
 

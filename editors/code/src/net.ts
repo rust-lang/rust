@@ -11,6 +11,7 @@ import * as path from "path";
 import { log, assert } from "./util";
 import * as url from "url";
 import * as https from "https";
+import { ProxySettings } from "./config";
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -29,8 +30,7 @@ function makeHttpAgent(proxy: string | null | undefined, options?: https.AgentOp
 export async function fetchRelease(
     releaseTag: string,
     githubToken: string | null | undefined,
-    httpProxy: string | null | undefined,
-    proxyStrictSSL: boolean,
+    proxySettings: ProxySettings,
 ): Promise<GithubRelease> {
 
     const apiEndpointPath = `/repos/${OWNER}/${REPO}/releases/tags/${releaseTag}`;
@@ -45,14 +45,14 @@ export async function fetchRelease(
     }
 
     const response = await (() => {
-        if (httpProxy) {
-            log.debug(`Fetching release metadata via proxy: ${httpProxy}`);
+        if (proxySettings.proxy) {
+            log.debug(`Fetching release metadata via proxy: ${proxySettings.proxy}`);
         }
-        let options: any = {};
-        if (proxyStrictSSL) {
+        const options: any = {};
+        if (proxySettings.strictSSL) {
             options["rejectUnauthorized"] = false;
         }
-        const agent = makeHttpAgent(httpProxy, options);
+        const agent = makeHttpAgent(proxySettings.proxy, options);
         return fetch(requestUrl, { headers: headers, agent: agent });
     })();
 
@@ -97,8 +97,7 @@ interface DownloadOpts {
     dest: vscode.Uri;
     mode?: number;
     gunzip?: boolean;
-    httpProxy?: string;
-    proxyStrictSSL: boolean;
+    proxySettings: ProxySettings;
 }
 
 export async function download(opts: DownloadOpts) {
@@ -118,7 +117,7 @@ export async function download(opts: DownloadOpts) {
         },
         async (progress, _cancellationToken) => {
             let lastPercentage = 0;
-            await downloadFile(opts.url, tempFilePath, opts.mode, !!opts.gunzip, opts.httpProxy, opts.proxyStrictSSL, (readBytes, totalBytes) => {
+            await downloadFile(opts.url, tempFilePath, opts.mode, !!opts.gunzip, opts.proxySettings, (readBytes, totalBytes) => {
                 const newPercentage = Math.round((readBytes / totalBytes) * 100);
                 if (newPercentage !== lastPercentage) {
                     progress.report({
@@ -182,21 +181,20 @@ async function downloadFile(
     destFilePath: vscode.Uri,
     mode: number | undefined,
     gunzip: boolean,
-    httpProxy: string | null | undefined,
-    proxyStrictSSL: boolean,
+    proxySettings: ProxySettings,
     onProgress: (readBytes: number, totalBytes: number) => void
 ): Promise<void> {
     const urlString = url.toString();
 
     const res = await (() => {
-        if (httpProxy) {
-            log.debug(`Downloading ${urlString} via proxy: ${httpProxy}`);
+        if (proxySettings.proxy) {
+            log.debug(`Downloading ${urlString} via proxy: ${proxySettings.proxy}`);
         }
-        let options: any = {};
-        if (proxyStrictSSL) {
+        const options: any = {};
+        if (proxySettings.strictSSL) {
             options["rejectUnauthorized"] = false;
         }
-        const agent = makeHttpAgent(httpProxy, options);
+        const agent = makeHttpAgent(proxySettings.proxy, options);
         return fetch(urlString, { agent: agent });
     })();
 

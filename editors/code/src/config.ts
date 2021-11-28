@@ -8,6 +8,11 @@ const NIGHTLY_TAG = "nightly";
 
 export type RunnableEnvCfg = undefined | Record<string, string> | { mask?: string; env: Record<string, string> }[];
 
+export class ProxySettings {
+    proxy?: string = undefined;
+    strictSSL: boolean = true;
+}
+
 export class Config {
     readonly extensionId = "matklad.rust-analyzer";
 
@@ -99,16 +104,17 @@ export class Config {
     get channel() { return this.get<UpdatesChannel>("updates.channel"); }
     get askBeforeDownload() { return this.get<boolean>("updates.askBeforeDownload"); }
     get traceExtension() { return this.get<boolean>("trace.extension"); }
-    get httpProxy() {
-        const httpProxy = vscode
+    get proxySettings(): ProxySettings {
+        const proxy = vscode
             .workspace
             .getConfiguration('http')
-            .get<null | string>("proxy")!;
+            .get<null | string>("proxy")! || process.env["https_proxy"] || process.env["HTTPS_PROXY"];
+        const strictSSL = vscode.workspace.getConfiguration("http").get<boolean>("proxyStrictSSL") || true;
 
-        return httpProxy || process.env["https_proxy"] || process.env["HTTPS_PROXY"];
-    }
-    get proxyStrictSSL(): boolean {
-        return vscode.workspace.getConfiguration("http").get("proxyStrictSSL") || true;
+        return {
+            proxy: proxy,
+            strictSSL: strictSSL,
+        };
     }
 
     get inlayHints() {
