@@ -45,6 +45,18 @@ async fn partial_init(x: u32) -> u32 {
     let _x: (String, !) = (String::new(), return async { x + x }.await);
 }
 
+async fn read_exact(_from: &mut &[u8], _to: &mut [u8]) -> Option<()> {
+    Some(())
+}
+
+async fn hello_world() {
+    let data = [0u8; 1];
+    let mut reader = &data[..];
+
+    let mut marker = [0u8; 1];
+    read_exact(&mut reader, &mut marker).await.unwrap();
+}
+
 fn run_fut<T>(fut: impl Future<Output = T>) -> T {
     use std::sync::Arc;
     use std::task::{Context, Poll, Wake, Waker};
@@ -74,4 +86,5 @@ fn main() {
     assert_eq!(run_fut(build_aggregate(1, 2, 3, 4)), 10);
     assert_eq!(run_fut(includes_never(false, 4)), 16);
     assert_eq!(run_fut(partial_init(4)), 8);
+    run_fut(hello_world());
 }
