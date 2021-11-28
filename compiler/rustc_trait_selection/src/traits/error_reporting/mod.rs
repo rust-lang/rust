@@ -1898,15 +1898,15 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.infcx.tcx
             }
 
-            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
                 if let ty::Param(ty::ParamTy { name, .. }) = *ty.kind() {
                     let infcx = self.infcx;
-                    self.var_map.entry(ty).or_insert_with(|| {
+                    Ok(self.var_map.entry(ty).or_insert_with(|| {
                         infcx.next_ty_var(TypeVariableOrigin {
                             kind: TypeVariableOriginKind::TypeParameterDefinition(name, None),
                             span: DUMMY_SP,
                         })
-                    })
+                    }))
                 } else {
                     ty.super_fold_with(self)
                 }
@@ -1916,8 +1916,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         self.probe(|_| {
             let mut selcx = SelectionContext::new(self);
 
-            let cleaned_pred =
-                pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
+            let cleaned_pred = pred
+                .fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() })
+                .into_ok();
 
             let cleaned_pred = super::project::normalize(
                 &mut selcx,

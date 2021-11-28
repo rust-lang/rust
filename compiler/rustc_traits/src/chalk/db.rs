@@ -45,7 +45,7 @@ impl<'tcx> RustIrDatabase<'tcx> {
         predicates
             .iter()
             .map(|(wc, _)| wc.subst(self.interner.tcx, bound_vars))
-            .map(|wc| wc.fold_with(&mut regions_substitutor))
+            .map(|wc| wc.fold_with(&mut regions_substitutor).into_ok())
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect()
     }
 
@@ -287,7 +287,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let trait_ref = trait_ref.subst(self.interner.tcx, bound_vars);
         let mut regions_substitutor =
             lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
-        let trait_ref = trait_ref.fold_with(&mut regions_substitutor);
+        let trait_ref = trait_ref.fold_with(&mut regions_substitutor).into_ok();
 
         let where_clauses = self.where_clauses_for(def_id, bound_vars);
 
@@ -335,7 +335,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             let self_ty = self_ty.subst(self.interner.tcx, bound_vars);
             let mut regions_substitutor =
                 lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
-            let self_ty = self_ty.fold_with(&mut regions_substitutor);
+            let self_ty = self_ty.fold_with(&mut regions_substitutor).into_ok();
             let lowered_ty = self_ty.lower_into(&self.interner);
 
             parameters[0].assert_ty_ref(&self.interner).could_match(
@@ -501,22 +501,24 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 .iter()
                 .map(|(bound, _)| bound.subst(self.interner.tcx, &bound_vars))
                 .map(|bound| {
-                    bound.fold_with(&mut ty::fold::BottomUpFolder {
-                        tcx: self.interner.tcx,
-                        ty_op: |ty| {
-                            if let ty::Opaque(def_id, substs) = *ty.kind() {
-                                if def_id == opaque_ty_id.0 && substs == identity_substs {
-                                    return self.interner.tcx.mk_ty(ty::Bound(
-                                        ty::INNERMOST,
-                                        ty::BoundTy::from(ty::BoundVar::from_u32(0)),
-                                    ));
+                    bound
+                        .fold_with(&mut ty::fold::BottomUpFolder {
+                            tcx: self.interner.tcx,
+                            ty_op: |ty| {
+                                if let ty::Opaque(def_id, substs) = *ty.kind() {
+                                    if def_id == opaque_ty_id.0 && substs == identity_substs {
+                                        return self.interner.tcx.mk_ty(ty::Bound(
+                                            ty::INNERMOST,
+                                            ty::BoundTy::from(ty::BoundVar::from_u32(0)),
+                                        ));
+                                    }
                                 }
-                            }
-                            ty
-                        },
-                        lt_op: |lt| lt,
-                        ct_op: |ct| ct,
-                    })
+                                ty
+                            },
+                            lt_op: |lt| lt,
+                            ct_op: |ct| ct,
+                        })
+                        .into_ok()
                 })
                 .filter_map(|bound| {
                     LowerInto::<

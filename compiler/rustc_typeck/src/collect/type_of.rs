@@ -729,17 +729,17 @@ fn infer_placeholder_type<'a>(
             self.tcx
         }
 
-        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
             if !self.success {
-                return ty;
+                return Ok(ty);
             }
 
             match ty.kind() {
-                ty::FnDef(def_id, _) => self.tcx.mk_fn_ptr(self.tcx.fn_sig(*def_id)),
+                ty::FnDef(def_id, _) => Ok(self.tcx.mk_fn_ptr(self.tcx.fn_sig(*def_id))),
                 // FIXME: non-capturing closures should also suggest a function pointer
                 ty::Closure(..) | ty::Generator(..) => {
                     self.success = false;
-                    ty
+                    Ok(ty)
                 }
                 _ => ty.super_fold_with(self),
             }
@@ -761,7 +761,7 @@ fn infer_placeholder_type<'a>(
 
                 // Suggesting unnameable types won't help.
                 let mut mk_nameable = MakeNameable::new(tcx);
-                let ty = mk_nameable.fold_ty(ty);
+                let ty = mk_nameable.fold_ty(ty).into_ok();
                 let sugg_ty = if mk_nameable.success { Some(ty) } else { None };
                 if let Some(sugg_ty) = sugg_ty {
                     err.span_suggestion(
@@ -785,7 +785,7 @@ fn infer_placeholder_type<'a>(
 
             if !ty.references_error() {
                 let mut mk_nameable = MakeNameable::new(tcx);
-                let ty = mk_nameable.fold_ty(ty);
+                let ty = mk_nameable.fold_ty(ty).into_ok();
                 let sugg_ty = if mk_nameable.success { Some(ty) } else { None };
                 if let Some(sugg_ty) = sugg_ty {
                     diag.span_suggestion(

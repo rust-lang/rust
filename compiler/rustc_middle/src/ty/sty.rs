@@ -1101,6 +1101,18 @@ impl<'tcx, T> Binder<'tcx, T> {
         Binder(value, self.1)
     }
 
+    pub fn try_map_bound<F, U: TypeFoldable<'tcx>, E>(self, f: F) -> Result<Binder<'tcx, U>, E>
+    where
+        F: FnOnce(T) -> Result<U, E>,
+    {
+        let value = f(self.0)?;
+        if cfg!(debug_assertions) {
+            let mut validator = ValidateBoundVars::new(self.1);
+            value.visit_with(&mut validator);
+        }
+        Ok(Binder(value, self.1))
+    }
+
     /// Wraps a `value` in a binder, using the same bound variables as the
     /// current `Binder`. This should not be used if the new value *changes*
     /// the bound variables. Note: the (old or new) value itself does not

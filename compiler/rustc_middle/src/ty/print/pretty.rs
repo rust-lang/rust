@@ -2016,24 +2016,24 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
     fn fold_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
-    ) -> ty::Binder<'tcx, T> {
+    ) -> Result<ty::Binder<'tcx, T>, Self::Error> {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
         t
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match *t.kind() {
             _ if t.has_vars_bound_at_or_above(self.current_index) || t.has_placeholders() => {
                 return t.super_fold_with(self);
             }
             _ => {}
         }
-        t
+        Ok(t)
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         let name = &mut self.name;
         let region = match *r {
             ty::ReLateBound(_, br) => self.region_map.entry(br).or_insert_with(|| name(br)),
@@ -2049,13 +2049,13 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
                     }
                 }
             }
-            _ => return r,
+            _ => return Ok(r),
         };
         if let ty::ReLateBound(debruijn1, br) = *region {
             assert_eq!(debruijn1, ty::INNERMOST);
-            self.tcx.mk_region(ty::ReLateBound(self.current_index, br))
+            Ok(self.tcx.mk_region(ty::ReLateBound(self.current_index, br)))
         } else {
-            region
+            Ok(region)
         }
     }
 }
@@ -2193,7 +2193,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                 name: &mut name,
                 region_map: BTreeMap::new(),
             };
-            let new_value = value.clone().skip_binder().fold_with(&mut folder);
+            let new_value = value.clone().skip_binder().fold_with(&mut folder).into_ok();
             let region_map = folder.region_map;
             start_or_continue(&mut self, "", "> ");
             (new_value, region_map)

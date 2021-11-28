@@ -442,8 +442,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let mut eraser = TypeParamEraser(self, expr.span);
                             let needs_bound = self
                                 .lookup_op_method(
-                                    eraser.fold_ty(lhs_ty),
-                                    &[eraser.fold_ty(rhs_ty)],
+                                    eraser.fold_ty(lhs_ty).into_ok(),
+                                    &[eraser.fold_ty(rhs_ty).into_ok()],
                                     Op::Binary(op, is_assign),
                                 )
                                 .is_ok();
@@ -1015,12 +1015,12 @@ impl TypeFolder<'tcx> for TypeParamEraser<'_, 'tcx> {
         self.0.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match ty.kind() {
-            ty::Param(_) => self.0.next_ty_var(TypeVariableOrigin {
+            ty::Param(_) => Ok(self.0.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::MiscVariable,
                 span: self.1,
-            }),
+            })),
             _ => ty.super_fold_with(self),
         }
     }

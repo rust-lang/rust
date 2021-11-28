@@ -161,7 +161,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         {
             Ok(value)
         } else {
-            Ok(value.fold_with(&mut fudger))
+            Ok(value.fold_with(&mut fudger).into_ok())
         }
     }
 }
@@ -180,7 +180,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match *ty.kind() {
             ty::Infer(ty::InferTy::TyVar(vid)) => {
                 if self.type_vars.0.contains(&vid) {
@@ -188,7 +188,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
                     // Recreate it with a fresh variable here.
                     let idx = (vid.as_usize() - self.type_vars.0.start.as_usize()) as usize;
                     let origin = self.type_vars.1[idx];
-                    self.infcx.next_ty_var(origin)
+                    Ok(self.infcx.next_ty_var(origin))
                 } else {
                     // This variable was created before the
                     // "fudging". Since we refresh all type
@@ -198,48 +198,43 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
                     debug_assert!(
                         self.infcx.inner.borrow_mut().type_variables().probe(vid).is_unknown()
                     );
-                    ty
+                    Ok(ty)
                 }
             }
             ty::Infer(ty::InferTy::IntVar(vid)) => {
-                if self.int_vars.contains(&vid) {
-                    self.infcx.next_int_var()
-                } else {
-                    ty
-                }
+                Ok(if self.int_vars.contains(&vid) { self.infcx.next_int_var() } else { ty })
             }
             ty::Infer(ty::InferTy::FloatVar(vid)) => {
-                if self.float_vars.contains(&vid) {
-                    self.infcx.next_float_var()
-                } else {
-                    ty
-                }
+                Ok(if self.float_vars.contains(&vid) { self.infcx.next_float_var() } else { ty })
             }
             _ => ty.super_fold_with(self),
         }
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         if let ty::ReVar(vid) = *r {
             if self.region_vars.0.contains(&vid) {
                 let idx = vid.index() - self.region_vars.0.start.index();
                 let origin = self.region_vars.1[idx];
-                return self.infcx.next_region_var(origin);
+                return Ok(self.infcx.next_region_var(origin));
             }
         }
-        r
+        Ok(r)
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(
+        &mut self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
         if let ty::Const { val: ty::ConstKind::Infer(ty::InferConst::Var(vid)), ty } = ct {
             if self.const_vars.0.contains(&vid) {
                 // This variable was created during the fudging.
                 // Recreate it with a fresh variable here.
                 let idx = (vid.index - self.const_vars.0.start.index) as usize;
                 let origin = self.const_vars.1[idx];
-                self.infcx.next_const_var(ty, origin)
+                Ok(self.infcx.next_const_var(ty, origin))
             } else {
-                ct
+                Ok(ct)
             }
         } else {
             ct.super_fold_with(self)

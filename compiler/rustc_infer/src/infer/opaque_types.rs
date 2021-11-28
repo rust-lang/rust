@@ -418,92 +418,94 @@ struct Instantiator<'a, 'tcx> {
 impl<'a, 'tcx> Instantiator<'a, 'tcx> {
     fn instantiate_opaque_types_in_map<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
         let tcx = self.infcx.tcx;
-        value.fold_with(&mut BottomUpFolder {
-            tcx,
-            ty_op: |ty| {
-                if ty.references_error() {
-                    return tcx.ty_error();
-                } else if let ty::Opaque(def_id, substs) = ty.kind() {
-                    // Check that this is `impl Trait` type is
-                    // declared by `parent_def_id` -- i.e., one whose
-                    // value we are inferring.  At present, this is
-                    // always true during the first phase of
-                    // type-check, but not always true later on during
-                    // NLL. Once we support named opaque types more fully,
-                    // this same scenario will be able to arise during all phases.
-                    //
-                    // Here is an example using type alias `impl Trait`
-                    // that indicates the distinction we are checking for:
-                    //
-                    // ```rust
-                    // mod a {
-                    //   pub type Foo = impl Iterator;
-                    //   pub fn make_foo() -> Foo { .. }
-                    // }
-                    //
-                    // mod b {
-                    //   fn foo() -> a::Foo { a::make_foo() }
-                    // }
-                    // ```
-                    //
-                    // Here, the return type of `foo` references an
-                    // `Opaque` indeed, but not one whose value is
-                    // presently being inferred. You can get into a
-                    // similar situation with closure return types
-                    // today:
-                    //
-                    // ```rust
-                    // fn foo() -> impl Iterator { .. }
-                    // fn bar() {
-                    //     let x = || foo(); // returns the Opaque assoc with `foo`
-                    // }
-                    // ```
-                    if let Some(def_id) = def_id.as_local() {
-                        let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-                        let parent_def_id = self.infcx.defining_use_anchor;
-                        let def_scope_default = || {
-                            let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
-                            parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
-                        };
-                        let (in_definition_scope, origin) =
-                            match tcx.hir().expect_item(opaque_hir_id).kind {
-                                // Anonymous `impl Trait`
-                                hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                                    impl_trait_fn: Some(parent),
-                                    origin,
-                                    ..
-                                }) => (parent == parent_def_id.to_def_id(), origin),
-                                // Named `type Foo = impl Bar;`
-                                hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                                    impl_trait_fn: None,
-                                    origin,
-                                    ..
-                                }) => (
-                                    may_define_opaque_type(tcx, parent_def_id, opaque_hir_id),
-                                    origin,
-                                ),
-                                _ => (def_scope_default(), hir::OpaqueTyOrigin::TyAlias),
+        value
+            .fold_with(&mut BottomUpFolder {
+                tcx,
+                ty_op: |ty| {
+                    if ty.references_error() {
+                        return tcx.ty_error();
+                    } else if let ty::Opaque(def_id, substs) = ty.kind() {
+                        // Check that this is `impl Trait` type is
+                        // declared by `parent_def_id` -- i.e., one whose
+                        // value we are inferring.  At present, this is
+                        // always true during the first phase of
+                        // type-check, but not always true later on during
+                        // NLL. Once we support named opaque types more fully,
+                        // this same scenario will be able to arise during all phases.
+                        //
+                        // Here is an example using type alias `impl Trait`
+                        // that indicates the distinction we are checking for:
+                        //
+                        // ```rust
+                        // mod a {
+                        //   pub type Foo = impl Iterator;
+                        //   pub fn make_foo() -> Foo { .. }
+                        // }
+                        //
+                        // mod b {
+                        //   fn foo() -> a::Foo { a::make_foo() }
+                        // }
+                        // ```
+                        //
+                        // Here, the return type of `foo` references an
+                        // `Opaque` indeed, but not one whose value is
+                        // presently being inferred. You can get into a
+                        // similar situation with closure return types
+                        // today:
+                        //
+                        // ```rust
+                        // fn foo() -> impl Iterator { .. }
+                        // fn bar() {
+                        //     let x = || foo(); // returns the Opaque assoc with `foo`
+                        // }
+                        // ```
+                        if let Some(def_id) = def_id.as_local() {
+                            let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                            let parent_def_id = self.infcx.defining_use_anchor;
+                            let def_scope_default = || {
+                                let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
+                                parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
                             };
-                        if in_definition_scope {
-                            let opaque_type_key =
-                                OpaqueTypeKey { def_id: def_id.to_def_id(), substs };
-                            return self.fold_opaque_ty(ty, opaque_type_key, origin);
-                        }
+                            let (in_definition_scope, origin) =
+                                match tcx.hir().expect_item(opaque_hir_id).kind {
+                                    // Anonymous `impl Trait`
+                                    hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                                        impl_trait_fn: Some(parent),
+                                        origin,
+                                        ..
+                                    }) => (parent == parent_def_id.to_def_id(), origin),
+                                    // Named `type Foo = impl Bar;`
+                                    hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                                        impl_trait_fn: None,
+                                        origin,
+                                        ..
+                                    }) => (
+                                        may_define_opaque_type(tcx, parent_def_id, opaque_hir_id),
+                                        origin,
+                                    ),
+                                    _ => (def_scope_default(), hir::OpaqueTyOrigin::TyAlias),
+                                };
+                            if in_definition_scope {
+                                let opaque_type_key =
+                                    OpaqueTypeKey { def_id: def_id.to_def_id(), substs };
+                                return self.fold_opaque_ty(ty, opaque_type_key, origin);
+                            }
 
-                        debug!(
-                            "instantiate_opaque_types_in_map: \
+                            debug!(
+                                "instantiate_opaque_types_in_map: \
                              encountered opaque outside its definition scope \
                              def_id={:?}",
-                            def_id,
-                        );
+                                def_id,
+                            );
+                        }
                     }
-                }
 
-                ty
-            },
-            lt_op: |lt| lt,
-            ct_op: |ct| ct,
-        })
+                    ty
+                },
+                lt_op: |lt| lt,
+                ct_op: |ct| ct,
+            })
+            .into_ok()
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -556,21 +558,23 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             debug!(?predicate);
 
             // We can't normalize associated types from `rustc_infer`, but we can eagerly register inference variables for them.
-            let predicate = predicate.fold_with(&mut BottomUpFolder {
-                tcx,
-                ty_op: |ty| match ty.kind() {
-                    ty::Projection(projection_ty) => infcx.infer_projection(
-                        self.param_env,
-                        *projection_ty,
-                        traits::ObligationCause::misc(self.value_span, self.body_id),
-                        0,
-                        &mut self.obligations,
-                    ),
-                    _ => ty,
-                },
-                lt_op: |lt| lt,
-                ct_op: |ct| ct,
-            });
+            let predicate = predicate
+                .fold_with(&mut BottomUpFolder {
+                    tcx,
+                    ty_op: |ty| match ty.kind() {
+                        ty::Projection(projection_ty) => infcx.infer_projection(
+                            self.param_env,
+                            *projection_ty,
+                            traits::ObligationCause::misc(self.value_span, self.body_id),
+                            0,
+                            &mut self.obligations,
+                        ),
+                        _ => ty,
+                    },
+                    lt_op: |lt| lt,
+                    ct_op: |ct| ct,
+                })
+                .into_ok();
             debug!(?predicate);
 
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {

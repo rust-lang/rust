@@ -71,8 +71,11 @@ fn diagnostic_hir_wf_check<'tcx>(
         fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
             self.tcx.infer_ctxt().enter(|infcx| {
                 let mut fulfill = traits::FulfillmentContext::new();
-                let tcx_ty =
-                    self.icx.to_ty(ty).fold_with(&mut EraseAllBoundRegions { tcx: self.tcx });
+                let tcx_ty = self
+                    .icx
+                    .to_ty(ty)
+                    .fold_with(&mut EraseAllBoundRegions { tcx: self.tcx })
+                    .into_ok();
                 let cause = traits::ObligationCause::new(
                     ty.span,
                     self.hir_id,
@@ -183,7 +186,7 @@ impl<'tcx> TypeFolder<'tcx> for EraseAllBoundRegions<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
-    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        if let ty::ReLateBound(..) = r { &ty::ReErased } else { r }
+    fn fold_region(&mut self, r: Region<'tcx>) -> Result<Region<'tcx>, Self::Error> {
+        if let ty::ReLateBound(..) = r { Ok(&ty::ReErased) } else { Ok(r) }
     }
 }

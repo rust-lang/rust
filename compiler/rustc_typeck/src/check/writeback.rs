@@ -658,7 +658,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         let mut resolver = Resolver::new(self.fcx, span, self.body);
-        let x = x.fold_with(&mut resolver);
+        let x = x.fold_with(&mut resolver).into_ok();
         if cfg!(debug_assertions) && x.needs_infer() {
             span_bug!(span.to_span(self.fcx.tcx), "writeback: `{:?}` has inference variables", x);
         }
@@ -749,15 +749,15 @@ impl<'tcx> TypeFolder<'tcx> for EraseEarlyRegions<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if ty.has_type_flags(ty::TypeFlags::HAS_POTENTIAL_FREE_REGIONS) {
             ty.super_fold_with(self)
         } else {
-            ty
+            Ok(ty)
         }
     }
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReLateBound(..) = r { r } else { self.tcx.lifetimes.re_erased }
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
+        Ok(if let ty::ReLateBound(..) = r { r } else { self.tcx.lifetimes.re_erased })
     }
 }
 
@@ -766,7 +766,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match self.infcx.fully_resolve(t) {
             Ok(t) => {
                 // Do not anonymize late-bound regions
@@ -779,18 +779,21 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 self.report_type_error(t);
                 self.replaced_with_error = true;
-                self.tcx().ty_error()
+                Ok(self.tcx().ty_error())
             }
         }
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         debug_assert!(!r.is_late_bound(), "Should not be resolving bound region.");
-        self.tcx.lifetimes.re_erased
+        Ok(self.tcx.lifetimes.re_erased)
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        match self.infcx.fully_resolve(ct) {
+    fn fold_const(
+        &mut self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+        Ok(match self.infcx.fully_resolve(ct) {
             Ok(ct) => self.infcx.tcx.erase_regions(ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
@@ -798,7 +801,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 self.replaced_with_error = true;
                 self.tcx().const_error(ct.ty)
             }
-        }
+        })
     }
 }
 

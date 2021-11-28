@@ -2760,11 +2760,11 @@ impl UserTypeProjection {
 TrivialTypeFoldableAndLiftImpls! { ProjectionKind, }
 
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        UserTypeProjection {
-            base: self.base.fold_with(folder),
-            projs: self.projs.fold_with(folder),
-        }
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(UserTypeProjection {
+            base: self.base.fold_with(folder)?,
+            projs: self.projs.fold_with(folder)?,
+        })
     }
 
     fn super_visit_with<Vs: TypeVisitor<'tcx>>(

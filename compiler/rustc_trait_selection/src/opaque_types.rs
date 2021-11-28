@@ -65,14 +65,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        let definition_ty = instantiated_ty.fold_with(&mut ReverseMapper::new(
-            self.tcx,
-            self.is_tainted_by_errors(),
-            def_id,
-            map,
-            instantiated_ty,
-            span,
-        ));
+        let definition_ty = instantiated_ty
+            .fold_with(&mut ReverseMapper::new(
+                self.tcx,
+                self.is_tainted_by_errors(),
+                def_id,
+                map,
+                instantiated_ty,
+                span,
+            ))
+            .into_ok();
         debug!(?definition_ty);
 
         definition_ty
@@ -123,14 +125,14 @@ impl ReverseMapper<'tcx> {
     ) -> GenericArg<'tcx> {
         assert!(!self.map_missing_regions_to_empty);
         self.map_missing_regions_to_empty = true;
-        let kind = kind.fold_with(self);
+        let kind = kind.fold_with(self).into_ok();
         self.map_missing_regions_to_empty = false;
         kind
     }
 
     fn fold_kind_normally(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
         assert!(!self.map_missing_regions_to_empty);
-        kind.fold_with(self)
+        kind.fold_with(self).into_ok()
     }
 }
 
@@ -140,17 +142,17 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         match r {
             // Ignore bound regions and `'static` regions that appear in the
             // type, we only need to remap regions that reference lifetimes
             // from the function declaraion.
             // This would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
-            ty::ReLateBound(..) | ty::ReStatic => return r,
+            ty::ReLateBound(..) | ty::ReStatic => return Ok(r),
 
             // If regions have been erased (by writeback), don't try to unerase
             // them.
-            ty::ReErased => return r,
+            ty::ReErased => return Ok(r),
 
             // The regions that we expect from borrow checking.
             ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReEmpty(ty::UniverseIndex::ROOT) => {}
@@ -165,10 +167,10 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
         let generics = self.tcx().generics_of(self.opaque_type_def_id);
         match self.map.get(&r.into()).map(|k| k.unpack()) {
-            Some(GenericArgKind::Lifetime(r1)) => r1,
+            Some(GenericArgKind::Lifetime(r1)) => Ok(r1),
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
             None if self.map_missing_regions_to_empty || self.tainted_by_errors => {
-                self.tcx.lifetimes.re_root_empty
+                Ok(self.tcx.lifetimes.re_root_empty)
             }
             None if generics.parent.is_some() => {
                 if let Some(hidden_ty) = self.hidden_ty.take() {
@@ -180,7 +182,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
                 }
-                self.tcx.lifetimes.re_root_empty
+                Ok(self.tcx.lifetimes.re_root_empty)
             }
             None => {
                 self.tcx
@@ -196,12 +198,12 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.tcx().lifetimes.re_static
+                Ok(self.tcx().lifetimes.re_static)
             }
         }
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match *ty.kind() {
             ty::Closure(def_id, substs) => {
                 // I am a horrible monster and I pray for death. When
@@ -239,7 +241,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     }
                 }));
 
-                self.tcx.mk_closure(def_id, substs)
+                Ok(self.tcx.mk_closure(def_id, substs))
             }
 
             ty::Generator(def_id, substs, movability) => {
@@ -254,7 +256,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     }
                 }));
 
-                self.tcx.mk_generator(def_id, substs, movability)
+                Ok(self.tcx.mk_generator(def_id, substs, movability))
             }
 
             ty::Param(param) => {
@@ -262,7 +264,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 match self.map.get(&ty.into()).map(|k| k.unpack()) {
                     // Found it in the substitution list; replace with the parameter from the
                     // opaque type.
-                    Some(GenericArgKind::Type(t1)) => t1,
+                    Some(GenericArgKind::Type(t1)) => Ok(t1),
                     Some(u) => panic!("type mapped to unexpected kind: {:?}", u),
                     None => {
                         debug!(?param, ?self.map);
@@ -278,7 +280,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                             )
                             .emit();
 
-                        self.tcx().ty_error()
+                        Ok(self.tcx().ty_error())
                     }
                 }
             }
@@ -287,10 +289,13 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(
+        &mut self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
         trace!("checking const {:?}", ct);
         // Find a const parameter
-        match ct.val {
+        Ok(match ct.val {
             ty::ConstKind::Param(..) => {
                 // Look it up in the substitution list.
                 match self.map.get(&ct.into()).map(|k| k.unpack()) {
@@ -317,7 +322,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
             }
 
             _ => ct,
-        }
+        })
     }
 }
 

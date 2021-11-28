@@ -4,6 +4,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(unwrap_infallible)]
 #![recursion_limit = "256"]
 
 #[macro_use]

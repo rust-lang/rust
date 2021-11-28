@@ -153,11 +153,11 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         match self.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.fold_with(folder).into(),
-            GenericArgKind::Type(ty) => ty.fold_with(folder).into(),
-            GenericArgKind::Const(ct) => ct.fold_with(folder).into(),
+            GenericArgKind::Lifetime(lt) => lt.fold_with(folder).map(Into::into),
+            GenericArgKind::Type(ty) => ty.fold_with(folder).map(Into::into),
+            GenericArgKind::Const(ct) => ct.fold_with(folder).map(Into::into),
         }
     }
 
@@ -372,7 +372,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         // This code is hot enough that it's worth specializing for the most
         // common length lists, to avoid the overhead of `SmallVec` creation.
         // The match arms are in order of frequency. The 1, 2, and 0 cases are
@@ -381,22 +381,27 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
         // calling `intern_substs`.
         match self.len() {
             1 => {
-                let param0 = self[0].fold_with(folder);
-                if param0 == self[0] { self } else { folder.tcx().intern_substs(&[param0]) }
+                let param0 = self[0].fold_with(folder)?;
+                if param0 == self[0] { Ok(self) } else { Ok(folder.tcx().intern_substs(&[param0])) }
             }
             2 => {
-                let param0 = self[0].fold_with(folder);
-                let param1 = self[1].fold_with(folder);
+                let param0 = self[0].fold_with(folder)?;
+                let param1 = self[1].fold_with(folder)?;
                 if param0 == self[0] && param1 == self[1] {
-                    self
+                    Ok(self)
                 } else {
-                    folder.tcx().intern_substs(&[param0, param1])
+                    Ok(folder.tcx().intern_substs(&[param0, param1]))
                 }
             }
-            0 => self,
+            0 => Ok(self),
             _ => {
-                let params: SmallVec<[_; 8]> = self.iter().map(|k| k.fold_with(folder)).collect();
-                if params[..] == self[..] { self } else { folder.tcx().intern_substs(&params) }
+                let params: SmallVec<[_; 8]> =
+                    self.iter().map(|k| k.fold_with(folder)).collect::<Result<_, _>>()?;
+                if params[..] == self[..] {
+                    Ok(self)
+                } else {
+                    Ok(folder.tcx().intern_substs(&params))
+                }
             }
         }
     }
@@ -434,7 +439,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for T {
         span: Option<Span>,
     ) -> T {
         let mut folder = SubstFolder { tcx, substs, span, binders_passed: 0 };
-        self.fold_with(&mut folder)
+        self.fold_with(&mut folder).into_ok()
     }
 }
 
@@ -460,14 +465,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     fn fold_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
-    ) -> ty::Binder<'tcx, T> {
+    ) -> Result<ty::Binder<'tcx, T>, Self::Error> {
         self.binders_passed += 1;
-        let t = t.super_fold_with(self);
+        let t = t.super_fold_with(self)?;
         self.binders_passed -= 1;
-        t
+        Ok(t)
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         // Note: This routine only handles regions that are bound on
         // type declarations and other outer declarations, not those
         // bound in *fn types*. Region substitution of the bound
@@ -477,7 +482,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
             ty::ReEarlyBound(data) => {
                 let rk = self.substs.get(data.index as usize).map(|k| k.unpack());
                 match rk {
-                    Some(GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
+                    Some(GenericArgKind::Lifetime(lt)) => Ok(self.shift_region_through_binders(lt)),
                     _ => {
                         let span = self.span.unwrap_or(DUMMY_SP);
                         let msg = format!(
@@ -489,31 +494,37 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                     }
                 }
             }
-            _ => r,
+            _ => Ok(r),
         }
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if !t.potentially_needs_subst() {
-            return t;
+            return Ok(t);
         }
 
         match *t.kind() {
-            ty::Param(p) => self.ty_for_param(p, t),
+            ty::Param(p) => Ok(self.ty_for_param(p, t)),
             _ => t.super_fold_with(self),
         }
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(
+        &mut self,
+        c: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
         if let ty::ConstKind::Param(p) = c.val {
-            self.const_for_param(p, c)
+            Ok(self.const_for_param(p, c))
         } else {
             c.super_fold_with(self)
         }
     }
 
     #[inline]
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+    fn fold_mir_const(
+        &mut self,
+        c: mir::ConstantKind<'tcx>,
+    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
         c.super_fold_with(self)
     }
 }
