@@ -436,9 +436,9 @@ fn source_file_to_file_symbols(_source_file: &SourceFile, _file_id: FileId) -> V
     // todo: delete this.
     vec![]
 }
-enum SymbolCollectorWorkItem {
+enum SymbolCollectorWork {
     Module { module_id: ModuleId, parent: Option<DefWithBodyId> },
-    Body { body: DefWithBodyId },
+    Body { body_id: DefWithBodyId },
     Impl { impl_id: ImplId },
     Trait { trait_id: TraitId },
 }
@@ -446,7 +446,7 @@ enum SymbolCollectorWorkItem {
 struct SymbolCollector<'a> {
     db: &'a dyn SymbolsDatabase,
     symbols: Vec<FileSymbol>,
-    work: Vec<SymbolCollectorWorkItem>,
+    work: Vec<SymbolCollectorWork>,
     container_name_stack: Vec<SmolStr>,
 }
 
@@ -458,30 +458,30 @@ impl<'a> SymbolCollector<'a> {
             db,
             symbols: Default::default(),
             container_name_stack: Default::default(),
-            work: vec![SymbolCollectorWorkItem::Module { module_id, parent: None }],
+            work: vec![SymbolCollectorWork::Module { module_id, parent: None }],
         };
 
-        while let Some(work_item) = symbol_collector.work.pop() {
-            symbol_collector.do_work(work_item);
+        while let Some(work) = symbol_collector.work.pop() {
+            symbol_collector.do_work(work);
         }
 
         symbol_collector.symbols
     }
 
-    fn do_work(&mut self, work_item: SymbolCollectorWorkItem) {
+    fn do_work(&mut self, work: SymbolCollectorWork) {
         self.db.unwind_if_cancelled();
 
-        match work_item {
-            SymbolCollectorWorkItem::Module { module_id, parent } => {
+        match work {
+            SymbolCollectorWork::Module { module_id, parent } => {
                 let parent_name = parent.and_then(|id| self.def_with_body_id_name(id));
                 self.with_container_name(parent_name, |s| s.collect_from_module(module_id));
             }
-            SymbolCollectorWorkItem::Body { body } => self.collect_from_body(body),
-            SymbolCollectorWorkItem::Impl { impl_id } => self.collect_from_impl(impl_id),
-            SymbolCollectorWorkItem::Trait { trait_id } => {
+            SymbolCollectorWork::Trait { trait_id } => {
                 let trait_name = self.db.trait_data(trait_id).name.as_text();
                 self.with_container_name(trait_name, |s| s.collect_from_trait(trait_id));
             }
+            SymbolCollectorWork::Body { body_id } => self.collect_from_body(body_id),
+            SymbolCollectorWork::Impl { impl_id } => self.collect_from_impl(impl_id),
         }
     }
 
@@ -495,7 +495,7 @@ impl<'a> SymbolCollector<'a> {
                 ModuleDefId::ModuleId(id) => self.push_module(id),
                 ModuleDefId::FunctionId(id) => {
                     self.push_decl_assoc(id, FileSymbolKind::Function);
-                    self.work.push(SymbolCollectorWorkItem::Body { body: id.into() });
+                    self.work.push(SymbolCollectorWork::Body { body_id: id.into() });
                 }
                 ModuleDefId::AdtId(AdtId::StructId(id)) => {
                     self.push_decl(id, FileSymbolKind::Struct)
@@ -504,15 +504,15 @@ impl<'a> SymbolCollector<'a> {
                 ModuleDefId::AdtId(AdtId::UnionId(id)) => self.push_decl(id, FileSymbolKind::Union),
                 ModuleDefId::ConstId(id) => {
                     self.push_decl_assoc(id, FileSymbolKind::Const);
-                    self.work.push(SymbolCollectorWorkItem::Body { body: id.into() })
+                    self.work.push(SymbolCollectorWork::Body { body_id: id.into() })
                 }
                 ModuleDefId::StaticId(id) => {
                     self.push_decl(id, FileSymbolKind::Static);
-                    self.work.push(SymbolCollectorWorkItem::Body { body: id.into() })
+                    self.work.push(SymbolCollectorWork::Body { body_id: id.into() })
                 }
                 ModuleDefId::TraitId(id) => {
                     self.push_decl(id, FileSymbolKind::Trait);
-                    self.work.push(SymbolCollectorWorkItem::Trait { trait_id: id })
+                    self.work.push(SymbolCollectorWork::Trait { trait_id: id })
                 }
                 ModuleDefId::TypeAliasId(id) => {
                     self.push_decl_assoc(id, FileSymbolKind::TypeAlias);
@@ -524,11 +524,11 @@ impl<'a> SymbolCollector<'a> {
         }
 
         for impl_id in scope.impls() {
-            self.work.push(SymbolCollectorWorkItem::Impl { impl_id });
+            self.work.push(SymbolCollectorWork::Impl { impl_id });
         }
 
         for const_id in scope.unnamed_consts() {
-            self.work.push(SymbolCollectorWorkItem::Body { body: const_id.into() })
+            self.work.push(SymbolCollectorWork::Body { body_id: const_id.into() })
         }
 
         for macro_def_id in scope.macro_declarations() {
@@ -542,7 +542,7 @@ impl<'a> SymbolCollector<'a> {
         // Descend into the blocks and enqueue collection of all modules within.
         for (_, def_map) in body.blocks(self.db.upcast()) {
             for (id, _) in def_map.modules() {
-                self.work.push(SymbolCollectorWorkItem::Module {
+                self.work.push(SymbolCollectorWork::Module {
                     module_id: def_map.module_id(id),
                     parent: Some(body_id),
                 });
