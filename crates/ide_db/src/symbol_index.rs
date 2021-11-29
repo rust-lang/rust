@@ -579,6 +579,10 @@ fn collect_symbols_from_item_scope(
                 });
 
             symbols.extend(symbols_iter);
+
+            for const_id in scope.unnamed_consts() {
+                bodies_to_traverse.push(const_id.into())
+            }
         };
 
     let mut bodies_to_traverse = Vec::new();
