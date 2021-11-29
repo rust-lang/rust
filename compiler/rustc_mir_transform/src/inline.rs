@@ -39,11 +39,7 @@ struct CallSite<'tcx> {
 
 /// Returns true if MIR inlining is enabled in the current compilation session.
 crate fn is_enabled(tcx: TyCtxt<'_>) -> bool {
-    if let Some(enabled) = tcx.sess.opts.debugging_opts.inline_mir {
-        return enabled;
-    }
-
-    tcx.sess.mir_opt_level() >= 3
+    tcx.sess.opts.debugging_opts.inline_mir && tcx.sess.mir_opt_level() >= 3
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {

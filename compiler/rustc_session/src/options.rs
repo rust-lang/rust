@@ -1168,7 +1168,7 @@ options! {
         "hash spans relative to their parent item for incr. comp. (default: no)"),
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
         "verify incr. comp. hashes of green query instances (default: no)"),
-    inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    inline_mir: bool = (false, parse_bool, [TRACKED],
         "enable MIR inlining (default: no)"),
     inline_mir_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "a default MIR inlining threshold (default: 50)"),
