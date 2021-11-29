@@ -6,7 +6,6 @@
 // ignore-android does not use #[thread_local]
 
 #![crate_type = "lib"]
-#![feature(thread_local_const_init)]
 
 extern crate thread_local_aux as aux;
 
