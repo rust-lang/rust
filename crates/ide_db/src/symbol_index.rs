@@ -710,3 +710,67 @@ impl<'a> SymbolCollector<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use base_db::fixture::WithFixture;
+    use expect_test::expect_file;
+
+    use super::*;
+
+    #[test]
+    fn test_symbol_index_collection() {
+        let (db, _) = RootDatabase::with_many_files(
+            r#"
+//- /main.rs
+
+macro_rules! macro_rules_macro {
+    () => {}
+};
+
+macro Macro { }
+
+struct Struct;
+enum Enum {
+    A, B
+}
+union Union {}
+
+impl Struct {
+    fn impl_fn() {}
+}
+
+trait Trait {
+    fn trait_fn(&self);
+}
+
+fn main() {
+    struct StructInFn;
+}
+
+const CONST: u32 = 1;
+static STATIC: &'static str = "2";
+type Alias = Struct;
+
+mod a_mod {
+    struct StructInModA;
+}
+
+mod b_mod;
+
+//- /b_mod.rs
+struct StructInModB;
+        "#,
+        );
+
+        let symbols: Vec<_> = module_ids_for_crate(db.upcast(), db.test_crate())
+            .into_iter()
+            .map(|module_id| {
+                (module_id, SymbolCollector::collect(&db as &dyn SymbolsDatabase, module_id))
+            })
+            .collect();
+
+        expect_file!["./test_data/test_symbol_index_collection.txt"].assert_debug_eq(&symbols);
+    }
+}

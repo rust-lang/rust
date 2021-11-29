@@ -1,0 +1,457 @@
+[
+    (
+        ModuleId {
+            krate: CrateId(
+                0,
+            ),
+            block: None,
+            local_id: Idx::<ModuleData>(0),
+        },
+        [
+            FileSymbol {
+                name: "Struct",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 68..82,
+                        kind: STRUCT,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 75..81,
+                        kind: NAME,
+                    },
+                },
+                kind: Struct,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "Enum",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 83..105,
+                        kind: ENUM,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 88..92,
+                        kind: NAME,
+                    },
+                },
+                kind: Enum,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "Union",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 106..120,
+                        kind: UNION,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 112..117,
+                        kind: NAME,
+                    },
+                },
+                kind: Union,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "Trait",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 159..198,
+                        kind: TRAIT,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 165..170,
+                        kind: NAME,
+                    },
+                },
+                kind: Trait,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "trait_fn",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 177..196,
+                        kind: FN,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 180..188,
+                        kind: NAME,
+                    },
+                },
+                kind: Function,
+                container_name: Some(
+                    "Trait",
+                ),
+            },
+            FileSymbol {
+                name: "main",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 200..236,
+                        kind: FN,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 203..207,
+                        kind: NAME,
+                    },
+                },
+                kind: Function,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "proc_macro",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 238..270,
+                        kind: FN,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 255..265,
+                        kind: NAME,
+                    },
+                },
+                kind: Function,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "CONST",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 272..293,
+                        kind: CONST,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 278..283,
+                        kind: NAME,
+                    },
+                },
+                kind: Const,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "STATIC",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 294..328,
+                        kind: STATIC,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 301..307,
+                        kind: NAME,
+                    },
+                },
+                kind: Static,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "Alias",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 329..349,
+                        kind: TYPE_ALIAS,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 334..339,
+                        kind: NAME,
+                    },
+                },
+                kind: TypeAlias,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "a_mod",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 351..389,
+                        kind: MODULE,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 355..360,
+                        kind: NAME,
+                    },
+                },
+                kind: Module,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "b_mod",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 391..401,
+                        kind: MODULE,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 395..400,
+                        kind: NAME,
+                    },
+                },
+                kind: Module,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "impl_fn",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 140..155,
+                        kind: FN,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 143..150,
+                        kind: NAME,
+                    },
+                },
+                kind: Function,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "macro_rules_macro",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 1..48,
+                        kind: MACRO_RULES,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 14..31,
+                        kind: NAME,
+                    },
+                },
+                kind: Macro,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "Macro",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 51..66,
+                        kind: MACRO_DEF,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 57..62,
+                        kind: NAME,
+                    },
+                },
+                kind: Macro,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "proc_macro",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 238..270,
+                        kind: FN,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 255..265,
+                        kind: NAME,
+                    },
+                },
+                kind: Macro,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "StructInFn",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 216..234,
+                        kind: STRUCT,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 223..233,
+                        kind: NAME,
+                    },
+                },
+                kind: Struct,
+                container_name: Some(
+                    "main",
+                ),
+            },
+        ],
+    ),
+    (
+        ModuleId {
+            krate: CrateId(
+                0,
+            ),
+            block: None,
+            local_id: Idx::<ModuleData>(1),
+        },
+        [
+            FileSymbol {
+                name: "StructInModA",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 367..387,
+                        kind: STRUCT,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 374..386,
+                        kind: NAME,
+                    },
+                },
+                kind: Struct,
+                container_name: None,
+            },
+        ],
+    ),
+    (
+        ModuleId {
+            krate: CrateId(
+                0,
+            ),
+            block: None,
+            local_id: Idx::<ModuleData>(2),
+        },
+        [
+            FileSymbol {
+                name: "StructInModB",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                1,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 0..20,
+                        kind: STRUCT,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 7..19,
+                        kind: NAME,
+                    },
+                },
+                kind: Struct,
+                container_name: None,
+            },
+        ],
+    ),
+]
