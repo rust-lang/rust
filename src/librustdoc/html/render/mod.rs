@@ -1235,10 +1235,17 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
 fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
     let mut out = Buffer::html();
 
-    if let Some(did) = decl.output.as_return().and_then(|t| t.def_id(cx.cache())) {
+    if let Some((did, ty)) = decl.output.as_return().and_then(|t| Some((t.def_id(cx.cache())?, t)))
+    {
         if let Some(impls) = cx.cache().impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
+                if !impl_.for_.without_borrowed_ref().is_same(ty.without_borrowed_ref(), cx.cache())
+                {
+                    // Two different types might have the same did,
+                    // without actually being the same.
+                    continue;
+                }
                 if let Some(trait_) = &impl_.trait_ {
                     let trait_did = trait_.def_id();
 
