@@ -86,7 +86,6 @@ pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tup
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 #[cfg(feature = "internal-lints")]
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
-pub const LIBC_STRLEN: [&str; 2] = ["libc", "strlen"];
 #[cfg(any(feature = "internal-lints", feature = "metadata-collector-lint"))]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
 pub const MEM_DISCRIMINANT: [&str; 3] = ["core", "mem", "discriminant"];
