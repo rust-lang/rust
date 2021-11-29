@@ -92,7 +92,9 @@ pub struct VarsOs {
 ///
 /// The returned iterator contains a snapshot of the process's environment
 /// variables at the time of this invocation. Modifications to environment
-/// variables afterwards will not be reflected in the returned iterator.
+/// variable values afterwards will not be reflected in the returned iterator
+/// but modifications to the environment using [`set_var`] and [`remove_var`]
+/// will appear.
 ///
 /// # Panics
 ///
@@ -112,6 +114,19 @@ pub struct VarsOs {
 /// }
 /// ```
 ///
+/// ```
+/// use std::env;
+///
+/// let before_set = env::vars().count();
+/// env::set_var("TEST_ADD_REMOVE_ENV_VAR", "42");
+/// let before_remove = env::vars().count();
+/// env::remove_var("TEST_ADD_REMOVE_ENV_VAR");
+/// let after_remove = env::vars().count();
+///
+/// assert!(before_set < before_remove);
+/// assert!(before_remove > after_remove);
+/// ```
+///
 /// [`env::vars_os()`]: vars_os
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
@@ -124,7 +139,9 @@ pub fn vars() -> Vars {
 ///
 /// The returned iterator contains a snapshot of the process's environment
 /// variables at the time of this invocation. Modifications to environment
-/// variables afterwards will not be reflected in the returned iterator.
+/// variable values afterwards will not be reflected in the returned iterator
+/// but modifications to the environment using [`set_var`] and [`remove_var`]
+/// will appear.
 ///
 /// Note that the returned iterator will not check if the environment variables
 /// are valid Unicode. If you want to panic on invalid UTF-8,
@@ -140,6 +157,19 @@ pub fn vars() -> Vars {
 /// for (key, value) in env::vars_os() {
 ///     println!("{:?}: {:?}", key, value);
 /// }
+/// ```
+///
+/// ```
+/// use std::env;
+///
+/// let before_set = env::vars_os().count();
+/// env::set_var("TEST_ADD_REMOVE_ENV_VAR", "42");
+/// let before_remove = env::vars_os().count();
+/// env::remove_var("TEST_ADD_REMOVE_ENV_VAR");
+/// let after_remove = env::vars_os().count();
+///
+/// assert!(before_set < before_remove);
+/// assert!(before_remove > after_remove);
 /// ```
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
