@@ -34,8 +34,8 @@ use base_db::{
 };
 use fst::{self, Streamer};
 use hir::{
-    db::DefDatabase, AdtId, AssocContainerId, AssocItemLoc, DefHasSource, HirFileId, InFile,
-    ItemLoc, ItemScope, ItemTreeNode, Lookup, ModuleData, ModuleDefId, ModuleId, Semantics,
+    db::DefDatabase, AdtId, AssocContainerId, AssocItemLoc, DefHasSource, DefWithBodyId, HirFileId,
+    InFile, ItemLoc, ItemScope, ItemTreeNode, Lookup, ModuleData, ModuleDefId, ModuleId, Semantics,
 };
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -542,23 +542,55 @@ fn collect_symbols_from_item_scope(
         })
     }
 
-    let symbols_iter = scope.declarations().filter_map(|module_def_id| match module_def_id {
-        ModuleDefId::ModuleId(module_id) => decl_module(db, module_id),
-        ModuleDefId::FunctionId(function_id) => {
-            decl_assoc(db, function_id, FileSymbolKind::Function)
-        }
-        ModuleDefId::AdtId(AdtId::StructId(struct_id)) => {
-            decl(db, struct_id, FileSymbolKind::Struct)
-        }
-        ModuleDefId::AdtId(AdtId::EnumId(enum_id)) => decl(db, enum_id, FileSymbolKind::Enum),
-        ModuleDefId::AdtId(AdtId::UnionId(union_id)) => decl(db, union_id, FileSymbolKind::Union),
-        ModuleDefId::EnumVariantId(_) => None,
-        ModuleDefId::ConstId(const_id) => decl_assoc(db, const_id, FileSymbolKind::Const),
-        ModuleDefId::StaticId(static_id) => decl(db, static_id, FileSymbolKind::Static),
-        ModuleDefId::TraitId(trait_id) => decl(db, trait_id, FileSymbolKind::Trait),
-        ModuleDefId::TypeAliasId(alias_id) => decl_assoc(db, alias_id, FileSymbolKind::TypeAlias),
-        ModuleDefId::BuiltinType(_) => None,
-    });
+    let collect_symbols_from_scope =
+        |scope: &ItemScope,
+         symbols: &mut Vec<FileSymbol>,
+         bodies_to_traverse: &mut Vec<DefWithBodyId>| {
+            let symbols_iter =
+                scope.declarations().filter_map(|module_def_id| match module_def_id {
+                    ModuleDefId::ModuleId(module_id) => decl_module(db, module_id),
+                    ModuleDefId::FunctionId(function_id) => {
+                        bodies_to_traverse.push(function_id.into());
+                        decl_assoc(db, function_id, FileSymbolKind::Function)
+                    }
+                    ModuleDefId::AdtId(AdtId::StructId(struct_id)) => {
+                        decl(db, struct_id, FileSymbolKind::Struct)
+                    }
+                    ModuleDefId::AdtId(AdtId::EnumId(enum_id)) => {
+                        decl(db, enum_id, FileSymbolKind::Enum)
+                    }
+                    ModuleDefId::AdtId(AdtId::UnionId(union_id)) => {
+                        decl(db, union_id, FileSymbolKind::Union)
+                    }
+                    ModuleDefId::ConstId(const_id) => {
+                        bodies_to_traverse.push(const_id.into());
+                        decl_assoc(db, const_id, FileSymbolKind::Const)
+                    }
+                    ModuleDefId::StaticId(static_id) => {
+                        bodies_to_traverse.push(static_id.into());
+                        decl(db, static_id, FileSymbolKind::Static)
+                    }
+                    ModuleDefId::TraitId(trait_id) => decl(db, trait_id, FileSymbolKind::Trait),
+                    ModuleDefId::TypeAliasId(alias_id) => {
+                        decl_assoc(db, alias_id, FileSymbolKind::TypeAlias)
+                    }
+                    ModuleDefId::BuiltinType(_) => None,
+                    ModuleDefId::EnumVariantId(_) => None,
+                });
 
-    symbols.extend(symbols_iter);
+            symbols.extend(symbols_iter);
+        };
+
+    let mut bodies_to_traverse = Vec::new();
+    collect_symbols_from_scope(scope, symbols, &mut bodies_to_traverse);
+
+    while let Some(body) = bodies_to_traverse.pop() {
+        let body = db.body(body);
+
+        for (_, block_def_map) in body.blocks(db) {
+            for (_, module_data) in block_def_map.modules() {
+                collect_symbols_from_scope(&module_data.scope, symbols, &mut bodies_to_traverse);
+            }
+        }
+    }
 }
