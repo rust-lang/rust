@@ -94,12 +94,18 @@ impl Query {
 
 #[salsa::query_group(SymbolsDatabaseStorage)]
 pub trait SymbolsDatabase: HirDatabase + SourceDatabaseExt + Upcast<dyn HirDatabase> {
+    /// The symbol index for a given module. These modules should only be in source roots that
+    /// are inside local_roots.
     fn module_symbols(&self, module_id: ModuleId) -> Arc<SymbolIndex>;
+
+    /// The symbol index for a given source root within library_roots.
     fn library_symbols(&self, source_root_id: SourceRootId) -> Arc<SymbolIndex>;
+
     /// The set of "local" (that is, from the current workspace) roots.
     /// Files in local roots are assumed to change frequently.
     #[salsa::input]
     fn local_roots(&self) -> Arc<FxHashSet<SourceRootId>>;
+
     /// The set of roots for crates.io libraries.
     /// Files in libraries are assumed to never change.
     #[salsa::input]
@@ -114,6 +120,9 @@ fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Ar
         .source_root_crates(source_root_id)
         .iter()
         .flat_map(|&krate| module_ids_for_crate(db.upcast(), krate))
+        // we specifically avoid calling SymbolsDatabase::module_symbols here, even they do the same thing,
+        // as the index for a library is not going to really ever change, and we do not want to store each
+        // module's index in salsa.
         .map(|module_id| SymbolCollector::collect(db, module_id))
         .flatten()
         .collect();
@@ -129,9 +138,21 @@ fn module_symbols(db: &dyn SymbolsDatabase, module_id: ModuleId) -> Arc<SymbolIn
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);
+impl<DB: ParallelDatabase> Snap<salsa::Snapshot<DB>> {
+    fn new(db: &DB) -> Self {
+        Self(db.snapshot())
+    }
+}
 impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
     fn clone(&self) -> Snap<salsa::Snapshot<DB>> {
         Snap(self.0.snapshot())
+    }
+}
+impl<DB> std::ops::Deref for Snap<DB> {
+    type Target = DB;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -164,12 +185,10 @@ impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     let _p = profile::span("world_symbols").detail(|| query.query.clone());
 
-    let snap = Snap(db.snapshot());
-
     let indices = if query.libs {
         db.library_roots()
             .par_iter()
-            .map_with(snap, |snap, &root| snap.0.library_symbols(root))
+            .map_with(Snap::new(db), |snap, &root| snap.library_symbols(root))
             .collect()
     } else {
         let mut module_ids = Vec::new();
@@ -183,7 +202,7 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 
         module_ids
             .par_iter()
-            .map_with(snap, |snap, &module_id| snap.0.module_symbols(module_id))
+            .map_with(Snap::new(db), |snap, &module_id| snap.module_symbols(module_id))
             .collect()
     };
 
@@ -194,10 +213,9 @@ pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<Fil
     let _p = profile::span("crate_symbols").detail(|| format!("{:?}", query));
 
     let module_ids = module_ids_for_crate(db, krate);
-    let snap = Snap(db.snapshot());
     let indices: Vec<_> = module_ids
         .par_iter()
-        .map_with(snap, |snap, &module_id| snap.0.module_symbols(module_id))
+        .map_with(Snap::new(db), |snap, &module_id| snap.module_symbols(module_id))
         .collect();
 
     query.search(indices)
