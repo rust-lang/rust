@@ -833,6 +833,13 @@ impl Passes {
             Passes::All => false,
         }
     }
+
+    pub fn extend(&mut self, passes: impl IntoIterator<Item = String>) {
+        match *self {
+            Passes::Some(ref mut v) => v.extend(passes),
+            Passes::All => {}
+        }
+    }
 }
 
 pub const fn default_lib_output() -> CrateType {
