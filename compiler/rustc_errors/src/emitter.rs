@@ -2083,7 +2083,7 @@ const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\t', "    "),   // We do our own tab replacement
     ('\u{200D}', ""), // Replace ZWJ with nothing for consistent terminal output of grapheme clusters.
     ('\u{202A}', ""), // The following unicode text flow control characters are inconsistently
-    ('\u{202B}', ""), // supported accross CLIs and can cause confusion due to the bytes on disk
+    ('\u{202B}', ""), // supported across CLIs and can cause confusion due to the bytes on disk
     ('\u{202D}', ""), // not corresponding to the visible source code, so we replace them always.
     ('\u{202E}', ""),
     ('\u{2066}', ""),
