@@ -848,6 +848,31 @@ impl<T> Option<T> {
         }
     }
 
+    /// Calls the provided closure with a reference to the contained value (if [`Some`]).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_option_inspect)]
+    ///
+    /// let v = vec![1, 2, 3, 4, 5];
+    ///
+    /// // prints "got: 4"
+    /// let x: Option<&usize> = v.get(3).inspect(|x| println!("got: {}", x));
+    ///
+    /// // prints nothing
+    /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {}", x));
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_option_inspect", issue = "91345")]
+    pub fn inspect<F: FnOnce(&T)>(self, f: F) -> Self {
+        if let Some(ref x) = self {
+            f(x);
+        }
+
+        self
+    }
+
     /// Returns the provided default result (if none),
     /// or applies a function to the contained value (if any).
     ///
