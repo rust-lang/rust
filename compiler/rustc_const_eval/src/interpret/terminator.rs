@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::ty::layout::{self, LayoutOf as _, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::Instance;
 use rustc_middle::{
     mir,
     ty::{self, Ty},
 };
 use rustc_target::abi;
+use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::abi::Abi;
 
 use super::{
@@ -17,10 +17,6 @@ use super::{
 };
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    fn fn_can_unwind(&self, attrs: CodegenFnAttrFlags, abi: Abi) -> bool {
-        layout::fn_can_unwind(*self.tcx, attrs, abi)
-    }
-
     pub(super) fn eval_terminator(
         &mut self,
         terminator: &mir::Terminator<'tcx>,
@@ -64,25 +60,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
-                let (fn_val, abi, caller_can_unwind) = match *func.layout.ty.kind() {
-                    ty::FnPtr(sig) => {
-                        let caller_abi = sig.abi();
+                let args = self.eval_operands(args)?;
+
+                let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
+                let fn_sig =
+                    self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
+                let extra_args = &args[fn_sig.inputs().len()..];
+                let extra_args = self.tcx.mk_type_list(extra_args.iter().map(|arg| arg.layout.ty));
+
+                let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
+                    ty::FnPtr(_sig) => {
                         let fn_ptr = self.read_pointer(&func)?;
                         let fn_val = self.memory.get_fn(fn_ptr)?;
-                        (
-                            fn_val,
-                            caller_abi,
-                            self.fn_can_unwind(CodegenFnAttrFlags::empty(), caller_abi),
-                        )
+                        (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
                     }
                     ty::FnDef(def_id, substs) => {
-                        let sig = func.layout.ty.fn_sig(*self.tcx);
+                        let instance =
+                            self.resolve(ty::WithOptConstParam::unknown(def_id), substs)?;
                         (
-                            FnVal::Instance(
-                                self.resolve(ty::WithOptConstParam::unknown(def_id), substs)?,
-                            ),
-                            sig.abi(),
-                            self.fn_can_unwind(self.tcx.codegen_fn_attrs(def_id).flags, sig.abi()),
+                            FnVal::Instance(instance),
+                            self.fn_abi_of_instance(instance, extra_args)?,
+                            instance.def.requires_caller_location(*self.tcx),
                         )
                     }
                     _ => span_bug!(
@@ -91,7 +89,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         func.layout.ty
                     ),
                 };
-                let args = self.eval_operands(args)?;
+
                 let dest_place;
                 let ret = match destination {
                     Some((dest, ret)) => {
@@ -102,10 +100,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 self.eval_fn_call(
                     fn_val,
-                    abi,
+                    (fn_sig.abi, fn_abi),
                     &args,
+                    with_caller_location,
                     ret,
-                    match (cleanup, caller_can_unwind) {
+                    match (cleanup, fn_abi.can_unwind) {
                         (Some(cleanup), true) => StackPopUnwind::Cleanup(*cleanup),
                         (None, true) => StackPopUnwind::Skip,
                         (_, false) => StackPopUnwind::NotAllowed,
@@ -174,68 +173,120 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     fn check_argument_compat(
-        rust_abi: bool,
-        caller: TyAndLayout<'tcx>,
-        callee: TyAndLayout<'tcx>,
+        caller_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     ) -> bool {
-        if caller.ty == callee.ty {
-            // No question
-            return true;
-        }
-        if !rust_abi {
-            // Don't risk anything
-            return false;
-        }
-        // Compare layout
-        match (caller.abi, callee.abi) {
-            // Different valid ranges are okay (once we enforce validity,
-            // that will take care to make it UB to leave the range, just
-            // like for transmute).
-            (abi::Abi::Scalar(caller), abi::Abi::Scalar(callee)) => caller.value == callee.value,
-            (abi::Abi::ScalarPair(caller1, caller2), abi::Abi::ScalarPair(callee1, callee2)) => {
-                caller1.value == callee1.value && caller2.value == callee2.value
+        // Heuristic for type comparison.
+        let layout_compat = || {
+            if caller_abi.layout.ty == callee_abi.layout.ty {
+                // No question
+                return true;
             }
-            // Be conservative
-            _ => false,
-        }
+            // Compare layout
+            match (caller_abi.layout.abi, callee_abi.layout.abi) {
+                // Different valid ranges are okay (once we enforce validity,
+                // that will take care to make it UB to leave the range, just
+                // like for transmute).
+                (abi::Abi::Scalar(caller), abi::Abi::Scalar(callee)) => {
+                    caller.value == callee.value
+                }
+                (
+                    abi::Abi::ScalarPair(caller1, caller2),
+                    abi::Abi::ScalarPair(callee1, callee2),
+                ) => caller1.value == callee1.value && caller2.value == callee2.value,
+                // Be conservative
+                _ => false,
+            }
+        };
+        // Padding must be fully equal.
+        let pad_compat = || {
+            if caller_abi.pad != callee_abi.pad {
+                trace!(
+                    "check_argument_compat: incompatible pad: {:?} != {:?}",
+                    caller_abi.pad,
+                    callee_abi.pad
+                );
+                return false;
+            }
+            return true;
+        };
+        // For comparing the PassMode, we allow the attributes to differ
+        // (e.g., it is okay for NonNull to differ between caller and callee).
+        // FIXME: Are there attributes (`call::ArgAttributes`) that do need to be checked?
+        let mode_compat = || {
+            match (caller_abi.mode, callee_abi.mode) {
+                (PassMode::Ignore, PassMode::Ignore) => return true,
+                (PassMode::Direct(_), PassMode::Direct(_)) => return true,
+                (PassMode::Pair(_, _), PassMode::Pair(_, _)) => return true,
+                (PassMode::Cast(c1), PassMode::Cast(c2)) if c1 == c2 => return true,
+                (
+                    PassMode::Indirect { attrs: _, extra_attrs: e1, on_stack: s1 },
+                    PassMode::Indirect { attrs: _, extra_attrs: e2, on_stack: s2 },
+                ) if e1.is_some() == e2.is_some() && s1 == s2 => return true,
+                _ => {}
+            }
+            trace!(
+                "check_argument_compat: incompatible modes:\ncaller: {:?}\ncallee: {:?}",
+                caller_abi.mode,
+                callee_abi.mode
+            );
+            return false;
+        };
+
+        layout_compat() && pad_compat() && mode_compat()
     }
 
-    /// Pass a single argument, checking the types for compatibility.
-    fn pass_argument(
+    /// Initialize a single callee argument, checking the types for compatibility.
+    fn pass_argument<'x, 'y>(
         &mut self,
-        rust_abi: bool,
-        caller_arg: &mut impl Iterator<Item = OpTy<'tcx, M::PointerTag>>,
+        caller_args: &mut impl Iterator<
+            Item = (&'x OpTy<'tcx, M::PointerTag>, &'y ArgAbi<'tcx, Ty<'tcx>>),
+        >,
+        callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
         callee_arg: &PlaceTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx> {
-        if rust_abi && callee_arg.layout.is_zst() {
-            // Nothing to do.
-            trace!("Skipping callee ZST");
+    ) -> InterpResult<'tcx>
+    where
+        'tcx: 'x,
+        'tcx: 'y,
+    {
+        if matches!(callee_abi.mode, PassMode::Ignore) {
+            // This one is skipped.
             return Ok(());
         }
-        let caller_arg = caller_arg.next().ok_or_else(|| {
+        // Find next caller arg.
+        let (caller_arg, caller_abi) = caller_args.next().ok_or_else(|| {
             err_ub_format!("calling a function with fewer arguments than it requires")
         })?;
-        if rust_abi {
-            assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
-        }
         // Now, check
-        if !Self::check_argument_compat(rust_abi, caller_arg.layout, callee_arg.layout) {
+        if !Self::check_argument_compat(caller_abi, callee_abi) {
             throw_ub_format!(
                 "calling a function with argument of type {:?} passing data of type {:?}",
                 callee_arg.layout.ty,
                 caller_arg.layout.ty
             )
         }
-        // We allow some transmutes here
+        // We allow some transmutes here.
+        // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
+        // is true for all `copy_op`, but there are a lot of special cases for argument passing
+        // specifically.)
         self.copy_op_transmute(&caller_arg, callee_arg)
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.
+    ///
+    /// For now, we require *both* the `Abi` and `FnAbi` of the caller. In principle, however,
+    /// `FnAbi` should be enough -- if they are sufficiently compatible, it's probably okay for
+    /// `Abi` to differ.
+    ///
+    /// `with_caller_location` indicates whether the caller passed a caller location. Miri
+    /// implements caller locations without argument passing, but to match `FnAbi` we need to know
+    /// when those arguments are present.
     pub(crate) fn eval_fn_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        caller_abi: Abi,
+        (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
         args: &[OpTy<'tcx, M::PointerTag>],
+        with_caller_location: bool,
         ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
         mut unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
@@ -250,6 +301,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let get_abi = |this: &Self, instance_ty: Ty<'tcx>| match instance_ty.kind() {
             ty::FnDef(..) => instance_ty.fn_sig(*this.tcx).abi(),
+            // Even after lowering closures and generators away, the *callee* can still have this
+            // kind of type.
             ty::Closure(..) => Abi::RustCall,
             ty::Generator(..) => Abi::Rust,
             _ => span_bug!(this.cur_span(), "unexpected callee ty: {:?}", instance_ty),
@@ -281,6 +334,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     check_abi(get_abi(self, instance.ty(*self.tcx, self.param_env)))?;
                 }
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
+                // caller_fn_abi is not relevant here, we interpret the arguments directly for each intrinsic.
                 M::call_intrinsic(self, instance, args, ret, unwind)
             }
             ty::InstanceDef::VtableShim(..)
@@ -291,26 +345,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let body =
+                let (body, instance) =
                     match M::find_mir_or_eval_fn(self, instance, caller_abi, args, ret, unwind)? {
                         Some(body) => body,
                         None => return Ok(()),
                     };
 
-                // Check against the ABI of the MIR body we are calling (not the ABI of `instance`;
-                // these can differ when `find_mir_or_eval_fn` does something clever like resolve
-                // exported symbol names).
-                let callee_def_id = body.source.def_id();
-                let callee_abi = get_abi(self, self.tcx.type_of(callee_def_id));
+                // Compute callee information using the `instance` returned by
+                // `find_mir_or_eval_fn`.
+                let callee_abi = get_abi(self, instance.ty(*self.tcx, self.param_env));
+                // FIXME: for variadic support, do we have to somehow determine calle's extra_args?
+                let callee_fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
+                assert!(!callee_fn_abi.c_variadic);
+                assert!(!caller_fn_abi.c_variadic);
 
                 if M::enforce_abi(self) {
                     check_abi(callee_abi)?;
                 }
 
-                if !matches!(unwind, StackPopUnwind::NotAllowed)
-                    && !self
-                        .fn_can_unwind(self.tcx.codegen_fn_attrs(callee_def_id).flags, callee_abi)
-                {
+                if !matches!(unwind, StackPopUnwind::NotAllowed) && !callee_fn_abi.can_unwind {
                     // The callee cannot unwind.
                     unwind = StackPopUnwind::NotAllowed;
                 }
@@ -343,12 +396,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             .collect::<Vec<_>>()
                     );
 
-                    // Figure out how to pass which arguments.
-                    // The Rust ABI is special: ZST get skipped.
-                    let rust_abi = matches!(caller_abi, Abi::Rust | Abi::RustCall);
-
-                    // We have two iterators: Where the arguments come from,
-                    // and where they go to.
+                    // In principle, we have two iterators: Where the arguments come from, and where
+                    // they go to.
 
                     // For where they come from: If the ABI is RustCall, we untuple the
                     // last incoming argument.  These two iterators do not have the same type,
@@ -373,53 +422,59 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             // Plain arg passing
                             Cow::from(args)
                         };
-                    // Skip ZSTs
-                    let mut caller_iter =
-                        caller_args.iter().filter(|op| !rust_abi || !op.layout.is_zst()).copied();
+                    // If `with_caller_location` is set we pretend there is an extra argument (that
+                    // we will not pass).
+                    assert_eq!(
+                        caller_args.len() + if with_caller_location { 1 } else { 0 },
+                        caller_fn_abi.args.len(),
+                        "mismatch between caller ABI and caller arguments",
+                    );
+                    let mut caller_args = caller_args
+                        .iter()
+                        .zip(caller_fn_abi.args.iter())
+                        .filter(|arg_and_abi| !matches!(arg_and_abi.1.mode, PassMode::Ignore));
 
                     // Now we have to spread them out across the callee's locals,
                     // taking into account the `spread_arg`.  If we could write
                     // this is a single iterator (that handles `spread_arg`), then
                     // `pass_argument` would be the loop body. It takes care to
                     // not advance `caller_iter` for ZSTs.
+                    let mut callee_args_abis = callee_fn_abi.args.iter();
                     for local in body.args_iter() {
                         let dest = self.eval_place(mir::Place::from(local))?;
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
                                 let dest = self.place_field(&dest, i)?;
-                                self.pass_argument(rust_abi, &mut caller_iter, &dest)?;
+                                let callee_abi = callee_args_abis.next().unwrap();
+                                self.pass_argument(&mut caller_args, callee_abi, &dest)?;
                             }
                         } else {
                             // Normal argument
-                            self.pass_argument(rust_abi, &mut caller_iter, &dest)?;
+                            let callee_abi = callee_args_abis.next().unwrap();
+                            self.pass_argument(&mut caller_args, callee_abi, &dest)?;
                         }
                     }
-                    // Now we should have no more caller args
-                    if caller_iter.next().is_some() {
+                    // If the callee needs a caller location, pretend we consume one more argument from the ABI.
+                    if instance.def.requires_caller_location(*self.tcx) {
+                        callee_args_abis.next().unwrap();
+                    }
+                    // Now we should have no more caller args or callee arg ABIs
+                    assert!(
+                        callee_args_abis.next().is_none(),
+                        "mismatch between callee ABI and callee body arguments"
+                    );
+                    if caller_args.next().is_some() {
                         throw_ub_format!("calling a function with more arguments than it expected")
                     }
                     // Don't forget to check the return type!
-                    if let Some((caller_ret, _)) = ret {
-                        let callee_ret = self.eval_place(mir::Place::return_place())?;
-                        if !Self::check_argument_compat(
-                            rust_abi,
-                            caller_ret.layout,
-                            callee_ret.layout,
-                        ) {
-                            throw_ub_format!(
-                                "calling a function with return type {:?} passing \
-                                     return place of type {:?}",
-                                callee_ret.layout.ty,
-                                caller_ret.layout.ty
-                            )
-                        }
-                    } else {
-                        let local = mir::RETURN_PLACE;
-                        let callee_layout = self.layout_of_local(self.frame(), local, None)?;
-                        if !callee_layout.abi.is_uninhabited() {
-                            throw_ub_format!("calling a returning function without a return place")
-                        }
+                    if !Self::check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret) {
+                        throw_ub_format!(
+                            "calling a function with return type {:?} passing \
+                                    return place of type {:?}",
+                            callee_fn_abi.ret.layout.ty,
+                            caller_fn_abi.ret.layout.ty,
+                        )
                     }
                 };
                 match res {
@@ -464,7 +519,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ));
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(fn_val, caller_abi, &args, ret, unwind)
+                self.eval_fn_call(
+                    fn_val,
+                    (caller_abi, caller_fn_abi),
+                    &args,
+                    with_caller_location,
+                    ret,
+                    unwind,
+                )
             }
         }
     }
@@ -489,6 +551,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             _ => (instance, place),
         };
+        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
         let arg = ImmTy::from_immediate(
             place.to_ref(self),
@@ -500,8 +563,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         self.eval_fn_call(
             FnVal::Instance(instance),
-            Abi::Rust,
+            (Abi::Rust, fn_abi),
             &[arg.into()],
+            false,
             Some((&dest.into(), target)),
             match unwind {
                 Some(cleanup) => StackPopUnwind::Cleanup(cleanup),

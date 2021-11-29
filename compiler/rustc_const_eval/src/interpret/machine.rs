@@ -167,7 +167,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
         unwind: StackPopUnwind,
-    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
+    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>>;
 
     /// Execute `fn_val`.  It is the hook's responsibility to advance the instruction
     /// pointer as appropriate.
