@@ -594,6 +594,7 @@ impl DefCollector<'_> {
     ) {
         // Textual scoping
         self.define_legacy_macro(module_id, name.clone(), macro_);
+        self.def_map.modules[module_id].scope.declare_macro(macro_);
 
         // Module scoping
         // In Rust, `#[macro_export]` macros are unconditionally visible at the

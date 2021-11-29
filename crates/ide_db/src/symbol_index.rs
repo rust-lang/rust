@@ -490,8 +490,6 @@ impl<'a> SymbolCollector<'a> {
         let module_data = &def_map[module_id.local_id];
         let scope = &module_data.scope;
 
-        dbg!(scope);
-
         for module_def_id in scope.declarations() {
             match module_def_id {
                 ModuleDefId::ModuleId(id) => self.push_module(id),
@@ -531,13 +529,6 @@ impl<'a> SymbolCollector<'a> {
 
         for const_id in scope.unnamed_consts() {
             self.work.push(SymbolCollectorWorkItem::Body { body: const_id.into() })
-        }
-
-        // Collect legacy macros from the root module only:
-        if module_data.parent.is_none() {
-            for (_, macro_def_id) in scope.legacy_macros() {
-                self.push_decl_macro(macro_def_id.into());
-            }
         }
 
         for macro_def_id in scope.macro_declarations() {
@@ -699,7 +690,7 @@ impl<'a> SymbolCollector<'a> {
         })
     }
 
-    pub(crate) fn push_decl_macro(&mut self, macro_def: MacroDef) {
+    fn push_decl_macro(&mut self, macro_def: MacroDef) {
         self.push_file_symbol(|s| {
             let name = macro_def.name(s.db.upcast())?.as_text()?;
             let source = macro_def.source(s.db.upcast())?;
