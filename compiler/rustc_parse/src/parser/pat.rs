@@ -3,14 +3,16 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::{self as ast, AttrVec, Attribute, MacCall, Pat, PatField, PatKind, RangeEnd};
-use rustc_ast::{BindingMode, Expr, ExprKind, Mutability, Path, QSelf, RangeSyntax};
+use rustc_ast::{
+    self as ast, AttrVec, Attribute, BindingMode, Expr, ExprKind, MacCall, Mutability, Pat,
+    PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
+};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 
-type Expected = Option<&'static str>;
+pub(super) type Expected = Option<&'static str>;
 
 /// `Expected` for function and lambda parameter patterns.
 pub(super) const PARAM_EXPECTED: Expected = Some("parameter name");
@@ -98,55 +100,9 @@ impl<'a> Parser<'a> {
             // If we parsed a leading `|` which should be gated,
             // then we should really gate the leading `|`.
             // This complicated procedure is done purely for diagnostics UX.
-            let mut first_pat = first_pat;
 
-            if let (RecoverColon::Yes, token::Colon) = (ra, &self.token.kind) {
-                if matches!(
-                    first_pat.kind,
-                    PatKind::Ident(BindingMode::ByValue(Mutability::Not), _, None)
-                        | PatKind::Path(..)
-                ) && self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
-                {
-                    // The pattern looks like it might be a path with a `::` -> `:` typo:
-                    // `match foo { bar:baz => {} }`
-                    let span = self.token.span;
-                    // We only emit "unexpected `:`" error here if we can successfully parse the
-                    // whole pattern correctly in that case.
-                    let snapshot = self.clone();
-
-                    // Create error for "unexpected `:`".
-                    match self.expected_one_of_not_found(&[], &[]) {
-                        Err(mut err) => {
-                            self.bump(); // Skip the `:`.
-                            match self.parse_pat_no_top_alt(expected) {
-                                Err(mut inner_err) => {
-                                    // Carry on as if we had not done anything, callers will emit a
-                                    // reasonable error.
-                                    inner_err.cancel();
-                                    err.cancel();
-                                    *self = snapshot;
-                                }
-                                Ok(pat) => {
-                                    // We've parsed the rest of the pattern.
-                                    err.span_suggestion(
-                                        span,
-                                        "maybe write a path separator here",
-                                        "::".to_string(),
-                                        Applicability::MachineApplicable,
-                                    );
-                                    err.emit();
-                                    first_pat =
-                                        self.mk_pat(first_pat.span.to(pat.span), PatKind::Wild);
-                                }
-                            }
-                        }
-                        _ => {
-                            // Carry on as if we had not done anything. This should be unreachable.
-                            *self = snapshot;
-                        }
-                    };
-                }
-            }
+            // Check if the user wrote `foo:bar` instead of `foo::bar`.
+            let first_pat = self.maybe_recover_colon_colon_in_pat_typo(first_pat, ra, expected);
 
             if let Some(leading_vert_span) = leading_vert_span {
                 // If there was a leading vert, treat this as an or-pattern. This improves
@@ -319,57 +275,6 @@ impl<'a> Parser<'a> {
             err.span_label(lo, WHILE_PARSING_OR_MSG);
         }
         err.emit();
-    }
-
-    /// Some special error handling for the "top-level" patterns in a match arm,
-    /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    fn maybe_recover_unexpected_comma(&mut self, lo: Span, rc: RecoverComma) -> PResult<'a, ()> {
-        if rc == RecoverComma::No || self.token != token::Comma {
-            return Ok(());
-        }
-
-        // An unexpected comma after a top-level pattern is a clue that the
-        // user (perhaps more accustomed to some other language) forgot the
-        // parentheses in what should have been a tuple pattern; return a
-        // suggestion-enhanced error here rather than choking on the comma later.
-        let comma_span = self.token.span;
-        self.bump();
-        if let Err(mut err) = self.skip_pat_list() {
-            // We didn't expect this to work anyway; we just wanted to advance to the
-            // end of the comma-sequence so we know the span to suggest parenthesizing.
-            err.cancel();
-        }
-        let seq_span = lo.to(self.prev_token.span);
-        let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
-        if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
-            const MSG: &str = "try adding parentheses to match on a tuple...";
-
-            err.span_suggestion(
-                seq_span,
-                MSG,
-                format!("({})", seq_snippet),
-                Applicability::MachineApplicable,
-            );
-            err.span_suggestion(
-                seq_span,
-                "...or a vertical bar to match on multiple alternatives",
-                seq_snippet.replace(",", " |"),
-                Applicability::MachineApplicable,
-            );
-        }
-        Err(err)
-    }
-
-    /// Parse and throw away a parenthesized comma separated
-    /// sequence of patterns until `)` is reached.
-    fn skip_pat_list(&mut self) -> PResult<'a, ()> {
-        while !self.check(&token::CloseDelim(token::Paren)) {
-            self.parse_pat_no_top_alt(None)?;
-            if !self.eat(&token::Comma) {
-                return Ok(());
-            }
-        }
-        Ok(())
     }
 
     /// A `|` or possibly `||` token shouldn't be here. Ban it.
@@ -1168,7 +1073,7 @@ impl<'a> Parser<'a> {
         self.mk_pat(span, PatKind::Ident(bm, ident, None))
     }
 
-    fn mk_pat(&self, span: Span, kind: PatKind) -> P<Pat> {
+    pub(super) fn mk_pat(&self, span: Span, kind: PatKind) -> P<Pat> {
         P(Pat { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 }
