@@ -2337,6 +2337,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // This code is hot enough that it's worth avoiding the allocation
         // required for the FxHashSet when possible. Special-casing lengths 0,
         // 1 and 2 covers roughly 75-80% of the cases.
+        //
+        // Ideally we would perform deduplication incrementally in the predicates
+        // loop above to prevent excessive Vec growth but that would require
+        // a Vec::range_retain or similar method.
         if obligations.len() <= 1 {
             // No possibility of duplicates.
         } else if obligations.len() == 2 {

@@ -30,8 +30,10 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
+use crate::traits::ObligationsDedup;
 pub use rustc_middle::traits::Reveal;
 
 pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
@@ -839,6 +841,8 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     // mode, which could lead to using incorrect cache results.
     let use_cache = !selcx.is_intercrate();
 
+    let mut obligations = ObligationsDedup::from_vec(obligations);
+
     let projection_ty = infcx.resolve_vars_if_possible(projection_ty);
     let cache_key = ProjectionCacheKey::new(projection_ty);
 
@@ -850,65 +854,76 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     // bounds. It might be the case that we want two distinct caches,
     // or else another kind of cache entry.
 
-    let cache_result = if use_cache {
-        infcx.inner.borrow_mut().projection_cache().try_start(cache_key)
-    } else {
-        Ok(())
-    };
-    match cache_result {
-        Ok(()) => debug!("no cache"),
-        Err(ProjectionCacheEntry::Ambiguous) => {
-            // If we found ambiguity the last time, that means we will continue
-            // to do so until some type in the key changes (and we know it
-            // hasn't, because we just fully resolved it).
-            debug!("found cache entry: ambiguous");
-            return Ok(None);
-        }
-        Err(ProjectionCacheEntry::InProgress) => {
-            // Under lazy normalization, this can arise when
-            // bootstrapping.  That is, imagine an environment with a
-            // where-clause like `A::B == u32`. Now, if we are asked
-            // to normalize `A::B`, we will want to check the
-            // where-clauses in scope. So we will try to unify `A::B`
-            // with `A::B`, which can trigger a recursive
-            // normalization.
+    if use_cache {
+        let result =
+            infcx.inner.borrow_mut().projection_cache().try_start_borrowed(cache_key, |cached| {
+                match cached {
+                    ProjectionCacheEntry::NormalizedTy { ty, complete: _ } => {
+                        // This is the hottest path in this function.
+                        //
+                        // If we find the value in the cache, then return it along
+                        // with the obligations that went along with it. Note
+                        // that, when using a fulfillment context, these
+                        // obligations could in principle be ignored: they have
+                        // already been registered when the cache entry was
+                        // created (and hence the new ones will quickly be
+                        // discarded as duplicated). But when doing trait
+                        // evaluation this is not the case, and dropping the trait
+                        // evaluations can causes ICEs (e.g., #43132).
+                        debug!(?ty, "found normalized ty");
+                        obligations.extend(ty.obligations.iter().map(Cow::Borrowed));
+                        Ok(Some(ty.value))
+                    }
+                    cached @ _ => Err(cached.clone()),
+                }
+            });
 
-            debug!("found cache entry: in-progress");
+        match result {
+            Some(Ok(ret)) => return Ok(ret),
+            Some(Err(cached)) => {
+                return match cached {
+                    ProjectionCacheEntry::Ambiguous => {
+                        // If we found ambiguity the last time, that means we will continue
+                        // to do so until some type in the key changes (and we know it
+                        // hasn't, because we just fully resolved it).
+                        debug!("found cache entry: ambiguous");
+                        Ok(None)
+                    }
+                    ProjectionCacheEntry::InProgress => {
+                        // Under lazy normalization, this can arise when
+                        // bootstrapping.  That is, imagine an environment with a
+                        // where-clause like `A::B == u32`. Now, if we are asked
+                        // to normalize `A::B`, we will want to check the
+                        // where-clauses in scope. So we will try to unify `A::B`
+                        // with `A::B`, which can trigger a recursive
+                        // normalization.
 
-            // Cache that normalizing this projection resulted in a cycle. This
-            // should ensure that, unless this happens within a snapshot that's
-            // rolled back, fulfillment or evaluation will notice the cycle.
+                        debug!("found cache entry: in-progress");
 
-            if use_cache {
-                infcx.inner.borrow_mut().projection_cache().recur(cache_key);
+                        // Cache that normalizing this projection resulted in a cycle. This
+                        // should ensure that, unless this happens within a snapshot that's
+                        // rolled back, fulfillment or evaluation will notice the cycle.
+
+                        if use_cache {
+                            infcx.inner.borrow_mut().projection_cache().recur(cache_key);
+                        }
+                        Err(InProgress)
+                    }
+                    ProjectionCacheEntry::Recur => {
+                        debug!("recur cache");
+                        Err(InProgress)
+                    }
+                    ProjectionCacheEntry::Error => {
+                        debug!("opt_normalize_projection_type: found error");
+                        let result =
+                            normalize_to_error(selcx, param_env, projection_ty, cause, depth);
+                        obligations.extend(result.obligations.into_iter().map(Cow::Owned));
+                        Ok(Some(result.value))
+                    }
+                    _ => unreachable!("unexpected variant"),
+                };
             }
-            return Err(InProgress);
-        }
-        Err(ProjectionCacheEntry::Recur) => {
-            debug!("recur cache");
-            return Err(InProgress);
-        }
-        Err(ProjectionCacheEntry::NormalizedTy { ty, complete: _ }) => {
-            // This is the hottest path in this function.
-            //
-            // If we find the value in the cache, then return it along
-            // with the obligations that went along with it. Note
-            // that, when using a fulfillment context, these
-            // obligations could in principle be ignored: they have
-            // already been registered when the cache entry was
-            // created (and hence the new ones will quickly be
-            // discarded as duplicated). But when doing trait
-            // evaluation this is not the case, and dropping the trait
-            // evaluations can causes ICEs (e.g., #43132).
-            debug!(?ty, "found normalized ty");
-            obligations.extend(ty.obligations);
-            return Ok(Some(ty.value));
-        }
-        Err(ProjectionCacheEntry::Error) => {
-            debug!("opt_normalize_projection_type: found error");
-            let result = normalize_to_error(selcx, param_env, projection_ty, cause, depth);
-            obligations.extend(result.obligations);
-            return Ok(Some(result.value));
+            _ => {}
         }
     }
 
@@ -955,7 +970,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             if use_cache {
                 infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, result.clone());
             }
-            obligations.extend(result.obligations);
+            obligations.extend(result.obligations.into_iter().map(Cow::Owned));
             Ok(Some(result.value))
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
@@ -985,7 +1000,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 infcx.inner.borrow_mut().projection_cache().error(cache_key);
             }
             let result = normalize_to_error(selcx, param_env, projection_ty, cause, depth);
-            obligations.extend(result.obligations);
+            obligations.extend(result.obligations.into_iter().map(Cow::Owned));
             Ok(Some(result.value))
         }
     }

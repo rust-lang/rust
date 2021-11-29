@@ -17,6 +17,7 @@
 #![feature(box_patterns)]
 #![feature(derive_default_enum)]
 #![feature(extend_one)]
+#![feature(hash_raw_entry)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(control_flow_enum)]
