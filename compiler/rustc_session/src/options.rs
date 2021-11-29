@@ -101,6 +101,14 @@ macro_rules! top_level_options {
     );
 }
 
+impl Options {
+    pub fn mir_opt_level(&self) -> usize {
+        self.debugging_opts
+            .mir_opt_level
+            .unwrap_or_else(|| if self.optimize != OptLevel::No { 2 } else { 1 })
+    }
+}
+
 top_level_options!(
     /// The top-level command-line options struct.
     ///
