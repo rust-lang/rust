@@ -47,7 +47,7 @@ use hir_def::{
     AttrDefId, ConstId, ConstParamId, EnumId, FunctionId, GenericDefId, HasModule, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, StaticId, StructId, TypeAliasId, TypeParamId, UnionId,
 };
-use hir_expand::{name::name, MacroCallKind, MacroDefId, MacroDefKind};
+use hir_expand::{name::name, MacroCallKind, MacroDefKind};
 use hir_ty::{
     autoderef,
     consteval::ConstExt,
@@ -126,7 +126,7 @@ pub use {
     },
     hir_expand::{
         name::{known, Name},
-        ExpandResult, HirFileId, InFile, MacroFile, Origin,
+        ExpandResult, HirFileId, InFile, MacroDefId, MacroFile, Origin,
     },
     hir_ty::display::HirDisplay,
 };

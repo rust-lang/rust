@@ -32,10 +32,12 @@ use base_db::{
     salsa::{self, ParallelDatabase},
     CrateId, FileId, FileRange, SourceDatabaseExt, SourceRootId, Upcast,
 };
+use either::Either;
 use fst::{self, Streamer};
 use hir::{
-    db::DefDatabase, AdtId, AssocContainerId, AssocItemId, AssocItemLoc, DefHasSource,
-    DefWithBodyId, HirFileId, ImplId, InFile, ItemLoc, ItemTreeNode, Lookup, ModuleDefId, ModuleId,
+    db::{DefDatabase, HirDatabase},
+    AdtId, AssocContainerId, AssocItemId, AssocItemLoc, DefHasSource, DefWithBodyId, HasSource,
+    HirFileId, ImplId, InFile, ItemLoc, ItemTreeNode, Lookup, MacroDef, ModuleDefId, ModuleId,
     Semantics, TraitId,
 };
 use rayon::prelude::*;
@@ -94,7 +96,7 @@ impl Query {
 }
 
 #[salsa::query_group(SymbolsDatabaseStorage)]
-pub trait SymbolsDatabase: hir::db::HirDatabase + SourceDatabaseExt {
+pub trait SymbolsDatabase: HirDatabase + SourceDatabaseExt + Upcast<dyn HirDatabase> {
     fn module_symbols(&self, module_id: ModuleId) -> Arc<SymbolIndex>;
     fn library_symbols(&self) -> Arc<FxHashMap<SourceRootId, SymbolIndex>>;
     /// The set of "local" (that is, from the current workspace) roots.
@@ -129,7 +131,7 @@ fn library_symbols(db: &dyn SymbolsDatabase) -> Arc<FxHashMap<SourceRootId, Symb
 }
 
 fn module_symbols(db: &dyn SymbolsDatabase, module_id: ModuleId) -> Arc<SymbolIndex> {
-    let symbols = SymbolCollector::collect(db.upcast(), module_id);
+    let symbols = SymbolCollector::collect(db, module_id);
     Arc::new(SymbolIndex::new(symbols))
 }
 
@@ -204,10 +206,6 @@ pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<Fil
         .par_iter()
         .map_with(snap, |snap, &module_id| snap.0.module_symbols(module_id))
         .collect();
-
-    for i in &buf {
-        dbg!(&i.symbols);
-    }
 
     let buf = buf.iter().map(|it| &**it).collect::<Vec<_>>();
     query.search(&buf)
@@ -446,14 +444,16 @@ enum SymbolCollectorWorkItem {
 }
 
 struct SymbolCollector<'a> {
-    db: &'a dyn DefDatabase,
+    db: &'a dyn SymbolsDatabase,
     symbols: Vec<FileSymbol>,
     work: Vec<SymbolCollectorWorkItem>,
     container_name_stack: Vec<SmolStr>,
 }
 
+/// Given a [`ModuleId`] and a [`SymbolsDatabase`], use the DefMap for the module's crate to collect all symbols that should be
+/// indexed for the given module.
 impl<'a> SymbolCollector<'a> {
-    fn collect(db: &dyn DefDatabase, module_id: ModuleId) -> Vec<FileSymbol> {
+    fn collect(db: &dyn SymbolsDatabase, module_id: ModuleId) -> Vec<FileSymbol> {
         let mut symbol_collector = SymbolCollector {
             db,
             symbols: Default::default(),
@@ -486,9 +486,11 @@ impl<'a> SymbolCollector<'a> {
     }
 
     fn collect_from_module(&mut self, module_id: ModuleId) {
-        let def_map = module_id.def_map(self.db);
+        let def_map = module_id.def_map(self.db.upcast());
         let module_data = &def_map[module_id.local_id];
         let scope = &module_data.scope;
+
+        dbg!(scope);
 
         for module_def_id in scope.declarations() {
             match module_def_id {
@@ -531,14 +533,23 @@ impl<'a> SymbolCollector<'a> {
             self.work.push(SymbolCollectorWorkItem::Body { body: const_id.into() })
         }
 
-        // todo: collect macros.
+        // Collect legacy macros from the root module only:
+        if module_data.parent.is_none() {
+            for (_, macro_def_id) in scope.legacy_macros() {
+                self.push_decl_macro(macro_def_id.into());
+            }
+        }
+
+        for macro_def_id in scope.macro_declarations() {
+            self.push_decl_macro(macro_def_id.into());
+        }
     }
 
     fn collect_from_body(&mut self, body_id: DefWithBodyId) {
         let body = self.db.body(body_id);
 
         // Descend into the blocks and enqueue collection of all modules within.
-        for (_, def_map) in body.blocks(self.db) {
+        for (_, def_map) in body.blocks(self.db.upcast()) {
             for (id, _) in def_map.modules() {
                 self.work.push(SymbolCollectorWorkItem::Module {
                     module_id: def_map.module_id(id),
@@ -578,15 +589,15 @@ impl<'a> SymbolCollector<'a> {
 
     fn def_with_body_id_name(&self, body_id: DefWithBodyId) -> Option<SmolStr> {
         match body_id {
-            DefWithBodyId::FunctionId(id) => {
-                Some(id.lookup(self.db).source(self.db).value.name()?.text().into())
-            }
-            DefWithBodyId::StaticId(id) => {
-                Some(id.lookup(self.db).source(self.db).value.name()?.text().into())
-            }
-            DefWithBodyId::ConstId(id) => {
-                Some(id.lookup(self.db).source(self.db).value.name()?.text().into())
-            }
+            DefWithBodyId::FunctionId(id) => Some(
+                id.lookup(self.db.upcast()).source(self.db.upcast()).value.name()?.text().into(),
+            ),
+            DefWithBodyId::StaticId(id) => Some(
+                id.lookup(self.db.upcast()).source(self.db.upcast()).value.name()?.text().into(),
+            ),
+            DefWithBodyId::ConstId(id) => Some(
+                id.lookup(self.db.upcast()).source(self.db.upcast()).value.name()?.text().into(),
+            ),
         }
     }
 
@@ -624,11 +635,11 @@ impl<'a> SymbolCollector<'a> {
         }
 
         self.push_file_symbol(|s| {
-            let loc = id.lookup(s.db);
-            let source = loc.source(s.db);
+            let loc = id.lookup(s.db.upcast());
+            let source = loc.source(s.db.upcast());
             let name_node = source.value.name()?;
             let container_name =
-                container_name(s.db, loc.container).or_else(|| s.current_container_name());
+                container_name(s.db.upcast(), loc.container).or_else(|| s.current_container_name());
 
             Some(FileSymbol {
                 name: name_node.text().into(),
@@ -650,8 +661,8 @@ impl<'a> SymbolCollector<'a> {
         <T as ItemTreeNode>::Source: HasName,
     {
         self.push_file_symbol(|s| {
-            let loc = id.lookup(s.db);
-            let source = loc.source(s.db);
+            let loc = id.lookup(s.db.upcast());
+            let source = loc.source(s.db.upcast());
             let name_node = source.value.name()?;
 
             Some(FileSymbol {
@@ -669,7 +680,7 @@ impl<'a> SymbolCollector<'a> {
 
     fn push_module(&mut self, module_id: ModuleId) {
         self.push_file_symbol(|s| {
-            let def_map = module_id.def_map(s.db);
+            let def_map = module_id.def_map(s.db.upcast());
             let module_data = &def_map[module_id.local_id];
             let declaration = module_data.origin.declaration()?;
             let module = declaration.to_node(s.db.upcast());
@@ -684,6 +695,29 @@ impl<'a> SymbolCollector<'a> {
                     ptr: SyntaxNodePtr::new(module.syntax()),
                     name_ptr: SyntaxNodePtr::new(name_node.syntax()),
                 },
+            })
+        })
+    }
+
+    pub(crate) fn push_decl_macro(&mut self, macro_def: MacroDef) {
+        self.push_file_symbol(|s| {
+            let name = macro_def.name(s.db.upcast())?.as_text()?;
+            let source = macro_def.source(s.db.upcast())?;
+
+            let (ptr, name_ptr) = match source.value {
+                Either::Left(m) => {
+                    (SyntaxNodePtr::new(m.syntax()), SyntaxNodePtr::new(m.name()?.syntax()))
+                }
+                Either::Right(f) => {
+                    (SyntaxNodePtr::new(f.syntax()), SyntaxNodePtr::new(f.name()?.syntax()))
+                }
+            };
+
+            Some(FileSymbol {
+                name,
+                kind: FileSymbolKind::Macro,
+                container_name: s.current_container_name(),
+                loc: DeclarationLocation { hir_file_id: source.file_id, name_ptr, ptr },
             })
         })
     }

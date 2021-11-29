@@ -44,6 +44,8 @@ pub struct ItemScope {
     /// The defs declared in this scope. Each def has a single scope where it is
     /// declared.
     declarations: Vec<ModuleDefId>,
+    macro_declarations: Vec<MacroDefId>,
+
     impls: Vec<ImplId>,
     unnamed_consts: Vec<ConstId>,
     /// Traits imported via `use Trait as _;`.
@@ -101,6 +103,10 @@ impl ItemScope {
         self.declarations.iter().copied()
     }
 
+    pub fn macro_declarations(&self) -> impl Iterator<Item = MacroDefId> + '_ {
+        self.macro_declarations.iter().copied()
+    }
+
     pub fn impls(&self) -> impl Iterator<Item = ImplId> + ExactSizeIterator + '_ {
         self.impls.iter().copied()
     }
@@ -121,7 +127,7 @@ impl ItemScope {
     }
 
     /// Iterate over all legacy textual scoped macros visible at the end of the module
-    pub(crate) fn legacy_macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
+    pub fn legacy_macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
         self.legacy_macros.iter().map(|(name, def)| (name, *def))
     }
 
@@ -161,6 +167,10 @@ impl ItemScope {
 
     pub(crate) fn declare(&mut self, def: ModuleDefId) {
         self.declarations.push(def)
+    }
+
+    pub(crate) fn declare_macro(&mut self, def: MacroDefId) {
+        self.macro_declarations.push(def);
     }
 
     pub(crate) fn get_legacy_macro(&self, name: &Name) -> Option<MacroDefId> {
@@ -336,7 +346,8 @@ impl ItemScope {
             values,
             macros,
             unresolved,
-            declarations: defs,
+            declarations,
+            macro_declarations,
             impls,
             unnamed_consts,
             unnamed_trait_imports,
@@ -348,7 +359,8 @@ impl ItemScope {
         values.shrink_to_fit();
         macros.shrink_to_fit();
         unresolved.shrink_to_fit();
-        defs.shrink_to_fit();
+        declarations.shrink_to_fit();
+        macro_declarations.shrink_to_fit();
         impls.shrink_to_fit();
         unnamed_consts.shrink_to_fit();
         unnamed_trait_imports.shrink_to_fit();

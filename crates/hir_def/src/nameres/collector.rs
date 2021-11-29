@@ -632,6 +632,7 @@ impl DefCollector<'_> {
     ) {
         let vis =
             self.def_map.resolve_visibility(self.db, module_id, vis).unwrap_or(Visibility::Public);
+        self.def_map.modules[module_id].scope.declare_macro(macro_);
         self.update(module_id, &[(Some(name), PerNs::macros(macro_, vis))], vis, ImportType::Named);
     }
 
@@ -640,6 +641,7 @@ impl DefCollector<'_> {
     /// A proc macro is similar to normal macro scope, but it would not visible in legacy textual scoped.
     /// And unconditionally exported.
     fn define_proc_macro(&mut self, name: Name, macro_: MacroDefId) {
+        self.def_map.modules[self.def_map.root].scope.declare_macro(macro_);
         self.update(
             self.def_map.root,
             &[(Some(name), PerNs::macros(macro_, Visibility::Public))],
