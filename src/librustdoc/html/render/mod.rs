@@ -804,17 +804,17 @@ fn assoc_type(
 
 fn render_stability_since_raw(
     w: &mut Buffer,
-    ver: Option<&str>,
+    ver: Option<Symbol>,
     const_stability: Option<&ConstStability>,
-    containing_ver: Option<&str>,
-    containing_const_ver: Option<&str>,
+    containing_ver: Option<Symbol>,
+    containing_const_ver: Option<Symbol>,
 ) {
     let ver = ver.filter(|inner| !inner.is_empty());
 
     match (ver, const_stability) {
         // stable and const stable
         (Some(v), Some(ConstStability { level: StabilityLevel::Stable { since }, .. }))
-            if Some(since.as_str()).as_deref() != containing_const_ver =>
+            if Some(*since) != containing_const_ver =>
         {
             write!(
                 w,
@@ -1651,23 +1651,19 @@ fn render_rightside(
 ) {
     let tcx = cx.tcx();
 
-    let const_stable_since;
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
     let (const_stability, const_stable_since) = match render_mode {
-        RenderMode::Normal => {
-            const_stable_since = containing_item.const_stable_since(tcx);
-            (item.const_stability(tcx), const_stable_since.as_deref())
-        }
+        RenderMode::Normal => (item.const_stability(tcx), containing_item.const_stable_since(tcx)),
         RenderMode::ForDeref { .. } => (None, None),
     };
 
     write!(w, "<div class=\"rightside\">");
     render_stability_since_raw(
         w,
-        item.stable_since(tcx).as_deref(),
+        item.stable_since(tcx),
         const_stability,
-        containing_item.stable_since(tcx).as_deref(),
+        containing_item.stable_since(tcx),
         const_stable_since,
     );
 

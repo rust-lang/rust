@@ -602,16 +602,16 @@ impl Item {
         })
     }
 
-    crate fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<SymbolStr> {
+    crate fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<Symbol> {
         match self.stability(tcx)?.level {
-            StabilityLevel::Stable { since, .. } => Some(since.as_str()),
+            StabilityLevel::Stable { since, .. } => Some(since),
             StabilityLevel::Unstable { .. } => None,
         }
     }
 
-    crate fn const_stable_since(&self, tcx: TyCtxt<'_>) -> Option<SymbolStr> {
+    crate fn const_stable_since(&self, tcx: TyCtxt<'_>) -> Option<Symbol> {
         match self.const_stability(tcx)?.level {
-            StabilityLevel::Stable { since, .. } => Some(since.as_str()),
+            StabilityLevel::Stable { since, .. } => Some(since),
             StabilityLevel::Unstable { .. } => None,
         }
     }

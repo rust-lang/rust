@@ -101,7 +101,7 @@ pub(super) fn print_item(
     let mut stability_since_raw = Buffer::new();
     render_stability_since_raw(
         &mut stability_since_raw,
-        item.stable_since(cx.tcx()).as_deref(),
+        item.stable_since(cx.tcx()),
         item.const_stability(cx.tcx()),
         None,
         None,
@@ -1462,10 +1462,10 @@ fn render_stability_since(
 ) {
     render_stability_since_raw(
         w,
-        item.stable_since(tcx).as_deref(),
+        item.stable_since(tcx),
         item.const_stability(tcx),
-        containing_item.stable_since(tcx).as_deref(),
-        containing_item.const_stable_since(tcx).as_deref(),
+        containing_item.stable_since(tcx),
+        containing_item.const_stable_since(tcx),
     )
 }
 
