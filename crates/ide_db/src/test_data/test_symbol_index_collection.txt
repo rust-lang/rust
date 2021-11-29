@@ -9,6 +9,30 @@
         },
         [
             FileSymbol {
+                name: "StructFromMacro",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        MacroFile(
+                            MacroFile {
+                                macro_call_id: MacroCallId(
+                                    0,
+                                ),
+                            },
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 0..22,
+                        kind: STRUCT,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 6..21,
+                        kind: NAME,
+                    },
+                },
+                kind: Struct,
+                container_name: None,
+            },
+            FileSymbol {
                 name: "Struct",
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
@@ -19,11 +43,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 68..82,
+                        range: 170..184,
                         kind: STRUCT,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 75..81,
+                        range: 177..183,
                         kind: NAME,
                     },
                 },
@@ -41,11 +65,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 83..105,
+                        range: 185..207,
                         kind: ENUM,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 88..92,
+                        range: 190..194,
                         kind: NAME,
                     },
                 },
@@ -63,11 +87,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 106..120,
+                        range: 208..222,
                         kind: UNION,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 112..117,
+                        range: 214..219,
                         kind: NAME,
                     },
                 },
@@ -85,11 +109,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 159..198,
+                        range: 261..300,
                         kind: TRAIT,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 165..170,
+                        range: 267..272,
                         kind: NAME,
                     },
                 },
@@ -107,11 +131,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 177..196,
+                        range: 279..298,
                         kind: FN,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 180..188,
+                        range: 282..290,
                         kind: NAME,
                     },
                 },
@@ -131,33 +155,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 200..236,
+                        range: 302..338,
                         kind: FN,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 203..207,
-                        kind: NAME,
-                    },
-                },
-                kind: Function,
-                container_name: None,
-            },
-            FileSymbol {
-                name: "proc_macro",
-                loc: DeclarationLocation {
-                    hir_file_id: HirFileId(
-                        FileId(
-                            FileId(
-                                0,
-                            ),
-                        ),
-                    ),
-                    ptr: SyntaxNodePtr {
-                        range: 238..270,
-                        kind: FN,
-                    },
-                    name_ptr: SyntaxNodePtr {
-                        range: 255..265,
+                        range: 305..309,
                         kind: NAME,
                     },
                 },
@@ -175,11 +177,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 272..293,
+                        range: 340..361,
                         kind: CONST,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 278..283,
+                        range: 346..351,
                         kind: NAME,
                     },
                 },
@@ -197,11 +199,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 294..328,
+                        range: 362..396,
                         kind: STATIC,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 301..307,
+                        range: 369..375,
                         kind: NAME,
                     },
                 },
@@ -219,11 +221,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 329..349,
+                        range: 397..417,
                         kind: TYPE_ALIAS,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 334..339,
+                        range: 402..407,
                         kind: NAME,
                     },
                 },
@@ -241,11 +243,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 351..389,
+                        range: 419..457,
                         kind: MODULE,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 355..360,
+                        range: 423..428,
                         kind: NAME,
                     },
                 },
@@ -263,11 +265,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 391..401,
+                        range: 459..469,
                         kind: MODULE,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 395..400,
+                        range: 463..468,
                         kind: NAME,
                     },
                 },
@@ -285,11 +287,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 140..155,
+                        range: 242..257,
                         kind: FN,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 143..150,
+                        range: 245..252,
                         kind: NAME,
                     },
                 },
@@ -319,6 +321,28 @@
                 container_name: None,
             },
             FileSymbol {
+                name: "define_struct",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 51..131,
+                        kind: MACRO_RULES,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 64..77,
+                        kind: NAME,
+                    },
+                },
+                kind: Macro,
+                container_name: None,
+            },
+            FileSymbol {
                 name: "Macro",
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
@@ -329,33 +353,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 51..66,
+                        range: 153..168,
                         kind: MACRO_DEF,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 57..62,
-                        kind: NAME,
-                    },
-                },
-                kind: Macro,
-                container_name: None,
-            },
-            FileSymbol {
-                name: "proc_macro",
-                loc: DeclarationLocation {
-                    hir_file_id: HirFileId(
-                        FileId(
-                            FileId(
-                                0,
-                            ),
-                        ),
-                    ),
-                    ptr: SyntaxNodePtr {
-                        range: 238..270,
-                        kind: FN,
-                    },
-                    name_ptr: SyntaxNodePtr {
-                        range: 255..265,
+                        range: 159..164,
                         kind: NAME,
                     },
                 },
@@ -373,11 +375,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 216..234,
+                        range: 318..336,
                         kind: STRUCT,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 223..233,
+                        range: 325..335,
                         kind: NAME,
                     },
                 },
@@ -408,11 +410,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 367..387,
+                        range: 435..455,
                         kind: STRUCT,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 374..386,
+                        range: 442..454,
                         kind: NAME,
                     },
                 },

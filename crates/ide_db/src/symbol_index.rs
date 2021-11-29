@@ -729,6 +729,14 @@ macro_rules! macro_rules_macro {
     () => {}
 };
 
+macro_rules! define_struct {
+    () => {
+        struct StructFromMacro;
+    }
+};
+
+define_struct!();
+
 macro Macro { }
 
 struct Struct;
