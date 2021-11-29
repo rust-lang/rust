@@ -12,6 +12,7 @@ use ide_db::{
 use rustc_hash::FxHashSet;
 use syntax::{AstNode, SyntaxKind::*, SyntaxToken, TextRange, T};
 
+use crate::moniker::{crate_for_file, def_to_moniker, MonikerResult};
 use crate::{
     hover::hover_for_definition, Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult,
     InlayHint, InlayHintsConfig, TryToNav,
@@ -40,6 +41,7 @@ pub struct TokenStaticData {
     pub hover: Option<HoverResult>,
     pub definition: Option<FileRange>,
     pub references: Vec<ReferenceData>,
+    pub moniker: Option<MonikerResult>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -97,6 +99,7 @@ fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
 
 impl StaticIndex<'_> {
     fn add_file(&mut self, file_id: FileId) {
+        let current_crate = crate_for_file(self.db, file_id);
         let folds = self.analysis.folding_ranges(file_id).unwrap();
         let inlay_hints = self
             .analysis
@@ -143,6 +146,7 @@ impl StaticIndex<'_> {
                         .try_to_nav(self.db)
                         .map(|x| FileRange { file_id: x.file_id, range: x.focus_or_full_range() }),
                     references: vec![],
+                    moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
                 });
                 self.def_map.insert(def, x);
                 x
@@ -206,6 +210,7 @@ mod tests {
     use crate::{fixture, StaticIndex};
     use ide_db::base_db::FileRange;
     use std::collections::HashSet;
+    use syntax::TextSize;
 
     fn check_all_ranges(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
@@ -231,6 +236,10 @@ mod tests {
         let mut range_set: HashSet<_> = ranges.iter().map(|x| x.0).collect();
         for (_, t) in s.tokens.iter() {
             if let Some(x) = t.definition {
+                if x.range.start() == TextSize::from(0) {
+                    // ignore definitions that are whole of file
+                    continue;
+                }
                 if !range_set.contains(&x) {
                     panic!("additional definition {:?}", x);
                 }
@@ -258,6 +267,28 @@ struct Foo;
      //^^^
 enum E { X(Foo) }
    //^   ^
+"#,
+        );
+    }
+
+    #[test]
+    fn multi_crate() {
+        check_definitions(
+            r#"
+//- /main.rs crate:main deps:foo
+
+
+use foo::func;
+
+fn main() {
+ //^^^^
+    func();
+}
+//- /foo/lib.rs crate:foo
+
+pub func() {
+
+}
 "#,
         );
     }

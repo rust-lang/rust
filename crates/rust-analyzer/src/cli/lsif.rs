@@ -5,8 +5,8 @@ use std::env;
 use std::time::Instant;
 
 use ide::{
-    Analysis, FileId, FileRange, RootDatabase, StaticIndex, StaticIndexedFile, TokenId,
-    TokenStaticData,
+    Analysis, FileId, FileRange, MonikerKind, PackageInformation, RootDatabase, StaticIndex,
+    StaticIndexedFile, TokenId, TokenStaticData,
 };
 use ide_db::LineIndexDatabase;
 
@@ -36,6 +36,7 @@ struct LsifManager<'a> {
     token_map: HashMap<TokenId, Id>,
     range_map: HashMap<FileRange, Id>,
     file_map: HashMap<FileId, Id>,
+    package_map: HashMap<PackageInformation, Id>,
     analysis: &'a Analysis,
     db: &'a RootDatabase,
     vfs: &'a Vfs,
@@ -57,6 +58,7 @@ impl LsifManager<'_> {
             token_map: HashMap::default(),
             range_map: HashMap::default(),
             file_map: HashMap::default(),
+            package_map: HashMap::default(),
             analysis,
             db,
             vfs,
@@ -89,6 +91,28 @@ impl LsifManager<'_> {
         }
         let result_set_id = self.add_vertex(lsif::Vertex::ResultSet(lsif::ResultSet { key: None }));
         self.token_map.insert(id, result_set_id);
+        result_set_id
+    }
+
+    fn get_package_id(&mut self, package_information: PackageInformation) -> Id {
+        if let Some(x) = self.package_map.get(&package_information) {
+            return *x;
+        }
+        let pi = package_information.clone();
+        let result_set_id =
+            self.add_vertex(lsif::Vertex::PackageInformation(lsif::PackageInformation {
+                name: pi.name,
+                manager: "cargo".to_string(),
+                uri: None,
+                content: None,
+                repository: Some(lsif::Repository {
+                    url: pi.repo,
+                    r#type: "git".to_string(),
+                    commit_id: None,
+                }),
+                version: Some(pi.version),
+            }));
+        self.package_map.insert(package_information, result_set_id);
         result_set_id
     }
 
@@ -143,6 +167,26 @@ impl LsifManager<'_> {
             });
             self.add_edge(lsif::Edge::Hover(lsif::EdgeData {
                 in_v: hover_id.into(),
+                out_v: result_set_id.into(),
+            }));
+        }
+        if let Some(moniker) = token.moniker {
+            let package_id = self.get_package_id(moniker.package_information);
+            let moniker_id = self.add_vertex(lsif::Vertex::Moniker(lsp_types::Moniker {
+                scheme: "rust-analyzer".to_string(),
+                identifier: moniker.identifier.to_string(),
+                unique: lsp_types::UniquenessLevel::Scheme,
+                kind: Some(match moniker.kind {
+                    MonikerKind::Import => lsp_types::MonikerKind::Import,
+                    MonikerKind::Export => lsp_types::MonikerKind::Export,
+                }),
+            }));
+            self.add_edge(lsif::Edge::PackageInformation(lsif::EdgeData {
+                in_v: package_id.into(),
+                out_v: moniker_id.into(),
+            }));
+            self.add_edge(lsif::Edge::Moniker(lsif::EdgeData {
+                in_v: moniker_id.into(),
                 out_v: result_set_id.into(),
             }));
         }
