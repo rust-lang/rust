@@ -35,8 +35,8 @@ use base_db::{
 use fst::{self, Streamer};
 use hir::{
     db::DefDatabase, AdtId, AssocContainerId, AssocItemId, AssocItemLoc, DefHasSource,
-    DefWithBodyId, HirFileId, InFile, ItemLoc, ItemScope, ItemTreeNode, Lookup, ModuleData,
-    ModuleDefId, ModuleId, Semantics,
+    DefWithBodyId, HirFileId, ImplId, InFile, ItemLoc, ItemTreeNode, Lookup, ModuleDefId, ModuleId,
+    Semantics, TraitId,
 };
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -129,13 +129,7 @@ fn library_symbols(db: &dyn SymbolsDatabase) -> Arc<FxHashMap<SourceRootId, Symb
 }
 
 fn module_symbols(db: &dyn SymbolsDatabase, module_id: ModuleId) -> Arc<SymbolIndex> {
-    db.unwind_if_cancelled();
-
-    let def_map = module_id.def_map(db.upcast());
-    let module_data = &def_map[module_id.local_id];
-
-    let symbols = module_data_to_file_symbols(db.upcast(), module_data);
-
+    let symbols = SymbolCollector::collect(db.upcast(), module_id);
     Arc::new(SymbolIndex::new(symbols))
 }
 
@@ -444,229 +438,259 @@ fn source_file_to_file_symbols(_source_file: &SourceFile, _file_id: FileId) -> V
     // todo: delete this.
     vec![]
 }
-
-fn module_data_to_file_symbols(db: &dyn DefDatabase, module_data: &ModuleData) -> Vec<FileSymbol> {
-    let mut symbols = Vec::new();
-    collect_symbols_from_item_scope(db, &mut symbols, &module_data.scope);
-    // todo: collect macros from scope.macros().
-    symbols
+enum SymbolCollectorWorkItem {
+    Module { module_id: ModuleId, parent: Option<DefWithBodyId> },
+    Body { body: DefWithBodyId },
+    Impl { impl_id: ImplId },
+    Trait { trait_id: TraitId },
 }
 
-fn collect_symbols_from_item_scope(
-    db: &dyn DefDatabase,
-    symbols: &mut Vec<FileSymbol>,
-    scope: &ItemScope,
-) {
-    fn container_name(db: &dyn DefDatabase, container: AssocContainerId) -> Option<SmolStr> {
-        match container {
-            AssocContainerId::ModuleId(module_id) => {
-                let def_map = module_id.def_map(db);
-                let module_data = &def_map[module_id.local_id];
-                module_data
-                    .origin
-                    .declaration()
-                    .and_then(|s| s.to_node(db.upcast()).name().map(|n| n.text().into()))
+struct SymbolCollector<'a> {
+    db: &'a dyn DefDatabase,
+    symbols: Vec<FileSymbol>,
+    work: Vec<SymbolCollectorWorkItem>,
+    container_name_stack: Vec<SmolStr>,
+}
+
+impl<'a> SymbolCollector<'a> {
+    fn collect(db: &dyn DefDatabase, module_id: ModuleId) -> Vec<FileSymbol> {
+        let mut symbol_collector = SymbolCollector {
+            db,
+            symbols: Default::default(),
+            container_name_stack: Default::default(),
+            work: vec![SymbolCollectorWorkItem::Module { module_id, parent: None }],
+        };
+
+        while let Some(work_item) = symbol_collector.work.pop() {
+            symbol_collector.do_work(work_item);
+        }
+
+        symbol_collector.symbols
+    }
+
+    fn do_work(&mut self, work_item: SymbolCollectorWorkItem) {
+        self.db.unwind_if_cancelled();
+
+        match work_item {
+            SymbolCollectorWorkItem::Module { module_id, parent } => {
+                let parent_name = parent.and_then(|id| self.def_with_body_id_name(id));
+                self.with_container_name(parent_name, |s| s.collect_from_module(module_id));
             }
-            AssocContainerId::TraitId(trait_id) => {
-                let loc = trait_id.lookup(db);
-                let source = loc.source(db);
-                source.value.name().map(|n| n.text().into())
+            SymbolCollectorWorkItem::Body { body } => self.collect_from_body(body),
+            SymbolCollectorWorkItem::Impl { impl_id } => self.collect_from_impl(impl_id),
+            SymbolCollectorWorkItem::Trait { trait_id } => {
+                let trait_name = self.db.trait_data(trait_id).name.as_text();
+                self.with_container_name(trait_name, |s| s.collect_from_trait(trait_id));
             }
-            AssocContainerId::ImplId(_) => None,
         }
     }
 
-    fn decl_assoc<L, T>(db: &dyn DefDatabase, id: L, kind: FileSymbolKind) -> Option<FileSymbol>
+    fn collect_from_module(&mut self, module_id: ModuleId) {
+        let def_map = module_id.def_map(self.db);
+        let module_data = &def_map[module_id.local_id];
+        let scope = &module_data.scope;
+
+        for module_def_id in scope.declarations() {
+            match module_def_id {
+                ModuleDefId::ModuleId(id) => self.push_module(id),
+                ModuleDefId::FunctionId(id) => {
+                    self.push_decl_assoc(id, FileSymbolKind::Function);
+                    self.work.push(SymbolCollectorWorkItem::Body { body: id.into() });
+                }
+                ModuleDefId::AdtId(AdtId::StructId(id)) => {
+                    self.push_decl(id, FileSymbolKind::Struct)
+                }
+                ModuleDefId::AdtId(AdtId::EnumId(id)) => self.push_decl(id, FileSymbolKind::Enum),
+                ModuleDefId::AdtId(AdtId::UnionId(id)) => self.push_decl(id, FileSymbolKind::Union),
+                ModuleDefId::ConstId(id) => {
+                    self.push_decl_assoc(id, FileSymbolKind::Const);
+                    self.work.push(SymbolCollectorWorkItem::Body { body: id.into() })
+                }
+                ModuleDefId::StaticId(id) => {
+                    self.push_decl(id, FileSymbolKind::Static);
+                    self.work.push(SymbolCollectorWorkItem::Body { body: id.into() })
+                }
+                ModuleDefId::TraitId(id) => {
+                    self.push_decl(id, FileSymbolKind::Trait);
+                    self.work.push(SymbolCollectorWorkItem::Trait { trait_id: id })
+                }
+                ModuleDefId::TypeAliasId(id) => {
+                    self.push_decl_assoc(id, FileSymbolKind::TypeAlias);
+                }
+                // Don't index these.
+                ModuleDefId::BuiltinType(_) => {}
+                ModuleDefId::EnumVariantId(_) => {}
+            }
+        }
+
+        for impl_id in scope.impls() {
+            self.work.push(SymbolCollectorWorkItem::Impl { impl_id });
+        }
+
+        for const_id in scope.unnamed_consts() {
+            self.work.push(SymbolCollectorWorkItem::Body { body: const_id.into() })
+        }
+
+        // todo: collect macros.
+    }
+
+    fn collect_from_body(&mut self, body_id: DefWithBodyId) {
+        let body = self.db.body(body_id);
+
+        // Descend into the blocks and enqueue collection of all modules within.
+        for (_, def_map) in body.blocks(self.db) {
+            for (id, _) in def_map.modules() {
+                self.work.push(SymbolCollectorWorkItem::Module {
+                    module_id: def_map.module_id(id),
+                    parent: Some(body_id),
+                });
+            }
+        }
+    }
+
+    fn collect_from_impl(&mut self, impl_id: ImplId) {
+        let impl_data = self.db.impl_data(impl_id);
+        for &assoc_item_id in &impl_data.items {
+            self.push_assoc_item(assoc_item_id)
+        }
+    }
+
+    fn collect_from_trait(&mut self, trait_id: TraitId) {
+        let trait_data = self.db.trait_data(trait_id);
+        for &(_, assoc_item_id) in &trait_data.items {
+            self.push_assoc_item(assoc_item_id);
+        }
+    }
+
+    fn with_container_name(&mut self, container_name: Option<SmolStr>, f: impl FnOnce(&mut Self)) {
+        if let Some(container_name) = container_name {
+            self.container_name_stack.push(container_name);
+            f(self);
+            self.container_name_stack.pop();
+        } else {
+            f(self);
+        }
+    }
+
+    fn current_container_name(&self) -> Option<SmolStr> {
+        self.container_name_stack.last().cloned()
+    }
+
+    fn def_with_body_id_name(&self, body_id: DefWithBodyId) -> Option<SmolStr> {
+        match body_id {
+            DefWithBodyId::FunctionId(id) => {
+                Some(id.lookup(self.db).source(self.db).value.name()?.text().into())
+            }
+            DefWithBodyId::StaticId(id) => {
+                Some(id.lookup(self.db).source(self.db).value.name()?.text().into())
+            }
+            DefWithBodyId::ConstId(id) => {
+                Some(id.lookup(self.db).source(self.db).value.name()?.text().into())
+            }
+        }
+    }
+
+    fn push_assoc_item(&mut self, assoc_item_id: AssocItemId) {
+        match assoc_item_id {
+            AssocItemId::FunctionId(id) => self.push_decl_assoc(id, FileSymbolKind::Function),
+            AssocItemId::ConstId(id) => self.push_decl_assoc(id, FileSymbolKind::Const),
+            AssocItemId::TypeAliasId(id) => self.push_decl_assoc(id, FileSymbolKind::TypeAlias),
+        }
+    }
+
+    fn push_decl_assoc<L, T>(&mut self, id: L, kind: FileSymbolKind)
     where
         L: Lookup<Data = AssocItemLoc<T>>,
         T: ItemTreeNode,
         <T as ItemTreeNode>::Source: HasName,
     {
-        let loc = id.lookup(db);
-        let source = loc.source(db);
-        let name_node = source.value.name()?;
-        let container_name = container_name(db, loc.container);
+        fn container_name(db: &dyn DefDatabase, container: AssocContainerId) -> Option<SmolStr> {
+            match container {
+                AssocContainerId::ModuleId(module_id) => {
+                    let def_map = module_id.def_map(db);
+                    let module_data = &def_map[module_id.local_id];
+                    module_data
+                        .origin
+                        .declaration()
+                        .and_then(|s| s.to_node(db.upcast()).name().map(|n| n.text().into()))
+                }
+                AssocContainerId::TraitId(trait_id) => {
+                    let loc = trait_id.lookup(db);
+                    let source = loc.source(db);
+                    source.value.name().map(|n| n.text().into())
+                }
+                AssocContainerId::ImplId(_) => None,
+            }
+        }
 
-        Some(FileSymbol {
-            name: name_node.text().into(),
-            kind,
-            container_name,
-            loc: DeclarationLocation {
-                hir_file_id: source.file_id,
-                ptr: SyntaxNodePtr::new(source.value.syntax()),
-                name_ptr: SyntaxNodePtr::new(name_node.syntax()),
-            },
+        self.push_file_symbol(|s| {
+            let loc = id.lookup(s.db);
+            let source = loc.source(s.db);
+            let name_node = source.value.name()?;
+            let container_name =
+                container_name(s.db, loc.container).or_else(|| s.current_container_name());
+
+            Some(FileSymbol {
+                name: name_node.text().into(),
+                kind,
+                container_name,
+                loc: DeclarationLocation {
+                    hir_file_id: source.file_id,
+                    ptr: SyntaxNodePtr::new(source.value.syntax()),
+                    name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+                },
+            })
         })
     }
 
-    fn decl<L, T>(db: &dyn DefDatabase, id: L, kind: FileSymbolKind) -> Option<FileSymbol>
+    fn push_decl<L, T>(&mut self, id: L, kind: FileSymbolKind)
     where
         L: Lookup<Data = ItemLoc<T>>,
         T: ItemTreeNode,
         <T as ItemTreeNode>::Source: HasName,
     {
-        let loc = id.lookup(db);
-        let source = loc.source(db);
-        let name_node = source.value.name()?;
+        self.push_file_symbol(|s| {
+            let loc = id.lookup(s.db);
+            let source = loc.source(s.db);
+            let name_node = source.value.name()?;
 
-        Some(FileSymbol {
-            name: name_node.text().into(),
-            kind,
-            container_name: None,
-            loc: DeclarationLocation {
-                hir_file_id: source.file_id,
-                ptr: SyntaxNodePtr::new(source.value.syntax()),
-                name_ptr: SyntaxNodePtr::new(name_node.syntax()),
-            },
+            Some(FileSymbol {
+                name: name_node.text().into(),
+                kind,
+                container_name: s.current_container_name(),
+                loc: DeclarationLocation {
+                    hir_file_id: source.file_id,
+                    ptr: SyntaxNodePtr::new(source.value.syntax()),
+                    name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+                },
+            })
         })
     }
 
-    fn decl_module(db: &dyn DefDatabase, module_id: ModuleId) -> Option<FileSymbol> {
-        let def_map = module_id.def_map(db);
-        let module_data = &def_map[module_id.local_id];
-        let declaration = module_data.origin.declaration()?;
-        let module = declaration.to_node(db.upcast());
-        let name_node = module.name()?;
+    fn push_module(&mut self, module_id: ModuleId) {
+        self.push_file_symbol(|s| {
+            let def_map = module_id.def_map(s.db);
+            let module_data = &def_map[module_id.local_id];
+            let declaration = module_data.origin.declaration()?;
+            let module = declaration.to_node(s.db.upcast());
+            let name_node = module.name()?;
 
-        Some(FileSymbol {
-            name: name_node.text().into(),
-            kind: FileSymbolKind::Module,
-            container_name: None,
-            loc: DeclarationLocation {
-                hir_file_id: declaration.file_id,
-                ptr: SyntaxNodePtr::new(module.syntax()),
-                name_ptr: SyntaxNodePtr::new(name_node.syntax()),
-            },
+            Some(FileSymbol {
+                name: name_node.text().into(),
+                kind: FileSymbolKind::Module,
+                container_name: s.current_container_name(),
+                loc: DeclarationLocation {
+                    hir_file_id: declaration.file_id,
+                    ptr: SyntaxNodePtr::new(module.syntax()),
+                    name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+                },
+            })
         })
     }
 
-    let collect_symbols_from_scope =
-        |scope: &ItemScope,
-         symbols: &mut Vec<FileSymbol>,
-         bodies_to_traverse: &mut Vec<(Option<SmolStr>, DefWithBodyId)>,
-         container_name: &Option<SmolStr>| {
-            let mut trait_ids = Vec::new();
-
-            let scope_declaration_symbols = scope
-                .declarations()
-                .filter_map(|module_def_id| match module_def_id {
-                    ModuleDefId::ModuleId(module_id) => decl_module(db, module_id),
-                    ModuleDefId::FunctionId(function_id) => {
-                        let symbol = decl_assoc(db, function_id, FileSymbolKind::Function);
-                        bodies_to_traverse.push((
-                            symbol.as_ref().and_then(|x| Some(x.name.clone())),
-                            function_id.into(),
-                        ));
-                        symbol
-                    }
-                    ModuleDefId::AdtId(AdtId::StructId(struct_id)) => {
-                        decl(db, struct_id, FileSymbolKind::Struct)
-                    }
-                    ModuleDefId::AdtId(AdtId::EnumId(enum_id)) => {
-                        decl(db, enum_id, FileSymbolKind::Enum)
-                    }
-                    ModuleDefId::AdtId(AdtId::UnionId(union_id)) => {
-                        decl(db, union_id, FileSymbolKind::Union)
-                    }
-                    ModuleDefId::ConstId(const_id) => {
-                        let symbol = decl_assoc(db, const_id, FileSymbolKind::Const);
-                        bodies_to_traverse.push((
-                            symbol.as_ref().and_then(|x| Some(x.name.clone())),
-                            const_id.into(),
-                        ));
-                        symbol
-                    }
-                    ModuleDefId::StaticId(static_id) => {
-                        let symbol = decl(db, static_id, FileSymbolKind::Static);
-                        bodies_to_traverse.push((
-                            symbol.as_ref().and_then(|x| Some(x.name.clone())),
-                            static_id.into(),
-                        ));
-                        symbol
-                    }
-                    ModuleDefId::TraitId(trait_id) => {
-                        trait_ids.push(trait_id);
-                        decl(db, trait_id, FileSymbolKind::Trait)
-                    }
-                    ModuleDefId::TypeAliasId(alias_id) => {
-                        decl_assoc(db, alias_id, FileSymbolKind::TypeAlias)
-                    }
-                    ModuleDefId::BuiltinType(_) => None,
-                    ModuleDefId::EnumVariantId(_) => None,
-                })
-                .map(|mut s| {
-                    // If a container name was not provided in the symbol, but within the scope of our traversal,
-                    // we'll update the container name here.
-                    if let Some(container_name) = &container_name {
-                        s.container_name.get_or_insert_with(|| container_name.clone());
-                    }
-
-                    s
-                });
-
-            symbols.extend(scope_declaration_symbols);
-
-            // todo: we need to merge in container name to these too.
-            // also clean this up generally tooooo.
-            let scope_impl_symbols = scope
-                .impls()
-                .map(|impl_id| db.impl_data(impl_id))
-                .flat_map(|d| d.items.clone()) // xx: clean up this clone??
-                .filter_map(|assoc_item_id| match assoc_item_id {
-                    AssocItemId::FunctionId(function_id) => {
-                        decl_assoc(db, function_id, FileSymbolKind::Function)
-                    }
-                    AssocItemId::ConstId(const_id) => {
-                        decl_assoc(db, const_id, FileSymbolKind::Const)
-                    }
-                    AssocItemId::TypeAliasId(type_alias_id) => {
-                        decl_assoc(db, type_alias_id, FileSymbolKind::TypeAlias)
-                    }
-                });
-
-            symbols.extend(scope_impl_symbols);
-
-            // todo: we need to merge in container name to these too.
-            // also clean this up generally tooooo.
-            let scope_trait_symbols = trait_ids
-                .into_iter()
-                .map(|trait_id| db.trait_data(trait_id))
-                .flat_map(|d| d.items.clone())
-                .filter_map(|(_, assoc_item_id)| match assoc_item_id {
-                    AssocItemId::FunctionId(function_id) => {
-                        decl_assoc(db, function_id, FileSymbolKind::Function)
-                    }
-                    AssocItemId::ConstId(const_id) => {
-                        decl_assoc(db, const_id, FileSymbolKind::Const)
-                    }
-                    AssocItemId::TypeAliasId(type_alias_id) => {
-                        decl_assoc(db, type_alias_id, FileSymbolKind::TypeAlias)
-                    }
-                });
-
-            symbols.extend(scope_trait_symbols);
-
-            for const_id in scope.unnamed_consts() {
-                // since unnamed consts don't really have a name, we'll inherit parent scope's symbol name.
-                bodies_to_traverse.push((container_name.clone(), const_id.into()));
-            }
-        };
-
-    let mut bodies_to_traverse = Vec::new();
-    collect_symbols_from_scope(scope, symbols, &mut bodies_to_traverse, &None);
-
-    while let Some((container_name, body)) = bodies_to_traverse.pop() {
-        let body = db.body(body);
-
-        for (_, block_def_map) in body.blocks(db) {
-            for (_, module_data) in block_def_map.modules() {
-                collect_symbols_from_scope(
-                    &module_data.scope,
-                    symbols,
-                    &mut bodies_to_traverse,
-                    &container_name,
-                );
-            }
+    fn push_file_symbol(&mut self, f: impl FnOnce(&Self) -> Option<FileSymbol>) {
+        if let Some(file_symbol) = f(self) {
+            self.symbols.push(file_symbol);
         }
     }
 }
