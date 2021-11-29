@@ -348,13 +348,11 @@ nav.sub {
 	position: sticky;
 	min-width: 200px;
 	height: 100vh;
+	top: 0;
+	left: 0;
 }
 
 .rustdoc.source .sidebar {
-	overflow: auto;
-}
-
-.source .sidebar {
 	width: 50px;
 	min-width: 0px;
 	max-width: 300px;
@@ -362,7 +360,6 @@ nav.sub {
 	flex-shrink: 0;
 	flex-basis: auto;
 	border-right: 1px solid;
-	transition: width .5s;
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
 	overflow-y: hidden;
@@ -376,7 +373,7 @@ nav.sub {
 
 .source .sidebar.expanded {
 	overflow-y: auto;
-	width: 300px !important;
+	width: 300px;
 }
 
 .source .sidebar.expanded > * {
@@ -1698,6 +1695,18 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	.docblock > .information:first-child > .tooltip {
 		margin-top: 16px;
 	}
+
+	/* When we expand the sidebar on the source code page, we hide the logo on the left of the
+	search bar to have more space. */
+	.sidebar.expanded + main .main-inner .sub-logo-container.rust-logo {
+		display: none;
+	}
+
+	/* It doesn't render well on mobile because of the layout, so better only have the transition
+	on desktop. */
+	.rustdoc.source .sidebar {
+		transition: width .5s;
+	}
 }
 
 @media (max-width: 700px) {
@@ -1723,6 +1732,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		padding: 0 15px;
 		position: static;
 		z-index: 11;
+		overflow-y: hidden;
 	}
 
 	.rustdoc.source > .sidebar {
@@ -1779,6 +1789,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		cursor: pointer;
 		width: 45px;
 		left: 0;
+		top: 0;
 		text-align: center;
 		display: block;
 		border-bottom: 1px solid;
@@ -2051,6 +2062,10 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	.source .sub-logo-container > img {
 		height: 35px;
 		width: 35px;
+	}
+
+	.sidebar:not(.expanded) #sidebar-toggle {
+		top: 10px;
 	}
 }
 
