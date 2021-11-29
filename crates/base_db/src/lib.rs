@@ -102,7 +102,7 @@ fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<FxHas
             let root_file = graph[krate].root_file_id;
             db.file_source_root(root_file) == id
         })
-        .collect::<FxHashSet<_>>();
+        .collect();
     Arc::new(res)
 }
 

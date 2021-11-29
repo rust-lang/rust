@@ -30,7 +30,7 @@ use std::{
 
 use base_db::{
     salsa::{self, ParallelDatabase},
-    CrateId, FileId, FileRange, SourceDatabaseExt, SourceRootId, Upcast,
+    CrateId, FileRange, SourceDatabaseExt, SourceRootId, Upcast,
 };
 use either::Either;
 use fst::{self, Streamer};
@@ -41,11 +41,8 @@ use hir::{
     Semantics, TraitId,
 };
 use rayon::prelude::*;
-use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::{
-    ast::{self, HasName},
-    AstNode, Parse, SmolStr, SourceFile, SyntaxNode, SyntaxNodePtr,
-};
+use rustc_hash::FxHashSet;
+use syntax::{ast::HasName, AstNode, SmolStr, SyntaxNode, SyntaxNodePtr};
 
 use crate::RootDatabase;
 
@@ -98,7 +95,7 @@ impl Query {
 #[salsa::query_group(SymbolsDatabaseStorage)]
 pub trait SymbolsDatabase: HirDatabase + SourceDatabaseExt + Upcast<dyn HirDatabase> {
     fn module_symbols(&self, module_id: ModuleId) -> Arc<SymbolIndex>;
-    fn library_symbols(&self) -> Arc<FxHashMap<SourceRootId, SymbolIndex>>;
+    fn library_symbols(&self, source_root_id: SourceRootId) -> Arc<SymbolIndex>;
     /// The set of "local" (that is, from the current workspace) roots.
     /// Files in local roots are assumed to change frequently.
     #[salsa::input]
@@ -109,28 +106,23 @@ pub trait SymbolsDatabase: HirDatabase + SourceDatabaseExt + Upcast<dyn HirDatab
     fn library_roots(&self) -> Arc<FxHashSet<SourceRootId>>;
 }
 
-fn library_symbols(db: &dyn SymbolsDatabase) -> Arc<FxHashMap<SourceRootId, SymbolIndex>> {
+fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Arc<SymbolIndex> {
     let _p = profile::span("library_symbols");
 
-    let roots = db.library_roots();
-    let res = roots
+    // todo: this could be parallelized, once I figure out how to do that...
+    let symbols = db
+        .source_root_crates(source_root_id)
         .iter()
-        .map(|&root_id| {
-            let root = db.source_root(root_id);
-            let files = root
-                .iter()
-                .map(|it| (it, SourceDatabaseExt::file_text(db, it)))
-                .collect::<Vec<_>>();
-            let symbol_index = SymbolIndex::for_files(
-                files.into_par_iter().map(|(file, text)| (file, SourceFile::parse(&text))),
-            );
-            (root_id, symbol_index)
-        })
+        .flat_map(|&krate| module_ids_for_crate(db.upcast(), krate))
+        .map(|module_id| SymbolCollector::collect(db, module_id))
+        .flatten()
         .collect();
-    Arc::new(res)
+
+    Arc::new(SymbolIndex::new(symbols))
 }
 
 fn module_symbols(db: &dyn SymbolsDatabase, module_id: ModuleId) -> Arc<SymbolIndex> {
+    let _p = profile::span("module_symbols");
     let symbols = SymbolCollector::collect(db, module_id);
     Arc::new(SymbolIndex::new(symbols))
 }
@@ -172,11 +164,13 @@ impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     let _p = profile::span("world_symbols").detail(|| query.query.clone());
 
-    let tmp1;
-    let tmp2;
-    let buf: Vec<&SymbolIndex> = if query.libs {
-        tmp1 = db.library_symbols();
-        tmp1.values().collect()
+    let snap = Snap(db.snapshot());
+
+    let indices = if query.libs {
+        db.library_roots()
+            .par_iter()
+            .map_with(snap, |snap, &root| snap.0.library_symbols(root))
+            .collect()
     } else {
         let mut module_ids = Vec::new();
 
@@ -187,14 +181,13 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
             }
         }
 
-        let snap = Snap(db.snapshot());
-        tmp2 = module_ids
+        module_ids
             .par_iter()
             .map_with(snap, |snap, &module_id| snap.0.module_symbols(module_id))
-            .collect::<Vec<_>>();
-        tmp2.iter().map(|it| &**it).collect()
+            .collect()
     };
-    query.search(&buf)
+
+    query.search(indices)
 }
 
 pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<FileSymbol> {
@@ -202,16 +195,15 @@ pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<Fil
 
     let module_ids = module_ids_for_crate(db, krate);
     let snap = Snap(db.snapshot());
-    let buf: Vec<_> = module_ids
+    let indices: Vec<_> = module_ids
         .par_iter()
         .map_with(snap, |snap, &module_id| snap.0.module_symbols(module_id))
         .collect();
 
-    let buf = buf.iter().map(|it| &**it).collect::<Vec<_>>();
-    query.search(&buf)
+    query.search(indices)
 }
 
-fn module_ids_for_crate(db: &RootDatabase, krate: CrateId) -> Vec<ModuleId> {
+fn module_ids_for_crate(db: &dyn DefDatabase, krate: CrateId) -> Vec<ModuleId> {
     let def_map = db.crate_def_map(krate);
     def_map.modules().map(|(id, _)| def_map.module_id(id)).collect()
 }
@@ -292,15 +284,6 @@ impl SymbolIndex {
         self.map.as_fst().size() + self.symbols.len() * mem::size_of::<FileSymbol>()
     }
 
-    pub(crate) fn for_files(
-        files: impl ParallelIterator<Item = (FileId, Parse<ast::SourceFile>)>,
-    ) -> SymbolIndex {
-        let symbols = files
-            .flat_map(|(file_id, file)| source_file_to_file_symbols(&file.tree(), file_id))
-            .collect::<Vec<_>>();
-        SymbolIndex::new(symbols)
-    }
-
     fn range_to_map_value(start: usize, end: usize) -> u64 {
         debug_assert![start <= (std::u32::MAX as usize)];
         debug_assert![end <= (std::u32::MAX as usize)];
@@ -316,10 +299,10 @@ impl SymbolIndex {
 }
 
 impl Query {
-    pub(crate) fn search(self, indices: &[&SymbolIndex]) -> Vec<FileSymbol> {
+    pub(crate) fn search(self, indices: Vec<Arc<SymbolIndex>>) -> Vec<FileSymbol> {
         let _p = profile::span("symbol_index::Query::search");
         let mut op = fst::map::OpBuilder::new();
-        for file_symbols in indices.iter() {
+        for file_symbols in &indices {
             let automaton = fst::automaton::Subsequence::new(&self.lowercased);
             op = op.add(file_symbols.map.search(automaton))
         }
@@ -430,11 +413,6 @@ impl FileSymbolKind {
                 | FileSymbolKind::Union
         )
     }
-}
-
-fn source_file_to_file_symbols(_source_file: &SourceFile, _file_id: FileId) -> Vec<FileSymbol> {
-    // todo: delete this.
-    vec![]
 }
 
 /// Represents an outstanding module that the symbol collector must collect symbols from.
