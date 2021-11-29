@@ -67,8 +67,8 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             let mut is_future = false;
             for &(p, _span) in preds {
                 let p = p.subst(cx.tcx, subst);
-                if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
-                    if Some(trait_ref.value.def_id()) == cx.tcx.lang_items().future_trait() {
+                if let Some(trait_pred) = p.to_opt_poly_trait_pred() {
+                    if Some(trait_pred.skip_binder().trait_ref.def_id) == cx.tcx.lang_items().future_trait() {
                         is_future = true;
                         break;
                     }
