@@ -289,6 +289,14 @@ impl<T, A: Allocator> RawVec<T, A> {
         }
     }
 
+    /// A specialized version of `reserve()` used only by the hot and
+    /// oft-instantiated `Vec::push()`, which does its own capacity check.
+    #[cfg(not(no_global_oom_handling))]
+    #[inline(never)]
+    pub fn reserve_for_push(&mut self, len: usize) {
+        handle_reserve(self.grow_amortized(len, 1));
+    }
+
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
     pub fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
         if self.needs_to_grow(len, additional) {
