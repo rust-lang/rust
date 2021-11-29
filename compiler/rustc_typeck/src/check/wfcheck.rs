@@ -84,8 +84,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
 /// the types first.
 #[instrument(skip(tcx), level = "debug")]
 pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let item = tcx.hir().expect_item(hir_id);
+    let item = tcx.hir().expect_item(def_id);
 
     debug!(
         ?item.def_id,
@@ -197,7 +196,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
 pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let trait_item = tcx.hir().expect_trait_item(hir_id);
+    let trait_item = tcx.hir().expect_trait_item(def_id);
 
     let (method_sig, span) = match trait_item.kind {
         hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
@@ -207,8 +206,8 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     check_object_unsafe_self_trait_by_name(tcx, trait_item);
     check_associated_item(tcx, trait_item.def_id, span, method_sig);
 
-    let encl_trait_hir_id = tcx.hir().get_parent_item(hir_id);
-    let encl_trait = tcx.hir().expect_item(encl_trait_hir_id);
+    let encl_trait_def_id = tcx.hir().get_parent_did(hir_id);
+    let encl_trait = tcx.hir().expect_item(encl_trait_def_id);
     let encl_trait_def_id = encl_trait.def_id.to_def_id();
     let fn_lang_item_name = if Some(encl_trait_def_id) == tcx.lang_items().fn_trait() {
         Some("fn")
@@ -680,8 +679,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
 }
 
 pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let impl_item = tcx.hir().expect_impl_item(hir_id);
+    let impl_item = tcx.hir().expect_impl_item(def_id);
 
     let (method_sig, span) = match impl_item.kind {
         hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),

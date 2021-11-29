@@ -431,7 +431,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
             match self.node() {
                 hir::Node::Field(_) | hir::Node::Ctor(_) | hir::Node::Variant(_) => {
                     let item =
-                        self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(self.hir_id()));
+                        self.tcx.hir().expect_item(self.tcx.hir().get_parent_did(self.hir_id()));
                     match &item.kind {
                         hir::ItemKind::Enum(_, generics)
                         | hir::ItemKind::Struct(_, generics)
@@ -1184,8 +1184,7 @@ fn super_predicates_that_define_assoc_type(
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let item = tcx.hir().expect_item(hir_id);
+    let item = tcx.hir().expect_item(def_id.expect_local());
 
     let (is_auto, unsafety) = match item.kind {
         hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
@@ -1880,9 +1879,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     let icx = ItemCtxt::new(tcx, def_id);
-
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    match tcx.hir().expect_item(hir_id).kind {
+    match tcx.hir().expect_item(def_id.expect_local()).kind {
         hir::ItemKind::Impl(ref impl_) => impl_.of_trait.as_ref().map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id);
             <dyn AstConv<'_>>::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
@@ -1892,9 +1889,8 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
 }
 
 fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
-    let item = tcx.hir().expect_item(hir_id);
+    let item = tcx.hir().expect_item(def_id.expect_local());
     match &item.kind {
         hir::ItemKind::Impl(hir::Impl {
             polarity: hir::ImplPolarity::Negative(span),
@@ -3225,7 +3221,7 @@ fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span:
     let hir_id = tcx.hir().local_def_id_to_hir_id(id);
     let node = tcx.hir().get(hir_id);
     if let Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) = node {
-        let parent_id = tcx.hir().get_parent_item(hir_id);
+        let parent_id = tcx.hir().get_parent_did(hir_id);
         let parent_item = tcx.hir().expect_item(parent_id);
         if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = parent_item.kind {
             tcx.sess

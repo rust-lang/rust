@@ -458,7 +458,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     def_id: LocalDefId,
     span: Span,
 ) {
-    let item = tcx.hir().expect_item(tcx.hir().local_def_id_to_hir_id(def_id));
+    let item = tcx.hir().expect_item(def_id);
     debug!(?item, ?span);
 
     struct FoundParentLifetime;

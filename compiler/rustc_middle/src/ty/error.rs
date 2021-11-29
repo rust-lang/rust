@@ -777,9 +777,7 @@ fn foo(&self) -> Self::T { String::new() }
         if let ty::Opaque(def_id, _) = *proj_ty.self_ty().kind() {
             let opaque_local_def_id = def_id.as_local();
             let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
-                let hir = self.hir();
-                let opaque_hir_id = hir.local_def_id_to_hir_id(opaque_local_def_id);
-                match &hir.expect_item(opaque_hir_id).kind {
+                match &self.hir().expect_item(opaque_local_def_id).kind {
                     hir::ItemKind::OpaqueTy(opaque_hir_ty) => opaque_hir_ty,
                     _ => bug!("The HirId comes from a `ty::Opaque`"),
                 }

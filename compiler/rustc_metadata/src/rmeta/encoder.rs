@@ -1152,8 +1152,7 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_trait_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        let ast_item = tcx.hir().expect_trait_item(hir_id);
+        let ast_item = tcx.hir().expect_trait_item(def_id.expect_local());
         let trait_item = tcx.associated_item(def_id);
 
         let container = match trait_item.defaultness {
@@ -1221,8 +1220,7 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_impl_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        let ast_item = self.tcx.hir().expect_impl_item(hir_id);
+        let ast_item = self.tcx.hir().expect_impl_item(def_id.expect_local());
         let impl_item = self.tcx.associated_item(def_id);
 
         let container = match impl_item.defaultness {

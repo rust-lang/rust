@@ -322,9 +322,7 @@ fn compare_predicate_entailment<'tcx>(
                     // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
                     // span points only at the type `Box<Self`>, but we want to cover the whole
                     // argument pattern and type.
-                    let impl_m_hir_id =
-                        tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
-                    let span = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
+                    let span = match tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind {
                         ImplItemKind::Fn(ref sig, body) => tcx
                             .hir()
                             .body_param_names(body)
@@ -346,9 +344,7 @@ fn compare_predicate_entailment<'tcx>(
                     if trait_sig.inputs().len() == *i {
                         // Suggestion to change output type. We do not suggest in `async` functions
                         // to avoid complex logic or incorrect output.
-                        let impl_m_hir_id =
-                            tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
-                        match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
+                        match tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind {
                             ImplItemKind::Fn(ref sig, _)
                                 if sig.header.asyncness == hir::IsAsync::NotAsync =>
                             {
@@ -467,22 +463,19 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
     trait_m: &ty::AssocItem,
 ) -> (Span, Option<Span>) {
     let tcx = infcx.tcx;
-    let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
-    let mut impl_args = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
+    let mut impl_args = match tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind {
         ImplItemKind::Fn(ref sig, _) => {
             sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
         }
         _ => bug!("{:?} is not a method", impl_m),
     };
-    let trait_args = trait_m.def_id.as_local().map(|def_id| {
-        let trait_m_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        match tcx.hir().expect_trait_item(trait_m_hir_id).kind {
+    let trait_args =
+        trait_m.def_id.as_local().map(|def_id| match tcx.hir().expect_trait_item(def_id).kind {
             TraitItemKind::Fn(ref sig, _) => {
                 sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
             }
             _ => bug!("{:?} is not a TraitItemKind::Fn", trait_m),
-        }
-    });
+        });
 
     match *terr {
         TypeError::ArgumentMutability(i) => {
@@ -600,8 +593,7 @@ fn compare_number_of_generics<'tcx>(
             err_occurred = true;
 
             let (trait_spans, impl_trait_spans) = if let Some(def_id) = trait_.def_id.as_local() {
-                let trait_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-                let trait_item = tcx.hir().expect_trait_item(trait_hir_id);
+                let trait_item = tcx.hir().expect_trait_item(def_id);
                 if trait_item.generics.params.is_empty() {
                     (Some(vec![trait_item.generics.span]), vec![])
                 } else {
@@ -622,8 +614,7 @@ fn compare_number_of_generics<'tcx>(
                 (trait_span.map(|s| vec![s]), vec![])
             };
 
-            let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_.def_id.expect_local());
-            let impl_item = tcx.hir().expect_impl_item(impl_hir_id);
+            let impl_item = tcx.hir().expect_impl_item(impl_.def_id.expect_local());
             let impl_item_impl_trait_spans: Vec<Span> = impl_item
                 .generics
                 .params
@@ -711,8 +702,7 @@ fn compare_number_of_method_arguments<'tcx>(
     let impl_number_args = impl_m_fty.inputs().skip_binder().len();
     if trait_number_args != impl_number_args {
         let trait_span = if let Some(def_id) = trait_m.def_id.as_local() {
-            let trait_id = tcx.hir().local_def_id_to_hir_id(def_id);
-            match tcx.hir().expect_trait_item(trait_id).kind {
+            match tcx.hir().expect_trait_item(def_id).kind {
                 TraitItemKind::Fn(ref trait_m_sig, _) => {
                     let pos = if trait_number_args > 0 { trait_number_args - 1 } else { 0 };
                     if let Some(arg) = trait_m_sig.decl.inputs.get(pos) {
@@ -730,8 +720,7 @@ fn compare_number_of_method_arguments<'tcx>(
         } else {
             trait_item_span
         };
-        let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
-        let impl_span = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
+        let impl_span = match tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind {
             ImplItemKind::Fn(ref impl_m_sig, _) => {
                 let pos = if impl_number_args > 0 { impl_number_args - 1 } else { 0 };
                 if let Some(arg) = impl_m_sig.decl.inputs.get(pos) {
@@ -1055,7 +1044,7 @@ crate fn compare_const_impl<'tcx>(
             );
 
             // Locate the Span containing just the type of the offending impl
-            match tcx.hir().expect_impl_item(impl_c_hir_id).kind {
+            match tcx.hir().expect_impl_item(impl_c.def_id.expect_local()).kind {
                 ImplItemKind::Const(ref ty, _) => cause.make_mut().span = ty.span,
                 _ => bug!("{:?} is not a impl const", impl_c),
             }
@@ -1068,11 +1057,9 @@ crate fn compare_const_impl<'tcx>(
                 trait_c.ident
             );
 
-            let trait_c_hir_id =
-                trait_c.def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
-            let trait_c_span = trait_c_hir_id.map(|trait_c_hir_id| {
+            let trait_c_span = trait_c.def_id.as_local().map(|trait_c_def_id| {
                 // Add a label to the Span containing just the type of the const
-                match tcx.hir().expect_trait_item(trait_c_hir_id).kind {
+                match tcx.hir().expect_trait_item(trait_c_def_id).kind {
                     TraitItemKind::Const(ref ty, _) => ty.span,
                     _ => bug!("{:?} is not a trait const", trait_c),
                 }

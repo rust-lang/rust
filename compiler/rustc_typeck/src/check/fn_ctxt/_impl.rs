@@ -1097,12 +1097,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (_, _) => return None,
                     };
 
-                let last_hir_id = self.tcx.hir().local_def_id_to_hir_id(last_local_id);
-                let exp_hir_id = self.tcx.hir().local_def_id_to_hir_id(exp_local_id);
-
                 match (
-                    &self.tcx.hir().expect_item(last_hir_id).kind,
-                    &self.tcx.hir().expect_item(exp_hir_id).kind,
+                    &self.tcx.hir().expect_item(last_local_id).kind,
+                    &self.tcx.hir().expect_item(exp_local_id).kind,
                 ) {
                     (
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),

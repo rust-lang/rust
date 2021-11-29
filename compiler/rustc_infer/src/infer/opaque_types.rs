@@ -467,7 +467,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                 parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
                             };
                             let (in_definition_scope, origin) =
-                                match tcx.hir().expect_item(opaque_hir_id).kind {
+                                match tcx.hir().expect_item(def_id).kind {
                                     // Anonymous `impl Trait`
                                     hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                                         impl_trait_fn: Some(parent),

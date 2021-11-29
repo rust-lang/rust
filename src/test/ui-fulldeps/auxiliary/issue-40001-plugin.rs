@@ -7,8 +7,8 @@ extern crate rustc_hir;
 extern crate rustc_lint;
 #[macro_use]
 extern crate rustc_session;
-extern crate rustc_span;
 extern crate rustc_ast;
+extern crate rustc_span;
 
 use rustc_ast_pretty::pprust;
 use rustc_driver::plugin::Registry;
@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingAllowedAttrPass {
     ) {
         let item = match cx.tcx.hir().get(id) {
             Node::Item(item) => item,
-            _ => cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(id)),
+            _ => cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(id).expect_owner()),
         };
 
         let allowed = |attr| pprust::attribute_to_string(attr).contains("allowed_attr");
