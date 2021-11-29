@@ -1,3 +1,117 @@
+Version 1.57.0 (2021-12-02)
+==========================
+
+Language
+--------
+
+- [Macro attributes may follow `#[derive]` and will see the original (pre-`cfg`) input.][87220]
+- [Accept curly-brace macros in expressions, like `m!{ .. }.method()` and `m!{ .. }?`.][88690]
+- [Allow panicking in constant evaluation.][89508]
+
+Compiler
+--------
+
+- [Create more accurate debuginfo for vtables.][89597]
+- [Add `armv6k-nintendo-3ds` at Tier 3\*.][88529]
+- [Add `armv7-unknown-linux-uclibceabihf` at Tier 3\*.][88952]
+- [Add `m68k-unknown-linux-gnu` at Tier 3\*.][88321]
+- [Add SOLID targets at Tier 3\*:][86191] `aarch64-kmc-solid_asp3`, `armv7a-kmc-solid_asp3-eabi`, `armv7a-kmc-solid_asp3-eabihf`
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [Avoid allocations and copying in `Vec::leak`][89337]
+- [Add `#[repr(i8)]` to `Ordering`][89507]
+- [Optimize `File::read_to_end` and `read_to_string`][89582]
+- [Update to Unicode 14.0][89614]
+- [Many more functions are marked `#[must_use]`][89692], producing a warning
+  when ignoring their return value. This helps catch mistakes such as expecting
+  a function to mutate a value in place rather than return a new value.
+
+Stabilised APIs
+---------------
+
+- [`[T; N]::as_mut_slice`][`array::as_mut_slice`]
+- [`[T; N]::as_slice`][`array::as_slice`]
+- [`collections::TryReserveError`]
+- [`HashMap::try_reserve`]
+- [`HashSet::try_reserve`]
+- [`String::try_reserve`]
+- [`String::try_reserve_exact`]
+- [`Vec::try_reserve`]
+- [`Vec::try_reserve_exact`]
+- [`VecDeque::try_reserve`]
+- [`VecDeque::try_reserve_exact`]
+- [`Iterator::map_while`]
+- [`iter::MapWhile`]
+- [`proc_macro::is_available`]
+- [`Command::get_program`]
+- [`Command::get_args`]
+- [`Command::get_envs`]
+- [`Command::get_current_dir`]
+- [`CommandArgs`]
+- [`CommandEnvs`]
+
+These APIs are now usable in const contexts:
+
+- [`hint::unreachable_unchecked`]
+
+Cargo
+-----
+
+- [Stabilize custom profiles][cargo/9943]
+
+Compatibility notes
+-------------------
+
+Internal changes
+----------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+- [Added an experimental backend for codegen with `libgccjit`.][87260]
+
+[86191]: https://github.com/rust-lang/rust/pull/86191/
+[87220]: https://github.com/rust-lang/rust/pull/87220/
+[87260]: https://github.com/rust-lang/rust/pull/87260/
+[88243]: https://github.com/rust-lang/rust/pull/88243/
+[88321]: https://github.com/rust-lang/rust/pull/88321/
+[88529]: https://github.com/rust-lang/rust/pull/88529/
+[88690]: https://github.com/rust-lang/rust/pull/88690/
+[88952]: https://github.com/rust-lang/rust/pull/88952/
+[89337]: https://github.com/rust-lang/rust/pull/89337/
+[89507]: https://github.com/rust-lang/rust/pull/89507/
+[89508]: https://github.com/rust-lang/rust/pull/89508/
+[89582]: https://github.com/rust-lang/rust/pull/89582/
+[89597]: https://github.com/rust-lang/rust/pull/89597/
+[89614]: https://github.com/rust-lang/rust/pull/89614/
+[89692]: https://github.com/rust-lang/rust/issues/89692/
+[cargo/9943]: https://github.com/rust-lang/cargo/pull/9943/
+[`array::as_mut_slice`]: https://doc.rust-lang.org/std/primitive.array.html#method.as_mut_slice
+[`array::as_slice`]: https://doc.rust-lang.org/std/primitive.array.html#method.as_slice
+[`collections::TryReserveError`]: https://doc.rust-lang.org/std/collections/struct.TryReserveError.html
+[`HashMap::try_reserve`]: https://doc.rust-lang.org/std/collections/hash_map/struct.HashMap.html#method.try_reserve
+[`HashSet::try_reserve`]: https://doc.rust-lang.org/std/collections/hash_set/struct.HashSet.html#method.try_reserve
+[`String::try_reserve`]: https://doc.rust-lang.org/alloc/string/struct.String.html#method.try_reserve
+[`String::try_reserve_exact`]: https://doc.rust-lang.org/alloc/string/struct.String.html#method.try_reserve_exact
+[`Vec::try_reserve`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.try_reserve
+[`Vec::try_reserve_exact`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.try_reserve_exact
+[`VecDeque::try_reserve`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.try_reserve
+[`VecDeque::try_reserve_exact`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.try_reserve_exact
+[`Iterator::map_while`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.map_while
+[`iter::MapWhile`]: https://doc.rust-lang.org/std/iter/struct.MapWhile.html
+[`proc_macro::is_available`]: https://doc.rust-lang.org/proc_macro/fn.is_available.html
+[`Command::get_program`]: https://doc.rust-lang.org/std/process/struct.Command.html#method.get_program
+[`Command::get_args`]: https://doc.rust-lang.org/std/process/struct.Command.html#method.get_args
+[`Command::get_envs`]: https://doc.rust-lang.org/std/process/struct.Command.html#method.get_envs
+[`Command::get_current_dir`]: https://doc.rust-lang.org/std/process/struct.Command.html#method.get_current_dir
+[`CommandArgs`]: https://doc.rust-lang.org/std/process/struct.CommandArgs.html
+[`CommandEnvs`]: https://doc.rust-lang.org/std/process/struct.CommandEnvs.html
+
 Version 1.56.1 (2021-11-01)
 ===========================
 

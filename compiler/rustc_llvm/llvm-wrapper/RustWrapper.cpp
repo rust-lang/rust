@@ -1,5 +1,6 @@
 #include "LLVMWrapper.h"
 #include "llvm/IR/DebugInfoMetadata.h"
+#include "llvm/IR/DiagnosticHandler.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/GlobalVariable.h"
@@ -1177,10 +1178,13 @@ static LLVMRustDiagnosticKind toRust(DiagnosticKind Kind) {
   case DK_SampleProfile:
     return LLVMRustDiagnosticKind::SampleProfile;
   case DK_OptimizationRemark:
+  case DK_MachineOptimizationRemark:
     return LLVMRustDiagnosticKind::OptimizationRemark;
   case DK_OptimizationRemarkMissed:
+  case DK_MachineOptimizationRemarkMissed:
     return LLVMRustDiagnosticKind::OptimizationRemarkMissed;
   case DK_OptimizationRemarkAnalysis:
+  case DK_MachineOptimizationRemarkAnalysis:
     return LLVMRustDiagnosticKind::OptimizationRemarkAnalysis;
   case DK_OptimizationRemarkAnalysisFPCommute:
     return LLVMRustDiagnosticKind::OptimizationRemarkAnalysisFPCommute;
@@ -1782,4 +1786,93 @@ extern "C" LLVMRustResult LLVMRustWriteImportLibrary(
   } else {
     return LLVMRustResult::Success;
   }
+}
+
+// Transfers ownership of DiagnosticHandler unique_ptr to the caller.
+extern "C" DiagnosticHandler *
+LLVMRustContextGetDiagnosticHandler(LLVMContextRef C) {
+  std::unique_ptr<DiagnosticHandler> DH = unwrap(C)->getDiagnosticHandler();
+  return DH.release();
+}
+
+// Sets unique_ptr to object of DiagnosticHandler to provide custom diagnostic
+// handling. Ownership of the handler is moved to the LLVMContext.
+extern "C" void LLVMRustContextSetDiagnosticHandler(LLVMContextRef C,
+                                                    DiagnosticHandler *DH) {
+  unwrap(C)->setDiagnosticHandler(std::unique_ptr<DiagnosticHandler>(DH));
+}
+
+using LLVMDiagnosticHandlerTy = DiagnosticHandler::DiagnosticHandlerTy;
+
+// Configures a diagnostic handler that invokes provided callback when a
+// backend needs to emit a diagnostic.
+//
+// When RemarkAllPasses is true, remarks are enabled for all passes. Otherwise
+// the RemarkPasses array specifies individual passes for which remarks will be
+// enabled.
+extern "C" void LLVMRustContextConfigureDiagnosticHandler(
+    LLVMContextRef C, LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
+    void *DiagnosticHandlerContext, bool RemarkAllPasses,
+    const char * const * RemarkPasses, size_t RemarkPassesLen) {
+
+  class RustDiagnosticHandler final : public DiagnosticHandler {
+  public:
+    RustDiagnosticHandler(LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
+                          void *DiagnosticHandlerContext,
+                          bool RemarkAllPasses,
+                          std::vector<std::string> RemarkPasses)
+        : DiagnosticHandlerCallback(DiagnosticHandlerCallback),
+          DiagnosticHandlerContext(DiagnosticHandlerContext),
+          RemarkAllPasses(RemarkAllPasses),
+          RemarkPasses(RemarkPasses) {}
+
+    virtual bool handleDiagnostics(const DiagnosticInfo &DI) override {
+      if (DiagnosticHandlerCallback) {
+        DiagnosticHandlerCallback(DI, DiagnosticHandlerContext);
+        return true;
+      }
+      return false;
+    }
+
+    bool isAnalysisRemarkEnabled(StringRef PassName) const override {
+      return isRemarkEnabled(PassName);
+    }
+
+    bool isMissedOptRemarkEnabled(StringRef PassName) const override {
+      return isRemarkEnabled(PassName);
+    }
+
+    bool isPassedOptRemarkEnabled(StringRef PassName) const override {
+      return isRemarkEnabled(PassName);
+    }
+
+    bool isAnyRemarkEnabled() const override {
+      return RemarkAllPasses || !RemarkPasses.empty();
+    }
+
+  private:
+    bool isRemarkEnabled(StringRef PassName) const {
+      if (RemarkAllPasses)
+        return true;
+
+      for (auto &Pass : RemarkPasses)
+        if (Pass == PassName)
+          return true;
+
+      return false;
+    }
+
+    LLVMDiagnosticHandlerTy DiagnosticHandlerCallback = nullptr;
+    void *DiagnosticHandlerContext = nullptr;
+
+    bool RemarkAllPasses = false;
+    std::vector<std::string> RemarkPasses;
+  };
+
+  std::vector<std::string> Passes;
+  for (size_t I = 0; I != RemarkPassesLen; ++I)
+    Passes.push_back(RemarkPasses[I]);
+
+  unwrap(C)->setDiagnosticHandler(std::make_unique<RustDiagnosticHandler>(
+      DiagnosticHandlerCallback, DiagnosticHandlerContext, RemarkAllPasses, Passes));
 }

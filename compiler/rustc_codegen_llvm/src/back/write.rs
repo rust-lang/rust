@@ -259,6 +259,7 @@ pub(crate) fn save_temp_bitcode(
 pub struct DiagnosticHandlers<'a> {
     data: *mut (&'a CodegenContext<LlvmCodegenBackend>, &'a Handler),
     llcx: &'a llvm::Context,
+    old_handler: Option<&'a llvm::DiagnosticHandler>,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
@@ -267,12 +268,35 @@ impl<'a> DiagnosticHandlers<'a> {
         handler: &'a Handler,
         llcx: &'a llvm::Context,
     ) -> Self {
+        let remark_passes_all: bool;
+        let remark_passes: Vec<CString>;
+        match &cgcx.remark {
+            Passes::All => {
+                remark_passes_all = true;
+                remark_passes = Vec::new();
+            }
+            Passes::Some(passes) => {
+                remark_passes_all = false;
+                remark_passes =
+                    passes.iter().map(|name| CString::new(name.as_str()).unwrap()).collect();
+            }
+        };
+        let remark_passes: Vec<*const c_char> =
+            remark_passes.iter().map(|name: &CString| name.as_ptr()).collect();
         let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
+            let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
+            llvm::LLVMRustContextConfigureDiagnosticHandler(
+                llcx,
+                diagnostic_handler,
+                data.cast(),
+                remark_passes_all,
+                remark_passes.as_ptr(),
+                remark_passes.len(),
+            );
             llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data.cast());
-            llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, data.cast());
+            DiagnosticHandlers { data, llcx, old_handler }
         }
-        DiagnosticHandlers { data, llcx }
     }
 }
 
@@ -281,7 +305,7 @@ impl<'a> Drop for DiagnosticHandlers<'a> {
         use std::ptr::null_mut;
         unsafe {
             llvm::LLVMRustSetInlineAsmDiagnosticHandler(self.llcx, inline_asm_handler, null_mut());
-            llvm::LLVMContextSetDiagnosticHandler(self.llcx, diagnostic_handler, null_mut());
+            llvm::LLVMRustContextSetDiagnosticHandler(self.llcx, self.old_handler);
             drop(Box::from_raw(self.data));
         }
     }
@@ -337,13 +361,8 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
 
             if enabled {
                 diag_handler.note_without_error(&format!(
-                    "optimization {} for {} at {}:{}:{}: {}",
-                    opt.kind.describe(),
-                    opt.pass_name,
-                    opt.filename,
-                    opt.line,
-                    opt.column,
-                    opt.message
+                    "{}:{}:{}: {}: {}",
+                    opt.filename, opt.line, opt.column, opt.pass_name, opt.message,
                 ));
             }
         }
