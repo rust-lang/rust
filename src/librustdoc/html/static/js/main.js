@@ -94,6 +94,7 @@ function getVirtualKey(ev) {
 
 var THEME_PICKER_ELEMENT_ID = "theme-picker";
 var THEMES_ELEMENT_ID = "theme-choices";
+var MAIN_ID = "main-content";
 
 function getThemesElement() {
     return document.getElementById(THEMES_ELEMENT_ID);
@@ -362,7 +363,7 @@ function hideThemeButtonState() {
     }
 
     var toggleAllDocsId = "toggle-all-docs";
-    var main = document.getElementById("main");
+    var main = document.getElementById(MAIN_ID);
     var savedHash = "";
 
     function handleHashes(ev) {
@@ -787,7 +788,7 @@ function hideThemeButtonState() {
         } else {
             addClass(innerToggle, "will-expand");
             onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function(e) {
-                if (e.parentNode.id !== "main" ||
+                if (e.parentNode.id !== MAIN_ID ||
                     (!hasClass(e, "implementors-toggle") &&
                      !hasClass(e, "type-contents-toggle")))
                 {

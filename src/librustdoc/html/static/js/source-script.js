@@ -113,17 +113,17 @@ function createSourceSidebar() {
     if (!window.rootPath.endsWith("/")) {
         window.rootPath += "/";
     }
-    var main = document.querySelector("nav.sidebar");
+    var container = document.querySelector("nav.sidebar");
 
     var sidebarToggle = createSidebarToggle();
-    main.insertBefore(sidebarToggle, main.firstChild);
+    container.insertBefore(sidebarToggle, container.firstChild);
 
     var sidebar = document.createElement("div");
     sidebar.id = "source-sidebar";
     if (getCurrentValue("rustdoc-source-sidebar-show") !== "true") {
-        main.classList.remove("expanded");
+        container.classList.remove("expanded");
     } else {
-        main.classList.add("expanded");
+        container.classList.add("expanded");
     }
 
     var currentFile = getCurrentFilePath();
@@ -139,7 +139,7 @@ function createSourceSidebar() {
                                       currentFile, hasFoundFile);
     });
 
-    main.insertBefore(sidebar, document.querySelector(".sidebar-logo").nextSibling);
+    container.insertBefore(sidebar, document.querySelector(".sidebar-logo").nextSibling);
     // Focus on the current file in the source files sidebar.
     var selected_elem = sidebar.getElementsByClassName("selected")[0];
     if (typeof selected_elem !== "undefined") {

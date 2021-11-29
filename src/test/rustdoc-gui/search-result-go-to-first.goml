@@ -11,7 +11,7 @@ goto: file://|DOC_PATH|/test_docs/index.html?search=struct%3AFoo
 wait-for: "#titles"
 assert-text-false: (".fqn .in-band", "Struct test_docs::Foo")
 // Ensure that the search results are displayed, not the "normal" content.
-assert-css: ("#main", {"display": "none"})
+assert-css: ("#main-content", {"display": "none"})
 
 // Now we can check that the feature is working as expected!
 goto: file://|DOC_PATH|/test_docs/index.html?search=struct%3AFoo&go_to_first=true

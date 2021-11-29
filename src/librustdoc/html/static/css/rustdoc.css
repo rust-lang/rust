@@ -201,7 +201,7 @@ details.rustdoc-toggle > summary::before,
 div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate, a.srclink,
 /* This selector is for the items listed in the "all items" page. */
-#main > ul.docblock > li > a {
+#main-content > ul.docblock > li > a {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
@@ -633,10 +633,10 @@ nav.sub {
 	display: inline-block;
 }
 
-#main {
+#main-content {
 	position: relative;
 }
-#main > .since {
+#main-content > .since {
 	top: inherit;
 	font-family: "Fira Sans", Arial, sans-serif;
 }
@@ -755,7 +755,7 @@ nav.sub {
 	flex-basis: 100%;
 }
 
-#main > .item-info {
+#main-content > .item-info {
 	margin-top: 0;
 }
 
@@ -1521,10 +1521,10 @@ kbd {
 	left: -5px;
 }
 
-#main > ul {
+#main-content > ul {
 	padding-left: 10px;
 }
-#main > ul > li {
+#main-content > ul > li {
 	list-style: none;
 }
 
@@ -1920,8 +1920,8 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		border-bottom: 1px solid;
 	}
 
-	#main > details.rustdoc-toggle > summary::before,
-	#main > div > details.rustdoc-toggle > summary::before {
+	#main-content > details.rustdoc-toggle > summary::before,
+	#main-content > div > details.rustdoc-toggle > summary::before {
 		left: -11px;
 	}
 
@@ -1954,7 +1954,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		z-index: 11;
 	}
 
-	#main > .line-numbers {
+	#main-content > .line-numbers {
 		margin-top: 0;
 	}
 
@@ -2008,7 +2008,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		height: 73px;
 	}
 
-	#main > table:not(.table-display) td {
+	#main-content > table:not(.table-display) td {
 		word-break: break-word;
 		width: 50%;
 	}

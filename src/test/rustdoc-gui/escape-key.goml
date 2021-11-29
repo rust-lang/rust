@@ -3,15 +3,15 @@ goto: file://|DOC_PATH|/test_docs/index.html
 write: (".search-input", "test")
 wait-for: "#search > h1" // The search element is empty before the first search 
 assert-attribute: ("#search", {"class": "content"})
-assert-attribute: ("#main", {"class": "content hidden"})
+assert-attribute: ("#main-content", {"class": "content hidden"})
 press-key: "Escape"
 assert-attribute: ("#search", {"class": "content hidden"})
-assert-attribute: ("#main", {"class": "content"})
+assert-attribute: ("#main-content", {"class": "content"})
 
 // Check that focusing the search input brings back the search results
 focus: ".search-input"
 assert-attribute: ("#search", {"class": "content"})
-assert-attribute: ("#main", {"class": "content hidden"})
+assert-attribute: ("#main-content", {"class": "content hidden"})
 
 // Now let's check that when the help popup is displayed and we press Escape, it doesn't
 // hide the search results too.
@@ -20,7 +20,7 @@ assert-attribute: ("#help", {"class": ""})
 press-key: "Escape"
 assert-attribute: ("#help", {"class": "hidden"})
 assert-attribute: ("#search", {"class": "content"})
-assert-attribute: ("#main", {"class": "content hidden"})
+assert-attribute: ("#main-content", {"class": "content hidden"})
 
 // Check that Escape hides the search results when a search result is focused.
 focus: ".search-input"
@@ -31,4 +31,4 @@ assert: "#results a:focus"
 press-key: "Escape"
 assert-attribute: ("#help", {"class": "hidden"})
 assert-attribute: ("#search", {"class": "content hidden"})
-assert-attribute: ("#main", {"class": "content"})
+assert-attribute: ("#main-content", {"class": "content"})

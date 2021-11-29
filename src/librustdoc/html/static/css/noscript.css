@@ -4,7 +4,7 @@ of content is hidden by default (depending on the settings too), we have to over
 rules.
 */
 
-#main .attributes {
+#main-content .attributes {
 	/* Since there is no toggle (the "[-]") when JS is disabled, no need for this margin either. */
 	margin-left: 0 !important;
 }

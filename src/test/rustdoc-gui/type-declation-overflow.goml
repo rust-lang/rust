@@ -11,7 +11,7 @@ assert-property: (".item-decl pre", {"scrollWidth": "1324"})
 goto: file://|DOC_PATH|/lib2/too_long/type.ReallyLongTypeNameLongLongLong.html
 assert-property: ("body", {"scrollWidth": "1100"})
 // We now check that the section width hasn't grown because of it.
-assert-property: ("#main", {"scrollWidth": "840"})
+assert-property: ("#main-content", {"scrollWidth": "840"})
 // And now checking that it has scrollable content.
 assert-property: (".item-decl pre", {"scrollWidth": "1103"})
 
@@ -20,6 +20,6 @@ assert-property: (".item-decl pre", {"scrollWidth": "1103"})
 goto: file://|DOC_PATH|/lib2/too_long/constant.ReallyLongTypeNameLongLongLongConstBecauseWhyNotAConstRightGigaGigaSupraLong.html
 assert-property: ("body", {"scrollWidth": "1100"})
 // We now check that the section width hasn't grown because of it.
-assert-property: ("#main", {"scrollWidth": "840"})
+assert-property: ("#main-content", {"scrollWidth": "840"})
 // And now checking that it has scrollable content.
 assert-property: (".item-decl pre", {"scrollWidth": "950"})
