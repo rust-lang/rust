@@ -545,13 +545,19 @@ fn collect_symbols_from_item_scope(
     let collect_symbols_from_scope =
         |scope: &ItemScope,
          symbols: &mut Vec<FileSymbol>,
-         bodies_to_traverse: &mut Vec<DefWithBodyId>| {
-            let symbols_iter =
-                scope.declarations().filter_map(|module_def_id| match module_def_id {
+         bodies_to_traverse: &mut Vec<(Option<SmolStr>, DefWithBodyId)>,
+         container_name: &Option<SmolStr>| {
+            let symbols_iter = scope
+                .declarations()
+                .filter_map(|module_def_id| match module_def_id {
                     ModuleDefId::ModuleId(module_id) => decl_module(db, module_id),
                     ModuleDefId::FunctionId(function_id) => {
-                        bodies_to_traverse.push(function_id.into());
-                        decl_assoc(db, function_id, FileSymbolKind::Function)
+                        let symbol = decl_assoc(db, function_id, FileSymbolKind::Function);
+                        bodies_to_traverse.push((
+                            symbol.as_ref().and_then(|x| Some(x.name.clone())),
+                            function_id.into(),
+                        ));
+                        symbol
                     }
                     ModuleDefId::AdtId(AdtId::StructId(struct_id)) => {
                         decl(db, struct_id, FileSymbolKind::Struct)
@@ -563,12 +569,20 @@ fn collect_symbols_from_item_scope(
                         decl(db, union_id, FileSymbolKind::Union)
                     }
                     ModuleDefId::ConstId(const_id) => {
-                        bodies_to_traverse.push(const_id.into());
-                        decl_assoc(db, const_id, FileSymbolKind::Const)
+                        let symbol = decl_assoc(db, const_id, FileSymbolKind::Const);
+                        bodies_to_traverse.push((
+                            symbol.as_ref().and_then(|x| Some(x.name.clone())),
+                            const_id.into(),
+                        ));
+                        symbol
                     }
                     ModuleDefId::StaticId(static_id) => {
-                        bodies_to_traverse.push(static_id.into());
-                        decl(db, static_id, FileSymbolKind::Static)
+                        let symbol = decl(db, static_id, FileSymbolKind::Static);
+                        bodies_to_traverse.push((
+                            symbol.as_ref().and_then(|x| Some(x.name.clone())),
+                            static_id.into(),
+                        ));
+                        symbol
                     }
                     ModuleDefId::TraitId(trait_id) => decl(db, trait_id, FileSymbolKind::Trait),
                     ModuleDefId::TypeAliasId(alias_id) => {
@@ -576,24 +590,39 @@ fn collect_symbols_from_item_scope(
                     }
                     ModuleDefId::BuiltinType(_) => None,
                     ModuleDefId::EnumVariantId(_) => None,
+                })
+                .map(|mut s| {
+                    // If a container name was not provided in the symbol, but within the scope of our traversal,
+                    // we'll update the container name here.
+                    if let Some(container_name) = &container_name {
+                        s.container_name.get_or_insert_with(|| container_name.clone());
+                    }
+
+                    s
                 });
 
             symbols.extend(symbols_iter);
 
             for const_id in scope.unnamed_consts() {
-                bodies_to_traverse.push(const_id.into())
+                // since unnamed consts don't really have a name, we'll inherit parent scope's symbol name.
+                bodies_to_traverse.push((container_name.clone(), const_id.into()));
             }
         };
 
     let mut bodies_to_traverse = Vec::new();
-    collect_symbols_from_scope(scope, symbols, &mut bodies_to_traverse);
+    collect_symbols_from_scope(scope, symbols, &mut bodies_to_traverse, &None);
 
-    while let Some(body) = bodies_to_traverse.pop() {
+    while let Some((container_name, body)) = bodies_to_traverse.pop() {
         let body = db.body(body);
 
         for (_, block_def_map) in body.blocks(db) {
             for (_, module_data) in block_def_map.modules() {
-                collect_symbols_from_scope(&module_data.scope, symbols, &mut bodies_to_traverse);
+                collect_symbols_from_scope(
+                    &module_data.scope,
+                    symbols,
+                    &mut bodies_to_traverse,
+                    &container_name,
+                );
             }
         }
     }
