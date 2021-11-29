@@ -1,14 +1,13 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
-use super::MirPass;
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, PlaceElem,
-    PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement, StatementKind, Terminator,
+    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPass, MirPhase, Operand,
+    PlaceElem, PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement, StatementKind, Terminator,
     TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
