@@ -805,7 +805,7 @@ fn assoc_type(
 fn render_stability_since_raw(
     w: &mut Buffer,
     ver: Option<Symbol>,
-    const_stability: Option<&ConstStability>,
+    const_stability: Option<ConstStability>,
     containing_ver: Option<Symbol>,
     containing_const_ver: Option<Symbol>,
 ) {
@@ -814,7 +814,7 @@ fn render_stability_since_raw(
     match (ver, const_stability) {
         // stable and const stable
         (Some(v), Some(ConstStability { level: StabilityLevel::Stable { since }, .. }))
-            if Some(*since) != containing_const_ver =>
+            if Some(since) != containing_const_ver =>
         {
             write!(
                 w,

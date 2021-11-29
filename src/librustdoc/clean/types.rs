@@ -376,8 +376,8 @@ impl Item {
         self.def_id.as_def_id().and_then(|did| tcx.lookup_stability(did))
     }
 
-    crate fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ConstStability> {
-        self.def_id.as_def_id().and_then(|did| tcx.lookup_const_stability(did))
+    crate fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<ConstStability> {
+        self.def_id.as_def_id().and_then(|did| tcx.lookup_const_stability(did)).map(|cs| *cs)
     }
 
     crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
