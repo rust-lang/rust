@@ -1,11 +1,10 @@
 use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::higher;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
 use clippy_utils::{
-    is_else_clause, is_expn_of, is_expr_path_def_path, is_lint_allowed, match_def_path, method_calls, path_to_res,
-    paths, SpanlessEq,
+    higher, is_else_clause, is_expn_of, is_expr_path_def_path, is_lint_allowed, match_def_path, method_calls,
+    path_to_res, paths, peel_blocks_with_stmt, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast as ast;
@@ -662,10 +661,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             if and_then_args.len() == 5;
             if let ExprKind::Closure(_, _, body_id, _, _) = &and_then_args[4].kind;
             let body = cx.tcx.hir().body(*body_id);
-            if let ExprKind::Block(block, _) = &body.value.kind;
-            let stmts = &block.stmts;
-            if stmts.len() == 1 && block.expr.is_none();
-            if let StmtKind::Semi(only_expr) = &stmts[0].kind;
+            let only_expr = peel_blocks_with_stmt(&body.value);
             if let ExprKind::MethodCall(ps, _, span_call_args, _) = &only_expr.kind;
             then {
                 let and_then_snippets = get_and_then_snippets(cx, and_then_args);

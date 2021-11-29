@@ -5,7 +5,7 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable, type_is_unsafe_function};
 use clippy_utils::{
     can_move_expr_to_closure, in_constant, is_else_clause, is_lang_ctor, is_lint_allowed, path_to_local_id,
-    peel_hir_expr_refs, peel_hir_expr_while, CaptureKind,
+    peel_blocks, peel_hir_expr_refs, peel_hir_expr_while, CaptureKind,
 };
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
@@ -307,16 +307,5 @@ fn get_some_expr(
 
 // Checks for the `None` value.
 fn is_none_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
-        ExprKind::Block(
-            Block {
-                stmts: [],
-                expr: Some(expr),
-                ..
-            },
-            _,
-        ) => is_none_expr(cx, expr),
-        _ => false,
-    }
+    matches!(peel_blocks(expr).kind, ExprKind::Path(ref qpath) if is_lang_ctor(cx, qpath, OptionNone))
 }
