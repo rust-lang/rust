@@ -47,10 +47,8 @@ pub trait TraitEngine<'tcx>: 'tcx {
 
     fn select_all_or_error(&mut self, infcx: &InferCtxt<'_, 'tcx>) -> Vec<FulfillmentError<'tcx>>;
 
-    fn select_where_possible(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Vec<FulfillmentError<'tcx>>;
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'_, 'tcx>)
+    -> Vec<FulfillmentError<'tcx>>;
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
 

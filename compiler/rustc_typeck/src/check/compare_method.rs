@@ -1432,8 +1432,7 @@ pub fn check_type_bounds<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors =
-            inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
+        let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
         if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
             return Err(ErrorReported);
