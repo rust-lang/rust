@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, Block, Expr, Local, Node, Pat, PatKind, Stmt};
+use rustc_hir::{Arm, Block, Expr, Local, Pat, PatKind, Stmt};
 use rustc_index::vec::Idx;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::query::Providers;
@@ -837,19 +837,7 @@ fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
 
         let body = tcx.hir().body(body_id);
         visitor.scope_tree.root_body = Some(body.value.hir_id);
-
-        // If the item is an associated const or a method,
-        // record its impl/trait parent, as it can also have
-        // lifetime parameters free in this body.
-        match tcx.hir().get(id) {
-            Node::ImplItem(_) | Node::TraitItem(_) => {
-                visitor.scope_tree.root_parent = Some(tcx.hir().get_parent_item(id));
-            }
-            _ => {}
-        }
-
         visitor.visit_body(body);
-
         visitor.scope_tree
     } else {
         ScopeTree::default()
