@@ -173,28 +173,27 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// ```
     ///
     /// `[1, 2].into_iter()` and `[].into_iter()` have different types
-    /// ```should_fail
+    /// ```should_fail,edition2021
     /// #![feature(array_into_iter_constructors)]
     /// use std::array::IntoIter;
     ///
-    /// # // FIXME: use `.into_iter()` once the doc tests are in edition2021
     /// pub fn get_bytes(b: bool) -> IntoIter<i8, 4> {
     ///     if b {
-    ///         IntoIter::new([1, 2, 3, 4])
+    ///         [1, 2, 3, 4].into_iter()
     ///     } else {
-    ///         IntoIter::new([]) // error[E0308]: mismatched types
+    ///         [].into_iter() // error[E0308]: mismatched types
     ///     }
     /// }
     /// ```
     ///
     /// But using this method you can get an empty iterator of appropriate size:
-    /// ```
+    /// ```edition2021
     /// #![feature(array_into_iter_constructors)]
     /// use std::array::IntoIter;
     ///
     /// pub fn get_bytes(b: bool) -> IntoIter<i8, 4> {
     ///     if b {
-    ///         IntoIter::new([1, 2, 3, 4])
+    ///         [1, 2, 3, 4].into_iter()
     ///     } else {
     ///         IntoIter::empty()
     ///     }
