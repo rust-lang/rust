@@ -103,6 +103,7 @@ pub use {
     hir_def::{
         adt::StructKind,
         attr::{Attr, Attrs, AttrsWithOwner, Documentation},
+        data::TraitData,
         find_path::PrefixKind,
         import_map,
         item_scope::ItemScope,
