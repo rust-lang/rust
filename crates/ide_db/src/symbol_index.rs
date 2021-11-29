@@ -34,8 +34,9 @@ use base_db::{
 };
 use fst::{self, Streamer};
 use hir::{
-    db::DefDatabase, AdtId, AssocContainerId, AssocItemLoc, DefHasSource, DefWithBodyId, HirFileId,
-    InFile, ItemLoc, ItemScope, ItemTreeNode, Lookup, ModuleData, ModuleDefId, ModuleId, Semantics,
+    db::DefDatabase, AdtId, AssocContainerId, AssocItemId, AssocItemLoc, DefHasSource,
+    DefWithBodyId, HirFileId, InFile, ItemLoc, ItemScope, ItemTreeNode, Lookup, ModuleData,
+    ModuleDefId, ModuleId, Semantics,
 };
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -209,21 +210,18 @@ pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<Fil
         .par_iter()
         .map_with(snap, |snap, &module_id| snap.0.module_symbols(module_id))
         .collect();
+
+    for i in &buf {
+        dbg!(&i.symbols);
+    }
+
     let buf = buf.iter().map(|it| &**it).collect::<Vec<_>>();
     query.search(&buf)
 }
 
 fn module_ids_for_crate(db: &RootDatabase, krate: CrateId) -> Vec<ModuleId> {
     let def_map = db.crate_def_map(krate);
-    let mut module_ids = Vec::new();
-    let mut modules = vec![def_map.root()];
-    while let Some(module) = modules.pop() {
-        let data = &def_map[module];
-        module_ids.push(def_map.module_id(module));
-        modules.extend(data.children.values());
-    }
-
-    module_ids
+    def_map.modules().map(|(id, _)| def_map.module_id(id)).collect()
 }
 
 pub fn index_resolve(db: &RootDatabase, name: &str) -> Vec<FileSymbol> {
@@ -547,7 +545,9 @@ fn collect_symbols_from_item_scope(
          symbols: &mut Vec<FileSymbol>,
          bodies_to_traverse: &mut Vec<(Option<SmolStr>, DefWithBodyId)>,
          container_name: &Option<SmolStr>| {
-            let symbols_iter = scope
+            let mut trait_ids = Vec::new();
+
+            let scope_declaration_symbols = scope
                 .declarations()
                 .filter_map(|module_def_id| match module_def_id {
                     ModuleDefId::ModuleId(module_id) => decl_module(db, module_id),
@@ -584,7 +584,10 @@ fn collect_symbols_from_item_scope(
                         ));
                         symbol
                     }
-                    ModuleDefId::TraitId(trait_id) => decl(db, trait_id, FileSymbolKind::Trait),
+                    ModuleDefId::TraitId(trait_id) => {
+                        trait_ids.push(trait_id);
+                        decl(db, trait_id, FileSymbolKind::Trait)
+                    }
                     ModuleDefId::TypeAliasId(alias_id) => {
                         decl_assoc(db, alias_id, FileSymbolKind::TypeAlias)
                     }
@@ -601,7 +604,47 @@ fn collect_symbols_from_item_scope(
                     s
                 });
 
-            symbols.extend(symbols_iter);
+            symbols.extend(scope_declaration_symbols);
+
+            // todo: we need to merge in container name to these too.
+            // also clean this up generally tooooo.
+            let scope_impl_symbols = scope
+                .impls()
+                .map(|impl_id| db.impl_data(impl_id))
+                .flat_map(|d| d.items.clone()) // xx: clean up this clone??
+                .filter_map(|assoc_item_id| match assoc_item_id {
+                    AssocItemId::FunctionId(function_id) => {
+                        decl_assoc(db, function_id, FileSymbolKind::Function)
+                    }
+                    AssocItemId::ConstId(const_id) => {
+                        decl_assoc(db, const_id, FileSymbolKind::Const)
+                    }
+                    AssocItemId::TypeAliasId(type_alias_id) => {
+                        decl_assoc(db, type_alias_id, FileSymbolKind::TypeAlias)
+                    }
+                });
+
+            symbols.extend(scope_impl_symbols);
+
+            // todo: we need to merge in container name to these too.
+            // also clean this up generally tooooo.
+            let scope_trait_symbols = trait_ids
+                .into_iter()
+                .map(|trait_id| db.trait_data(trait_id))
+                .flat_map(|d| d.items.clone())
+                .filter_map(|(_, assoc_item_id)| match assoc_item_id {
+                    AssocItemId::FunctionId(function_id) => {
+                        decl_assoc(db, function_id, FileSymbolKind::Function)
+                    }
+                    AssocItemId::ConstId(const_id) => {
+                        decl_assoc(db, const_id, FileSymbolKind::Const)
+                    }
+                    AssocItemId::TypeAliasId(type_alias_id) => {
+                        decl_assoc(db, type_alias_id, FileSymbolKind::TypeAlias)
+                    }
+                });
+
+            symbols.extend(scope_trait_symbols);
 
             for const_id in scope.unnamed_consts() {
                 // since unnamed consts don't really have a name, we'll inherit parent scope's symbol name.
