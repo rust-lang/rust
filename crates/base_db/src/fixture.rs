@@ -131,13 +131,13 @@ impl ChangeFixture {
                 current_source_root_kind = *kind;
             }
 
-            if let Some((krate, origin)) = meta.krate {
+            if let Some((krate, origin, version)) = meta.krate {
                 let crate_name = CrateName::normalize_dashes(&krate);
                 let crate_id = crate_graph.add_crate_root(
                     file_id,
                     meta.edition,
                     Some(crate_name.clone().into()),
-                    None,
+                    version,
                     meta.cfg.clone(),
                     meta.cfg,
                     meta.env,
@@ -212,7 +212,7 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 Env::default(),
                 Vec::new(),
-                CrateOrigin::Lang("core".to_string()),
+                CrateOrigin::Lang,
             );
 
             for krate in all_crates {
@@ -247,7 +247,7 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 Env::default(),
                 proc_macro,
-                CrateOrigin::Lang("proc-macro".to_string()),
+                CrateOrigin::Lang,
             );
 
             for krate in all_crates {
@@ -329,7 +329,7 @@ enum SourceRootKind {
 #[derive(Debug)]
 struct FileMeta {
     path: String,
-    krate: Option<(String, CrateOrigin)>,
+    krate: Option<(String, CrateOrigin, Option<String>)>,
     deps: Vec<String>,
     extern_prelude: Vec<String>,
     cfg: CfgOptions,
@@ -338,24 +338,20 @@ struct FileMeta {
     introduce_new_source_root: Option<SourceRootKind>,
 }
 
-fn parse_crate(crate_str: String) -> (String, CrateOrigin) {
+fn parse_crate(crate_str: String) -> (String, CrateOrigin, Option<String>) {
     if let Some((a, b)) = crate_str.split_once("@") {
-        (
-            a.to_owned(),
-            match b.split_once(":") {
-                Some(("CratesIo", data)) => match data.split_once(",") {
-                    Some((version, url)) => CrateOrigin::CratesIo {
-                        name: a.to_owned(),
-                        repo: Some(url.to_owned()),
-                        version: version.to_owned(),
-                    },
-                    _ => panic!("Bad crates.io parameter: {}", data),
-                },
-                _ => panic!("Bad string for crate origin: {}", b),
+        let (version, origin) = match b.split_once(":") {
+            Some(("CratesIo", data)) => match data.split_once(",") {
+                Some((version, url)) => {
+                    (version, CrateOrigin::CratesIo { repo: Some(url.to_owned()) })
+                }
+                _ => panic!("Bad crates.io parameter: {}", data),
             },
-        )
+            _ => panic!("Bad string for crate origin: {}", b),
+        };
+        (a.to_owned(), origin, Some(version.to_string()))
     } else {
-        (crate_str, CrateOrigin::Unknown)
+        (crate_str, CrateOrigin::Unknown, None)
     }
 }
 

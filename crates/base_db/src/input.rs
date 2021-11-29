@@ -116,9 +116,9 @@ impl ops::Deref for CrateName {
 #[derive(Debug, Clone)]
 pub enum CrateOrigin {
     /// Crates that are from crates.io official registry,
-    CratesIo { name: String, version: String, repo: Option<String> },
+    CratesIo { repo: Option<String> },
     /// Crates that are provided by the language, like std, core, proc-macro, ...
-    Lang(String),
+    Lang,
     /// Crates that we don't know their origin.
     // Idealy this enum should cover all cases, and then we remove this variant.
     Unknown,

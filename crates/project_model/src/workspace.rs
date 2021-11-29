@@ -474,12 +474,8 @@ fn project_json_to_crate_graph(
                     cfg_options,
                     env,
                     proc_macro.unwrap_or_default(),
-                    if let Some(name) = &krate.display_name {
-                        CrateOrigin::CratesIo {
-                            repo: krate.repository.clone(),
-                            name: name.crate_name().to_string(),
-                            version: krate.version.clone().unwrap_or_default(),
-                        }
+                    if krate.display_name.is_some() {
+                        CrateOrigin::CratesIo { repo: krate.repository.clone() }
                     } else {
                         CrateOrigin::Unknown
                     },
@@ -832,7 +828,6 @@ fn add_target_crate_root(
             .iter()
             .map(|feat| CfgFlag::KeyValue { key: "feature".into(), value: feat.0.into() }),
     );
-    let crate_name = display_name.crate_name().to_string();
     crate_graph.add_crate_root(
         file_id,
         edition,
@@ -842,11 +837,7 @@ fn add_target_crate_root(
         potential_cfg_options,
         env,
         proc_macro,
-        CrateOrigin::CratesIo {
-            name: crate_name,
-            repo: pkg.repository.clone(),
-            version: pkg.version.to_string(),
-        },
+        CrateOrigin::CratesIo { repo: pkg.repository.clone() },
     )
 }
 
@@ -890,7 +881,7 @@ fn sysroot_to_crate_graph(
                 cfg_options.clone(),
                 env,
                 proc_macro,
-                CrateOrigin::Lang(sysroot[krate].name.clone()),
+                CrateOrigin::Lang,
             );
             Some((krate, crate_id))
         })
