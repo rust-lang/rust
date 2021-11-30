@@ -1803,6 +1803,16 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::Downcast(_, _) => false,
         }
     }
+
+    /// Returns `true` if this is a `Downcast` projection with the given `VariantIdx`.
+    pub fn is_downcast_to(&self, v: VariantIdx) -> bool {
+        matches!(*self, Self::Downcast(_, x) if x == v)
+    }
+
+    /// Returns `true` if this is a `Field` projection with the given index.
+    pub fn is_field_to(&self, f: Field) -> bool {
+        matches!(*self, Self::Field(x, _) if x == f)
+    }
 }
 
 /// Alias for projections as they appear in places, where the base is a place
