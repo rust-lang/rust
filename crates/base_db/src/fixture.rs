@@ -19,8 +19,8 @@ use crate::{
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
 pub trait WithFixture: Default + SourceDatabaseExt + 'static {
-    fn with_single_file(text: &str) -> (Self, FileId) {
-        let fixture = ChangeFixture::parse(text);
+    fn with_single_file(ra_fixture: &str) -> (Self, FileId) {
+        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
         assert_eq!(fixture.files.len(), 1);

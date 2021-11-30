@@ -11,7 +11,6 @@ use ide_db::{
 };
 use itertools::Itertools;
 use profile::{memory_usage, Bytes};
-use rustc_hash::FxHashMap;
 use std::env;
 use stdx::format_to;
 use syntax::{ast, Parse, SyntaxNode};
@@ -149,20 +148,16 @@ impl fmt::Display for LibrarySymbolsStats {
     }
 }
 
-impl FromIterator<TableEntry<(), Arc<FxHashMap<SourceRootId, SymbolIndex>>>>
-    for LibrarySymbolsStats
-{
+impl FromIterator<TableEntry<SourceRootId, Arc<SymbolIndex>>> for LibrarySymbolsStats {
     fn from_iter<T>(iter: T) -> LibrarySymbolsStats
     where
-        T: IntoIterator<Item = TableEntry<(), Arc<FxHashMap<SourceRootId, SymbolIndex>>>>,
+        T: IntoIterator<Item = TableEntry<SourceRootId, Arc<SymbolIndex>>>,
     {
         let mut res = LibrarySymbolsStats::default();
         for entry in iter {
-            let value = entry.value.unwrap();
-            for symbols in value.values() {
-                res.total += symbols.len();
-                res.size += symbols.memory_size();
-            }
+            let symbols = entry.value.unwrap();
+            res.total += symbols.len();
+            res.size += symbols.memory_size();
         }
         res
     }
