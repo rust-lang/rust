@@ -40,8 +40,8 @@
 //!
 //! `expect!` returns an instance of `Expect` struct, which holds position
 //! information and a string literal. Use `Expect::assert_eq` for string
-//! comparison. Use `Expect::assert_debug_eq` for verbose debug comparison. Note that
-//! leading indentation is automatically removed.
+//! comparison. Use `Expect::assert_debug_eq` for verbose debug comparison. Note
+//! that leading indentation is automatically removed.
 //!
 //! ```
 //! use expect_test::expect;
@@ -65,8 +65,8 @@
 //! quickly update all the tests by running the test suite with `UPDATE_EXPECT`
 //! environmental variable set.
 //!
-//! If the expected data is too verbose to include inline, you can store it in an
-//! external file using the `expect_file!` macro:
+//! If the expected data is too verbose to include inline, you can store it in
+//! an external file using the `expect_file!` macro:
 //!
 //! ```no_run
 //! use expect_test::expect_file;
@@ -80,8 +80,8 @@
 //!
 //! # Suggested Workflows
 //!
-//! I like to use data-driven tests with `expect_test`. I usually define a single
-//! driver function `check` and then call it from individual tests:
+//! I like to use data-driven tests with `expect_test`. I usually define a
+//! single driver function `check` and then call it from individual tests:
 //!
 //! ```
 //! use expect_test::{expect, Expect};
@@ -130,11 +130,15 @@
 //!
 //! # Maintenance status
 //!
-//! The main customer of this library is rust-analyzer. The library is expected
-//! to be relatively stable, but, if the need arises, it could be significantly
-//! reworked to fit rust-analyzer better.
+//! The main customer of this library is rust-analyzer. The library is  stable,
+//! it is planned to not release any major versions past 1.0.
 //!
-//! MSRV: latest stable.
+//! # Minimal Supported Rust Version
+//!
+//! This crate's minimum supported `rustc` version is `1.45.0`. MSRV is updated
+//! conservatively, supporting roughly 10 minor versions of `rustc`. MSRV bump
+//! is not considered semver breaking, but will require at least minor version
+//! bump.
 use std::{
     collections::HashMap,
     env, fmt, fs, mem,

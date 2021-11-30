@@ -10,3 +10,5 @@ https://user-images.githubusercontent.com/1711539/120119633-73b3f100-c1a1-11eb-9
 Adding a new test:
 
 ![expect-fresh](https://user-images.githubusercontent.com/1711539/85926961-306f4500-b8a3-11ea-9369-f2373e327a3f.gif)
+
+Checkout the docs for more: https://docs.rs/expect-test.
