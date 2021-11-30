@@ -7,18 +7,18 @@ use rustc_middle::ty::TyCtxt;
 use std::borrow::Cow;
 
 pub struct SimplifyBranches {
-    label: String,
+    label: &'static str,
 }
 
 impl SimplifyBranches {
-    pub fn new(label: &str) -> Self {
-        SimplifyBranches { label: format!("SimplifyBranches-{}", label) }
+    pub const fn new(label: &'static str) -> Self {
+        SimplifyBranches { label }
     }
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyBranches {
     fn name(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.label)
+        Cow::Owned(format!("SimplifyBranches-{}", self.label))
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
