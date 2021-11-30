@@ -63,6 +63,7 @@ mod nrvo;
 mod remove_false_edges;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
+mod remove_uninit_drops;
 mod remove_unneeded_drops;
 mod remove_zsts;
 mod required_consts;
