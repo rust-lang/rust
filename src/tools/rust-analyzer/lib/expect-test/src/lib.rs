@@ -507,7 +507,7 @@ fn to_abs_ws_path(path: &Path) -> PathBuf {
             }
         };
 
-        workspace_root.join(path).to_owned()
+        workspace_root.join(path).canonicalize().unwrap()
     }
 }
 
