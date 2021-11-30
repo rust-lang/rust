@@ -704,7 +704,8 @@ impl f32 {
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
-    #[unstable(feature = "float_next_up_down", issue = "none")]
+    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_up(self) -> Self {
         // We must use strictly integer arithmetic to prevent denormals from
         // flushing to zero after an arithmetic operation on some platforms.
@@ -753,7 +754,8 @@ impl f32 {
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
-    #[unstable(feature = "float_next_up_down", issue = "none")]
+    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_down(self) -> Self {
         // We must use strictly integer arithmetic to prevent denormals from
         // flushing to zero after an arithmetic operation on some platforms.
