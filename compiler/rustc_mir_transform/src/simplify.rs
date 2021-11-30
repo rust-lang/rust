@@ -27,7 +27,7 @@
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
 
-use crate::MirPass;
+use crate::{MirPass, MirPassC};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -53,6 +53,10 @@ pub fn simplify_cfg(tcx: TyCtxt<'tcx>, body: &mut Body<'_>) {
 
     // FIXME: Should probably be moved into some kind of pass manager
     body.basic_blocks_mut().raw.shrink_to_fit();
+}
+
+impl MirPassC for SimplifyCfg {
+    const OPT_LEVEL: u32 = 0; // TODO: Only run if previous pass runs.
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
