@@ -144,7 +144,7 @@ use std::{
     sync::Mutex,
 };
 
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
 
 const HELP: &str = "
 You can update all `expect![[]]` tests by running:
@@ -553,36 +553,29 @@ fn format_patch(desired_indent: Option<usize>, patch: &str) -> String {
 }
 
 fn to_abs_ws_path(path: &Path) -> PathBuf {
-    static WORKSPACE_ROOT: Lazy<Result<PathBuf, env::VarError>> = Lazy::new(|| {
-        let my_manifest = env::var("CARGO_MANIFEST_DIR")?;
-
-        // Heuristic, see https://github.com/rust-lang/cargo/issues/3946
-        let workspace_root = Path::new(&my_manifest)
-            .ancestors()
-            .filter(|it| it.join("Cargo.toml").exists())
-            .last()
-            .unwrap()
-            .to_path_buf();
-
-        Ok(workspace_root)
-    });
-
     if path.is_absolute() {
-        path.to_owned()
-    } else {
-        let workspace_root = match WORKSPACE_ROOT.as_deref() {
-            Ok(root) => root,
-            Err(_) => {
-                eprintln!(
-                    "No CARGO_MANIFEST_DIR env var. Consider using absolute path. Path: {}",
-                    path.display()
-                );
-                panic!("No CARGO_MANIFEST_DIR env var.")
-            }
-        };
-
-        workspace_root.join(path).canonicalize().unwrap()
+        return path.to_owned();
     }
+
+    static WORKSPACE_ROOT: OnceCell<PathBuf> = OnceCell::new();
+    WORKSPACE_ROOT
+        .get_or_try_init(|| {
+            let my_manifest = env::var("CARGO_MANIFEST_DIR")?;
+
+            // Heuristic, see https://github.com/rust-lang/cargo/issues/3946
+            let workspace_root = Path::new(&my_manifest)
+                .ancestors()
+                .filter(|it| it.join("Cargo.toml").exists())
+                .last()
+                .unwrap()
+                .to_path_buf();
+
+            Ok(workspace_root)
+        })
+        .unwrap_or_else(|_: env::VarError| {
+            panic!("No CARGO_MANIFEST_DIR env var and the path is relative: {}", path.display())
+        })
+        .join(path)
 }
 
 fn trim_indent(mut text: &str) -> String {
