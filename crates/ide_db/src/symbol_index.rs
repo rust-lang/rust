@@ -185,7 +185,7 @@ impl<DB> std::ops::Deref for Snap<DB> {
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     let _p = profile::span("world_symbols").detail(|| query.query.clone());
 
-    let indices = if query.libs {
+    let indices: Vec<_> = if query.libs {
         db.library_roots()
             .par_iter()
             .map_with(Snap::new(db), |snap, &root| snap.library_symbols(root))
@@ -206,7 +206,7 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
             .collect()
     };
 
-    query.search(indices)
+    query.search(&indices)
 }
 
 pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<FileSymbol> {
@@ -218,7 +218,7 @@ pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<Fil
         .map_with(Snap::new(db), |snap, &module_id| snap.module_symbols(module_id))
         .collect();
 
-    query.search(indices)
+    query.search(&indices)
 }
 
 fn module_ids_for_crate(db: &dyn DefDatabase, krate: CrateId) -> Vec<ModuleId> {
@@ -317,10 +317,10 @@ impl SymbolIndex {
 }
 
 impl Query {
-    pub(crate) fn search(self, indices: Vec<Arc<SymbolIndex>>) -> Vec<FileSymbol> {
+    pub(crate) fn search(self, indices: &[Arc<SymbolIndex>]) -> Vec<FileSymbol> {
         let _p = profile::span("symbol_index::Query::search");
         let mut op = fst::map::OpBuilder::new();
-        for file_symbols in &indices {
+        for file_symbols in indices.iter() {
             let automaton = fst::automaton::Subsequence::new(&self.lowercased);
             op = op.add(file_symbols.map.search(automaton))
         }
@@ -443,7 +443,7 @@ struct SymbolCollector<'a> {
     db: &'a dyn SymbolsDatabase,
     symbols: Vec<FileSymbol>,
     work: Vec<SymbolCollectorWork>,
-    container_name_stack: Vec<SmolStr>,
+    current_container_name: Option<SmolStr>,
 }
 
 /// Given a [`ModuleId`] and a [`SymbolsDatabase`], use the DefMap for the module's crate to collect all symbols that should be
@@ -453,7 +453,7 @@ impl<'a> SymbolCollector<'a> {
         let mut symbol_collector = SymbolCollector {
             db,
             symbols: Default::default(),
-            container_name_stack: Default::default(),
+            current_container_name: None,
             // The initial work is the root module we're collecting, additional work will
             // be populated as we traverse the module's definitions.
             work: vec![SymbolCollectorWork { module_id, parent: None }],
@@ -557,16 +557,16 @@ impl<'a> SymbolCollector<'a> {
 
     fn with_container_name(&mut self, container_name: Option<SmolStr>, f: impl FnOnce(&mut Self)) {
         if let Some(container_name) = container_name {
-            self.container_name_stack.push(container_name);
+            let prev = self.current_container_name.replace(container_name);
             f(self);
-            self.container_name_stack.pop();
+            self.current_container_name = prev;
         } else {
             f(self);
         }
     }
 
     fn current_container_name(&self) -> Option<SmolStr> {
-        self.container_name_stack.last().cloned()
+        self.current_container_name.clone()
     }
 
     fn def_with_body_id_name(&self, body_id: DefWithBodyId) -> Option<SmolStr> {
