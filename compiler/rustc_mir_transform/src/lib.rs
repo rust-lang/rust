@@ -328,7 +328,7 @@ fn mir_promoted(
 
     run_passes(tcx, &mut body, MirPhase::ConstPromotion, &[promote, opt_coverage]);
 
-    let promoted = promote_pass.promoted_fragments.into_inner();
+    let promoted = std::mem::take(&mut body.promoted_fragments);
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 

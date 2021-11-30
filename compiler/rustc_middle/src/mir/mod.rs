@@ -263,6 +263,12 @@ pub struct Body<'tcx> {
     /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
     pub is_polymorphic: bool,
 
+    /// A list of MIR fragments for promotable temps inside this body.
+    ///
+    /// This field is only populated during the `PromoteTemps` MIR pass and will be emptied
+    /// immediately after.
+    pub promoted_fragments: IndexVec<Promoted, Body<'tcx>>,
+
     predecessor_cache: PredecessorCache,
     is_cyclic: GraphIsCyclicCache,
 }
@@ -311,6 +317,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
+            promoted_fragments: Default::default(),
         };
         body.is_polymorphic = body.definitely_has_param_types_or_consts(tcx);
         body
@@ -338,6 +345,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
+            promoted_fragments: Default::default(),
         }
     }
 

@@ -23,7 +23,6 @@ use rustc_span::Span;
 
 use rustc_index::vec::{Idx, IndexVec};
 
-use std::cell::Cell;
 use std::{cmp, iter, mem};
 
 use crate::transform::check_consts::{qualifs, ConstCx};
@@ -33,14 +32,12 @@ use crate::transform::check_consts::{qualifs, ConstCx};
 /// Promotion is the extraction of promotable temps into separate MIR bodies so they can have
 /// `'static` lifetime.
 ///
-/// After this pass is run, `promoted_fragments` will hold the MIR body corresponding to each
+/// After this pass is run, `body.promoted_fragments` will hold the MIR body corresponding to each
 /// newly created `Constant`.
 #[derive(Default)]
-pub struct PromoteTemps<'tcx> {
-    pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
-}
+pub struct PromoteTemps;
 
-impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
+impl<'tcx> MirPass<'tcx> for PromoteTemps {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
@@ -61,7 +58,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let promotable_candidates = validate_candidates(&ccx, &temps, &all_candidates);
 
         let promoted = promote_candidates(body, tcx, temps, promotable_candidates);
-        self.promoted_fragments.set(promoted);
+        body.promoted_fragments = promoted;
     }
 }
 
