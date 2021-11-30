@@ -1726,7 +1726,7 @@ impl<T, A: Allocator> Vec<T, A> {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
         if self.len == self.buf.capacity() {
-            self.reserve(1);
+            self.buf.reserve_for_push(self.len);
         }
         unsafe {
             let end = self.as_mut_ptr().add(self.len);
