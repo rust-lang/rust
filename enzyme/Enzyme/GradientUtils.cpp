@@ -5073,3 +5073,172 @@ void InvertedPointerVH::deleted() {
   llvm::errs() << **this << "\n";
   assert(0 && "erasing something in invertedPointers map");
 }
+
+void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
+                       Type *secretty, Intrinsic::ID intrinsic,
+                       unsigned dstalign, unsigned srcalign, unsigned offset,
+                       bool dstConstant, Value *shadow_dst, bool srcConstant,
+                       Value *shadow_src, Value *length, Value *isVolatile,
+                       llvm::CallInst *MTI, bool allowForward) {
+  // TODO offset
+  if (secretty) {
+    // no change to forward pass if represents floats
+    if (mode == DerivativeMode::ReverseModeGradient ||
+        mode == DerivativeMode::ReverseModeCombined) {
+      IRBuilder<> Builder2(MTI->getParent());
+      gutils->getReverseBuilder(Builder2, /*original*/ true);
+
+      // If the src is constant simply zero d_dst and don't propagate to d_src
+      // (which thus == src and may be illegal)
+      if (srcConstant) {
+        SmallVector<Value *, 4> args;
+        args.push_back(gutils->lookupM(shadow_dst, Builder2));
+        if (args[0]->getType()->isIntegerTy())
+          args[0] = Builder2.CreateIntToPtr(
+              args[0], Type::getInt8PtrTy(MTI->getContext()));
+        args.push_back(ConstantInt::get(Type::getInt8Ty(MTI->getContext()), 0));
+        args.push_back(gutils->lookupM(length, Builder2));
+#if LLVM_VERSION_MAJOR <= 6
+        args.push_back(ConstantInt::get(Type::getInt32Ty(MTI->getContext()),
+                                        max(1U, dstalign)));
+#endif
+        args.push_back(ConstantInt::getFalse(MTI->getContext()));
+
+        Type *tys[] = {args[0]->getType(), args[2]->getType()};
+        auto memsetIntr = Intrinsic::getDeclaration(
+            MTI->getParent()->getParent()->getParent(), Intrinsic::memset, tys);
+        auto cal = Builder2.CreateCall(memsetIntr, args);
+        cal->setCallingConv(memsetIntr->getCallingConv());
+        if (dstalign != 0) {
+#if LLVM_VERSION_MAJOR >= 10
+          cal->addParamAttr(0, Attribute::getWithAlignment(MTI->getContext(),
+                                                           Align(dstalign)));
+#else
+          cal->addParamAttr(
+              0, Attribute::getWithAlignment(MTI->getContext(), dstalign));
+#endif
+        }
+
+      } else {
+        SmallVector<Value *, 4> args;
+        auto dsto = gutils->lookupM(shadow_dst, Builder2);
+        if (dsto->getType()->isIntegerTy())
+          dsto = Builder2.CreateIntToPtr(
+              dsto, Type::getInt8PtrTy(dsto->getContext()));
+        unsigned dstaddr =
+            cast<PointerType>(dsto->getType())->getAddressSpace();
+        auto secretpt = PointerType::get(secretty, dstaddr);
+        if (offset != 0)
+          dsto = Builder2.CreateConstInBoundsGEP1_64(dsto, offset);
+        args.push_back(Builder2.CreatePointerCast(dsto, secretpt));
+        auto srco = gutils->lookupM(shadow_src, Builder2);
+        if (srco->getType()->isIntegerTy())
+          srco = Builder2.CreateIntToPtr(
+              srco, Type::getInt8PtrTy(srco->getContext()));
+        unsigned srcaddr =
+            cast<PointerType>(srco->getType())->getAddressSpace();
+        secretpt = PointerType::get(secretty, srcaddr);
+        if (offset != 0)
+          srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
+        args.push_back(Builder2.CreatePointerCast(srco, secretpt));
+        args.push_back(Builder2.CreateUDiv(
+            gutils->lookupM(length, Builder2),
+
+            ConstantInt::get(length->getType(),
+                             Builder2.GetInsertBlock()
+                                     ->getParent()
+                                     ->getParent()
+                                     ->getDataLayout()
+                                     .getTypeAllocSizeInBits(secretty) /
+                                 8)));
+
+        auto dmemcpy = ((intrinsic == Intrinsic::memcpy)
+                            ? getOrInsertDifferentialFloatMemcpy
+                            : getOrInsertDifferentialFloatMemmove)(
+            *MTI->getParent()->getParent()->getParent(), secretty, dstalign,
+            srcalign, dstaddr, srcaddr);
+        Builder2.CreateCall(dmemcpy, args);
+      }
+    }
+  } else {
+
+    // if represents pointer or integer type then only need to modify forward
+    // pass with the copy
+    if (allowForward && (mode == DerivativeMode::ReverseModePrimal ||
+                         mode == DerivativeMode::ReverseModeCombined)) {
+
+      // It is questionable how the following case would even occur, but if
+      // the dst is constant, we shouldn't do anything extra
+      if (dstConstant) {
+        return;
+      }
+
+      SmallVector<Value *, 4> args;
+      IRBuilder<> BuilderZ(gutils->getNewFromOriginal(MTI));
+
+      // If src is inactive, then we should copy from the regular pointer
+      // (i.e. suppose we are copying constant memory representing dimensions
+      // into a tensor)
+      //  to ensure that the differential tensor is well formed for use
+      //  OUTSIDE the derivative generation (as enzyme doesn't need this), we
+      //  should also perform the copy onto the differential. Future
+      //  Optimization (not implemented): If dst can never escape Enzyme code,
+      //  we may omit this copy.
+      // no need to update pointers, even if dst is active
+      auto dsto = shadow_dst;
+      if (dsto->getType()->isIntegerTy())
+        dsto = BuilderZ.CreateIntToPtr(dsto,
+                                       Type::getInt8PtrTy(MTI->getContext()));
+      if (offset != 0)
+        dsto = BuilderZ.CreateConstInBoundsGEP1_64(dsto, offset);
+      args.push_back(dsto);
+      auto srco = shadow_src;
+      if (srco->getType()->isIntegerTy())
+        srco = BuilderZ.CreateIntToPtr(srco,
+                                       Type::getInt8PtrTy(MTI->getContext()));
+      if (offset != 0)
+        srco = BuilderZ.CreateConstInBoundsGEP1_64(srco, offset);
+      args.push_back(srco);
+
+      args.push_back(length);
+#if LLVM_VERSION_MAJOR <= 6
+      args.push_back(ConstantInt::get(Type::getInt32Ty(MTI->getContext()),
+                                      max(1U, min(srcalign, dstalign))));
+#endif
+      args.push_back(isVolatile);
+
+      //#if LLVM_VERSION_MAJOR >= 7
+      Type *tys[] = {args[0]->getType(), args[1]->getType(),
+                     args[2]->getType()};
+      //#else
+      // Type *tys[] = {args[0]->getType(), args[1]->getType(),
+      // args[2]->getType(), args[3]->getType()}; #endif
+
+      auto memtransIntr = Intrinsic::getDeclaration(
+          gutils->newFunc->getParent(), intrinsic, tys);
+      auto cal = BuilderZ.CreateCall(memtransIntr, args);
+      cal->setAttributes(MTI->getAttributes());
+      cal->setCallingConv(memtransIntr->getCallingConv());
+      cal->setTailCallKind(MTI->getTailCallKind());
+
+      if (dstalign != 0) {
+#if LLVM_VERSION_MAJOR >= 10
+        cal->addParamAttr(
+            0, Attribute::getWithAlignment(MTI->getContext(), Align(dstalign)));
+#else
+        cal->addParamAttr(
+            0, Attribute::getWithAlignment(MTI->getContext(), dstalign));
+#endif
+      }
+      if (srcalign != 0) {
+#if LLVM_VERSION_MAJOR >= 10
+        cal->addParamAttr(
+            1, Attribute::getWithAlignment(MTI->getContext(), Align(srcalign)));
+#else
+        cal->addParamAttr(
+            1, Attribute::getWithAlignment(MTI->getContext(), srcalign));
+#endif
+      }
+    }
+  }
+}
