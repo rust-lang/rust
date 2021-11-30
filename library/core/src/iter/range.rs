@@ -21,6 +21,10 @@ unsafe_impl_trusted_step![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usi
 /// The *successor* operation moves towards values that compare greater.
 /// The *predecessor* operation moves towards values that compare lesser.
 #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+#[rustc_on_unimplemented(
+    on(_Self = "*const T", label = "use core::ptr::IterConst to iterate a range of pointers"),
+    on(_Self = "*mut T", label = "use core::ptr::IterMut to iterate a range of pointers")
+)]
 pub trait Step: Clone + PartialOrd + Sized {
     /// Returns the number of *successor* steps required to get from `start` to `end`.
     ///

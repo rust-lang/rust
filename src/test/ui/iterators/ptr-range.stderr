@@ -2,8 +2,9 @@ error[E0277]: the trait bound `*const i32: Step` is not satisfied
   --> $DIR/ptr-range.rs:3:14
    |
 LL |     for _ in range {}
-   |              ^^^^^ the trait `Step` is not implemented for `*const i32`
+   |              ^^^^^ use core::ptr::IterConst to iterate a range of pointers
    |
+   = help: the trait `Step` is not implemented for `*const i32`
    = note: required because of the requirements on the impl of `Iterator` for `std::ops::Range<*const i32>`
    = note: required because of the requirements on the impl of `IntoIterator` for `std::ops::Range<*const i32>`
 

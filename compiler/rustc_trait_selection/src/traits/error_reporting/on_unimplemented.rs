@@ -202,6 +202,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 flags.push((sym::_Self, Some("{integral}".to_owned())));
             }
 
+            if let ty::RawPtr(ptr) = self_ty.kind() {
+                let string = match ptr.mutbl {
+                    hir::Mutability::Mut => "*mut T",
+                    hir::Mutability::Not => "*const T",
+                };
+                flags.push((sym::_Self, Some(string.to_owned())));
+            }
             if let ty::Array(aty, len) = self_ty.kind() {
                 flags.push((sym::_Self, Some("[]".to_owned())));
                 flags.push((sym::_Self, Some(format!("[{}]", aty))));
