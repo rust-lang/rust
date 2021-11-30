@@ -182,7 +182,6 @@ impl Duration {
     #[inline]
     #[must_use]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_panic))]
     pub const fn new(secs: u64, nanos: u32) -> Duration {
         let secs = match secs.checked_add((nanos / NANOS_PER_SEC) as u64) {
             Some(secs) => secs,
@@ -482,7 +481,6 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_panic))]
     pub const fn checked_add(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_add(rhs.secs) {
             let mut nanos = self.nanos + rhs.nanos;
@@ -543,7 +541,6 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_panic))]
     pub const fn checked_sub(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_sub(rhs.secs) {
             let nanos = if self.nanos >= rhs.nanos {
@@ -602,7 +599,6 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_panic))]
     pub const fn checked_mul(self, rhs: u32) -> Option<Duration> {
         // Multiply nanoseconds as u64, because it cannot overflow that way.
         let total_nanos = self.nanos as u64 * rhs as u64;
@@ -660,7 +656,6 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_panic))]
     pub const fn checked_div(self, rhs: u32) -> Option<Duration> {
         if rhs != 0 {
             let secs = self.secs / (rhs as u64);

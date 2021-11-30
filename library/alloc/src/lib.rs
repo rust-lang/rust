@@ -105,7 +105,6 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(inherent_ascii_escape)]
-#![cfg_attr(bootstrap, feature(format_args_capture))]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(iter_zip)]
