@@ -1485,9 +1485,8 @@ rustc_queries! {
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
-    query get_lib_features(_: ()) -> LibFeatures {
+    query lib_features(_: ()) -> LibFeatures {
         storage(ArenaCacheSelector<'tcx>)
-        eval_always
         desc { "calculating the lib features map" }
     }
     query defined_lib_features(_: CrateNum)

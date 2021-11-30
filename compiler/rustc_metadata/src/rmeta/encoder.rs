@@ -1749,7 +1749,7 @@ impl EncodeContext<'a, 'tcx> {
     fn encode_lib_features(&mut self) -> Lazy<[(Symbol, Option<Symbol>)]> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let lib_features = tcx.lib_features();
+        let lib_features = tcx.lib_features(());
         self.lazy(lib_features.to_vec())
     }
 
