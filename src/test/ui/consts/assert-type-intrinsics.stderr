@@ -1,0 +1,39 @@
+error: any use of this value will cause an error
+  --> $DIR/assert-type-intrinsics.rs:14:9
+   |
+LL | /     const _BAD1: () = unsafe {
+LL | |         MaybeUninit::<!>::uninit().assume_init();
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to instantiate uninhabited type `!`
+LL | |     };
+   | |______-
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: any use of this value will cause an error
+  --> $DIR/assert-type-intrinsics.rs:17:9
+   |
+LL | /     const _BAD2: () = unsafe {
+LL | |         intrinsics::assert_uninit_valid::<bool>();
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to leave type `bool` uninitialized, which is invalid
+LL | |     };
+   | |______-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: any use of this value will cause an error
+  --> $DIR/assert-type-intrinsics.rs:20:9
+   |
+LL | /     const _BAD3: () = unsafe {
+LL | |         intrinsics::assert_zero_valid::<&'static i32>();
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to zero-initialize type `&i32`, which is invalid
+LL | |     };
+   | |______-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: aborting due to 3 previous errors
+

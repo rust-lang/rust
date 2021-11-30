@@ -1334,11 +1334,6 @@ fn check_fn_or_method<'fcx, 'tcx>(
 ) {
     let sig = fcx.tcx.liberate_late_bound_regions(def_id, sig);
 
-    // Unnormalized types in signature are WF too
-    implied_bounds.extend(sig.inputs());
-    // FIXME(#27579) return types should not be implied bounds
-    implied_bounds.insert(sig.output());
-
     // Normalize the input and output types one at a time, using a different
     // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
     // on the entire `FnSig`, since this would use the same `WellFormedLoc`

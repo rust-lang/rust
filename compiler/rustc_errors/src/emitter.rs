@@ -214,7 +214,7 @@ pub trait Emitter {
 
     /// Formats the substitutions of the primary_span
     ///
-    /// The are a lot of conditions to this method, but in short:
+    /// There are a lot of conditions to this method, but in short:
     ///
     /// * If the current `Diagnostic` has only one visible `CodeSuggestion`,
     ///   we format the `help` suggestion depending on the content of the
@@ -736,7 +736,9 @@ impl EmitterWriter {
 
         let line_offset = buffer.num_lines();
 
-        let left = margin.left(source_string.len()); // Left trim
+        // Left trim
+        let left = margin.left(source_string.len());
+
         // Account for unicode characters of width !=0 that were removed.
         let left = source_string
             .chars()
@@ -1623,18 +1625,27 @@ impl EmitterWriter {
             suggestions.iter().take(MAX_SUGGESTIONS)
         {
             notice_capitalization |= only_capitalization;
-            // Only show underline if the suggestion spans a single line and doesn't cover the
-            // entirety of the code output. If you have multiple replacements in the same line
-            // of code, show the underline.
-            let show_underline = !(parts.len() == 1 && parts[0].snippet.trim() == complete.trim())
-                && complete.lines().count() == 1;
 
             let has_deletion = parts.iter().any(|p| p.is_deletion());
             let is_multiline = complete.lines().count() > 1;
 
-            let show_diff = has_deletion && !is_multiline;
+            enum DisplaySuggestion {
+                Underline,
+                Diff,
+                None,
+            }
 
-            if show_diff {
+            let show_code_change = if has_deletion && !is_multiline {
+                DisplaySuggestion::Diff
+            } else if (parts.len() != 1 || parts[0].snippet.trim() != complete.trim())
+                && !is_multiline
+            {
+                DisplaySuggestion::Underline
+            } else {
+                DisplaySuggestion::None
+            };
+
+            if let DisplaySuggestion::Diff = show_code_change {
                 row_num += 1;
             }
 
@@ -1657,7 +1668,7 @@ impl EmitterWriter {
                     &self.maybe_anonymized(line_start + line_pos),
                     Style::LineNumber,
                 );
-                if show_diff {
+                if let DisplaySuggestion::Diff = show_code_change {
                     // Add the line number for both addition and removal to drive the point home.
                     //
                     // N - fn foo<A: T>(bar: A) {
@@ -1727,7 +1738,7 @@ impl EmitterWriter {
             let mut offsets: Vec<(usize, isize)> = Vec::new();
             // Only show an underline in the suggestions if the suggestion is not the
             // entirety of the code being shown and the displayed code is not multiline.
-            if show_underline {
+            if let DisplaySuggestion::Diff | DisplaySuggestion::Underline = show_code_change {
                 draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
                 for part in parts {
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
@@ -1755,7 +1766,7 @@ impl EmitterWriter {
                     assert!(underline_start >= 0 && underline_end >= 0);
                     let padding: usize = max_line_num_len + 3;
                     for p in underline_start..underline_end {
-                        if !show_diff {
+                        if let DisplaySuggestion::Underline = show_code_change {
                             // If this is a replacement, underline with `^`, if this is an addition
                             // underline with `+`.
                             buffer.putc(
@@ -1766,7 +1777,7 @@ impl EmitterWriter {
                             );
                         }
                     }
-                    if show_diff {
+                    if let DisplaySuggestion::Diff = show_code_change {
                         // Colorize removal with red in diff format.
                         buffer.set_style_range(
                             row_num - 2,
@@ -1797,7 +1808,7 @@ impl EmitterWriter {
             // if we elided some lines, add an ellipsis
             if lines.next().is_some() {
                 buffer.puts(row_num, max_line_num_len - 1, "...", Style::LineNumber);
-            } else if !show_underline {
+            } else if let DisplaySuggestion::None = show_code_change {
                 draw_col_separator_no_space(&mut buffer, row_num, max_line_num_len + 1);
                 row_num += 1;
             }
@@ -2083,7 +2094,7 @@ const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\t', "    "),   // We do our own tab replacement
     ('\u{200D}', ""), // Replace ZWJ with nothing for consistent terminal output of grapheme clusters.
     ('\u{202A}', ""), // The following unicode text flow control characters are inconsistently
-    ('\u{202B}', ""), // supported accross CLIs and can cause confusion due to the bytes on disk
+    ('\u{202B}', ""), // supported across CLIs and can cause confusion due to the bytes on disk
     ('\u{202D}', ""), // not corresponding to the visible source code, so we replace them always.
     ('\u{202E}', ""),
     ('\u{2066}', ""),

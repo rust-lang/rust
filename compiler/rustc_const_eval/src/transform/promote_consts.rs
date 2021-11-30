@@ -27,7 +27,6 @@ use std::cell::Cell;
 use std::{cmp, iter, mem};
 
 use crate::transform::check_consts::{qualifs, ConstCx};
-use crate::transform::MirPass;
 
 /// A `MirPass` for promotion.
 ///
