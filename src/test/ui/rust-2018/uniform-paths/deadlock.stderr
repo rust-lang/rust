@@ -1,9 +1,24 @@
-error[E0463]: can't find crate for `foo`
+error[E0463]: can't find crate for `bar`
   --> $DIR/deadlock.rs:4:5
+   |
+LL | use bar::foo;
+   |     ^^^ can't find crate
+
+error[E0463]: can't find crate for `foo`
+  --> $DIR/deadlock.rs:5:5
    |
 LL | use foo::bar;
    |     ^^^ can't find crate
 
-error: aborting due to previous error
+error[E0432]: unresolved imports `bar::foo`, `foo::bar`
+  --> $DIR/deadlock.rs:4:5
+   |
+LL | use bar::foo;
+   |     ^^^^^^^^
+LL | use foo::bar;
+   |     ^^^^^^^^
 
-For more information about this error, try `rustc --explain E0463`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0432, E0463.
+For more information about an error, try `rustc --explain E0432`.

@@ -1,4 +1,8 @@
 error: extern location for std does not exist: 
 
-error: aborting due to previous error
+error: language item required, but not found: `eh_personality`
+
+error: `#[panic_handler]` function required, but not found
+
+error: aborting due to 3 previous errors
 

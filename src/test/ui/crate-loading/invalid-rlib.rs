@@ -6,3 +6,5 @@
 #![no_std]
 use ::foo; //~ ERROR invalid metadata files for crate `foo`
 //~| NOTE failed to mmap file
+//~^^ ERROR invalid metadata files for crate `foo`
+//~| NOTE failed to mmap file
