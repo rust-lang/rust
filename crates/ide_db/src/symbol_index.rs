@@ -37,8 +37,8 @@ use fst::{self, Streamer};
 use hir::{
     db::{DefDatabase, HirDatabase},
     AdtId, AssocContainerId, AssocItemId, AssocItemLoc, DefHasSource, DefWithBodyId, HasSource,
-    HirFileId, ImplId, InFile, ItemLoc, ItemTreeNode, Lookup, MacroDef, ModuleDefId, ModuleId,
-    Semantics, TraitId,
+    HirFileId, ImplId, InFile, ItemLoc, ItemTreeNode, Lookup, MacroDef, Module, ModuleDefId,
+    ModuleId, Semantics, TraitId,
 };
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
@@ -472,8 +472,7 @@ impl<'a> SymbolCollector<'a> {
 
     fn collect_from_module(&mut self, module_id: ModuleId) {
         let def_map = module_id.def_map(self.db.upcast());
-        let module_data = &def_map[module_id.local_id];
-        let scope = &module_data.scope;
+        let scope = &def_map[module_id.local_id].scope;
 
         for module_def_id in scope.declarations() {
             match module_def_id {
@@ -594,20 +593,15 @@ impl<'a> SymbolCollector<'a> {
         T: ItemTreeNode,
         <T as ItemTreeNode>::Source: HasName,
     {
-        fn container_name(db: &dyn DefDatabase, container: AssocContainerId) -> Option<SmolStr> {
+        fn container_name(db: &dyn HirDatabase, container: AssocContainerId) -> Option<SmolStr> {
             match container {
                 AssocContainerId::ModuleId(module_id) => {
-                    let def_map = module_id.def_map(db);
-                    let module_data = &def_map[module_id.local_id];
-                    module_data
-                        .origin
-                        .declaration()
-                        .and_then(|s| s.to_node(db.upcast()).name().map(|n| n.text().into()))
+                    let module = Module::from(module_id);
+                    module.name(db).and_then(|name| name.as_text())
                 }
                 AssocContainerId::TraitId(trait_id) => {
-                    let loc = trait_id.lookup(db);
-                    let source = loc.source(db);
-                    source.value.name().map(|n| n.text().into())
+                    let trait_data = db.trait_data(trait_id);
+                    trait_data.name.as_text()
                 }
                 AssocContainerId::ImplId(_) => None,
             }
