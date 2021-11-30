@@ -240,6 +240,10 @@ fn layout_of<'tcx>(
             let param_env = param_env.with_reveal_all_normalized(tcx);
             let unnormalized_ty = ty;
 
+            // FIXME: We might want to have two different versions of `layout_of`:
+            // One that can be called after typecheck has completed and can use
+            // `normalize_erasing_regions` here and another one that can be called
+            // before typecheck has completed and uses `try_normalize_erasing_regions`.
             let ty = match tcx.try_normalize_erasing_regions(param_env, ty) {
                 Ok(t) => t,
                 Err(normalization_error) => {

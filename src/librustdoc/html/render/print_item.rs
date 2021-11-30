@@ -1773,7 +1773,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
             writeln!(
                 w,
                 "<p><strong>Note:</strong> Encountered an error during type layout; \
-                the type was not normalizable.</p>"
+                the type failed to be normalized.</p>"
             )
         }
     }
