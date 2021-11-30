@@ -550,37 +550,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "atomic_umax_relaxed" =>
                 this.atomic_op(args, dest, AtomicOp::Max, AtomicRwOp::Relaxed)?,
 
-            // Query type information
-            "assert_zero_valid" | "assert_uninit_valid" => {
-                let &[] = check_arg_count(args)?;
-                let ty = instance.substs.type_at(0);
-                let layout = this.layout_of(ty)?;
-                // Abort here because the caller might not be panic safe.
-                if layout.abi.is_uninhabited() {
-                    // Use this message even for the other intrinsics, as that's what codegen does
-                    throw_machine_stop!(TerminationInfo::Abort(format!(
-                        "aborted execution: attempted to instantiate uninhabited type `{}`",
-                        ty
-                    )))
-                }
-                if intrinsic_name == "assert_zero_valid"
-                    && !layout.might_permit_raw_init(this, /*zero:*/ true)
-                {
-                    throw_machine_stop!(TerminationInfo::Abort(format!(
-                        "aborted execution: attempted to zero-initialize type `{}`, which is invalid",
-                        ty
-                    )))
-                }
-                if intrinsic_name == "assert_uninit_valid"
-                    && !layout.might_permit_raw_init(this, /*zero:*/ false)
-                {
-                    throw_machine_stop!(TerminationInfo::Abort(format!(
-                        "aborted execution: attempted to leave type `{}` uninitialized, which is invalid",
-                        ty
-                    )))
-                }
-            }
-
             // Other
             "exact_div" => {
                 let &[ref num, ref denom] = check_arg_count(args)?;
