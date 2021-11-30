@@ -1,5 +1,5 @@
 error[E0658]: the `may_unwind` option is unstable
-  --> $DIR/feature-gate-asm_unwind.rs:5:9
+  --> $DIR/feature-gate-asm_unwind.rs:7:9
    |
 LL |         asm!("", options(may_unwind));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

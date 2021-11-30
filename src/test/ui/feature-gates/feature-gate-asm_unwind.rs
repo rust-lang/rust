@@ -1,3 +1,5 @@
+// only-x86_64
+
 #![feature(asm)]
 
 fn main() {
