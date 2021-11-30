@@ -1044,18 +1044,15 @@ impl Session {
     }
 
     pub fn instrument_coverage(&self) -> bool {
-        self.opts.debugging_opts.instrument_coverage.unwrap_or(config::InstrumentCoverage::Off)
-            != config::InstrumentCoverage::Off
+        self.opts.instrument_coverage()
     }
 
     pub fn instrument_coverage_except_unused_generics(&self) -> bool {
-        self.opts.debugging_opts.instrument_coverage.unwrap_or(config::InstrumentCoverage::Off)
-            == config::InstrumentCoverage::ExceptUnusedGenerics
+        self.opts.instrument_coverage_except_unused_generics()
     }
 
     pub fn instrument_coverage_except_unused_functions(&self) -> bool {
-        self.opts.debugging_opts.instrument_coverage.unwrap_or(config::InstrumentCoverage::Off)
-            == config::InstrumentCoverage::ExceptUnusedFunctions
+        self.opts.instrument_coverage_except_unused_functions()
     }
 
     pub fn is_proc_macro_attr(&self, attr: &Attribute) -> bool {

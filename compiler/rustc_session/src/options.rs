@@ -107,6 +107,21 @@ impl Options {
             .mir_opt_level
             .unwrap_or_else(|| if self.optimize != OptLevel::No { 2 } else { 1 })
     }
+
+    pub fn instrument_coverage(&self) -> bool {
+        self.debugging_opts.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
+            != InstrumentCoverage::Off
+    }
+
+    pub fn instrument_coverage_except_unused_generics(&self) -> bool {
+        self.debugging_opts.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
+            == InstrumentCoverage::ExceptUnusedGenerics
+    }
+
+    pub fn instrument_coverage_except_unused_functions(&self) -> bool {
+        self.debugging_opts.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
+            == InstrumentCoverage::ExceptUnusedFunctions
+    }
 }
 
 top_level_options!(
