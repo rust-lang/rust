@@ -255,6 +255,28 @@
                 container_name: None,
             },
             FileSymbol {
+                name: "CONST_WITH_INNER",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 520..592,
+                        kind: CONST,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 526..542,
+                        kind: NAME,
+                    },
+                },
+                kind: Const,
+                container_name: None,
+            },
+            FileSymbol {
                 name: "b_mod",
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
@@ -265,11 +287,11 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 459..469,
+                        range: 594..604,
                         kind: MODULE,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 463..468,
+                        range: 598..603,
                         kind: NAME,
                     },
                 },
@@ -363,6 +385,52 @@
                 },
                 kind: Macro,
                 container_name: None,
+            },
+            FileSymbol {
+                name: "StructInUnnamedConst",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 479..507,
+                        kind: STRUCT,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 486..506,
+                        kind: NAME,
+                    },
+                },
+                kind: Struct,
+                container_name: None,
+            },
+            FileSymbol {
+                name: "StructInNamedConst",
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        FileId(
+                            FileId(
+                                0,
+                            ),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        range: 555..581,
+                        kind: STRUCT,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        range: 562..580,
+                        kind: NAME,
+                    },
+                },
+                kind: Struct,
+                container_name: Some(
+                    "CONST_WITH_INNER",
+                ),
             },
             FileSymbol {
                 name: "StructInFn",

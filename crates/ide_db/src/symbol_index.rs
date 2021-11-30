@@ -765,6 +765,18 @@ mod a_mod {
     struct StructInModA;
 }
 
+const _: () = {
+    struct StructInUnnamedConst;
+
+    ()
+};
+
+const CONST_WITH_INNER: () = {
+    struct StructInNamedConst;
+
+    ()
+};
+
 mod b_mod;
 
 //- /b_mod.rs
