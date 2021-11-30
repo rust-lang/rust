@@ -127,6 +127,7 @@
 #![feature(const_ptr_offset_from)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
+#![feature(const_range_bounds)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_size_of_val)]
 #![feature(const_slice_from_raw_parts)]
