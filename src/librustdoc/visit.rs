@@ -23,7 +23,7 @@ crate trait DocVisitor: Sized {
                 Variant::Tuple(fields) => fields.iter().for_each(|x| self.visit_item(x)),
                 Variant::CLike => {}
             },
-            ExternCrateItem { src: _ }
+            ExternCrateItem { .. }
             | ImportItem(_)
             | FunctionItem(_)
             | TypedefItem(_, _)

@@ -68,7 +68,7 @@ crate trait DocFolder: Sized {
                 }
                 Variant::CLike => VariantItem(Variant::CLike),
             },
-            ExternCrateItem { src: _ }
+            ExternCrateItem { .. }
             | ImportItem(_)
             | FunctionItem(_)
             | TypedefItem(_, _)

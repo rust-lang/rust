@@ -1,17 +1,19 @@
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::ty::TyCtxt;
 use std::mem;
 
 use crate::clean::{self, Item, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
 
-crate struct Stripper<'a> {
+crate struct Stripper<'a, 'tcx> {
     crate retained: &'a mut ItemIdSet,
     crate access_levels: &'a AccessLevels<DefId>,
     crate update_retained: bool,
+    pub(super) tcx: TyCtxt<'tcx>,
 }
 
-impl<'a> DocFolder for Stripper<'a> {
+impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
             clean::StrippedItem(..) => {
@@ -51,13 +53,13 @@ impl<'a> DocFolder for Stripper<'a> {
             }
 
             clean::StructFieldItem(..) => {
-                if !i.visibility.is_public() {
+                if !i.visibility(self.tcx).is_public() {
                     return Some(strip_item(i));
                 }
             }
 
             clean::ModuleItem(..) => {
-                if i.def_id.is_local() && !i.visibility.is_public() {
+                if i.def_id.is_local() && !i.visibility(self.tcx).is_public() {
                     debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = strip_item(self.fold_item_recur(i));
@@ -158,12 +160,14 @@ impl<'a> DocFolder for ImplStripper<'a> {
 }
 
 /// This stripper discards all private import statements (`use`, `extern crate`)
-crate struct ImportStripper;
+crate struct ImportStripper<'tcx>(pub(super) TyCtxt<'tcx>);
 
-impl DocFolder for ImportStripper {
+impl DocFolder for ImportStripper<'_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
-            clean::ExternCrateItem { .. } | clean::ImportItem(..) if !i.visibility.is_public() => {
+            clean::ExternCrateItem { .. } | clean::ImportItem(..)
+                if !i.visibility(self.0).is_public() =>
+            {
                 None
             }
             _ => Some(self.fold_item_recur(i)),

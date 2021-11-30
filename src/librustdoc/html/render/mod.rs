@@ -771,7 +771,7 @@ fn assoc_const(
         w,
         "{}{}const <a href=\"{}\" class=\"constant\">{}</a>: {}",
         extra,
-        it.visibility.print_with_space(it.def_id, cx),
+        it.visibility(cx.tcx()).print_with_space(it.def_id, cx),
         naive_assoc_href(it, link, cx),
         it.name.as_ref().unwrap(),
         ty.print(cx)
@@ -892,7 +892,7 @@ fn render_assoc_item(
                 }
             }
         };
-        let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
+        let vis = meth.visibility(cx.tcx()).print_with_space(meth.def_id, cx).to_string();
         let constness =
             print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()));
         let asyncness = header.asyncness.print_with_space();

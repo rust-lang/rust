@@ -306,22 +306,23 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
         }
 
         match *myitem.kind {
-            clean::ExternCrateItem { ref src } => {
+            clean::ExternCrateItem { ref src, crate_stmt_id: _ } => {
                 use crate::html::format::anchor;
 
+                let vis = myitem.visibility(cx.tcx()).print_with_space(myitem.def_id, cx);
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 match *src {
                     Some(ref src) => write!(
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {} as {};",
-                        myitem.visibility.print_with_space(myitem.def_id, cx),
+                        vis,
                         anchor(myitem.def_id.expect_def_id(), &*src.as_str(), cx),
                         myitem.name.as_ref().unwrap(),
                     ),
                     None => write!(
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {};",
-                        myitem.visibility.print_with_space(myitem.def_id, cx),
+                        vis,
                         anchor(
                             myitem.def_id.expect_def_id(),
                             &*myitem.name.as_ref().unwrap().as_str(),
@@ -354,6 +355,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 };
 
                 let add = if stab.is_some() { " " } else { "" };
+                let vis = myitem.visibility(cx.tcx()).print_with_space(myitem.def_id, cx);
 
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 write!(
@@ -364,7 +366,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                      <div class=\"item-right docblock-short\">{stab_tags}</div>",
                     stab = stab.unwrap_or_default(),
                     add = add,
-                    vis = myitem.visibility.print_with_space(myitem.def_id, cx),
+                    vis = vis,
                     imp = import.print(cx),
                     stab_tags = stab_tags.unwrap_or_default(),
                 );
@@ -465,7 +467,7 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 }
 
 fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
-    let vis = it.visibility.print_with_space(it.def_id, cx).to_string();
+    let vis = it.visibility(cx.tcx()).print_with_space(it.def_id, cx).to_string();
     let constness = print_constness_with_space(&f.header.constness, it.const_stability(cx.tcx()));
     let asyncness = f.header.asyncness.print_with_space();
     let unsafety = f.header.unsafety.print_with_space();
@@ -523,7 +525,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             write!(
                 w,
                 "{}{}{}trait {}{}{}",
-                it.visibility.print_with_space(it.def_id, cx),
+                it.visibility(cx.tcx()).print_with_space(it.def_id, cx),
                 t.unsafety.print_with_space(),
                 if t.is_auto { "auto " } else { "" },
                 it.name.as_ref().unwrap(),
@@ -911,7 +913,7 @@ fn item_typedef(
         wrap_item(w, "typedef", |w| {
             render_attributes_in_pre(w, it, "");
             if !is_associated {
-                write!(w, "{}", it.visibility.print_with_space(it.def_id, cx));
+                write!(w, "{}", it.visibility(cx.tcx()).print_with_space(it.def_id, cx));
             }
             write!(
                 w,
@@ -1012,7 +1014,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             write!(
                 w,
                 "{}enum {}{}{}",
-                it.visibility.print_with_space(it.def_id, cx),
+                it.visibility(cx.tcx()).print_with_space(it.def_id, cx),
                 it.name.as_ref().unwrap(),
                 e.generics.print(cx),
                 print_where_clause(&e.generics, cx, 0, true),
@@ -1209,7 +1211,7 @@ fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::
             write!(
                 w,
                 "{vis}const {name}: {typ}",
-                vis = it.visibility.print_with_space(it.def_id, cx),
+                vis = it.visibility(cx.tcx()).print_with_space(it.def_id, cx),
                 name = it.name.as_ref().unwrap(),
                 typ = c.type_.print(cx),
             );
@@ -1301,7 +1303,7 @@ fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             write!(
                 w,
                 "{vis}static {mutability}{name}: {typ}",
-                vis = it.visibility.print_with_space(it.def_id, cx),
+                vis = it.visibility(cx.tcx()).print_with_space(it.def_id, cx),
                 mutability = s.mutability.print_with_space(),
                 name = it.name.as_ref().unwrap(),
                 typ = s.type_.print(cx)
@@ -1319,7 +1321,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
             write!(
                 w,
                 "    {}type {};\n}}",
-                it.visibility.print_with_space(it.def_id, cx),
+                it.visibility(cx.tcx()).print_with_space(it.def_id, cx),
                 it.name.as_ref().unwrap(),
             );
         });
@@ -1491,7 +1493,7 @@ fn render_union(
     write!(
         w,
         "{}union {}",
-        it.visibility.print_with_space(it.def_id, cx),
+        it.visibility(cx.tcx()).print_with_space(it.def_id, cx),
         it.name.as_ref().unwrap()
     );
     if let Some(g) = g {
@@ -1512,7 +1514,7 @@ fn render_union(
             write!(
                 w,
                 "    {}{}: {},\n{}",
-                field.visibility.print_with_space(field.def_id, cx),
+                field.visibility(cx.tcx()).print_with_space(field.def_id, cx),
                 field.name.as_ref().unwrap(),
                 ty.print(cx),
                 tab
@@ -1542,7 +1544,7 @@ fn render_struct(
     write!(
         w,
         "{}{}{}",
-        it.visibility.print_with_space(it.def_id, cx),
+        it.visibility(cx.tcx()).print_with_space(it.def_id, cx),
         if structhead { "struct " } else { "" },
         it.name.as_ref().unwrap()
     );
@@ -1568,7 +1570,7 @@ fn render_struct(
                         w,
                         "\n{}    {}{}: {},",
                         tab,
-                        field.visibility.print_with_space(field.def_id, cx),
+                        field.visibility(cx.tcx()).print_with_space(field.def_id, cx),
                         field.name.as_ref().unwrap(),
                         ty.print(cx),
                     );
@@ -1602,7 +1604,7 @@ fn render_struct(
                         write!(
                             w,
                             "{}{}",
-                            field.visibility.print_with_space(field.def_id, cx),
+                            field.visibility(cx.tcx()).print_with_space(field.def_id, cx),
                             ty.print(cx),
                         )
                     }

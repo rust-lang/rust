@@ -22,8 +22,9 @@ crate fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
             retained: &mut retained,
             access_levels: &cx.cache.access_levels,
             update_retained: true,
+            tcx: cx.tcx,
         };
-        krate = ImportStripper.fold_crate(stripper.fold_crate(krate));
+        krate = ImportStripper(cx.tcx).fold_crate(stripper.fold_crate(krate));
     }
 
     // strip all impls referencing private items

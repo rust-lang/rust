@@ -909,10 +909,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     AssocTypeItem(bounds, default)
                 }
             };
-            let what_rustc_thinks =
-                Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-            // Trait items always inherit the trait's visibility -- we don't want to show `pub`.
-            Item { visibility: Inherited, ..what_rustc_thinks }
+            Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
         })
     }
 }
@@ -948,20 +945,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 }
             };
 
-            let what_rustc_thinks =
-                Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-            let parent_item = cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_did(self.hir_id()));
-            if let hir::ItemKind::Impl(impl_) = &parent_item.kind {
-                if impl_.of_trait.is_some() {
-                    // Trait impl items always inherit the impl's visibility --
-                    // we don't want to show `pub`.
-                    Item { visibility: Inherited, ..what_rustc_thinks }
-                } else {
-                    what_rustc_thinks
-                }
-            } else {
-                panic!("found impl item with non-impl parent {:?}", parent_item);
-            }
+            Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
         })
     }
 }
@@ -1570,14 +1554,7 @@ impl Clean<Item> for ty::FieldDef {
 }
 
 fn clean_field(def_id: DefId, name: Symbol, ty: Type, cx: &mut DocContext<'_>) -> Item {
-    let what_rustc_thinks =
-        Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx);
-    if is_field_vis_inherited(cx.tcx, def_id) {
-        // Variant fields inherit their enum's visibility.
-        Item { visibility: Visibility::Inherited, ..what_rustc_thinks }
-    } else {
-        what_rustc_thinks
-    }
+    Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx)
 }
 
 fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
@@ -1592,17 +1569,21 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 }
 
+fn clean_vis(vis: ty::Visibility) -> Visibility {
+    match vis {
+        ty::Visibility::Public => Visibility::Public,
+        // NOTE: this is not quite right: `ty` uses `Invisible` to mean 'private',
+        // while rustdoc really does mean inherited. That means that for enum variants, such as
+        // `pub enum E { V }`, `V` will be marked as `Public` by `ty`, but as `Inherited` by rustdoc.
+        // `Item::visibility()` overrides `tcx.visibility` explicitly to make sure this distinction is captured.
+        ty::Visibility::Invisible => Visibility::Inherited,
+        ty::Visibility::Restricted(module) => Visibility::Restricted(module),
+    }
+}
+
 impl Clean<Visibility> for ty::Visibility {
     fn clean(&self, _cx: &mut DocContext<'_>) -> Visibility {
-        match *self {
-            ty::Visibility::Public => Visibility::Public,
-            // NOTE: this is not quite right: `ty` uses `Invisible` to mean 'private',
-            // while rustdoc really does mean inherited. That means that for enum variants, such as
-            // `pub enum E { V }`, `V` will be marked as `Public` by `ty`, but as `Inherited` by rustdoc.
-            // Various parts of clean override `tcx.visibility` explicitly to make sure this distinction is captured.
-            ty::Visibility::Invisible => Visibility::Inherited,
-            ty::Visibility::Restricted(module) => Visibility::Restricted(module),
-        }
+        clean_vis(*self)
     }
 }
 
@@ -1635,10 +1616,7 @@ impl Clean<Item> for ty::VariantDef {
                 fields: self.fields.iter().map(|field| field.clean(cx)).collect(),
             }),
         };
-        let what_rustc_thinks =
-            Item::from_def_id_and_parts(self.def_id, Some(self.ident.name), VariantItem(kind), cx);
-        // don't show `pub` for variants, which always inherit visibility
-        Item { visibility: Inherited, ..what_rustc_thinks }
+        Item::from_def_id_and_parts(self.def_id, Some(self.ident.name), VariantItem(kind), cx)
     }
 }
 
@@ -1798,10 +1776,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
 impl Clean<Item> for hir::Variant<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let kind = VariantItem(self.data.clean(cx));
-        let what_rustc_thinks =
-            Item::from_hir_id_and_parts(self.id, Some(self.ident.name), kind, cx);
-        // don't show `pub` for variants, which are always public
-        Item { visibility: Inherited, ..what_rustc_thinks }
+        Item::from_hir_id_and_parts(self.id, Some(self.ident.name), kind, cx)
     }
 }
 
@@ -1887,9 +1862,9 @@ fn clean_extern_crate(
         name: Some(name),
         attrs: box attrs.clean(cx),
         def_id: crate_def_id.into(),
-        visibility: ty_vis.clean(cx),
-        kind: box ExternCrateItem { src: orig_name },
+        kind: box ExternCrateItem { src: orig_name, crate_stmt_id: krate.def_id },
         cfg: attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
+        inline_stmt_id: None,
     }]
 }
 

@@ -18,7 +18,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
@@ -32,10 +32,10 @@ use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;
-use crate::clean::external_path;
 use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
 use crate::clean::Clean;
+use crate::clean::{external_path, is_field_vis_inherited};
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -348,12 +348,12 @@ crate struct Item {
     /// Optional because not every item has a name, e.g. impls.
     crate name: Option<Symbol>,
     crate attrs: Box<Attributes>,
-    crate visibility: Visibility,
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
     crate def_id: ItemId,
-
+    /// If this item was inlined, the DefId of the `use` statement.
+    crate inline_stmt_id: Option<DefId>,
     crate cfg: Option<Arc<Cfg>>,
 }
 
@@ -386,6 +386,42 @@ impl Item {
 
     crate fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
         self.def_id.as_def_id().map(|did| tcx.get_attrs(did).inner_docs()).unwrap_or(false)
+    }
+
+    crate fn visibility(&self, tcx: TyCtxt<'_>) -> Visibility {
+        let mut def_id = match self.def_id {
+            // Anything but DefId *shouldn't* matter, but return a reasonable value anyway.
+            ItemId::Auto { .. } | ItemId::Blanket { .. } => return Visibility::Inherited,
+            ItemId::Primitive(..) => return Visibility::Public,
+            ItemId::DefId(did) => did,
+        };
+        match *self.kind {
+            // Variant fields inherit their enum's visibility.
+            StructFieldItem(..) if is_field_vis_inherited(tcx, def_id) => {
+                return Visibility::Inherited;
+            }
+            // Variants always inherit visibility
+            VariantItem(..) => return Visibility::Inherited,
+            // Return the visibility of `extern crate` statement, not the crate itself (which will always be public).
+            ExternCrateItem { crate_stmt_id, .. } => def_id = crate_stmt_id.to_def_id(),
+            // Trait items inherit the trait's visibility
+            AssocConstItem(..) | AssocTypeItem(..) | TyMethodItem(..) | MethodItem(..) => {
+                let is_trait_item = match tcx.associated_item(def_id).container {
+                    ty::TraitContainer(_) => true,
+                    ty::ImplContainer(impl_id) => tcx.impl_trait_ref(impl_id).is_some(),
+                };
+                if is_trait_item {
+                    return Visibility::Inherited;
+                }
+            }
+            _ => {}
+        }
+        // If this item was inlined, show the visibility of the `use` statement, not the definition.
+        let def_id = match self.inline_stmt_id {
+            Some(inlined) => inlined,
+            None => def_id,
+        };
+        super::clean_vis(tcx.visibility(def_id))
     }
 
     crate fn span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -443,7 +479,6 @@ impl Item {
             name,
             kind,
             box ast_attrs.clean(cx),
-            cx,
             ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     }
@@ -453,19 +488,11 @@ impl Item {
         name: Option<Symbol>,
         kind: ItemKind,
         attrs: Box<Attributes>,
-        cx: &mut DocContext<'_>,
         cfg: Option<Arc<Cfg>>,
     ) -> Item {
         trace!("name={:?}, def_id={:?}", name, def_id);
 
-        Item {
-            def_id: def_id.into(),
-            kind: box kind,
-            name,
-            attrs,
-            visibility: cx.tcx.visibility(def_id).clean(cx),
-            cfg,
-        }
+        Item { def_id: def_id.into(), kind: box kind, name, attrs, cfg, inline_stmt_id: None }
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
@@ -640,6 +667,8 @@ crate enum ItemKind {
     ExternCrateItem {
         /// The crate's name, *not* the name it's imported as.
         src: Option<Symbol>,
+        /// The id of the `extern crate` statement, not the crate itself.
+        crate_stmt_id: LocalDefId,
     },
     ImportItem(Import),
     StructItem(Struct),

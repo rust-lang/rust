@@ -20,7 +20,7 @@ use crate::clean::{
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
-use super::{Clean, Visibility};
+use super::Clean;
 
 type Attrs<'hir> = rustc_middle::ty::Attributes<'hir>;
 
@@ -125,11 +125,8 @@ crate fn try_inline(
     let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs_clone);
     cx.inlined.insert(did.into());
     let mut item =
-        clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, box attrs, cx, cfg);
-    if let Some(import_def_id) = import_def_id {
-        // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
-        item.visibility = cx.tcx.visibility(import_def_id).clean(cx);
-    }
+        clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, box attrs, cfg);
+    item.inline_stmt_id = import_def_id;
     ret.push(item);
     Some(ret)
 }
@@ -194,18 +191,8 @@ crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) 
 }
 
 crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
-    let trait_items = cx
-        .tcx
-        .associated_items(did)
-        .in_definition_order()
-        .map(|item| {
-            // When building an external trait, the cleaned trait will have all items public,
-            // which causes methods to have a `pub` prefix, which is invalid since items in traits
-            // can not have a visibility prefix. Thus we override the visibility here manually.
-            // See https://github.com/rust-lang/rust/issues/81274
-            clean::Item { visibility: Visibility::Inherited, ..item.clean(cx) }
-        })
-        .collect();
+    let trait_items =
+        cx.tcx.associated_items(did).in_definition_order().map(|item| item.clean(cx)).collect();
 
     let predicates = cx.tcx.predicates_of(did);
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
@@ -497,7 +484,6 @@ crate fn build_impl(
             kind: ImplKind::Normal,
         }),
         box merged_attrs,
-        cx,
         cfg,
     ));
 }
@@ -527,7 +513,6 @@ fn build_module(
                     name: None,
                     attrs: box clean::Attributes::default(),
                     def_id: ItemId::Primitive(prim_ty, did.krate),
-                    visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
                         clean::ImportSource {
@@ -546,6 +531,7 @@ fn build_module(
                         true,
                     )),
                     cfg: None,
+                    inline_stmt_id: None,
                 });
             } else if let Some(i) = try_inline(cx, did, None, res, item.ident.name, None, visited) {
                 items.extend(i)

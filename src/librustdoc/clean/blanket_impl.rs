@@ -103,7 +103,6 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 impls.push(Item {
                     name: None,
                     attrs: Default::default(),
-                    visibility: Inherited,
                     def_id: ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                     kind: box ImplItem(Impl {
                         unsafety: hir::Unsafety::Normal,
@@ -127,6 +126,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         kind: ImplKind::Blanket(box trait_ref.self_ty().clean(self.cx)),
                     }),
                     cfg: None,
+                    inline_stmt_id: None,
                 });
             }
         }

@@ -40,7 +40,8 @@ impl JsonRenderer<'_> {
             .map(rustc_ast_pretty::pprust::attribute_to_string)
             .collect();
         let span = item.span(self.tcx);
-        let clean::Item { name, attrs: _, kind: _, visibility, def_id, cfg: _ } = item;
+        let visibility = item.visibility(self.tcx);
+        let clean::Item { name, attrs: _, kind: _, def_id, cfg: _, inline_stmt_id: _ } = item;
         let inner = match *item.kind {
             clean::StrippedItem(_) => return None,
             _ => from_clean_item(item, self.tcx),
@@ -229,7 +230,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         KeywordItem(_) => {
             panic!("{:?} is not supported for JSON output", item)
         }
-        ExternCrateItem { ref src } => ItemEnum::ExternCrate {
+        ExternCrateItem { ref src, crate_stmt_id: _ } => ItemEnum::ExternCrate {
             name: name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
         },
