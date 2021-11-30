@@ -1,7 +1,7 @@
 //! This module generates [moniker](https://microsoft.github.io/language-server-protocol/specifications/lsif/0.6.0/specification/#exportsImports)
 //! for LSIF and LSP.
 
-use hir::{db::DefDatabase, Crate, Name, Semantics};
+use hir::{db::DefDatabase, AsAssocItem, AssocItemContainer, Crate, Name, Semantics};
 use ide_db::{
     base_db::{CrateOrigin, FileId, FileLoader, FilePosition},
     defs::Definition,
@@ -106,9 +106,21 @@ pub(crate) fn def_to_moniker(
     let krate = module.krate();
     let mut path = vec![];
     path.extend(module.path_to_root(db).into_iter().filter_map(|x| x.name(db)));
-    if let Definition::Field(it) = def {
-        path.push(it.parent_def(db).name(db));
+
+    match def {
+        Definition::Field(it) => path.push(it.parent_def(db).name(db)),
+        Definition::Function(it) => {
+            // Ensure that trait functions are properly namespaced with the trait name
+            if let Some(assoc) = it.as_assoc_item(db) {
+                let container = assoc.container(db);
+                if let AssocItemContainer::Trait(parent_trait) = container {
+                    path.push(parent_trait.name(db));
+                }
+            }
+        }
+        _ => (),
     }
+
     path.push(def.name(db)?);
     Some(MonikerResult {
         identifier: MonikerIdentifier {
@@ -173,6 +185,44 @@ pub mod module {
             "foo::module::func",
             r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
             MonikerKind::Import,
+        );
+        check_moniker(
+            r#"
+//- /lib.rs crate:main deps:foo
+use foo::module::func;
+fn main() {
+    func();
+}
+//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+pub mod module {
+    pub fn func$0() {}
+}
+"#,
+            "foo::module::func",
+            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            MonikerKind::Export,
+        );
+    }
+
+    #[test]
+    fn moniker_for_trait() {
+        check_moniker(
+            r#"
+//- /lib.rs crate:main deps:foo
+use foo::module::func;
+fn main() {
+    func();
+}
+//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+pub mod module {
+    pub trait MyTrait {
+        pub fn func$0() {}
+    }
+}
+"#,
+            "foo::module::MyTrait::func",
+            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            MonikerKind::Export,
         );
         check_moniker(
             r#"
