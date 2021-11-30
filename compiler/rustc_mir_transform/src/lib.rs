@@ -91,6 +91,11 @@ use rustc_const_eval::transform::promote_consts;
 use rustc_const_eval::transform::validate;
 use rustc_mir_dataflow::rustc_peek;
 
+// TODO: All MIR passes should be defined in this module. Until then...
+impl MirPassC for promote_consts::PromoteTemps {
+    const PHASE_CHANGE: Option<MirPhase> = Some(MirPhase::ConstPromotion);
+}
+
 pub fn provide(providers: &mut Providers) {
     check_unsafety::provide(providers);
     check_packed_ref::provide(providers);
