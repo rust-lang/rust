@@ -63,6 +63,7 @@
 #![feature(unwrap_infallible)]
 #![feature(result_into_ok_or_err)]
 #![cfg_attr(not(bootstrap), feature(portable_simd))]
+#![feature(ptr_iter)]
 #![feature(ptr_metadata)]
 #![feature(once_cell)]
 #![feature(unsized_tuple_coercion)]

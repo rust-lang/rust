@@ -90,6 +90,10 @@ pub use crate::intrinsics::copy;
 #[doc(inline)]
 pub use crate::intrinsics::write_bytes;
 
+mod iter;
+#[unstable(feature = "ptr_iter", issue = "none")]
+pub use iter::{IterConst, IterMut};
+
 mod metadata;
 pub(crate) use metadata::PtrRepr;
 #[unstable(feature = "ptr_metadata", issue = "81513")]
