@@ -298,18 +298,18 @@ fn test_next_up() {
     let smallest_normal = f64::from_bits(0x0010_0000_0000_0000);
 
     // Check that NaNs roundtrip.
-    // Because x87 can lose NaN bits when passed through a function, ensure the reference value
-    // also passes through a function boundary.
-    #[inline(never)]
-    fn identity(x: f64) -> f64 {
-        crate::hint::black_box(x)
+    // Ignore test on x87 floating point, the code is still correct but these
+    // platforms do not guarantee NaN payloads are preserved, which caused these
+    // tests to fail.
+    #[cfg(not(all(target_arch = "x86", not(target_feature = "fxsr"))))]
+    {
+        let nan0 = f64::NAN;
+        let nan1 = f64::from_bits(f64::NAN.to_bits() ^ 0x000a_aaaa_aaaa_aaaa);
+        let nan2 = f64::from_bits(f64::NAN.to_bits() ^ 0x0005_5555_5555_5555);
+        assert_eq!(nan0.next_up().to_bits(), nan0.to_bits());
+        assert_eq!(nan1.next_up().to_bits(), nan1.to_bits());
+        assert_eq!(nan2.next_up().to_bits(), nan2.to_bits());
     }
-    let nan0 = f64::NAN;
-    let nan1 = f64::from_bits(f64::NAN.to_bits() ^ 0x000a_aaaa_aaaa_aaaa);
-    let nan2 = f64::from_bits(f64::NAN.to_bits() ^ 0x0005_5555_5555_5555);
-    assert_eq!(nan0.next_up().to_bits(), identity(nan0).to_bits());
-    assert_eq!(nan1.next_up().to_bits(), identity(nan1).to_bits());
-    assert_eq!(nan2.next_up().to_bits(), identity(nan2).to_bits());
 
     assert_eq!(f64::NEG_INFINITY.next_up(), f64::MIN);
     assert_eq!(f64::MIN.next_up(), -max_down);
@@ -335,18 +335,18 @@ fn test_next_down() {
     let smallest_normal = f64::from_bits(0x0010_0000_0000_0000);
 
     // Check that NaNs roundtrip.
-    // Because x87 can lose NaN bits when passed through a function, ensure the reference value
-    // also passes through a function boundary.
-    #[inline(never)]
-    fn identity(x: f64) -> f64 {
-        crate::hint::black_box(x)
+    // Ignore test on x87 floating point, the code is still correct but these
+    // platforms do not guarantee NaN payloads are preserved, which caused these
+    // tests to fail.
+    #[cfg(not(all(target_arch = "x86", not(target_feature = "fxsr"))))]
+    {
+        let nan0 = f64::NAN;
+        let nan1 = f64::from_bits(f64::NAN.to_bits() ^ 0x000a_aaaa_aaaa_aaaa);
+        let nan2 = f64::from_bits(f64::NAN.to_bits() ^ 0x0005_5555_5555_5555);
+        assert_eq!(nan0.next_down().to_bits(), nan0.to_bits());
+        assert_eq!(nan1.next_down().to_bits(), nan1.to_bits());
+        assert_eq!(nan2.next_down().to_bits(), nan2.to_bits());
     }
-    let nan0 = f64::NAN;
-    let nan1 = f64::from_bits(f64::NAN.to_bits() ^ 0x000a_aaaa_aaaa_aaaa);
-    let nan2 = f64::from_bits(f64::NAN.to_bits() ^ 0x0005_5555_5555_5555);
-    assert_eq!(nan0.next_down().to_bits(), identity(nan0).to_bits());
-    assert_eq!(nan1.next_down().to_bits(), identity(nan1).to_bits());
-    assert_eq!(nan2.next_down().to_bits(), identity(nan2).to_bits());
 
     assert_eq!(f64::NEG_INFINITY.next_down(), f64::NEG_INFINITY);
     assert_eq!(f64::MIN.next_down(), f64::NEG_INFINITY);
