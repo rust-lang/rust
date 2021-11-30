@@ -2,10 +2,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches:
-    - master
-    - staging
-    - trying
+    branches: ["master", "staging", "trying"]
 
 env:
   CARGO_INCREMENTAL: 0
@@ -16,21 +13,15 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
-  rust:
+  test:
     name: Rust
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+    - uses: actions/checkout@v2
       with:
-        toolchain: stable
-        profile: minimal
-        override: true
+        fetch-depth: 0 # fetch tags for publish
 
-    - run: rustc ./.github/ci.rs && ./ci
+    - run: cargo run -p xtask -- ci
       env:
         CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}

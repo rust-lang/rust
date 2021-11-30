@@ -133,7 +133,7 @@
 //! The main customer of this library is rust-analyzer. The library is  stable,
 //! it is planned to not release any major versions past 1.0.
 //!
-//! # Minimal Supported Rust Version
+//! ## Minimal Supported Rust Version
 //!
 //! This crate's minimum supported `rustc` version is `1.45.0`. MSRV is updated
 //! conservatively, supporting roughly 10 minor versions of `rustc`. MSRV bump
