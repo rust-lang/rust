@@ -968,7 +968,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let (generics, bounds) = match opaque_ty.kind {
                     // Named opaque `impl Trait` types are reached via `TyKind::Path`.
                     // This arm is for `impl Trait` in the types of statics, constants and locals.
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: None, .. }) => {
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                        origin: hir::OpaqueTyOrigin::TyAlias,
+                        ..
+                    }) => {
                         intravisit::walk_ty(self, ty);
 
                         // Elided lifetimes are not allowed in non-return
@@ -985,7 +988,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     }
                     // RPIT (return position impl trait)
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                        impl_trait_fn: Some(_),
+                        origin: hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..),
                         ref generics,
                         bounds,
                         ..
@@ -1695,7 +1698,11 @@ fn compute_object_lifetime_defaults(
         hir::ItemKind::Struct(_, ref generics)
         | hir::ItemKind::Union(_, ref generics)
         | hir::ItemKind::Enum(_, ref generics)
-        | hir::ItemKind::OpaqueTy(hir::OpaqueTy { ref generics, impl_trait_fn: None, .. })
+        | hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+            ref generics,
+            origin: hir::OpaqueTyOrigin::TyAlias,
+            ..
+        })
         | hir::ItemKind::TyAlias(_, ref generics)
         | hir::ItemKind::Trait(_, _, ref generics, ..) => {
             let result = object_lifetime_defaults_for_item(tcx, generics);
@@ -2067,7 +2074,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     ..
                                 }) = self.tcx.hir().get(parent_hir_id)
                                 {
-                                    if opaque.origin != hir::OpaqueTyOrigin::AsyncFn {
+                                    if !matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(..)) {
                                         continue 'lifetimes;
                                     }
                                     // We want to do this only if the liftime identifier is already defined

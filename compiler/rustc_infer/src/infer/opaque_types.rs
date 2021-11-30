@@ -276,7 +276,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!(?concrete_ty);
 
         let first_own_region = match opaque_defn.origin {
-            hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => {
+            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {
                 // We lower
                 //
                 // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
@@ -463,20 +463,24 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                         let parent_def_id = self.infcx.defining_use_anchor;
                         let (in_definition_scope, origin) = match tcx.hir().expect_item(def_id).kind
                         {
+                            // Async `impl Trait`
+                            hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                                origin: hir::OpaqueTyOrigin::AsyncFn(parent),
+                                ..
+                            }) => (parent == parent_def_id, hir::OpaqueTyOrigin::AsyncFn(parent)),
                             // Anonymous `impl Trait`
                             hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                                impl_trait_fn: Some(parent),
-                                origin,
+                                origin: hir::OpaqueTyOrigin::FnReturn(parent),
                                 ..
-                            }) => (parent == parent_def_id.to_def_id(), origin),
+                            }) => (parent == parent_def_id, hir::OpaqueTyOrigin::FnReturn(parent)),
                             // Named `type Foo = impl Bar;`
                             hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                                impl_trait_fn: None,
-                                origin,
+                                origin: hir::OpaqueTyOrigin::TyAlias,
                                 ..
-                            }) => {
-                                (may_define_opaque_type(tcx, parent_def_id, opaque_hir_id), origin)
-                            }
+                            }) => (
+                                may_define_opaque_type(tcx, parent_def_id, opaque_hir_id),
+                                hir::OpaqueTyOrigin::TyAlias,
+                            ),
                             ref itemkind => {
                                 span_bug!(
                                     self.value_span,
