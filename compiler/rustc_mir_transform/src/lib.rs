@@ -1,5 +1,11 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(const_fn_trait_bound)]
+#![feature(const_mut_refs)]
+#![feature(const_range_bounds)]
+#![feature(const_trait_impl)]
+#![feature(const_type_id)]
+#![feature(const_type_id_cmp)]
 #![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
@@ -31,6 +37,11 @@ use rustc_middle::mir::{dump_mir, traversal, Body, ConstQualifs, MirPass, MirPha
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
+
+use self::pass_manager::{Lint, MirPassC};
+
+#[macro_use]
+mod pass_manager;
 
 mod abort_unwinding_calls;
 mod add_call_guards;
@@ -316,17 +327,11 @@ fn mir_promoted(
     }
     body.required_consts = required_consts;
 
-    let promote_pass = promote_consts::PromoteTemps::default();
-    let promote: &[&dyn MirPass<'tcx>] = &[
-        // What we need to run borrowck etc.
-        &promote_pass,
-        &simplify::SimplifyCfg::new("promote-consts"),
-    ];
-
-    let opt_coverage: &[&dyn MirPass<'tcx>] =
-        if tcx.sess.instrument_coverage() { &[&coverage::InstrumentCoverage] } else { &[] };
-
-    run_passes(tcx, &mut body, MirPhase::ConstPromotion, &[promote, opt_coverage]);
+    run_passes!(tcx, &mut body, [
+        promote_consts::PromoteTemps,
+        simplify::SimplifyCfg::new("promote-consts"),
+        coverage::InstrumentCoverage,
+    ]);
 
     let promoted = std::mem::take(&mut body.promoted_fragments);
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
