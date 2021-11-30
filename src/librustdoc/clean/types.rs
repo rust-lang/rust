@@ -1468,6 +1468,45 @@ crate enum Type {
 rustc_data_structures::static_assert_size!(Type, 72);
 
 impl Type {
+    /// When comparing types for equality, it can help to ignore `&` wrapping.
+    crate fn without_borrowed_ref(&self) -> &Type {
+        let mut result = self;
+        while let Type::BorrowedRef { type_, .. } = result {
+            result = &*type_;
+        }
+        result
+    }
+
+    /// Check if two types are "potentially the same".
+    /// This is different from `Eq`, because it knows that things like
+    /// `Placeholder` are possible matches for everything.
+    crate fn is_same(&self, other: &Self, cache: &Cache) -> bool {
+        match (self, other) {
+            // Recursive cases.
+            (Type::Tuple(a), Type::Tuple(b)) => {
+                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_same(&b, cache))
+            }
+            (Type::Slice(a), Type::Slice(b)) => a.is_same(&b, cache),
+            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_same(&b, cache),
+            (Type::RawPointer(mutability, type_), Type::RawPointer(b_mutability, b_type_)) => {
+                mutability == b_mutability && type_.is_same(&b_type_, cache)
+            }
+            (
+                Type::BorrowedRef { mutability, type_, .. },
+                Type::BorrowedRef { mutability: b_mutability, type_: b_type_, .. },
+            ) => mutability == b_mutability && type_.is_same(&b_type_, cache),
+            // Placeholders and generics are equal to all other types.
+            (Type::Infer, _) | (_, Type::Infer) => true,
+            (Type::Generic(_), _) | (_, Type::Generic(_)) => true,
+            // Other cases, such as primitives, just use recursion.
+            (a, b) => a
+                .def_id(cache)
+                .and_then(|a| Some((a, b.def_id(cache)?)))
+                .map(|(a, b)| a == b)
+                .unwrap_or(false),
+        }
+    }
+
     crate fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
             Primitive(p) | BorrowedRef { type_: box Primitive(p), .. } => Some(p),
