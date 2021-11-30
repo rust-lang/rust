@@ -584,9 +584,7 @@ fn inner_parse_loop<'root, 'tt>(
                 //
                 // At the beginning of the loop, if we reach the end of the delimited submatcher,
                 // we pop the stack to backtrack out of the descent.
-                seq
-                @
-                (TokenTree::Delimited(..)
+                seq @ (TokenTree::Delimited(..)
                 | TokenTree::Token(Token { kind: DocComment(..), .. })) => {
                     let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
                     let idx = item.idx;

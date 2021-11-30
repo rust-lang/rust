@@ -165,10 +165,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 local: _,
                 projection:
-                    [.., ProjectionElem::Index(_)
-                    | ProjectionElem::ConstantIndex { .. }
-                    | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::Downcast(..)],
+                    [
+                        ..,
+                        ProjectionElem::Index(_)
+                        | ProjectionElem::ConstantIndex { .. }
+                        | ProjectionElem::Subslice { .. }
+                        | ProjectionElem::Downcast(..),
+                    ],
             } => bug!("Unexpected immutable place."),
         }
 
@@ -217,7 +220,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 local,
                 projection:
-                    [proj_base @ .., ProjectionElem::Deref, ProjectionElem::Field(field, _), ProjectionElem::Deref],
+                    [
+                        proj_base @ ..,
+                        ProjectionElem::Deref,
+                        ProjectionElem::Field(field, _),
+                        ProjectionElem::Deref,
+                    ],
             } => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
 
@@ -763,11 +771,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                 kind:
                                                     Call(
                                                         _,
-                                                        [Expr {
-                                                            kind: MethodCall(path_segment, ..),
-                                                            hir_id,
-                                                            ..
-                                                        }, ..],
+                                                        [
+                                                            Expr {
+                                                                kind: MethodCall(path_segment, ..),
+                                                                hir_id,
+                                                                ..
+                                                            },
+                                                            ..,
+                                                        ],
                                                     ),
                                                 ..
                                             },
