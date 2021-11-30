@@ -1,3 +1,52 @@
+error: redundant clone
+  --> $DIR/unnecessary_to_owned.rs:134:64
+   |
+LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
+   |                                                                ^^^^^^^^^^^ help: remove this
+   |
+   = note: `-D clippy::redundant-clone` implied by `-D warnings`
+note: this value is dropped without further use
+  --> $DIR/unnecessary_to_owned.rs:134:20
+   |
+LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant clone
+  --> $DIR/unnecessary_to_owned.rs:135:40
+   |
+LL |     require_os_str(&OsString::from("x").to_os_string());
+   |                                        ^^^^^^^^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/unnecessary_to_owned.rs:135:21
+   |
+LL |     require_os_str(&OsString::from("x").to_os_string());
+   |                     ^^^^^^^^^^^^^^^^^^^
+
+error: redundant clone
+  --> $DIR/unnecessary_to_owned.rs:136:48
+   |
+LL |     require_path(&std::path::PathBuf::from("x").to_path_buf());
+   |                                                ^^^^^^^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/unnecessary_to_owned.rs:136:19
+   |
+LL |     require_path(&std::path::PathBuf::from("x").to_path_buf());
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant clone
+  --> $DIR/unnecessary_to_owned.rs:137:35
+   |
+LL |     require_str(&String::from("x").to_string());
+   |                                   ^^^^^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/unnecessary_to_owned.rs:137:18
+   |
+LL |     require_str(&String::from("x").to_string());
+   |                  ^^^^^^^^^^^^^^^^^
+
 error: unnecessary use of `into_owned`
   --> $DIR/unnecessary_to_owned.rs:55:36
    |
@@ -69,8 +118,8 @@ LL |     require_str(&s.to_owned());
 error: unnecessary use of `to_string`
   --> $DIR/unnecessary_to_owned.rs:69:17
    |
-LL |     require_str(&x.to_string());
-   |                 ^^^^^^^^^^^^^^ help: use: `x.as_ref()`
+LL |     require_str(&x_ref.to_string());
+   |                 ^^^^^^^^^^^^^^^^^^ help: use: `x_ref.as_ref()`
 
 error: unnecessary use of `to_vec`
   --> $DIR/unnecessary_to_owned.rs:71:19
@@ -103,10 +152,10 @@ LL |     require_slice(&slice.to_owned());
    |                   ^^^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `to_owned`
-  --> $DIR/unnecessary_to_owned.rs:76:21
+  --> $DIR/unnecessary_to_owned.rs:76:19
    |
-LL |     require_slice(&x.to_owned());
-   |                     ^^^^^^^^^^^ help: remove this
+LL |     require_slice(&x_ref.to_owned());
+   |                   ^^^^^^^^^^^^^^^^^ help: use: `x_ref`
 
 error: unnecessary use of `into_owned`
   --> $DIR/unnecessary_to_owned.rs:78:42
@@ -117,8 +166,8 @@ LL |     require_x(&Cow::<X>::Owned(x.clone()).into_owned());
 error: unnecessary use of `to_owned`
   --> $DIR/unnecessary_to_owned.rs:79:15
    |
-LL |     require_x(&x.to_owned());
-   |               ^^^^^^^^^^^^^ help: use: `&x`
+LL |     require_x(&x_ref.to_owned());
+   |               ^^^^^^^^^^^^^^^^^ help: use: `x_ref`
 
 error: unnecessary use of `to_owned`
   --> $DIR/unnecessary_to_owned.rs:81:25
@@ -375,8 +424,8 @@ LL |     require_as_ref_slice_str(slice.to_owned(), s.to_owned());
 error: unnecessary use of `to_string`
   --> $DIR/unnecessary_to_owned.rs:121:20
    |
-LL |     let _ = x.join(&x.to_string());
-   |                    ^^^^^^^^^^^^^^ help: use: `&x`
+LL |     let _ = x.join(&x_ref.to_string());
+   |                    ^^^^^^^^^^^^^^^^^^ help: use: `x_ref`
 
-error: aborting due to 63 previous errors
+error: aborting due to 67 previous errors
 

@@ -1,7 +1,8 @@
+use super::implicit_clone::is_clone_like;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_copy, peel_mid_ty_refs};
-use clippy_utils::{get_parent_expr, match_def_path, paths};
+use clippy_utils::{get_parent_expr, is_diag_item_method, is_diag_trait_item};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -14,28 +15,17 @@ use std::cmp::max;
 
 use super::UNNECESSARY_TO_OWNED;
 
-const TO_OWNED_LIKE_PATHS: &[&[&str]] = &[
-    &paths::COW_INTO_OWNED,
-    &paths::OS_STR_TO_OS_STRING,
-    &paths::PATH_TO_PATH_BUF,
-    &paths::SLICE_TO_VEC,
-    &paths::TO_OWNED_METHOD,
-    &paths::TO_STRING_METHOD,
-];
-
 pub fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol, args: &'tcx [Expr<'tcx>]) {
     if_chain! {
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-        if TO_OWNED_LIKE_PATHS
-            .iter()
-            .any(|path| match_def_path(cx, method_def_id, path));
+        if is_to_owned_like(cx, method_name, method_def_id);
         if let [receiver] = args;
         then {
             // At this point, we know the call is of a `to_owned`-like function. The functions
             // `check_addr_of_expr` and `check_call_arg` determine whether the call is unnecessary
             // based on its context, that is, whether it is a referent in an `AddrOf` expression or
             // an argument in a function call.
-            if check_addr_of_expr(cx, expr, method_name, receiver) {
+            if check_addr_of_expr(cx, expr, method_name, method_def_id, receiver) {
                 return;
             }
             check_call_arg(cx, expr, method_name, receiver);
@@ -45,10 +35,12 @@ pub fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol
 
 /// Checks whether `expr` is a referent in an `AddrOf` expression and, if so, determines whether its
 /// call of a `to_owned`-like function is unnecessary.
+#[allow(clippy::too_many_lines)]
 fn check_addr_of_expr(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
     method_name: Symbol,
+    method_def_id: DefId,
     receiver: &'tcx Expr<'tcx>,
 ) -> bool {
     if_chain! {
@@ -100,14 +92,17 @@ fn check_addr_of_expr(
             ] => Some(target_ty),
             _ => None,
         };
+        let receiver_ty = cx.typeck_results().expr_ty(receiver);
+        // Only flag cases where the receiver is copyable or the method is `Cow::into_owned`. This
+        // restriction is to ensure there is not overlap between `redundant_clone` and this lint.
+        if is_copy(cx, receiver_ty) || is_cow_into_owned(cx, method_name, method_def_id);
+        if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             let (target_ty, n_target_refs) = peel_mid_ty_refs(target_ty);
-            let receiver_ty = cx.typeck_results().expr_ty(receiver);
             let (receiver_ty, n_receiver_refs) = peel_mid_ty_refs(receiver_ty);
             if_chain! {
                 if receiver_ty == target_ty;
                 if n_target_refs >= n_receiver_refs;
-                if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
                 then {
                     span_lint_and_sugg(
                         cx,
@@ -122,21 +117,32 @@ fn check_addr_of_expr(
                 }
             }
             if implements_deref_trait(cx, receiver_ty, target_ty) {
-                span_lint_and_sugg(
-                    cx,
-                    UNNECESSARY_TO_OWNED,
-                    expr.span.with_lo(receiver.span.hi()),
-                    &format!("unnecessary use of `{}`", method_name),
-                    "remove this",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                );
+                if n_receiver_refs > 0 {
+                    span_lint_and_sugg(
+                        cx,
+                        UNNECESSARY_TO_OWNED,
+                        parent.span,
+                        &format!("unnecessary use of `{}`", method_name),
+                        "use",
+                        receiver_snippet,
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    span_lint_and_sugg(
+                        cx,
+                        UNNECESSARY_TO_OWNED,
+                        expr.span.with_lo(receiver.span.hi()),
+                        &format!("unnecessary use of `{}`", method_name),
+                        "remove this",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
+                }
                 return true;
             }
             if_chain! {
                 if let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef);
                 if implements_trait(cx, receiver_ty, as_ref_trait_id, &[GenericArg::from(target_ty)]);
-                if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
                 then {
                     span_lint_and_sugg(
                         cx,
@@ -325,4 +331,22 @@ fn implements_deref_trait(cx: &LateContext<'tcx>, ty: Ty<'tcx>, deref_target_ty:
             false
         }
     }
+}
+
+/// Returns true if the named method can be used to convert the receiver to its "owned"
+/// representation.
+fn is_to_owned_like(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
+    is_clone_like(cx, &*method_name.as_str(), method_def_id)
+        || is_cow_into_owned(cx, method_name, method_def_id)
+        || is_to_string(cx, method_name, method_def_id)
+}
+
+/// Returns true if the named method is `Cow::into_owned`.
+fn is_cow_into_owned(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
+    method_name.as_str() == "into_owned" && is_diag_item_method(cx, method_def_id, sym::Cow)
+}
+
+/// Returns true if the named method is `ToString::to_string`.
+fn is_to_string(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
+    method_name.as_str() == "to_string" && is_diag_trait_item(cx, method_def_id, sym::ToString)
 }

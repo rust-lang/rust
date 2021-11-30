@@ -1,15 +1,14 @@
 // run-rustfix
 
 #![allow(clippy::ptr_arg)]
-// Some of the expressions that `redundant_clone` flags overlap with ours. Enabling it interferes
-// with `rustfix`.
-#![allow(clippy::redundant_clone)]
-// `needless_borrow` is for checking the fixed code.
+// `needless_borrow` is to ensure there are no needles borrows in the fixed code.
 #![warn(clippy::needless_borrow)]
+// `redundant_clone` is to ensure there is no overlap between that lint and this one.
+#![warn(clippy::redundant_clone)]
 #![warn(clippy::unnecessary_to_owned)]
 
 use std::borrow::Cow;
-use std::ffi::{CStr, OsStr};
+use std::ffi::{CStr, CString, OsStr, OsString};
 use std::ops::Deref;
 
 #[derive(Clone)]
@@ -51,6 +50,7 @@ fn main() {
     let array_ref = &["x"];
     let slice = &["x"][..];
     let x = X(String::from("x"));
+    let x_ref = &x;
 
     require_c_str(&Cow::from(c_str));
     require_c_str(c_str);
@@ -66,17 +66,17 @@ fn main() {
     require_str(s);
     require_str(&Cow::from(s));
     require_str(s);
-    require_str(x.as_ref());
+    require_str(x_ref.as_ref());
 
     require_slice(slice);
     require_slice(&Cow::from(slice));
     require_slice(array.as_ref());
     require_slice(array_ref.as_ref());
     require_slice(slice);
-    require_slice(&x);
+    require_slice(x_ref);
 
     require_x(&Cow::<X>::Owned(x.clone()));
-    require_x(&x);
+    require_x(x_ref);
 
     require_deref_c_str(c_str);
     require_deref_os_str(os_str);
@@ -118,16 +118,23 @@ fn main() {
     require_as_ref_slice_str(array_ref, s);
     require_as_ref_slice_str(slice, s);
 
-    let _ = x.join(&x);
+    let _ = x.join(x_ref);
 
     // negative tests
     require_string(&s.to_string());
     require_string(&Cow::from(s).into_owned());
     require_string(&s.to_owned());
-    require_string(&x.to_string());
+    require_string(&x_ref.to_string());
 
     // `X` isn't copy.
+    require_slice(&x.to_owned());
     require_deref_slice(x.to_owned());
+
+    // The following should be flagged by `redundant_clone`, but not by this lint.
+    require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap());
+    require_os_str(&OsString::from("x"));
+    require_path(&std::path::PathBuf::from("x"));
+    require_str(&String::from("x"));
 }
 
 fn require_c_str(_: &CStr) {}

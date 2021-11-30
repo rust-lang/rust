@@ -1,15 +1,14 @@
 // run-rustfix
 
 #![allow(clippy::ptr_arg)]
-// Some of the expressions that `redundant_clone` flags overlap with ours. Enabling it interferes
-// with `rustfix`.
-#![allow(clippy::redundant_clone)]
-// `needless_borrow` is for checking the fixed code.
+// `needless_borrow` is to ensure there are no needles borrows in the fixed code.
 #![warn(clippy::needless_borrow)]
+// `redundant_clone` is to ensure there is no overlap between that lint and this one.
+#![warn(clippy::redundant_clone)]
 #![warn(clippy::unnecessary_to_owned)]
 
 use std::borrow::Cow;
-use std::ffi::{CStr, OsStr};
+use std::ffi::{CStr, CString, OsStr, OsString};
 use std::ops::Deref;
 
 #[derive(Clone)]
@@ -51,6 +50,7 @@ fn main() {
     let array_ref = &["x"];
     let slice = &["x"][..];
     let x = X(String::from("x"));
+    let x_ref = &x;
 
     require_c_str(&Cow::from(c_str).into_owned());
     require_c_str(&c_str.to_owned());
@@ -66,17 +66,17 @@ fn main() {
     require_str(&s.to_string());
     require_str(&Cow::from(s).into_owned());
     require_str(&s.to_owned());
-    require_str(&x.to_string());
+    require_str(&x_ref.to_string());
 
     require_slice(&slice.to_vec());
     require_slice(&Cow::from(slice).into_owned());
     require_slice(&array.to_owned());
     require_slice(&array_ref.to_owned());
     require_slice(&slice.to_owned());
-    require_slice(&x.to_owned());
+    require_slice(&x_ref.to_owned());
 
     require_x(&Cow::<X>::Owned(x.clone()).into_owned());
-    require_x(&x.to_owned());
+    require_x(&x_ref.to_owned());
 
     require_deref_c_str(c_str.to_owned());
     require_deref_os_str(os_str.to_owned());
@@ -118,16 +118,23 @@ fn main() {
     require_as_ref_slice_str(array_ref.to_owned(), s.to_owned());
     require_as_ref_slice_str(slice.to_owned(), s.to_owned());
 
-    let _ = x.join(&x.to_string());
+    let _ = x.join(&x_ref.to_string());
 
     // negative tests
     require_string(&s.to_string());
     require_string(&Cow::from(s).into_owned());
     require_string(&s.to_owned());
-    require_string(&x.to_string());
+    require_string(&x_ref.to_string());
 
     // `X` isn't copy.
+    require_slice(&x.to_owned());
     require_deref_slice(x.to_owned());
+
+    // The following should be flagged by `redundant_clone`, but not by this lint.
+    require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
+    require_os_str(&OsString::from("x").to_os_string());
+    require_path(&std::path::PathBuf::from("x").to_path_buf());
+    require_str(&String::from("x").to_string());
 }
 
 fn require_c_str(_: &CStr) {}
