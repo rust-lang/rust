@@ -12,7 +12,8 @@ use counters::CoverageCounters;
 use graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use spans::{CoverageSpan, CoverageSpans};
 
-use crate::MirPass;
+use crate::pass_manager::{Flag, Constraint, constraints::*};
+use crate::{MirPass, MirPassC};
 
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -47,6 +48,14 @@ impl Error {
 /// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
 /// to construct the coverage map.
 pub struct InstrumentCoverage;
+
+impl MirPassC for InstrumentCoverage {
+    const FLAGS: &'static [Flag] = &[Flag::InstrumentCoverage];
+    const CONSTRAINTS: &'static [Constraint] = &[
+        // Promoteds run at compile-time, so they don't have meaningful coverage information.
+        after::<super::promote_consts::PromoteTemps>(),
+    ];
+}
 
 impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
