@@ -60,6 +60,7 @@ mod match_branches;
 mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
+mod remove_false_edges;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
 mod remove_unneeded_drops;
@@ -456,7 +457,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
 
     let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
         // Remove all things only needed by analysis
-        &simplify_branches::SimplifyBranches::new("initial"),
+        &simplify_branches::SimplifyConstCondition::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &cleanup_post_borrowck::CleanupNonCodegenStatements,
         &simplify::SimplifyCfg::new("early-opt"),
@@ -515,13 +516,13 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &instcombine::InstCombine,
         &separate_const_switch::SeparateConstSwitch,
         &const_prop::ConstProp,
-        &simplify_branches::SimplifyBranches::new("after-const-prop"),
+        &simplify_branches::SimplifyConstCondition::new("after-const-prop"),
         &early_otherwise_branch::EarlyOtherwiseBranch,
         &simplify_comparison_integral::SimplifyComparisonIntegral,
         &simplify_try::SimplifyArmIdentity,
         &simplify_try::SimplifyBranchSame,
         &dest_prop::DestinationPropagation,
-        &simplify_branches::SimplifyBranches::new("final"),
+        &simplify_branches::SimplifyConstCondition::new("final"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::new("final"),
         &nrvo::RenameReturnPlace,
