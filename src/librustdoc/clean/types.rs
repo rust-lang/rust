@@ -1477,7 +1477,7 @@ impl Type {
         result
     }
 
-    /// Check if two types are "potentially the same."
+    /// Check if two types are "potentially the same".
     /// This is different from Eq, because it knows that things like
     /// `Placeholder` are possible matches for everything.
     crate fn is_same(&self, other: &Self, cache: &Cache) -> bool {
