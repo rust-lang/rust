@@ -32,6 +32,11 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
 
+#[macro_use]
+mod pass_manager;
+
+use pass_manager::{Lint, MirLint};
+
 mod abort_unwinding_calls;
 mod add_call_guards;
 mod add_moves_for_packed_drops;
