@@ -7,14 +7,13 @@
 // through again.
 
 // revisions: migrate nll
+//[nll]compile-flags: -Z borrowck=mir
 
 // Since we are testing nll (and migration) explicitly as a separate
 // revisions, don't worry about the --compare-mode=nll on this test.
 
 // ignore-compare-mode-nll
 // ignore-compare-mode-polonius
-
-//[nll]compile-flags: -Z borrowck=mir
 
 pub trait Stream {
     type Item;

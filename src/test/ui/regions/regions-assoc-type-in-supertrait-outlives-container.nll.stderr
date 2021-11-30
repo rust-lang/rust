@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-assoc-type-in-supertrait-outlives-container.rs:39:12
+  --> $DIR/regions-assoc-type-in-supertrait-outlives-container.rs:44:12
    |
 LL | fn with_assoc<'a,'b>() {
    |               -- -- lifetime `'b` defined here
