@@ -38,12 +38,12 @@ use std::borrow::Cow;
 use std::convert::TryInto;
 
 pub struct SimplifyCfg {
-    label: String,
+    label: &'static str,
 }
 
 impl SimplifyCfg {
-    pub fn new(label: &str) -> Self {
-        SimplifyCfg { label: format!("SimplifyCfg-{}", label) }
+    pub const fn new(label: &'static str) -> Self {
+        SimplifyCfg { label }
     }
 }
 
@@ -57,7 +57,7 @@ pub fn simplify_cfg(tcx: TyCtxt<'tcx>, body: &mut Body<'_>) {
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     fn name(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.label)
+        Cow::Owned(format!("SimplifyCfg-{}", self.label))
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
