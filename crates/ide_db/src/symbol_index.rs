@@ -382,28 +382,25 @@ impl DeclarationLocation {
         Some(self.ptr.to_node(&root))
     }
 
-    pub fn original_range(&self, semantics: &Semantics<'_, RootDatabase>) -> Option<FileRange> {
-        find_original_file_range(semantics, self.hir_file_id, &self.ptr)
+    pub fn original_range(&self, db: &dyn HirDatabase) -> Option<FileRange> {
+        find_original_file_range(db, self.hir_file_id, &self.ptr)
     }
 
-    pub fn original_name_range(
-        &self,
-        semantics: &Semantics<'_, RootDatabase>,
-    ) -> Option<FileRange> {
-        find_original_file_range(semantics, self.hir_file_id, &self.name_ptr)
+    pub fn original_name_range(&self, db: &dyn HirDatabase) -> Option<FileRange> {
+        find_original_file_range(db, self.hir_file_id, &self.name_ptr)
     }
 }
 
 fn find_original_file_range(
-    semantics: &Semantics<'_, RootDatabase>,
+    db: &dyn HirDatabase,
     file_id: HirFileId,
     ptr: &SyntaxNodePtr,
 ) -> Option<FileRange> {
-    let root = semantics.parse_or_expand(file_id)?;
+    let root = db.parse_or_expand(file_id)?;
     let node = ptr.to_node(&root);
     let node = InFile::new(file_id, &node);
 
-    Some(node.original_file_range(semantics.db.upcast()))
+    Some(node.original_file_range(db.upcast()))
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]

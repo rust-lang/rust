@@ -169,9 +169,8 @@ impl NavigationTarget {
 
 impl TryToNav for FileSymbol {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
-        let semantics = Semantics::new(db);
-        let full_range = self.loc.original_range(&semantics)?;
-        let name_range = self.loc.original_name_range(&semantics)?;
+        let full_range = self.loc.original_range(db)?;
+        let name_range = self.loc.original_name_range(db)?;
 
         Some(NavigationTarget {
             file_id: full_range.file_id,
