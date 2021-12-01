@@ -2,10 +2,8 @@
 //!
 //! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
 
-use rustc_ast as ast;
 use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc_expand::base::SyntaxExtensionKind;
 use rustc_hir as hir;
 use rustc_hir::def::{
     DefKind,
@@ -388,33 +386,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         })
     }
 
-    /// Resolves a string as a macro.
-    ///
-    /// FIXME(jynelson): Can this be unified with `resolve()`?
-    fn resolve_macro(
-        &self,
-        path_str: &'a str,
-        module_id: DefId,
-    ) -> Result<Res, ResolutionFailure<'a>> {
-        self.cx.enter_resolver(|resolver| {
-            debug!("resolving {} as a macro in the module {:?}", path_str, module_id);
-            if let Ok((_, res)) =
-                resolver.resolve_str_path_error(DUMMY_SP, path_str, MacroNS, module_id)
-            {
-                // don't resolve builtins like `#[derive]`
-                if let Ok(res) = res.try_into() {
-                    debug!("{} resolved to {:?} in macro namespace (3)", path_str, res);
-                    return Ok(res);
-                }
-            }
-            Err(ResolutionFailure::NotResolved {
-                module_id,
-                partial_res: None,
-                unresolved: path_str.into(),
-            })
-        })
-    }
-
     /// Convenience wrapper around `resolve_str_path_error`.
     ///
     /// This also handles resolving `true` and `false` as booleans.
@@ -688,15 +659,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         module_id: DefId,
         extra_fragment: &Option<String>,
     ) -> Option<Res> {
-        // resolve() can't be used for macro namespace
-        let result = match ns {
-            Namespace::MacroNS => self.resolve_macro(path_str, module_id).map_err(ErrorKind::from),
-            Namespace::TypeNS | Namespace::ValueNS => {
-                self.resolve(path_str, ns, module_id, extra_fragment).map(|(res, _)| res)
-            }
-        };
-
-        let res = match result {
+        let res = match self.resolve(path_str, ns, module_id, extra_fragment).map(|(res, _)| res) {
             Ok(res) => Some(res),
             Err(ErrorKind::Resolve(box kind)) => kind.full_res(),
             Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res))) => Some(res),
@@ -1341,16 +1304,16 @@ impl LinkCollector<'_, '_> {
         let extra_fragment = &key.extra_fragment;
 
         match disambiguator.map(Disambiguator::ns) {
-            Some(expected_ns @ (ValueNS | TypeNS)) => {
+            Some(expected_ns) => {
                 match self.resolve(path_str, expected_ns, base_node, extra_fragment) {
                     Ok(res) => Some(res),
                     Err(ErrorKind::Resolve(box mut kind)) => {
                         // We only looked in one namespace. Try to give a better error if possible.
                         if kind.full_res().is_none() {
-                            let other_ns = if expected_ns == ValueNS { TypeNS } else { ValueNS };
+                            let all_ns = [TypeNS, ValueNS, MacroNS];
                             // FIXME: really it should be `resolution_failure` that does this, not `resolve_with_disambiguator`
                             // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach
-                            for new_ns in [other_ns, MacroNS] {
+                            for new_ns in all_ns.into_iter().filter(|x| *x != expected_ns) {
                                 if let Some(res) =
                                     self.check_full_res(new_ns, path_str, base_node, extra_fragment)
                                 {
@@ -1373,35 +1336,25 @@ impl LinkCollector<'_, '_> {
             }
             None => {
                 // Try everything!
+                let mut do_resolve =
+                    |ns| match self.resolve(path_str, ns, base_node, extra_fragment) {
+                        Ok(res) => Some(Ok(res)),
+                        Err(ErrorKind::AnchorFailure(msg)) => {
+                            anchor_failure(self.cx, diag.clone(), msg);
+                            None
+                        }
+                        Err(ErrorKind::Resolve(box kind)) => Some(Err(kind)),
+                    };
                 let mut candidates = PerNS {
-                    macro_ns: self
-                        .resolve_macro(path_str, base_node)
-                        .map(|res| (res, extra_fragment.clone())),
-                    type_ns: match self.resolve(path_str, TypeNS, base_node, extra_fragment) {
-                        Ok(res) => {
-                            debug!("got res in TypeNS: {:?}", res);
-                            Ok(res)
-                        }
-                        Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(self.cx, diag, msg);
-                            return None;
-                        }
-                        Err(ErrorKind::Resolve(box kind)) => Err(kind),
-                    },
-                    value_ns: match self.resolve(path_str, ValueNS, base_node, extra_fragment) {
-                        Ok(res) => Ok(res),
-                        Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(self.cx, diag, msg);
-                            return None;
-                        }
-                        Err(ErrorKind::Resolve(box kind)) => Err(kind),
-                    }
-                    .and_then(|(res, fragment)| {
+                    macro_ns: do_resolve(MacroNS)?,
+                    type_ns: do_resolve(TypeNS)?,
+                    value_ns: do_resolve(ValueNS)?.and_then(|(res, fragment)| {
                         // Constructors are picked up in the type namespace.
                         match res {
                             Res::Def(DefKind::Ctor(..), _) => {
                                 Err(ResolutionFailure::WrongNamespace { res, expected_ns: TypeNS })
                             }
+                            // TODO(jyn514): this looks very wrong
                             _ => {
                                 match (fragment, extra_fragment.clone()) {
                                     (Some(fragment), Some(_)) => {
@@ -1441,25 +1394,6 @@ impl LinkCollector<'_, '_> {
                     let candidates = candidates.map(|candidate| candidate.ok().map(|(res, _)| res));
                     ambiguity_error(self.cx, diag, path_str, candidates.present_items().collect());
                     None
-                }
-            }
-            Some(MacroNS) => {
-                match self.resolve_macro(path_str, base_node) {
-                    Ok(res) => Some((res, extra_fragment.clone())),
-                    Err(mut kind) => {
-                        // `resolve_macro` only looks in the macro namespace. Try to give a better error if possible.
-                        for ns in [TypeNS, ValueNS] {
-                            if let Some(res) =
-                                self.check_full_res(ns, path_str, base_node, extra_fragment)
-                            {
-                                kind =
-                                    ResolutionFailure::WrongNamespace { res, expected_ns: MacroNS };
-                                break;
-                            }
-                        }
-                        resolution_failure(self, diag, path_str, disambiguator, smallvec![kind]);
-                        None
-                    }
                 }
             }
         }
