@@ -1,5 +1,3 @@
-// ignore-compare-mode-nll
-
 // Check that E0161 is a hard error in all possible configurations that might
 // affect it.
 
@@ -12,6 +10,11 @@
 //[nllul] check-pass
 //[zflagsul] check-pass
 //[editionul] check-pass
+
+// Since we are testing nll (and migration) explicitly as a separate
+// revisions, don't worry about the --compare-mode=nll on this test.
+
+// ignore-compare-mode-nll
 
 #![allow(incomplete_features)]
 #![cfg_attr(nll, feature(nll))]

@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-outlives-projection-container-wc.rs:33:12
+  --> $DIR/regions-outlives-projection-container-wc.rs:38:12
    |
 LL | fn with_assoc<'a,'b>() {
    |               -- -- lifetime `'b` defined here
