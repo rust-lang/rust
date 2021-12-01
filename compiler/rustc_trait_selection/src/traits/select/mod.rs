@@ -675,11 +675,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let stack = self.push_stack(previous_stack, &obligation);
-        let fresh_trait_pred = stack.fresh_trait_pred;
+        let mut fresh_trait_pred = stack.fresh_trait_pred;
+        let mut param_env = obligation.param_env;
+
+        fresh_trait_pred = fresh_trait_pred.map_bound(|mut pred| {
+            param_env = param_env.with_constness(pred.constness.and(param_env.constness()));
+            pred
+        });
 
         debug!(?fresh_trait_pred);
 
-        if let Some(result) = self.check_evaluation_cache(obligation.param_env, fresh_trait_pred) {
+        if let Some(result) = self.check_evaluation_cache(param_env, fresh_trait_pred) {
             debug!(?result, "CACHE HIT");
             return Ok(result);
         }
@@ -709,11 +715,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let reached_depth = stack.reached_depth.get();
         if reached_depth >= stack.depth {
             debug!(?result, "CACHE MISS");
-            self.insert_evaluation_cache(obligation.param_env, fresh_trait_pred, dep_node, result);
+            self.insert_evaluation_cache(param_env, fresh_trait_pred, dep_node, result);
 
             stack.cache().on_completion(stack.dfn, |fresh_trait_pred, provisional_result| {
                 self.insert_evaluation_cache(
-                    obligation.param_env,
+                    param_env,
                     fresh_trait_pred,
                     dep_node,
                     provisional_result.max(result),
@@ -1200,7 +1206,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn check_candidate_cache(
         &mut self,
-        param_env: ty::ParamEnv<'tcx>,
+        mut param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
         // Neither the global nor local cache is aware of intercrate
@@ -1211,7 +1217,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return None;
         }
         let tcx = self.tcx();
-        let pred = cache_fresh_trait_pred.skip_binder();
+        let mut pred = cache_fresh_trait_pred.skip_binder();
+        param_env = param_env.with_constness(pred.constness.and(param_env.constness()));
+
         if self.can_use_global_caches(param_env) {
             if let Some(res) = tcx.selection_cache.get(&param_env.and(pred), tcx) {
                 return Some(res);
@@ -1255,13 +1263,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn insert_candidate_cache(
         &mut self,
-        param_env: ty::ParamEnv<'tcx>,
+        mut param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
         dep_node: DepNodeIndex,
         candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        let pred = cache_fresh_trait_pred.skip_binder();
+        let mut pred = cache_fresh_trait_pred.skip_binder();
+
+        param_env = param_env.with_constness(pred.constness.and(param_env.constness()));
 
         if !self.can_cache_candidate(&candidate) {
             debug!(?pred, ?candidate, "insert_candidate_cache - candidate is not cacheable");

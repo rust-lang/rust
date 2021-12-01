@@ -230,6 +230,19 @@ pub enum BoundConstness {
     ConstIfConst,
 }
 
+impl BoundConstness {
+    /// Reduce `self` and `constness` to two possible combined states instead of four.
+    pub fn and(&mut self, constness: hir::Constness) -> hir::Constness {
+        match (constness, self) {
+            (hir::Constness::Const, BoundConstness::ConstIfConst) => hir::Constness::Const,
+            (_, this) => {
+                *this = BoundConstness::NotConst;
+                hir::Constness::NotConst
+            }
+        }
+    }
+}
+
 impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -1323,6 +1336,11 @@ impl<'tcx> ParamEnv<'tcx> {
 
     pub fn with_user_facing(mut self) -> Self {
         self.packed.set_tag(ParamTag { reveal: Reveal::UserFacing, ..self.packed.tag() });
+        self
+    }
+
+    pub fn with_constness(mut self, constness: hir::Constness) -> Self {
+        self.packed.set_tag(ParamTag { constness, ..self.packed.tag() });
         self
     }
 
