@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
@@ -314,6 +314,22 @@ impl<'tcx> AdtDef {
     /// Whether the ADT lacks fields. Note that this includes uninhabited enums,
     /// e.g., `enum Void {}` is considered payload free as well.
     pub fn is_payloadfree(&self) -> bool {
+        // Treat the ADT as not payload-free if arbitrary_enum_discriminant is used (#88621).
+        // This would disallow the following kind of enum from being casted into integer.
+        // ```
+        // enum Enum {
+        //    Foo() = 1,
+        //    Bar{} = 2,
+        //    Baz = 3,
+        // }
+        // ```
+        if self
+            .variants
+            .iter()
+            .any(|v| matches!(v.discr, VariantDiscr::Explicit(_)) && v.ctor_kind != CtorKind::Const)
+        {
+            return false;
+        }
         self.variants.iter().all(|v| v.fields.is_empty())
     }
 
