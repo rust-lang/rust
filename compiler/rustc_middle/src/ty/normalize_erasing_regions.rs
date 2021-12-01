@@ -8,9 +8,27 @@
 //! or constant found within. (This underlying query is what is cached.)
 
 use crate::mir;
+use crate::traits::query::NoSolution;
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
+
+#[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
+pub enum NormalizationError<'tcx> {
+    Type(Ty<'tcx>),
+    Const(ty::Const<'tcx>),
+    ConstantKind(mir::ConstantKind<'tcx>),
+}
+
+impl<'tcx> NormalizationError<'tcx> {
+    pub fn get_type_for_failure(&self) -> String {
+        match self {
+            NormalizationError::Type(t) => format!("{}", t),
+            NormalizationError::Const(c) => format!("{}", c),
+            NormalizationError::ConstantKind(ck) => format!("{}", ck),
+        }
+    }
+}
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Erase the regions in `value` and then fully normalize all the
@@ -32,12 +50,47 @@ impl<'tcx> TyCtxt<'tcx> {
         // Erase first before we do the real query -- this keeps the
         // cache from being too polluted.
         let value = self.erase_regions(value);
+        debug!(?value);
+
         if !value.has_projections() {
             value
         } else {
             value
                 .fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, param_env })
                 .into_ok()
+        }
+    }
+
+    /// Tries to erase the regions in `value` and then fully normalize all the
+    /// types found within. The result will also have regions erased.
+    ///
+    /// Contrary to `normalize_erasing_regions` this function does not assume that normalization
+    /// succeeds.
+    pub fn try_normalize_erasing_regions<T>(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        value: T,
+    ) -> Result<T, NormalizationError<'tcx>>
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        debug!(
+            "try_normalize_erasing_regions::<{}>(value={:?}, param_env={:?})",
+            std::any::type_name::<T>(),
+            value,
+            param_env,
+        );
+
+        // Erase first before we do the real query -- this keeps the
+        // cache from being too polluted.
+        let value = self.erase_regions(value);
+        debug!(?value);
+
+        if !value.has_projections() {
+            Ok(value)
+        } else {
+            let mut folder = TryNormalizeAfterErasingRegionsFolder::new(self, param_env);
+            value.fold_with(&mut folder)
         }
     }
 
@@ -91,11 +144,14 @@ struct NormalizeAfterErasingRegionsFolder<'tcx> {
 }
 
 impl<'tcx> NormalizeAfterErasingRegionsFolder<'tcx> {
+    #[instrument(skip(self), level = "debug")]
     fn normalize_generic_arg_after_erasing_regions(
         &self,
         arg: ty::GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx> {
         let arg = self.param_env.and(arg);
+        debug!(?arg);
+
         self.tcx.normalize_generic_arg_after_erasing_regions(arg)
     }
 }
@@ -124,5 +180,64 @@ impl TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
         // FIXME: This *probably* needs canonicalization too!
         let arg = self.param_env.and(c);
         Ok(self.tcx.normalize_mir_const_after_erasing_regions(arg))
+    }
+}
+
+struct TryNormalizeAfterErasingRegionsFolder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+}
+
+impl<'tcx> TryNormalizeAfterErasingRegionsFolder<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+        TryNormalizeAfterErasingRegionsFolder { tcx, param_env }
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn try_normalize_generic_arg_after_erasing_regions(
+        &self,
+        arg: ty::GenericArg<'tcx>,
+    ) -> Result<ty::GenericArg<'tcx>, NoSolution> {
+        let arg = self.param_env.and(arg);
+        debug!(?arg);
+
+        self.tcx.try_normalize_generic_arg_after_erasing_regions(arg)
+    }
+}
+
+impl TypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
+    type Error = NormalizationError<'tcx>;
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        match self.try_normalize_generic_arg_after_erasing_regions(ty.into()) {
+            Ok(t) => Ok(t.expect_ty()),
+            Err(_) => Err(NormalizationError::Type(ty)),
+        }
+    }
+
+    fn fold_const(
+        &mut self,
+        c: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+        match self.try_normalize_generic_arg_after_erasing_regions(c.into()) {
+            Ok(t) => Ok(t.expect_const()),
+            Err(_) => Err(NormalizationError::Const(*c)),
+        }
+    }
+
+    fn fold_mir_const(
+        &mut self,
+        c: mir::ConstantKind<'tcx>,
+    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
+        // FIXME: This *probably* needs canonicalization too!
+        let arg = self.param_env.and(c);
+        match self.tcx.try_normalize_mir_const_after_erasing_regions(arg) {
+            Ok(c) => Ok(c),
+            Err(_) => Err(NormalizationError::ConstantKind(c)),
+        }
     }
 }

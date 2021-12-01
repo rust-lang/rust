@@ -1644,6 +1644,11 @@ rustc_queries! {
         desc { "normalizing `{:?}`", goal }
     }
 
+    // FIXME: Implement `normalize_generic_arg_after_erasing_regions` and
+    // `normalize_mir_const_after_erasing_regions` in terms of
+    // `try_normalize_generic_arg_after_erasing_regions` and
+    // `try_normalize_mir_const_after_erasing_regions`, respectively.
+
     /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
     query normalize_generic_arg_after_erasing_regions(
         goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
@@ -1655,6 +1660,20 @@ rustc_queries! {
     query normalize_mir_const_after_erasing_regions(
         goal: ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
     ) -> mir::ConstantKind<'tcx> {
+        desc { "normalizing `{}`", goal.value }
+    }
+
+    /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
+    query try_normalize_generic_arg_after_erasing_regions(
+        goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
+    ) -> Result<GenericArg<'tcx>, NoSolution> {
+        desc { "normalizing `{}`", goal.value }
+    }
+
+    /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
+    query try_normalize_mir_const_after_erasing_regions(
+        goal: ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
+    ) -> Result<mir::ConstantKind<'tcx>, NoSolution> {
         desc { "normalizing `{}`", goal.value }
     }
 

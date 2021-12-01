@@ -1769,6 +1769,13 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                  the type was too big.</p>"
             );
         }
+        Err(LayoutError::NormalizationFailure(_, _)) => {
+            writeln!(
+                w,
+                "<p><strong>Note:</strong> Encountered an error during type layout; \
+                the type failed to be normalized.</p>"
+            )
+        }
     }
 
     writeln!(w, "</div>");

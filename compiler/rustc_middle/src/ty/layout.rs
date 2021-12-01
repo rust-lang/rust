@@ -1,5 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
+use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 use rustc_ast as ast;
@@ -199,6 +200,7 @@ pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     SizeOverflow(Ty<'tcx>),
+    NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
 }
 
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
@@ -208,16 +210,24 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
             LayoutError::SizeOverflow(ty) => {
                 write!(f, "values of the type `{}` are too big for the current architecture", ty)
             }
+            LayoutError::NormalizationFailure(t, e) => write!(
+                f,
+                "unable to determine layout for `{}` because `{}` cannot be normalized",
+                t,
+                e.get_type_for_failure()
+            ),
         }
     }
 }
 
+#[instrument(skip(tcx, query), level = "debug")]
 fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, LayoutError<'tcx>> {
     ty::tls::with_related_context(tcx, move |icx| {
         let (param_env, ty) = query.into_parts();
+        debug!(?ty);
 
         if !tcx.recursion_limit().value_within_limit(icx.layout_depth) {
             tcx.sess.fatal(&format!("overflow representing the type `{}`", ty));
@@ -229,7 +239,18 @@ fn layout_of<'tcx>(
         ty::tls::enter_context(&icx, |_| {
             let param_env = param_env.with_reveal_all_normalized(tcx);
             let unnormalized_ty = ty;
-            let ty = tcx.normalize_erasing_regions(param_env, ty);
+
+            // FIXME: We might want to have two different versions of `layout_of`:
+            // One that can be called after typecheck has completed and can use
+            // `normalize_erasing_regions` here and another one that can be called
+            // before typecheck has completed and uses `try_normalize_erasing_regions`.
+            let ty = match tcx.try_normalize_erasing_regions(param_env, ty) {
+                Ok(t) => t,
+                Err(normalization_error) => {
+                    return Err(LayoutError::NormalizationFailure(ty, normalization_error));
+                }
+            };
+
             if ty != unnormalized_ty {
                 // Ensure this layout is also cached for the normalized type.
                 return tcx.layout_of(param_env.and(ty));
