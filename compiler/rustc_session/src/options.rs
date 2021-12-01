@@ -390,7 +390,7 @@ mod desc {
     pub const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
     pub const parse_branch_protection: &str =
-        "a `+` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf`";
+        "a `,` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf`";
 }
 
 mod parse {
@@ -935,7 +935,7 @@ mod parse {
     crate fn parse_branch_protection(slot: &mut BranchProtection, v: Option<&str>) -> bool {
         match v {
             Some(s) => {
-                for opt in s.split('+') {
+                for opt in s.split(',') {
                     match opt {
                         "bti" => slot.bti = true,
                         "pac-ret" if slot.pac_ret.is_none() => {
@@ -953,7 +953,6 @@ mod parse {
                     };
                 }
             }
-
             _ => return false,
         }
         true
@@ -971,8 +970,6 @@ options! {
 
     ar: String = (String::new(), parse_string, [UNTRACKED],
         "this option is deprecated and does nothing"),
-    branch_protection: BranchProtection = (BranchProtection::default(), parse_branch_protection, [TRACKED],
-        "set options for branch target identification and pointer authentication on AArch64"),
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
     codegen_units: Option<usize> = (None, parse_opt_number, [UNTRACKED],
@@ -1101,6 +1098,8 @@ options! {
         (default: no)"),
     borrowck: String = ("migrate".to_string(), parse_string, [UNTRACKED],
         "select which borrowck is used (`mir` or `migrate`) (default: `migrate`)"),
+    branch_protection: BranchProtection = (BranchProtection::default(), parse_branch_protection, [TRACKED],
+        "set options for branch target identification and pointer authentication on AArch64"),
     cgu_partitioning_strategy: Option<String> = (None, parse_opt_string, [TRACKED],
         "the codegen unit partitioning strategy to use"),
     chalk: bool = (false, parse_bool, [TRACKED],

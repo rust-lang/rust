@@ -567,10 +567,6 @@ fn test_codegen_options_tracking_hash() {
 
     // Make sure that changing a [TRACKED] option changes the hash.
     // This list is in alphabetical order.
-    tracked!(
-        branch_protection,
-        BranchProtection { bti: true, pac_ret: Some(PacRet { leaf: true, key: PAuthKey::B }) }
-    );
     tracked!(code_model, Some(CodeModel::Large));
     tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));
@@ -723,6 +719,10 @@ fn test_debugging_options_tracking_hash() {
     tracked!(asm_comments, true);
     tracked!(assume_incomplete_release, true);
     tracked!(binary_dep_depinfo, true);
+    tracked!(
+        branch_protection,
+        BranchProtection { bti: true, pac_ret: Some(PacRet { leaf: true, key: PAuthKey::B }) }
+    );
     tracked!(chalk, true);
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(crate_attr, vec!["abc".to_string()]);

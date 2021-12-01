@@ -3,7 +3,7 @@
 // min-llvm-version: 10.0.1
 // assembly-output: emit-asm
 // compile-flags: --target aarch64-unknown-linux-gnu
-// compile-flags: -C branch-protection=pac-ret+leaf
+// compile-flags: -Z branch-protection=pac-ret,leaf
 // needs-llvm-components: aarch64
 
 #![feature(no_core, lang_items)]

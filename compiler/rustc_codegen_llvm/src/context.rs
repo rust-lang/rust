@@ -21,7 +21,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::{BranchProtection, CFGuard, CrateType, DebugInfo, PAuthKey};
+use rustc_session::config::{BranchProtection, CFGuard, CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -243,7 +243,7 @@ pub unsafe fn create_module(
     }
 
     if sess.target.arch == "aarch64" {
-        let BranchProtection { bti, pac_ret: pac } = sess.opts.cg.branch_protection;
+        let BranchProtection { bti, pac_ret: pac } = sess.opts.debugging_opts.branch_protection;
 
         llvm::LLVMRustAddModuleFlag(
             llmod,
@@ -251,27 +251,23 @@ pub unsafe fn create_module(
             bti.into(),
         );
 
-        if let Some(pac_opts) = pac {
-            llvm::LLVMRustAddModuleFlag(llmod, "sign-return-address\0".as_ptr().cast(), 1);
-            llvm::LLVMRustAddModuleFlag(
-                llmod,
-                "sign-return-address-all\0".as_ptr().cast(),
-                pac_opts.leaf.into(),
-            );
-            llvm::LLVMRustAddModuleFlag(
-                llmod,
-                "sign-return-address-with-bkey\0".as_ptr().cast(),
-                if pac_opts.key == PAuthKey::A { 0 } else { 1 },
-            );
-        } else {
-            llvm::LLVMRustAddModuleFlag(llmod, "sign-return-address\0".as_ptr().cast(), 0);
-            llvm::LLVMRustAddModuleFlag(llmod, "sign-return-address-all\0".as_ptr().cast(), 0);
-            llvm::LLVMRustAddModuleFlag(
-                llmod,
-                "sign-return-address-with-bkey\0".as_ptr().cast(),
-                0,
-            );
-        }
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            "sign-return-address\0".as_ptr().cast(),
+            pac.is_some().into(),
+        );
+        let pac_opts = pac.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            "sign-return-address-all\0".as_ptr().cast(),
+            pac_opts.leaf.into(),
+        );
+        let is_bkey = if pac_opts.key == PAuthKey::A { false } else { true };
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            "sign-return-address-with-bkey\0".as_ptr().cast(),
+            is_bkey.into(),
+        );
     }
 
     llmod

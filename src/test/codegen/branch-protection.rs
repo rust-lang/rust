@@ -3,10 +3,10 @@
 // revisions: bti pac-ret leaf b-key
 // min-llvm-version: 12.0.0
 // needs-llvm-components: aarch64
-// [bti] compile-flags: -C branch-protection=bti
-// [pac-ret] compile-flags: -C branch-protection=pac-ret
-// [leaf] compile-flags: -C branch-protection=pac-ret+leaf
-// [b-key] compile-flags: -C branch-protection=pac-ret+b-key
+// [bti] compile-flags: -Z branch-protection=bti
+// [pac-ret] compile-flags: -Z branch-protection=pac-ret
+// [leaf] compile-flags: -Z branch-protection=pac-ret,leaf
+// [b-key] compile-flags: -Z branch-protection=pac-ret,b-key
 // compile-flags: --target aarch64-unknown-linux-gnu
 
 #![crate_type = "lib"]

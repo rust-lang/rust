@@ -45,10 +45,6 @@ fn declare_raw_fn(
         llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
     }
 
-    if cx.tcx.sess.target.arch == "aarch64" {
-        attributes::set_branch_protection(cx.tcx.sess, llfn);
-    }
-
     attributes::default_optimisation_attrs(cx.tcx.sess, llfn);
     attributes::non_lazy_bind(cx.sess(), llfn);
 
