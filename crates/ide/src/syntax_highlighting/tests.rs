@@ -238,6 +238,15 @@ impl Bool {
 }
 const USAGE_OF_BOOL:bool = Bool::True.to_primitive();
 
+trait Baz {
+    type Qux;
+}
+
+fn baz<T>(t: T)
+where
+    T: Baz,
+    <T as Baz>::Qux: Bar {}
+
 //- /foo.rs crate:foo
 pub struct Person {
     pub name: &'static str,
