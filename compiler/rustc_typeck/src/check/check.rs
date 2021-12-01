@@ -626,7 +626,7 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 ///
 /// Without this check the above code is incorrectly accepted: we would ICE if
 /// some tried, for example, to clone an `Option<X<&mut ()>>`.
-#[instrument(skip(tcx))]
+#[instrument(level = "debug", skip(tcx))]
 fn check_opaque_meets_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -634,17 +634,14 @@ fn check_opaque_meets_bounds<'tcx>(
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
-    match origin {
-        // Checked when type checking the function containing them.
-        hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => return,
-        // Can have different predicates to their defining use
-        hir::OpaqueTyOrigin::TyAlias => {}
-    }
-
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let param_env = tcx.param_env(def_id);
+    let defining_use_anchor = match *origin {
+        hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
+        hir::OpaqueTyOrigin::TyAlias => def_id,
+    };
+    let param_env = tcx.param_env(defining_use_anchor);
 
-    tcx.infer_ctxt().with_opaque_type_inference(def_id).enter(move |infcx| {
+    tcx.infer_ctxt().with_opaque_type_inference(defining_use_anchor).enter(move |infcx| {
         let inh = Inherited::new(infcx, def_id);
         let infcx = &inh.infcx;
         let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
@@ -678,10 +675,17 @@ fn check_opaque_meets_bounds<'tcx>(
             infcx.report_fulfillment_errors(&errors, None, false);
         }
 
-        // Finally, resolve all regions. This catches wily misuses of
-        // lifetime parameters.
-        let fcx = FnCtxt::new(&inh, param_env, hir_id);
-        fcx.regionck_item(hir_id, span, FxHashSet::default());
+        match origin {
+            // Checked when type checking the function containing them.
+            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => return,
+            // Can have different predicates to their defining use
+            hir::OpaqueTyOrigin::TyAlias => {
+                // Finally, resolve all regions. This catches wily misuses of
+                // lifetime parameters.
+                let fcx = FnCtxt::new(&inh, param_env, hir_id);
+                fcx.regionck_item(hir_id, span, FxHashSet::default());
+            }
+        }
     });
 }
 
