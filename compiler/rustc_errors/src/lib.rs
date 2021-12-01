@@ -1205,7 +1205,10 @@ impl HandlerInner {
 
     fn panic_if_treat_err_as_bug(&self) {
         if self.treat_err_as_bug() {
-            match (self.err_count(), self.flags.treat_err_as_bug.map(|c| c.get()).unwrap_or(0)) {
+            match (
+                self.err_count() + self.lint_err_count,
+                self.flags.treat_err_as_bug.map(|c| c.get()).unwrap_or(0),
+            ) {
                 (1, 1) => panic!("aborting due to `-Z treat-err-as-bug=1`"),
                 (0, _) | (1, _) => {}
                 (count, as_bug) => panic!(
