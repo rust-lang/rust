@@ -1,5 +1,5 @@
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:17:13
+  --> $DIR/option_env_unwrap.rs:18:13
    |
 LL |     let _ = option_env!("PATH").unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _ = option_env!("PATH").unwrap();
    = help: consider using the `env!` macro instead
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:18:13
+  --> $DIR/option_env_unwrap.rs:19:13
    |
 LL |     let _ = option_env!("PATH").expect("environment variable PATH isn't set");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     let _ = option_env!("PATH").expect("environment variable PATH isn't set
    = help: consider using the `env!` macro instead
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:9:9
+  --> $DIR/option_env_unwrap.rs:10:9
    |
 LL |         option_env!($env).unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |     let _ = option_env_unwrap!("PATH");
    = note: this error originates in the macro `option_env_unwrap` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:12:9
+  --> $DIR/option_env_unwrap.rs:13:9
    |
 LL |         option_env!($env).expect($message)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     let _ = option_env_unwrap!("PATH", "environment variable PATH isn't set
    = note: this error originates in the macro `option_env_unwrap` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:21:13
+  --> $DIR/option_env_unwrap.rs:22:13
    |
 LL |     let _ = option_env_unwrap_external!("PATH");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |     let _ = option_env_unwrap_external!("PATH");
    = note: this error originates in the macro `option_env_unwrap_external` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:22:13
+  --> $DIR/option_env_unwrap.rs:23:13
    |
 LL |     let _ = option_env_unwrap_external!("PATH", "environment variable PATH isn't set");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

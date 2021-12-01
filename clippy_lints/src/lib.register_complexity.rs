@@ -41,6 +41,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(methods::MANUAL_FILTER_MAP),
     LintId::of(methods::MANUAL_FIND_MAP),
     LintId::of(methods::MANUAL_SPLIT_ONCE),
+    LintId::of(methods::MAP_FLATTEN),
     LintId::of(methods::MAP_IDENTITY),
     LintId::of(methods::NEEDLESS_SPLITN),
     LintId::of(methods::OPTION_AS_REF_DEREF),
