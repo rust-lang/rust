@@ -309,14 +309,21 @@ fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, 
     // Unwrap more levels of macro expansion, as panic_2015!()
     // was likely expanded from panic!() and possibly from
     // [debug_]assert!().
-    for &i in
-        &[sym::std_panic_macro, sym::core_panic_macro, sym::assert_macro, sym::debug_assert_macro]
-    {
+    loop {
         let parent = expn.call_site.ctxt().outer_expn_data();
-        if parent.macro_def_id.map_or(false, |id| cx.tcx.is_diagnostic_item(i, id)) {
-            expn = parent;
-            panic_macro = i;
+        let Some(id) = parent.macro_def_id else { break };
+        let Some(name) = cx.tcx.get_diagnostic_name(id) else { break };
+        if !matches!(
+            name,
+            sym::core_panic_macro
+                | sym::std_panic_macro
+                | sym::assert_macro
+                | sym::debug_assert_macro
+        ) {
+            break;
         }
+        expn = parent;
+        panic_macro = name;
     }
 
     let macro_symbol =

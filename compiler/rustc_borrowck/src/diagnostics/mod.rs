@@ -738,15 +738,13 @@ impl BorrowedContentSource<'tcx> {
             BorrowedContentSource::DerefRawPointer => "a raw pointer".to_string(),
             BorrowedContentSource::DerefSharedRef => "a shared reference".to_string(),
             BorrowedContentSource::DerefMutableRef => "a mutable reference".to_string(),
-            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind() {
-                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Rc, def.did) => {
-                    "an `Rc`".to_string()
-                }
-                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Arc, def.did) => {
-                    "an `Arc`".to_string()
-                }
-                _ => format!("dereference of `{}`", ty),
-            },
+            BorrowedContentSource::OverloadedDeref(ty) => ty
+                .ty_adt_def()
+                .and_then(|adt| match tcx.get_diagnostic_name(adt.did)? {
+                    name @ (sym::Rc | sym::Arc) => Some(format!("an `{}`", name)),
+                    _ => None,
+                })
+                .unwrap_or_else(|| format!("dereference of `{}`", ty)),
             BorrowedContentSource::OverloadedIndex(ty) => format!("index of `{}`", ty),
         }
     }
@@ -770,15 +768,13 @@ impl BorrowedContentSource<'tcx> {
             BorrowedContentSource::DerefMutableRef => {
                 bug!("describe_for_immutable_place: DerefMutableRef isn't immutable")
             }
-            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind() {
-                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Rc, def.did) => {
-                    "an `Rc`".to_string()
-                }
-                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Arc, def.did) => {
-                    "an `Arc`".to_string()
-                }
-                _ => format!("a dereference of `{}`", ty),
-            },
+            BorrowedContentSource::OverloadedDeref(ty) => ty
+                .ty_adt_def()
+                .and_then(|adt| match tcx.get_diagnostic_name(adt.did)? {
+                    name @ (sym::Rc | sym::Arc) => Some(format!("an `{}`", name)),
+                    _ => None,
+                })
+                .unwrap_or_else(|| format!("dereference of `{}`", ty)),
             BorrowedContentSource::OverloadedIndex(ty) => format!("an index of `{}`", ty),
         }
     }
@@ -960,8 +956,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         _ => None,
                     });
                 let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
-                    tcx.is_diagnostic_item(sym::Option, def_id)
-                        || tcx.is_diagnostic_item(sym::Result, def_id)
+                    matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
                 });
                 FnSelfUseKind::Normal { self_arg, implicit_into_iter, is_option_or_result }
             });
