@@ -396,29 +396,14 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         path_str: &'a str,
         module_id: DefId,
     ) -> Result<Res, ResolutionFailure<'a>> {
-        let path = ast::Path::from_ident(Ident::from_str(path_str));
         self.cx.enter_resolver(|resolver| {
-            // FIXME(jynelson): does this really need 3 separate lookups?
-            if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
-                &path,
-                None,
-                &ParentScope::module(resolver.graph_root(), resolver),
-                false,
-                false,
-            ) {
-                if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
-                    return Ok(res.try_into().unwrap());
-                }
-            }
-            if let Some(&res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
-                return Ok(res.try_into().unwrap());
-            }
             debug!("resolving {} as a macro in the module {:?}", path_str, module_id);
             if let Ok((_, res)) =
                 resolver.resolve_str_path_error(DUMMY_SP, path_str, MacroNS, module_id)
             {
                 // don't resolve builtins like `#[derive]`
                 if let Ok(res) = res.try_into() {
+                    debug!("{} resolved to {:?} in macro namespace (3)", path_str, res);
                     return Ok(res);
                 }
             }
