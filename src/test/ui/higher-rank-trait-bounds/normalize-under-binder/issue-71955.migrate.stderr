@@ -1,5 +1,5 @@
 error: implementation of `Parser` is not general enough
-  --> $DIR/issue-71955.rs:52:5
+  --> $DIR/issue-71955.rs:57:5
    |
 LL |     foo(bar, "string", |s| s.len() == 5);
    |     ^^^ implementation of `Parser` is not general enough
@@ -8,7 +8,7 @@ LL |     foo(bar, "string", |s| s.len() == 5);
    = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
 
 error: implementation of `Parser` is not general enough
-  --> $DIR/issue-71955.rs:52:5
+  --> $DIR/issue-71955.rs:57:5
    |
 LL |     foo(bar, "string", |s| s.len() == 5);
    |     ^^^ implementation of `Parser` is not general enough
@@ -17,7 +17,7 @@ LL |     foo(bar, "string", |s| s.len() == 5);
    = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
 
 error: implementation of `Parser` is not general enough
-  --> $DIR/issue-71955.rs:52:5
+  --> $DIR/issue-71955.rs:57:5
    |
 LL |     foo(bar, "string", |s| s.len() == 5);
    |     ^^^ implementation of `Parser` is not general enough
@@ -26,7 +26,7 @@ LL |     foo(bar, "string", |s| s.len() == 5);
    = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
 
 error: implementation of `Parser` is not general enough
-  --> $DIR/issue-71955.rs:52:5
+  --> $DIR/issue-71955.rs:57:5
    |
 LL |     foo(bar, "string", |s| s.len() == 5);
    |     ^^^ implementation of `Parser` is not general enough
@@ -35,7 +35,7 @@ LL |     foo(bar, "string", |s| s.len() == 5);
    = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
 
 error: implementation of `Parser` is not general enough
-  --> $DIR/issue-71955.rs:52:5
+  --> $DIR/issue-71955.rs:57:5
    |
 LL |     foo(bar, "string", |s| s.len() == 5);
    |     ^^^ implementation of `Parser` is not general enough
@@ -44,7 +44,7 @@ LL |     foo(bar, "string", |s| s.len() == 5);
    = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
 
 error: implementation of `Parser` is not general enough
-  --> $DIR/issue-71955.rs:58:5
+  --> $DIR/issue-71955.rs:63:5
    |
 LL |     foo(baz, "string", |s| s.0.len() == 5);
    |     ^^^ implementation of `Parser` is not general enough
@@ -53,7 +53,7 @@ LL |     foo(baz, "string", |s| s.0.len() == 5);
    = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
 
 error: implementation of `Parser` is not general enough
-  --> $DIR/issue-71955.rs:58:5
+  --> $DIR/issue-71955.rs:63:5
    |
 LL |     foo(baz, "string", |s| s.0.len() == 5);
    |     ^^^ implementation of `Parser` is not general enough
@@ -62,7 +62,7 @@ LL |     foo(baz, "string", |s| s.0.len() == 5);
    = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
 
 error: implementation of `Parser` is not general enough
-  --> $DIR/issue-71955.rs:58:5
+  --> $DIR/issue-71955.rs:63:5
    |
 LL |     foo(baz, "string", |s| s.0.len() == 5);
    |     ^^^ implementation of `Parser` is not general enough
@@ -71,7 +71,7 @@ LL |     foo(baz, "string", |s| s.0.len() == 5);
    = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
 
 error: implementation of `Parser` is not general enough
-  --> $DIR/issue-71955.rs:58:5
+  --> $DIR/issue-71955.rs:63:5
    |
 LL |     foo(baz, "string", |s| s.0.len() == 5);
    |     ^^^ implementation of `Parser` is not general enough
@@ -80,7 +80,7 @@ LL |     foo(baz, "string", |s| s.0.len() == 5);
    = note: ...but it actually implements `Parser<'1>`, for some specific lifetime `'1`
 
 error: implementation of `Parser` is not general enough
-  --> $DIR/issue-71955.rs:58:5
+  --> $DIR/issue-71955.rs:63:5
    |
 LL |     foo(baz, "string", |s| s.0.len() == 5);
    |     ^^^ implementation of `Parser` is not general enough

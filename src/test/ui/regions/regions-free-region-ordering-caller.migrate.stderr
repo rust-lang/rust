@@ -1,50 +1,50 @@
 error[E0491]: in type `&'b &'a usize`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-free-region-ordering-caller.rs:11:12
+  --> $DIR/regions-free-region-ordering-caller.rs:16:12
    |
 LL |     let z: Option<&'b &'a usize> = None;
    |            ^^^^^^^^^^^^^^^^^^^^^
    |
 note: the pointer is valid for the lifetime `'b` as defined here
-  --> $DIR/regions-free-region-ordering-caller.rs:10:14
+  --> $DIR/regions-free-region-ordering-caller.rs:15:14
    |
 LL | fn call2<'a, 'b>(a: &'a usize, b: &'b usize) {
    |              ^^
 note: but the referenced data is only valid for the lifetime `'a` as defined here
-  --> $DIR/regions-free-region-ordering-caller.rs:10:10
+  --> $DIR/regions-free-region-ordering-caller.rs:15:10
    |
 LL | fn call2<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          ^^
 
 error[E0491]: in type `&'b Paramd<'a>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-free-region-ordering-caller.rs:17:12
+  --> $DIR/regions-free-region-ordering-caller.rs:22:12
    |
 LL |     let z: Option<&'b Paramd<'a>> = None;
    |            ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the pointer is valid for the lifetime `'b` as defined here
-  --> $DIR/regions-free-region-ordering-caller.rs:15:14
+  --> $DIR/regions-free-region-ordering-caller.rs:20:14
    |
 LL | fn call3<'a, 'b>(a: &'a usize, b: &'b usize) {
    |              ^^
 note: but the referenced data is only valid for the lifetime `'a` as defined here
-  --> $DIR/regions-free-region-ordering-caller.rs:15:10
+  --> $DIR/regions-free-region-ordering-caller.rs:20:10
    |
 LL | fn call3<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          ^^
 
 error[E0491]: in type `&'a &'b usize`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-free-region-ordering-caller.rs:22:12
+  --> $DIR/regions-free-region-ordering-caller.rs:27:12
    |
 LL |     let z: Option<&'a &'b usize> = None;
    |            ^^^^^^^^^^^^^^^^^^^^^
    |
 note: the pointer is valid for the lifetime `'a` as defined here
-  --> $DIR/regions-free-region-ordering-caller.rs:21:10
+  --> $DIR/regions-free-region-ordering-caller.rs:26:10
    |
 LL | fn call4<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          ^^
 note: but the referenced data is only valid for the lifetime `'b` as defined here
-  --> $DIR/regions-free-region-ordering-caller.rs:21:14
+  --> $DIR/regions-free-region-ordering-caller.rs:26:14
    |
 LL | fn call4<'a, 'b>(a: &'a usize, b: &'b usize) {
    |              ^^
