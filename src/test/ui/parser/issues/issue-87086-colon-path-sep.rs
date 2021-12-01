@@ -1,10 +1,14 @@
 // Tests that a suggestion is issued if the user wrote a colon instead of
 // a path separator in a match arm.
 
-enum Foo {
-    Bar,
-    Baz,
+mod qux {
+    pub enum Foo {
+        Bar,
+        Baz,
+    }
 }
+
+use qux::Foo;
 
 fn f() -> Foo { Foo::Bar }
 
@@ -16,24 +20,24 @@ fn g1() {
         _ => {}
     }
     match f() {
-        Foo::Bar:Baz => {}
+        qux::Foo:Bar => {}
         //~^ ERROR: expected one of
         //~| HELP: maybe write a path separator here
         _ => {}
     }
     match f() {
-        Foo:Bar::Baz => {}
+        qux:Foo::Baz => {}
         //~^ ERROR: expected one of
         //~| HELP: maybe write a path separator here
         _ => {}
     }
     match f() {
-        Foo: Bar::Baz if true => {}
+        qux: Foo::Baz if true => {}
         //~^ ERROR: expected one of
         //~| HELP: maybe write a path separator here
         _ => {}
     }
-    if let Bar:Baz = f() {
+    if let Foo:Bar = f() {
     //~^ ERROR: expected one of
     //~| HELP: maybe write a path separator here
     }
@@ -41,16 +45,18 @@ fn g1() {
 
 fn g1_neg() {
     match f() {
-        ref Foo: Bar::Baz => {}
+        ref qux: Foo::Baz => {}
         //~^ ERROR: expected one of
+        //~| HELP: maybe write a path separator here
         _ => {}
     }
 }
 
 fn g2_neg() {
     match f() {
-        mut Foo: Bar::Baz => {}
+        mut qux: Foo::Baz => {}
         //~^ ERROR: expected one of
+        //~| HELP: maybe write a path separator here
         _ => {}
     }
 }
@@ -60,6 +66,13 @@ fn main() {
     match myfoo {
         Foo::Bar => {}
         Foo:Bar::Baz => {}
+        //~^ ERROR: expected one of
+        //~| HELP: maybe write a path separator here
+        //~| ERROR: failed to resolve: `Bar` is a variant, not a module
+    }
+    match myfoo {
+        Foo::Bar => {}
+        Foo:Bar => {}
         //~^ ERROR: expected one of
         //~| HELP: maybe write a path separator here
     }
