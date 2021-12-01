@@ -1,33 +1,33 @@
 error[E0491]: in type `&'a WithHrAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-projection-container-hrtb.rs:30:12
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:35:12
    |
 LL |     let _: &'a WithHrAssoc<TheType<'b>> = loop { };
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the pointer is valid for the lifetime `'a` as defined here
-  --> $DIR/regions-outlives-projection-container-hrtb.rs:27:15
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:32:15
    |
 LL | fn with_assoc<'a,'b>() {
    |               ^^
 note: but the referenced data is only valid for the lifetime `'b` as defined here
-  --> $DIR/regions-outlives-projection-container-hrtb.rs:27:18
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:32:18
    |
 LL | fn with_assoc<'a,'b>() {
    |                  ^^
 
 error[E0491]: in type `&'a WithHrAssocSub<TheType<'b>>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-projection-container-hrtb.rs:50:12
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:55:12
    |
 LL |     let _: &'a WithHrAssocSub<TheType<'b>> = loop { };
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the pointer is valid for the lifetime `'a` as defined here
-  --> $DIR/regions-outlives-projection-container-hrtb.rs:46:19
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:51:19
    |
 LL | fn with_assoc_sub<'a,'b>() {
    |                   ^^
 note: but the referenced data is only valid for the lifetime `'b` as defined here
-  --> $DIR/regions-outlives-projection-container-hrtb.rs:46:22
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:51:22
    |
 LL | fn with_assoc_sub<'a,'b>() {
    |                      ^^

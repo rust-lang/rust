@@ -3,6 +3,11 @@
 // [nll]compile-flags: -Zborrowck=mir
 // check-fail
 
+// Since we are testing nll (and migration) explicitly as a separate
+// revisions, don't worry about the --compare-mode=nll on this test.
+
+// ignore-compare-mode-nll
+
 #![feature(rustc_attrs)]
 
 trait Parser<'s> {
