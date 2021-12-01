@@ -1,60 +1,120 @@
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:13:12
+  --> $DIR/elided-lifetimes.rs:14:12
    |
 LL | fn foo(x: &Foo) {
-   |            ^^^- help: indicate the anonymous lifetime: `<'_>`
+   |            ^^^ expected named lifetime parameter
    |
 note: the lint level is defined here
   --> $DIR/elided-lifetimes.rs:5:9
    |
 LL | #![deny(elided_lifetimes_in_paths)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider using the `'_` lifetime
+   |
+LL | fn foo(x: &Foo<'_>) {
+   |            ~~~~~~~
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:32:29
+  --> $DIR/elided-lifetimes.rs:33:29
    |
 LL | fn wrap_gift(gift: &str) -> Wrapped {
-   |                             ^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
+   |                             ^^^^^^^ expected named lifetime parameter
+   |
+help: consider using the `'_` lifetime
+   |
+LL | fn wrap_gift(gift: &str) -> Wrapped<'_> {
+   |                             ~~~~~~~~~~~
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:38:38
+  --> $DIR/elided-lifetimes.rs:40:38
    |
 LL | fn wrap_gift_with_bow(gift: &str) -> WrappedWithBow {
-   |                                      ^^^^^^^^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
+   |                                      ^^^^^^^^^^^^^^ expected named lifetime parameter
+   |
+help: consider using the `'_` lifetime
+   |
+LL | fn wrap_gift_with_bow(gift: &str) -> WrappedWithBow<'_> {
+   |                                      ~~~~~~~~~~~~~~~~~~
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:44:29
+  --> $DIR/elided-lifetimes.rs:47:29
    |
 LL | fn inspect_matched_set(set: MatchedSet) {
-   |                             ^^^^^^^^^^- help: indicate the anonymous lifetimes: `<'_, '_>`
+   |                             ^^^^^^^^^^ expected 2 lifetime parameters
+   |
+help: consider using the `'_` lifetime
+   |
+LL | fn inspect_matched_set(set: MatchedSet<'_, '_>) {
+   |                             ~~~~~~~~~~~~~~~~~~
+
+error[E0106]: missing lifetime specifiers
+  --> $DIR/elided-lifetimes.rs:55:20
+   |
+LL | fn match_sets() -> MatchedSet {
+   |                    ^^^^^^^^^^ expected 2 lifetime parameters
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime
+   |
+LL | fn match_sets() -> MatchedSet<'static, 'static> {
+   |                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:56:36
+  --> $DIR/elided-lifetimes.rs:69:36
    |
 LL |         fn $fn_name(gift: &str) -> $type_name {
-   |                                    ^^^^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
+   |                                    ^^^^^^^^^^ expected named lifetime parameter
 ...
 LL | autowrapper!(Autowrapped, autowrap_gift, 'a);
    | -------------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `autowrapper` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using the `'_` lifetime
+   |
+LL |         fn $fn_name(gift: &str) -> $type_name<'_> {
+   |                                    ~~~~~~~~~~~~~~
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:78:18
+  --> $DIR/elided-lifetimes.rs:69:36
+   |
+LL |         fn $fn_name(gift: &str) -> $type_name {
+   |                                    ^^^^^^^^^^ expected named lifetime parameter
+...
+LL | autowrapper!(AutowrappedAgain, autowrap_gift_again, 'a);
+   | ------------------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `autowrapper` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using the `'_` lifetime
+   |
+LL |         fn $fn_name(gift: &str) -> $type_name<'_> {
+   |                                    ~~~~~~~~~~~~~~
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetimes.rs:109:22
    |
 LL |     let loyalty: Ref<(u32, char)> = honesty.borrow();
-   |                  ^^^^^^^^^^^^^^^^ help: indicate the anonymous lifetime: `Ref<'_, (u32, char)>`
+   |                      ^ expected named lifetime parameter
+   |
+help: consider using the `'_` lifetime
+   |
+LL |     let loyalty: Ref<'_, (u32, char)> = honesty.borrow();
+   |                      +++
 
 error: hidden lifetime parameters in types are deprecated
-  --> $DIR/elided-lifetimes.rs:70:9
+  --> $DIR/elided-lifetimes.rs:92:13
    |
 LL |         Ref<($($types),*)>
-   |         ^^^^^^^^^^^^^^^^^^ help: indicate the anonymous lifetime: `Ref<'_, ($($types),*)>`
+   |             ^ expected named lifetime parameter
 ...
 LL |     let yellow: anytuple_ref_ty!(bool, &str) = laughter.borrow();
    |                 ---------------------------- in this macro invocation
    |
    = note: this error originates in the macro `anytuple_ref_ty` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using the `'_` lifetime
+   |
+LL |         Ref<'_, ($($types),*)>
+   |             +++
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 
+For more information about this error, try `rustc --explain E0106`.

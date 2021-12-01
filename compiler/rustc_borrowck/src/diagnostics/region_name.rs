@@ -584,7 +584,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 Some(RegionNameHighlight::MatchedAdtAndSegment(lifetime_span))
             }
 
-            hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Implicit => {
+            hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Implicit(_) => {
                 // In this case, the user left off the lifetime; so
                 // they wrote something like:
                 //

@@ -1871,6 +1871,117 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         err.emit();
     }
 
+    /// Returns whether to add `'static` lifetime to the suggested lifetime list.
+    crate fn report_elision_failure(
+        &mut self,
+        db: &mut DiagnosticBuilder<'_>,
+        params: &[ElisionFailureInfo],
+    ) -> bool {
+        let mut m = String::new();
+        let len = params.len();
+
+        let elided_params: Vec<_> =
+            params.iter().cloned().filter(|info| info.lifetime_count > 0).collect();
+
+        let elided_len = elided_params.len();
+
+        for (i, info) in elided_params.into_iter().enumerate() {
+            let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions, span } =
+                info;
+
+            db.span_label(span, "");
+            let help_name = if let Some(ident) =
+                parent.and_then(|body| self.tcx.hir().body(body).params[index].pat.simple_ident())
+            {
+                format!("`{}`", ident)
+            } else {
+                format!("argument {}", index + 1)
+            };
+
+            m.push_str(
+                &(if n == 1 {
+                    help_name
+                } else {
+                    format!(
+                        "one of {}'s {} {}lifetimes",
+                        help_name,
+                        n,
+                        if have_bound_regions { "free " } else { "" }
+                    )
+                })[..],
+            );
+
+            if elided_len == 2 && i == 0 {
+                m.push_str(" or ");
+            } else if i + 2 == elided_len {
+                m.push_str(", or ");
+            } else if i != elided_len - 1 {
+                m.push_str(", ");
+            }
+        }
+
+        if len == 0 {
+            db.help(
+                "this function's return type contains a borrowed value, \
+                 but there is no value for it to be borrowed from",
+            );
+            true
+        } else if elided_len == 0 {
+            db.help(
+                "this function's return type contains a borrowed value with \
+                 an elided lifetime, but the lifetime cannot be derived from \
+                 the arguments",
+            );
+            true
+        } else if elided_len == 1 {
+            db.help(&format!(
+                "this function's return type contains a borrowed value, \
+                 but the signature does not say which {} it is borrowed from",
+                m
+            ));
+            false
+        } else {
+            db.help(&format!(
+                "this function's return type contains a borrowed value, \
+                 but the signature does not say whether it is borrowed from {}",
+                m
+            ));
+            false
+        }
+    }
+
+    crate fn report_elided_lifetime_in_ty(&self, lifetime_refs: &[&hir::Lifetime]) {
+        let Some(missing_lifetime) = lifetime_refs.iter().find(|lt| {
+            lt.name == hir::LifetimeName::Implicit(true)
+        }) else { return };
+
+        let mut spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
+        spans.sort();
+        let mut spans_dedup = spans.clone();
+        spans_dedup.dedup();
+        let spans_with_counts: Vec<_> = spans_dedup
+            .into_iter()
+            .map(|sp| (sp, spans.iter().filter(|nsp| *nsp == &sp).count()))
+            .collect();
+
+        self.tcx.struct_span_lint_hir(
+            rustc_session::lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
+            missing_lifetime.hir_id,
+            spans,
+            |lint| {
+                let mut db = lint.build("hidden lifetime parameters in types are deprecated");
+                self.add_missing_lifetime_specifiers_label(
+                    &mut db,
+                    spans_with_counts,
+                    &FxHashSet::from_iter([kw::UnderscoreLifetime]),
+                    Vec::new(),
+                    &[],
+                );
+                db.emit()
+            },
+        );
+    }
+
     // FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
     // generics. We are disallowing this until we can decide on how we want to handle non-'static
     // lifetimes in const generics. See issue #74052 for discussion.
@@ -2297,7 +2408,9 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         );
         let is_allowed_lifetime = matches!(
             lifetime_ref.name,
-            hir::LifetimeName::Implicit | hir::LifetimeName::Static | hir::LifetimeName::Underscore
+            hir::LifetimeName::Implicit(_)
+                | hir::LifetimeName::Static
+                | hir::LifetimeName::Underscore
         );
 
         if !self.tcx.lazy_normalization() && is_anon_const && !is_allowed_lifetime {

@@ -2,9 +2,13 @@ warning: hidden lifetime parameters in types are deprecated
   --> $DIR/allowed-by-default-lint.rs:9:12
    |
 LL | fn foo(x: &Foo) {}
-   |            ^^^- help: indicate the anonymous lifetime: `<'_>`
+   |            ^^^ expected named lifetime parameter
    |
    = note: requested on the command line with `--force-warn elided-lifetimes-in-paths`
+help: consider using the `'_` lifetime
+   |
+LL | fn foo(x: &Foo<'_>) {}
+   |            ~~~~~~~
 
 warning: 1 warning emitted
 
