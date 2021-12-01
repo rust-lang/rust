@@ -290,11 +290,20 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         Some(hir_id) => match tcx.hir().get(hir_id) {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(..), .. })
             | hir::Node::Item(hir::Item { kind: hir::ItemKind::Static(..), .. })
-            | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Const(..), .. })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Const(..), ..
+            })
             | hir::Node::AnonConst(_)
             | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
             | hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Fn(hir::FnSig { header: hir::FnHeader { constness: hir::Constness::Const, .. }, .. }, ..),
+                kind:
+                    hir::ImplItemKind::Fn(
+                        hir::FnSig {
+                            header: hir::FnHeader { constness: hir::Constness::Const, .. },
+                            ..
+                        },
+                        ..,
+                    ),
                 ..
             }) => hir::Constness::Const,
 
@@ -304,7 +313,10 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
             }) => {
                 let parent_hir_id = tcx.hir().get_parent_node(hir_id);
                 match tcx.hir().get(parent_hir_id) {
-                    hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(hir::Impl { constness, .. }), .. }) => *constness,
+                    hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
+                        ..
+                    }) => *constness,
                     _ => span_bug!(
                         tcx.def_span(parent_hir_id.owner),
                         "impl item's parent node is not an impl",
@@ -313,14 +325,22 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
             }
 
             hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Fn(hir::FnSig { header: hir::FnHeader { constness, .. }, .. }, ..),
+                kind:
+                    hir::ItemKind::Fn(hir::FnSig { header: hir::FnHeader { constness, .. }, .. }, ..),
                 ..
             })
             | hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(hir::FnSig { header: hir::FnHeader { constness, .. }, .. }, ..),
+                kind:
+                    hir::TraitItemKind::Fn(
+                        hir::FnSig { header: hir::FnHeader { constness, .. }, .. },
+                        ..,
+                    ),
                 ..
             })
-            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(hir::Impl { constness, .. }), .. }) => *constness,
+            | hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
+                ..
+            }) => *constness,
 
             _ => hir::Constness::NotConst,
         },
