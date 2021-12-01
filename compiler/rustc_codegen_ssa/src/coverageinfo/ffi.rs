@@ -1,6 +1,6 @@
 use rustc_middle::mir::coverage::{CounterValueReference, MappedExpressionIndex};
 
-/// Aligns with [llvm::coverage::Counter::CounterKind](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L206-L222)
+/// Aligns with [llvm::coverage::Counter::CounterKind](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L95)
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub enum CounterKind {
@@ -17,7 +17,7 @@ pub enum CounterKind {
 ///     `instrprof.increment()`)
 ///   * For `CounterKind::Expression`, `id` is the index into the coverage map's array of
 ///     counter expressions.
-/// Aligns with [llvm::coverage::Counter](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L99-L100)
+/// Aligns with [llvm::coverage::Counter](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L102-L103)
 /// Important: The Rust struct layout (order and types of fields) must match its C++ counterpart.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -59,7 +59,7 @@ impl Counter {
     }
 }
 
-/// Aligns with [llvm::coverage::CounterExpression::ExprKind](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L147)
+/// Aligns with [llvm::coverage::CounterExpression::ExprKind](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L150)
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub enum ExprKind {
@@ -67,7 +67,7 @@ pub enum ExprKind {
     Add = 1,
 }
 
-/// Aligns with [llvm::coverage::CounterExpression](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L148-L149)
+/// Aligns with [llvm::coverage::CounterExpression](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L151-L152)
 /// Important: The Rust struct layout (order and types of fields) must match its C++
 /// counterpart.
 #[derive(Copy, Clone, Debug)]
