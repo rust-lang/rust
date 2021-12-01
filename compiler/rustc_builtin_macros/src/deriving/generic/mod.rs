@@ -181,6 +181,7 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
+use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, BinOpKind, EnumDef, Expr, Generics, PatKind};
 use rustc_ast::{GenericArg, GenericParamKind, VariantData};
@@ -720,22 +721,32 @@ impl<'a> TraitDef<'a> {
         let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());
 
+        // for attr in a.iter_mut() {
+        //     SpanMarker { container_id: cx.current_expansion.id, span: self.span }.visit_attribute(attr);
+        // }
+
         let unsafety = if self.is_unsafe { ast::Unsafe::Yes(self.span) } else { ast::Unsafe::No };
 
+        // let mut trait_generics = trait_generics;
+        // SpanMarker { container_id: cx.current_expansion.id, span: self.span }
+        // .visit_generics(&mut trait_generics);
+        let mut item = ast::ItemKind::Impl(Box::new(ast::Impl {
+            unsafety,
+            polarity: ast::ImplPolarity::Positive,
+            defaultness: ast::Defaultness::Final,
+            constness: ast::Const::No,
+            generics: trait_generics,
+            of_trait: opt_trait_ref,
+            self_ty: self_type,
+            items: methods.into_iter().chain(associated_types).collect(),
+        }));
+        SpanMarker { container_id: cx.current_expansion.id, span: self.span }
+        .visit_item_kind(&mut item);
         cx.item(
             self.span,
             Ident::empty(),
             a,
-            ast::ItemKind::Impl(Box::new(ast::Impl {
-                unsafety,
-                polarity: ast::ImplPolarity::Positive,
-                defaultness: ast::Defaultness::Final,
-                constness: ast::Const::No,
-                generics: trait_generics,
-                of_trait: opt_trait_ref,
-                self_ty: self_type,
-                items: methods.into_iter().chain(associated_types).collect(),
-            })),
+            item,
         )
     }
 
@@ -1783,5 +1794,38 @@ pub fn is_type_without_fields(item: &Annotatable) -> bool {
         }
     } else {
         false
+    }
+}
+
+/// A folder used to correctly mark every span coming from a `derive` macro.
+struct SpanMarker {
+    container_id: rustc_span::hygiene::LocalExpnId,
+    span: Span,
+}
+
+    // let mut marker = Marker(cx.current_expansion.id, transparency);
+impl MutVisitor for SpanMarker {
+    fn visit_span(&mut self, sp: &mut Span) {
+        // let x = sp.ctxt();
+        // let y = self.container_id.to_expn_id();
+        // tracing::info!(?sp, ?x, ?self.container_id, ?y);
+        let x = self.span.ctxt().outer_expn();
+        let y = sp.ctxt().outer_expn();
+        tracing::info!(?self.span, ?sp, ?self.container_id, ?x, ?y);
+        // if self.span != *sp {
+            // *sp = sp.apply_mark(self.container_id.to_expn_id(), rustc_span::hygiene::Transparency::SemiTransparent);
+        //     // *sp = sp.with_ctxt(self.span.ctxt());
+        // } else {
+            // *sp = sp.with_ctxt(self.span.ctxt());
+        // }
+        if self.container_id.to_expn_id() != sp.ctxt().outer_expn() { // && sp.ctxt().outer_expn() == rustc_span::hygiene::ExpnId::root() {
+            // println!("{:?} {:?} {:?}", self.ctxt, sp.ctxt(), sp);
+            // tracing::info!("marked");
+            // *sp.with_ctxt();
+            *sp = sp.apply_mark(self.container_id.to_expn_id(), rustc_span::hygiene::Transparency::SemiTransparent);
+            // *sp = sp.apply_mark(self.container_id.to_expn_id(), rustc_span::hygiene::Transparency::Transparent);
+            // sp.apply_mark(self.ctxt.outer_expn(), rustc_span::hygiene::Transparency::Transparent);
+            // *sp = sp.apply_mark(self.container_id.to_expn_id(), rustc_span::hygiene::Transparency::Opaque);
+        }
     }
 }

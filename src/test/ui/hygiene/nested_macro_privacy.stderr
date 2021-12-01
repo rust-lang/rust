@@ -1,9 +1,63 @@
-error[E0616]: field `i` of struct `S` is private
-  --> $DIR/nested_macro_privacy.rs:15:18
+error[E0412]: cannot find type `S` in this scope
+  --> $DIR/nested_macro_privacy.rs:5:18
    |
+LL |         #[derive(Default)]
+   |                  ^^^^^^^ not found in this scope
+...
+LL | n!(foo, S, i, m);
+   | ---------------- in this macro invocation
+   |
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0412]: cannot find type `S` in this scope
+  --> $DIR/nested_macro_privacy.rs:5:18
+   |
+LL |         #[derive(Default)]
+   |                  ^^^^^^^ not found in this scope
+...
+LL | n!(foo, S, i, m);
+   | ---------------- in this macro invocation
+   |
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0422]: cannot find struct, variant or union type `S` in this scope
+  --> $DIR/nested_macro_privacy.rs:5:18
+   |
+LL |         #[derive(Default)]
+   |                  ^^^^^^^ not found in this scope
+...
+LL | n!(foo, S, i, m);
+   | ---------------- in this macro invocation
+   |
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: no function or associated item named `default` found for struct `S` in the current scope
+  --> $DIR/nested_macro_privacy.rs:15:8
+   |
+LL |         pub struct $S { $i: u32 }
+   |         ------------- function or associated item `default` not found for this
+...
 LL |     S::default().i;
-   |                  ^ private field
+   |        ^^^^^^^ function or associated item not found in `S`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `default`, perhaps you need to implement it:
+           candidate #1: `Default`
 
-error: aborting due to previous error
+error[E0599]: no function or associated item named `default` found for struct `S` in the current scope
+  --> $DIR/nested_macro_privacy.rs:16:11
+   |
+LL |         pub struct $S { $i: u32 }
+   |         ------------- function or associated item `default` not found for this
+...
+LL |     m!(S::default()); // ok
+   |           ^^^^^^^ function or associated item not found in `S`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `default`, perhaps you need to implement it:
+           candidate #1: `Default`
 
-For more information about this error, try `rustc --explain E0616`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0412, E0422, E0599.
+For more information about an error, try `rustc --explain E0412`.

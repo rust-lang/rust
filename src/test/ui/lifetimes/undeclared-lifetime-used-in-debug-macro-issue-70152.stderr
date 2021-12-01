@@ -12,12 +12,16 @@ error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/undeclared-lifetime-used-in-debug-macro-issue-70152.rs:3:9
    |
 LL | #[derive(Eq, PartialEq)]
-   |          -- lifetime `'b` is missing in item created through this procedural macro
+   |          --
+   |          |
+   |          lifetime `'b` is missing in item created through this procedural macro
+   |          in this derive macro expansion
 LL | struct Test {
 LL |     a: &'b str,
    |         ^^ undeclared lifetime
    |
    = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+   = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/undeclared-lifetime-used-in-debug-macro-issue-70152.rs:13:13
