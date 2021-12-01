@@ -15,8 +15,8 @@ use hir_def::{
     },
     expr::{ExprId, Pat, PatId},
     path::{ModPath, Path, PathKind},
-    resolver::{resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
-    AsMacroCall, DefWithBodyId, FieldId, FunctionId, LocalFieldId, VariantId,
+    resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
+    AsMacroCall, DefWithBodyId, FieldId, FunctionId, LocalFieldId, ModuleDefId, VariantId,
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
@@ -545,13 +545,13 @@ fn resolve_hir_path_(
             }
         }?;
 
-        if let (Some(_), TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
-            let resolver = trait_id.resolver(db.upcast());
-            if let Some(module_def_id) = resolver
-                .resolve_module_path_in_trait_assoc_items(db.upcast(), path.mod_path())
-                .and_then(|ns| ns.take_types())
+        // If we are in a TypeNs for a Trait, and we have an unresolved name, try to resolve it as a type
+        // within the trait's associated types.
+        if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
+            if let Some(type_alias_id) =
+                db.trait_data(trait_id).associated_type_by_name(&unresolved.name)
             {
-                return Some(PathResolution::Def(module_def_id.into()));
+                return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
             }
         }
 
