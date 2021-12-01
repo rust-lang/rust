@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 list(APPEND ENZYME_SRC SCEV/ScalarEvolutionExpander.cpp)
-list(APPEND ENZYME_SRC  TypeAnalysis/TypeTree.cpp TypeAnalysis/TypeAnalysis.cpp TypeAnalysis/TypeAnalysisPrinter.cpp)
+list(APPEND ENZYME_SRC  TypeAnalysis/TypeTree.cpp TypeAnalysis/TypeAnalysis.cpp TypeAnalysis/TypeAnalysisPrinter.cpp TypeAnalysis/RustDebugInfo.cpp)
 
 if (${LLVM_VERSION_MAJOR} LESS 8)
     add_llvm_loadable_module( LLVMEnzyme-${LLVM_VERSION_MAJOR}
@@ -68,7 +68,7 @@ endif()
 if (${ENZYME_EXTERNAL_SHARED_LIB})
     add_library( Enzyme-${LLVM_VERSION_MAJOR}
         SHARED
-        ${ENZYME_SRC}    
+        ${ENZYME_SRC}
     )
     target_link_libraries(Enzyme-${LLVM_VERSION_MAJOR} LLVM)
     install(TARGETS Enzyme-${LLVM_VERSION_MAJOR}
