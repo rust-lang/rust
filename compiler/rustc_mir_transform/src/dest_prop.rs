@@ -316,28 +316,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
         }
     }
 
-    fn process_projection_elem(
-        &mut self,
-        elem: PlaceElem<'tcx>,
-        _: Location,
-    ) -> Option<PlaceElem<'tcx>> {
-        match elem {
-            PlaceElem::Index(local) => {
-                if let Some(replacement) = self.replacements.for_src(local) {
-                    bug!(
-                        "cannot replace {:?} with {:?} in index projection {:?}",
-                        local,
-                        replacement,
-                        elem,
-                    );
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         if let Some(replacement) = self.replacements.for_src(place.local) {
             // Rebase `place`s projections onto `replacement`'s.

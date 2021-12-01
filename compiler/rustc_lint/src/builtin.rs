@@ -1079,6 +1079,10 @@ impl EarlyLintPass for UnusedDocComment {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         warn_if_doc(cx, expr.span, "expressions", &expr.attrs);
     }
+
+    fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &ast::GenericParam) {
+        warn_if_doc(cx, param.ident.span, "generic parameters", &param.attrs);
+    }
 }
 
 declare_lint! {

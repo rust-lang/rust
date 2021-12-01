@@ -41,6 +41,14 @@ LL |     num == 3
    |
    = help: use `//` for a plain comment
 
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:29:27
+   |
+LL | fn doc_comment_on_generic<#[doc = "x"] T>(val: T) {}
+   |                           ^^^^^^^^^^^^ - rustdoc does not generate documentation for generic parameters
+   |
+   = help: use `//` for a plain comment
+
 error[E0308]: mismatched types
   --> $DIR/unused-doc-comments-edge-cases.rs:14:9
    |
@@ -55,7 +63,7 @@ help: you might have meant to return this value
 LL |         return true;
    |         ++++++     +
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0308, E0658.
 For more information about an error, try `rustc --explain E0308`.
