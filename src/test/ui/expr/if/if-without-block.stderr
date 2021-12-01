@@ -7,7 +7,11 @@ LL |     if 5 == {
 LL | }
    | ^ expected `{`
    |
-   = help: maybe you forgot the right operand of the condition?
+help: maybe you forgot the right operand of the condition?
+  --> $DIR/if-without-block.rs:3:10
+   |
+LL |     if 5 == {
+   |          ^^
 
 error: aborting due to previous error
 
