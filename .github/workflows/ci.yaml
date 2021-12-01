@@ -112,7 +112,11 @@ jobs:
     - name: Install Nodejs
       uses: actions/setup-node@v1
       with:
-        node-version: 12.x
+        node-version: 14.x
+
+    - name: Install xvfb
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get install -y xvfb
 
     - run: npm ci
       working-directory: ./editors/code
@@ -124,13 +128,19 @@ jobs:
     - run: npm run lint
       working-directory: ./editors/code
 
-    - name: Run vscode tests
-      uses: GabrielBB/xvfb-action@v1.2
+    - name: Run VS Code tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
       env:
         VSCODE_CLI: 1
-      with:
-        run: npm --prefix ./editors/code test
-        # working-directory: ./editors/code  # does not work: https://github.com/GabrielBB/xvfb-action/issues/8
+      run: xvfb-run npm test
+      working-directory: ./editors/code
+
+    - name: Run VS Code tests (Windows)
+      if: matrix.os == 'windows-latest'
+      env:
+        VSCODE_CLI: 1
+      run: npm test
+      working-directory: ./editors/code
 
     - run: npm run pretest
       working-directory: ./editors/code
