@@ -125,12 +125,12 @@ jobs:
       working-directory: ./editors/code
 
     - name: Run vscode tests
-      uses: GabrielBB/xvfb-action@v1.2
+      uses: GabrielBB/xvfb-action@v1.6
       env:
         VSCODE_CLI: 1
       with:
-        run: npm --prefix ./editors/code test
-        # working-directory: ./editors/code  # does not work: https://github.com/GabrielBB/xvfb-action/issues/8
+        run: npm test
+        working-directory: ./editors/code
 
     - run: npm run pretest
       working-directory: ./editors/code
