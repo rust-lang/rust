@@ -107,18 +107,16 @@ pub(crate) fn def_to_moniker(
     let mut path = vec![];
     path.extend(module.path_to_root(db).into_iter().filter_map(|x| x.name(db)));
 
-    match def {
-        Definition::Field(it) => path.push(it.parent_def(db).name(db)),
-        Definition::Function(it) => {
-            // Ensure that trait functions are properly namespaced with the trait name
-            if let Some(assoc) = it.as_assoc_item(db) {
-                let container = assoc.container(db);
-                if let AssocItemContainer::Trait(parent_trait) = container {
-                    path.push(parent_trait.name(db));
-                }
-            }
+    // Handle associated items within a trait
+    if let Some(assoc) = def.as_assoc_item(db) {
+        let container = assoc.container(db);
+        if let AssocItemContainer::Trait(parent_trait) = container {
+            path.push(parent_trait.name(db));
         }
-        _ => (),
+    }
+
+    if let Definition::Field(it) = def {
+        path.push(it.parent_def(db).name(db));
     }
 
     path.push(def.name(db)?);
@@ -208,11 +206,6 @@ pub mod module {
     fn moniker_for_trait() {
         check_moniker(
             r#"
-//- /lib.rs crate:main deps:foo
-use foo::module::func;
-fn main() {
-    func();
-}
 //- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
 pub mod module {
     pub trait MyTrait {
@@ -224,19 +217,37 @@ pub mod module {
             r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
             MonikerKind::Export,
         );
+    }
+
+    #[test]
+    fn moniker_for_trait_constant() {
         check_moniker(
             r#"
-//- /lib.rs crate:main deps:foo
-use foo::module::func;
-fn main() {
-    func();
-}
 //- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
 pub mod module {
-    pub fn func$0() {}
+    pub trait MyTrait {
+        const MY_CONST$0: u8;
+    }
 }
 "#,
-            "foo::module::func",
+            "foo::module::MyTrait::MY_CONST",
+            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            MonikerKind::Export,
+        );
+    }
+
+    #[test]
+    fn moniker_for_trait_type() {
+        check_moniker(
+            r#"
+//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+pub mod module {
+    pub trait MyTrait {
+        type MyType$0;
+    }
+}
+"#,
+            "foo::module::MyTrait::MyType",
             r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
             MonikerKind::Export,
         );
