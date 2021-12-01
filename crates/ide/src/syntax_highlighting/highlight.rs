@@ -281,6 +281,8 @@ fn highlight_name_ref(
                 return if syntactic_name_ref_highlighting {
                     highlight_name_ref_by_syntax(name_ref, sema, krate)
                 } else {
+                    // FIXME: Workaround for https://github.com/rust-analyzer/rust-analyzer/issues/10708
+                    //
                     // Some popular proc macros (namely async_trait) will rewrite `self` in such a way that it no
                     // longer resolves via NameRefClass. If we can't be resolved, but we know we're a self token,
                     // within a function with a self param, pretend to still be `self`, rather than
