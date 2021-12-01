@@ -313,7 +313,7 @@ fn get_callee_substs_and_args<'tcx>(
         }
     }
     if_chain! {
-        if let ExprKind::MethodCall(_, _, args, _) = expr.kind;
+        if let ExprKind::MethodCall(_, args, _) = expr.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         then {
             let substs = cx.typeck_results().node_substs(expr.hir_id);

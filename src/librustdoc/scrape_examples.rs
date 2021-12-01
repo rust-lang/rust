@@ -150,7 +150,7 @@ where
                     return;
                 }
             }
-            hir::ExprKind::MethodCall(_, _, _, span) => {
+            hir::ExprKind::MethodCall(_, _, span) => {
                 let types = tcx.typeck(ex.hir_id.owner);
                 let def_id = if let Some(def_id) = types.type_dependent_def_id(ex.hir_id) {
                     def_id

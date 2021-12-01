@@ -35,10 +35,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // match call to unwrap
-            if let ExprKind::MethodCall(unwrap_fun, _, [write_call], _) = expr.kind;
+            if let ExprKind::MethodCall(unwrap_fun, [write_call], _) = expr.kind;
             if unwrap_fun.ident.name == sym::unwrap;
             // match call to write_fmt
-            if let ExprKind::MethodCall(write_fun, _, [write_recv, write_arg], _) = write_call.kind;
+            if let ExprKind::MethodCall(write_fun, [write_recv, write_arg], _) = write_call.kind;
             if write_fun.ident.name == sym!(write_fmt);
             // match calls to std::io::stdout() / std::io::stderr ()
             if let Some(dest_name) = if match_function_call(cx, write_recv, &paths::STDOUT).is_some() {

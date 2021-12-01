@@ -44,7 +44,7 @@ fn in_macro(span: Span) -> bool {
 fn first_method_call<'tcx>(
     expr: &'tcx Expr<'tcx>,
 ) -> Option<(&'tcx PathSegment<'tcx>, &'tcx [Expr<'tcx>])> {
-    if let ExprKind::MethodCall(path, _, args, _) = &expr.kind {
+    if let ExprKind::MethodCall(path, args, _) = &expr.kind {
         if args.iter().any(|e| e.span.from_expansion()) { None } else { Some((path, *args)) }
     } else {
         None

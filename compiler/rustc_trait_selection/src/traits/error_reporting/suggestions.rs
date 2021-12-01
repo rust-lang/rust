@@ -2322,7 +2322,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(Node::Expr(hir::Expr {
                     kind:
                         hir::ExprKind::Call(hir::Expr { span, .. }, _)
-                        | hir::ExprKind::MethodCall(_, span, ..),
+                        | hir::ExprKind::MethodCall(
+                            hir::PathSegment { ident: Ident { span, .. }, .. },
+                            ..,
+                        ),
                     ..
                 })) = hir.find(call_hir_id)
                 {

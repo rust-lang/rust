@@ -464,14 +464,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr_parent = self.tcx.hir().get_parent_node(*expr_hir_id);
         let hir = self.tcx.hir().find(expr_parent);
         let closure_params_len = closure_fn_decl.inputs.len();
-        let (method_path, method_span, method_expr) = match (hir, closure_params_len) {
+        let (method_path, method_expr) = match (hir, closure_params_len) {
             (
                 Some(Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::MethodCall(path, span, expr, _),
+                    kind: hir::ExprKind::MethodCall(segment, expr, _),
                     ..
                 })),
                 1,
-            ) => (path, span, expr),
+            ) => (segment, expr),
             _ => return None,
         };
 
@@ -483,10 +483,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self_ty.starts_with("std::option::Option")
             || self_ty.starts_with("std::result::Result"))
             && (name == sym::map || name == sym::and_then);
-        match (is_as_ref_able, self.sess().source_map().span_to_snippet(*method_span)) {
+        match (is_as_ref_able, self.sess().source_map().span_to_snippet(method_path.ident.span)) {
             (true, Ok(src)) => {
                 let suggestion = format!("as_ref().{}", src);
-                Some((*method_span, "consider using `as_ref` instead", suggestion))
+                Some((method_path.ident.span, "consider using `as_ref` instead", suggestion))
             }
             _ => None,
         }
@@ -643,8 +643,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 if self.can_coerce(ref_ty, expected) {
                     let mut sugg_sp = sp;
-                    if let hir::ExprKind::MethodCall(ref segment, sp, ref args, _) = expr.kind {
-                        let clone_trait = self.tcx.require_lang_item(LangItem::Clone, Some(sp));
+                    if let hir::ExprKind::MethodCall(ref segment, ref args, _) = expr.kind {
+                        let clone_trait =
+                            self.tcx.require_lang_item(LangItem::Clone, Some(segment.ident.span));
                         if let ([arg], Some(true), sym::clone) = (
                             &args[..],
                             self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(

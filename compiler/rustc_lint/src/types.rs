@@ -1464,7 +1464,7 @@ impl InvalidAtomicOrdering {
             sym::AtomicI128,
         ];
         if_chain! {
-            if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind;
+            if let ExprKind::MethodCall(ref method_path, args, _) = &expr.kind;
             if recognized_names.contains(&method_path.ident.name);
             if let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
             if let Some(impl_did) = cx.tcx.impl_of_method(m_def_id);

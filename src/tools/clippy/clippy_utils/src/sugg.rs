@@ -863,7 +863,7 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
     /// indicates whether the function from `parent_expr` takes its args by double reference
     fn func_takes_arg_by_double_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
         let (call_args, inputs) = match parent_expr.kind {
-            ExprKind::MethodCall(_, _, call_args, _) => {
+            ExprKind::MethodCall(_, call_args, _) => {
                 if let Some(method_did) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
                     (call_args, self.cx.tcx.fn_sig(method_did).skip_binder().inputs())
                 } else {
@@ -915,7 +915,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     match &parent_expr.kind {
                         // given expression is the self argument and will be handled completely by the compiler
                         // i.e.: `|x| x.is_something()`
-                        ExprKind::MethodCall(_, _, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
+                        ExprKind::MethodCall(_, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
                             self.suggestion_start
                                 .push_str(&format!("{}{}", start_snip, ident_str_with_proj));
                             self.next_pos = span.hi();
@@ -923,7 +923,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         },
                         // item is used in a call
                         // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
-                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, _, [_, call_args @ ..], _) => {
+                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, [_, call_args @ ..], _) => {
                             let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
                             let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 

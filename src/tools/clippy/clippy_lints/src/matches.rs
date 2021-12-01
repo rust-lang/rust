@@ -1909,7 +1909,7 @@ mod redundant_pattern_match {
                     },
                     // Method calls can take self by reference.
                     // e.g. In `String::new().len()` the string is a temporary value.
-                    ExprKind::MethodCall(_, _, [self_arg, args @ ..], _) => {
+                    ExprKind::MethodCall(_, [self_arg, args @ ..], _) => {
                         if !matches!(self_arg.kind, ExprKind::Path(_)) {
                             let self_by_ref = self
                                 .cx
@@ -2020,7 +2020,7 @@ mod redundant_pattern_match {
         // check that `while_let_on_iterator` lint does not trigger
         if_chain! {
             if keyword == "while";
-            if let ExprKind::MethodCall(method_path, _, _, _) = let_expr.kind;
+            if let ExprKind::MethodCall(method_path, _, _) = let_expr.kind;
             if method_path.ident.name == sym::next;
             if is_trait_method(cx, let_expr, sym::Iterator);
             then {

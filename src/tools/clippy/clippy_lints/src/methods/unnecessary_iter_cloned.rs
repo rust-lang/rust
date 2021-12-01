@@ -45,7 +45,7 @@ pub fn check_for_loop_iter(
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             let snippet = if_chain! {
-                if let ExprKind::MethodCall(maybe_iter_method_name, _, [collection], _) = receiver.kind;
+                if let ExprKind::MethodCall(maybe_iter_method_name, [collection], _) = receiver.kind;
                 if maybe_iter_method_name.ident.name == sym::iter;
 
                 if let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
@@ -155,7 +155,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
                         self.addr_of_exprs.push(parent);
                         return;
                     },
-                    ExprKind::MethodCall(_, _, args, _) => {
+                    ExprKind::MethodCall(_, args, _) => {
                         if_chain! {
                             if args.iter().skip(1).all(|arg| !self.is_binding(arg));
                             if let Some(method_def_id) = self.cx.typeck_results().type_dependent_def_id(parent.hir_id);

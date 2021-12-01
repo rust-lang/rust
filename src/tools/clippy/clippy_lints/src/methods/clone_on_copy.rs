@@ -81,12 +81,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, 
                 // &*x is a nop, &x.clone() is not
                 ExprKind::AddrOf(..) => return,
                 // (*x).func() is useless, x.clone().func() can work in case func borrows self
-                ExprKind::MethodCall(_, _, [self_arg, ..], _)
+                ExprKind::MethodCall(_, [self_arg, ..], _)
                     if expr.hir_id == self_arg.hir_id && ty != cx.typeck_results().expr_ty_adjusted(expr) =>
                 {
                     return;
                 },
-                ExprKind::MethodCall(_, _, [self_arg, ..], _) if expr.hir_id == self_arg.hir_id => true,
+                ExprKind::MethodCall(_, [self_arg, ..], _) if expr.hir_id == self_arg.hir_id => true,
                 ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
                 | ExprKind::Field(..)
                 | ExprKind::Index(..) => true,

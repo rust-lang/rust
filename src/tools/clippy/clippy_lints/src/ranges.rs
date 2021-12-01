@@ -190,7 +190,7 @@ impl_lint_pass!(Ranges => [
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
-            ExprKind::MethodCall(path, _, args, _) => {
+            ExprKind::MethodCall(path, args, _) => {
                 check_range_zip_with_len(cx, path, args, expr.span);
             },
             ExprKind::Binary(ref op, l, r) => {
@@ -331,13 +331,13 @@ fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: 
         if path.ident.as_str() == "zip";
         if let [iter, zip_arg] = args;
         // `.iter()` call
-        if let ExprKind::MethodCall(iter_path, _, iter_args, _) = iter.kind;
+        if let ExprKind::MethodCall(iter_path, iter_args, _) = iter.kind;
         if iter_path.ident.name == sym::iter;
         // range expression in `.zip()` call: `0..x.len()`
         if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(zip_arg);
         if is_integer_const(cx, start, 0);
         // `.len()` call
-        if let ExprKind::MethodCall(len_path, _, len_args, _) = end.kind;
+        if let ExprKind::MethodCall(len_path, len_args, _) = end.kind;
         if len_path.ident.name == sym::len && len_args.len() == 1;
         // `.iter()` and `.len()` called on same `Path`
         if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_args[0].kind;

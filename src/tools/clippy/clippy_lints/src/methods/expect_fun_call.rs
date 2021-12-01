@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
         loop {
             arg_root = match &arg_root.kind {
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
-                hir::ExprKind::MethodCall(method_name, _, call_args, _) => {
+                hir::ExprKind::MethodCall(method_name, call_args, _) => {
                     if call_args.len() == 1
                         && (method_name.ident.name == sym::as_str || method_name.ident.name == sym!(as_ref))
                         && {

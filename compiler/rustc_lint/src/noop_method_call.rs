@@ -40,7 +40,7 @@ declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL]);
 impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // We only care about method calls.
-        let ExprKind::MethodCall(call, _, elements, _) = &expr.kind else {
+        let ExprKind::MethodCall(call, elements, _) = &expr.kind else {
             return
         };
         // We only care about method calls corresponding to the `Clone`, `Deref` and `Borrow`

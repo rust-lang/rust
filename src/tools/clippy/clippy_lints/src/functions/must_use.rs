@@ -217,7 +217,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
             return;
         }
         match expr.kind {
-            Call(_, args) | MethodCall(_, _, args, _) => {
+            Call(_, args) | MethodCall(_, args, _) => {
                 let mut tys = DefIdSet::default();
                 for arg in args {
                     if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())

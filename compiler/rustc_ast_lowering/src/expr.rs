@@ -56,12 +56,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ImplTraitContext::disallowed(),
                     ));
                     let args = self.lower_exprs(args);
-                    hir::ExprKind::MethodCall(
-                        hir_seg,
-                        self.lower_span(seg.ident.span),
-                        args,
-                        self.lower_span(span),
-                    )
+                    hir::ExprKind::MethodCall(hir_seg, args, self.lower_span(span))
                 }
                 ExprKind::Binary(binop, ref lhs, ref rhs) => {
                     let binop = self.lower_binop(binop);
