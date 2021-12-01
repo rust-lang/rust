@@ -7,7 +7,7 @@ LL |
 LL | impl X<N> {}
    |        ^
    |
-help: a struct with a similar name exists
+help: did you mean `X`? (a similarly named struct)
    |
 LL | impl X<X> {}
    |        ~
@@ -24,7 +24,7 @@ LL | impl<T, const A: u8 = 2> X<N> {}
    |      |
    |      similarly named type parameter `T` defined here
    |
-help: a type parameter with a similar name exists
+help: did you mean `T`? (a similarly named type parameter)
    |
 LL | impl<T, const A: u8 = 2> X<T> {}
    |                            ~
@@ -42,7 +42,7 @@ LL | struct X<const N: u8>();
 LL | fn foo(_: T) where T: Send {}
    |                    ^
    |
-help: a struct with a similar name exists
+help: did you mean `X`? (a similarly named struct)
    |
 LL | fn foo(_: T) where X: Send {}
    |                    ~
@@ -60,7 +60,7 @@ LL | struct X<const N: u8>();
 LL | fn foo(_: T) where T: Send {}
    |           ^
    |
-help: a struct with a similar name exists
+help: did you mean `X`? (a similarly named struct)
    |
 LL | fn foo(_: X) where T: Send {}
    |           ~
@@ -78,7 +78,7 @@ LL | struct X<const N: u8>();
 LL | fn bar<const N: u8>(_: A) {}
    |                        ^
    |
-help: a struct with a similar name exists
+help: did you mean `X`? (a similarly named struct)
    |
 LL | fn bar<const N: u8>(_: X) {}
    |                        ~

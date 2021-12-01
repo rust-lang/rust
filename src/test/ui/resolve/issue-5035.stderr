@@ -17,7 +17,7 @@ help: you might have meant to use `#![feature(trait_alias)]` instead of a `type`
    |
 LL | trait K = dyn I;
    |
-help: a trait with a similar name exists
+help: did you mean `I`? (a similarly named trait)
    |
 LL | impl I for isize {}
    |      ~

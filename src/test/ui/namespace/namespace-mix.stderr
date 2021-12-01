@@ -8,7 +8,7 @@ LL |     check(m1::S);
    |           ^^^^^
    |
    = note: can't use a type alias as a constructor
-help: a tuple struct with a similar name exists
+help: did you mean `TS`? (a similarly named tuple struct)
    |
 LL |     check(m1::TS);
    |               ~~
@@ -31,7 +31,7 @@ LL |     pub struct TS();
    |     ---------------- similarly named tuple struct `TS` defined here
    |
    = note: can't use a type alias as a constructor
-help: a tuple struct with a similar name exists
+help: did you mean `TS`? (a similarly named tuple struct)
    |
 LL |     check(xm1::TS);
    |                ~~
@@ -57,7 +57,7 @@ help: use struct literal syntax instead
    |
 LL |     check(m7::V {});
    |           ~~~~~~~~
-help: a tuple variant with a similar name exists
+help: did you mean `TV`? (a similarly named tuple variant)
    |
 LL |     check(m7::TV);
    |               ~~
@@ -85,7 +85,7 @@ help: use struct literal syntax instead
    |
 LL |     check(xm7::V { /* fields */ });
    |           ~~~~~~~~~~~~~~~~~~~~~~~
-help: a tuple variant with a similar name exists
+help: did you mean `TV`? (a similarly named tuple variant)
    |
 LL |     check(xm7::TV);
    |                ~~

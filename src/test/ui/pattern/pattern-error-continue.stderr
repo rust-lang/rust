@@ -20,7 +20,7 @@ help: use this syntax instead
    |
 LL |         A::D => (),
    |         ~~~~
-help: a tuple variant with a similar name exists
+help: did you mean `B`? (a similarly named tuple variant)
    |
 LL |         A::B(_) => (),
    |            ~

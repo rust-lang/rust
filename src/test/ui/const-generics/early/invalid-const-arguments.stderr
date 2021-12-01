@@ -7,7 +7,7 @@ LL | trait Foo {}
 LL | impl Foo for A<N> {}
    |                ^
    |
-help: a struct with a similar name exists
+help: did you mean `A`? (a similarly named struct)
    |
 LL | impl Foo for A<A> {}
    |                ~
@@ -25,7 +25,7 @@ LL | struct A<const N: u8>;
 LL | impl<const N: u8> Foo for C<N, T> {}
    |                                ^
    |
-help: a struct with a similar name exists
+help: did you mean `A`? (a similarly named struct)
    |
 LL | impl<const N: u8> Foo for C<N, A> {}
    |                                ~

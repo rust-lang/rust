@@ -69,7 +69,7 @@ LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize
 LL | pub trait Fn<Args>: FnMut<Args> {
    | ------------------------------- similarly named trait `Fn` defined here
    |
-help: a trait with a similar name exists
+help: did you mean `Fn`? (a similarly named trait)
    |
 LL |     self , ... ,   self ,   self , ... ) where Fn : FnOnce ( & 'a & 'b usize ) {
    |                                                ~~

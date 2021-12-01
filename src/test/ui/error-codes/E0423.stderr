@@ -42,7 +42,7 @@ help: use struct literal syntax instead
    |
 LL |     let f = Foo { a: val };
    |             ~~~~~~~~~~~~~~
-help: a function with a similar name exists
+help: did you mean `foo`? (a similarly named function)
    |
 LL |     let f = foo();
    |             ~~~

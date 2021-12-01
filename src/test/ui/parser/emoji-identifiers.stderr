@@ -16,7 +16,7 @@ LL | fn i_like_to_😅_a_lot() -> 👀 {
    | ----------------------------- similarly named function `i_like_to_😅_a_lot` defined here
 ...
 LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
-   |             ^^^^^^^^^^^^^^^^^^ help: a function with a similar name exists: `i_like_to_😅_a_lot`
+   |             ^^^^^^^^^^^^^^^^^^ help: did you mean `i_like_to_😅_a_lot`? (a similarly named function)
 
 error: identifiers cannot contain emoji: `ABig👩👩👧👧Family`
   --> $DIR/emoji-identifiers.rs:1:8
@@ -75,7 +75,7 @@ LL |     👀::full_of✨()
    |         ^^^^^^^^^
    |         |
    |         function or associated item not found in `👀`
-   |         help: there is an associated function with a similar name: `full_of_✨`
+   |         help: did you mean `full_of_✨`? (a similarly named associated function)
 
 error: aborting due to 9 previous errors
 

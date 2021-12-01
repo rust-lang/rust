@@ -17,7 +17,7 @@ LL |     type Y = u16;
    |     ------------- similarly named associated type `Y` defined here
 ...
 LL |     let _: <u8 as Tr>::N;
-   |                        ^ help: an associated type with a similar name exists: `Y`
+   |                        ^ help: did you mean `Y`? (a similarly named associated type)
 
 error[E0576]: cannot find associated type `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:20:23
@@ -38,7 +38,7 @@ LL |     fn Y() {}
    |     ------ similarly named associated function `Y` defined here
 ...
 LL |     <u8 as Tr>::N;
-   |                 ^ help: an associated function with a similar name exists: `Y`
+   |                 ^ help: did you mean `Y`? (a similarly named associated function)
 
 error[E0576]: cannot find method or associated constant `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:23:16
@@ -71,7 +71,7 @@ LL |     type Y = u16;
    |     ------------- similarly named associated type `Y` defined here
 ...
 LL |     let _: <u8 as Tr>::N::NN;
-   |                        ^ help: an associated type with a similar name exists: `Y`
+   |                        ^ help: did you mean `Y`? (a similarly named associated type)
 
 error[E0576]: cannot find associated type `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:31:23
@@ -92,7 +92,7 @@ LL |     type Y = u16;
    |     ------------- similarly named associated type `Y` defined here
 ...
 LL |     <u8 as Tr>::N::NN;
-   |                 ^ help: an associated type with a similar name exists: `Y`
+   |                 ^ help: did you mean `Y`? (a similarly named associated type)
 
 error[E0576]: cannot find associated type `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:34:16
@@ -175,7 +175,7 @@ LL |     type X = u16;
 LL |     let _: <u8 as Dr>::Z;
    |            ^^^^^^^^^^^^-
    |                        |
-   |                        help: an associated type with a similar name exists: `X`
+   |                        help: did you mean `X`? (a similarly named associated type)
 
 error[E0575]: expected method or associated constant, found associated type `Dr::X`
   --> $DIR/ufcs-partially-resolved.rs:53:5
@@ -186,7 +186,7 @@ LL |     fn Z() {}
 LL |     <u8 as Dr>::X;
    |     ^^^^^^^^^^^^-
    |                 |
-   |                 help: an associated function with a similar name exists: `Z`
+   |                 help: did you mean `Z`? (a similarly named associated function)
    |
    = note: can't use a type alias as a constructor
 
@@ -199,7 +199,7 @@ LL |     type X = u16;
 LL |     let _: <u8 as Dr>::Z::N;
    |            ^^^^^^^^^^^^-^^^
    |                        |
-   |                        help: an associated type with a similar name exists: `X`
+   |                        help: did you mean `X`? (a similarly named associated type)
 
 error[E0223]: ambiguous associated type
   --> $DIR/ufcs-partially-resolved.rs:36:12

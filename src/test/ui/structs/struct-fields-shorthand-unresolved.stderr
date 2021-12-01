@@ -2,7 +2,7 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/struct-fields-shorthand-unresolved.rs:10:9
    |
 LL |         y
-   |         ^ help: a local variable with a similar name exists: `x`
+   |         ^ help: did you mean `x`? (a similarly named local variable)
 
 error: aborting due to previous error
 

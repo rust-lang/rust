@@ -15,7 +15,7 @@ LL |     _func: F,
 LL | pub trait Fn<Args>: FnMut<Args> {
    | ------------------------------- similarly named trait `Fn` defined here
    |
-help: a trait with a similar name exists
+help: did you mean `Fn`? (a similarly named trait)
    |
 LL |     _func: Fn,
    |            ~~

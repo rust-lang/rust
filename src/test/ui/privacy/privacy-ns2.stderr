@@ -18,7 +18,7 @@ LL |     pub struct Baz;
 LL |     Bar();
    |     ^^^
    |
-help: a unit struct with a similar name exists
+help: did you mean `Baz`? (a similarly named unit struct)
    |
 LL |     Baz();
    |     ~~~

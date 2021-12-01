@@ -571,9 +571,12 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                 ..
                             })) = source
                             {
-                                err.span_suggestion(
+                                err.span_suggestion_hide_inline(
                                     span,
-                                    "use the similarly named label",
+                                    &format!(
+                                        "did you mean `{}`? (a similarly named label)",
+                                        label_ident
+                                    ),
                                     label_ident.name.to_string(),
                                     Applicability::MaybeIncorrect,
                                 );

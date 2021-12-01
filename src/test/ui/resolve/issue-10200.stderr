@@ -5,7 +5,7 @@ LL | struct Foo(bool);
    | ----------------- similarly named tuple struct `Foo` defined here
 ...
 LL |         foo(x)
-   |         ^^^ help: a tuple struct with a similar name exists (notice the capitalization): `Foo`
+   |         ^^^ help: did you mean `Foo`? (a similarly named tuple struct)
 
 error: aborting due to previous error
 

@@ -17,7 +17,7 @@ LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
    |      |
    |      similarly named type parameter `T` defined here
    |
-help: a type parameter with a similar name exists
+help: did you mean `T`? (a similarly named type parameter)
    |
 LL | impl<T> DispatchFromDyn<Smaht<T, MISC>> for T {}
    |                               ~

@@ -4,7 +4,7 @@ error[E0407]: method `method` is not a member of trait `Tr`
 LL |             fn method() {}
    |             ^^^------^^^^^
    |             |  |
-   |             |  help: there is an associated function with a similar name: `method`
+   |             |  help: did you mean `method`? (a similarly named associated function)
    |             not a member of trait `Tr`
 ...
 LL |     mac_trait_impl!();

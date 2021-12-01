@@ -7,7 +7,7 @@ LL |         break LOOP;
    |               ^^^^
    |               |
    |               not found in this scope
-   |               help: use the similarly named label: `'LOOP`
+   |               help: did you mean `'LOOP`? (a similarly named label)
 
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/loop-break-value.rs:26:5

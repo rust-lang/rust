@@ -7,7 +7,7 @@ LL |     B = SomeEnum::A,
    |                   ^
    |                   |
    |                   variant or associated item not found in `SomeEnum`
-   |                   help: there is a variant with a similar name: `B`
+   |                   help: did you mean `B`? (a similarly named variant)
 
 error: aborting due to previous error
 

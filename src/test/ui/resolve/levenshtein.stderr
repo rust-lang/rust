@@ -2,7 +2,7 @@ error[E0412]: cannot find type `esize` in this scope
   --> $DIR/levenshtein.rs:5:11
    |
 LL | fn foo(c: esize) {} // Misspelled primitive type name.
-   |           ^^^^^ help: a builtin type with a similar name exists: `isize`
+   |           ^^^^^ help: did you mean `isize`? (a similarly named builtin type)
 
 error[E0412]: cannot find type `Baz` in this scope
   --> $DIR/levenshtein.rs:10:10
@@ -11,13 +11,13 @@ LL | enum Bar { }
    | -------- similarly named enum `Bar` defined here
 LL | 
 LL | type A = Baz; // Misspelled type name.
-   |          ^^^ help: an enum with a similar name exists: `Bar`
+   |          ^^^ help: did you mean `Bar`? (a similarly named enum)
 
 error[E0412]: cannot find type `Opiton` in this scope
   --> $DIR/levenshtein.rs:12:10
    |
 LL | type B = Opiton<u8>; // Misspelled type name from the prelude.
-   |          ^^^^^^ help: an enum with a similar name exists: `Option`
+   |          ^^^^^^ help: did you mean `Option`? (a similarly named enum)
    |
   ::: $SRC_DIR/core/src/option.rs:LL:COL
    |
@@ -37,7 +37,7 @@ LL | const MAX_ITEM: usize = 10;
    | --------------------------- similarly named constant `MAX_ITEM` defined here
 ...
 LL |     let v = [0u32; MAXITEM]; // Misspelled constant name.
-   |                    ^^^^^^^ help: a constant with a similar name exists: `MAX_ITEM`
+   |                    ^^^^^^^ help: did you mean `MAX_ITEM`? (a similarly named constant)
 
 error[E0425]: cannot find function `foobar` in this scope
   --> $DIR/levenshtein.rs:26:5
@@ -46,7 +46,7 @@ LL | fn foo_bar() {}
    | ------------ similarly named function `foo_bar` defined here
 ...
 LL |     foobar(); // Misspelled function name.
-   |     ^^^^^^ help: a function with a similar name exists: `foo_bar`
+   |     ^^^^^^ help: did you mean `foo_bar`? (a similarly named function)
 
 error[E0412]: cannot find type `first` in module `m`
   --> $DIR/levenshtein.rs:28:15
@@ -55,7 +55,7 @@ LL |     pub struct First;
    |     ----------------- similarly named struct `First` defined here
 ...
 LL |     let b: m::first = m::second; // Misspelled item in module.
-   |               ^^^^^ help: a struct with a similar name exists (notice the capitalization): `First`
+   |               ^^^^^ help: did you mean `First`? (a similarly named struct)
 
 error[E0425]: cannot find value `second` in module `m`
   --> $DIR/levenshtein.rs:28:26
@@ -64,7 +64,7 @@ LL |     pub struct Second;
    |     ------------------ similarly named unit struct `Second` defined here
 ...
 LL |     let b: m::first = m::second; // Misspelled item in module.
-   |                          ^^^^^^ help: a unit struct with a similar name exists (notice the capitalization): `Second`
+   |                          ^^^^^^ help: did you mean `Second`? (a similarly named unit struct)
 
 error: aborting due to 8 previous errors
 

@@ -21,7 +21,7 @@ fn await_on_struct_similar() {
     let x = S { awai: 42 };
     x.await;
     //~^ ERROR no field `await` on type
-    //~| HELP a field with a similar name exists
+    //~| HELP did you mean `awai`?
     //~| NOTE to `.await` a `Future`, switch to Rust 2018
     //~| HELP set `edition = "2021"` in `Cargo.toml`
     //~| NOTE for more on editions, read https://doc.rust-lang.org/edition-guide

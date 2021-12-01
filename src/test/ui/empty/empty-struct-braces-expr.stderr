@@ -16,7 +16,7 @@ help: use struct literal syntax instead
    |
 LL |     let e1 = Empty1 {};
    |              ~~~~~~~~~
-help: a unit struct with a similar name exists
+help: did you mean `XEmpty2`? (a similarly named unit struct)
    |
 LL |     let e1 = XEmpty2;
    |              ~~~~~~~
@@ -39,7 +39,7 @@ help: use struct literal syntax instead
    |
 LL |     let e1 = Empty1 {};
    |              ~~~~~~~~~
-help: a unit struct with a similar name exists
+help: did you mean `XEmpty2`? (a similarly named unit struct)
    |
 LL |     let e1 = XEmpty2();
    |              ~~~~~~~
@@ -79,7 +79,7 @@ help: use struct literal syntax instead
    |
 LL |     let xe1 = XEmpty1 {};
    |               ~~~~~~~~~~
-help: a unit struct with a similar name exists
+help: did you mean `XEmpty2`? (a similarly named unit struct)
    |
 LL |     let xe1 = XEmpty2;
    |               ~~~~~~~
@@ -101,7 +101,7 @@ help: use struct literal syntax instead
    |
 LL |     let xe1 = XEmpty1 {};
    |               ~~~~~~~~~~
-help: a unit struct with a similar name exists
+help: did you mean `XEmpty2`? (a similarly named unit struct)
    |
 LL |     let xe1 = XEmpty2();
    |               ~~~~~~~
@@ -113,7 +113,7 @@ LL |     let xe3 = XE::Empty3;
    |                   ^^^^^^
    |                   |
    |                   variant or associated item not found in `empty_struct::XE`
-   |                   help: there is a variant with a similar name: `XEmpty3`
+   |                   help: did you mean `XEmpty3`? (a similarly named variant)
 
 error[E0599]: no variant or associated item named `Empty3` found for enum `empty_struct::XE` in the current scope
   --> $DIR/empty-struct-braces-expr.rs:26:19
@@ -122,13 +122,13 @@ LL |     let xe3 = XE::Empty3();
    |                   ^^^^^^
    |                   |
    |                   variant or associated item not found in `empty_struct::XE`
-   |                   help: there is a variant with a similar name: `XEmpty3`
+   |                   help: did you mean `XEmpty3`? (a similarly named variant)
 
 error[E0599]: no variant named `Empty1` found for enum `empty_struct::XE`
   --> $DIR/empty-struct-braces-expr.rs:28:9
    |
 LL |     XE::Empty1 {};
-   |         ^^^^^^ help: there is a variant with a similar name: `XEmpty3`
+   |         ^^^^^^ help: did you mean `XEmpty3`? (a similarly named variant)
 
 error: aborting due to 9 previous errors
 

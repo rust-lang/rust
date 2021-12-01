@@ -8,7 +8,7 @@ LL |         Z;
    |         ^
    |         |
    |         constructor is not visible here due to private fields
-   |         help: a tuple struct with a similar name exists: `S`
+   |         help: did you mean `S`? (a similarly named tuple struct)
 
 error[E0423]: expected value, found struct `S`
   --> $DIR/privacy-struct-ctor.rs:33:5

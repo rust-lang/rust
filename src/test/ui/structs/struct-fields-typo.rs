@@ -9,7 +9,7 @@ fn main() {
         bar: 0.5,
     };
     let x = foo.baa; //~ ERROR no field `baa` on type `BuildData`
-                     //~| HELP a field with a similar name exists
+                     //~| HELP did you mean `bar`?
                      //~| SUGGESTION bar
     println!("{}", x);
 }

@@ -13,7 +13,7 @@ help: try using the variant's enum
    |
 LL |     fn new() -> foo::MyEnum {
    |                 ~~~~~~~~~~~
-help: an enum with a similar name exists
+help: did you mean `Result`? (a similarly named enum)
    |
 LL |     fn new() -> Result<MyEnum, String> {
    |                 ~~~~~~
@@ -67,7 +67,7 @@ help: try using the variant's enum
    |
 LL | fn newer() -> foo::MyEnum {
    |               ~~~~~~~~~~~
-help: an enum with a similar name exists
+help: did you mean `Result`? (a similarly named enum)
    |
 LL | fn newer() -> Result<foo::MyEnum, String> {
    |               ~~~~~~

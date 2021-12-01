@@ -360,6 +360,21 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestion_hide_inline()`].
+    pub fn span_suggestion_hide_inline(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.0.allow_suggestions {
+            return self;
+        }
+        self.0.diagnostic.span_suggestion_hide_inline(sp, msg, suggestion, applicability);
+        self
+    }
+
     /// See [`Diagnostic::span_suggestion_hidden()`].
     pub fn span_suggestion_hidden(
         &mut self,

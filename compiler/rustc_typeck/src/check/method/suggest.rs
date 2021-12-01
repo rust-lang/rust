@@ -981,9 +981,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         item_name.name,
                         None,
                     ) {
-                        err.span_suggestion(
+                        err.span_suggestion_hide_inline(
                             span,
-                            "there is a variant with a similar name",
+                            &format!("did you mean `{}`? (a similarly named variant)", suggestion),
                             suggestion.to_string(),
                             Applicability::MaybeIncorrect,
                         );
@@ -1014,11 +1014,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // that had unsatisfied trait bounds
                     if unsatisfied_predicates.is_empty() {
                         let def_kind = lev_candidate.kind.as_def_kind();
-                        err.span_suggestion(
+                        err.span_suggestion_hide_inline(
                             span,
                             &format!(
-                                "there is {} {} with a similar name",
-                                def_kind.article(),
+                                "did you mean `{}`? (a similarly named {})",
+                                lev_candidate.ident,
                                 def_kind.descr(lev_candidate.def_id),
                             ),
                             lev_candidate.ident.to_string(),

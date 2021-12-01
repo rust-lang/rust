@@ -41,7 +41,7 @@ LL | pub trait IntoIterator {
    |
    = note: 'std::iter::FromIterator' is included in the prelude starting in Edition 2021
    = note: 'core::iter::FromIterator' is included in the prelude starting in Edition 2021
-help: a trait with a similar name exists
+help: did you mean `IntoIterator`? (a similarly named trait)
    |
 LL |     let _v: Vec<_> = IntoIterator::from_iter(&[1]);
    |                      ~~~~~~~~~~~~

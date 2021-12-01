@@ -43,7 +43,7 @@ LL |         break LOOP;
    |               ^^^^
    |               |
    |               not found in this scope
-   |               help: use the similarly named label: `'LOOP`
+   |               help: did you mean `'LOOP`? (a similarly named label)
 
 error[E0425]: cannot find value `while_loop` in this scope
   --> $DIR/label_misspelled.rs:32:15
@@ -54,7 +54,7 @@ LL |         break while_loop;
    |               ^^^^^^^^^^
    |               |
    |               not found in this scope
-   |               help: use the similarly named label: `'while_loop`
+   |               help: did you mean `'while_loop`? (a similarly named label)
 
 error[E0425]: cannot find value `while_let` in this scope
   --> $DIR/label_misspelled.rs:36:15
@@ -65,7 +65,7 @@ LL |         break while_let;
    |               ^^^^^^^^^
    |               |
    |               not found in this scope
-   |               help: use the similarly named label: `'while_let`
+   |               help: did you mean `'while_let`? (a similarly named label)
 
 error[E0425]: cannot find value `for_loop` in this scope
   --> $DIR/label_misspelled.rs:40:15
@@ -76,7 +76,7 @@ LL |         break for_loop;
    |               ^^^^^^^^
    |               |
    |               not found in this scope
-   |               help: use the similarly named label: `'for_loop`
+   |               help: did you mean `'for_loop`? (a similarly named label)
 
 warning: unused label
   --> $DIR/label_misspelled.rs:4:5

@@ -2,7 +2,7 @@ error[E0560]: struct `A` has no field named `bar`
   --> $DIR/struct-fields-hints.rs:10:9
    |
 LL |         bar : 42,
-   |         ^^^ help: a field with a similar name exists: `car`
+   |         ^^^ help: did you mean `car`? (a similarly named field)
 
 error: aborting due to previous error
 

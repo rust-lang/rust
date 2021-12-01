@@ -8,7 +8,7 @@ fn main() {
     let foobar = 42;
     bang_proc_macro2!();
     //~^ ERROR cannot find value `foobar2` in this scope
-    //~| HELP a local variable with a similar name exists
+    //~| HELP did you mean `foobar`?
     //~| SUGGESTION foobar
     println!("{}", x);
 }

@@ -4,7 +4,7 @@ error[E0437]: type `Typ` is not a member of trait `Foo`
 LL |     type Typ = ();
    |     ^^^^^---^^^^^^
    |     |    |
-   |     |    help: there is an associated type with a similar name: `Type`
+   |     |    help: did you mean `Type`? (a similarly named associated type)
    |     not a member of trait `Foo`
 
 error[E0407]: method `fooo` is not a member of trait `Foo`
@@ -13,7 +13,7 @@ error[E0407]: method `fooo` is not a member of trait `Foo`
 LL |     fn fooo() {}
    |     ^^^----^^^^^
    |     |  |
-   |     |  help: there is an associated function with a similar name: `foo`
+   |     |  help: did you mean `foo`? (a similarly named associated function)
    |     not a member of trait `Foo`
 
 error[E0407]: method `barr` is not a member of trait `Foo`
@@ -22,7 +22,7 @@ error[E0407]: method `barr` is not a member of trait `Foo`
 LL |     fn barr() {}
    |     ^^^----^^^^^
    |     |  |
-   |     |  help: there is an associated function with a similar name: `bar`
+   |     |  help: did you mean `bar`? (a similarly named associated function)
    |     not a member of trait `Foo`
 
 error[E0407]: method `quux` is not a member of trait `Foo`
@@ -31,7 +31,7 @@ error[E0407]: method `quux` is not a member of trait `Foo`
 LL |     fn quux() {}
    |     ^^^----^^^^^
    |     |  |
-   |     |  help: there is an associated function with a similar name: `qux`
+   |     |  help: did you mean `qux`? (a similarly named associated function)
    |     not a member of trait `Foo`
 
 error[E0438]: const `Cnst` is not a member of trait `Bar`
@@ -40,7 +40,7 @@ error[E0438]: const `Cnst` is not a member of trait `Bar`
 LL |     const Cnst: i32 = 0;
    |     ^^^^^^----^^^^^^^^^^
    |     |     |
-   |     |     help: there is an associated constant with a similar name: `Const`
+   |     |     help: did you mean `Const`? (a similarly named associated constant)
    |     not a member of trait `Bar`
 
 error[E0046]: not all trait items implemented, missing: `Type`, `foo`, `bar`, `qux`

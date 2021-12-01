@@ -2,7 +2,7 @@ error: cannot find macro `printlx` in this scope
   --> $DIR/macro-name-typo.rs:2:5
    |
 LL |     printlx!("oh noes!");
-   |     ^^^^^^^ help: a macro with a similar name exists: `println`
+   |     ^^^^^^^ help: did you mean `println`? (a similarly named macro)
    |
   ::: $SRC_DIR/std/src/macros.rs:LL:COL
    |

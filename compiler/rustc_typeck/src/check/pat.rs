@@ -1489,9 +1489,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     unmentioned_fields.iter().map(|(_, field)| field.name).collect::<Vec<_>>();
                 let suggested_name = find_best_match_for_name(&input, ident.name, None);
                 if let Some(suggested_name) = suggested_name {
-                    err.span_suggestion(
+                    err.span_suggestion_hide_inline(
                         ident.span,
-                        "a field with a similar name exists",
+                        &format!("did you mean `{}`? (a similarly named field)", suggested_name),
                         suggested_name.to_string(),
                         Applicability::MaybeIncorrect,
                     );

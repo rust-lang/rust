@@ -7,7 +7,7 @@ LL |     pub struct Baz;
 LL |     Bar();
    |     ^^^
    |
-help: a unit struct with a similar name exists
+help: did you mean `Baz`? (a similarly named unit struct)
    |
 LL |     Baz();
    |     ~~~
@@ -25,7 +25,7 @@ LL |     pub struct Baz;
 LL |     Bar();
    |     ^^^
    |
-help: a unit struct with a similar name exists
+help: did you mean `Baz`? (a similarly named unit struct)
    |
 LL |     Baz();
    |     ~~~
@@ -43,7 +43,7 @@ LL |     pub struct Baz;
 LL |     let _x: Box<Bar>;
    |                 ^^^
    |
-help: a struct with a similar name exists
+help: did you mean `Baz`? (a similarly named struct)
    |
 LL |     let _x: Box<Baz>;
    |                 ~~~

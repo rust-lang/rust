@@ -2,7 +2,7 @@ error: cannot find macro `macro_two` in this scope
   --> $DIR/macro-use-wrong-name.rs:7:5
    |
 LL |     macro_two!();
-   |     ^^^^^^^^^ help: a macro with a similar name exists: `macro_one`
+   |     ^^^^^^^^^ help: did you mean `macro_one`? (a similarly named macro)
    |
   ::: $DIR/auxiliary/two_macros.rs:2:1
    |

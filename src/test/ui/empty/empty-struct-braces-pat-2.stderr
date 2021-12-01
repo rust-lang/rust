@@ -16,7 +16,7 @@ help: use struct pattern syntax instead
    |
 LL |         Empty1 {} => ()
    |         ~~~~~~~~~
-help: a tuple struct with a similar name exists
+help: did you mean `XEmpty6`? (a similarly named tuple struct)
    |
 LL |         XEmpty6() => ()
    |         ~~~~~~~
@@ -39,7 +39,7 @@ help: use struct pattern syntax instead
    |
 LL |         XEmpty1 {} => ()
    |         ~~~~~~~~~~
-help: a tuple struct with a similar name exists
+help: did you mean `XEmpty6`? (a similarly named tuple struct)
    |
 LL |         XEmpty6() => ()
    |         ~~~~~~~
@@ -62,7 +62,7 @@ help: use struct pattern syntax instead
    |
 LL |         Empty1 {} => ()
    |         ~~~~~~~~~
-help: a tuple struct with a similar name exists
+help: did you mean `XEmpty6`? (a similarly named tuple struct)
    |
 LL |         XEmpty6(..) => ()
    |         ~~~~~~~
@@ -85,7 +85,7 @@ help: use struct pattern syntax instead
    |
 LL |         XEmpty1 {} => ()
    |         ~~~~~~~~~~
-help: a tuple struct with a similar name exists
+help: did you mean `XEmpty6`? (a similarly named tuple struct)
    |
 LL |         XEmpty6(..) => ()
    |         ~~~~~~~

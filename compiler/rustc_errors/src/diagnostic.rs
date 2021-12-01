@@ -526,6 +526,25 @@ impl Diagnostic {
         self
     }
 
+    /// Prints out a message for a suggestion without showing the suggested code if
+    /// the message is shown inline.
+    pub fn span_suggestion_hide_inline(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::HideCodeInline,
+        );
+        self
+    }
+
     /// Prints out a message for a suggestion without showing the suggested code.
     ///
     /// This is intended to be used for suggestions that are obvious in what the changes need to

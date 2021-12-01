@@ -6,7 +6,7 @@ LL | fn foo2<I: Foo>(x: I) {
 LL |     let _: A = x.boo();
    |            ^
    |
-help: a type parameter with a similar name exists
+help: did you mean `I`? (a similarly named type parameter)
    |
 LL |     let _: I = x.boo();
    |            ~

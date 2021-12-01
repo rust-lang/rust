@@ -25,7 +25,7 @@ help: use struct pattern syntax instead
    |
 LL |         XE::XEmpty3 { /* fields */ } => ()
    |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: a tuple variant with a similar name exists
+help: did you mean `XEmpty5`? (a similarly named tuple variant)
    |
 LL |         XE::XEmpty5() => ()
    |             ~~~~~~~
@@ -57,7 +57,7 @@ help: use struct pattern syntax instead
    |
 LL |         XE::XEmpty3 { /* fields */ } => ()
    |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: a tuple variant with a similar name exists
+help: did you mean `XEmpty5`? (a similarly named tuple variant)
    |
 LL |         XE::XEmpty5(..) => ()
    |             ~~~~~~~

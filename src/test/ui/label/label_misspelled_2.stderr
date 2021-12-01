@@ -19,7 +19,7 @@ LL |         break b;
    |               ^
    |               |
    |               not found in this scope
-   |               help: use the similarly named label: `'b`
+   |               help: did you mean `'b`? (a similarly named label)
 
 error[E0425]: cannot find value `d` in this scope
   --> $DIR/label_misspelled_2.rs:14:15
@@ -30,7 +30,7 @@ LL |         break d;
    |               ^
    |               |
    |               not found in this scope
-   |               help: use the similarly named label: `'d`
+   |               help: did you mean `'d`? (a similarly named label)
 
 error: aborting due to 4 previous errors
 

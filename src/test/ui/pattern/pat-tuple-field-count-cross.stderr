@@ -24,7 +24,7 @@ help: use this syntax instead
    |
 LL |         Z0 => {}
    |         ~~
-help: a tuple struct with a similar name exists
+help: did you mean `Z1`? (a similarly named tuple struct)
    |
 LL |         Z1() => {}
    |         ~~
@@ -46,7 +46,7 @@ help: use this syntax instead
    |
 LL |         Z0 => {}
    |         ~~
-help: a tuple struct with a similar name exists
+help: did you mean `Z1`? (a similarly named tuple struct)
    |
 LL |         Z1(x) => {}
    |         ~~
@@ -68,7 +68,7 @@ help: use this syntax instead
    |
 LL |         E1::Z0 => {}
    |         ~~~~~~
-help: a tuple variant with a similar name exists
+help: did you mean `Z1`? (a similarly named tuple variant)
    |
 LL |         E1::Z1() => {}
    |             ~~
@@ -90,7 +90,7 @@ help: use this syntax instead
    |
 LL |         E1::Z0 => {}
    |         ~~~~~~
-help: a tuple variant with a similar name exists
+help: did you mean `Z1`? (a similarly named tuple variant)
    |
 LL |         E1::Z1(x) => {}
    |             ~~
@@ -112,7 +112,7 @@ help: use the tuple variant pattern syntax instead
    |
 LL |         E1::Z1(/* fields */) => {}
    |         ~~~~~~~~~~~~~~~~~~~~
-help: a unit variant with a similar name exists
+help: did you mean `Z0`? (a similarly named unit variant)
    |
 LL |         E1::Z0 => {}
    |             ~~

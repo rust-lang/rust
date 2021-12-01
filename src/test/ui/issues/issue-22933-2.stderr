@@ -8,7 +8,7 @@ LL |     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
    |                                                       ^^^
    |                                                       |
    |                                                       variant or associated item not found in `Delicious`
-   |                                                       help: there is a variant with a similar name: `Pie`
+   |                                                       help: did you mean `Pie`? (a similarly named variant)
 
 error: aborting due to previous error
 

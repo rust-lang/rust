@@ -8,7 +8,7 @@ LL |     Enum::mispellable();
    |           ^^^^^^^^^^^
    |           |
    |           variant or associated item not found in `Enum`
-   |           help: there is an associated function with a similar name: `misspellable`
+   |           help: did you mean `misspellable`? (a similarly named associated function)
 
 error[E0599]: no variant or associated item named `mispellable_trait` found for enum `Enum` in the current scope
   --> $DIR/associated-item-enum.rs:18:11
@@ -29,7 +29,7 @@ LL |     Enum::MISPELLABLE;
    |           ^^^^^^^^^^^
    |           |
    |           variant or associated item not found in `Enum`
-   |           help: there is an associated constant with a similar name: `MISSPELLABLE`
+   |           help: did you mean `MISSPELLABLE`? (a similarly named associated constant)
 
 error: aborting due to 3 previous errors
 

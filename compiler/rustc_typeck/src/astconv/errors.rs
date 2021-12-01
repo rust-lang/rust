@@ -184,9 +184,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             find_best_match_for_name(&all_candidate_names, assoc_name.name, None),
             assoc_name.span != DUMMY_SP,
         ) {
-            err.span_suggestion(
+            err.span_suggestion_hide_inline(
                 assoc_name.span,
-                "there is an associated type with a similar name",
+                &format!("did you mean `{}`? (a similarly named associated type)", suggested_name),
                 suggested_name.to_string(),
                 Applicability::MaybeIncorrect,
             );

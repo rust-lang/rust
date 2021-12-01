@@ -2,7 +2,7 @@ error: cannot find derive macro `Eqr` in this scope
   --> $DIR/deriving-meta-unknown-trait.rs:1:10
    |
 LL | #[derive(Eqr)]
-   |          ^^^ help: a derive macro with a similar name exists: `Eq`
+   |          ^^^ help: did you mean `Eq`? (a similarly named derive macro)
    |
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
@@ -13,7 +13,7 @@ error: cannot find derive macro `Eqr` in this scope
   --> $DIR/deriving-meta-unknown-trait.rs:1:10
    |
 LL | #[derive(Eqr)]
-   |          ^^^ help: a derive macro with a similar name exists: `Eq`
+   |          ^^^ help: did you mean `Eq`? (a similarly named derive macro)
    |
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |

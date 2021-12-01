@@ -1729,9 +1729,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(field_name) =
                     Self::suggest_field_name(variant, field.ident.name, skip_fields.collect())
                 {
-                    err.span_suggestion(
+                    err.span_suggestion_hide_inline(
                         field.ident.span,
-                        "a field with a similar name exists",
+                        &format!("did you mean `{}`? (a similarly named field)", field_name),
                         field_name.to_string(),
                         Applicability::MaybeIncorrect,
                     );
@@ -2125,9 +2125,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(suggested_field_name) =
             Self::suggest_field_name(def.non_enum_variant(), field.name, vec![])
         {
-            err.span_suggestion(
+            err.span_suggestion_hide_inline(
                 field.span,
-                "a field with a similar name exists",
+                &format!("did you mean `{}`? (a similarly named field)", suggested_field_name),
                 suggested_field_name.to_string(),
                 Applicability::MaybeIncorrect,
             );

@@ -36,7 +36,7 @@ LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |            |
    |            similarly named type parameter `T` defined here
    |
-help: a type parameter with a similar name exists
+help: did you mean `T`? (a similarly named type parameter)
    |
 LL | struct Bar<T>(T, T, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |                  ~

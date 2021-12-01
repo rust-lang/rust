@@ -35,7 +35,7 @@ help: use the path separator to refer to an item
    |
 LL |     a::b::J
    |
-help: a constant with a similar name exists
+help: did you mean `I`? (a similarly named constant)
    |
 LL |     a::I.J
    |        ~
@@ -57,7 +57,7 @@ LL |     pub const I: i32 = 1;
 LL |     v.push(a::b);
    |            ^^^-
    |               |
-   |               help: a constant with a similar name exists: `I`
+   |               help: did you mean `I`? (a similarly named constant)
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:45:5
@@ -72,7 +72,7 @@ help: use the path separator to refer to an item
    |
 LL |     a::b::f()
    |     ~~~~~~~
-help: a constant with a similar name exists
+help: did you mean `I`? (a similarly named constant)
    |
 LL |     a::I.f()
    |        ~
@@ -86,7 +86,7 @@ LL |     pub const I: i32 = 1;
 LL |     a::b
    |     ^^^-
    |        |
-   |        help: a constant with a similar name exists: `I`
+   |        help: did you mean `I`? (a similarly named constant)
 
 error[E0423]: expected function, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:55:5
@@ -97,7 +97,7 @@ LL |     pub const I: i32 = 1;
 LL |     a::b()
    |     ^^^-
    |        |
-   |        help: a constant with a similar name exists: `I`
+   |        help: did you mean `I`? (a similarly named constant)
 
 error: aborting due to 9 previous errors
 

@@ -5,7 +5,7 @@ LL | struct Struct { value: i32 }
    | ------------- similarly named struct `Struct` defined here
 ...
 LL | impl Stuct {
-   |      ^^^^^ help: a struct with a similar name exists: `Struct`
+   |      ^^^^^ help: did you mean `Struct`? (a similarly named struct)
 
 error: aborting due to previous error
 

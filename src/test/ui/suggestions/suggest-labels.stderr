@@ -7,7 +7,7 @@ LL |         break 'fo;
    |               ^^^
    |               |
    |               undeclared label `'fo`
-   |               help: try using similarly named label: `'foo`
+   |               help: did you mean `'foo`? (a similarly named label)
 
 error[E0426]: use of undeclared label `'bor`
   --> $DIR/suggest-labels.rs:8:18
@@ -18,7 +18,7 @@ LL |         continue 'bor;
    |                  ^^^^
    |                  |
    |                  undeclared label `'bor`
-   |                  help: try using similarly named label: `'bar`
+   |                  help: did you mean `'bar`? (a similarly named label)
 
 error[E0426]: use of undeclared label `'longlable`
   --> $DIR/suggest-labels.rs:13:19
@@ -29,7 +29,7 @@ LL |             break 'longlable;
    |                   ^^^^^^^^^^
    |                   |
    |                   undeclared label `'longlable`
-   |                   help: try using similarly named label: `'longlabel1`
+   |                   help: did you mean `'longlabel1`? (a similarly named label)
 
 error: aborting due to 3 previous errors
 

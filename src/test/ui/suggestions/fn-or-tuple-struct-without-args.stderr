@@ -13,7 +13,7 @@ help: use struct literal syntax instead
    |
 LL |     let _: E = E::B { a: val };
    |                ~~~~~~~~~~~~~~~
-help: a tuple variant with a similar name exists
+help: did you mean `A`? (a similarly named tuple variant)
    |
 LL |     let _: E = E::A;
    |                   ~

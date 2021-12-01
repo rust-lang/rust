@@ -1811,9 +1811,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         assoc_ident.name,
                         None,
                     ) {
-                        err.span_suggestion(
+                        err.span_suggestion_hide_inline(
                             assoc_ident.span,
-                            "there is a variant with a similar name",
+                            &format!(
+                                "did you mean `{}`? (a similarly named variant)",
+                                suggested_name
+                            ),
                             suggested_name.to_string(),
                             Applicability::MaybeIncorrect,
                         );

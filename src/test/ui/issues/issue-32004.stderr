@@ -13,7 +13,7 @@ help: use the tuple variant pattern syntax instead
    |
 LL |         Foo::Bar(_) => {}
    |         ~~~~~~~~~~~
-help: a unit variant with a similar name exists
+help: did you mean `Baz`? (a similarly named unit variant)
    |
 LL |         Foo::Baz => {}
    |              ~~~

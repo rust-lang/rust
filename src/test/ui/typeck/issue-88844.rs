@@ -5,7 +5,7 @@ struct Struct { value: i32 }
 
 impl Stuct {
 //~^ ERROR: cannot find type `Stuct` in this scope [E0412]
-//~| HELP: a struct with a similar name exists
+//~| HELP: did you mean `Struct`?
     fn new() -> Self {
         Self { value: 42 }
     }

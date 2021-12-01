@@ -17,7 +17,7 @@ help: use `!` to invoke the macro
    |
 LL |     semitransparent!;
    |                    +
-help: a unit struct with a similar name exists
+help: did you mean `SemiTransparent`? (a similarly named unit struct)
    |
 LL |     SemiTransparent;
    |     ~~~~~~~~~~~~~~~
@@ -35,7 +35,7 @@ help: use `!` to invoke the macro
    |
 LL |     opaque!;
    |           +
-help: a unit struct with a similar name exists
+help: did you mean `Opaque`? (a similarly named unit struct)
    |
 LL |     Opaque;
    |     ~~~~~~

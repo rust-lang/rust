@@ -5,7 +5,7 @@ LL | struct S(u8, u16);
    | ------------------ similarly named tuple struct `S` defined here
 ...
 LL |     let s = A(0, 1);
-   |             ^ help: a tuple struct with a similar name exists: `S`
+   |             ^ help: did you mean `S`? (a similarly named tuple struct)
    |
    = note: can't use a type alias as a constructor
 
@@ -16,7 +16,7 @@ LL | struct S(u8, u16);
    | ------------------ similarly named tuple struct `S` defined here
 ...
 LL |         A(..) => {}
-   |         ^ help: a tuple struct with a similar name exists: `S`
+   |         ^ help: did you mean `S`? (a similarly named tuple struct)
    |
    = note: can't use a type alias as a constructor
 

@@ -2,7 +2,7 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/error-festival.rs:14:5
    |
 LL |     y = 2;
-   |     ^ help: a local variable with a similar name exists: `x`
+   |     ^ help: did you mean `x`? (a similarly named local variable)
 
 error[E0603]: constant `FOO` is private
   --> $DIR/error-festival.rs:22:10

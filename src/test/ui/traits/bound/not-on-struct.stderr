@@ -164,7 +164,7 @@ help: if you meant to use a type and not a trait here, remove the bounds
 LL - fn g() -> Traitor + 'static {
 LL + fn g() -> Traitor {
    | 
-help: a trait with a similar name exists
+help: did you mean `Trait`? (a similarly named trait)
    |
 LL | fn g() -> Trait + 'static {
    |           ~~~~~

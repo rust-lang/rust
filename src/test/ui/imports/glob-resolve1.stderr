@@ -70,7 +70,7 @@ LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<A>();
-   |           ^ help: an enum with a similar name exists: `B`
+   |           ^ help: did you mean `B`? (a similarly named enum)
    |
 note: enum `bar::A` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:11:5
@@ -85,7 +85,7 @@ LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<C>();
-   |           ^ help: an enum with a similar name exists: `B`
+   |           ^ help: did you mean `B`? (a similarly named enum)
    |
 note: struct `bar::C` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:18:5
@@ -100,7 +100,7 @@ LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<D>();
-   |           ^ help: an enum with a similar name exists: `B`
+   |           ^ help: did you mean `B`? (a similarly named enum)
    |
 note: type alias `bar::D` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:20:5

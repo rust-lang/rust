@@ -4,7 +4,7 @@ use std::ptr;
 use rustc_ast::{self as ast, Path};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, SuggestionStyle};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
@@ -211,10 +211,14 @@ impl<'a> Resolver<'a> {
                 );
                 err.span_label(span, format!("not a member of trait `{}`", trait_));
                 if let Some(candidate) = candidate {
-                    err.span_suggestion(
+                    let sugg = candidate.to_ident_string();
+                    err.span_suggestion_hide_inline(
                         method.span,
-                        "there is an associated function with a similar name",
-                        candidate.to_ident_string(),
+                        &format!(
+                            "did you mean `{}`? (a similarly named associated function)",
+                            &sugg
+                        ),
+                        sugg,
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -231,10 +235,11 @@ impl<'a> Resolver<'a> {
                 );
                 err.span_label(span, format!("not a member of trait `{}`", trait_));
                 if let Some(candidate) = candidate {
-                    err.span_suggestion(
+                    let sugg = candidate.to_ident_string();
+                    err.span_suggestion_hide_inline(
                         type_.span,
-                        "there is an associated type with a similar name",
-                        candidate.to_ident_string(),
+                        &format!("did you mean `{}`? (a similarly named associated type)", &sugg),
+                        sugg,
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -251,10 +256,14 @@ impl<'a> Resolver<'a> {
                 );
                 err.span_label(span, format!("not a member of trait `{}`", trait_));
                 if let Some(candidate) = candidate {
-                    err.span_suggestion(
+                    let sugg = candidate.to_ident_string();
+                    err.span_suggestion_hide_inline(
                         const_.span,
-                        "there is an associated constant with a similar name",
-                        candidate.to_ident_string(),
+                        &format!(
+                            "did you mean `{}`? (a similarly named associated constant)",
+                            &sugg
+                        ),
+                        sugg,
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -339,9 +348,9 @@ impl<'a> Resolver<'a> {
                     // A reachable label with a similar name exists.
                     Some((ident, true)) => {
                         err.span_label(ident.span, "a label with a similar name is reachable");
-                        err.span_suggestion(
+                        err.span_suggestion_hide_inline(
                             span,
-                            "try using similarly named label",
+                            &format!("did you mean `{}`? (a similarly named label)", ident),
                             ident.name.to_string(),
                             Applicability::MaybeIncorrect,
                         );
@@ -583,9 +592,9 @@ impl<'a> Resolver<'a> {
                     // A reachable label with a similar name exists.
                     Some((ident, true)) => {
                         err.span_label(ident.span, "a label with a similar name is reachable");
-                        err.span_suggestion(
+                        err.span_suggestion_hide_inline(
                             span,
-                            "try using similarly named label",
+                            &format!("did you mean `{}`? (a similarly named label)", ident),
                             ident.name.to_string(),
                             Applicability::MaybeIncorrect,
                         );
@@ -1157,21 +1166,26 @@ impl<'a> Resolver<'a> {
                 ),
             );
         }
-        let msg = match suggestion.target {
-            SuggestionTarget::SimilarlyNamed => format!(
-                "{} {} with a similar name exists",
-                suggestion.res.article(),
-                suggestion.res.descr()
+        let (msg, style) = match suggestion.target {
+            SuggestionTarget::SimilarlyNamed => (
+                format!(
+                    "did you mean `{}`? (a similarly named {})",
+                    suggestion.candidate,
+                    suggestion.res.descr()
+                ),
+                SuggestionStyle::HideCodeInline,
             ),
-            SuggestionTarget::SingleItem => {
-                format!("maybe you meant this {}", suggestion.res.descr())
-            }
+            SuggestionTarget::SingleItem => (
+                format!("maybe you meant this {}", suggestion.res.descr()),
+                SuggestionStyle::ShowCode,
+            ),
         };
-        err.span_suggestion(
+        err.span_suggestion_with_style(
             span,
             &msg,
             suggestion.candidate.to_string(),
             Applicability::MaybeIncorrect,
+            style,
         );
         true
     }

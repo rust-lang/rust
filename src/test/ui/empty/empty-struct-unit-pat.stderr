@@ -16,7 +16,7 @@ help: use this syntax instead
    |
 LL |         Empty2 => ()
    |         ~~~~~~
-help: a tuple struct with a similar name exists
+help: did you mean `XEmpty6`? (a similarly named tuple struct)
    |
 LL |         XEmpty6() => ()
    |         ~~~~~~~
@@ -38,7 +38,7 @@ help: use this syntax instead
    |
 LL |         XEmpty2 => ()
    |         ~~~~~~~
-help: a tuple struct with a similar name exists
+help: did you mean `XEmpty6`? (a similarly named tuple struct)
    |
 LL |         XEmpty6() => ()
    |         ~~~~~~~
@@ -61,7 +61,7 @@ help: use this syntax instead
    |
 LL |         Empty2 => ()
    |         ~~~~~~
-help: a tuple struct with a similar name exists
+help: did you mean `XEmpty6`? (a similarly named tuple struct)
    |
 LL |         XEmpty6(..) => ()
    |         ~~~~~~~
@@ -83,7 +83,7 @@ help: use this syntax instead
    |
 LL |         XEmpty2 => ()
    |         ~~~~~~~
-help: a tuple struct with a similar name exists
+help: did you mean `XEmpty6`? (a similarly named tuple struct)
    |
 LL |         XEmpty6(..) => ()
    |         ~~~~~~~
@@ -114,7 +114,7 @@ help: use this syntax instead
    |
 LL |         XE::XEmpty4 => (),
    |         ~~~~~~~~~~~
-help: a tuple variant with a similar name exists
+help: did you mean `XEmpty5`? (a similarly named tuple variant)
    |
 LL |         XE::XEmpty5() => (),
    |             ~~~~~~~
@@ -145,7 +145,7 @@ help: use this syntax instead
    |
 LL |         XE::XEmpty4 => (),
    |         ~~~~~~~~~~~
-help: a tuple variant with a similar name exists
+help: did you mean `XEmpty5`? (a similarly named tuple variant)
    |
 LL |         XE::XEmpty5(..) => (),
    |             ~~~~~~~
