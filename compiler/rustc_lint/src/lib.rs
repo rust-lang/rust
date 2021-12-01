@@ -33,6 +33,7 @@
 #![cfg_attr(bootstrap, feature(format_args_capture))]
 #![feature(iter_order_by)]
 #![feature(iter_zip)]
+#![feature(let_else)]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(control_flow_enum)]

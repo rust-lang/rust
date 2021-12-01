@@ -91,16 +91,14 @@ fn enforce_mem_variant_count(cx: &LateContext<'_>, func_expr: &hir::Expr<'_>, sp
 
 impl<'tcx> LateLintPass<'tcx> for EnumIntrinsicsNonEnums {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        if let hir::ExprKind::Call(ref func, ref args) = expr.kind {
-            if let hir::ExprKind::Path(ref qpath) = func.kind {
-                if let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id() {
-                    if cx.tcx.is_diagnostic_item(sym::mem_discriminant, def_id) {
-                        enforce_mem_discriminant(cx, func, expr.span, args[0].span);
-                    } else if cx.tcx.is_diagnostic_item(sym::mem_variant_count, def_id) {
-                        enforce_mem_variant_count(cx, func, expr.span);
-                    }
-                }
-            }
+        let hir::ExprKind::Call(func, args) = &expr.kind else { return };
+        let hir::ExprKind::Path(qpath) = &func.kind else { return };
+        let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id() else { return };
+        let Some(name) = cx.tcx.get_diagnostic_name(def_id) else { return };
+        match name {
+            sym::mem_discriminant => enforce_mem_discriminant(cx, func, expr.span, args[0].span),
+            sym::mem_variant_count => enforce_mem_variant_count(cx, func, expr.span),
+            _ => {}
         }
     }
 }
