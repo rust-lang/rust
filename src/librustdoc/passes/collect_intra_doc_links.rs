@@ -1292,7 +1292,6 @@ impl LinkCollector<'_, '_> {
     }
 
     /// After parsing the disambiguator, resolve the main part of the link.
-    // FIXME(jynelson): wow this is just so much
     fn resolve_with_disambiguator(
         &mut self,
         key: &ResolutionInfo,
@@ -1354,16 +1353,7 @@ impl LinkCollector<'_, '_> {
                             Res::Def(DefKind::Ctor(..), _) => {
                                 Err(ResolutionFailure::WrongNamespace { res, expected_ns: TypeNS })
                             }
-                            // TODO(jyn514): this looks very wrong
-                            _ => {
-                                match (fragment, extra_fragment.clone()) {
-                                    (Some(fragment), Some(_)) => {
-                                        // Shouldn't happen but who knows?
-                                        Ok((res, Some(fragment)))
-                                    }
-                                    (fragment, None) | (None, fragment) => Ok((res, fragment)),
-                                }
-                            }
+                            _ => Ok((res, fragment)),
                         }
                     }),
                 };
