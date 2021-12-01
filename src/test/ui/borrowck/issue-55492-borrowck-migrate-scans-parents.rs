@@ -3,14 +3,12 @@
 // looks at some parent.
 
 // revisions: migrate nll
+//[nll]compile-flags: -Z borrowck=mir
 
 // Since we are testing nll (and migration) explicitly as a separate
 // revisions, don't worry about the --compare-mode=nll on this test.
 
 // ignore-compare-mode-nll
-
-//[nll]compile-flags: -Z borrowck=mir
-
 
 // transcribed from borrowck-closures-unique.rs
 mod borrowck_closures_unique {
