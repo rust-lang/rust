@@ -1,5 +1,7 @@
 #![crate_name = "foo"]
 
+#![feature(rustdoc_internals)]
+
 // @matches 'foo/index.html' '//h1' 'Crate foo'
 
 // @matches 'foo/foo_mod/index.html' '//h1' 'Module foo::foo_mod'

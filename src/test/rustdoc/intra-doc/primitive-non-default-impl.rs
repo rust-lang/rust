@@ -1,4 +1,4 @@
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 
 // @has primitive_non_default_impl/fn.str_methods.html
