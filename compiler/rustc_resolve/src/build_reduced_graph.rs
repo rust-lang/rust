@@ -1234,7 +1234,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             };
             let binding = (res, vis, span, expansion).to_name_binding(self.r.arenas);
             self.r.set_binding_parent_module(binding, parent_scope.module);
-            self.r.all_macros.insert(ident.name, res);
             if is_macro_export {
                 let module = self.r.graph_root;
                 self.r.define(module, ident, MacroNS, (res, vis, span, expansion, IsMacroExport));

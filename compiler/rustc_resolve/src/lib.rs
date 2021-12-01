@@ -981,7 +981,6 @@ pub struct Resolver<'a> {
     registered_attrs: FxHashSet<Ident>,
     registered_tools: FxHashSet<Ident>,
     macro_use_prelude: FxHashMap<Symbol, &'a NameBinding<'a>>,
-    all_macros: FxHashMap<Symbol, Res>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
@@ -1370,7 +1369,6 @@ impl<'a> Resolver<'a> {
             registered_attrs,
             registered_tools,
             macro_use_prelude: FxHashMap::default(),
-            all_macros: FxHashMap::default(),
             macro_map: FxHashMap::default(),
             dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(session.edition())),
             dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(session.edition())),
@@ -3381,11 +3379,6 @@ impl<'a> Resolver<'a> {
     // For rustdoc.
     pub fn graph_root(&self) -> Module<'a> {
         self.graph_root
-    }
-
-    // For rustdoc.
-    pub fn all_macros(&self) -> &FxHashMap<Symbol, Res> {
-        &self.all_macros
     }
 
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
