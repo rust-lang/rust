@@ -319,6 +319,9 @@ pub trait PrettyPrinter<'tcx>:
     ///
     /// `callers` is a chain of visible_parent's leading to `def_id`,
     /// to support cycle detection during recursion.
+    ///
+    /// This method returns false if we can't print the visible path, so
+    /// `print_def_path` can fall back on the item's real definition path.
     fn try_print_visible_def_path_recur(
         mut self,
         def_id: DefId,
@@ -405,19 +408,7 @@ pub trait PrettyPrinter<'tcx>:
             Some(parent) => parent,
             None => return Ok((self, false)),
         };
-        if callers.contains(&visible_parent) {
-            return Ok((self, false));
-        }
-        callers.push(visible_parent);
-        // HACK(eddyb) this bypasses `path_append`'s prefix printing to avoid
-        // knowing ahead of time whether the entire path will succeed or not.
-        // To support printers that do not implement `PrettyPrinter`, a `Vec` or
-        // linked list on the stack would need to be built, before any printing.
-        match self.try_print_visible_def_path_recur(visible_parent, callers)? {
-            (cx, false) => return Ok((cx, false)),
-            (cx, true) => self = cx,
-        }
-        callers.pop();
+
         let actual_parent = self.tcx().parent(def_id);
         debug!(
             "try_print_visible_def_path: visible_parent={:?} actual_parent={:?}",
@@ -463,14 +454,21 @@ pub trait PrettyPrinter<'tcx>:
             // `visible_parent_map`), looking for the specific child we currently have and then
             // have access to the re-exported name.
             DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
+                // Item might be re-exported several times, but filter for the one
+                // that's public and whose identifier isn't `_`.
                 let reexport = self
                     .tcx()
                     .item_children(visible_parent)
                     .iter()
-                    .find(|child| child.res.opt_def_id() == Some(def_id))
+                    .filter(|child| child.res.opt_def_id() == Some(def_id))
+                    .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
                     .map(|child| child.ident.name);
-                if let Some(reexport) = reexport {
-                    *name = reexport;
+
+                if let Some(new_name) = reexport {
+                    *name = new_name;
+                } else {
+                    // There is no name that is public and isn't `_`, so bail.
+                    return Ok((self, false));
                 }
             }
             // Re-exported `extern crate` (#43189).
@@ -480,6 +478,20 @@ pub trait PrettyPrinter<'tcx>:
             _ => {}
         }
         debug!("try_print_visible_def_path: data={:?}", data);
+
+        if callers.contains(&visible_parent) {
+            return Ok((self, false));
+        }
+        callers.push(visible_parent);
+        // HACK(eddyb) this bypasses `path_append`'s prefix printing to avoid
+        // knowing ahead of time whether the entire path will succeed or not.
+        // To support printers that do not implement `PrettyPrinter`, a `Vec` or
+        // linked list on the stack would need to be built, before any printing.
+        match self.try_print_visible_def_path_recur(visible_parent, callers)? {
+            (cx, false) => return Ok((cx, false)),
+            (cx, true) => self = cx,
+        }
+        callers.pop();
 
         Ok((self.path_append(Ok, &DisambiguatedDefPathData { data, disambiguator: 0 })?, true))
     }
