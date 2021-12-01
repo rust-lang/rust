@@ -2039,10 +2039,10 @@ impl_lint_pass!(Methods => [
 
 /// Extracts a method call name, args, and `Span` of the method name.
 fn method_call<'tcx>(recv: &'tcx hir::Expr<'tcx>) -> Option<(&'tcx str, &'tcx [hir::Expr<'tcx>], Span)> {
-    if let ExprKind::MethodCall(path, span, args, _) = recv.kind {
+    if let ExprKind::MethodCall(path, args, _) = recv.kind {
         if !args.iter().any(|e| e.span.from_expansion()) {
             let name = path.ident.name.as_str();
-            return Some((name, args, span));
+            return Some((name, args, path.ident.span));
         }
     }
     None
@@ -2060,14 +2060,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             hir::ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
             },
-            hir::ExprKind::MethodCall(method_call, ref method_span, args, _) => {
-                or_fun_call::check(cx, expr, *method_span, method_call.ident.as_str(), args);
-                expect_fun_call::check(cx, expr, *method_span, method_call.ident.as_str(), args);
+            hir::ExprKind::MethodCall(method_call, args, _) => {
+                let method_span = method_call.ident.span;
+                or_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), args);
+                expect_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), args);
                 clone_on_copy::check(cx, expr, method_call.ident.name, args);
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, args);
                 inefficient_to_string::check(cx, expr, method_call.ident.name, args);
                 single_char_add_str::check(cx, expr, args);
-                into_iter_on_ref::check(cx, expr, *method_span, method_call.ident.name, args);
+                into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, args);
                 single_char_pattern::check(cx, expr, method_call.ident.name, args);
                 unnecessary_to_owned::check(cx, expr, method_call.ident.name, args);
             },

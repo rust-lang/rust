@@ -119,7 +119,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
 
     let print_limit = |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| {
         if_chain! {
-            if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
+            if let ExprKind::MethodCall(method, len_args, _) = end.kind;
             if method.ident.name == sym::len;
             if len_args.len() == 1;
             if let Some(arg) = len_args.get(0);
@@ -343,7 +343,7 @@ fn get_slice_like_element_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Opti
 
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     if_chain! {
-        if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
+        if let ExprKind::MethodCall(method, args, _) = expr.kind;
         if method.ident.name == sym::clone;
         if args.len() == 1;
         if let Some(arg) = args.get(0);

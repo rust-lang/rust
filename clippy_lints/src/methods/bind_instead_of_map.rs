@@ -121,9 +121,9 @@ pub(crate) trait BindInsteadOfMap {
         });
         let (span, msg) = if_chain! {
             if can_sugg;
-            if let hir::ExprKind::MethodCall(_, span, ..) = expr.kind;
+            if let hir::ExprKind::MethodCall(segment, ..) = expr.kind;
             if let Some(msg) = Self::lint_msg(cx);
-            then { (span, msg) } else { return false; }
+            then { (segment.ident.span, msg) } else { return false; }
         };
         span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, &msg, |diag| {
             multispan_sugg_with_applicability(

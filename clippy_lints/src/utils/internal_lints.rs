@@ -583,7 +583,7 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind;
+            if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(&*fn_name.as_str());
             let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
@@ -665,7 +665,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             if let ExprKind::Closure(_, _, body_id, _, _) = &and_then_args[4].kind;
             let body = cx.tcx.hir().body(*body_id);
             let only_expr = peel_blocks_with_stmt(&body.value);
-            if let ExprKind::MethodCall(ps, _, span_call_args, _) = &only_expr.kind;
+            if let ExprKind::MethodCall(ps, span_call_args, _) = &only_expr.kind;
             then {
                 let and_then_snippets = get_and_then_snippets(cx, and_then_args);
                 let mut sle = SpanlessEq::new(cx).deny_side_effects();
@@ -1097,7 +1097,7 @@ impl InterningDefinedSymbol {
         };
         if_chain! {
             // is a method call
-            if let ExprKind::MethodCall(_, _, [item], _) = call.kind;
+            if let ExprKind::MethodCall(_, [item], _) = call.kind;
             if let Some(did) = cx.typeck_results().type_dependent_def_id(call.hir_id);
             let ty = cx.typeck_results().expr_ty(item);
             // ...on either an Ident or a Symbol

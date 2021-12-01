@@ -303,7 +303,7 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
         if value == Int(2) {
             if let Some(parent) = get_parent_expr(cx, expr) {
                 if let Some(grandparent) = get_parent_expr(cx, parent) {
-                    if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, _, args, _) = grandparent.kind {
+                    if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, args, _) = grandparent.kind {
                         if method_name.as_str() == "sqrt" && detect_hypot(cx, args).is_some() {
                             return;
                         }
@@ -364,13 +364,11 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
         if_chain! {
             if let ExprKind::MethodCall(
                 PathSegment { ident: lmethod_name, .. },
-                _lspan,
                 [largs_0, largs_1, ..],
                 _
             ) = &add_lhs.kind;
             if let ExprKind::MethodCall(
                 PathSegment { ident: rmethod_name, .. },
-                _rspan,
                 [rargs_0, rargs_1, ..],
                 _
             ) = &add_rhs.kind;
@@ -409,7 +407,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if cx.typeck_results().expr_ty(lhs).is_floating_point();
         if let Some((value, _)) = constant(cx, cx.typeck_results(), rhs);
         if F32(1.0) == value || F64(1.0) == value;
-        if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &lhs.kind;
+        if let ExprKind::MethodCall(path, [self_arg, ..], _) = &lhs.kind;
         if cx.typeck_results().expr_ty(self_arg).is_floating_point();
         if path.ident.name.as_str() == "exp";
         then {
@@ -453,7 +451,7 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
     ) = &expr.kind
     {
         if let Some(parent) = get_parent_expr(cx, expr) {
-            if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, _, args, _) = parent.kind {
+            if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, args, _) = parent.kind {
                 if method_name.as_str() == "sqrt" && detect_hypot(cx, args).is_some() {
                     return;
                 }
@@ -589,8 +587,8 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>) -> bool {
     if_chain! {
-        if let ExprKind::MethodCall(PathSegment { ident: method_name_a, .. }, _, args_a, _) = expr_a.kind;
-        if let ExprKind::MethodCall(PathSegment { ident: method_name_b, .. }, _, args_b, _) = expr_b.kind;
+        if let ExprKind::MethodCall(PathSegment { ident: method_name_a, .. }, args_a, _) = expr_a.kind;
+        if let ExprKind::MethodCall(PathSegment { ident: method_name_b, .. }, args_b, _) = expr_b.kind;
         then {
             return method_name_a.as_str() == method_name_b.as_str() &&
                 args_a.len() == args_b.len() &&
@@ -615,8 +613,8 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
             rhs,
         ) = &expr.kind;
         if are_same_base_logs(cx, lhs, rhs);
-        if let ExprKind::MethodCall(_, _, [largs_self, ..], _) = &lhs.kind;
-        if let ExprKind::MethodCall(_, _, [rargs_self, ..], _) = &rhs.kind;
+        if let ExprKind::MethodCall(_, [largs_self, ..], _) = &lhs.kind;
+        if let ExprKind::MethodCall(_, [rargs_self, ..], _) = &rhs.kind;
         then {
             span_lint_and_sugg(
                 cx,
@@ -714,7 +712,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
             return;
         }
 
-        if let ExprKind::MethodCall(path, _, args, _) = &expr.kind {
+        if let ExprKind::MethodCall(path, args, _) = &expr.kind {
             let recv_ty = cx.typeck_results().expr_ty(&args[0]);
 
             if recv_ty.is_floating_point() {

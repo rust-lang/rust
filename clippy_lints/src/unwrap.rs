@@ -154,7 +154,7 @@ fn collect_unwrap_info<'tcx>(
         return collect_unwrap_info(cx, if_expr, expr, branch, !invert, false);
     } else {
         if_chain! {
-            if let ExprKind::MethodCall(method_name, _, args, _) = &expr.kind;
+            if let ExprKind::MethodCall(method_name, args, _) = &expr.kind;
             if let Some(local_id) = path_to_local(&args[0]);
             let ty = cx.typeck_results().expr_ty(&args[0]);
             let name = method_name.ident.as_str();
@@ -231,7 +231,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
         } else {
             // find `unwrap[_err]()` calls:
             if_chain! {
-                if let ExprKind::MethodCall(method_name, _, [self_arg, ..], _) = expr.kind;
+                if let ExprKind::MethodCall(method_name, [self_arg, ..], _) = expr.kind;
                 if let Some(id) = path_to_local(self_arg);
                 if [sym::unwrap, sym::expect, sym!(unwrap_err)].contains(&method_name.ident.name);
                 let call_to_unwrap = [sym::unwrap, sym::expect].contains(&method_name.ident.name);

@@ -37,7 +37,7 @@ declare_lint_pass!(CaseSensitiveFileExtensionComparisons => [CASE_SENSITIVE_FILE
 
 fn check_case_sensitive_file_extension_comparison(ctx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Span> {
     if_chain! {
-        if let ExprKind::MethodCall(PathSegment { ident, .. }, _, [obj, extension, ..], span) = expr.kind;
+        if let ExprKind::MethodCall(PathSegment { ident, .. }, [obj, extension, ..], span) = expr.kind;
         if ident.as_str() == "ends_with";
         if let ExprKind::Lit(Spanned { node: LitKind::Str(ext_literal, ..), ..}) = extension.kind;
         if (2..=6).contains(&ext_literal.as_str().len());

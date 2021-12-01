@@ -43,7 +43,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             },
             _ => nbits,
         },
-        ExprKind::MethodCall(method, _, [left, right], _) => {
+        ExprKind::MethodCall(method, [left, right], _) => {
             if signed {
                 return nbits;
             }
@@ -54,7 +54,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             };
             apply_reductions(cx, nbits, left, signed).min(max_bits.unwrap_or(u64::max_value()))
         },
-        ExprKind::MethodCall(method, _, [_, lo, hi], _) => {
+        ExprKind::MethodCall(method, [_, lo, hi], _) => {
             if method.ident.as_str() == "clamp" {
                 //FIXME: make this a diagnostic item
                 if let (Some(lo_bits), Some(hi_bits)) = (get_constant_bits(cx, lo), get_constant_bits(cx, hi)) {
@@ -63,7 +63,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             }
             nbits
         },
-        ExprKind::MethodCall(method, _, [_value], _) => {
+        ExprKind::MethodCall(method, [_value], _) => {
             if method.ident.name.as_str() == "signum" {
                 0 // do not lint if cast comes from a `signum` function
             } else {
