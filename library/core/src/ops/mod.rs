@@ -181,6 +181,9 @@ pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 
+#[unstable(feature = "one_sided_range", issue = "69780")]
+pub use self::range::OneSidedRange;
+
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub use self::try_trait::{FromResidual, Try};
 
