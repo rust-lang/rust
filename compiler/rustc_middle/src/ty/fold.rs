@@ -62,10 +62,12 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn fold_with<F: TypeFolder<'tcx, Error = !>>(self, folder: &mut F) -> Self {
         self.try_fold_with(folder).into_ok()
     }
+
     fn try_super_fold_with<F: TypeFolderFallible<'tcx>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error>;
+
     fn try_fold_with<F: TypeFolderFallible<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.try_super_fold_with(folder)
     }
