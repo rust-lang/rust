@@ -84,9 +84,35 @@ struct TestHarnessGenerator<'a> {
     tests: Vec<Test>,
 }
 
+impl TestHarnessGenerator<'_> {
+    fn add_test_cases(&mut self, node_id: ast::NodeId, span: Span, prev_tests: Vec<Test>) {
+        let mut tests = mem::replace(&mut self.tests, prev_tests);
+
+        if !tests.is_empty() {
+            // Create an identifier that will hygienically resolve the test
+            // case name, even in another module.
+            let expn_id = self.cx.ext_cx.resolver.expansion_for_ast_pass(
+                span,
+                AstPass::TestHarness,
+                &[],
+                Some(node_id),
+            );
+            for test in &mut tests {
+                // See the comment on `mk_main` for why we're using
+                // `apply_mark` directly.
+                test.ident.span =
+                    test.ident.span.apply_mark(expn_id.to_expn_id(), Transparency::Opaque);
+            }
+            self.cx.test_cases.extend(tests);
+        }
+    }
+}
+
 impl<'a> MutVisitor for TestHarnessGenerator<'a> {
     fn visit_crate(&mut self, c: &mut ast::Crate) {
+        let prev_tests = mem::take(&mut self.tests);
         noop_visit_crate(c, self);
+        self.add_test_cases(ast::CRATE_NODE_ID, c.span, prev_tests);
 
         // Create a main function to run our tests
         c.items.push(mk_main(&mut self.cx));
@@ -103,34 +129,10 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(..) = item.kind {
-            let tests = mem::take(&mut self.tests);
+        if let ast::ItemKind::Mod(_, ModKind::Loaded(.., span)) = item.kind {
+            let prev_tests = mem::take(&mut self.tests);
             noop_visit_item_kind(&mut item.kind, self);
-            let mut tests = mem::replace(&mut self.tests, tests);
-
-            if !tests.is_empty() {
-                let parent =
-                    if item.id == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { item.id };
-                // Create an identifier that will hygienically resolve the test
-                // case name, even in another module.
-                let inner_span = match item.kind {
-                    ast::ItemKind::Mod(_, ModKind::Loaded(.., span)) => span,
-                    _ => unreachable!(),
-                };
-                let expn_id = self.cx.ext_cx.resolver.expansion_for_ast_pass(
-                    inner_span,
-                    AstPass::TestHarness,
-                    &[],
-                    Some(parent),
-                );
-                for test in &mut tests {
-                    // See the comment on `mk_main` for why we're using
-                    // `apply_mark` directly.
-                    test.ident.span =
-                        test.ident.span.apply_mark(expn_id.to_expn_id(), Transparency::Opaque);
-                }
-                self.cx.test_cases.extend(tests);
-            }
+            self.add_test_cases(item.id, span, prev_tests);
         }
         smallvec![P(item)]
     }
@@ -146,7 +148,7 @@ fn entry_point_type(sess: &Session, item: &ast::Item, depth: usize) -> EntryPoin
             } else if sess.contains_name(&item.attrs, sym::rustc_main) {
                 EntryPointType::MainAttr
             } else if item.ident.name == sym::main {
-                if depth == 1 {
+                if depth == 0 {
                     // This is a top-level function so can be 'main'
                     EntryPointType::MainNamed
                 } else {
