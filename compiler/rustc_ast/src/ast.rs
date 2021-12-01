@@ -517,6 +517,8 @@ pub struct Crate {
     pub attrs: Vec<Attribute>,
     pub items: Vec<P<Item>>,
     pub span: Span,
+    // Placeholder ID if the crate node is a macro placeholder.
+    pub is_placeholder: Option<NodeId>,
 }
 
 /// Possible values inside of compile-time attribute lists.

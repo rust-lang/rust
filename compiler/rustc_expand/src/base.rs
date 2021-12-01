@@ -48,6 +48,7 @@ pub enum Annotatable {
     Param(ast::Param),
     FieldDef(ast::FieldDef),
     Variant(ast::Variant),
+    Crate(ast::Crate),
 }
 
 impl Annotatable {
@@ -66,6 +67,7 @@ impl Annotatable {
             Annotatable::Param(ref p) => p.span,
             Annotatable::FieldDef(ref sf) => sf.span,
             Annotatable::Variant(ref v) => v.span,
+            Annotatable::Crate(ref c) => c.span,
         }
     }
 
@@ -84,6 +86,7 @@ impl Annotatable {
             Annotatable::Param(p) => p.visit_attrs(f),
             Annotatable::FieldDef(sf) => sf.visit_attrs(f),
             Annotatable::Variant(v) => v.visit_attrs(f),
+            Annotatable::Crate(c) => c.visit_attrs(f),
         }
     }
 
@@ -102,6 +105,7 @@ impl Annotatable {
             Annotatable::Param(p) => visitor.visit_param(p),
             Annotatable::FieldDef(sf) => visitor.visit_field_def(sf),
             Annotatable::Variant(v) => visitor.visit_variant(v),
+            Annotatable::Crate(c) => visitor.visit_crate(c),
         }
     }
 
@@ -122,7 +126,8 @@ impl Annotatable {
             | Annotatable::GenericParam(..)
             | Annotatable::Param(..)
             | Annotatable::FieldDef(..)
-            | Annotatable::Variant(..) => panic!("unexpected annotatable"),
+            | Annotatable::Variant(..)
+            | Annotatable::Crate(..) => panic!("unexpected annotatable"),
         }
     }
 
@@ -218,6 +223,13 @@ impl Annotatable {
         match self {
             Annotatable::Variant(v) => v,
             _ => panic!("expected variant"),
+        }
+    }
+
+    pub fn expect_crate(self) -> ast::Crate {
+        match self {
+            Annotatable::Crate(krate) => krate,
+            _ => panic!("expected krate"),
         }
     }
 }
@@ -418,6 +430,11 @@ pub trait MacResult {
 
     fn make_variants(self: Box<Self>) -> Option<SmallVec<[ast::Variant; 1]>> {
         None
+    }
+
+    fn make_crate(self: Box<Self>) -> Option<ast::Crate> {
+        // Fn-like macros cannot produce a crate.
+        unreachable!()
     }
 }
 

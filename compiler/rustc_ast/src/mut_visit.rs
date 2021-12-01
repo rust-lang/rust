@@ -284,6 +284,10 @@ pub trait MutVisitor: Sized {
 /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
 /// when using a `flat_map_*` or `filter_map_*` method within a `visit_`
 /// method. Abort the program if the closure panics.
+///
+/// FIXME: Abort on panic means that any fatal error inside `visit_clobber` will abort the compiler.
+/// Instead of aborting on catching a panic we need to reset the visited node to some valid but
+/// possibly meaningless value and rethrow the panic.
 //
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_clobber<T, F>(t: &mut T, f: F)
@@ -1105,36 +1109,11 @@ pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
     visit_unsafety(unsafety, vis);
 }
 
-// FIXME: Avoid visiting the crate as a `Mod` item, flat map only the inner items if possible,
-// or make crate visiting first class if necessary.
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
-    visit_clobber(krate, |Crate { attrs, items, span }| {
-        let item_vis =
-            Visibility { kind: VisibilityKind::Public, span: span.shrink_to_lo(), tokens: None };
-        let item = P(Item {
-            ident: Ident::empty(),
-            attrs,
-            id: DUMMY_NODE_ID,
-            vis: item_vis,
-            span,
-            kind: ItemKind::Mod(Unsafe::No, ModKind::Loaded(items, Inline::Yes, span)),
-            tokens: None,
-        });
-        let items = vis.flat_map_item(item);
-
-        let len = items.len();
-        if len == 0 {
-            Crate { attrs: vec![], items: vec![], span }
-        } else if len == 1 {
-            let Item { attrs, span, kind, .. } = items.into_iter().next().unwrap().into_inner();
-            match kind {
-                ItemKind::Mod(_, ModKind::Loaded(items, ..)) => Crate { attrs, items, span },
-                _ => panic!("visitor converted a module to not a module"),
-            }
-        } else {
-            panic!("a crate cannot expand to more than one item");
-        }
-    });
+    let Crate { attrs, items, span, is_placeholder: _ } = krate;
+    visit_attrs(attrs, vis);
+    items.flat_map_in_place(|item| vis.flat_map_item(item));
+    vis.visit_span(span);
 }
 
 // Mutates one item into possibly many items.

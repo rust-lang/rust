@@ -651,11 +651,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &'b Item) {
-        if matches!(item.kind, ItemKind::Mod(..)) && item.ident.name == kw::Empty {
-            // Fake crate root item from expand.
-            return;
-        }
-
         let parent_scope = &self.parent_scope;
         let parent = parent_scope.module;
         let expansion = parent_scope.expansion;
@@ -1498,5 +1493,14 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         self.insert_field_names_local(ctor_def_id.to_def_id(), &variant.data);
 
         visit::walk_variant(self, variant);
+    }
+
+    fn visit_crate(&mut self, krate: &'b ast::Crate) {
+        if let Some(id) = krate.is_placeholder {
+            self.visit_invoc_in_module(id);
+        } else {
+            visit::walk_crate(self, krate);
+            self.contains_macro_use(&krate.attrs);
+        }
     }
 }
