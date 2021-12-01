@@ -7,7 +7,7 @@ use crate::mir::interpret::{Allocation, ConstValue, GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{TypeFoldable, TypeFolderFallible, TypeVisitor};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
@@ -2760,7 +2760,7 @@ impl UserTypeProjection {
 TrivialTypeFoldableAndLiftImpls! { ProjectionKind, }
 
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
-    fn try_super_fold_with<F: TypeFolderFallible<'tcx>>(
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {

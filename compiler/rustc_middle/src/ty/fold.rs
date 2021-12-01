@@ -63,12 +63,12 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.try_fold_with(folder).into_ok()
     }
 
-    fn try_super_fold_with<F: TypeFolderFallible<'tcx>>(
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error>;
 
-    fn try_fold_with<F: TypeFolderFallible<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.try_super_fold_with(folder)
     }
 
@@ -216,8 +216,8 @@ impl TypeFoldable<'tcx> for hir::Constness {
 ///
 /// If this folder is fallible (and therefore its [`Error`][`TypeFolder::Error`]
 /// associated type is something other than the default, never),
-/// [`TypeFolderFallible`] should be implemented manually; otherwise,
-/// a blanket implementation of [`TypeFolderFallible`] will defer to
+/// [`FallibleTypeFolder`] should be implemented manually; otherwise,
+/// a blanket implementation of [`FallibleTypeFolder`] will defer to
 /// the infallible methods of this trait to ensure that the two APIs
 /// are coherent.
 pub trait TypeFolder<'tcx>: Sized {
@@ -269,7 +269,7 @@ pub trait TypeFolder<'tcx>: Sized {
     }
 }
 
-/// The `TypeFolderFallible` trait defines the actual *folding*. There is a
+/// The `FallibleTypeFolder` trait defines the actual *folding*. There is a
 /// method defined for every foldable type. Each of these has a
 /// default implementation that does an "identity" fold. Within each
 /// identity fold, it should invoke `foo.try_fold_with(self)` to fold each
@@ -278,7 +278,7 @@ pub trait TypeFolder<'tcx>: Sized {
 /// A blanket implementation of this trait (that defers to the relevant
 /// method of [`TypeFolder`]) is provided for all infallible folders in
 /// order to ensure the two APIs are coherent.
-pub trait TypeFolderFallible<'tcx>: TypeFolder<'tcx> {
+pub trait FallibleTypeFolder<'tcx>: TypeFolder<'tcx> {
     fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
     where
         T: TypeFoldable<'tcx>,
@@ -318,7 +318,7 @@ pub trait TypeFolderFallible<'tcx>: TypeFolder<'tcx> {
 
 // Blanket implementation of fallible trait for infallible folders
 // delegates to infallible methods to prevent incoherence
-impl<'tcx, F> TypeFolderFallible<'tcx> for F
+impl<'tcx, F> FallibleTypeFolder<'tcx> for F
 where
     F: TypeFolder<'tcx, Error = !>,
 {

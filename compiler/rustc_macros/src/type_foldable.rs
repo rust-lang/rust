@@ -25,7 +25,7 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
     s.bound_impl(
         quote!(::rustc_middle::ty::fold::TypeFoldable<'tcx>),
         quote! {
-            fn try_super_fold_with<__F: ::rustc_middle::ty::fold::TypeFolderFallible<'tcx>>(
+            fn try_super_fold_with<__F: ::rustc_middle::ty::fold::FallibleTypeFolder<'tcx>>(
                 self,
                 __folder: &mut __F
             ) -> Result<Self, __F::Error> {

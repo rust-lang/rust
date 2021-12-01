@@ -1,7 +1,7 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::fold::{TypeFolder, TypeFolderFallible};
+use crate::ty::fold::{FallibleTypeFolder, TypeFolder};
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
@@ -1048,7 +1048,7 @@ pub fn fold_list<'tcx, F, T>(
     intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
 ) -> Result<&'tcx ty::List<T>, F::Error>
 where
-    F: TypeFolderFallible<'tcx>,
+    F: FallibleTypeFolder<'tcx>,
     T: TypeFoldable<'tcx> + PartialEq + Copy,
 {
     let mut iter = list.iter();

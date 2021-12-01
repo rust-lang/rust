@@ -1,7 +1,7 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{FixupError, FixupResult, InferCtxt, Span};
 use rustc_middle::mir;
-use rustc_middle::ty::fold::{TypeFolder, TypeFolderFallible, TypeVisitor};
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeVisitor};
 use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
 
 use std::ops::ControlFlow;
@@ -192,7 +192,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolderFallible<'tcx> for FullTypeResolver<'a, 'tcx> {
+impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
     fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if !t.needs_infer() {
             Ok(t) // micro-optimize -- if there is nothing in this type that this fold affects...

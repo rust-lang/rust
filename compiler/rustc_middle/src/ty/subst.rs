@@ -2,7 +2,7 @@
 
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{TypeFoldable, TypeFolder, TypeFolderFallible, TypeVisitor};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
@@ -153,7 +153,7 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
-    fn try_super_fold_with<F: TypeFolderFallible<'tcx>>(
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
@@ -375,7 +375,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
-    fn try_super_fold_with<F: TypeFolderFallible<'tcx>>(
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {

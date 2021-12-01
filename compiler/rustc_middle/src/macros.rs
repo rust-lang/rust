@@ -52,7 +52,7 @@ macro_rules! TrivialTypeFoldableImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
         $(
             impl<$tcx> $crate::ty::fold::TypeFoldable<$tcx> for $ty {
-                fn try_super_fold_with<F: $crate::ty::fold::TypeFolderFallible<$tcx>>(
+                fn try_super_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
                     self,
                     _: &mut F
                 ) -> ::std::result::Result<$ty, F::Error> {
@@ -95,7 +95,7 @@ macro_rules! EnumTypeFoldableImpl {
         impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
             $(where $($wc)*)*
         {
-            fn try_super_fold_with<V: $crate::ty::fold::TypeFolderFallible<$tcx>>(
+            fn try_super_fold_with<V: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
                 self,
                 folder: &mut V,
             ) -> ::std::result::Result<Self, V::Error> {
