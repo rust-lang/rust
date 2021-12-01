@@ -286,7 +286,7 @@ fn highlight_name_ref(
                     // within a function with a self param, pretend to still be `self`, rather than
                     // an unresolved reference.
                     if name_ref.self_token().is_some() && is_in_fn_with_self_param(&name_ref) {
-                        HlTag::Symbol(SymbolKind::SelfParam).into()
+                        SymbolKind::SelfParam.into()
                     } else {
                         HlTag::UnresolvedReference.into()
                     }
