@@ -64,7 +64,7 @@ macro inner /* 0#4 */ { () => { print_bang! { struct S; } } }
 struct S /* 0#5 */;
 // OK, not a duplicate definition of `S`
 
-fn main /* 0#0 */() { }
+fn main /* 0#0 */() {}
 
 /*
 Expansions:

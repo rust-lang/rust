@@ -4,4 +4,4 @@ trait Foo {
     #![allow(bar)]
 }
 
-fn main() { }
+fn main() {}

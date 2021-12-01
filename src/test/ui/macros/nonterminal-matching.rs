@@ -16,7 +16,7 @@ macro complex_nonterminal($nt_item: item) {
         struct S;
     }
 
-    n!(a $nt_item b); //~ ERROR no rules expected the token `enum E { }`
+    n!(a $nt_item b); //~ ERROR no rules expected the token `enum E {}`
 }
 
 simple_nonterminal!(a, 'a, (x, y, z)); // OK

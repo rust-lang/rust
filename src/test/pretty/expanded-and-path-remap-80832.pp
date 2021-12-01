@@ -10,4 +10,4 @@ extern crate std;
 // pp-exact:expanded-and-path-remap-80832.pp
 // compile-flags: --remap-path-prefix {{src-base}}=the/src
 
-fn main() { }
+fn main() {}

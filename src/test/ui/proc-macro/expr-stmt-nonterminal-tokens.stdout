@@ -202,7 +202,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
         span: #8 bytes(430..483),
     },
 ]
-PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = { { } } ; 0 }, }
+PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = { {} } ; 0 }, }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "enum",

@@ -13,7 +13,7 @@ extern crate std;
 #[path = "issue-12590-b.rs"]
 mod issue_12590_b {
 
-    fn b() { }
-    fn main() { }
+    fn b() {}
+    fn main() {}
 }
-fn main() { }
+fn main() {}

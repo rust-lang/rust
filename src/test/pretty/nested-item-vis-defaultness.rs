@@ -2,7 +2,7 @@
 
 // pp-exact
 
-fn main() { }
+fn main() {}
 
 #[cfg(FALSE)]
 extern "C" {

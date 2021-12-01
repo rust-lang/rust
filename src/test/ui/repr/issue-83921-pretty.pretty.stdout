@@ -13,7 +13,6 @@ extern crate std;
 // [pretty]compile-flags: -Zunpretty=everybody_loops
 // [pretty]check-pass
 #[repr("C")]
-struct A {
-}
+struct A {}
 
-fn main() { loop { } }
+fn main() { loop {} }

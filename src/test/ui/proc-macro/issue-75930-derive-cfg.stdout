@@ -8,8 +8,8 @@ struct Foo < #[cfg(FALSE)] A, B >
          #[cfg(FALSE)] struct Bar ; #[cfg(not(FALSE))] struct Inner ;
          #[cfg(FALSE)] let a = 25 ; match true
          {
-             #[cfg(FALSE)] true => { },
-             #[cfg_attr(not(FALSE), allow(warnings))] false => { }, _ => { }
+             #[cfg(FALSE)] true => {},
+             #[cfg_attr(not(FALSE), allow(warnings))] false => {}, _ => {}
          } ; #[print_helper(should_be_removed)] fn removed_fn()
          { #! [cfg(FALSE)] } #[print_helper(c)] #[cfg(not(FALSE))] fn
          kept_fn() { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
@@ -1278,7 +1278,7 @@ PRINT-DERIVE INPUT (DISPLAY): #[print_helper(a)] #[allow(dead_code)] #[print_hel
     [u8 ;
      {
          #[cfg(not(FALSE))] struct Inner ; match true
-         { #[allow(warnings)] false => { }, _ => { } } ; #[print_helper(c)]
+         { #[allow(warnings)] false => {}, _ => {} } ; #[print_helper(c)]
          #[cfg(not(FALSE))] fn kept_fn()
          { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
          { Foo(#[cfg(not(FALSE))] i32, u8) } struct

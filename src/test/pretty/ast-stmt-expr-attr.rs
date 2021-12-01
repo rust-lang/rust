@@ -1,6 +1,6 @@
 // pp-exact
 
-fn main() { }
+fn main() {}
 
 #[cfg(FALSE)]
 fn syntax() {
@@ -117,7 +117,7 @@ fn syntax() {
     let _ = #[attr] foo!(#! [attr]);
     let _ = #[attr] foo![];
     let _ = #[attr] foo![#! [attr]];
-    let _ = #[attr] foo! { };
+    let _ = #[attr] foo! {};
     let _ = #[attr] foo! { #! [attr] };
     let _ = #[attr] Foo{bar: baz,};
     let _ = #[attr] Foo{..foo};
@@ -135,7 +135,7 @@ fn syntax() {
         foo!();
 
         #[attr]
-        foo! { }
+        foo! {}
 
         #[attr]
         foo![];
@@ -170,6 +170,6 @@ fn syntax() {
     {
 
         #[attr]
-        foo! { }
+        foo! {}
     }
 }

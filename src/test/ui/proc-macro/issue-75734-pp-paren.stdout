@@ -1,4 +1,4 @@
-PRINT-ATTR INPUT (DISPLAY): fn main() { & | _ : u8 | { } ; mul_2! (1 + 1) ; }
+PRINT-ATTR INPUT (DISPLAY): fn main() { & | _ : u8 | {} ; mul_2! (1 + 1) ; }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "fn",
