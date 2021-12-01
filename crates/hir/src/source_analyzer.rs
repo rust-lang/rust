@@ -15,7 +15,7 @@ use hir_def::{
     },
     expr::{ExprId, Pat, PatId},
     path::{ModPath, Path, PathKind},
-    resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
+    resolver::{resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
     AsMacroCall, DefWithBodyId, FieldId, FunctionId, LocalFieldId, VariantId,
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
@@ -544,6 +544,17 @@ fn resolve_hir_path_(
                 }
             }
         }?;
+
+        if let (Some(_), TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
+            let resolver = trait_id.resolver(db.upcast());
+            if let Some(module_def_id) = resolver
+                .resolve_module_path_in_trait_assoc_items(db.upcast(), path.mod_path())
+                .and_then(|ns| ns.take_types())
+            {
+                return Some(PathResolution::Def(module_def_id.into()));
+            }
+        }
+
         let res = match ty {
             TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
             TypeNs::GenericParam(id) => PathResolution::TypeParam(TypeParam { id }),
