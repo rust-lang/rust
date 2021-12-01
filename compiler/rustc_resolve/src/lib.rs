@@ -1430,12 +1430,9 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn next_node_id(&mut self) -> NodeId {
-        let next = self
-            .next_node_id
-            .as_usize()
-            .checked_add(1)
-            .expect("input too large; ran out of NodeIds");
-        self.next_node_id = ast::NodeId::from_usize(next);
+        let next =
+            self.next_node_id.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
+        self.next_node_id = ast::NodeId::from_u32(next);
         self.next_node_id
     }
 
