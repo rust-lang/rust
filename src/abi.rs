@@ -48,8 +48,8 @@ impl GccType for CastTarget {
         let mut args: Vec<_> = self
             .prefix
             .iter()
-            .flat_map(|option_kind| {
-                option_kind.map(|kind| Reg { kind, size: self.prefix_chunk_size }.gcc_type(cx))
+            .flat_map(|option_reg| {
+                option_reg.map(|reg| reg.gcc_type(cx))
             })
             .chain((0..rest_count).map(|_| rest_gcc_unit))
             .collect();
