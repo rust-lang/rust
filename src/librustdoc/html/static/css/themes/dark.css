@@ -363,12 +363,12 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: transparent black transparent transparent;
 }
 
-.notable-traits-tooltiptext {
+#notable-traits-tooltiptext {
 	background-color: #111;
 	border-color: #777;
 }
 
-.notable-traits-tooltiptext .notable {
+#notable-traits-tooltiptext .notable {
 	border-bottom-color: #d2d2d2;
 }
 

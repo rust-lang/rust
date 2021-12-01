@@ -1268,13 +1268,7 @@ h3.variant {
 	cursor: pointer;
 }
 
-.notable-traits:hover .notable-traits-tooltiptext,
-.notable-traits .notable-traits-tooltiptext.force-tooltip {
-	display: inline-block;
-}
-
-.notable-traits .notable-traits-tooltiptext {
-	display: none;
+#notable-traits-tooltiptext {
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
 	margin-left: 5px;
@@ -1296,14 +1290,14 @@ h3.variant {
 	margin: 0;
 }
 
-.notable-traits .notable {
+#notable-traits-tooltiptext .notable {
 	margin: 0;
 	margin-bottom: 13px;
 	font-size: 19px;
 	font-weight: 600;
 }
 
-.notable-traits .docblock code.content{
+#notable-traits-tooltiptext code.content{
 	margin: 0;
 	padding: 0;
 	font-size: 20px;
@@ -1965,7 +1959,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		margin-top: 0;
 	}
 
-	.notable-traits .notable-traits-tooltiptext {
+	.notable-traits {
 		left: 0;
 		top: 100%;
 	}

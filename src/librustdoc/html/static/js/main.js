@@ -171,6 +171,13 @@ function hideThemeButtonState() {
 (function() {
     "use strict";
 
+    function loadScript(url, callback) {
+        var script = document.createElement('script');
+        script.src = url;
+        script.onload = callback;
+        document.head.append(script);
+    }
+
     window.searchState = {
         loadingText: "Loading search results...",
         input: document.getElementsByClassName("search-input")[0],
@@ -253,11 +260,6 @@ function hideThemeButtonState() {
             var search_input = searchState.input;
             if (!searchState.input) {
                 return;
-            }
-            function loadScript(url) {
-                var script = document.createElement('script');
-                script.src = url;
-                document.head.append(script);
             }
 
             var searchLoaded = false;
@@ -910,13 +912,6 @@ function hideThemeButtonState() {
         });
     });
 
-    onEachLazy(document.getElementsByClassName("notable-traits"), function(e) {
-        e.onclick = function() {
-            this.getElementsByClassName('notable-traits-tooltiptext')[0]
-                .classList.toggle("force-tooltip");
-        };
-    });
-
     var sidebar_menu = document.getElementsByClassName("sidebar-menu")[0];
     if (sidebar_menu) {
         sidebar_menu.onclick = function() {
@@ -1010,6 +1005,62 @@ function hideThemeButtonState() {
     onHashChange(null);
     window.addEventListener("hashchange", onHashChange);
     searchState.setup();
+
+    //
+    // Handling the notable traits popup.
+    //
+    function getNotablePopup(callback) {
+        var elemId = "notable-traits-tooltiptext";
+        var elem = document.getElementById(elemId);
+
+        if (!elem) {
+            // If the element cannot be found, it means it hasn't been created yet and that the
+            // notable traits index wasn't loaded either.
+            var script = getVar("root-path") + window.currentCrate + "/notable-traits.js";
+            loadScript(script, function() {
+                elem = document.createElement("code");
+                elem.id = elemId;
+                elem.classList = "docblock";
+                main.appendChild(elem);
+                callback(elem);
+            });
+            return;
+        }
+        callback(elem);
+    }
+    function showNotableTraitPopup(elem) {
+        getNotablePopup(function(popup) {
+            if (elem === window.currentNotableElem) {
+                popup.style.display = "none";
+                window.currentNotableElem = null;
+                return;
+            }
+            var elemRect = elem.getBoundingClientRect();
+            var containerRect = main.getBoundingClientRect();
+
+            var index = elem.getAttribute("data-index");
+            var notableTrait = window.NOTABLE_TRAITS[parseInt(index)];
+
+            popup.innerHTML = "<div class=\"notable\">Notable traits for " + notableTrait[0] + "</div><code class=\"content\">" + notableTrait[1] + "</code>";
+            popup.style.top = (elemRect.top - containerRect.top) + "px";
+            // In here, if the "i" is too much on the right, better put the popup on its left.
+            if (elem.offsetLeft > main.offsetWidth / 2) {
+                popup.style.left = "";
+                popup.style.right = (main.offsetWidth - elem.offsetLeft + 2) + "px";
+            } else {
+                popup.style.right = "";
+                popup.style.left = (elem.offsetLeft + 12) + "px";
+            }
+            popup.style.display = "";
+            window.currentNotableElem = elem;
+        });
+    }
+
+    onEachLazy(document.getElementsByClassName("notable-traits-tooltip"), function(e) {
+        e.onclick = function() {
+            showNotableTraitPopup(this);
+        };
+    });
 }());
 
 (function () {

@@ -37,6 +37,7 @@ mod write_shared;
 crate use self::context::*;
 crate use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
+use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt;
@@ -1241,7 +1242,8 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
 }
 
 fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
-    let mut out = Buffer::html();
+    let mut out_for = Buffer::html();
+    let mut out_content = Buffer::html();
 
     if let Some((did, ty)) = decl.output.as_return().and_then(|t| Some((t.def_id(cx.cache())?, t)))
     {
@@ -1258,29 +1260,38 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                     let trait_did = trait_.def_id();
 
                     if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable) {
-                        if out.is_empty() {
+                        if out_for.is_empty() {
                             write!(
-                                &mut out,
-                                "<div class=\"notable\">Notable traits for {}</div>\
-                             <code class=\"content\">",
-                                impl_.for_.print(cx)
+                                &mut out_for,
+                                "{}",
+                                impl_.for_.print(cx),
+                                //    "<div class=\"notable\">Notable traits for {}</div>\
+                                // <code class=\"content\">",
                             );
                         }
 
                         //use the "where" class here to make it small
                         write!(
-                            &mut out,
+                            &mut out_content,
                             "<span class=\"where fmt-newline\">{}</span>",
                             impl_.print(false, cx)
                         );
                         for it in &impl_.items {
                             if let clean::TypedefItem(ref tydef, _) = *it.kind {
-                                out.push_str("<span class=\"where fmt-newline\">    ");
+                                out_content.push_str("<span class=\"where fmt-newline\">    ");
                                 let empty_set = FxHashSet::default();
                                 let src_link =
                                     AssocItemLink::GotoSource(trait_did.into(), &empty_set);
-                                assoc_type(&mut out, it, &[], Some(&tydef.type_), src_link, "", cx);
-                                out.push_str(";</span>");
+                                assoc_type(
+                                    &mut out_content,
+                                    it,
+                                    &[],
+                                    Some(&tydef.type_),
+                                    src_link,
+                                    "",
+                                    cx,
+                                );
+                                out_content.push_str(";</span>");
                             }
                         }
                     }
@@ -1289,16 +1300,26 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
         }
     }
 
-    if !out.is_empty() {
-        out.insert_str(
-            0,
-            "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\">ⓘ\
-            <div class=\"notable-traits-tooltiptext\"><span class=\"docblock\">",
+    if !out_for.is_empty() && !out_content.is_empty() {
+        let mut notable_traits = cx.shared.notable_traits.borrow_mut();
+
+        let out_for = out_for.into_inner();
+        let out_content = out_content.into_inner();
+        let nb_notable = notable_traits.len();
+        let index = match notable_traits.entry((out_for, out_content)) {
+            Entry::Occupied(o) => *o.get(),
+            Entry::Vacant(v) => {
+                v.insert(nb_notable);
+                nb_notable
+            }
+        };
+        return format!(
+            "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\" data-index={}>ⓘ</span></span>",
+            index
         );
-        out.push_str("</code></span></div></span></span>");
     }
 
-    out.into_inner()
+    String::new()
 }
 
 #[derive(Clone, Copy, Debug)]

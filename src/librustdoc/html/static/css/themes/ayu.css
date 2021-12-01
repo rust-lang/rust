@@ -415,12 +415,12 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: transparent #314559 transparent transparent;
 }
 
-.notable-traits-tooltiptext {
+#notable-traits-tooltiptext {
 	background-color: #314559;
 	border-color: #5c6773;
 }
 
-.notable-traits-tooltiptext .notable {
+#notable-traits-tooltiptext .notable {
 	border-bottom-color: #5c6773;
 }
 

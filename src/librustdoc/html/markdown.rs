@@ -1439,6 +1439,8 @@ fn init_id_map() -> FxHashMap<String, usize> {
     let mut map = FxHashMap::default();
     // This is the list of IDs used in Javascript.
     map.insert("help".to_owned(), 1);
+    // This is the ID used to generate the notable traits popup in Javascript.
+    map.insert("notable-traits-tooltiptext".to_owned(), 1);
     // This is the list of IDs used in HTML generated in Rust (including the ones
     // used in tera template files).
     map.insert("mainThemeStyle".to_owned(), 1);
