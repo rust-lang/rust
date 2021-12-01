@@ -57,5 +57,4 @@ If using this code in an academic setting, please cite the following:
 }
 ```
 
-Julia bindings for Enzyme are available [here](https://github.com/wsmoses/Enzyme.jl)
-
+Both [Julia bindings](https://github.com/wsmoses/Enzyme.jl) and (unofficial) [Rust bindings](https://github.com/rust-ml/oxide-enzyme) are available for Enzyme.
