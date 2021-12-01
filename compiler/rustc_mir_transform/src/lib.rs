@@ -77,7 +77,7 @@ mod simplify_try;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
 
-use rustc_const_eval::transform::check_consts;
+use rustc_const_eval::transform::check_consts::{self, ConstCx};
 use rustc_const_eval::transform::promote_consts;
 use rustc_const_eval::transform::validate;
 pub use rustc_const_eval::transform::MirPass;
@@ -447,8 +447,20 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
 
+    // IMPORTANT
+    remove_false_edges::RemoveFalseEdges.run_pass(tcx, &mut body);
+
+    // Do a little drop elaboration before const-checking if `const_precise_live_drops` is enabled.
+    //
+    // FIXME: Can't use `run_passes` for these, since `run_passes` SILENTLY DOES NOTHING IF THE MIR
+    // PHASE DOESN'T CHANGE.
+    if check_consts::post_drop_elaboration::checking_enabled(&ConstCx::new(tcx, &body)) {
+        simplify::SimplifyCfg::new("remove-false-edges").run_pass(tcx, &mut body);
+        remove_uninit_drops::RemoveUninitDrops.run_pass(tcx, &mut body);
+        check_consts::post_drop_elaboration::check_live_drops(tcx, &body);
+    }
+
     run_post_borrowck_cleanup_passes(tcx, &mut body);
-    check_consts::post_drop_elaboration::check_live_drops(tcx, &body);
     tcx.alloc_steal_mir(body)
 }
 
