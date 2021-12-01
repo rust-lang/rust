@@ -281,8 +281,16 @@ fn highlight_name_ref(
                 return if syntactic_name_ref_highlighting {
                     highlight_name_ref_by_syntax(name_ref, sema, krate)
                 } else {
-                    HlTag::UnresolvedReference.into()
-                }
+                    // Some popular proc macros (namely async_trait) will rewrite `self` in such a way that it no
+                    // longer resolves via NameRefClass. If we can't be resolved, but we know we're a self token,
+                    // within a function with a self param, pretend to still be `self`, rather than
+                    // an unresolved reference.
+                    if name_ref.self_token().is_some() && is_in_fn_with_self_param(&name_ref) {
+                        HlTag::Symbol(SymbolKind::SelfParam).into()
+                    } else {
+                        HlTag::UnresolvedReference.into()
+                    }
+                };
             }
         };
         let mut h = match name_class {
@@ -750,4 +758,12 @@ fn is_child_of_impl(token: &SyntaxToken) -> bool {
         Some(e) => e.kind() == IMPL,
         _ => false,
     }
+}
+
+fn is_in_fn_with_self_param<N: AstNode>(node: &N) -> bool {
+    node.syntax()
+        .ancestors()
+        .find_map(ast::Fn::cast)
+        .and_then(|s| s.param_list()?.self_param())
+        .is_some()
 }
