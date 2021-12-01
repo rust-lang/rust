@@ -550,7 +550,7 @@ impl<'a> Resolver<'a> {
         Ok((ext, res))
     }
 
-    pub fn resolve_macro_path(
+    crate fn resolve_macro_path(
         &mut self,
         path: &ast::Path,
         kind: Option<MacroKind>,
