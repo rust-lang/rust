@@ -1,6 +1,12 @@
 # needs-profiler-support
 # ignore-windows-gnu
 
+# Rust coverage maps support LLVM Coverage Mapping Format versions 5 and 6,
+# corresponding with LLVM versions 12 and 13, respectively.
+# When upgrading LLVM versions, consider whether to enforce a minimum LLVM
+# version during testing, with an additional directive at the top of this file
+# that sets, for example: `min-llvm-version: 12.0`
+
 # FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
 # properly. Since we only have GCC on the CI ignore the test for now.
 
@@ -115,6 +121,7 @@ endif
 	"$(LLVM_BIN_DIR)"/llvm-cov show \
 			$(DEBUG_FLAG) \
 			$(LLVM_COV_IGNORE_FILES) \
+			--compilation-dir=. \
 			--Xdemangler="$(RUST_DEMANGLER)" \
 			--show-line-counts-or-regions \
 			--instr-profile="$(TMPDIR)"/$@.profdata \
