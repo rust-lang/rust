@@ -178,7 +178,7 @@ impl<'tcx> Context<'tcx> {
         "../".repeat(self.current.len())
     }
 
-    fn render_item(&self, it: &clean::Item, is_module: bool) -> String {
+    fn render_item(&mut self, it: &clean::Item, is_module: bool) -> String {
         let mut title = String::new();
         if !is_module {
             title.push_str(&it.name.unwrap().as_str());
@@ -214,6 +214,7 @@ impl<'tcx> Context<'tcx> {
             tyname.as_str()
         };
         let clone = self.clone();
+        let shared_clone = self.shared.clone();
         let page = layout::Page {
             css_class: tyname_s,
             root_path: &self.root_path(),
@@ -221,18 +222,20 @@ impl<'tcx> Context<'tcx> {
             title: &title,
             description: &desc,
             keywords: &keywords,
-            resource_suffix: &self.shared.resource_suffix,
+            resource_suffix: &*shared_clone.resource_suffix,
             extra_scripts: &[],
             static_extra_scripts: &[],
         };
-
+        let clone_1 = &mut self.clone();
+        let clone_2 = &mut self.clone();
+        let shared_templates = &self.shared.clone().templates;
         if !self.render_redirect_pages {
             layout::render(
-                &self.shared.templates,
-                &self.shared.layout,
+                &self.clone().shared.templates,
+                &self.clone().shared.layout,
                 &page,
-                |buf: &mut _| print_sidebar(&mut self.clone(), it, buf),
-                |buf: &mut _| print_item(&self, &self.shared.templates, it, buf, &page),
+                |buf: &mut _| print_sidebar(clone_1, it, buf),
+                |buf: &mut _| print_item(clone_2, shared_templates, it, buf, &page),
                 &self.shared.style_files,
             )
         } else {

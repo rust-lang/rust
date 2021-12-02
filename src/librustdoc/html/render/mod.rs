@@ -668,10 +668,10 @@ fn short_item_info(
 
         if let Some(note) = note {
             let note = note.as_str();
-            let mut ids = &cx.id_map;
+            let ids = &mut cx.id_map;
             let html = MarkdownHtml(
                 &note,
-                &mut ids,
+                ids,
                 error_codes,
                 cx.shared.edition(),
                 &cx.shared.playground,
@@ -707,13 +707,13 @@ fn short_item_info(
         message.push_str(&format!(" ({})", feature));
 
         if let Some(unstable_reason) = reason {
-            let mut ids = &cx.id_map;
+            let ids = &mut cx.id_map;
             message = format!(
                 "<details><summary>{}</summary>{}</details>",
                 message,
                 MarkdownHtml(
                     &unstable_reason.as_str(),
-                    &mut ids,
+                    ids,
                     error_codes,
                     cx.shared.edition(),
                     &cx.shared.playground,
@@ -799,7 +799,7 @@ fn assoc_const(
         w,
         "{}{}const <a href=\"{}\" class=\"constant\">{}</a>: {}",
         extra,
-        it.visibility.print_with_space(it.def_id, cx),
+        it.visibility.print_with_space(it.def_id, &cx.clone()),
         naive_assoc_href(it, link, cx),
         it.name.as_ref().unwrap(),
         ty.print(cx)
@@ -964,8 +964,8 @@ fn render_assoc_item(
             // links without a href are valid - https://www.w3schools.com/tags/att_a_href.asp
             href = href.map(|href| format!("href=\"{}\"", href)).unwrap_or_else(|| "".to_string()),
             name = name,
-            generics = g.print(cx),
-            decl = d.full_print(header_len, indent, header.asyncness, cx),
+            generics = g.print(&cx.clone()),
+            decl = d.full_print(header_len, indent, header.asyncness, &cx.clone()),
             notable_traits = notable_traits_decl(d, cx),
             where_clause = print_where_clause(g, cx, indent, end_newline),
         )
@@ -1069,7 +1069,8 @@ fn render_assoc_items_inner(
     derefs: &mut FxHashSet<DefId>,
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
-    let cache = cx.cache();
+    let cx_clone = cx.clone();
+    let cache = cx_clone.cache();
     let v = match cache.impls.get(&it) {
         Some(v) => v,
         None => return,
@@ -1088,9 +1089,9 @@ fn render_assoc_items_inner(
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 let id =
-                    cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
+                    cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(&cx.clone()))));
                 if let Some(def_id) = type_.def_id(cx.cache()) {
-                    &cx.deref_id_map.insert(def_id, id.clone());
+                    cx.deref_id_map.insert(def_id, id.clone());
                 }
                 write!(
                     tmp_buf,
@@ -1264,7 +1265,7 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &mut Context<'_>) -> String {
     let mut out = Buffer::html();
 
     if let Some(did) = decl.output.as_return().and_then(|t| t.def_id(cx.cache())) {
-        if let Some(impls) = cx.cache().impls.get(&did) {
+        if let Some(impls) = cx.clone().cache().impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
                 if let Some(trait_) = &impl_.trait_ {
@@ -1335,7 +1336,8 @@ fn render_impl(
     aliases: &[String],
     rendering_params: ImplRenderingParameters,
 ) {
-    let cache = cx.cache();
+    let cx_clone = cx.clone();
+    let cache = cx_clone.cache();
     let traits = &cache.traits;
     let trait_ = i.trait_did().map(|did| &traits[&did]);
     let mut close_tags = String::new();
@@ -1385,7 +1387,7 @@ fn render_impl(
                         // because impls can't have a stability.
                         if item.doc_value().is_some() {
                             document_item_info(&mut info_buffer, cx, it, Some(parent));
-                            document_full(&mut doc_buffer, item, &mut cx, HeadingOffset::H5);
+                            document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
                             short_documented = false;
                         } else {
                             // In case the item isn't documented,
@@ -1403,7 +1405,7 @@ fn render_impl(
                 } else {
                     document_item_info(&mut info_buffer, cx, item, Some(parent));
                     if rendering_params.show_def_docs {
-                        document_full(&mut doc_buffer, item, &mut cx, HeadingOffset::H5);
+                        document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
                         short_documented = false;
                     }
                 }
@@ -1568,7 +1570,7 @@ fn render_impl(
                 continue;
             }
             let did = i.trait_.as_ref().unwrap().def_id();
-            let provided_methods = i.provided_trait_methods(cx.tcx());
+            let provided_methods = i.provided_trait_methods(cx.clone().tcx());
             let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_methods);
 
             doc_impl_item(
@@ -1633,14 +1635,14 @@ fn render_impl(
         }
 
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
-            let mut ids = &cx.id_map;
+            let ids = &mut cx.clone().id_map;
             write!(
                 w,
                 "<div class=\"docblock\">{}</div>",
                 Markdown {
                     content: &*dox,
                     links: &i.impl_item.links(cx),
-                    ids: &mut ids,
+                    ids,
                     error_codes: cx.shared.codes,
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
@@ -1695,7 +1697,7 @@ pub(crate) fn render_impl_summary(
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
 ) {
-    let id = cx.derive_id(match i.inner_impl().trait_ {
+    let id = cx.clone().derive_id(match i.inner_impl().trait_ {
         Some(ref t) => {
             if is_on_foreign_type {
                 get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t, cx)
@@ -1969,7 +1971,8 @@ fn small_url_encode(s: String) -> String {
 
 fn sidebar_assoc_items(cx: &mut Context<'_>, out: &mut Buffer, it: &clean::Item) {
     let did = it.def_id.expect_def_id();
-    let cache = cx.cache();
+    let cx_clone = cx.clone();
+    let cache = cx_clone.cache();
     if let Some(v) = cache.impls.get(&did) {
         let mut used_links = FxHashSet::default();
 
@@ -2101,7 +2104,8 @@ fn sidebar_deref_methods(
     v: &[Impl],
     derefs: &mut FxHashSet<DefId>,
 ) {
-    let c = cx.cache();
+    let cx_clone = cx.clone();
+    let c = cx_clone.cache();
 
     debug!("found Deref: {:?}", impl_);
     if let Some((target, real_target)) =
@@ -2303,8 +2307,8 @@ fn sidebar_trait(cx: &mut Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &c
         |out, sym| write!(out, "<a href=\"#method.{0}\">{0}</a>", sym),
         "</div>",
     );
-
-    let cache = cx.cache();
+    let cx_clone = cx.clone();
+    let cache = cx_clone.cache();
     if let Some(implementors) = cache.implementors.get(&it.def_id.expect_def_id()) {
         let mut res = implementors
             .iter()

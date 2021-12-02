@@ -59,7 +59,7 @@ struct ItemVars<'a> {
 }
 
 pub(super) fn print_item(
-    cx: &Context<'_>,
+    cx: &mut Context<'_>,
     templates: &tera::Tera,
     item: &clean::Item,
     buf: &mut Buffer,
@@ -133,12 +133,12 @@ pub(super) fn print_item(
     };
 
     let item_vars = ItemVars {
-        page: page,
+        page,
         static_root_path: page.get_static_root_path(),
-        typ: typ,
+        typ,
         name: &item.name.as_ref().unwrap().as_str(),
         item_type: &item.type_().to_string(),
-        path_components: path_components,
+        path_components,
         stability_since_raw: &stability_since_raw,
         src_href: src_href.as_deref(),
     };
@@ -148,7 +148,7 @@ pub(super) fn print_item(
     buf.write_str(&heading);
 
     match *item.kind {
-        clean::ModuleItem(ref m) => item_module(buf, &mut cx, item, &m.items),
+        clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
         clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) => {
             item_function(buf, cx, item, f)
         }
@@ -194,7 +194,7 @@ fn toggle_close(w: &mut Buffer) {
 }
 
 fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
-    document(w, &mut cx, item, None, HeadingOffset::H2);
+    document(w, cx, item, None, HeadingOffset::H2);
 
     let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped()).collect::<Vec<usize>>();
 
@@ -464,7 +464,7 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
     tags
 }
 
-fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
+fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {
     let vis = it.visibility.print_with_space(it.def_id, cx).to_string();
     let constness = print_constness_with_space(&f.header.constness, it.const_stability(cx.tcx()));
     let asyncness = f.header.asyncness.print_with_space();
@@ -496,17 +496,17 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
                 unsafety = unsafety,
                 abi = abi,
                 name = name,
-                generics = f.generics.print(cx),
-                where_clause = print_where_clause(&f.generics, cx, 0, true),
-                decl = f.decl.full_print(header_len, 0, f.header.asyncness, cx),
-                notable_traits = notable_traits_decl(&f.decl, &mut cx),
+                generics = f.generics.print(&cx.clone()),
+                where_clause = print_where_clause(&f.generics, &cx.clone(), 0, true),
+                decl = f.decl.full_print(header_len, 0, f.header.asyncness, &cx.clone()),
+                notable_traits = notable_traits_decl(&f.decl, cx),
             );
         });
     });
-    document(w, &mut cx, it, None, HeadingOffset::H2)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
-fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) {
+fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Trait) {
     let bounds = bounds(&t.bounds, false, cx);
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
@@ -556,7 +556,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     );
                 }
                 for t in &types {
-                    render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, &mut cx);
+                    render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
                     w.write_str(";\n");
                 }
                 // If there are too many associated constants, hide everything after them
@@ -580,7 +580,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     w.write_str("\n");
                 }
                 for t in &consts {
-                    render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, &mut cx);
+                    render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
                     w.write_str(";\n");
                 }
                 if !toggle && should_hide_fields(count_methods) {
@@ -591,7 +591,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     w.write_str("\n");
                 }
                 for (pos, m) in required.iter().enumerate() {
-                    render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait, &mut cx);
+                    render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait, cx);
                     w.write_str(";\n");
 
                     if pos < required.len() - 1 {
@@ -602,7 +602,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     w.write_str("\n");
                 }
                 for (pos, m) in provided.iter().enumerate() {
-                    render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait, &mut cx);
+                    render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait, cx);
                     match *m.kind {
                         clean::MethodItem(ref inner, _)
                             if !inner.generics.where_predicates.is_empty() =>
@@ -626,7 +626,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     });
 
     // Trait documentation
-    document(w, &mut cx, it, None, HeadingOffset::H2);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
         write!(
@@ -638,13 +638,13 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         )
     }
 
-    fn trait_item(w: &mut Buffer, cx: &Context<'_>, m: &clean::Item, t: &clean::Item) {
+    fn trait_item(w: &mut Buffer, cx: &mut Context<'_>, m: &clean::Item, t: &clean::Item) {
         let name = m.name.as_ref().unwrap();
         info!("Documenting {} on {:?}", name, t.name);
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         let mut content = Buffer::empty_from(w);
-        document(&mut content, &mut cx, m, Some(t), HeadingOffset::H5);
+        document(&mut content, cx, m, Some(t), HeadingOffset::H5);
         let toggled = !content.is_empty();
         if toggled {
             write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
@@ -652,10 +652,10 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         write!(w, "<div id=\"{}\" class=\"method has-srclink\">", id);
         write!(w, "<div class=\"rightside\">");
         render_stability_since(w, m, t, cx.tcx());
-        write_srclink(&mut cx, m, w);
+        write_srclink(&mut cx.clone(), m, w);
         write!(w, "</div>");
         write!(w, "<h4 class=\"code-header\">");
-        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, &mut cx);
+        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
         w.write_str("</h4>");
         w.write_str("</div>");
         if toggled {
@@ -718,9 +718,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     }
 
     // If there are methods directly on this trait object, render them here.
-    render_assoc_items(w, &mut cx, it, it.def_id.expect_def_id(), AssocItemRender::All);
-
-    let cache = cx.cache();
+    render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All);
+    let cx_clone = cx.clone();
+    let cache = cx_clone.cache();
     if let Some(implementors) = cache.implementors.get(&it.def_id.expect_def_id()) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
@@ -760,7 +760,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     AssocItemLink::GotoSource(implementor.impl_item.def_id, &provided_methods);
                 render_impl(
                     w,
-                    &mut cx,
+                    cx,
                     implementor,
                     it,
                     assoc_link,
@@ -845,7 +845,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     );
 }
 
-fn item_trait_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::TraitAlias) {
+fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TraitAlias) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "trait-alias", |w| {
             render_attributes_in_pre(w, it, "");
@@ -860,13 +860,13 @@ fn item_trait_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clea
         });
     });
 
-    document(w, &mut cx, it, None, HeadingOffset::H2);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, &mut cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
 fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::OpaqueTy) {
@@ -884,25 +884,25 @@ fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean:
         });
     });
 
-    document(w, &mut cx, it, None, HeadingOffset::H2);
+    document(w, &mut cx.clone(), it, None, HeadingOffset::H2);
 
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, &mut cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
+    render_assoc_items(w, &mut cx.clone(), it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
 fn item_typedef(
     w: &mut Buffer,
-    cx: &Context<'_>,
+    cx: &mut Context<'_>,
     it: &clean::Item,
     t: &clean::Typedef,
     is_associated: bool,
 ) {
     fn write_content(
         w: &mut Buffer,
-        cx: &Context<'_>,
+        cx: &mut Context<'_>,
         it: &clean::Item,
         t: &clean::Typedef,
         is_associated: bool,
@@ -925,24 +925,24 @@ fn item_typedef(
 
     // If this is an associated typedef, we don't want to wrap it into a docblock.
     if is_associated {
-        write_content(w, cx, it, t, is_associated);
+        write_content(w, &mut cx.clone(), it, t, is_associated);
     } else {
         wrap_into_docblock(w, |w| {
-            write_content(w, cx, it, t, is_associated);
+            write_content(w, &mut cx.clone(), it, t, is_associated);
         });
     }
 
-    document(w, &mut cx, it, None, HeadingOffset::H2);
+    document(w, &mut cx.clone(), it, None, HeadingOffset::H2);
 
     let def_id = it.def_id.expect_def_id();
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, &mut cx, it, def_id, AssocItemRender::All);
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
 }
 
-fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Union) {
+fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Union) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "union", |w| {
             render_attributes_in_pre(w, it, "");
@@ -950,7 +950,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
         });
     });
 
-    document(w, &mut cx, it, None, HeadingOffset::H2);
+    document(w, &mut cx.clone(), it, None, HeadingOffset::H2);
 
     let mut fields = s
         .fields
@@ -983,11 +983,11 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             if let Some(stability_class) = field.stability_class(cx.tcx()) {
                 write!(w, "<span class=\"stab {stab}\"></span>", stab = stability_class);
             }
-            document(w, &mut cx, field, Some(it), HeadingOffset::H3);
+            document(w, cx, field, Some(it), HeadingOffset::H3);
         }
     }
     let def_id = it.def_id.expect_def_id();
-    render_assoc_items(w, &mut cx, it, def_id, AssocItemRender::All);
+    render_assoc_items(w, &mut cx.clone(), it, def_id, AssocItemRender::All);
     document_type_layout(w, cx, def_id);
 }
 
@@ -1004,7 +1004,7 @@ fn print_tuple_struct_fields(w: &mut Buffer, cx: &Context<'_>, s: &[clean::Item]
     }
 }
 
-fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) {
+fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::Enum) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "enum", |w| {
             render_attributes_in_pre(w, it, "");
@@ -1065,7 +1065,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
         });
     });
 
-    document(w, &mut cx, it, None, HeadingOffset::H2);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     if !e.variants.is_empty() {
         write!(
@@ -1094,7 +1094,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             w.write_str("</code>");
             render_stability_since(w, variant, it, cx.tcx());
             w.write_str("</div>");
-            document(w, &mut cx, variant, Some(it), HeadingOffset::H3);
+            document(w, cx, variant, Some(it), HeadingOffset::H3);
             document_non_exhaustive(w, variant);
 
             use crate::clean::Variant;
@@ -1134,7 +1134,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                                 f = field.name.as_ref().unwrap(),
                                 t = ty.print(cx)
                             );
-                            document(w, &mut cx, field, Some(variant), HeadingOffset::H4);
+                            document(w, cx, field, Some(variant), HeadingOffset::H4);
                         }
                         _ => unreachable!(),
                     }
@@ -1144,11 +1144,11 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
         }
     }
     let def_id = it.def_id.expect_def_id();
-    render_assoc_items(w, &mut cx, it, def_id, AssocItemRender::All);
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
     document_type_layout(w, cx, def_id);
 }
 
-fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) {
+fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Macro) {
     wrap_into_docblock(w, |w| {
         highlight::render_with_highlighting(
             &t.source,
@@ -1162,10 +1162,10 @@ fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Mac
             None,
         );
     });
-    document(w, &mut cx, it, None, HeadingOffset::H2)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
-fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
+fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
     wrap_into_docblock(w, |w| {
         let name = it.name.as_ref().expect("proc-macros always have names");
         match m.kind {
@@ -1194,15 +1194,15 @@ fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean
             }
         }
     });
-    document(w, &mut cx, it, None, HeadingOffset::H2)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
-fn item_primitive(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
-    document(w, &mut cx, it, None, HeadingOffset::H2);
-    render_assoc_items(w, &mut cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
+fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
+    document(w, cx, it, None, HeadingOffset::H2);
+    render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
-fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::Constant) {
+fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "const", |w| {
             render_attributes_in_code(w, it);
@@ -1239,10 +1239,10 @@ fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::
         });
     });
 
-    document(w, &mut cx, it, None, HeadingOffset::H2)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
-fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Struct) {
+fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Struct) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "struct", |w| {
             render_attributes_in_code(w, it);
@@ -1250,7 +1250,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
         });
     });
 
-    document(w, &mut cx, it, None, HeadingOffset::H2);
+    document(w, cx, it, None, HeadingOffset::H2);
 
     let mut fields = s
         .fields
@@ -1286,16 +1286,16 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
                     name = field_name,
                     ty = ty.print(cx)
                 );
-                document(w, &mut cx, field, Some(it), HeadingOffset::H3);
+                document(w, cx, field, Some(it), HeadingOffset::H3);
             }
         }
     }
     let def_id = it.def_id.expect_def_id();
-    render_assoc_items(w, &mut cx, it, def_id, AssocItemRender::All);
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
     document_type_layout(w, cx, def_id);
 }
 
-fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Static) {
+fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "static", |w| {
             render_attributes_in_code(w, it);
@@ -1309,10 +1309,10 @@ fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             );
         });
     });
-    document(w, &mut cx, it, None, HeadingOffset::H2)
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
-fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
+fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "foreigntype", |w| {
             w.write_str("extern {\n");
@@ -1326,13 +1326,13 @@ fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
         });
     });
 
-    document(w, &mut cx, it, None, HeadingOffset::H2);
+    document(w, cx, it, None, HeadingOffset::H2);
 
-    render_assoc_items(w, &mut cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
-fn item_keyword(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
-    document(w, &mut cx, it, None, HeadingOffset::H2)
+fn item_keyword(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
+    document(w, cx, it, None, HeadingOffset::H2)
 }
 
 /// Compare two strings treating multi-digit numbers as single units (i.e. natural sort order).
@@ -1464,7 +1464,7 @@ fn render_implementor(
     };
     render_impl(
         w,
-        &mut cx,
+        &mut cx.clone(),
         implementor,
         trait_,
         AssocItemLink::Anchor(None),
