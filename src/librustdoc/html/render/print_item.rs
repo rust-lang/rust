@@ -101,7 +101,7 @@ pub(super) fn print_item(
     let mut stability_since_raw = Buffer::new();
     render_stability_since_raw(
         &mut stability_since_raw,
-        item.stable_since(cx.tcx()).as_deref(),
+        item.stable_since(cx.tcx()),
         item.const_stability(cx.tcx()),
         None,
         None,
@@ -556,7 +556,14 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     );
                 }
                 for t in &types {
-                    render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
+                    render_assoc_item(
+                        w,
+                        t,
+                        AssocItemLink::Anchor(None),
+                        ItemType::Trait,
+                        cx,
+                        RenderMode::Normal,
+                    );
                     w.write_str(";\n");
                 }
                 // If there are too many associated constants, hide everything after them
@@ -580,7 +587,14 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     w.write_str("\n");
                 }
                 for t in &consts {
-                    render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
+                    render_assoc_item(
+                        w,
+                        t,
+                        AssocItemLink::Anchor(None),
+                        ItemType::Trait,
+                        cx,
+                        RenderMode::Normal,
+                    );
                     w.write_str(";\n");
                 }
                 if !toggle && should_hide_fields(count_methods) {
@@ -591,7 +605,14 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     w.write_str("\n");
                 }
                 for (pos, m) in required.iter().enumerate() {
-                    render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait, cx);
+                    render_assoc_item(
+                        w,
+                        m,
+                        AssocItemLink::Anchor(None),
+                        ItemType::Trait,
+                        cx,
+                        RenderMode::Normal,
+                    );
                     w.write_str(";\n");
 
                     if pos < required.len() - 1 {
@@ -602,7 +623,14 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     w.write_str("\n");
                 }
                 for (pos, m) in provided.iter().enumerate() {
-                    render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait, cx);
+                    render_assoc_item(
+                        w,
+                        m,
+                        AssocItemLink::Anchor(None),
+                        ItemType::Trait,
+                        cx,
+                        RenderMode::Normal,
+                    );
                     match *m.kind {
                         clean::MethodItem(ref inner, _)
                             if !inner.generics.where_predicates.is_empty() =>
@@ -655,7 +683,14 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         write_srclink(cx, m, w);
         write!(w, "</div>");
         write!(w, "<h4 class=\"code-header\">");
-        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
+        render_assoc_item(
+            w,
+            m,
+            AssocItemLink::Anchor(Some(&id)),
+            ItemType::Impl,
+            cx,
+            RenderMode::Normal,
+        );
         w.write_str("</h4>");
         w.write_str("</div>");
         if toggled {
@@ -1427,10 +1462,10 @@ fn render_stability_since(
 ) {
     render_stability_since_raw(
         w,
-        item.stable_since(tcx).as_deref(),
+        item.stable_since(tcx),
         item.const_stability(tcx),
-        containing_item.stable_since(tcx).as_deref(),
-        containing_item.const_stable_since(tcx).as_deref(),
+        containing_item.stable_since(tcx),
+        containing_item.const_stable_since(tcx),
     )
 }
 

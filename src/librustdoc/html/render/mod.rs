@@ -804,17 +804,17 @@ fn assoc_type(
 
 fn render_stability_since_raw(
     w: &mut Buffer,
-    ver: Option<&str>,
-    const_stability: Option<&ConstStability>,
-    containing_ver: Option<&str>,
-    containing_const_ver: Option<&str>,
+    ver: Option<Symbol>,
+    const_stability: Option<ConstStability>,
+    containing_ver: Option<Symbol>,
+    containing_const_ver: Option<Symbol>,
 ) {
     let ver = ver.filter(|inner| !inner.is_empty());
 
     match (ver, const_stability) {
         // stable and const stable
         (Some(v), Some(ConstStability { level: StabilityLevel::Stable { since }, .. }))
-            if Some(since.as_str()).as_deref() != containing_const_ver =>
+            if Some(since) != containing_const_ver =>
         {
             write!(
                 w,
@@ -861,6 +861,7 @@ fn render_assoc_item(
     link: AssocItemLink<'_>,
     parent: ItemType,
     cx: &Context<'_>,
+    render_mode: RenderMode,
 ) {
     fn method(
         w: &mut Buffer,
@@ -871,6 +872,7 @@ fn render_assoc_item(
         link: AssocItemLink<'_>,
         parent: ItemType,
         cx: &Context<'_>,
+        render_mode: RenderMode,
     ) {
         let name = meth.name.as_ref().unwrap();
         let href = match link {
@@ -893,8 +895,14 @@ fn render_assoc_item(
             }
         };
         let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
-        let constness =
-            print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()));
+        // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+        // this condition.
+        let constness = match render_mode {
+            RenderMode::Normal => {
+                print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()))
+            }
+            RenderMode::ForDeref { .. } => "",
+        };
         let asyncness = header.asyncness.print_with_space();
         let unsafety = header.unsafety.print_with_space();
         let defaultness = print_default_space(meth.is_default());
@@ -945,10 +953,10 @@ fn render_assoc_item(
     match *item.kind {
         clean::StrippedItem(..) => {}
         clean::TyMethodItem(ref m) => {
-            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx)
+            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
         clean::MethodItem(ref m, _) => {
-            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx)
+            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
         clean::AssocConstItem(ref ty, ref default) => assoc_const(
             w,
@@ -1422,7 +1430,7 @@ fn render_impl(
                         "<div id=\"{}\" class=\"{}{} has-srclink\">",
                         id, item_type, in_trait_class,
                     );
-                    render_rightside(w, cx, item, containing_item);
+                    render_rightside(w, cx, item, containing_item, render_mode);
                     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                     w.write_str("<h4 class=\"code-header\">");
                     render_assoc_item(
@@ -1431,6 +1439,7 @@ fn render_impl(
                         link.anchor(source_id.as_ref().unwrap_or(&id)),
                         ItemType::Impl,
                         cx,
+                        render_mode,
                     );
                     w.write_str("</h4>");
                     w.write_str("</div>");
@@ -1466,7 +1475,7 @@ fn render_impl(
                     "<div id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
-                render_rightside(w, cx, item, containing_item);
+                render_rightside(w, cx, item, containing_item, render_mode);
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_const(
@@ -1645,16 +1654,24 @@ fn render_rightside(
     cx: &Context<'_>,
     item: &clean::Item,
     containing_item: &clean::Item,
+    render_mode: RenderMode,
 ) {
     let tcx = cx.tcx();
+
+    // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+    // this condition.
+    let (const_stability, const_stable_since) = match render_mode {
+        RenderMode::Normal => (item.const_stability(tcx), containing_item.const_stable_since(tcx)),
+        RenderMode::ForDeref { .. } => (None, None),
+    };
 
     write!(w, "<div class=\"rightside\">");
     render_stability_since_raw(
         w,
-        item.stable_since(tcx).as_deref(),
-        item.const_stability(tcx),
-        containing_item.stable_since(tcx).as_deref(),
-        containing_item.const_stable_since(tcx).as_deref(),
+        item.stable_since(tcx),
+        const_stability,
+        containing_item.stable_since(tcx),
+        const_stable_since,
     );
 
     write_srclink(cx, item, w);
@@ -1690,7 +1707,7 @@ pub(crate) fn render_impl_summary(
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
     write!(w, "<div id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
-    render_rightside(w, cx, &i.impl_item, containing_item);
+    render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
     write!(w, "<h3 class=\"code-header in-band\">");
 

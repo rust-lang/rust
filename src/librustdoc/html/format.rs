@@ -1349,10 +1349,7 @@ impl PrintWithSpace for hir::Mutability {
     }
 }
 
-crate fn print_constness_with_space(
-    c: &hir::Constness,
-    s: Option<&ConstStability>,
-) -> &'static str {
+crate fn print_constness_with_space(c: &hir::Constness, s: Option<ConstStability>) -> &'static str {
     match (c, s) {
         // const stable or when feature(staged_api) is not set
         (
