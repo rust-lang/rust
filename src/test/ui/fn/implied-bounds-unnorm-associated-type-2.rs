@@ -1,4 +1,4 @@
-// build-pass
+// check-pass
 
 trait Trait {
     type Type;
