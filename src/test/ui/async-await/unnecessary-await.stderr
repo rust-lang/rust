@@ -16,7 +16,7 @@ LL +     boo();
    | 
 help: alternatively, consider making `fn boo` asynchronous
    |
-LL | async fn boo () {}
+LL | async fn boo() {}
    | +++++
 
 error: aborting due to previous error
