@@ -1821,8 +1821,8 @@ impl MutVisitor for SpanMarker {
         if self.container_id.to_expn_id() != sp.ctxt().outer_expn() { // && sp.ctxt().outer_expn() == rustc_span::hygiene::ExpnId::root() {
             // println!("{:?} {:?} {:?}", self.ctxt, sp.ctxt(), sp);
             // tracing::info!("marked");
-            // *sp.with_ctxt();
-            *sp = sp.apply_mark(self.container_id.to_expn_id(), rustc_span::hygiene::Transparency::SemiTransparent);
+            *sp = sp.with_ctxt(self.span.ctxt());
+            // *sp = sp.apply_mark(self.container_id.to_expn_id(), rustc_span::hygiene::Transparency::SemiTransparent);
             // *sp = sp.apply_mark(self.container_id.to_expn_id(), rustc_span::hygiene::Transparency::Transparent);
             // sp.apply_mark(self.ctxt.outer_expn(), rustc_span::hygiene::Transparency::Transparent);
             // *sp = sp.apply_mark(self.container_id.to_expn_id(), rustc_span::hygiene::Transparency::Opaque);
