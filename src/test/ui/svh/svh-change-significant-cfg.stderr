@@ -1,5 +1,5 @@
 error[E0460]: found possibly newer version of crate `a` which `b` depends on
-  --> $DIR/svh-change-significant-cfg.rs:10:1
+  --> $DIR/svh-change-significant-cfg.rs:8:1
    |
 LL | extern crate b;
    | ^^^^^^^^^^^^^^^
