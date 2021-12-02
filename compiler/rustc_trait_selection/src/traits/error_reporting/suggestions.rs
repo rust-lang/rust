@@ -1735,16 +1735,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 //    | |
                 // LL | |              foo(tx.clone());
                 // LL | |          }).await;
-                //    | |          - ^^^^^^- value is later dropped here
-                //    | |          | |
-                //    | |__________| await occurs here, with value maybe used later
+                //    | |          - ^^^^^^ await occurs here, with value maybe used later
+                //    | |__________|
                 //    |            has type `closure` which is not `Send`
+                // note: value is later dropped here
+                // LL | |          }).await;
+                //    | |                  ^
                 //
-                // If available, use the scope span to annotate the drop location.
-                if let Some(scope_span) = scope_span {
-                    let scope_span = source_map.end_point(scope_span);
-                    span.push_span_label(scope_span, format!("{} is later dropped here", snippet));
-                }
                 span.push_span_label(
                     yield_span,
                     format!("{} occurs here, with {} maybe used later", await_or_yield, snippet),
@@ -1753,6 +1750,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     interior_span,
                     format!("has type `{}` which {}", target_ty, trait_explanation),
                 );
+                // If available, use the scope span to annotate the drop location.
+                let mut scope_note = None;
+                if let Some(scope_span) = scope_span {
+                    let scope_span = source_map.end_point(scope_span);
+
+                    let msg = format!("{} is later dropped here", snippet);
+                    if source_map.is_multiline(yield_span.between(scope_span)) {
+                        span.push_span_label(scope_span, msg);
+                    } else {
+                        scope_note = Some((scope_span, msg));
+                    }
+                }
                 err.span_note(
                     span,
                     &format!(
@@ -1760,6 +1769,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         future_or_generator, trait_explanation, an_await_or_yield
                     ),
                 );
+                if let Some((span, msg)) = scope_note {
+                    err.span_note(span, &msg);
+                }
             }
         };
         match interior_or_upvar_span {

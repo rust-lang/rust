@@ -1,8 +1,8 @@
 // edition:2018
 
 async fn foo () { }
-fn bar () -> impl std::future::Future { async {} }
-fn boo () {}
+fn bar() -> impl std::future::Future { async {} }
+fn boo() {}
 
 async fn baz() -> std::io::Result<()> {
     foo().await;
