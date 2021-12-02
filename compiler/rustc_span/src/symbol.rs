@@ -3,15 +3,17 @@
 //! type, and vice versa.
 
 use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHasher};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::cmp::{Ord, PartialEq, PartialOrd};
+use std::collections::hash_map::RawEntryMut;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::ops::DerefMut;
 use std::str;
 
 use crate::{with_session_globals, Edition, Span, DUMMY_SP};
@@ -1737,22 +1739,40 @@ impl Interner {
     #[inline]
     fn intern(&self, string: &str) -> Symbol {
         let mut inner = self.0.lock();
-        if let Some(&name) = inner.names.get(string) {
-            return name;
+        let inner: &mut InternerInner = inner.deref_mut();
+
+        // One reason to use `raw_entry_mut`, according to its docs, is
+        // "Deferring the creation of an owned key until it is known to be
+        // required". That's exactly what we do here; the arena allocation
+        // below creates an owned version of the `string` argument if
+        // necessary. If we didn't use `raw_entry_mut`, we'd need a lookup
+        // followed by a separate insert.
+        //
+        // This requires hashing `string` ourselves.
+        let mut state = FxHasher::default();
+        string.hash(&mut state);
+        let hash = state.finish();
+
+        match inner.names.raw_entry_mut().from_key_hashed_nocheck(hash, string) {
+            RawEntryMut::Occupied(entry) => *entry.get(),
+            RawEntryMut::Vacant(entry) => {
+                let name = Symbol::new(inner.strings.len() as u32);
+
+                // SAFETY: `from_utf8_unchecked` is safe since we just
+                // allocated a `&str` which is known to be UTF-8.
+                let string: &str =
+                    unsafe { str::from_utf8_unchecked(inner.arena.alloc_slice(string.as_bytes())) };
+
+                // SAFETY: It is safe to extend the arena allocation to
+                // `'static` because we only access these while the arena is
+                // still alive.
+                let string: &'static str = unsafe { &*(string as *const str) };
+
+                inner.strings.push(string);
+                entry.insert_hashed_nocheck(hash, string, name);
+                name
+            }
         }
-
-        let name = Symbol::new(inner.strings.len() as u32);
-
-        // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
-        // UTF-8.
-        let string: &str =
-            unsafe { str::from_utf8_unchecked(inner.arena.alloc_slice(string.as_bytes())) };
-        // It is safe to extend the arena allocation to `'static` because we only access
-        // these while the arena is still alive.
-        let string: &'static str = unsafe { &*(string as *const str) };
-        inner.strings.push(string);
-        inner.names.insert(string, name);
-        name
     }
 
     // Get the symbol as a string. `Symbol::as_str()` should be used in
