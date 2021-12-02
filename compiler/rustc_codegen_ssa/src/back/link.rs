@@ -14,7 +14,6 @@ use rustc_session::utils::NativeLibKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::Endian;
 use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
@@ -22,6 +21,7 @@ use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Ta
 use super::archive::{find_library, ArchiveBuilder};
 use super::command::Command;
 use super::linker::{self, Linker};
+use super::metadata::create_rmeta_file;
 use super::rpath::{self, RPathConfig};
 use crate::{
     looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
@@ -29,9 +29,6 @@ use crate::{
 };
 
 use cc::windows_registry;
-use object::elf;
-use object::write::Object;
-use object::{Architecture, BinaryFormat, Endianness, FileFlags, SectionFlags, SectionKind};
 use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
@@ -339,7 +336,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             // metadata in rlib files is wrapped in a "dummy" object file for
             // the target platform so the rlib can be processed entirely by
             // normal linkers for the platform.
-            let metadata = create_metadata_file(sess, codegen_results.metadata.raw_data());
+            let metadata = create_rmeta_file(sess, codegen_results.metadata.raw_data());
             ab.add_file(&emit_metadata(sess, &metadata, tmpdir));
 
             // After adding all files to the archive, we need to update the
@@ -358,136 +355,6 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         }
     }
     return Ok(ab);
-
-    // For rlibs we "pack" rustc metadata into a dummy object file. When rustc
-    // creates a dylib crate type it will pass `--whole-archive` (or the
-    // platform equivalent) to include all object files from an rlib into the
-    // final dylib itself. This causes linkers to iterate and try to include all
-    // files located in an archive, so if metadata is stored in an archive then
-    // it needs to be of a form that the linker will be able to process.
-    //
-    // Note, though, that we don't actually want this metadata to show up in any
-    // final output of the compiler. Instead this is purely for rustc's own
-    // metadata tracking purposes.
-    //
-    // With the above in mind, each "flavor" of object format gets special
-    // handling here depending on the target:
-    //
-    // * MachO - macos-like targets will insert the metadata into a section that
-    //   is sort of fake dwarf debug info. Inspecting the source of the macos
-    //   linker this causes these sections to be skipped automatically because
-    //   it's not in an allowlist of otherwise well known dwarf section names to
-    //   go into the final artifact.
-    //
-    // * WebAssembly - we actually don't have any container format for this
-    //   target. WebAssembly doesn't support the `dylib` crate type anyway so
-    //   there's no need for us to support this at this time. Consequently the
-    //   metadata bytes are simply stored as-is into an rlib.
-    //
-    // * COFF - Windows-like targets create an object with a section that has
-    //   the `IMAGE_SCN_LNK_REMOVE` flag set which ensures that if the linker
-    //   ever sees the section it doesn't process it and it's removed.
-    //
-    // * ELF - All other targets are similar to Windows in that there's a
-    //   `SHF_EXCLUDE` flag we can set on sections in an object file to get
-    //   automatically removed from the final output.
-    //
-    // Note that this metdata format is kept in sync with
-    // `rustc_codegen_ssa/src/back/metadata.rs`.
-    fn create_metadata_file(sess: &Session, metadata: &[u8]) -> Vec<u8> {
-        let endianness = match sess.target.options.endian {
-            Endian::Little => Endianness::Little,
-            Endian::Big => Endianness::Big,
-        };
-        let architecture = match &sess.target.arch[..] {
-            "arm" => Architecture::Arm,
-            "aarch64" => Architecture::Aarch64,
-            "x86" => Architecture::I386,
-            "s390x" => Architecture::S390x,
-            "mips" => Architecture::Mips,
-            "mips64" => Architecture::Mips64,
-            "x86_64" => {
-                if sess.target.pointer_width == 32 {
-                    Architecture::X86_64_X32
-                } else {
-                    Architecture::X86_64
-                }
-            }
-            "powerpc" => Architecture::PowerPc,
-            "powerpc64" => Architecture::PowerPc64,
-            "riscv32" => Architecture::Riscv32,
-            "riscv64" => Architecture::Riscv64,
-            "sparc64" => Architecture::Sparc64,
-
-            // This is used to handle all "other" targets. This includes targets
-            // in two categories:
-            //
-            // * Some targets don't have support in the `object` crate just yet
-            //   to write an object file. These targets are likely to get filled
-            //   out over time.
-            //
-            // * Targets like WebAssembly don't support dylibs, so the purpose
-            //   of putting metadata in object files, to support linking rlibs
-            //   into dylibs, is moot.
-            //
-            // In both of these cases it means that linking into dylibs will
-            // not be supported by rustc. This doesn't matter for targets like
-            // WebAssembly and for targets not supported by the `object` crate
-            // yet it means that work will need to be done in the `object` crate
-            // to add a case above.
-            _ => return metadata.to_vec(),
-        };
-
-        if sess.target.is_like_osx {
-            let mut file = Object::new(BinaryFormat::MachO, architecture, endianness);
-
-            let section =
-                file.add_section(b"__DWARF".to_vec(), b".rmeta".to_vec(), SectionKind::Debug);
-            file.append_section_data(section, metadata, 1);
-            file.write().unwrap()
-        } else if sess.target.is_like_windows {
-            const IMAGE_SCN_LNK_REMOVE: u32 = 0;
-            let mut file = Object::new(BinaryFormat::Coff, architecture, endianness);
-
-            let section = file.add_section(Vec::new(), b".rmeta".to_vec(), SectionKind::Debug);
-            file.section_mut(section).flags =
-                SectionFlags::Coff { characteristics: IMAGE_SCN_LNK_REMOVE };
-            file.append_section_data(section, metadata, 1);
-            file.write().unwrap()
-        } else {
-            const SHF_EXCLUDE: u64 = 0x80000000;
-            let mut file = Object::new(BinaryFormat::Elf, architecture, endianness);
-
-            match &sess.target.arch[..] {
-                // copied from `mipsel-linux-gnu-gcc foo.c -c` and
-                // inspecting the resulting `e_flags` field.
-                "mips" => {
-                    let e_flags = elf::EF_MIPS_ARCH_32R2 | elf::EF_MIPS_CPIC | elf::EF_MIPS_PIC;
-                    file.flags = FileFlags::Elf { e_flags };
-                }
-                // copied from `mips64el-linux-gnuabi64-gcc foo.c -c`
-                "mips64" => {
-                    let e_flags = elf::EF_MIPS_ARCH_64R2 | elf::EF_MIPS_CPIC | elf::EF_MIPS_PIC;
-                    file.flags = FileFlags::Elf { e_flags };
-                }
-
-                // copied from `riscv64-linux-gnu-gcc foo.c -c`, note though
-                // that the `+d` target feature represents whether the double
-                // float abi is enabled.
-                "riscv64" if sess.target.options.features.contains("+d") => {
-                    let e_flags = elf::EF_RISCV_RVC | elf::EF_RISCV_FLOAT_ABI_DOUBLE;
-                    file.flags = FileFlags::Elf { e_flags };
-                }
-
-                _ => {}
-            }
-
-            let section = file.add_section(Vec::new(), b".rmeta".to_vec(), SectionKind::Debug);
-            file.section_mut(section).flags = SectionFlags::Elf { sh_flags: SHF_EXCLUDE };
-            file.append_section_data(section, metadata, 1);
-            file.write().unwrap()
-        }
-    }
 }
 
 /// Extract all symbols defined in raw-dylib libraries, collated by library name.

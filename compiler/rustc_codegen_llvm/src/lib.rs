@@ -102,14 +102,6 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         ModuleLlvm::new_metadata(tcx, mod_name)
     }
 
-    fn write_compressed_metadata<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        metadata: &EncodedMetadata,
-        llvm_module: &mut ModuleLlvm,
-    ) {
-        base::write_compressed_metadata(tcx, metadata, llvm_module)
-    }
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
