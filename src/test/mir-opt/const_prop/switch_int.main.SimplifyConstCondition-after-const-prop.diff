@@ -1,5 +1,5 @@
-- // MIR for `main` before SimplifyBranches-after-const-prop
-+ // MIR for `main` after SimplifyBranches-after-const-prop
+- // MIR for `main` before SimplifyConstCondition-after-const-prop
++ // MIR for `main` after SimplifyConstCondition-after-const-prop
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/switch_int.rs:6:11: 6:11
