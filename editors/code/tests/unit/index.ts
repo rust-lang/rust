@@ -1,38 +1,80 @@
 import * as path from 'path';
-import * as Mocha from 'mocha';
-import * as glob from 'glob';
 
-export function run(): Promise<void> {
-    // Create the mocha test
-    const mocha = new Mocha({
-        ui: 'tdd',
-        color: true
-    });
+class Test {
+    readonly name: string;
+    readonly promise: Promise<void>;
 
-    const testsRoot = __dirname;
+    constructor(name: string, promise: Promise<void>) {
+        this.name = name;
+        this.promise = promise;
+    }
+}
 
-    return new Promise((resolve, reject) => {
-        glob('**/**.test.js', { cwd: testsRoot }, (err, files) => {
-            if (err) {
-                return reject(err);
-            }
+class Suite {
+    tests: Test[];
 
-            // Add files to the test suite
-            files.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));
+    constructor() {
+        this.tests = [];
+    }
 
+    public addTest(name: string, f: () => Promise<void>): void {
+        const test = new Test(name, f());
+        this.tests.push(test);
+    }
+
+    public async run(): Promise<void> {
+        let failed = 0;
+        for (const test of this.tests) {
             try {
-                // Run the mocha test
-                mocha.timeout(100000);
-                mocha.run(failures => {
-                    if (failures > 0) {
-                        reject(new Error(`${failures} tests failed.`));
-                    } else {
-                        resolve();
-                    }
-                });
-            } catch (err) {
-                reject(err);
+                await test.promise;
+                ok(`  ✔ ${test.name}`);
+            } catch (e) {
+                error(`  ✖︎ ${test.name}\n  ${e.stack}`);
+                failed += 1;
             }
-        });
-    });
+        }
+        if (failed) {
+            const plural = failed > 1 ? "s" : "";
+            throw new Error(`${failed} failed test${plural}`);
+        }
+    }
+}
+
+export class Context {
+    public async suite(name: string, f: (ctx: Suite) => void): Promise<void> {
+        const ctx = new Suite();
+        f(ctx);
+        try {
+            ok(`⌛︎ ${name}`);
+            await ctx.run();
+            ok(`✔ ${name}`);
+        } catch (e) {
+            error(`✖︎ ${name}\n  ${e.stack}`);
+            throw e;
+        }
+    }
+}
+
+export async function run(): Promise<void> {
+    const context = new Context();
+    const testFiles = ["launch_config.test.js", "runnable_env.test.js"];
+    for (const testFile of testFiles) {
+        try {
+            const testModule = require(path.resolve(__dirname, testFile));
+            await testModule.getTests(context);
+        } catch (e) {
+            error(`${e}`);
+            throw e;
+        }
+    }
+}
+
+function ok(message: string): void {
+    // eslint-disable-next-line no-console
+    console.log(`\x1b[32m${message}\x1b[0m`);
+}
+
+function error(message: string): void {
+    // eslint-disable-next-line no-console
+    console.error(`\x1b[31m${message}\x1b[0m`);
 }
