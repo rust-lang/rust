@@ -43,6 +43,8 @@ use crate::try_err;
 /// It is intended that this context is a lightweight object which can be fairly
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
+/// 
+#[derive(Clone)]
 crate struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
@@ -56,9 +58,9 @@ crate struct Context<'tcx> {
     pub(super) render_redirect_pages: bool,
     /// Tracks section IDs for `Deref` targets so they match in both the main
     /// body and the sidebar.
-    pub(super) deref_id_map: RefCell<FxHashMap<DefId, String>>,
+    pub(super) deref_id_map: FxHashMap<DefId, String>,
     /// The map used to ensure all generated 'id=' attributes are unique.
-    pub(super) id_map: RefCell<IdMap>,
+    pub(super) id_map: IdMap,
     /// Shared mutable state.
     ///
     /// Issue for improving the situation: [#82381][]
@@ -73,7 +75,7 @@ crate struct Context<'tcx> {
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 144);
+rustc_data_structures::static_assert_size!(Context<'_>, 128);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 crate struct SharedContext<'tcx> {
@@ -166,9 +168,8 @@ impl<'tcx> Context<'tcx> {
         self.shared.tcx.sess
     }
 
-    pub(super) fn derive_id(&self, id: String) -> String {
-        let mut map = self.id_map.borrow_mut();
-        map.derive(id)
+    pub(super) fn derive_id(&mut self, id: String) -> String {
+        self.id_map.derive(id)
     }
 
     /// String representation of how to get back to the root path of the 'doc/'
@@ -212,10 +213,11 @@ impl<'tcx> Context<'tcx> {
         } else {
             tyname.as_str()
         };
+        let clone = self.clone();
         let page = layout::Page {
             css_class: tyname_s,
             root_path: &self.root_path(),
-            static_root_path: self.shared.static_root_path.as_deref(),
+            static_root_path: clone.shared.static_root_path.as_deref(),
             title: &title,
             description: &desc,
             keywords: &keywords,
@@ -229,8 +231,8 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.templates,
                 &self.shared.layout,
                 &page,
-                |buf: &mut _| print_sidebar(self, it, buf),
-                |buf: &mut _| print_item(self, &self.shared.templates, it, buf, &page),
+                |buf: &mut _| print_sidebar(&mut self.clone(), it, buf),
+                |buf: &mut _| print_item(&self, &self.shared.templates, it, buf, &page),
                 &self.shared.style_files,
             )
         } else {
@@ -515,8 +517,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: Vec::new(),
             dst,
             render_redirect_pages: false,
-            id_map: RefCell::new(id_map),
-            deref_id_map: RefCell::new(FxHashMap::default()),
+            id_map: id_map,
+            deref_id_map: FxHashMap::default(),
             shared: Rc::new(scx),
             include_sources,
         };
@@ -540,8 +542,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: self.current.clone(),
             dst: self.dst.clone(),
             render_redirect_pages: self.render_redirect_pages,
-            deref_id_map: RefCell::new(FxHashMap::default()),
-            id_map: RefCell::new(IdMap::new()),
+            deref_id_map: FxHashMap::default(),
+            id_map: IdMap::new(),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
         }
@@ -644,7 +646,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !self.render_redirect_pages {
             self.render_redirect_pages = item.is_stripped();
         }
-        let scx = &self.shared;
+        let scx = self.shared.clone();
         let item_name = item.name.as_ref().unwrap().to_string();
         self.dst.push(&item_name);
         self.current.push(item_name);
@@ -656,7 +658,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !buf.is_empty() {
             self.shared.ensure_dir(&self.dst)?;
             let joint_dst = self.dst.join("index.html");
-            scx.fs.write(joint_dst, buf)?;
+            scx.clone().fs.write(joint_dst, buf)?;
         }
 
         // Render sidebar-items.js used throughout this module.
